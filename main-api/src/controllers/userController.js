@@ -55,7 +55,7 @@ exports.createUser = async (req, res, next) => {
     }
 
     const newId = 'U' + crypto.randomBytes(3).toString('hex').toUpperCase();
-    const rawPassword = crypto.randomBytes(4).toString('hex'); // 8 chars
+    const rawPassword = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 caracteres alfanuméricos (letras y números)
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(rawPassword, salt);
@@ -73,7 +73,7 @@ exports.createUser = async (req, res, next) => {
 
     res.status(201).json({
       ok: true,
-      message: `Usuario ${nombre} ${apellido} creado. Contraseña enviada a ${email}.`,
+      message: `Usuario ${nombre} ${apellido} creado. Código de acceso enviado a ${email}.`,
       data: rows[0]
     });
   } catch (err) {
