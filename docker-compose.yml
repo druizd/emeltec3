@@ -18,6 +18,28 @@ services:
       timeout: 3s
       retries: 5
 
+  auth-api:
+    build: ./auth-api
+    container_name: emeltec-auth
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./auth-api/.env
+    environment:
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: telemetry_platform
+      DB_USER: postgres
+      DB_PASSWORD: admin_password
+      PORT: 3001
+      MAIN_API_URL: http://main-api:3000
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      main-api:
+        condition: service_started
+    restart: unless-stopped
+
   main-api:
     build: ./main-api
     container_name: emeltec-api
@@ -31,6 +53,8 @@ services:
       DB_NAME: telemetry_platform
       DB_USER: postgres
       DB_PASSWORD: admin_password
+      CSVCONSUMER_HOST: csvconsumer
+      CSVCONSUMER_PORT: 50051
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -63,6 +87,7 @@ services:
       timescaledb:
         condition: service_healthy
     restart: unless-stopped
+
 
 volumes:
   timescale_data:

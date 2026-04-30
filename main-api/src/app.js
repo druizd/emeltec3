@@ -9,14 +9,15 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 
-const healthRoutes = require("./routes/healthRoutes");
-const dataRoutes = require("./routes/dataRoutes");
-const catalogRoutes = require("./routes/catalogRoutes");
-const metricsRoutes = require("./routes/metricsRoutes");
-const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
-const companyRoutes = require("./routes/companyRoutes");
-const alertaRoutes = require("./routes/alertaRoutes");
+const healthRoutes   = require("./routes/healthRoutes");
+const statusRoutes   = require("./routes/statusRoutes");
+const dataRoutes     = require("./routes/dataRoutes");
+const catalogRoutes  = require("./routes/catalogRoutes");
+const metricsRoutes  = require("./routes/metricsRoutes");
+const userRoutes     = require("./routes/userRoutes");
+const companyRoutes  = require("./routes/companyRoutes");
+const alertaRoutes   = require("./routes/alertaRoutes");
+const internalRoutes = require("./routes/internalRoutes");
 const errorMiddleware = require("./middlewares/errorMiddleware");
 
 const app = express();
@@ -55,10 +56,11 @@ app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // Rutas funcionales del backend.
 app.use("/api/health", healthRoutes);
+app.use("/api/status", statusRoutes);
 app.use("/api/data", dataRoutes);
 app.use("/api", catalogRoutes);
 app.use("/api/metrics", metricsRoutes);
-app.use("/api/auth", authRoutes);
+app.use("/api/internal", internalRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/alertas", alertaRoutes);
