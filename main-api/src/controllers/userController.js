@@ -1,5 +1,5 @@
 const db = require('../config/db');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const emailService = require('../services/emailService'); // Importamos el servicio de correos
 
 exports.getAllUsers = async (req, res, next) => {
@@ -18,6 +18,17 @@ exports.getAllUsers = async (req, res, next) => {
 
     query += ' ORDER BY nombre ASC';
     const { rows } = await db.query(query, params);
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getEmpresas = async (req, res, next) => {
+  try {
+    const { rows } = await db.query(
+      'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa ORDER BY nombre ASC'
+    );
     res.json({ ok: true, data: rows });
   } catch (err) {
     next(err);

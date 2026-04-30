@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package logpipeline;
+
+service LogIngestion {
+  rpc Ping (PingRequest) returns (PingResponse);
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string status = 1;
+}
