@@ -13,7 +13,7 @@
   --color-on-surface: #0b1c30;
   --color-on-surface-variant: #43474f;
   --color-outline-variant: #c3c6d1;
-  
+
   /* Fuentes */
   --font-inter: "Inter", sans-serif;
 }
@@ -26,8 +26,13 @@
 
 /* Animación para Skeletons */
 @keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .skeleton {

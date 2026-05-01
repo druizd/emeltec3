@@ -217,7 +217,7 @@ test("GET /api/data filtra y proyecta multiples variables", async () => {
     assert.equal(body.metrics.request_count_total, 1);
     assert.equal(typeof body.response_time_ms, "number");
 
-    assert.match(calls[0].text, /FROM public\.log_records/i);
+    assert.match(calls[0].text, /FROM equipo/i);
     assert.match(calls[0].text, /data \?\| \$2::text\[\]/i);
     assert.deepEqual(calls[0].params, ["PLC-01", ["REG4", "AI23"], 2]);
     assert.match(calls[1].text, /CREATE TABLE IF NOT EXISTS public\.api_metrics/i);
@@ -313,7 +313,7 @@ test("GET /api/data/preset soporta 7d y usa el ultimo registro si base_date no v
     assert.equal(body.filters.limit, null);
     assert.deepEqual(body.data[0].data, { REG4: 20.1 });
 
-    assert.match(calls[0].text, /ORDER BY fecha DESC, hora DESC/i);
+    assert.match(calls[0].text, /ORDER BY time DESC/i);
     assert.deepEqual(calls[0].params, ["PLC-01"]);
     assert.deepEqual(calls[1].params, [
       "PLC-01",
@@ -540,7 +540,7 @@ test("gRPC GetLatest devuelve el ultimo registro proyectado", async () => {
     assert.equal(body.request_count_total, 4);
     assert.equal(typeof body.response_time_ms, "number");
 
-    assert.match(calls[0].text, /FROM public\.log_records/i);
+    assert.match(calls[0].text, /FROM equipo/i);
     assert.deepEqual(calls[0].params, ["PLC-01", "REG4", 1]);
     assert.match(calls[1].text, /CREATE TABLE IF NOT EXISTS public\.api_metrics/i);
     assert.match(calls[2].text, /INSERT INTO api_metrics/i);

@@ -36,11 +36,20 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  frontend-app:
-    build: ./frontend-app
+  frontend-angular:
+    build: ./frontend-angular
     container_name: emeltec-frontend
     ports:
-      - "5173:5173"
+      - "5173:80"
+    depends_on:
+      - main-api
+    restart: unless-stopped
+
+  metrics-page:
+    build: ./metrics-page
+    container_name: emeltec-metrics-page
+    ports:
+      - "127.0.0.1:8081:80"
     depends_on:
       - main-api
     restart: unless-stopped

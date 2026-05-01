@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 854 208" role="img" aria-labelledby="title desc">
+  <title id="title">Emeltec</title>
+  <desc id="desc">Logo Emeltec, experiencia y flexibilidad</desc>
+  <rect width="854" height="208" fill="none"/>
+  <text
+    x="0"
+    y="132"
+    fill="#08738a"
+    font-family="Inter, Arial, Helvetica, sans-serif"
+    font-size="132"
+    font-weight="800"
+    letter-spacing="-4">emeltec</text>
+  <text
+    x="24"
+    y="198"
+    fill="#8f9aa0"
+    font-family="Inter, Arial, Helvetica, sans-serif"
+    font-size="28"
+    font-weight="800"
+    letter-spacing="18">EXPERIENCIA &amp; FLEXIBILIDAD</text>
+</svg>

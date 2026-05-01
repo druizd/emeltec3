@@ -1,112 +1,101 @@
-import { Component, inject, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { SidebarComponent } from '../../components/sidebar/sidebar';
-import { MetricCardComponent } from '../../components/metric-card/metric-card';
-import { ChartCardComponent } from '../../components/chart-card/chart-card';
-import { AuthService } from '../../services/auth.service';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { CompanyService } from '../../services/company.service';
+
+interface InstallationCard {
+  id: string;
+  name: string;
+  companyName: string;
+  subCompanyName: string;
+  type: string;
+  location: string;
+  status: 'pending' | 'online' | 'offline';
+}
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, SidebarComponent, MetricCardComponent, ChartCardComponent],
-  templateUrl: './dashboard.html'
+  imports: [CommonModule],
+  templateUrl: './dashboard.html',
 })
-export class DashboardComponent implements OnInit, OnDestroy {
-  private http = inject(HttpClient);
-  auth = inject(AuthService);
+export class DashboardComponent implements OnInit {
+  private companyService = inject(CompanyService);
+  private router = inject(Router);
 
-  latestData = signal<any>(null);
-  historicalData = signal<any[]>([]);
-  availableKeys = signal<string[]>([]);
+  installations = signal<InstallationCard[]>([]);
   loading = signal(true);
-  private intervalId: any;
-
-  // Colores alternados para gráficos
-  chartColors = ['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b'];
 
   ngOnInit(): void {
-    this.fetchData();
-    this.intervalId = setInterval(() => this.fetchData(), 15000);
+    this.loadInstallations();
   }
 
-  ngOnDestroy(): void {
-    if (this.intervalId) clearInterval(this.intervalId);
-  }
-
-  fetchData(): void {
+  loadInstallations(): void {
     this.loading.set(true);
 
-    // 1. Obtener último registro
-    this.http.get<any>('/api/data/latest').subscribe({
-      next: (json) => {
-        let lastTimestamp: string | null = null;
-        if (json.ok && json.data?.length > 0) {
-          const row = json.data[0];
-          this.latestData.set(row);
-          lastTimestamp = row.timestamp_completo || row.time;
-          
-          const metricsObj = row.data || {};
-          this.availableKeys.set(Object.keys(metricsObj));
-        }
-
-        // 2. Obtener histórico
-        let url = '/api/data/preset?preset=365d';
-        if (lastTimestamp) {
-          url += `&base_date=${encodeURIComponent(lastTimestamp)}`;
-        }
-
-        this.http.get<any>(url).subscribe({
-          next: (histJson) => {
-            if (histJson.ok && histJson.data) {
-              const flatData = histJson.data.map((row: any) => ({
-                time: row.timestamp_completo || row.time,
-                ...(row.data || {})
-              })).reverse();
-              this.historicalData.set(flatData);
-            }
-            this.loading.set(false);
-          },
-          error: () => this.loading.set(false)
-        });
+    this.companyService.fetchHierarchy().subscribe({
+      next: (res: any) => {
+        this.installations.set(res.ok ? this.flattenInstallations(res.data || []) : []);
+        this.loading.set(false);
       },
-      error: () => this.loading.set(false)
+      error: () => {
+        this.installations.set([]);
+        this.loading.set(false);
+      },
     });
   }
 
-  getMetricTitle(key: string): string {
-    if (key.toUpperCase().includes('REG1')) return 'Nivel Freático';
-    if (key.toUpperCase().includes('CAUDAL') || key === 'REG2') return 'Caudal Instantáneo';
-    return `Métrica ${key}`;
+  openInstallation(installation: InstallationCard): void {
+    if (!installation.id) {
+      return;
+    }
+
+    this.router.navigate(['/companies', installation.id, 'water']);
   }
 
-  getMetricUnit(key: string): string {
-    if (key.toUpperCase().includes('REG1')) return 'm';
-    if (key.toUpperCase().includes('CAUDAL') || key === 'REG2') return 'L/s';
-    return 'uds';
+  getStatusLabel(status: InstallationCard['status']): string {
+    if (status === 'online') return 'En linea';
+    if (status === 'offline') return 'Sin senal';
+    return 'Pendiente';
   }
 
-  getMetricValue(key: string): any {
-    const data = this.latestData();
-    return data?.data ? data.data[key] : undefined;
+  getStatusClass(status: InstallationCard['status']): string {
+    if (status === 'online') return 'bg-emerald-50 text-emerald-700 ring-emerald-200';
+    if (status === 'offline') return 'bg-rose-50 text-rose-700 ring-rose-200';
+    return 'bg-slate-100 text-slate-500 ring-slate-200';
   }
 
-  getMetricTime(): string {
-    const data = this.latestData();
-    return data ? (data.timestamp_completo || data.time) : '';
+  getTypeIcon(type: string): string {
+    const normalized = (type || '').toLowerCase();
+    if (normalized.includes('agua')) return 'water_drop';
+    if (normalized.includes('elect')) return 'bolt';
+    return 'sensors';
   }
 
-  getChartTitle(key: string): string {
-    if (key.toUpperCase().includes('REG1')) return 'Fluctuación del Nivel Freático';
-    if (key.toUpperCase().includes('CAUDAL') || key === 'REG2') return 'Comportamiento del Caudal';
-    return `Histórico - ${key}`;
+  private flattenInstallations(tree: any[]): InstallationCard[] {
+    return tree.flatMap((company: any) =>
+      (company.subCompanies || []).flatMap((subCompany: any) =>
+        (subCompany.sites || []).map((site: any) => ({
+          id: site.id,
+          name: this.pickFirst(site, ['descripcion', 'nombre', 'name', 'codigo']) || 'Instalacion',
+          companyName: company.nombre || 'Empresa sin nombre',
+          subCompanyName: subCompany.nombre || 'Division sin nombre',
+          type: company.tipo_empresa || 'Instalacion',
+          location: this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) || 'Sin referencia',
+          status: 'pending' as const,
+        }))
+      )
+    );
   }
 
-  getChartColor(index: number): string {
-    return this.chartColors[index % this.chartColors.length];
-  }
+  private pickFirst(source: any, keys: string[]): string | null {
+    for (const key of keys) {
+      const value = source?.[key];
+      if (value !== undefined && value !== null && `${value}`.trim() !== '') {
+        return `${value}`;
+      }
+    }
 
-  get currentTime(): string {
-    return new Date().toLocaleTimeString('es-ES');
+    return null;
   }
 }

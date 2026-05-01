@@ -250,7 +250,7 @@ function buildRangeFromPreset(presetConfig, endDate) {
   };
 }
 
-// Si no se indico serial, usa el equipo mas reciente disponible en log_records.
+// Si no se indico serial, usa el equipo mas reciente disponible en la tabla equipo.
 async function resolveSerialId(candidateSerialId) {
   if (candidateSerialId) {
     return String(candidateSerialId).trim();

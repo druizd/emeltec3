@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, finalize, tap } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -11,19 +11,18 @@ export class UserService {
 
   fetchUsers(filters: { empresa_id?: string, sub_empresa_id?: string } = {}): Observable<any> {
     this.loading.set(true);
-    let url = '/api/users';
-    const params = new URLSearchParams();
-    if (filters.sub_empresa_id) params.append('sub_empresa_id', filters.sub_empresa_id);
-    if (filters.empresa_id) params.append('empresa_id', filters.empresa_id);
-    
-    if (params.toString()) url += `?${params.toString()}`;
+    const url = this.buildUsersUrl(filters);
 
     return this.http.get<any>(url).pipe(
       tap(res => {
         if (res.ok) this.users.set(res.data);
-        this.loading.set(false);
-      })
+      }),
+      finalize(() => this.loading.set(false))
     );
+  }
+
+  getUsers(filters: { empresa_id?: string, sub_empresa_id?: string } = {}): Observable<any> {
+    return this.http.get<any>(this.buildUsersUrl(filters));
   }
 
   createUser(userData: any): Observable<any> {
@@ -32,5 +31,18 @@ export class UserService {
 
   deleteUser(id: string): Observable<any> {
     return this.http.delete<any>(`/api/users/${id}`);
+  }
+
+  private buildUsersUrl(filters: { empresa_id?: string, sub_empresa_id?: string }): string {
+    let url = '/api/users';
+    const params = new URLSearchParams();
+    if (filters.sub_empresa_id) params.append('sub_empresa_id', filters.sub_empresa_id);
+    if (filters.empresa_id) params.append('empresa_id', filters.empresa_id);
+
+    if (params.toString()) {
+      url += `?${params.toString()}`;
+    }
+
+    return url;
   }
 }

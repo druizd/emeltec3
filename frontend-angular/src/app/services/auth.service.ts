@@ -22,6 +22,30 @@ export class AuthService {
   readonly loading = this.loadingSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.userSignal());
 
+  // ── Role helpers ──────────────────────────────────────────────────────
+  readonly isSuperAdmin = computed(() => this.userSignal()?.tipo === 'SuperAdmin');
+  readonly isAdmin = computed(() => this.userSignal()?.tipo === 'Admin');
+  readonly isGerente = computed(() => this.userSignal()?.tipo === 'Gerente');
+  readonly isCliente = computed(() => this.userSignal()?.tipo === 'Cliente');
+
+  /** SuperAdmin o Admin pueden gestionar usuarios y editar datos */
+  readonly canManageUsers = computed(() => {
+    const tipo = this.userSignal()?.tipo;
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
+  });
+
+  /** SuperAdmin, Admin y Gerente pueden ver la lista de usuarios (Gerente solo lectura) */
+  readonly canViewUsers = computed(() => {
+    const tipo = this.userSignal()?.tipo;
+    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Gerente';
+  });
+
+  /** Solo SuperAdmin y Admin pueden crear/editar/eliminar */
+  readonly canEdit = computed(() => {
+    const tipo = this.userSignal()?.tipo;
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
+  });
+
   constructor(private router: Router) {
     this.initFromStorage();
   }

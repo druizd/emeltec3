@@ -90,7 +90,8 @@
           },
           "defaultConfiguration": "development",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.json",
+            "allowedHosts": ["nuevacloud.emeltec.cl", "104.46.7.78"]
           }
         }
       }

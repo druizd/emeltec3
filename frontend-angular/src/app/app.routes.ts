@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { authGuard, publicGuard } from './guards/auth.guard';
+import { authGuard, publicGuard, roleGuard } from './guards/auth.guard';
 
 import { LayoutComponent } from './components/layout/layout';
 
@@ -15,6 +15,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
+        path: 'companies/:siteId/water',
+        loadComponent: () => import('./pages/companies/company-site-water-detail').then(m => m.CompanySiteWaterDetailComponent)
+      },
+      {
         path: 'companies',
         loadComponent: () => import('./pages/companies/companies').then(m => m.CompaniesComponent)
       },
@@ -24,10 +28,11 @@ export const routes: Routes = [
       },
       {
         path: 'users',
+        canActivate: [roleGuard('SuperAdmin', 'Admin')],
         loadComponent: () => import('./pages/user-management/user-management').then(m => m.UserManagementComponent)
       },
-      { path: '', redirectTo: 'companies', pathMatch: 'full' }
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },
-  { path: '**', redirectTo: 'companies' }
+  { path: '**', redirectTo: 'dashboard' }
 ];

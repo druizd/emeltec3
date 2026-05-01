@@ -1,5 +1,5 @@
 /**
- * Controladores principales de lectura sobre public.log_records.
+ * Controladores principales de lectura sobre la tabla equipo.
  * Exponen consultas historicas, por preset y una vista "online"
  * con el ultimo valor conocido de cada variable por equipo.
  */

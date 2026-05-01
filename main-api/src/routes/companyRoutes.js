@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
-// Aquí podríamos agregar un middleware de autenticación si fuera necesario
-// const authMiddleware = require('../middlewares/authMiddleware');
+const { protect } = require('../middlewares/authMiddleware');
+
+// Todas las rutas de companies requieren autenticación
+router.use(protect);
 
 router.get('/', companyController.getAllCompanies);
 router.get('/tree', companyController.getHierarchyTree);

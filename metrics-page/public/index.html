@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Metricas Emeltec</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48" role="img">
+              <path d="M8 32h6V20H8v12Zm13 0h6V12h-6v20Zm13 0h6V6h-6v26Z"></path>
+              <path d="M7 39h34"></path>
+            </svg>
+          </div>
+          <div>
+            <p class="eyebrow">Emeltec</p>
+            <h1>Metricas</h1>
+          </div>
+        </div>
+
+        <div class="status-chip" id="apiStatus">
+          <span class="status-dot"></span>
+          <span>Conectando</span>
+        </div>
+      </header>
+
+      <section class="controls" aria-label="Filtros de metricas">
+        <label>
+          <span>Dominio</span>
+          <input id="domainInput" type="text" placeholder="data, grpc o vacio">
+        </label>
+        <label>
+          <span>Serial</span>
+          <input id="serialInput" type="text" placeholder="PLC-01">
+        </label>
+        <label class="wide">
+          <span>Variables</span>
+          <input id="keysInput" type="text" placeholder="REG4, AI23">
+        </label>
+        <button id="refreshButton" type="button">Actualizar</button>
+      </section>
+
+      <section class="summary-grid" aria-label="Resumen">
+        <article>
+          <span>Solicitudes</span>
+          <strong id="requestsTotal">0</strong>
+        </article>
+        <article>
+          <span>Transferido</span>
+          <strong id="bytesTotal">0 KB</strong>
+        </article>
+        <article>
+          <span>Endpoints</span>
+          <strong id="endpointCount">0</strong>
+        </article>
+        <article>
+          <span>Variables</span>
+          <strong id="variableCount">0</strong>
+        </article>
+      </section>
+
+      <section class="data-layout">
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Uso por endpoint</h2>
+              <p id="endpointSubtitle">Sin datos cargados.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Endpoint</th>
+                  <th>Dominio</th>
+                  <th>Serial</th>
+                  <th>Req.</th>
+                  <th>KB</th>
+                  <th>Actualizado</th>
+                </tr>
+              </thead>
+              <tbody id="endpointRows">
+                <tr><td colspan="6" class="empty">Cargando metricas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Uso por variable</h2>
+              <p id="variableSubtitle">Filtra por variables cuando quieras acotar la vista.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Variable</th>
+                  <th>Serial</th>
+                  <th>Req.</th>
+                  <th>KB</th>
+                  <th>Prom. ms</th>
+                  <th>Actualizado</th>
+                </tr>
+              </thead>
+              <tbody id="variableRows">
+                <tr><td colspan="6" class="empty">Cargando metricas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
