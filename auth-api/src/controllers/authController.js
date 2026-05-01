@@ -19,7 +19,7 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`main-api rechazo el envio de correo: ${res.status} ${text}`);
+    throw new Error(`main-api rechazó el envío de correo: ${res.status} ${text}`);
   }
 
   return res.json();
@@ -41,7 +41,7 @@ exports.login = async (req, res, next) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
+      return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
     const user = result.rows[0];
@@ -67,7 +67,7 @@ exports.login = async (req, res, next) => {
     }
 
     if (!authenticated) {
-      return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
+      return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
     const token = jwt.sign(
@@ -136,7 +136,7 @@ exports.requestCode = async (req, res, next) => {
 
     res.json({
       ok:         true,
-      message:    `Codigo enviado exitosamente. Valido por ${minutes} minutos.`,
+      message:    `Código enviado exitosamente. Válido por ${minutes} minutos.`,
       expires_at: expiresAt.toISOString(),
     });
   } catch (err) {

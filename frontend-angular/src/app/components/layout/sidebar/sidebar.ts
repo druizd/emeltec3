@@ -148,7 +148,7 @@ import { CompanyService } from '../../../services/company.service';
         <div class="mb-2 px-3">
           <div class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-2.5 py-1.5">
             <span class="material-symbols-outlined text-[15px] text-emerald-600">shield_person</span>
-            <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Mi Division</h3>
+            <h3 class="text-[10px] font-black uppercase tracking-[0.16em] text-emerald-700">Mi División</h3>
           </div>
         </div>
 

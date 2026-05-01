@@ -73,7 +73,7 @@ import { UserService } from '../../../services/user.service';
                 <div class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
                   <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600">call</span>
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Telefono</p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Teléfono</p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
                       {{ getContactPhone(contact) }}
                     </p>

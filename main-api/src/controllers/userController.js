@@ -124,7 +124,7 @@ exports.createUser = async (req, res, next) => {
 
     res.status(201).json({
       ok: true,
-      message: `Usuario ${nombre} ${apellido} creado. Codigo de acceso enviado a ${email}.`,
+      message: `Usuario ${nombre} ${apellido} creado. Código de acceso enviado a ${email}.`,
       data: rows[0],
     });
   } catch (err) {

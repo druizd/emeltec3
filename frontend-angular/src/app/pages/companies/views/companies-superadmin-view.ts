@@ -22,7 +22,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
       <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div class="space-y-2">
           <p class="text-[12px] font-black uppercase tracking-[0.24em] text-cyan-600/80">
-            {{ selectedSubCompany?.nombre || 'Division seleccionada' }}
+            {{ selectedSubCompany?.nombre || 'División seleccionada' }}
           </p>
           <h1 class="text-[2.35rem] font-black leading-none text-slate-800">
             {{ getActiveTitle() }}
@@ -101,7 +101,7 @@ export class CompaniesSuperAdminViewComponent {
     { key: 'general', label: 'General', icon: 'info' },
     { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
     { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
-    { key: 'usuarios', label: 'Gestion Usuarios', icon: 'person_add' },
+    { key: 'usuarios', label: 'Gestión Usuarios', icon: 'person_add' },
   ];
 
   getActiveTitle(): string {
@@ -130,7 +130,7 @@ export class CompaniesSuperAdminViewComponent {
     }
 
     if (this.activeTab === 'usuarios') {
-      return 'Gestion de usuarios asociados';
+      return 'Gestión de usuarios asociados';
     }
 
     return 'Resumen de la division seleccionada';

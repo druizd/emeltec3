@@ -80,6 +80,6 @@ export class CompaniesAdminViewComponent {
     { key: 'general', label: 'General', icon: 'info' },
     { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
     { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
-    { key: 'usuarios', label: 'Gestion Usuarios', icon: 'person_add' },
+    { key: 'usuarios', label: 'Gestión Usuarios', icon: 'person_add' },
   ];
 }

@@ -111,7 +111,7 @@ interface DgaRecord {
             </article>
 
             <article class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm">
-              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ultimo envio</p>
+              <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Último envío</p>
               <p class="mt-1 text-lg font-black leading-none text-slate-800">26 abr 2026</p>
               <p class="mt-1 text-xs font-semibold text-slate-500">21:00</p>
             </article>
@@ -201,7 +201,7 @@ interface DgaRecord {
               </article>
 
               <article class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                <p class="mb-2 text-sm font-black text-slate-700">Acciones Rapidas</p>
+                <p class="mb-2 text-sm font-black text-slate-700">Acciones Rápidas</p>
                 <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                   @for (action of quickActions; track action.title) {
                     <button

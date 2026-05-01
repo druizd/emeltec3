@@ -82,7 +82,7 @@ function parseLimit(limit, fallback = 100) {
   return Math.min(parsed, 5000);
 }
 
-// Devuelve null si no se envio un limite util; sirve para endpoints opcionales.
+// Devuelve null si no se envió un límite útil; sirve para endpoints opcionales.
 function parseOptionalLimit(limit) {
   const parsed = Number(limit);
   if (!Number.isFinite(parsed) || parsed <= 0) {

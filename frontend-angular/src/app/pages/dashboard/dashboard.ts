@@ -79,7 +79,7 @@ export class DashboardComponent implements OnInit {
           id: site.id,
           name: this.pickFirst(site, ['descripcion', 'nombre', 'name', 'codigo']) || 'Instalacion',
           companyName: company.nombre || 'Empresa sin nombre',
-          subCompanyName: subCompany.nombre || 'Division sin nombre',
+          subCompanyName: subCompany.nombre || 'División sin nombre',
           type: company.tipo_empresa || 'Instalacion',
           location: this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) || 'Sin referencia',
           status: 'pending' as const,

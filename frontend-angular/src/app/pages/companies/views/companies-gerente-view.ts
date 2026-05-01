@@ -29,7 +29,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
 
       <div class="mb-6 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
         <span class="material-symbols-outlined text-emerald-600 text-sm">shield_person</span>
-        <span class="text-xs font-bold text-emerald-700">Vista de Gerente - Gestion de tu Division</span>
+        <span class="text-xs font-bold text-emerald-700">Vista de Gerente - Gestión de tu División</span>
       </div>
 
       <app-companies-tab-nav

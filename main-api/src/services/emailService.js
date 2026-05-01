@@ -53,18 +53,18 @@ exports.sendWelcomeEmail = async (emailDestino, nombreCompleto, passwordGenerado
   try {
     const data = await enviar({
       to: emailDestino,
-      subject: 'Tu codigo de acceso - Emeltec',
-      text: `Hola ${nombreCompleto}, tu codigo de acceso es: ${passwordGenerado}. Ingresa en ${ACCESS_URL}. Valido por ${minutes} minutos.`,
+      subject: 'Tu código de acceso - Emeltec',
+      text: `Hola ${nombreCompleto}, tu código de acceso es: ${passwordGenerado}. Ingresa en ${ACCESS_URL}. Válido por ${minutes} minutos.`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;border:1px solid #e2e8f0;border-radius:12px;">
           <h2 style="color:#0DAFBD;margin-bottom:4px;">Panel Industrial Emeltec</h2>
           <p>Hola <strong>${escapeHtml(nombreCompleto)}</strong>,</p>
-          <p>Tu codigo de acceso es:</p>
+          <p>Tu código de acceso es:</p>
           <div style="background:#f1f5f9;padding:20px;border-radius:8px;text-align:center;margin:20px 0;">
             <span style="font-size:2.5em;font-weight:bold;letter-spacing:8px;color:#1e293b;">${escapeHtml(passwordGenerado)}</span>
           </div>
           <p><strong>URL de acceso:</strong> <a href="${ACCESS_URL}">${ACCESS_URL}</a></p>
-          <p style="color:#64748b;font-size:0.9em;">Este codigo es valido por <strong>${minutes} minutos</strong>. No lo compartas con nadie.</p>
+          <p style="color:#64748b;font-size:0.9em;">Este código es válido por <strong>${minutes} minutos</strong>. No lo compartas con nadie.</p>
         </div>
       `,
     });

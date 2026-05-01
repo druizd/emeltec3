@@ -163,7 +163,7 @@ El flujo actual separa responsabilidades:
 2. Nginx envia esa ruta a `auth-api`.
 3. `auth-api` valida el correo, genera un codigo OTP alfanumerico y lo guarda hasheado.
 4. `auth-api` pide a `main-api` enviar el correo por endpoint interno.
-5. `main-api` envia el correo usando Resend o simula el envio si no hay `RESEND_API_KEY`.
+5. `main-api` envía el correo usando Resend o simula el envío si no hay `RESEND_API_KEY`.
 6. El usuario inicia sesion en `/api/auth/login` y recibe JWT.
 7. El frontend usa ese JWT para llamar endpoints protegidos de `main-api`.
 
@@ -172,8 +172,8 @@ Roles principales:
 | Rol | Acceso |
 |---|---|
 | `SuperAdmin` | Acceso global a empresas, divisiones y usuarios |
-| `Admin` | Gestion dentro de su empresa |
-| `Gerente` | Gestion limitada a su division |
+| `Admin` | Gestión dentro de su empresa |
+| `Gerente` | Gestión limitada a su división |
 | `Cliente` | Acceso de solo lectura |
 
 ## Base de Datos
@@ -223,7 +223,7 @@ docker compose logs -f auth-api
 docker compose logs -f frontend-angular
 ```
 
-## Verificacion Antes de Subir Cambios
+## Verificación Antes de Subir Cambios
 
 ```bash
 cd main-api
