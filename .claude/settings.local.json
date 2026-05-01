@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree *)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Read(//tmp/**)",
+      "Bash(npm install *)",
+      "Bash(docker-compose up *)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(curl -s http://localhost:3000/api/status)",
+      "Bash(curl -s http://localhost:3001/api/auth/login -X POST -H \"Content-Type: application/json\" -d '{}')"
+    ]
+  }
+}
