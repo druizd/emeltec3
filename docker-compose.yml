@@ -31,6 +31,8 @@ services:
       DB_PASSWORD: admin_password
       PORT: 3001
       MAIN_API_URL: http://main-api:3000
+      INTERNAL_API_KEY: dev_internal_key
+      JWT_SECRET: super_secret_dev_key_12345
     depends_on:
       timescaledb:
         condition: service_healthy
