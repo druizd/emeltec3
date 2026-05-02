@@ -16,7 +16,7 @@ import { AuthService } from '../../../services/auth.service';
           (click)="router.navigate(['/dashboard'])"
         >
           <img
-            src="/images/emeltec-logo.svg"
+            src="/images/emeltec-logo.webp"
             alt="Emeltec"
             class="h-10 w-auto object-contain"
           />
