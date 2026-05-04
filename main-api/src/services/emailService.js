@@ -29,6 +29,10 @@ function labelSeveridad(severidad) {
 
 async function enviar({ to, subject, html, text }) {
   if (!resend) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('RESEND_API_KEY no esta configurada');
+    }
+
     console.log('[emailService] Sin RESEND_API_KEY - correo simulado:');
     console.log(`  Para:    ${to}`);
     console.log(`  Asunto:  ${subject}`);

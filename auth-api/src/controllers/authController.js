@@ -1,7 +1,6 @@
 const db                              = require('../config/db');
 const bcrypt                          = require('bcrypt');
 const jwt                             = require('jsonwebtoken');
-const crypto                          = require('crypto');
 const { jwtSecret, mainApiUrl, internalApiKey } = require('../config/env');
 
 const DEFAULT_OTP_MINS = 30;
@@ -17,12 +16,34 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
     body: JSON.stringify({ email, nombre, code, minutes }),
   });
 
+  const payload = await leerRespuestaJson(res);
+
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`main-api rechazó el envío de correo: ${res.status} ${text}`);
+    const err = new Error(
+      payload.error || payload.message || 'No se pudo enviar el codigo por correo.'
+    );
+    err.status = 502;
+    throw err;
   }
 
-  return res.json();
+  if (!payload.ok) {
+    const err = new Error(payload.error || 'No se pudo enviar el codigo por correo.');
+    err.status = 502;
+    throw err;
+  }
+
+  return payload;
+}
+
+async function leerRespuestaJson(res) {
+  const text = await res.text();
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text };
+  }
 }
 
 exports.login = async (req, res, next) => {
@@ -133,7 +154,19 @@ exports.requestCode = async (req, res, next) => {
       [otpHash, expiresAt, email]
     );
 
-    await dispararCorreoOtp(email, usr.nombre, otpCode, minutes);
+    try {
+      await dispararCorreoOtp(email, usr.nombre, otpCode, minutes);
+    } catch (err) {
+      try {
+        await db.query(
+          'UPDATE usuario SET otp_hash = NULL, otp_expires_at = NULL WHERE email = $1 AND otp_hash = $2',
+          [email, otpHash]
+        );
+      } catch (cleanupErr) {
+        console.error('[auth-api] No se pudo limpiar el OTP fallido:', cleanupErr);
+      }
+      throw err;
+    }
 
     res.json({
       ok:         true,

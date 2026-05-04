@@ -9,6 +9,15 @@ exports.sendOtpEmail = async (req, res, next) => {
     }
 
     const info = await emailService.sendWelcomeEmail(email, nombre, code, minutes || 30);
+
+    if (!info?.ok) {
+      return res.status(502).json({
+        ok: false,
+        error: 'No se pudo enviar el codigo por correo.',
+        message: info?.error || 'El proveedor de correo rechazo el envio.',
+      });
+    }
+
     res.json({ ok: true, id: info.id || null });
   } catch (err) {
     next(err);

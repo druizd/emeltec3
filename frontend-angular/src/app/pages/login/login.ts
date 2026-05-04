@@ -23,6 +23,10 @@ export class LoginComponent {
   errorMsg = signal<string | null>(null);
   isSubmitting = signal(false);
 
+  private getApiError(err: any, fallback: string): string {
+    return err?.error?.error || err?.error?.message || err?.message || fallback;
+  }
+
   handleRequestCode(event: Event): void {
     event.preventDefault();
     this.errorMsg.set(null);
@@ -34,11 +38,15 @@ export class LoginComponent {
         if (res.ok) {
           this.isCodeSent.set(true);
           this.successMsg.set(res.message);
+        } else {
+          this.isCodeSent.set(false);
+          this.errorMsg.set(res.error || res.message || 'No se pudo enviar el codigo.');
         }
         this.isSubmitting.set(false);
       },
       error: (err) => {
-        this.errorMsg.set(err.error?.error || 'Fallo al conectar con el servidor.');
+        this.isCodeSent.set(false);
+        this.errorMsg.set(this.getApiError(err, 'No se pudo enviar el codigo. Intenta nuevamente.'));
         this.isSubmitting.set(false);
       }
     });
@@ -59,7 +67,7 @@ export class LoginComponent {
         this.isSubmitting.set(false);
       },
       error: (err) => {
-        this.errorMsg.set(err.error?.error || 'Fallo al conectar con el servidor.');
+        this.errorMsg.set(this.getApiError(err, 'Fallo al conectar con el servidor.'));
         this.isSubmitting.set(false);
       }
     });

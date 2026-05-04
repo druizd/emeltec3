@@ -158,7 +158,7 @@
           </div>
 
           @if (errorMsg()) {
-            <div class="mb-5 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+            <div role="alert" class="mb-5 flex items-start gap-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
               <span class="material-symbols-outlined text-[19px]">error</span>
               <p>{{ errorMsg() }}</p>
             </div>

@@ -28,6 +28,8 @@ cp main-api/.env.example main-api/.env
 nano main-api/.env
 ```
 
+Para que lleguen los codigos de acceso, `main-api/.env` debe tener valores reales para `RESEND_API_KEY`, `RESEND_FROM` y `FRONTEND_URL`. Ese mismo archivo tambien alimenta a `auth-api`, por lo que `JWT_SECRET` e `INTERNAL_API_KEY` deben quedar definidos ahi y no desalinearse entre servicios.
+
 Prueba un deploy manual:
 
 ```bash
