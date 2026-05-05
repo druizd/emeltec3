@@ -47,8 +47,8 @@ import { AuthService } from '../../../services/auth.service';
         </button>
 
         <!-- Configuración: solo SuperAdmin y Admin -->
-        @if (auth.canEdit()) {
-          <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 transition-colors">
+        @if (auth.isSuperAdmin()) {
+          <button (click)="goToAdministration()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 transition-colors" title="Administracion">
             <span class="material-symbols-outlined">settings</span>
           </button>
         }
@@ -83,6 +83,10 @@ export class HeaderComponent {
 
   goToUsers() {
     this.router.navigate(['/companies']);
+  }
+
+  goToAdministration() {
+    this.router.navigate(['/administration']);
   }
 
   getRoleIcon(): string {

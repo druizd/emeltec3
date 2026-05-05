@@ -53,8 +53,21 @@ CREATE TABLE IF NOT EXISTS sitio (
     empresa_id  VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
     sub_empresa_id VARCHAR(10) NOT NULL REFERENCES sub_empresa(id) ON DELETE CASCADE,
     ubicacion   VARCHAR(255),
+    tipo_sitio  VARCHAR(30)   NOT NULL DEFAULT 'pozo',
+    activo      BOOLEAN       NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ   DEFAULT NOW(),
     updated_at  TIMESTAMPTZ   DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS pozo_config (
+    sitio_id                VARCHAR(10) PRIMARY KEY REFERENCES sitio(id) ON DELETE CASCADE,
+    profundidad_pozo_m      NUMERIC,
+    profundidad_sensor_m    NUMERIC,
+    nivel_estatico_manual_m NUMERIC,
+    obra_dga                VARCHAR(80),
+    slug                    VARCHAR(120),
+    created_at              TIMESTAMPTZ DEFAULT NOW(),
+    updated_at              TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS reg_map (
@@ -64,6 +77,9 @@ CREATE TABLE IF NOT EXISTS reg_map (
     d2         VARCHAR(20),
     tipo_dato  VARCHAR(20)   NOT NULL,
     unidad     VARCHAR(20),
+    rol_dashboard VARCHAR(40) DEFAULT 'generico',
+    transformacion VARCHAR(40) DEFAULT 'directo',
+    parametros JSONB DEFAULT '{}'::jsonb,
     sitio_id   VARCHAR(10)   REFERENCES sitio(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ   DEFAULT NOW(),
     updated_at TIMESTAMPTZ   DEFAULT NOW()
@@ -137,6 +153,7 @@ CREATE INDEX IF NOT EXISTS idx_sitio_empresa      ON sitio (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_sitio_sub_empresa  ON sitio (sub_empresa_id);
 CREATE INDEX IF NOT EXISTS idx_usuario_empresa    ON usuario (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_regmap_sitio       ON reg_map (sitio_id);
+CREATE INDEX IF NOT EXISTS idx_pozo_config_sitio  ON pozo_config (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_empresa    ON alertas (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_sitio      ON alertas (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_emp  ON alertas_eventos (empresa_id, resuelta, triggered_at DESC);

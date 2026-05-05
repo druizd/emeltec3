@@ -29,6 +29,32 @@ git pull --ff-only origin "$BRANCH"
 echo "Validating Docker Compose configuration..."
 docker compose -f "$COMPOSE_FILE" config >/dev/null
 
+read_env_value() {
+  local key="$1"
+  if [ ! -f main-api/.env ]; then
+    return 0
+  fi
+  grep -E "^${key}=" main-api/.env | tail -n 1 | cut -d= -f2- | tr -d '\r'
+}
+
+MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value DB_USER)}"
+MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-$(read_env_value DB_NAME)}"
+MIGRATION_DB_USER="${MIGRATION_DB_USER:-postgres}"
+MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-telemetry_platform}"
+
+echo "Starting database service before migrations..."
+docker compose -f "$COMPOSE_FILE" up -d timescaledb
+
+if [ -d infra-db/migrations ]; then
+  echo "Applying database migrations..."
+  for migration in infra-db/migrations/*.sql; do
+    [ -e "$migration" ] || continue
+    echo "Applying $migration..."
+    docker compose -f "$COMPOSE_FILE" exec -T timescaledb \
+      psql -v ON_ERROR_STOP=1 -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" < "$migration"
+  done
+fi
+
 echo "Building and restarting services..."
 docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
 

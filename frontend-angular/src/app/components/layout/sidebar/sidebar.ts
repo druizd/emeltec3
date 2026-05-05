@@ -35,6 +35,16 @@ import { CompanyService } from '../../../services/company.service';
           <span class="material-symbols-outlined text-[18px]">grid_view</span>
           <span class="text-[12px]">Dashboard</span>
         </a>
+        @if (auth.isSuperAdmin()) {
+          <a
+            routerLink="/administration"
+            routerLinkActive="bg-cyan-50 text-cyan-700 shadow-sm ring-1 ring-cyan-100 font-bold"
+            class="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700"
+          >
+            <span class="material-symbols-outlined text-[18px]">settings_applications</span>
+            <span class="text-[12px]">Administracion</span>
+          </a>
+        }
       </nav>
 
       @if (auth.isSuperAdmin()) {

@@ -27,6 +27,11 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/dashboard/dashboard').then(m => m.DashboardComponent)
       },
       {
+        path: 'administration',
+        canActivate: [roleGuard('SuperAdmin')],
+        loadComponent: () => import('./pages/administration/administration').then(m => m.AdministrationComponent)
+      },
+      {
         path: 'users',
         canActivate: [roleGuard('SuperAdmin', 'Admin')],
         loadComponent: () => import('./pages/user-management/user-management').then(m => m.UserManagementComponent)
