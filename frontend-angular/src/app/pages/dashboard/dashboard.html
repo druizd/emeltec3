@@ -1,76 +1,74 @@
-<section class="min-h-screen bg-slate-50 px-6 py-6 font-['Inter']">
-  <div class="mx-auto flex w-full max-w-[1500px] flex-col gap-5">
-    <div class="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p class="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">Dashboard</p>
-        <h1 class="mt-1 text-2xl font-black tracking-tight text-slate-900">Instalaciones</h1>
-        <p class="mt-1 text-sm font-medium text-slate-500">
-          {{ installations().length }} instalaciones registradas
-        </p>
-      </div>
+<div style="padding: 24px; min-height: 100%;">
 
-      <button
-        type="button"
-        (click)="loadInstallations()"
-        class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-bold text-white shadow-sm transition-colors hover:bg-slate-800"
-      >
-        <span class="material-symbols-outlined text-[18px]">sync</span>
-        Actualizar
-      </button>
+  <!-- Page header -->
+  <div style="margin-bottom: 20px;">
+    <div style="font-family: 'Josefin Sans', sans-serif; font-size: 22px; font-weight: 700; color: #1E293B; letter-spacing: 0.03em;">Instalaciones</div>
+    <div style="font-size: 13px; color: #94A3B8; margin-top: 3px;">
+      @if (!loading()) {
+        {{ installations().length }} instalaciones registradas
+      }
     </div>
-
-    @if (loading()) {
-      <div class="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
-        @for (item of [1, 2, 3, 4, 5, 6]; track item) {
-          <div class="flex h-[74px] animate-pulse items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 shadow-sm">
-            <div class="h-9 w-9 rounded-lg bg-slate-100"></div>
-            <div class="min-w-0 flex-1">
-              <div class="h-3.5 w-3/4 rounded bg-slate-100"></div>
-              <div class="mt-2 h-3 w-1/3 rounded bg-slate-100"></div>
-            </div>
-            <div class="h-3 w-24 rounded bg-slate-100"></div>
-          </div>
-        }
-      </div>
-    } @else if (installations().length === 0) {
-      <div class="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-        <p class="text-sm font-bold text-slate-600">No hay instalaciones registradas.</p>
-      </div>
-    } @else {
-      <div class="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
-        @for (installation of installations(); track installation.id) {
-          <button
-            type="button"
-            (click)="openInstallation(installation)"
-            class="group grid h-[74px] grid-cols-[minmax(250px,1fr)_92px_36px] items-center gap-4 rounded-lg border border-slate-200 bg-white px-4 text-left shadow-sm transition-all hover:border-cyan-200 hover:shadow-md"
-          >
-            <div class="flex min-w-0 items-center gap-3">
-              <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-400">
-                <span class="material-symbols-outlined text-[18px]">{{ getTypeIcon(installation.type) }}</span>
-              </div>
-
-              <div class="min-w-0">
-                <h2 class="whitespace-nowrap text-[14px] font-black text-slate-800">{{ installation.name }}</h2>
-                <p class="mt-0.5 truncate text-[12px] font-semibold text-slate-400">{{ installation.companyName }}</p>
-              </div>
-            </div>
-
-            <div class="hidden text-left md:block">
-              <p class="text-[10px] font-black text-slate-300">Estado</p>
-              <span
-                [class]="'mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black ring-1 ' + getStatusClass(installation.status)"
-              >
-                <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
-                {{ getStatusLabel(installation.status) }}
-              </span>
-            </div>
-
-            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700 transition-colors group-hover:bg-cyan-100">
-              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
-            </div>
-          </button>
-        }
-      </div>
-    }
   </div>
-</section>
+
+  @if (loading()) {
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+      @for (item of [1,2,3,4,5,6]; track item) {
+        <div style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px 16px; animation: pulse 1.5s ease-in-out infinite;">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="width: 26px; height: 26px; border-radius: 6px; background: #F1F5F9;"></div>
+            <div style="flex: 1;">
+              <div style="height: 12px; background: #F1F5F9; border-radius: 4px; width: 60%; margin-bottom: 6px;"></div>
+              <div style="height: 10px; background: #F1F5F9; border-radius: 4px; width: 40%;"></div>
+            </div>
+          </div>
+          <div style="height: 10px; background: #F1F5F9; border-radius: 4px; width: 80%;"></div>
+        </div>
+      }
+    </div>
+  } @else if (installations().length === 0) {
+    <div style="background: #FFFFFF; border: 1px dashed #E2E8F0; border-radius: 10px; padding: 48px; text-align: center;">
+      <span class="material-symbols-outlined" style="font-size: 32px; color: #CBD5E1; display: block; margin-bottom: 12px;">sensors_off</span>
+      <p style="font-size: 14px; font-weight: 600; color: #64748B;">No hay instalaciones registradas.</p>
+    </div>
+  } @else {
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+      @for (installation of installations(); track installation.id) {
+        <button type="button" (click)="openInstallation(installation)"
+          [style.border-color]="installation.status === 'online' ? 'rgba(34,197,94,0.25)' : '#E2E8F0'"
+          [style.box-shadow]="installation.status === 'online' ? '0 0 0 1px rgba(34,197,94,0.1), 0 2px 8px rgba(0,0,0,0.06)' : '0 2px 6px rgba(0,0,0,0.06)'"
+          class="installation-card"
+          style="background: #FFFFFF; border: 1px solid; border-radius: 10px; padding: 14px 16px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; text-align: left; width: 100%; transition: all 0.15s;"
+          (mouseenter)="onCardHover($event, installation, true)"
+          (mouseleave)="onCardHover($event, installation, false)">
+
+          <!-- Top row -->
+          <div style="display: flex; align-items: flex-start; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="width: 26px; height: 26px; border-radius: 6px; background: rgba(13,175,189,0.1); border: 1px solid rgba(13,175,189,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <span class="material-symbols-outlined" style="font-size: 13px; color: #0DAFBD;">{{ getTypeIcon(installation.type) }}</span>
+              </div>
+              <div>
+                <div style="font-size: 13px; font-weight: 600; color: #1E293B; line-height: 1.2;">{{ installation.name }}</div>
+                @if (installation.location && installation.location !== 'Sin referencia') {
+                  <div style="font-size: 11px; color: #64748B;">{{ installation.location }}</div>
+                }
+              </div>
+            </div>
+            <span class="material-symbols-outlined" style="font-size: 14px; color: #94A3B8; flex-shrink: 0;">chevron_right</span>
+          </div>
+
+          <!-- Bottom row -->
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 11px; color: #94A3B8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">{{ installation.companyName }}</div>
+            <span [style.color]="getStatusColor(installation.status)"
+              style="display: flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; flex-shrink: 0;">
+              <span [style.background]="getStatusColor(installation.status)"
+                style="width: 5px; height: 5px; border-radius: 50%; display: inline-block;"></span>
+              {{ getStatusLabel(installation.status) }}
+            </span>
+          </div>
+        </button>
+      }
+    </div>
+  }
+</div>

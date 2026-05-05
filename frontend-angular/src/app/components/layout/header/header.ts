@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
 
 @Component({
@@ -8,105 +9,113 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-200 z-50 flex items-center justify-between px-6">
-      <div class="flex items-center gap-8">
-        <button
-          type="button"
-          class="flex h-12 w-[190px] items-center justify-start rounded-lg"
-          (click)="router.navigate(['/dashboard'])"
-        >
-          <img
-            src="/images/emeltec-logo.webp"
-            alt="Emeltec"
-            class="h-10 w-auto object-contain"
-          />
-        </button>
-        
-        <div class="relative w-96 hidden md:block">
-          <span class="absolute inset-y-0 left-3 flex items-center">
-            <span class="material-symbols-outlined text-slate-400 text-lg">search</span>
-          </span>
-          <input 
-            class="w-full bg-slate-50 border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary-container/10 transition-all outline-none" 
-            placeholder="Buscador global..." 
-            type="text"
-          />
+    <header style="background: #FFFFFF; border-bottom: 1px solid #E2E8F0; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+      <!-- Tab bar -->
+      <div style="height: 52px; display: flex; align-items: stretch; padding: 0 20px;">
+
+        <!-- Tabs -->
+        <div style="display: flex; align-items: stretch;">
+          <button (click)="router.navigate(['/dashboard'])"
+            [style.color]="isDashboard() ? '#0899A5' : '#94A3B8'"
+            [style.border-bottom]="isDashboard() ? '2px solid #0DAFBD' : '2px solid transparent'"
+            style="display: flex; align-items: center; gap: 6px; padding: 0 16px; font-size: 14px; font-weight: 500; background: none; border: none; border-top: 2px solid transparent; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">grid_view</span>
+            Dashboard
+          </button>
+          <button (click)="router.navigate(['/companies'])"
+            [style.color]="isMonitoreo() ? '#0899A5' : '#94A3B8'"
+            [style.border-bottom]="isMonitoreo() ? '2px solid #0DAFBD' : '2px solid transparent'"
+            style="display: flex; align-items: center; gap: 6px; padding: 0 16px; font-size: 14px; font-weight: 500; background: none; border: none; border-top: 2px solid transparent; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.12s;">
+            <span class="material-symbols-outlined" style="font-size: 16px;">monitoring</span>
+            Monitoreo
+          </button>
         </div>
-      </div>
-      
-      <div class="flex items-center gap-2">
-        <!-- Acceso a Gestión de Usuarios: solo SuperAdmin y Admin -->
-        @if (auth.canManageUsers()) {
-          <button (click)="goToUsers()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 hover:text-primary-container transition-all" title="Gestión de Usuarios">
-            <span class="material-symbols-outlined">group</span>
-          </button>
-        }
 
-        <button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 transition-colors">
-          <span class="material-symbols-outlined">notifications</span>
-        </button>
+        <div style="flex: 1;"></div>
 
-        <!-- Configuración: solo SuperAdmin y Admin -->
-        @if (auth.isSuperAdmin()) {
-          <button (click)="goToAdministration()" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-500 transition-colors" title="Administracion">
-            <span class="material-symbols-outlined">settings</span>
-          </button>
-        }
-        
-        <div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
-        
-        <div class="flex items-center gap-3 pl-2">
-          <div class="text-right hidden sm:block">
-            <p class="text-xs font-bold text-slate-800 leading-none">{{ auth.user()?.nombre || 'Usuario' }}</p>
-            <p class="text-[10px] text-slate-400 font-medium mt-1">{{ auth.user()?.tipo || 'Rol' }}</p>
+        <!-- Right controls -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+
+          <!-- Theme toggle (decorative) -->
+          <div style="display: flex; align-items: center; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 20px; padding: 3px; gap: 2px;">
+            <div style="width: 26px; height: 26px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: #FFFFFF; color: #0899A5; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer;">
+              <span class="material-symbols-outlined" style="font-size: 13px;">light_mode</span>
+            </div>
+            <div style="width: 26px; height: 26px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #94A3B8; cursor: pointer;">
+              <span class="material-symbols-outlined" style="font-size: 13px;">dark_mode</span>
+            </div>
           </div>
 
-          <!-- Badge de rol con color -->
-          <div [class]="'w-9 h-9 rounded-full flex items-center justify-center border ' + getRoleBadgeClasses()">
-            <span [class]="'material-symbols-outlined text-lg ' + getRoleIconColor()">
-              {{ getRoleIcon() }}
-            </span>
+          <!-- WIP badge -->
+          <div style="display: flex; align-items: center; gap: 5px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: #D97706; cursor: default;">
+            <span class="material-symbols-outlined" style="font-size: 12px;">build</span>
+            WIP
           </div>
-          
-          <!-- Botón de Cerrar Sesión -->
-          <button (click)="auth.logout()" class="ml-2 w-10 h-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-all" title="Cerrar Sesión">
-            <span class="material-symbols-outlined">logout</span>
-          </button>
+
+          <!-- Contáctanos -->
+          <div style="display: flex; align-items: center; gap: 5px; color: #64748B; font-size: 13px; cursor: pointer; padding: 5px 8px; border-radius: 6px; font-family: 'DM Sans', sans-serif; transition: all 0.12s;"
+            (mouseenter)="$event.currentTarget.style.background='#F1F5F9'"
+            (mouseleave)="$event.currentTarget.style.background='transparent'">
+            <span class="material-symbols-outlined" style="font-size: 13px;">headset_mic</span>
+            Contáctanos
+          </div>
+
+          @if (auth.canManageUsers()) {
+            <button (click)="router.navigate(['/users'])"
+              style="display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; background: none; border: none; cursor: pointer; color: #94A3B8; transition: all 0.12s;"
+              title="Gestión de Usuarios"
+              (mouseenter)="$event.currentTarget.style.color='#475569'"
+              (mouseleave)="$event.currentTarget.style.color='#94A3B8'">
+              <span class="material-symbols-outlined" style="font-size: 16px;">group</span>
+            </button>
+          }
+
+          @if (auth.isSuperAdmin()) {
+            <button (click)="router.navigate(['/administration'])"
+              style="display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; background: none; border: none; cursor: pointer; color: #94A3B8; transition: all 0.12s;"
+              title="Administración"
+              (mouseenter)="$event.currentTarget.style.color='#475569'"
+              (mouseleave)="$event.currentTarget.style.color='#94A3B8'">
+              <span class="material-symbols-outlined" style="font-size: 16px;">settings</span>
+            </button>
+          }
+
+          <!-- User avatar -->
+          <div style="width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg, #0DAFBD, #04606A); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; flex-shrink: 0; user-select: none;"
+            title="{{ auth.user()?.nombre }}">
+            {{ getUserInitials() }}
+          </div>
         </div>
       </div>
     </header>
-  `
+  `,
 })
-export class HeaderComponent {
-  auth = inject(AuthService);
-  router = inject(Router);
+export class HeaderComponent implements OnInit {
+  readonly auth = inject(AuthService);
+  readonly router = inject(Router);
 
-  goToUsers() {
-    this.router.navigate(['/companies']);
+  private currentUrl = signal(this.router.url);
+
+  ngOnInit(): void {
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+      this.currentUrl.set(e.urlAfterRedirects || e.url);
+    });
   }
 
-  goToAdministration() {
-    this.router.navigate(['/administration']);
+  isDashboard(): boolean {
+    const url = this.currentUrl();
+    return url === '/dashboard' || url.startsWith('/dashboard');
   }
 
-  getRoleIcon(): string {
-    if (this.auth.isSuperAdmin()) return 'admin_panel_settings';
-    if (this.auth.isAdmin()) return 'manage_accounts';
-    if (this.auth.isGerente()) return 'shield_person';
-    return 'person';
+  isMonitoreo(): boolean {
+    const url = this.currentUrl();
+    return url === '/companies' || url.startsWith('/companies/');
   }
 
-  getRoleBadgeClasses(): string {
-    if (this.auth.isSuperAdmin()) return 'bg-purple-50 border-purple-200';
-    if (this.auth.isAdmin()) return 'bg-blue-50 border-blue-200';
-    if (this.auth.isGerente()) return 'bg-emerald-50 border-emerald-200';
-    return 'bg-slate-50 border-slate-200';
-  }
-
-  getRoleIconColor(): string {
-    if (this.auth.isSuperAdmin()) return 'text-purple-500';
-    if (this.auth.isAdmin()) return 'text-blue-500';
-    if (this.auth.isGerente()) return 'text-emerald-500';
-    return 'text-slate-500';
+  getUserInitials(): string {
+    const u = this.auth.user();
+    if (!u) return 'U';
+    const parts = (u.nombre || '').trim().split(' ');
+    return parts.length >= 2 ? (parts[0][0] + parts[1][0]).toUpperCase() : u.nombre.substring(0, 2).toUpperCase();
   }
 }
