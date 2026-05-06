@@ -1,7 +1,0 @@
-{
-  "/api": {
-    "target": "https://nuevacloud.emeltec.cl",
-    "secure": true,
-    "changeOrigin": true
-  }
-}

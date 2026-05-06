@@ -1,0 +1,14 @@
+{
+  "/api/auth": {
+    "target": "https://nuevacloud.emeltec.cl",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/api": {
+    "target": "https://nuevacloud.emeltec.cl",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}

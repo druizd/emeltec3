@@ -1,59 +1,38 @@
-# FrontendAngular
+# Frontend Angular
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.8.
+Frontend oficial de la plataforma Emeltec.
 
-## Development server
+## Comandos
 
-To start a local development server, run:
-
-```bash
-ng serve
-```
-
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+Instalar dependencias:
 
 ```bash
-ng generate component component-name
+npm install
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Levantar contra backend local:
 
 ```bash
-ng generate --help
+npm start
 ```
 
-## Building
-
-To build the project run:
+Levantar contra backend de produccion en la VM:
 
 ```bash
-ng build
+npm run start:production-api
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+Build de produccion:
 
 ```bash
-ng test
+npm run build -- --configuration=production
 ```
 
-## Running end-to-end tests
+## Proxies
 
-For end-to-end (e2e) testing, run:
+| Archivo | Uso |
+|---|---|
+| `proxy.conf.json` | Desarrollo local con servicios locales. |
+| `proxy.production.conf.json` | Desarrollo local consumiendo `https://nuevacloud.emeltec.cl`. |
 
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+La aplicacion usa rutas relativas (`/api/...`), por lo que el proxy de Angular decide si las llamadas van a servicios locales o a la VM.
