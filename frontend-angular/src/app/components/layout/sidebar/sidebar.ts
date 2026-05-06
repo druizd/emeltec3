@@ -35,8 +35,8 @@ const KNOWN_TYPES = ['Agua', 'Riles', 'Proceso', 'Eléctrico'];
           [style.margin-left]="collapsed() ? 'auto' : '0'"
           class="flex items-center justify-center rounded-md transition-colors"
           style="background: none; border: none; cursor: pointer; color: #CBD5E1; padding: 4px;"
-          (mouseenter)="$event.currentTarget.style.color='#94A3B8'"
-          (mouseleave)="$event.currentTarget.style.color='#CBD5E1'">
+          (mouseenter)="$any($event.currentTarget).style.color='#94A3B8'"
+          (mouseleave)="$any($event.currentTarget).style.color='#CBD5E1'">
           <span class="material-symbols-outlined" style="font-size: 18px;">
             {{ collapsed() ? 'chevron_right' : 'keyboard_double_arrow_left' }}
           </span>
@@ -131,8 +131,8 @@ const KNOWN_TYPES = ['Agua', 'Riles', 'Proceso', 'Eléctrico'];
               [style.gap]="collapsed() ? '0' : '9px'"
               [style.padding]="collapsed() ? '9px 0' : '8px 10px'"
               style="color: #94A3B8;"
-              (mouseenter)="$event.currentTarget.style.background='#F1F5F9'"
-              (mouseleave)="$event.currentTarget.style.background='transparent'">
+              (mouseenter)="$any($event.currentTarget).style.background='#F1F5F9'"
+              (mouseleave)="$any($event.currentTarget).style.background='transparent'">
               <div style="width: 28px; height: 28px; border-radius: 7px; background: rgba(100,116,139,0.08); border: 1px solid rgba(100,116,139,0.15); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <span class="material-symbols-outlined" style="font-size: 14px; color: #94A3B8;">settings_applications</span>
               </div>

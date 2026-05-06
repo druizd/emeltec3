@@ -54,8 +54,8 @@ import { AuthService } from '../../../services/auth.service';
 
           <!-- Contáctanos -->
           <div style="display: flex; align-items: center; gap: 5px; color: #64748B; font-size: 13px; cursor: pointer; padding: 5px 8px; border-radius: 6px; font-family: 'DM Sans', sans-serif; transition: all 0.12s;"
-            (mouseenter)="$event.currentTarget.style.background='#F1F5F9'"
-            (mouseleave)="$event.currentTarget.style.background='transparent'">
+            (mouseenter)="$any($event.currentTarget).style.background='#F1F5F9'"
+            (mouseleave)="$any($event.currentTarget).style.background='transparent'">
             <span class="material-symbols-outlined" style="font-size: 13px;">headset_mic</span>
             Contáctanos
           </div>
@@ -64,8 +64,8 @@ import { AuthService } from '../../../services/auth.service';
             <button (click)="router.navigate(['/users'])"
               style="display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; background: none; border: none; cursor: pointer; color: #94A3B8; transition: all 0.12s;"
               title="Gestión de Usuarios"
-              (mouseenter)="$event.currentTarget.style.color='#475569'"
-              (mouseleave)="$event.currentTarget.style.color='#94A3B8'">
+              (mouseenter)="$any($event.currentTarget).style.color='#475569'"
+              (mouseleave)="$any($event.currentTarget).style.color='#94A3B8'">
               <span class="material-symbols-outlined" style="font-size: 16px;">group</span>
             </button>
           }
@@ -74,8 +74,8 @@ import { AuthService } from '../../../services/auth.service';
             <button (click)="router.navigate(['/administration'])"
               style="display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; background: none; border: none; cursor: pointer; color: #94A3B8; transition: all 0.12s;"
               title="Administración"
-              (mouseenter)="$event.currentTarget.style.color='#475569'"
-              (mouseleave)="$event.currentTarget.style.color='#94A3B8'">
+              (mouseenter)="$any($event.currentTarget).style.color='#475569'"
+              (mouseleave)="$any($event.currentTarget).style.color='#94A3B8'">
               <span class="material-symbols-outlined" style="font-size: 16px;">settings</span>
             </button>
           }

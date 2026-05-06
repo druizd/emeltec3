@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
@@ -11,7 +11,7 @@ interface DgaRecord { fecha: string; nivel: string; caudal: string; totalizador:
 @Component({
   selector: 'app-company-site-water-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, CompaniesSiteDetailSkeletonComponent],
+  imports: [CommonModule, CompaniesSiteDetailSkeletonComponent],
   template: `
     <div class="min-h-full" style="background: #F0F2F5;">
 
@@ -229,8 +229,8 @@ interface DgaRecord { fecha: string; nivel: string; caudal: string; totalizador:
                     @for (action of quickActions; track action.title) {
                       <button type="button" (click)="action.onClick && action.onClick()"
                         style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; text-align: left; cursor: pointer; transition: all 0.12s;"
-                        (mouseenter)="$event.currentTarget.style.borderColor='rgba(13,175,189,0.3)'"
-                        (mouseleave)="$event.currentTarget.style.borderColor='#E2E8F0'">
+                      (mouseenter)="$any($event.currentTarget).style.borderColor='rgba(13,175,189,0.3)'"
+                      (mouseleave)="$any($event.currentTarget).style.borderColor='#E2E8F0'">
                         <span class="material-symbols-outlined" [style.color]="action.color" style="font-size: 14px;">{{ action.icon }}</span>
                         <div style="font-size: 12px; font-weight: 600; color: #1E293B; margin-top: 5px;">{{ action.title }}</div>
                         <div style="font-size: 10px; color: #94A3B8;">{{ action.subtitle }}</div>
@@ -259,8 +259,8 @@ interface DgaRecord { fecha: string; nivel: string; caudal: string; totalizador:
                   <tbody>
                     @for (row of records; track row.fecha) {
                       <tr style="border-bottom: 1px solid #F1F5F9; transition: background 0.1s;"
-                        (mouseenter)="$event.currentTarget.style.background='#F8FAFC'"
-                        (mouseleave)="$event.currentTarget.style.background='transparent'">
+                        (mouseenter)="$any($event.currentTarget).style.background='#F8FAFC'"
+                        (mouseleave)="$any($event.currentTarget).style.background='transparent'">
                         <td style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #94A3B8;">{{ row.fecha }}</td>
                         <td style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #1E293B;">{{ row.nivel }}</td>
                         <td style="padding: 9px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #1E293B;">{{ row.caudal }}</td>
@@ -431,8 +431,8 @@ interface DgaRecord { fecha: string; nivel: string; caudal: string; totalizador:
                   <button (click)="$event.stopPropagation(); showDownload.set(false)"
                     [style.background]="opt.color"
                     style="border: none; border-radius: 8px; padding: 8px 0; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; font-family: 'DM Sans', sans-serif; width: 100%; transition: opacity 0.12s;"
-                    (mouseenter)="$event.currentTarget.style.opacity='0.85'"
-                    (mouseleave)="$event.currentTarget.style.opacity='1'">
+                    (mouseenter)="$any($event.currentTarget).style.opacity='0.85'"
+                    (mouseleave)="$any($event.currentTarget).style.opacity='1'">
                     Descargar
                   </button>
                 </div>
