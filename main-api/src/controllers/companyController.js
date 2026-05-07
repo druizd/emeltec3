@@ -477,6 +477,111 @@ function buildDerivedNivelFreatico({ variables, pozoConfig, rawData }) {
   return derived;
 }
 
+function buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData }) {
+  const variables = [];
+
+  for (const mapping of mappings) {
+    const rawD1 = readRawValue(rawData, mapping.d1);
+    const rawD2 = readRawValue(rawData, mapping.d2);
+    const variable = {
+      id: mapping.id,
+      key: responseKeyForMapping(mapping),
+      alias: mapping.alias,
+      rol_dashboard: mapping.rol_dashboard || 'generico',
+      transformacion: normalizeTransform(mapping.transformacion),
+      unidad: mapping.unidad || null,
+      fuente: {
+        d1: mapping.d1,
+        d2: mapping.d2 || null,
+      },
+      crudo: {
+        d1: rawD1 ?? null,
+        d2: rawD2 ?? null,
+      },
+      ok: true,
+      valor: null,
+    };
+
+    try {
+      variable.valor = applyMappingTransform({ rawData, mapping, pozoConfig });
+    } catch (err) {
+      variable.ok = false;
+      variable.error = err.message;
+    }
+
+    variables.push(variable);
+  }
+
+  const alreadyHasNivelFreatico = variables.some((variable) =>
+    variable.key === 'nivel_freatico' || variable.transformacion === 'nivel_freatico'
+  );
+
+  if (site.tipo_sitio === 'pozo' && !alreadyHasNivelFreatico) {
+    const nivelFreatico = buildDerivedNivelFreatico({ variables, pozoConfig, rawData });
+
+    if (nivelFreatico) {
+      variables.push(nivelFreatico);
+    }
+  }
+
+  return variables;
+}
+
+function findHistoricalVariable(variables, role) {
+  const normalizedRole = normalizeSearchText(role);
+
+  return variables.find((variable) => {
+    if (role === 'nivel_freatico') {
+      const text = normalizeSearchText(
+        variable.key,
+        variable.alias,
+        variable.rol_dashboard,
+        variable.transformacion
+      );
+      return text.includes('nivel freatico');
+    }
+
+    if (variable.rol_dashboard === role || variable.key === role) {
+      return true;
+    }
+
+    const text = normalizeSearchText(variable.key, variable.alias, variable.rol_dashboard);
+    return text.includes(normalizedRole);
+  }) || null;
+}
+
+function serializeHistoricalVariable(variable) {
+  if (!variable) {
+    return {
+      ok: false,
+      valor: null,
+      unidad: null,
+      alias: null,
+    };
+  }
+
+  return {
+    ok: variable.ok !== false,
+    valor: variable.ok === false ? null : variable.valor,
+    unidad: variable.unidad || null,
+    alias: variable.alias || null,
+    error: variable.error || null,
+  };
+}
+
+function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
+  const rawData = row?.data || {};
+  const variables = buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData });
+
+  return {
+    timestamp: row.time,
+    fecha: row.timestamp_completo,
+    caudal: serializeHistoricalVariable(findHistoricalVariable(variables, 'caudal')),
+    totalizador: serializeHistoricalVariable(findHistoricalVariable(variables, 'totalizador')),
+    nivel_freatico: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel_freatico')),
+  };
+}
+
 function handleUniqueViolation(err, res) {
   if (err.code !== '23505') return false;
 
@@ -1074,6 +1179,98 @@ exports.getSiteDashboardData = async (req, res, next) => {
           : null,
         resumen,
         variables,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/companies/sites/:siteId/dashboard-history
+ * Devuelve historico minuto a minuto con variables transformadas para la tabla del pozo.
+ */
+exports.getSiteDashboardHistory = async (req, res, next) => {
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const limit = parseLimit(req.query.limit, 500);
+    const site = await getSiteById(siteId);
+
+    if (!site) {
+      return notFound(res, 'Sitio no encontrado.');
+    }
+
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
+    }
+
+    if (!site.activo) {
+      return res.json({
+        ok: true,
+        count: 0,
+        data: {
+          site: {
+            id: site.id,
+            descripcion: site.descripcion,
+            id_serial: site.id_serial,
+            tipo_sitio: site.tipo_sitio,
+            activo: site.activo,
+          },
+          rows: [],
+          pagination: {
+            limit,
+            page_size: 50,
+          },
+          message: 'Sitio inactivo. Se debe mostrar maqueta en frontend.',
+        },
+      });
+    }
+
+    const [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
+      db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+      db.query(
+        `
+        SELECT time, id_serial, data, timestamp_completo
+        FROM (
+          SELECT DISTINCT ON (date_trunc('minute', time))
+            time,
+            id_serial,
+            data,
+            TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD HH24:MI') AS timestamp_completo
+          FROM equipo
+          WHERE id_serial = $1
+          ORDER BY date_trunc('minute', time) DESC, time DESC
+        ) latest_by_minute
+        ORDER BY time DESC
+        LIMIT $2
+        `,
+        [site.id_serial, limit]
+      ),
+    ]);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+    const rows = historyRes.rows.map((row) =>
+      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig })
+    );
+
+    return res.json({
+      ok: true,
+      count: rows.length,
+      data: {
+        site: {
+          id: site.id,
+          descripcion: site.descripcion,
+          id_serial: site.id_serial,
+          tipo_sitio: site.tipo_sitio,
+          activo: site.activo,
+        },
+        rows,
+        pagination: {
+          limit,
+          page_size: 50,
+        },
       },
     });
   } catch (err) {

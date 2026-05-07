@@ -42,4 +42,8 @@ export class CompanyService {
   getSiteDashboardData(siteId: string): Observable<any> {
     return this.http.get<any>(`/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`);
   }
+
+  getSiteDashboardHistory(siteId: string, limit = 500): Observable<any> {
+    return this.http.get<any>(`/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`);
+  }
 }

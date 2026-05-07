@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import { CompanyService } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
 
@@ -10,12 +11,28 @@ interface SiteContext {
   site: any;
 }
 
-interface DgaRecord {
+interface HistoricalTelemetryValue {
+  ok?: boolean;
+  valor?: string | number | null;
+  unidad?: string | null;
+  alias?: string | null;
+}
+
+interface HistoricalTelemetryApiRow {
+  timestamp?: string | null;
   fecha: string;
-  nivel: string;
+  caudal?: HistoricalTelemetryValue | null;
+  totalizador?: HistoricalTelemetryValue | null;
+  nivel_freatico?: HistoricalTelemetryValue | null;
+}
+
+interface HistoricalTelemetryRow {
+  id: string;
+  fecha: string;
   caudal: string;
   totalizador: string;
-  estado: 'Enviado' | 'Pendiente';
+  nivelFreatico: string;
+  mock?: boolean;
 }
 
 interface MonthlyFlowPoint {
@@ -307,34 +324,39 @@ type OperationMode = 'realtime' | 'turnos';
 
           <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
-              <h2 class="text-sm font-black text-slate-800">Detalle de Registros</h2>
-              <p class="text-xs font-semibold text-slate-400">720 registros en el periodo</p>
+              <h2 class="text-sm font-black text-slate-800">Datos Historicos</h2>
+              <p class="text-xs font-semibold text-slate-400">
+                @if (historyLoading()) {
+                  Actualizando registros...
+                } @else if (isHistoryMock()) {
+                  Vista referencial para pozos sin telemetria activa
+                } @else {
+                  {{ historyTotalRows() }} registros minuto a minuto
+                }
+              </p>
             </div>
 
             <div class="overflow-x-auto">
               <table class="w-full min-w-[820px] text-left text-xs">
                 <thead class="bg-slate-50">
                   <tr class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
-                    <th class="px-4 py-2.5">Fecha</th>
-                    <th class="px-4 py-2.5">Nv. freatico [m]</th>
-                    <th class="px-4 py-2.5">Caudal [L/s]</th>
-                    <th class="px-4 py-2.5">Totalizador [m³]</th>
-                    <th class="px-4 py-2.5">Estado</th>
+                    <th class="px-4 py-2.5">FECHA</th>
+                    <th class="px-4 py-2.5">CAUDAL</th>
+                    <th class="px-4 py-2.5">TOTALIZADOR</th>
+                    <th class="px-4 py-2.5">NIVEL FRE&Aacute;TICO</th>
                   </tr>
                 </thead>
                 <tbody>
-                  @for (row of records; track row.fecha) {
+                  @for (row of paginatedHistoryRows(); track row.id) {
                     <tr class="border-t border-slate-100 font-mono text-[12px] text-slate-600">
                       <td class="px-4 py-2">{{ row.fecha }}</td>
-                      <td class="px-4 py-2">{{ row.nivel }}</td>
                       <td class="px-4 py-2">{{ row.caudal }}</td>
                       <td class="px-4 py-2">{{ row.totalizador }}</td>
-                      <td class="px-4 py-2">
-                        <span [class]="getRecordStatusClass(row.estado)">
-                          <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
-                          {{ row.estado }}
-                        </span>
-                      </td>
+                      <td class="px-4 py-2">{{ row.nivelFreatico }}</td>
+                    </tr>
+                  } @empty {
+                    <tr class="border-t border-slate-100 text-[12px] font-semibold text-slate-400">
+                      <td class="px-4 py-5 text-center" colspan="4">Sin registros disponibles para este pozo.</td>
                     </tr>
                   }
                 </tbody>
@@ -342,10 +364,24 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
 
             <div class="flex items-center justify-between border-t border-slate-100 px-4 py-2 text-xs font-semibold text-slate-400">
-              <span>Filas por pagina: 10 · 1-10 de 720</span>
+              <span>Filas por pagina: 50 &middot; {{ historyRangeStart() }}-{{ historyRangeEnd() }} de {{ historyTotalRows() }}</span>
               <div class="flex gap-2">
-                <button type="button" class="h-7 w-8 rounded-lg border border-slate-200 bg-white text-slate-500">←</button>
-                <button type="button" class="h-7 w-8 rounded-lg border border-slate-200 bg-white text-slate-500">→</button>
+                <button
+                  type="button"
+                  (click)="previousHistoryPage()"
+                  [disabled]="historyPage() === 1"
+                  class="h-7 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  &larr;
+                </button>
+                <button
+                  type="button"
+                  (click)="nextHistoryPage()"
+                  [disabled]="historyPage() === historyTotalPages()"
+                  class="h-7 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  &rarr;
+                </button>
               </div>
             </div>
             </section>
@@ -527,10 +563,12 @@ type OperationMode = 'realtime' | 'turnos';
     }
   `],
 })
-export class CompanySiteWaterDetailComponent implements OnInit {
+export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly companyService = inject(CompanyService);
+  private historyPollingSub?: Subscription;
+  private readonly historyFetchLimit = 500;
 
   siteContext = signal<SiteContext | null>(null);
   loading = signal(true);
@@ -539,6 +577,11 @@ export class CompanySiteWaterDetailComponent implements OnInit {
   dashboardData = signal<SiteDashboardData | null>(null);
   activeDetailTab = signal<DetailTab>('dga');
   operationMode = signal<OperationMode>('realtime');
+  historyLoading = signal(true);
+  historyError = signal('');
+  historyRows = signal<HistoricalTelemetryRow[]>([]);
+  historyPage = signal(1);
+  readonly historyPageSize = 50;
 
   wellNivelFreatico = computed(() => this.extractNivelFreatico(this.dashboardData()));
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
@@ -555,6 +598,19 @@ export class CompanySiteWaterDetailComponent implements OnInit {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
+  historySourceRows = computed(() => {
+    if (this.historyRows().length) return this.historyRows();
+    return this.historyLoading() ? [] : this.historyMockRows;
+  });
+  paginatedHistoryRows = computed(() => {
+    const start = (this.historyPage() - 1) * this.historyPageSize;
+    return this.historySourceRows().slice(start, start + this.historyPageSize);
+  });
+  historyTotalRows = computed(() => this.historySourceRows().length);
+  historyTotalPages = computed(() => Math.max(1, Math.ceil(this.historyTotalRows() / this.historyPageSize)));
+  historyRangeStart = computed(() => this.historyTotalRows() ? ((this.historyPage() - 1) * this.historyPageSize) + 1 : 0);
+  historyRangeEnd = computed(() => Math.min(this.historyPage() * this.historyPageSize, this.historyTotalRows()));
+  isHistoryMock = computed(() => !this.historyLoading() && this.historyRows().length === 0);
 
   readonly monthlyFlowTicks = ['120,000', '90,000', '60,000', '30,000', '0'];
 
@@ -587,17 +643,17 @@ export class CompanySiteWaterDetailComponent implements OnInit {
     { label: 'Consumo Hoy', value: '0.0', unit: 'm³' },
   ];
 
-  readonly records: DgaRecord[] = [
-    { fecha: '31/03/2026 21:00', nivel: '3.2', caudal: '19.75', totalizador: '530.806,375', estado: 'Enviado' },
-    { fecha: '31/03/2026 22:00', nivel: '3.5', caudal: '19.75', totalizador: '530.858,938', estado: 'Enviado' },
-    { fecha: '31/03/2026 23:00', nivel: '3.4', caudal: '19.75', totalizador: '530.900,188', estado: 'Enviado' },
-    { fecha: '01/04/2026 00:00', nivel: '1.5', caudal: '0', totalizador: '530.921,625', estado: 'Enviado' },
-    { fecha: '01/04/2026 01:00', nivel: '3.1', caudal: '19.88', totalizador: '530.956,188', estado: 'Enviado' },
-    { fecha: '01/04/2026 02:00', nivel: '3.4', caudal: '19.63', totalizador: '530.986,75', estado: 'Enviado' },
-    { fecha: '01/04/2026 03:00', nivel: '3.3', caudal: '19.75', totalizador: '531.009,375', estado: 'Enviado' },
-    { fecha: '01/04/2026 04:00', nivel: '1.5', caudal: '0', totalizador: '531.038,375', estado: 'Enviado' },
-    { fecha: '01/04/2026 05:00', nivel: '3.3', caudal: '19.75', totalizador: '531.060,063', estado: 'Pendiente' },
-    { fecha: '01/04/2026 06:00', nivel: '1.6', caudal: '0', totalizador: '531.100', estado: 'Enviado' },
+  readonly historyMockRows: HistoricalTelemetryRow[] = [
+    { id: 'mock-2026-04-01-06-00', fecha: '01/04/2026 06:00', caudal: '0', totalizador: '531.100', nivelFreatico: '1.6', mock: true },
+    { id: 'mock-2026-04-01-05-00', fecha: '01/04/2026 05:00', caudal: '19.75', totalizador: '531.060,063', nivelFreatico: '3.3', mock: true },
+    { id: 'mock-2026-04-01-04-00', fecha: '01/04/2026 04:00', caudal: '0', totalizador: '531.038,375', nivelFreatico: '1.5', mock: true },
+    { id: 'mock-2026-04-01-03-00', fecha: '01/04/2026 03:00', caudal: '19.75', totalizador: '531.009,375', nivelFreatico: '3.3', mock: true },
+    { id: 'mock-2026-04-01-02-00', fecha: '01/04/2026 02:00', caudal: '19.63', totalizador: '530.986,75', nivelFreatico: '3.4', mock: true },
+    { id: 'mock-2026-04-01-01-00', fecha: '01/04/2026 01:00', caudal: '19.88', totalizador: '530.956,188', nivelFreatico: '3.1', mock: true },
+    { id: 'mock-2026-04-01-00-00', fecha: '01/04/2026 00:00', caudal: '0', totalizador: '530.921,625', nivelFreatico: '1.5', mock: true },
+    { id: 'mock-2026-03-31-23-00', fecha: '31/03/2026 23:00', caudal: '19.75', totalizador: '530.900,188', nivelFreatico: '3.4', mock: true },
+    { id: 'mock-2026-03-31-22-00', fecha: '31/03/2026 22:00', caudal: '19.75', totalizador: '530.858,938', nivelFreatico: '3.5', mock: true },
+    { id: 'mock-2026-03-31-21-00', fecha: '31/03/2026 21:00', caudal: '19.75', totalizador: '530.806,375', nivelFreatico: '3.2', mock: true },
   ];
 
   ngOnInit(): void {
@@ -609,6 +665,7 @@ export class CompanySiteWaterDetailComponent implements OnInit {
     }
 
     this.loadDashboardData(siteId);
+    this.startHistoryPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
       next: (res: any) => {
@@ -631,15 +688,12 @@ export class CompanySiteWaterDetailComponent implements OnInit {
     });
   }
 
-  getSiteName(context: SiteContext): string {
-    return context.site?.descripcion || context.subCompany?.nombre || 'Instalacion de agua';
+  ngOnDestroy(): void {
+    this.historyPollingSub?.unsubscribe();
   }
 
-  getRecordStatusClass(status: DgaRecord['estado']): string {
-    const base = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black';
-    return status === 'Enviado'
-      ? `${base} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200`
-      : `${base} bg-amber-50 text-amber-700 ring-1 ring-amber-200`;
+  getSiteName(context: SiteContext): string {
+    return context.site?.descripcion || context.subCompany?.nombre || 'Instalacion de agua';
   }
 
   getMonthlyFlowHeight(value: number): number {
@@ -667,6 +721,14 @@ export class CompanySiteWaterDetailComponent implements OnInit {
 
   setOperationMode(mode: OperationMode): void {
     this.operationMode.set(mode);
+  }
+
+  previousHistoryPage(): void {
+    this.historyPage.set(Math.max(1, this.historyPage() - 1));
+  }
+
+  nextHistoryPage(): void {
+    this.historyPage.set(Math.min(this.historyTotalPages(), this.historyPage() + 1));
   }
 
   getDetailTabClass(tab: DetailTab): string {
@@ -725,6 +787,74 @@ export class CompanySiteWaterDetailComponent implements OnInit {
         this.dashboardLoading.set(false);
       },
     });
+  }
+
+  private startHistoryPolling(siteId: string): void {
+    this.historyLoading.set(true);
+    this.historyError.set('');
+    this.historyPollingSub?.unsubscribe();
+
+    this.historyPollingSub = timer(0, 60000).pipe(
+      switchMap(() =>
+        this.companyService.getSiteDashboardHistory(siteId, this.historyFetchLimit).pipe(
+          catchError(() => {
+            this.historyError.set('No fue posible cargar datos historicos.');
+            this.historyLoading.set(false);
+            return of(null);
+          })
+        )
+      )
+    ).subscribe((res: any) => {
+      if (!res) return;
+
+      const apiRows = this.extractHistoryApiRows(res);
+      const mappedRows = apiRows
+        .map((row) => this.mapHistoryApiRow(row))
+        .filter((row): row is HistoricalTelemetryRow => row !== null);
+
+      this.historyRows.set(mappedRows);
+      this.historyError.set('');
+      this.historyLoading.set(false);
+
+      if (this.historyPage() > this.historyTotalPages()) {
+        this.historyPage.set(this.historyTotalPages());
+      }
+    });
+  }
+
+  private extractHistoryApiRows(res: any): HistoricalTelemetryApiRow[] {
+    if (res?.ok === false) return [];
+    const rows = res?.data?.rows || res?.data || [];
+    return Array.isArray(rows) ? rows : [];
+  }
+
+  private mapHistoryApiRow(row: HistoricalTelemetryApiRow): HistoricalTelemetryRow | null {
+    const fecha = String(row?.fecha || row?.timestamp || '').trim();
+    if (!fecha) return null;
+
+    return {
+      id: String(row.timestamp || fecha),
+      fecha,
+      caudal: this.formatHistoricalValue(row.caudal),
+      totalizador: this.formatHistoricalValue(row.totalizador),
+      nivelFreatico: this.formatHistoricalValue(row.nivel_freatico),
+    };
+  }
+
+  private formatHistoricalValue(value: HistoricalTelemetryValue | null | undefined): string {
+    if (!value || value.ok === false || value.valor === null || value.valor === undefined || value.valor === '') {
+      return '--';
+    }
+
+    const numericValue = this.toNumber(value.valor);
+
+    if (numericValue === null) {
+      return String(value.valor);
+    }
+
+    return new Intl.NumberFormat('es-CL', {
+      maximumFractionDigits: 3,
+    }).format(numericValue);
   }
 
   private findAccessibleSite(tree: any[], siteId: string): SiteContext | null {
