@@ -29,6 +29,7 @@ interface HistoricalTelemetryApiRow {
 interface HistoricalTelemetryRow {
   id: string;
   fecha: string;
+  timestampMs?: number | null;
   caudal: string;
   totalizador: string;
   nivelFreatico: string;
@@ -64,7 +65,7 @@ interface SiteDashboardData {
   variables?: DashboardVariable[];
 }
 
-type DetailTab = 'dga' | 'historico' | 'operacion';
+type DetailTab = 'dga' | 'operacion';
 type OperationMode = 'realtime' | 'turnos';
 
 @Component({
@@ -156,21 +157,162 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
                 }
               </button>
-              <button
-                type="button"
-                (click)="setDetailTab('historico')"
-                [class]="getDetailTabClass('historico')"
-              >
-                <span class="material-symbols-outlined text-[18px]">database</span>
-                Datos Historicos
-                @if (activeDetailTab() === 'historico') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
-                }
-              </button>
             </div>
           </section>
 
-          @if (activeDetailTab() === 'dga') {
+          @if (historyPanelOpen()) {
+            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+              <div class="border-b border-slate-100 px-4 py-3">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <button
+                      type="button"
+                      (click)="closeHistoryView()"
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                      aria-label="Volver al detalle del pozo"
+                    >
+                      <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                    </button>
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700">
+                      <span class="material-symbols-outlined text-[22px]">database</span>
+                    </span>
+                    <div class="min-w-0">
+                      <p class="truncate text-[11px] font-bold text-slate-400">Sitios / {{ context.subCompany.nombre }} / Datos Historicos</p>
+                      <h2 class="truncate text-xl font-black leading-none text-slate-800">{{ getSiteName(context) }}</h2>
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                    <button
+                      type="button"
+                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">download</span>
+                      Descargar
+                    </button>
+                    <button
+                      type="button"
+                      class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50"
+                      aria-label="Opciones de historico"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">settings</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex flex-wrap items-end gap-2 text-xs font-bold text-slate-500">
+                  <label class="grid gap-1">
+                    <span>Desde</span>
+                    <input
+                      type="date"
+                      [value]="historyDateFrom()"
+                      (input)="setHistoryDateFrom($event)"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span>Hasta</span>
+                    <input
+                      type="date"
+                      [value]="historyDateTo()"
+                      (input)="setHistoryDateTo($event)"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    />
+                  </label>
+                  <label class="grid gap-1">
+                    <span>Registros</span>
+                    <select
+                      [value]="historyRecordLimit()"
+                      (change)="setHistoryRecordLimit($event)"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    >
+                      @for (limit of historyRecordLimitOptions; track limit) {
+                        <option [value]="limit">{{ limit }}</option>
+                      }
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    (click)="clearHistoryFilters()"
+                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[11px] font-black uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+                  >
+                    Limpiar
+                  </button>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
+                <div>
+                  <h3 class="text-sm font-black text-slate-800">Datos Historicos</h3>
+                  <p class="mt-0.5 text-xs font-semibold text-slate-400">
+                    @if (historyLoading()) {
+                      Actualizando registros...
+                    } @else if (isHistoryMock()) {
+                      Vista referencial para pozos sin telemetria activa
+                    } @else {
+                      Registros minuto a minuto
+                    }
+                  </p>
+                </div>
+                <p class="text-xs font-semibold text-slate-400">{{ currentHistoryPageCount() }} registros en esta pagina</p>
+              </div>
+
+              <div class="overflow-x-auto">
+                <table class="w-full min-w-[920px] text-left text-xs">
+                  <thead class="bg-slate-50">
+                    <tr class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      <th class="px-4 py-3">FECHA</th>
+                      <th class="px-4 py-3">CAUDAL</th>
+                      <th class="px-4 py-3">TOTALIZADOR</th>
+                      <th class="px-4 py-3">NIVEL FRE&Aacute;TICO</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of paginatedHistoryRows(); track row.id) {
+                      <tr class="border-t border-slate-100 text-[13px] font-semibold text-slate-600 odd:bg-white even:bg-slate-50/60">
+                        <td class="px-4 py-3">
+                          <span class="inline-flex items-center gap-2">
+                            <span class="h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
+                            {{ row.fecha }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-3">{{ row.caudal }}</td>
+                        <td class="px-4 py-3">{{ row.totalizador }}</td>
+                        <td class="px-4 py-3">{{ row.nivelFreatico }}</td>
+                      </tr>
+                    } @empty {
+                      <tr class="border-t border-slate-100 text-[12px] font-semibold text-slate-400">
+                        <td class="px-4 py-8 text-center" colspan="4">Sin registros disponibles para este filtro.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-400">
+                <span>Filas por pagina: 50 &middot; {{ historyRangeStart() }}-{{ historyRangeEnd() }} de {{ historyTotalRows() }}</span>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="previousHistoryPage()"
+                    [disabled]="historyPage() === 1"
+                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    &larr;
+                  </button>
+                  <span class="min-w-16 text-center">Pag. {{ historyPage() }} / {{ historyTotalPages() }}</span>
+                  <button
+                    type="button"
+                    (click)="nextHistoryPage()"
+                    [disabled]="historyPage() === historyTotalPages()"
+                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    &rarr;
+                  </button>
+                </div>
+              </div>
+            </section>
+          } @else if (activeDetailTab() === 'dga') {
             <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             <article class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm">
               <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Enviados</p>
@@ -339,70 +481,6 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
           </section>
 
-          } @else if (activeDetailTab() === 'historico') {
-          <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
-              <h2 class="text-sm font-black text-slate-800">Datos Historicos</h2>
-              <p class="text-xs font-semibold text-slate-400">
-                @if (historyLoading()) {
-                  Actualizando registros...
-                } @else if (isHistoryMock()) {
-                  Vista referencial para pozos sin telemetria activa
-                } @else {
-                  {{ historyTotalRows() }} registros minuto a minuto
-                }
-              </p>
-            </div>
-
-            <div class="overflow-x-auto">
-              <table class="w-full min-w-[820px] text-left text-xs">
-                <thead class="bg-slate-50">
-                  <tr class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
-                    <th class="px-4 py-2.5">FECHA</th>
-                    <th class="px-4 py-2.5">CAUDAL</th>
-                    <th class="px-4 py-2.5">TOTALIZADOR</th>
-                    <th class="px-4 py-2.5">NIVEL FRE&Aacute;TICO</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of paginatedHistoryRows(); track row.id) {
-                    <tr class="border-t border-slate-100 font-mono text-[12px] text-slate-600">
-                      <td class="px-4 py-2">{{ row.fecha }}</td>
-                      <td class="px-4 py-2">{{ row.caudal }}</td>
-                      <td class="px-4 py-2">{{ row.totalizador }}</td>
-                      <td class="px-4 py-2">{{ row.nivelFreatico }}</td>
-                    </tr>
-                  } @empty {
-                    <tr class="border-t border-slate-100 text-[12px] font-semibold text-slate-400">
-                      <td class="px-4 py-5 text-center" colspan="4">Sin registros disponibles para este pozo.</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-
-            <div class="flex items-center justify-between border-t border-slate-100 px-4 py-2 text-xs font-semibold text-slate-400">
-              <span>Filas por pagina: 50 &middot; {{ historyRangeStart() }}-{{ historyRangeEnd() }} de {{ historyTotalRows() }}</span>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  (click)="previousHistoryPage()"
-                  [disabled]="historyPage() === 1"
-                  class="h-7 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  &larr;
-                </button>
-                <button
-                  type="button"
-                  (click)="nextHistoryPage()"
-                  [disabled]="historyPage() === historyTotalPages()"
-                  class="h-7 w-8 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  &rarr;
-                </button>
-              </div>
-            </div>
-            </section>
           } @else {
             <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
@@ -598,12 +676,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dashboardLastLoadedAt = signal<Date | null>(null);
   currentTime = signal(new Date());
   activeDetailTab = signal<DetailTab>('dga');
+  historyPanelOpen = signal(false);
   operationMode = signal<OperationMode>('realtime');
   historyLoading = signal(true);
   historyError = signal('');
   historyRows = signal<HistoricalTelemetryRow[]>([]);
   historyPage = signal(1);
+  historyDateFrom = signal('');
+  historyDateTo = signal('');
+  historyRecordLimit = signal(500);
   readonly historyPageSize = 50;
+  readonly historyRecordLimitOptions = [50, 100, 250, 500];
 
   wellNivelFreatico = computed(() => this.extractNivelFreatico(this.dashboardData()));
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
@@ -626,11 +709,26 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (this.historyRows().length) return this.historyRows();
     return this.historyLoading() ? [] : this.historyMockRows;
   });
+  historyFilteredRows = computed(() => {
+    const from = this.parseDateInputMs(this.historyDateFrom(), 'start');
+    const to = this.parseDateInputMs(this.historyDateTo(), 'end');
+
+    return this.historySourceRows()
+      .filter((row) => {
+        if (from === null && to === null) return true;
+        if (row.timestampMs === null || row.timestampMs === undefined) return false;
+        if (from !== null && row.timestampMs < from) return false;
+        if (to !== null && row.timestampMs > to) return false;
+        return true;
+      })
+      .slice(0, this.historyRecordLimit());
+  });
   paginatedHistoryRows = computed(() => {
     const start = (this.historyPage() - 1) * this.historyPageSize;
-    return this.historySourceRows().slice(start, start + this.historyPageSize);
+    return this.historyFilteredRows().slice(start, start + this.historyPageSize);
   });
-  historyTotalRows = computed(() => this.historySourceRows().length);
+  historyTotalRows = computed(() => this.historyFilteredRows().length);
+  currentHistoryPageCount = computed(() => this.paginatedHistoryRows().length);
   historyTotalPages = computed(() => Math.max(1, Math.ceil(this.historyTotalRows() / this.historyPageSize)));
   historyRangeStart = computed(() => this.historyTotalRows() ? ((this.historyPage() - 1) * this.historyPageSize) + 1 : 0);
   historyRangeEnd = computed(() => Math.min(this.historyPage() * this.historyPageSize, this.historyTotalRows()));
@@ -654,7 +752,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   ];
 
   readonly quickActions = [
-    { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600', tab: 'historico' as DetailTab },
+    { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600', openHistory: true },
     { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600' },
     { icon: 'open_in_new', title: 'Ver en DGA', subtitle: 'Portal oficial', color: 'text-blue-600' },
     { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600' },
@@ -745,7 +843,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private formatDashboardRefresh(date: Date | null, now: Date): string {
     if (!date) return 'Vista sin actualizar';
 
-    return `Vista cargada ${this.formatChileDateTime(date)} · ${this.formatRelativeTime(date, now)}`;
+    return `Vista cargada ${this.formatChileDateTime(date)} - ${this.formatRelativeTime(date, now)}`;
   }
 
   private formatRelativeTime(date: Date, now: Date): string {
@@ -781,6 +879,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
     }).format(parsed);
   }
 
@@ -795,7 +895,37 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
+  private parseDateInputMs(value: string, boundary: 'start' | 'end'): number | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = boundary === 'start' ? 0 : 23;
+    const minute = boundary === 'start' ? 0 : 59;
+    const second = boundary === 'start' ? 0 : 59;
+    const millisecond = boundary === 'start' ? 0 : 999;
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
+    const chileParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).formatToParts(new Date(utcGuess));
+    const part = (type: string) => Number(chileParts.find((item) => item.type === type)?.value || 0);
+    const chileAsUtc = Date.UTC(part('year'), part('month') - 1, part('day'), part('hour'), part('minute'), part('second'), millisecond);
+
+    return utcGuess - (chileAsUtc - utcGuess);
+  }
+
   setDetailTab(tab: DetailTab): void {
+    this.historyPanelOpen.set(false);
     this.activeDetailTab.set(tab);
   }
 
@@ -803,10 +933,47 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.operationMode.set(mode);
   }
 
-  handleQuickAction(action: { tab?: DetailTab }): void {
+  handleQuickAction(action: { tab?: DetailTab; openHistory?: boolean }): void {
+    if (action.openHistory) {
+      this.openHistoryView();
+      return;
+    }
+
     if (action.tab) {
       this.setDetailTab(action.tab);
     }
+  }
+
+  openHistoryView(): void {
+    this.historyPanelOpen.set(true);
+    this.historyPage.set(1);
+  }
+
+  closeHistoryView(): void {
+    this.historyPanelOpen.set(false);
+  }
+
+  setHistoryDateFrom(event: Event): void {
+    this.historyDateFrom.set((event.target as HTMLInputElement).value);
+    this.historyPage.set(1);
+  }
+
+  setHistoryDateTo(event: Event): void {
+    this.historyDateTo.set((event.target as HTMLInputElement).value);
+    this.historyPage.set(1);
+  }
+
+  setHistoryRecordLimit(event: Event): void {
+    const parsed = Number((event.target as HTMLSelectElement).value);
+    this.historyRecordLimit.set(this.historyRecordLimitOptions.includes(parsed) ? parsed : 500);
+    this.historyPage.set(1);
+  }
+
+  clearHistoryFilters(): void {
+    this.historyDateFrom.set('');
+    this.historyDateTo.set('');
+    this.historyRecordLimit.set(500);
+    this.historyPage.set(1);
   }
 
   previousHistoryPage(): void {
@@ -902,7 +1069,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
       const apiRows = this.extractHistoryApiRows(res);
       const mappedRows = apiRows
-        .map((row) => this.mapHistoryApiRow(row))
+        .map((row, index) => this.mapHistoryApiRow(row, index))
         .filter((row): row is HistoricalTelemetryRow => row !== null);
 
       this.historyRows.set(mappedRows);
@@ -921,13 +1088,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return Array.isArray(rows) ? rows : [];
   }
 
-  private mapHistoryApiRow(row: HistoricalTelemetryApiRow): HistoricalTelemetryRow | null {
-    const fecha = String(row?.fecha || row?.timestamp || '').trim();
-    if (!fecha) return null;
+  private mapHistoryApiRow(row: HistoricalTelemetryApiRow, index: number): HistoricalTelemetryRow | null {
+    const rawTimestamp = String(row?.timestamp || row?.fecha || '').trim();
+    if (!rawTimestamp) return null;
+
+    const parsedTimestamp = this.parseUtcTimestamp(rawTimestamp);
+    const timestampMs = parsedTimestamp?.getTime() ?? null;
 
     return {
-      id: String(row.timestamp || fecha),
-      fecha,
+      id: `${rawTimestamp}-${index}`,
+      fecha: parsedTimestamp ? this.formatChileDateTime(parsedTimestamp) : rawTimestamp,
+      timestampMs,
       caudal: this.formatHistoricalValue(row.caudal),
       totalizador: this.formatHistoricalValue(row.totalizador),
       nivelFreatico: this.formatHistoricalValue(row.nivel_freatico),
