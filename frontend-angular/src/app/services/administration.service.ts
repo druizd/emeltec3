@@ -98,6 +98,30 @@ export interface SiteVariablesPayload {
   mappings: VariableMapping[];
 }
 
+export interface SiteTypeRoleOption {
+  id: string;
+  label: string;
+  unitHint?: string | null;
+  description?: string | null;
+}
+
+export interface SiteTypeTransformOption {
+  id: string;
+  label: string;
+  description?: string | null;
+  enabled?: boolean;
+  requiresD2?: boolean;
+}
+
+export interface SiteTypeCatalogItem {
+  id: string;
+  label: string;
+  roles: SiteTypeRoleOption[];
+  transforms: SiteTypeTransformOption[];
+}
+
+export type SiteTypeCatalogResponse = Record<string, SiteTypeCatalogItem>;
+
 export interface CreateCompanyPayload {
   nombre: string;
   rut: string;
@@ -139,6 +163,10 @@ export class AdministrationService {
 
   getDetectedDevices(limit = 100): Observable<ApiResponse<DetectedDevice[]>> {
     return this.http.get<ApiResponse<DetectedDevice[]>>(`/api/companies/detected-devices?limit=${limit}`);
+  }
+
+  getSiteTypeCatalog(): Observable<ApiResponse<SiteTypeCatalogResponse>> {
+    return this.http.get<ApiResponse<SiteTypeCatalogResponse>>('/api/companies/site-type-catalog');
   }
 
   createCompany(payload: CreateCompanyPayload): Observable<ApiResponse<CompanyNode>> {

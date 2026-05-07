@@ -4,23 +4,19 @@ const {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
 } = require('../services/siteTelemetryService');
+const {
+  getSiteTypeCatalog,
+  SITE_TYPE_IDS,
+  VARIABLE_ROLE_IDS,
+  VARIABLE_TRANSFORM_IDS,
+} = require('../config/siteTypeCatalog');
 
 const SITE_COLUMNS = 'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
 const MAP_COLUMNS = 'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS = 'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
-const SITE_TYPES = new Set(['pozo', 'electrico', 'riles', 'proceso', 'generico']);
-const VARIABLE_ROLES = new Set(['generico', 'nivel', 'caudal', 'totalizador', 'estado', 'energia', 'temperatura', 'presion']);
-const VARIABLE_TRANSFORMS = new Set([
-  'directo',
-  'ieee754',
-  'ieee754_32',
-  'lineal',
-  'escala_lineal',
-  'formula',
-  'nivel_freatico',
-  'caudal',
-  'caudal_m3h_lps',
-]);
+const SITE_TYPES = new Set(SITE_TYPE_IDS);
+const VARIABLE_ROLES = new Set(VARIABLE_ROLE_IDS);
+const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 
 function badRequest(res, message) {
   return res.status(400).json({ ok: false, error: message, message });
@@ -728,6 +724,13 @@ exports.getDetectedDevices = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+exports.getSiteTypeCatalog = (_req, res) => {
+  res.json({
+    ok: true,
+    data: getSiteTypeCatalog(),
+  });
 };
 
 /**

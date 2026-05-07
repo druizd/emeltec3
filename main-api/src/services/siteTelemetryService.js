@@ -1,18 +1,9 @@
 const { m3hALs } = require('../utils/caudal');
 const { parseIEEE754, registrosModbusAFloat32 } = require('../utils/ieee754');
 const { calcularNivelFreatico } = require('../utils/nivelFreatico');
+const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
 
-const VARIABLE_TRANSFORMS = new Set([
-  'directo',
-  'ieee754',
-  'ieee754_32',
-  'lineal',
-  'escala_lineal',
-  'formula',
-  'nivel_freatico',
-  'caudal',
-  'caudal_m3h_lps',
-]);
+const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 
 function cleanString(value) {
   if (value === undefined || value === null) return '';

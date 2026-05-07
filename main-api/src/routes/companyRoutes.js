@@ -10,6 +10,7 @@ router.get('/', companyController.getAllCompanies);
 router.post('/', companyController.createCompany);
 router.get('/tree', companyController.getHierarchyTree);
 router.get('/detected-devices', companyController.getDetectedDevices);
+router.get('/site-type-catalog', companyController.getSiteTypeCatalog);
 
 router.post('/:companyId/sub-companies', companyController.createSubCompany);
 router.post('/:companyId/sub-companies/:subCompanyId/sites', companyController.createSite);

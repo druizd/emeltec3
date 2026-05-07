@@ -11,6 +11,10 @@ import {
   DetectedDevice,
   PozoConfig,
   SiteRecord,
+  SiteTypeCatalogItem,
+  SiteTypeCatalogResponse,
+  SiteTypeRoleOption,
+  SiteTypeTransformOption,
   SiteVariable,
   SiteVariablesPayload,
   SubCompanyNode,
@@ -69,6 +73,7 @@ interface VariableForm {
   d2: string;
   tipo_dato: string;
   unidad: string;
+  rol_dashboard: string;
   transformacion: string;
   factor: string;
   offset: string;
@@ -82,10 +87,88 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   d2: '',
   tipo_dato: 'FLOAT',
   unidad: '',
+  rol_dashboard: 'generico',
   transformacion: 'directo',
   factor: '1',
   offset: '0',
   sandboxRaw: '',
+};
+
+const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
+  pozo: {
+    id: 'pozo',
+    label: 'Pozo',
+    roles: [
+      { id: 'nivel', label: 'Nivel agua', unitHint: 'm', description: 'Lectura directa del sensor.' },
+      { id: 'nivel_freatico', label: 'Nivel freatico', unitHint: 'm', description: 'Nivel calculado con configuracion del pozo.' },
+      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
+      { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
+      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
+      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'caudal_m3h_lps', label: 'Caudal m3/h a L/s', description: 'Convierte m3/h hacia L/s.', enabled: true },
+      { id: 'nivel_freatico', label: 'Nivel freatico', description: 'Calcula nivel freatico desde profundidades del pozo.', enabled: true },
+    ],
+  },
+  electrico: {
+    id: 'electrico',
+    label: 'Electrico',
+    roles: [
+      { id: 'energia', label: 'Energia', unitHint: 'kWh', description: 'Energia acumulada o consumida.' },
+      { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
+      { id: 'temperatura', label: 'Temperatura', unitHint: 'C', description: 'Temperatura asociada.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
+      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
+      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+    ],
+  },
+  riles: {
+    id: 'riles',
+    label: 'Riles',
+    roles: [
+      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
+      { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado.' },
+      { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
+      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
+      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'caudal_m3h_lps', label: 'Caudal m3/h a L/s', description: 'Convierte m3/h hacia L/s.', enabled: true },
+    ],
+  },
+  proceso: {
+    id: 'proceso',
+    label: 'Proceso',
+    roles: [
+      { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
+      { id: 'temperatura', label: 'Temperatura', unitHint: 'C', description: 'Temperatura de proceso.' },
+      { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
+      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
+      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+    ],
+  },
+  generico: {
+    id: 'generico',
+    label: 'Generico',
+    roles: [{ id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' }],
+    transforms: [
+      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
+      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
+      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+    ],
+  },
 };
 
 @Component({
@@ -360,11 +443,9 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                           (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
                           class="field-control"
                         >
-                          <option value="pozo">Pozo</option>
-                          <option value="electrico">Electrico</option>
-                          <option value="riles">Riles</option>
-                          <option value="proceso">Proceso</option>
-                          <option value="generico">Generico</option>
+                          @for (type of siteTypeOptions(); track type.id) {
+                            <option [value]="type.id">{{ type.label }}</option>
+                          }
                         </select>
                       </div>
                       <div>
@@ -619,6 +700,23 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                         />
                       </div>
 
+                      <div>
+                        <label class="mb-1 block text-xs font-bold text-slate-500">Uso en dashboard</label>
+                        <select
+                          name="variable-role"
+                          [ngModel]="variableForm().rol_dashboard"
+                          (ngModelChange)="updateVariableRole($event)"
+                          class="field-control"
+                        >
+                          @for (role of variableRoleOptions(); track role.id) {
+                            <option [value]="role.id">{{ role.label }}</option>
+                          }
+                        </select>
+                        @if (selectedVariableRole()?.description) {
+                          <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableRole()?.description }}</p>
+                        }
+                      </div>
+
                       <div class="grid grid-cols-2 gap-3">
                         <div>
                           <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
@@ -654,10 +752,31 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                           (ngModelChange)="updateVariableTransform($event)"
                           class="field-control"
                         >
-                          <option value="directo">Directo</option>
-                          <option value="lineal">Lineal</option>
+                          @for (transform of variableTransformOptions(); track transform.id) {
+                            <option [value]="transform.id">{{ transform.label }}</option>
+                          }
                         </select>
+                        @if (selectedVariableTransform()?.description) {
+                          <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableTransform()?.description }}</p>
+                        }
                       </div>
+
+                      @if (requiresSecondRegister()) {
+                        <div>
+                          <label class="mb-1 block text-xs font-bold text-slate-500">Segundo registro</label>
+                          <select
+                            name="variable-key-d2"
+                            [ngModel]="variableForm().d2"
+                            (ngModelChange)="updateVariableForm('d2', $event)"
+                            class="field-control"
+                          >
+                            <option value="">Selecciona variable</option>
+                            @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                              <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                            }
+                          </select>
+                        </div>
+                      }
 
                       @if (isLinearTransform()) {
                         <div class="grid grid-cols-2 gap-3">
@@ -710,6 +829,19 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                         <div class="mt-3 rounded-lg border border-cyan-100 bg-white px-3 py-2 shadow-sm">
                           <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Resultado proyectado en Grafico</p>
                           <p class="mt-1 text-xl font-black text-cyan-800">{{ previewResultText() }}</p>
+                        </div>
+
+                        <div class="mt-3 grid gap-2">
+                          @for (transform of variableTransformOptions(); track transform.id) {
+                            <button
+                              type="button"
+                              (click)="updateVariableTransform(transform.id)"
+                              [class]="calculatorButtonClass(transform.id)"
+                            >
+                              <span class="material-symbols-outlined text-[16px]">functions</span>
+                              <span>{{ transform.label }}</span>
+                            </button>
+                          }
                         </div>
                       </div>
 
@@ -875,6 +1007,7 @@ export class AdministrationComponent implements OnInit {
   selectedCompanyId = signal('');
   selectedSubCompanyId = signal('');
   selectedSiteId = signal('');
+  siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({ site: this.emptySite(), pozo_config: null, variables: [], mappings: [] });
 
   companyForm = signal<CompanyForm>({ nombre: '', rut: '', tipo_empresa: 'Agua' });
@@ -920,6 +1053,19 @@ export class AdministrationComponent implements OnInit {
     this.allSubCompanies().filter((subCompany) => subCompany.empresa_id === this.siteForm().empresa_id)
   );
 
+  siteTypeOptions = computed<SiteTypeCatalogItem[]>(() => Object.values(this.siteTypeCatalog()));
+
+  selectedSiteCatalog = computed<SiteTypeCatalogItem>(() => {
+    const type = this.siteVariables().site.tipo_sitio || this.siteForm().tipo_sitio || 'generico';
+    return this.siteTypeCatalog()[type] || this.siteTypeCatalog()['generico'] || DEFAULT_SITE_TYPE_CATALOG['generico'];
+  });
+
+  variableRoleOptions = computed<SiteTypeRoleOption[]>(() => this.selectedSiteCatalog().roles);
+
+  variableTransformOptions = computed<SiteTypeTransformOption[]>(() =>
+    this.selectedSiteCatalog().transforms.filter((transform) => transform.enabled !== false)
+  );
+
   ngOnInit(): void {
     this.loadDashboard();
   }
@@ -935,10 +1081,12 @@ export class AdministrationComponent implements OnInit {
     forkJoin({
       hierarchy: this.api.getHierarchy(),
       devices: this.api.getDetectedDevices(200),
+      catalog: this.api.getSiteTypeCatalog(),
     }).subscribe({
-      next: ({ hierarchy, devices }) => {
+      next: ({ hierarchy, devices, catalog }) => {
         this.hierarchy.set(hierarchy.ok ? hierarchy.data : []);
         this.detectedDevices.set(devices.ok ? devices.data : []);
+        this.siteTypeCatalog.set(catalog.ok ? catalog.data : DEFAULT_SITE_TYPE_CATALOG);
         this.seedSelections();
         this.companyService.fetchHierarchy().subscribe();
         this.loading.set(false);
@@ -970,14 +1118,35 @@ export class AdministrationComponent implements OnInit {
     this.variableForm.update((form) => ({ ...form, [field]: value }));
   }
 
+  updateVariableRole(role: string): void {
+    const nextRole = this.normalizeVariableRoleForForm(role);
+    const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
+
+    this.variableForm.update((form) => ({
+      ...form,
+      rol_dashboard: nextRole,
+      unidad: form.unidad || roleOption?.unitHint || '',
+      transformacion: this.suggestTransformForRole(nextRole, form.transformacion),
+    }));
+  }
+
   selectVariableKey(d1: string): void {
     const selected = this.siteVariables().variables.find((variable) => variable.nombre_dato === d1);
+    const nextRole = this.inferVariableRoleFromValues(
+      this.variableForm().alias || selected?.nombre_dato,
+      d1,
+      this.variableForm().unidad
+    );
+    const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
 
     this.variableForm.update((form) => ({
       ...form,
       d1,
       alias: form.alias || selected?.nombre_dato || '',
       tipo_dato: form.tipo_dato || this.guessDataType(selected?.valor_dato ?? null),
+      rol_dashboard: form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
+      unidad: form.unidad || roleOption?.unitHint || '',
+      transformacion: this.suggestTransformForRole(form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard, form.transformacion),
       sandboxRaw: selected?.valor_dato === null || selected?.valor_dato === undefined
         ? form.sandboxRaw
         : String(selected.valor_dato),
@@ -999,6 +1168,25 @@ export class AdministrationComponent implements OnInit {
     return this.isLinearTransformValue(this.variableForm().transformacion);
   }
 
+  requiresSecondRegister(): boolean {
+    return this.selectedVariableTransform()?.requiresD2 === true;
+  }
+
+  selectedVariableRole(): SiteTypeRoleOption | undefined {
+    return this.variableRoleOptions().find((role) => role.id === this.variableForm().rol_dashboard);
+  }
+
+  selectedVariableTransform(): SiteTypeTransformOption | undefined {
+    return this.variableTransformOptions().find((transform) => transform.id === this.variableForm().transformacion);
+  }
+
+  calculatorButtonClass(transformId: string): string {
+    const base = 'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-black uppercase tracking-[0.1em] transition';
+    return this.variableForm().transformacion === transformId
+      ? `${base} border-cyan-300 bg-cyan-100 text-cyan-900`
+      : `${base} border-cyan-100 bg-white text-cyan-800 hover:border-cyan-200 hover:bg-cyan-50`;
+  }
+
   previewResultText(): string {
     const form = this.variableForm();
     const rawText = String(form.sandboxRaw ?? '').trim();
@@ -1014,12 +1202,33 @@ export class AdministrationComponent implements OnInit {
       return `${this.formatPreviewNumber((raw * factor) + offset)}${unit}`;
     }
 
+    if (form.transformacion === 'caudal_m3h_lps') {
+      const raw = this.parsePreviewNumber(rawText);
+      if (raw === null) return 'Valor crudo no numerico';
+      return `${this.formatPreviewNumber(raw / 3.6)}${unit || ' L/s'}`;
+    }
+
+    if (form.transformacion === 'nivel_freatico') {
+      const raw = this.parsePreviewNumber(rawText);
+      const sensorDepth = this.numberOrNull(this.siteForm().profundidad_sensor_m);
+      const wellDepth = this.numberOrNull(this.siteForm().profundidad_pozo_m);
+      if (raw === null) return 'Valor crudo no numerico';
+      if (sensorDepth === null || wellDepth === null) return 'Completa profundidades del pozo';
+      const nivelFreatico = sensorDepth - raw;
+      if (nivelFreatico > wellDepth) return 'Supera profundidad total';
+      return `${this.formatPreviewNumber(nivelFreatico)}${unit || ' m'}`;
+    }
+
+    if (form.transformacion === 'ieee754_32') {
+      return form.d2 ? 'Se calculara con dos registros' : 'Selecciona segundo registro';
+    }
+
     return `${rawText}${unit}`;
   }
 
   displayVariableTransform(transformacion: string | null | undefined): string {
-    if (transformacion === 'nivel_freatico') return 'derivado por sitio';
-    return this.normalizeVariableTransformForForm(transformacion);
+    const normalized = this.normalizeVariableTransformForForm(transformacion);
+    return this.findTransformOption(normalized)?.label || normalized;
   }
 
   createCompany(event: Event): void {
@@ -1217,6 +1426,7 @@ export class AdministrationComponent implements OnInit {
       d2: variable.mapping?.d2 || '',
       tipo_dato: variable.mapping?.tipo_dato || this.guessDataType(variable.valor_dato),
       unidad: variable.mapping?.unidad || '',
+      rol_dashboard: this.normalizeVariableRoleForForm(variable.mapping?.rol_dashboard),
       transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
       factor: this.configNumberToString(params?.factor) || '1',
       offset: this.configNumberToString(params?.offset) || '0',
@@ -1238,7 +1448,7 @@ export class AdministrationComponent implements OnInit {
       d2: this.variableForm().d2 || null,
       tipo_dato: this.variableForm().tipo_dato,
       unidad: this.variableForm().unidad || null,
-      rol_dashboard: this.inferVariableRole(),
+      rol_dashboard: this.normalizeVariableRoleForForm(this.variableForm().rol_dashboard),
       transformacion: this.normalizeVariableTransformForForm(this.variableForm().transformacion),
       parametros: this.buildVariableParameters(),
     };
@@ -1398,7 +1608,7 @@ export class AdministrationComponent implements OnInit {
   private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
     const form = this.variableForm();
 
-    if (this.isLinearTransformValue(form.transformacion)) {
+    if (this.transformUsesLinearParameters(form.transformacion)) {
       return {
         factor: this.numberOrNull(form.factor) ?? 1,
         offset: this.numberOrNull(form.offset) ?? 0,
@@ -1408,13 +1618,16 @@ export class AdministrationComponent implements OnInit {
     return {};
   }
 
-  private inferVariableRole(): string {
-    const form = this.variableForm();
-    const text = this.normalizeSearchText(form.alias, form.d1, form.unidad);
+  private inferVariableRoleFromValues(...values: Array<string | null | undefined>): string {
+    const text = this.normalizeSearchText(...values);
+    const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
 
-    if (text.includes('nivel') || text.includes('level') || text.includes('sonda')) return 'nivel';
-    if (text.includes('caudal') || text.includes('l s') || text.includes('lps')) return 'caudal';
-    if (text.includes('totalizador') || text.includes('totalizado')) return 'totalizador';
+    if (text.includes('freatico') && availableRoles.has('nivel_freatico')) return 'nivel_freatico';
+    if ((text.includes('nivel') || text.includes('level') || text.includes('sonda')) && availableRoles.has('nivel')) return 'nivel';
+    if ((text.includes('caudal') || text.includes('l s') || text.includes('lps')) && availableRoles.has('caudal')) return 'caudal';
+    if (text.includes('totalizador') || text.includes('totalizado') || text.includes('acumulado') || text.includes('volumen')) {
+      return availableRoles.has('totalizador') ? 'totalizador' : 'generico';
+    }
 
     return 'generico';
   }
@@ -1431,12 +1644,37 @@ export class AdministrationComponent implements OnInit {
   }
 
   private isLinearTransformValue(transformacion: string): boolean {
-    return transformacion === 'lineal';
+    return this.transformUsesLinearParameters(transformacion);
   }
 
   private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
     if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
+    if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
+    if (transformacion === 'caudal' || transformacion === 'caudal_m3h_lps') return 'caudal_m3h_lps';
+    if (transformacion === 'nivel_freatico') return 'nivel_freatico';
     return 'directo';
+  }
+
+  private normalizeVariableRoleForForm(role: string | null | undefined): string {
+    const normalized = String(role ?? '').trim().toLowerCase() || 'generico';
+    return this.variableRoleOptions().some((option) => option.id === normalized) ? normalized : 'generico';
+  }
+
+  private suggestTransformForRole(role: string, currentTransform: string): string {
+    const current = this.normalizeVariableTransformForForm(currentTransform);
+    if (current !== 'directo') return current;
+    if (role === 'nivel_freatico' && this.findTransformOption('nivel_freatico')) return 'nivel_freatico';
+    if (role === 'caudal' && this.findTransformOption('caudal_m3h_lps')) return 'caudal_m3h_lps';
+    return current;
+  }
+
+  private transformUsesLinearParameters(transformacion: string): boolean {
+    return ['lineal', 'caudal_m3h_lps', 'nivel_freatico'].includes(transformacion);
+  }
+
+  private findTransformOption(transformacion: string): SiteTypeTransformOption | undefined {
+    const normalized = this.normalizeVariableTransformForForm(transformacion);
+    return this.variableTransformOptions().find((option) => option.id === normalized);
   }
 
   private normalizeSearchText(...values: Array<string | null | undefined>): string {
