@@ -97,11 +97,11 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
                   <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  {{ dashboardRefreshLabel() }}
+                  {{ latestDeviceReadingLabel() }}
                 </span>
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-700">
                   <span class="material-symbols-outlined text-[15px]">schedule</span>
-                  {{ latestDeviceReadingLabel() }}
+                  {{ dashboardRefreshLabel() }}
                 </span>
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
                   <span class="material-symbols-outlined text-[15px]">verified</span>
@@ -620,7 +620,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
-  dashboardRefreshLabel = computed(() => this.formatRelativeTime(this.dashboardLastLoadedAt(), this.currentTime()));
+  dashboardRefreshLabel = computed(() => this.formatDashboardRefresh(this.dashboardLastLoadedAt(), this.currentTime()));
   latestDeviceReadingLabel = computed(() => this.formatLatestDeviceReading(this.dashboardData()?.ultima_lectura));
   historySourceRows = computed(() => {
     if (this.historyRows().length) return this.historyRows();
@@ -742,8 +742,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return value === null ? '--%' : `${value}%`;
   }
 
-  private formatRelativeTime(date: Date | null, now: Date): string {
-    if (!date) return 'sin actualizar';
+  private formatDashboardRefresh(date: Date | null, now: Date): string {
+    if (!date) return 'Vista sin actualizar';
+
+    return `Vista cargada ${this.formatChileDateTime(date)} · ${this.formatRelativeTime(date, now)}`;
+  }
+
+  private formatRelativeTime(date: Date, now: Date): string {
 
     const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
     if (elapsedSeconds < 60) return `hace ${elapsedSeconds} segundos`;
@@ -757,22 +762,37 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private formatLatestDeviceReading(reading: SiteDashboardData['ultima_lectura'] | undefined): string {
     const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
-    if (!raw) return 'sin dato del equipo';
+    if (!raw) return 'Equipo sin dato';
 
-    const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
-    const parsed = new Date(normalized);
+    return `Ultimo dato equipo ${this.formatChileDateTime(raw)}`;
+  }
 
-    if (!Number.isNaN(parsed.getTime())) {
-      return new Intl.DateTimeFormat('es-CL', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      }).format(parsed);
+  private formatChileDateTime(value: Date | string): string {
+    const parsed = value instanceof Date ? value : this.parseUtcTimestamp(value);
+
+    if (!parsed || Number.isNaN(parsed.getTime())) {
+      return typeof value === 'string' ? value : '--';
     }
 
-    return raw;
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(parsed);
+  }
+
+  private parseUtcTimestamp(value: string): Date | null {
+    const raw = value.trim();
+    if (!raw) return null;
+
+    const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+    const withTimeZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized) ? normalized : `${normalized}Z`;
+    const parsed = new Date(withTimeZone);
+
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
   setDetailTab(tab: DetailTab): void {

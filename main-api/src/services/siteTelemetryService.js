@@ -32,6 +32,17 @@ function numberOrNull(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function toUtcIsoString(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(value)) {
+    return value;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
 function requireFiniteNumber(value, label) {
   const parsed = numberOrNull(value);
   if (parsed === null) {
@@ -348,8 +359,8 @@ function buildSiteDashboardData({ site, pozoConfig, mappings, latest }) {
     pozo_config: pozoConfig,
     ultima_lectura: latest
       ? {
-          time: latest.time,
-          timestamp_completo: latest.timestamp_completo,
+          time: toUtcIsoString(latest.time),
+          timestamp_completo: toUtcIsoString(latest.timestamp_completo || latest.time),
           id_serial: latest.id_serial,
         }
       : null,
@@ -416,8 +427,8 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
   const variables = buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData });
 
   return {
-    timestamp: row.time,
-    fecha: row.timestamp_completo,
+    timestamp: toUtcIsoString(row.time),
+    fecha: toUtcIsoString(row.timestamp_completo || row.time),
     caudal: serializeHistoricalVariable(findHistoricalVariable(variables, 'caudal')),
     totalizador: serializeHistoricalVariable(findHistoricalVariable(variables, 'totalizador')),
     nivel_freatico: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel_freatico')),

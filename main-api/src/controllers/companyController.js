@@ -122,8 +122,8 @@ function canReadSite(user, site) {
   return false;
 }
 
-function formatTimestampMinus3(column) {
-  return `TO_CHAR((${column} AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD HH24:MI:SS')`;
+function utcTimestampSql(column) {
+  return `TO_CHAR(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
 }
 
 async function generateSequentialId(client, table, prefix) {
@@ -701,7 +701,7 @@ exports.getDetectedDevices = async (req, res, next) => {
       SELECT
         l.id_serial,
         l.total_registros,
-        ${formatTimestampMinus3('l.ultimo_registro')} AS ultimo_registro,
+        ${utcTimestampSql('l.ultimo_registro')} AS ultimo_registro,
         s.id AS sitio_id,
         s.descripcion AS sitio_descripcion,
         s.tipo_sitio,
@@ -760,7 +760,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
           time,
           id_serial,
           data,
-          ${formatTimestampMinus3('time')} AS timestamp_completo
+          ${utcTimestampSql('time')} AS timestamp_completo
         FROM equipo
         WHERE id_serial = $1
         ORDER BY time DESC
@@ -838,7 +838,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             time,
             id_serial,
             data,
-            TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD HH24:MI') AS timestamp_completo
+            ${utcTimestampSql('time')} AS timestamp_completo
           FROM equipo
           WHERE id_serial = $1
           ORDER BY date_trunc('minute', time) DESC, time DESC
@@ -907,7 +907,7 @@ exports.getSiteVariables = async (req, res, next) => {
       SELECT
         latest.nombre_dato,
         latest.valor_dato,
-        ${formatTimestampMinus3('latest.time')} AS timestamp_completo
+        ${utcTimestampSql('latest.time')} AS timestamp_completo
       FROM (
         SELECT DISTINCT ON (kv.key)
           kv.key AS nombre_dato,

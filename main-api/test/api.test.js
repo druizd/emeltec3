@@ -148,7 +148,7 @@ test("siteTelemetryService expone nivel_freatico cuando la variable Nivel usa la
   ];
   const latest = {
     time: "2026-05-07T17:00:00.000Z",
-    timestamp_completo: "2026-05-07 14:00",
+    timestamp_completo: "2026-05-07T17:00:00Z",
     id_serial: "PLC-01",
     data: { AI24: 268 },
   };
@@ -156,6 +156,8 @@ test("siteTelemetryService expone nivel_freatico cuando la variable Nivel usa la
   const dashboard = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
   assert.equal(dashboard.resumen.nivel_freatico.ok, true);
   assert.equal(dashboard.resumen.nivel_freatico.valor, 13.32);
+  assert.equal(dashboard.ultima_lectura.time, "2026-05-07T17:00:00Z");
+  assert.equal(dashboard.ultima_lectura.timestamp_completo, "2026-05-07T17:00:00Z");
 
   const historical = mapHistoricalDashboardRow({
     row: { ...latest, fecha: latest.timestamp_completo },
@@ -165,6 +167,8 @@ test("siteTelemetryService expone nivel_freatico cuando la variable Nivel usa la
   });
   assert.equal(historical.nivel_freatico.ok, true);
   assert.equal(historical.nivel_freatico.valor, 13.32);
+  assert.equal(historical.timestamp, "2026-05-07T17:00:00Z");
+  assert.equal(historical.fecha, "2026-05-07T17:00:00Z");
 });
 
 test("siteTelemetryService deriva nivel_freatico desde una variable Nivel lineal", () => {
@@ -191,7 +195,7 @@ test("siteTelemetryService deriva nivel_freatico desde una variable Nivel lineal
   ];
   const latest = {
     time: "2026-05-07T17:00:00.000Z",
-    timestamp_completo: "2026-05-07 14:00",
+    timestamp_completo: "2026-05-07T17:00:00Z",
     id_serial: "PLC-01",
     data: { AI24: 268 },
   };
@@ -234,7 +238,7 @@ test("siteTelemetryService usa profundidad total como baseDelSensor cuando profu
   ];
   const latest = {
     time: "2026-05-07T17:00:00.000Z",
-    timestamp_completo: "2026-05-07 14:00",
+    timestamp_completo: "2026-05-07T17:00:00Z",
     id_serial: "PLC-01",
     data: { AI24: 268 },
   };
