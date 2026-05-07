@@ -1193,29 +1193,35 @@ export class AdministrationComponent implements OnInit {
 
     if (!rawText) return 'Ingresa un valor crudo';
 
+    if (form.transformacion === 'caudal_m3h_lps') {
+      const raw = this.parsePreviewNumber(rawText);
+      const factor = this.parsePreviewNumber(form.factor) ?? 1;
+      const offset = this.parsePreviewNumber(form.offset) ?? 0;
+      if (raw === null) return 'Valor crudo no numerico';
+      return `${this.formatPreviewNumber(((raw * factor) + offset) / 3.6)}${unit || ' L/s'}`;
+    }
+
+    if (form.transformacion === 'nivel_freatico') {
+      const raw = this.parsePreviewNumber(rawText);
+      const factor = this.parsePreviewNumber(form.factor) ?? 1;
+      const offset = this.parsePreviewNumber(form.offset) ?? 0;
+      const sensorDepth = this.numberOrNull(this.siteForm().profundidad_sensor_m);
+      const wellDepth = this.numberOrNull(this.siteForm().profundidad_pozo_m);
+      if (raw === null) return 'Valor crudo no numerico';
+      if (sensorDepth === null || wellDepth === null) return 'Completa profundidades del pozo';
+      const lecturaPozo = (raw * factor) + offset;
+      const nivelFreatico = sensorDepth - lecturaPozo;
+      if (lecturaPozo > sensorDepth) return 'Lectura supera sensor';
+      if (nivelFreatico > wellDepth) return 'Supera profundidad total';
+      return `${this.formatPreviewNumber(nivelFreatico)}${unit || ' m'}`;
+    }
+
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.parsePreviewNumber(rawText);
       const factor = this.parsePreviewNumber(form.factor) ?? 1;
       const offset = this.parsePreviewNumber(form.offset) ?? 0;
       if (raw === null) return 'Valor crudo no numerico';
       return `${this.formatPreviewNumber((raw * factor) + offset)}${unit}`;
-    }
-
-    if (form.transformacion === 'caudal_m3h_lps') {
-      const raw = this.parsePreviewNumber(rawText);
-      if (raw === null) return 'Valor crudo no numerico';
-      return `${this.formatPreviewNumber(raw / 3.6)}${unit || ' L/s'}`;
-    }
-
-    if (form.transformacion === 'nivel_freatico') {
-      const raw = this.parsePreviewNumber(rawText);
-      const sensorDepth = this.numberOrNull(this.siteForm().profundidad_sensor_m);
-      const wellDepth = this.numberOrNull(this.siteForm().profundidad_pozo_m);
-      if (raw === null) return 'Valor crudo no numerico';
-      if (sensorDepth === null || wellDepth === null) return 'Completa profundidades del pozo';
-      const nivelFreatico = sensorDepth - raw;
-      if (nivelFreatico > wellDepth) return 'Supera profundidad total';
-      return `${this.formatPreviewNumber(nivelFreatico)}${unit || ' m'}`;
     }
 
     if (form.transformacion === 'ieee754_32') {

@@ -124,6 +124,92 @@ function grpcUnary(client, method, request = {}) {
   });
 }
 
+test("siteTelemetryService expone nivel_freatico cuando la variable Nivel usa la calculadora del pozo", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const pozoConfig = { profundidad_sensor_m: 16, profundidad_pozo_m: 20 };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "Nivel",
+      d1: "AI24",
+      d2: null,
+      tipo_dato: "FLOAT",
+      unidad: "m",
+      rol_dashboard: "nivel",
+      transformacion: "nivel_freatico",
+      parametros: { factor: 0.01, offset: 0 },
+    },
+  ];
+  const latest = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07 14:00",
+    id_serial: "PLC-01",
+    data: { AI24: 268 },
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
+  assert.equal(dashboard.resumen.nivel_freatico.ok, true);
+  assert.equal(dashboard.resumen.nivel_freatico.valor, 13.32);
+
+  const historical = mapHistoricalDashboardRow({
+    row: { ...latest, fecha: latest.timestamp_completo },
+    site,
+    mappings,
+    pozoConfig,
+  });
+  assert.equal(historical.nivel_freatico.ok, true);
+  assert.equal(historical.nivel_freatico.valor, 13.32);
+});
+
+test("siteTelemetryService deriva nivel_freatico desde una variable Nivel lineal", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const pozoConfig = { profundidad_sensor_m: 16, profundidad_pozo_m: 20 };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "Nivel",
+      d1: "AI24",
+      d2: null,
+      tipo_dato: "FLOAT",
+      unidad: "m",
+      rol_dashboard: "nivel",
+      transformacion: "lineal",
+      parametros: { factor: 0.01, offset: 0 },
+    },
+  ];
+  const latest = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07 14:00",
+    id_serial: "PLC-01",
+    data: { AI24: 268 },
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
+  assert.equal(dashboard.resumen.nivel.valor, 2.68);
+  assert.equal(dashboard.resumen.nivel_freatico.valor, 13.32);
+
+  const historical = mapHistoricalDashboardRow({
+    row: { ...latest, fecha: latest.timestamp_completo },
+    site,
+    mappings,
+    pozoConfig,
+  });
+  assert.equal(historical.nivel_freatico.ok, true);
+  assert.equal(historical.nivel_freatico.valor, 13.32);
+});
+
 test("GET /api/health responde con estado y hora del servidor", async () => {
   const dbMock = createDbMock();
   dbMock.enqueue({

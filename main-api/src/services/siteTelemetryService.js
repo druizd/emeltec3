@@ -140,6 +140,18 @@ function responseKeyForMapping(mapping) {
     .replace(/^_+|_+$/g, '') || mapping.d1;
 }
 
+function dashboardRoleForVariable(variable) {
+  if (
+    variable.transformacion === 'nivel_freatico' ||
+    variable.key === 'nivel_freatico' ||
+    variable.rol_dashboard === 'nivel_freatico'
+  ) {
+    return 'nivel_freatico';
+  }
+
+  return variable.rol_dashboard || 'generico';
+}
+
 function normalizeSearchText(...values) {
   return values
     .map((value) => cleanString(value))
@@ -243,12 +255,14 @@ function buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData, te
   for (const mapping of mappings) {
     const rawD1 = readRawValue(rawData, mapping.d1);
     const rawD2 = readRawValue(rawData, mapping.d2);
+    const transformacion = normalizeTransform(mapping.transformacion);
+    const isNivelFreaticoTransform = transformacion === 'nivel_freatico';
     const variable = {
       id: mapping.id,
-      key: responseKeyForMapping(mapping),
+      key: isNivelFreaticoTransform ? 'nivel_freatico' : responseKeyForMapping(mapping),
       alias: mapping.alias,
-      rol_dashboard: mapping.rol_dashboard || 'generico',
-      transformacion: normalizeTransform(mapping.transformacion),
+      rol_dashboard: isNivelFreaticoTransform ? 'nivel_freatico' : (mapping.rol_dashboard || 'generico'),
+      transformacion,
       unidad: mapping.unidad || null,
       fuente: {
         d1: mapping.d1,
@@ -295,9 +309,10 @@ function buildResumen(variables) {
   const resumen = {};
 
   for (const variable of variables) {
-    if (variable.rol_dashboard === 'generico') continue;
+    const role = dashboardRoleForVariable(variable);
+    if (role === 'generico') continue;
 
-    resumen[variable.rol_dashboard] = {
+    resumen[role] = {
       ok: variable.ok,
       valor: variable.valor,
       unidad: variable.unidad,
@@ -305,8 +320,8 @@ function buildResumen(variables) {
       error: variable.error || null,
     };
 
-    if (variable.rol_dashboard === 'nivel_freatico' && variable.fuente?.variable) {
-      resumen[variable.rol_dashboard].fuente = variable.fuente.variable;
+    if (role === 'nivel_freatico' && variable.fuente?.variable) {
+      resumen[role].fuente = variable.fuente.variable;
     }
   }
 
