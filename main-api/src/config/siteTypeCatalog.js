@@ -30,21 +30,7 @@ const SITE_TYPE_CATALOG = {
       { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado o caudal totalizado.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar sin uso especial en dashboard.' },
     ],
-    transforms: [
-      ...COMMON_TRANSFORMS,
-      {
-        id: 'caudal_m3h_lps',
-        label: 'Caudal m3/h a L/s',
-        description: 'Convierte caudal desde m3/h hacia L/s.',
-        enabled: true,
-      },
-      {
-        id: 'nivel_freatico',
-        label: 'Nivel',
-        description: 'Calcula nivel freatico desde lectura de pozo y profundidades configuradas.',
-        enabled: true,
-      },
-    ],
+    transforms: [...COMMON_TRANSFORMS],
   },
   electrico: {
     id: 'electrico',
@@ -88,16 +74,6 @@ const SITE_TYPE_CATALOG = {
     transforms: [...COMMON_TRANSFORMS],
   },
 };
-
-SITE_TYPE_CATALOG.riles.transforms = [
-  ...COMMON_TRANSFORMS,
-  {
-    id: 'caudal_m3h_lps',
-    label: 'Caudal m3/h a L/s',
-    description: 'Convierte caudal desde m3/h hacia L/s.',
-    enabled: true,
-  },
-];
 
 const SITE_TYPE_IDS = Object.freeze(Object.keys(SITE_TYPE_CATALOG));
 const VARIABLE_ROLE_IDS = Object.freeze([

@@ -108,8 +108,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
-      { id: 'caudal_m3h_lps', label: 'Caudal m3/h a L/s', description: 'Convierte m3/h hacia L/s.', enabled: true },
-      { id: 'nivel_freatico', label: 'Nivel', description: 'Calcula nivel freatico desde profundidades del pozo.', enabled: true },
     ],
   },
   electrico: {
@@ -140,7 +138,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
-      { id: 'caudal_m3h_lps', label: 'Caudal m3/h a L/s', description: 'Convierte m3/h hacia L/s.', enabled: true },
     ],
   },
   proceso: {
@@ -1193,29 +1190,6 @@ export class AdministrationComponent implements OnInit {
 
     if (!rawText) return 'Ingresa un valor crudo';
 
-    if (form.transformacion === 'caudal_m3h_lps') {
-      const raw = this.parsePreviewNumber(rawText);
-      const factor = this.parsePreviewNumber(form.factor) ?? 1;
-      const offset = this.parsePreviewNumber(form.offset) ?? 0;
-      if (raw === null) return 'Valor crudo no numerico';
-      return `${this.formatPreviewNumber(((raw * factor) + offset) / 3.6)}${unit || ' L/s'}`;
-    }
-
-    if (form.transformacion === 'nivel_freatico') {
-      const raw = this.parsePreviewNumber(rawText);
-      const factor = this.parsePreviewNumber(form.factor) ?? 1;
-      const offset = this.parsePreviewNumber(form.offset) ?? 0;
-      const sensorDepth = this.numberOrNull(this.siteForm().profundidad_sensor_m);
-      const wellDepth = this.numberOrNull(this.siteForm().profundidad_pozo_m);
-      if (raw === null) return 'Valor crudo no numerico';
-      if (sensorDepth === null || wellDepth === null) return 'Completa profundidades del pozo';
-      const lecturaPozo = (raw * factor) + offset;
-      const nivelFreatico = sensorDepth - lecturaPozo;
-      if (lecturaPozo > sensorDepth) return 'Lectura supera sensor';
-      if (nivelFreatico > wellDepth) return 'Supera profundidad total';
-      return `${this.formatPreviewNumber(nivelFreatico)}${unit || ' m'}`;
-    }
-
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.parsePreviewNumber(rawText);
       const factor = this.parsePreviewNumber(form.factor) ?? 1;
@@ -1655,8 +1629,7 @@ export class AdministrationComponent implements OnInit {
   private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
     if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
     if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
-    if (transformacion === 'caudal' || transformacion === 'caudal_m3h_lps') return 'caudal_m3h_lps';
-    if (transformacion === 'nivel_freatico') return 'nivel_freatico';
+    if (transformacion === 'caudal' || transformacion === 'caudal_m3h_lps' || transformacion === 'nivel_freatico') return 'lineal';
     return 'directo';
   }
 
@@ -1669,13 +1642,11 @@ export class AdministrationComponent implements OnInit {
   private suggestTransformForRole(role: string, currentTransform: string): string {
     const current = this.normalizeVariableTransformForForm(currentTransform);
     if (current !== 'directo') return current;
-    if (role === 'nivel' && this.findTransformOption('nivel_freatico')) return 'nivel_freatico';
-    if (role === 'caudal' && this.findTransformOption('caudal_m3h_lps')) return 'caudal_m3h_lps';
     return current;
   }
 
   private transformUsesLinearParameters(transformacion: string): boolean {
-    return ['lineal', 'caudal_m3h_lps', 'nivel_freatico'].includes(transformacion);
+    return transformacion === 'lineal';
   }
 
   private findTransformOption(transformacion: string): SiteTypeTransformOption | undefined {

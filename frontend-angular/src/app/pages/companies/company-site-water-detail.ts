@@ -917,7 +917,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     });
     const sourceLevelValue = this.toNumber(sourceLevel?.valor);
 
-    if (sensorDepth !== null && sourceLevelValue !== null) {
+    if (
+      sensorDepth !== null &&
+      sensorDepth > 0 &&
+      sourceLevelValue !== null &&
+      sourceLevelValue >= 0 &&
+      sourceLevelValue <= sensorDepth
+    ) {
       return Math.round((sensorDepth - sourceLevelValue) * 1000) / 1000;
     }
 
