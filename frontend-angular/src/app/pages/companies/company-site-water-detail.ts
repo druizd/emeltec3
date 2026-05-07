@@ -59,7 +59,7 @@ interface SiteDashboardData {
   variables?: DashboardVariable[];
 }
 
-type DetailTab = 'dga' | 'operacion';
+type DetailTab = 'dga' | 'historico' | 'operacion';
 type OperationMode = 'realtime' | 'turnos';
 
 @Component({
@@ -148,6 +148,17 @@ type OperationMode = 'realtime' | 'turnos';
                 <span class="material-symbols-outlined text-[18px]">monitoring</span>
                 Operación
                 @if (activeDetailTab() === 'operacion') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('historico')"
+                [class]="getDetailTabClass('historico')"
+              >
+                <span class="material-symbols-outlined text-[18px]">database</span>
+                Datos Historicos
+                @if (activeDetailTab() === 'historico') {
                   <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
                 }
               </button>
@@ -310,6 +321,7 @@ type OperationMode = 'realtime' | 'turnos';
                   @for (action of quickActions; track action.title) {
                     <button
                       type="button"
+                      (click)="handleQuickAction(action)"
                       class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-cyan-200 hover:bg-white hover:shadow-sm"
                     >
                       <span [class]="'material-symbols-outlined text-[20px] ' + action.color">{{ action.icon }}</span>
@@ -322,6 +334,7 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
           </section>
 
+          } @else if (activeDetailTab() === 'historico') {
           <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-2.5">
               <h2 class="text-sm font-black text-slate-800">Datos Historicos</h2>
@@ -630,7 +643,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   ];
 
   readonly quickActions = [
-    { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600' },
+    { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600', tab: 'historico' as DetailTab },
     { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600' },
     { icon: 'open_in_new', title: 'Ver en DGA', subtitle: 'Portal oficial', color: 'text-blue-600' },
     { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600' },
@@ -721,6 +734,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   setOperationMode(mode: OperationMode): void {
     this.operationMode.set(mode);
+  }
+
+  handleQuickAction(action: { tab?: DetailTab }): void {
+    if (action.tab) {
+      this.setDetailTab(action.tab);
+    }
   }
 
   previousHistoryPage(): void {
