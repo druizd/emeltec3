@@ -55,6 +55,11 @@ interface SiteDashboardData {
     profundidad_pozo_m?: number | string | null;
     profundidad_sensor_m?: number | string | null;
   } | null;
+  ultima_lectura?: {
+    time?: string | null;
+    timestamp_completo?: string | null;
+    id_serial?: string | null;
+  } | null;
   resumen?: Record<string, { valor?: string | number | null; ok?: boolean; unidad?: string | null } | undefined>;
   variables?: DashboardVariable[];
 }
@@ -92,11 +97,11 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-bold">
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
                   <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  hace 0 segundos
+                  {{ dashboardRefreshLabel() }}
                 </span>
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-700">
                   <span class="material-symbols-outlined text-[15px]">schedule</span>
-                  26 abr 2026, 22:23
+                  {{ latestDeviceReadingLabel() }}
                 </span>
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
                   <span class="material-symbols-outlined text-[15px]">verified</span>
@@ -580,6 +585,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly companyService = inject(CompanyService);
+  private clockSub?: Subscription;
+  private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
   private readonly historyFetchLimit = 500;
 
@@ -588,6 +595,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dashboardLoading = signal(true);
   dashboardError = signal('');
   dashboardData = signal<SiteDashboardData | null>(null);
+  dashboardLastLoadedAt = signal<Date | null>(null);
+  currentTime = signal(new Date());
   activeDetailTab = signal<DetailTab>('dga');
   operationMode = signal<OperationMode>('realtime');
   historyLoading = signal(true);
@@ -611,6 +620,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
+  dashboardRefreshLabel = computed(() => this.formatRelativeTime(this.dashboardLastLoadedAt(), this.currentTime()));
+  latestDeviceReadingLabel = computed(() => this.formatLatestDeviceReading(this.dashboardData()?.ultima_lectura));
   historySourceRows = computed(() => {
     if (this.historyRows().length) return this.historyRows();
     return this.historyLoading() ? [] : this.historyMockRows;
@@ -677,7 +688,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.loadDashboardData(siteId);
+    this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
+    this.startDashboardPolling(siteId);
     this.startHistoryPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
@@ -702,6 +714,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clockSub?.unsubscribe();
+    this.dashboardPollingSub?.unsubscribe();
     this.historyPollingSub?.unsubscribe();
   }
 
@@ -726,6 +740,39 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   formatPercent(value: number | null): string {
     return value === null ? '--%' : `${value}%`;
+  }
+
+  private formatRelativeTime(date: Date | null, now: Date): string {
+    if (!date) return 'sin actualizar';
+
+    const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+    if (elapsedSeconds < 60) return `hace ${elapsedSeconds} segundos`;
+
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    if (elapsedMinutes < 60) return `hace ${elapsedMinutes} min`;
+
+    const elapsedHours = Math.floor(elapsedMinutes / 60);
+    return `hace ${elapsedHours} h`;
+  }
+
+  private formatLatestDeviceReading(reading: SiteDashboardData['ultima_lectura'] | undefined): string {
+    const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
+    if (!raw) return 'sin dato del equipo';
+
+    const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+    const parsed = new Date(normalized);
+
+    if (!Number.isNaN(parsed.getTime())) {
+      return new Intl.DateTimeFormat('es-CL', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(parsed);
+    }
+
+    return raw;
   }
 
   setDetailTab(tab: DetailTab): void {
@@ -789,22 +836,29 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     });
   }
 
-  private loadDashboardData(siteId: string): void {
-    this.dashboardLoading.set(true);
+  private startDashboardPolling(siteId: string): void {
+    this.dashboardLoading.set(!this.dashboardData());
     this.dashboardError.set('');
+    this.dashboardPollingSub?.unsubscribe();
 
-    this.companyService.getSiteDashboardData(siteId).subscribe({
-      next: (res: any) => {
-        const payload = res?.ok === false ? null : (res?.data || res || null);
-        this.dashboardData.set(payload);
-        this.dashboardError.set(payload ? '' : 'No fue posible cargar datos del pozo.');
-        this.dashboardLoading.set(false);
-      },
-      error: () => {
-        this.dashboardData.set(null);
-        this.dashboardError.set('No fue posible cargar datos del pozo.');
-        this.dashboardLoading.set(false);
-      },
+    this.dashboardPollingSub = timer(0, 60000).pipe(
+      switchMap(() =>
+        this.companyService.getSiteDashboardData(siteId).pipe(
+          catchError(() => {
+            this.dashboardError.set('No fue posible cargar datos del pozo.');
+            this.dashboardLoading.set(false);
+            return of(null);
+          })
+        )
+      )
+    ).subscribe((res: any) => {
+      if (!res) return;
+
+      const payload = res?.ok === false ? null : (res?.data || res || null);
+      this.dashboardData.set(payload);
+      this.dashboardLastLoadedAt.set(new Date());
+      this.dashboardError.set(payload ? '' : 'No fue posible cargar datos del pozo.');
+      this.dashboardLoading.set(false);
     });
   }
 
