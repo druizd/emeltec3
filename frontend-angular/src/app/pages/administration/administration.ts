@@ -99,8 +99,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     id: 'pozo',
     label: 'Pozo',
     roles: [
-      { id: 'nivel', label: 'Nivel agua', unitHint: 'm', description: 'Lectura directa del sensor.' },
-      { id: 'nivel_freatico', label: 'Nivel freatico', unitHint: 'm', description: 'Nivel calculado con configuracion del pozo.' },
+      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.' },
       { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
       { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
@@ -110,7 +109,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
       { id: 'caudal_m3h_lps', label: 'Caudal m3/h a L/s', description: 'Convierte m3/h hacia L/s.', enabled: true },
-      { id: 'nivel_freatico', label: 'Nivel freatico', description: 'Calcula nivel freatico desde profundidades del pozo.', enabled: true },
+      { id: 'nivel_freatico', label: 'Nivel', description: 'Calcula nivel freatico desde profundidades del pozo.', enabled: true },
     ],
   },
   electrico: {
@@ -696,7 +695,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           [ngModel]="variableForm().alias"
                           (ngModelChange)="updateVariableForm('alias', $event)"
                           class="field-control"
-                          placeholder="Nivel freatico, caudal, energia"
+                          placeholder="Nivel, caudal, energia"
                         />
                       </div>
 
@@ -1622,7 +1621,7 @@ export class AdministrationComponent implements OnInit {
     const text = this.normalizeSearchText(...values);
     const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
 
-    if (text.includes('freatico') && availableRoles.has('nivel_freatico')) return 'nivel_freatico';
+    if (text.includes('freatico') && availableRoles.has('nivel')) return 'nivel';
     if ((text.includes('nivel') || text.includes('level') || text.includes('sonda')) && availableRoles.has('nivel')) return 'nivel';
     if ((text.includes('caudal') || text.includes('l s') || text.includes('lps')) && availableRoles.has('caudal')) return 'caudal';
     if (text.includes('totalizador') || text.includes('totalizado') || text.includes('acumulado') || text.includes('volumen')) {
@@ -1656,14 +1655,15 @@ export class AdministrationComponent implements OnInit {
   }
 
   private normalizeVariableRoleForForm(role: string | null | undefined): string {
-    const normalized = String(role ?? '').trim().toLowerCase() || 'generico';
+    const normalizedInput = String(role ?? '').trim().toLowerCase();
+    const normalized = normalizedInput === 'nivel_freatico' ? 'nivel' : normalizedInput || 'generico';
     return this.variableRoleOptions().some((option) => option.id === normalized) ? normalized : 'generico';
   }
 
   private suggestTransformForRole(role: string, currentTransform: string): string {
     const current = this.normalizeVariableTransformForForm(currentTransform);
     if (current !== 'directo') return current;
-    if (role === 'nivel_freatico' && this.findTransformOption('nivel_freatico')) return 'nivel_freatico';
+    if (role === 'nivel' && this.findTransformOption('nivel_freatico')) return 'nivel_freatico';
     if (role === 'caudal' && this.findTransformOption('caudal_m3h_lps')) return 'caudal_m3h_lps';
     return current;
   }

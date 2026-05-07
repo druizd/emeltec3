@@ -25,8 +25,7 @@ const SITE_TYPE_CATALOG = {
     id: 'pozo',
     label: 'Pozo',
     roles: [
-      { id: 'nivel', label: 'Nivel agua', unitHint: 'm', description: 'Lectura de nivel recibida desde el sensor.' },
-      { id: 'nivel_freatico', label: 'Nivel freatico', unitHint: 'm', description: 'Nivel calculado usando la configuracion del pozo.' },
+      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.' },
       { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo del pozo.' },
       { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado o caudal totalizado.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar sin uso especial en dashboard.' },
@@ -41,7 +40,7 @@ const SITE_TYPE_CATALOG = {
       },
       {
         id: 'nivel_freatico',
-        label: 'Nivel freatico',
+        label: 'Nivel',
         description: 'Calcula nivel freatico desde lectura de pozo y profundidades configuradas.',
         enabled: true,
       },
@@ -102,7 +101,10 @@ SITE_TYPE_CATALOG.riles.transforms = [
 
 const SITE_TYPE_IDS = Object.freeze(Object.keys(SITE_TYPE_CATALOG));
 const VARIABLE_ROLE_IDS = Object.freeze([
-  ...new Set(Object.values(SITE_TYPE_CATALOG).flatMap((config) => config.roles.map((role) => role.id))),
+  ...new Set([
+    ...Object.values(SITE_TYPE_CATALOG).flatMap((config) => config.roles.map((role) => role.id)),
+    'nivel_freatico',
+  ]),
 ]);
 const VARIABLE_TRANSFORM_IDS = Object.freeze([
   'directo',
