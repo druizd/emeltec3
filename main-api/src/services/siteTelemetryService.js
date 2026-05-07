@@ -112,7 +112,7 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
       const lecturaPozo = applyLinearTransform(rawD1, params);
       return calcularNivelFreatico({
         lecturaPozo,
-        profundidadSensor: requireFiniteNumber(pozoConfig?.profundidad_sensor_m, 'profundidad_sensor_m'),
+        profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
         profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
       });
     }
@@ -238,8 +238,8 @@ function buildDerivedNivelFreatico({ variables, pozoConfig, rawData }) {
   try {
     derived.valor = calcularNivelFreatico({
       lecturaPozo: requireFiniteNumber(Number(source.valor), source.alias || source.key),
-      profundidadSensor: requireFiniteNumber(pozoConfig?.profundidad_sensor_m, 'profundidad_sensor_m'),
-      profundidadTotal: numberOrNull(pozoConfig?.profundidad_pozo_m),
+      profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
+      profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
     });
   } catch (err) {
     derived.ok = false;

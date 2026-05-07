@@ -910,21 +910,23 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (derivedValue !== null) return derivedValue;
 
     const sensorDepth = this.extractPozoNumber('profundidad_sensor_m');
+    const totalDepth = this.extractPozoNumber('profundidad_pozo_m');
     const sourceLevel = variables.find((variable) => {
       if (variable.ok === false) return false;
       const text = this.normalizeSearchText(variable.key, variable.alias, variable.rol_dashboard);
       return !text.includes('freatico') && (text.includes('nivel') || text.includes('level') || text.includes('sonda'));
     });
     const sourceLevelValue = this.toNumber(sourceLevel?.valor);
+    const baseDelSensor = sensorDepth !== null && sensorDepth > 0 ? sensorDepth : totalDepth;
 
     if (
-      sensorDepth !== null &&
-      sensorDepth > 0 &&
+      baseDelSensor !== null &&
+      baseDelSensor > 0 &&
       sourceLevelValue !== null &&
       sourceLevelValue >= 0 &&
-      sourceLevelValue <= sensorDepth
+      sourceLevelValue <= baseDelSensor
     ) {
-      return Math.round((sensorDepth - sourceLevelValue) * 1000) / 1000;
+      return Math.round((baseDelSensor - sourceLevelValue) * 1000) / 1000;
     }
 
     return null;

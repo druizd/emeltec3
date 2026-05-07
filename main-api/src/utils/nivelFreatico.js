@@ -17,19 +17,23 @@ function calcularNivelFreatico({ lecturaPozo, profundidadSensor, profundidadTota
     throw new Error('lectura_pozo debe ser un numero finito');
   }
 
-  if (!Number.isFinite(profundidadSensor) || profundidadSensor <= 0) {
-    throw new Error('profundidad_sensor debe ser un numero positivo');
+  if (!Number.isFinite(profundidadTotal) || profundidadTotal <= 0) {
+    throw new Error('profundidad_total debe ser un numero positivo');
   }
 
-  if (lecturaPozo > profundidadSensor) {
+  const baseDelSensor = Number.isFinite(profundidadSensor) && profundidadSensor > 0
+    ? profundidadSensor
+    : profundidadTotal;
+
+  if (lecturaPozo > baseDelSensor) {
     throw new Error(
-      `lectura_sensor (${lecturaPozo} m) no puede ser mayor que profundidad_sensor (${profundidadSensor} m)`
+      `lectura_sensor (${lecturaPozo} m) no puede ser mayor que base_del_sensor (${baseDelSensor} m)`
     );
   }
 
-  const nivelFreaticoM = round(profundidadSensor - lecturaPozo, 3);
+  const nivelFreaticoM = round(baseDelSensor - lecturaPozo, 3);
 
-  if (Number.isFinite(profundidadTotal) && nivelFreaticoM > profundidadTotal) {
+  if (nivelFreaticoM > profundidadTotal) {
     throw new Error(
       `nivel_freatico calculado (${nivelFreaticoM} m) supera la profundidad_total del pozo (${profundidadTotal} m)`
     );
