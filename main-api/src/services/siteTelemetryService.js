@@ -1,5 +1,5 @@
 const { m3hALs } = require('../utils/caudal');
-const { parseIEEE754, registrosModbusAFloat32 } = require('../utils/ieee754');
+const { parseIEEE754, registrosModbusAFloat32, registrosModbusAUInt32 } = require('../utils/ieee754');
 const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
 
@@ -83,6 +83,15 @@ function applyLinearTransform(value, params = {}) {
   return (base * factor) + offset;
 }
 
+function applyUInt32RegistersTransform({ rawData, mapping, params }) {
+  const rawD1 = readRawValue(rawData, mapping.d1);
+  const rawD2 = readRawValue(rawData, mapping.d2);
+  const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
+  const wordBaja = requireFiniteNumber(rawD2, mapping.d2 || 'd2');
+  const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
+  return registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor;
+}
+
 function applyIeeeTransform({ rawData, mapping, params }) {
   const rawD1 = readRawValue(rawData, mapping.d1);
   const rawD2 = readRawValue(rawData, mapping.d2);
@@ -118,6 +127,10 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
 
     case 'ieee754_32':
       return applyIeeeTransform({ rawData, mapping, params });
+
+    case 'uint32_registros':
+    case 'uint32':
+      return applyUInt32RegistersTransform({ rawData, mapping, params });
 
     case 'nivel_freatico': {
       const lecturaPozo = applyLinearTransform(rawD1, params);
@@ -350,6 +363,7 @@ function buildSiteDashboardData({ site, pozoConfig, mappings, latest }) {
   });
 
   return {
+    server_time: toUtcIsoString(new Date()),
     site: {
       id: site.id,
       descripcion: site.descripcion,
@@ -360,7 +374,8 @@ function buildSiteDashboardData({ site, pozoConfig, mappings, latest }) {
     ultima_lectura: latest
       ? {
           time: toUtcIsoString(latest.time),
-          timestamp_completo: toUtcIsoString(latest.timestamp_completo || latest.time),
+          timestamp_completo: toUtcIsoString(latest.time),
+          received_at: toUtcIsoString(latest.received_at),
           id_serial: latest.id_serial,
         }
       : null,
@@ -389,6 +404,10 @@ function findHistoricalVariable(variables, role) {
     }
 
     if (variable.rol_dashboard === role || variable.key === role) {
+      return true;
+    }
+
+    if (role === 'totalizador' && ['uint32_registros', 'uint32'].includes(variable.transformacion)) {
       return true;
     }
 
@@ -428,7 +447,8 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
 
   return {
     timestamp: toUtcIsoString(row.time),
-    fecha: toUtcIsoString(row.timestamp_completo || row.time),
+    fecha: toUtcIsoString(row.time),
+    received_at: toUtcIsoString(row.received_at),
     caudal: serializeHistoricalVariable(findHistoricalVariable(variables, 'caudal')),
     totalizador: serializeHistoricalVariable(findHistoricalVariable(variables, 'totalizador')),
     nivel_freatico: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel_freatico')),

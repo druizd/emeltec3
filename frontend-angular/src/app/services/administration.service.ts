@@ -66,6 +66,9 @@ export interface VariableParameters {
   factor?: number | null;
   offset?: number | null;
   word_order?: string | null;
+  word_swap?: boolean | null;
+  wordSwap?: boolean | null;
+  formato?: string | null;
   formula?: string | null;
 }
 

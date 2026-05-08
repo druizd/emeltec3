@@ -81,8 +81,8 @@ async function evaluarAlerta(client, alerta) {
 
   if (alerta.condicion === 'sin_datos') {
     const { rows } = await client.query(
-      `SELECT time FROM equipo
-       WHERE id_serial = $1 AND time > NOW() - ($2 || ' minutes')::INTERVAL
+      `SELECT received_at FROM equipo
+       WHERE id_serial = $1 AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
        LIMIT 1`,
       [alerta.id_serial, alerta.cooldown_minutos]
     );

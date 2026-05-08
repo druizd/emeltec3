@@ -48,12 +48,53 @@ interface HistoricalTelemetryRow {
   caudal: string;
   totalizador: string;
   nivelFreatico: string;
+  caudalValue?: number | null;
+  totalizadorValue?: number | null;
+  nivelFreaticoValue?: number | null;
   mock?: boolean;
 }
 
 interface MonthlyFlowPoint {
   label: string;
   value: number;
+}
+
+interface RealtimeMetric {
+  label: string;
+  value: string;
+  unit: string;
+}
+
+interface RealtimeChartPoint {
+  index: number;
+  x: number;
+  y: number;
+  value: number;
+  label: string;
+  timestampMs: number;
+}
+
+interface RealtimeChartTick {
+  x?: number;
+  y?: number;
+  label: string;
+}
+
+interface RealtimeChartTooltip {
+  x: number;
+  y: number;
+  boxX: number;
+  boxY: number;
+  dateLabel: string;
+  valueLabel: string;
+}
+
+interface RealtimeChartData {
+  points: RealtimeChartPoint[];
+  polyline: string;
+  yTicks: RealtimeChartTick[];
+  xTicks: RealtimeChartTick[];
+  tooltip: RealtimeChartTooltip | null;
 }
 
 interface DgaReportRow {
@@ -71,6 +112,13 @@ interface DgaReportRow {
   comprobante: string;
 }
 
+interface TelemetryStatusBadge {
+  title: string;
+  value: string;
+  tone: 'ok' | 'warning' | 'empty';
+  icon: string;
+}
+
 interface DashboardVariable {
   key?: string | null;
   alias?: string | null;
@@ -82,6 +130,7 @@ interface DashboardVariable {
 }
 
 interface SiteDashboardData {
+  server_time?: string | null;
   pozo_config?: {
     profundidad_pozo_m?: number | string | null;
     profundidad_sensor_m?: number | string | null;
@@ -89,6 +138,7 @@ interface SiteDashboardData {
   ultima_lectura?: {
     time?: string | null;
     timestamp_completo?: string | null;
+    received_at?: string | null;
     id_serial?: string | null;
   } | null;
   resumen?: Record<string, { valor?: string | number | null; ok?: boolean; unidad?: string | null } | undefined>;
@@ -115,6 +165,7 @@ interface VariableForm {
   transformacion: string;
   factor: string;
   offset: string;
+  wordSwap: string;
   sandboxRaw: string;
 }
 
@@ -134,6 +185,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   transformacion: 'directo',
   factor: '1',
   offset: '0',
+  wordSwap: 'false',
   sandboxRaw: '',
 };
 
@@ -151,6 +203,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   electrico: {
@@ -166,6 +219,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   riles: {
@@ -181,6 +235,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   proceso: {
@@ -196,6 +251,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   generico: {
@@ -208,6 +264,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
 };
@@ -240,14 +297,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
 
               <div class="flex flex-wrap items-center gap-2 text-[11px] font-bold xl:justify-end">
-                <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
-                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  {{ latestDeviceReadingLabel() }}
-                </span>
-                <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-700">
-                  <span class="material-symbols-outlined text-[15px]">schedule</span>
-                  {{ dashboardRefreshLabel() }}
-                </span>
+                @for (badge of telemetryStatusBadges(); track badge.title) {
+                  <span [class]="telemetryBadgeClass(badge.tone)">
+                    <span [class]="telemetryBadgeIconClass(badge.tone)">{{ badge.icon }}</span>
+                    <span class="grid leading-tight">
+                      <span class="text-[10px] font-black">{{ badge.title }}</span>
+                      <span class="text-xs font-black">{{ badge.value }}</span>
+                    </span>
+                  </span>
+                }
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
                   <span class="material-symbols-outlined text-[15px]">verified</span>
                   Reporte DGA · Aceptado · 17:00
@@ -401,21 +459,85 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <p class="mt-1 text-xs font-semibold text-slate-400">Se guardan directamente en este sitio, sin seleccionar equipo.</p>
                       </div>
 
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Dato original</label>
-                        <select
-                          required
-                          name="settings-variable-key"
-                          [ngModel]="variableForm().d1"
-                          (ngModelChange)="selectVariableKey($event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona variable</option>
-                          @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                      <div class="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+                        <div class="grid gap-3">
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Dato original</label>
+                            <select
+                              required
+                              name="settings-variable-key"
+                              [ngModel]="variableForm().d1"
+                              (ngModelChange)="selectVariableKey($event)"
+                              class="field-control bg-white"
+                            >
+                              <option value="" disabled>Selecciona variable</option>
+                              @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                                <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                              }
+                            </select>
+                          </div>
+
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Transformacion</label>
+                            <select
+                              name="settings-variable-transform"
+                              [ngModel]="variableForm().transformacion"
+                              (ngModelChange)="updateVariableTransform($event)"
+                              class="field-control bg-white"
+                            >
+                              @for (transform of variableTransformOptions(); track transform.id) {
+                                <option [value]="transform.id">{{ transform.label }}</option>
+                              }
+                            </select>
+                            @if (selectedVariableTransform()?.description) {
+                              <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableTransform()?.description }}</p>
+                            }
+                          </div>
+
+                          @if (requiresSecondRegister()) {
+                            <div class="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <label class="mb-1 block text-xs font-bold text-slate-500">Segundo registro</label>
+                                <select
+                                  name="settings-variable-key-d2"
+                                  [ngModel]="variableForm().d2"
+                                  (ngModelChange)="updateVariableForm('d2', $event)"
+                                  class="field-control bg-white"
+                                >
+                                  <option value="">Selecciona variable</option>
+                                  @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                                    <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                                  }
+                                </select>
+                              </div>
+                              @if (usesRegisterOrder()) {
+                              <div>
+                                <label class="mb-1 block text-xs font-bold text-slate-500">Orden de registros</label>
+                                <select
+                                  name="settings-variable-word-swap"
+                                  [ngModel]="variableForm().wordSwap"
+                                  (ngModelChange)="updateVariableForm('wordSwap', $event)"
+                                  class="field-control bg-white"
+                                >
+                                  @if (isUint32TransformSelected()) {
+                                  <option value="true">Invertido CDAB</option>
+                                  <option value="false">Normal ABCD</option>
+                                  } @else {
+                                  <option value="false">Normal ABCD</option>
+                                  <option value="true">Invertido CDAB</option>
+                                  }
+                                </select>
+                                <p class="mt-1 text-xs font-semibold text-slate-400">{{ registerOrderHint() }}</p>
+                              </div>
+                              } @else {
+                              <div class="rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800">
+                                Formula: {{ variableForm().d1 || 'primer registro' }} * {{ variableForm().d2 || 'segundo registro' }}
+                              </div>
+                              }
+                            </div>
                           }
-                        </select>
                       </div>
+                    </div>
 
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500">Alias</label>
@@ -472,40 +594,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           />
                         </div>
                       </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Transformacion</label>
-                        <select
-                          name="settings-variable-transform"
-                          [ngModel]="variableForm().transformacion"
-                          (ngModelChange)="updateVariableTransform($event)"
-                          class="field-control"
-                        >
-                          @for (transform of variableTransformOptions(); track transform.id) {
-                            <option [value]="transform.id">{{ transform.label }}</option>
-                          }
-                        </select>
-                        @if (selectedVariableTransform()?.description) {
-                          <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableTransform()?.description }}</p>
-                        }
-                      </div>
-
-                      @if (requiresSecondRegister()) {
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Segundo registro</label>
-                          <select
-                            name="settings-variable-key-d2"
-                            [ngModel]="variableForm().d2"
-                            (ngModelChange)="updateVariableForm('d2', $event)"
-                            class="field-control"
-                          >
-                            <option value="">Selecciona variable</option>
-                            @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                              <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
-                            }
-                          </select>
-                        </div>
-                      }
 
                       @if (isLinearTransform()) {
                         <div class="grid grid-cols-2 gap-3">
@@ -1217,12 +1305,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </div>
                         <span class="inline-flex items-center gap-2 text-xs font-bold text-cyan-50">
                           <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
-                          06/05/2026 09:37
+                          {{ latestRealtimeTimestampLabel() }}
                         </span>
                       </div>
 
                       <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        @for (metric of realtimeMetrics; track metric.label) {
+                        @for (metric of realtimeMetrics(); track metric.label) {
                           <article class="rounded-lg bg-white/12 px-4 py-3 ring-1 ring-white/10">
                             <p class="text-xs font-bold text-cyan-100">{{ metric.label }}</p>
                             <p class="mt-1 text-2xl font-black leading-none">
@@ -1237,48 +1325,76 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <article class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
                       <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 class="text-sm font-black text-slate-800">Caudal en Tiempo Real</h3>
-                        <p class="text-xs font-semibold text-slate-400">Últimos 60 registros</p>
+                        <p class="text-xs font-semibold text-slate-400">Ultimos {{ realtimeChart().points.length }} registros minuto a minuto</p>
                       </div>
 
-                      <div class="mt-4 h-[310px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
-                        <svg viewBox="0 0 1120 260" class="h-full w-full" role="img" aria-label="Gráfico visual de caudal en tiempo real">
-                          <g class="text-slate-200" stroke="currentColor" stroke-width="1">
-                            <line x1="70" y1="26" x2="1070" y2="26" />
-                            <line x1="70" y1="78" x2="1070" y2="78" />
-                            <line x1="70" y1="130" x2="1070" y2="130" />
-                            <line x1="70" y1="182" x2="1070" y2="182" />
-                            <line x1="70" y1="234" x2="1070" y2="234" />
-                            <line x1="180" y1="26" x2="180" y2="234" />
-                            <line x1="335" y1="26" x2="335" y2="234" />
-                            <line x1="490" y1="26" x2="490" y2="234" />
-                            <line x1="645" y1="26" x2="645" y2="234" />
-                            <line x1="800" y1="26" x2="800" y2="234" />
-                            <line x1="955" y1="26" x2="955" y2="234" />
+                      <div class="mt-4 h-[220px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
+                        @if (realtimeChart().polyline) {
+                        <svg viewBox="0 0 1120 210" class="h-full w-full" role="img" aria-label="Grafico de caudal en tiempo real">
+                          <g stroke="#d6dde8" stroke-width="0.8">
+                            @for (tick of realtimeChart().yTicks; track tick.y) {
+                              <line x1="58" [attr.y1]="tick.y" x2="1092" [attr.y2]="tick.y" />
+                            }
+                            @for (tick of realtimeChart().xTicks; track tick.x) {
+                              <line [attr.x1]="tick.x" y1="24" [attr.x2]="tick.x" y2="156" />
+                            }
                           </g>
 
-                          <g class="text-slate-400" fill="currentColor" font-size="14" font-weight="700">
-                            <text x="18" y="31">46.7</text>
-                            <text x="18" y="83">46.65</text>
-                            <text x="18" y="135">46.6</text>
-                            <text x="18" y="187">46.55</text>
-                            <text x="18" y="239">46.5</text>
-                            <text x="78" y="254">08:40</text>
-                            <text x="250" y="254">08:45</text>
-                            <text x="420" y="254">08:50</text>
-                            <text x="590" y="254">09:00</text>
-                            <text x="760" y="254">09:10</text>
-                            <text x="930" y="254">09:25</text>
+                          <g fill="#6b7280" font-size="11" font-weight="500">
+                            @for (tick of realtimeChart().yTicks; track tick.y) {
+                              <text x="20" [attr.y]="(tick.y || 0) + 4">{{ tick.label }}</text>
+                            }
+                            @for (tick of realtimeChart().xTicks; track tick.x) {
+                              <text [attr.x]="(tick.x || 0) - 15" y="184">{{ tick.label }}</text>
+                            }
                           </g>
 
                           <polyline
-                            points="70,26 88,26 105,78 122,26 140,26 157,130 174,130 192,130 209,130 226,26 244,130 261,26 278,26 296,130 313,130 330,130 348,130 365,26 382,130 400,130 417,26 434,130 452,130 469,130 486,26 504,130 521,26 538,130 556,130 573,130 590,130 608,182 625,130 642,182 660,130 677,130 694,130 712,26 729,130 746,130 764,130 781,130 798,26 816,130 833,130 850,26 868,26 885,26 902,130 920,130 937,130 954,130 972,130 989,234 1006,130 1024,130 1041,130 1058,234 1070,26"
+                            [attr.points]="realtimeChart().polyline"
                             fill="none"
-                            stroke="#5f7fd4"
+                            stroke="#4f73ff"
                             stroke-linecap="round"
                             stroke-linejoin="round"
-                            stroke-width="3"
+                            stroke-width="1.8"
                           />
+                          @if (realtimeChart().tooltip; as tooltip) {
+                            <line [attr.x1]="tooltip.x" y1="24" [attr.x2]="tooltip.x" y2="156" stroke="#94a3b8" stroke-width="0.9" stroke-dasharray="4 4" />
+                            <circle [attr.cx]="tooltip.x" [attr.cy]="tooltip.y" r="4" fill="white" stroke="#4f73ff" stroke-width="2" />
+                            <foreignObject [attr.x]="tooltip.boxX" [attr.y]="tooltip.boxY" width="168" height="66">
+                              <div class="rounded-md border border-slate-100 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg">
+                                <p class="font-black text-slate-600">{{ tooltip.dateLabel }}</p>
+                                <p class="mt-1 flex items-center gap-1.5">
+                                  <span class="h-2 w-2 rounded-full bg-[#4f73ff]"></span>
+                                  <span>Caudal (L/s)</span>
+                                  <strong class="ml-auto text-slate-700">{{ tooltip.valueLabel }}</strong>
+                                </p>
+                              </div>
+                            </foreignObject>
+                          }
+                          @for (point of realtimeChart().points; track point.index) {
+                            <circle
+                              [attr.cx]="point.x"
+                              [attr.cy]="point.y"
+                              r="8"
+                              fill="transparent"
+                              class="cursor-crosshair"
+                              (mouseenter)="setRealtimeChartHover(point.index)"
+                              (focus)="setRealtimeChartHover(point.index)"
+                              (mouseleave)="clearRealtimeChartHover()"
+                              tabindex="0"
+                            >
+                              <title>{{ point.label }}: {{ formatChartNumber(point.value) }} L/s</title>
+                            </circle>
+                          }
                         </svg>
+                        } @else {
+                          <div class="flex h-full items-center justify-center bg-slate-50 text-center">
+                            <div>
+                              <span class="material-symbols-outlined text-[32px] text-slate-300">show_chart</span>
+                              <p class="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Sin datos reales para graficar</p>
+                            </div>
+                          </div>
+                        }
                       </div>
                     </article>
                   </div>
@@ -1594,6 +1710,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dashboardError = signal('');
   dashboardData = signal<SiteDashboardData | null>(null);
   dashboardLastLoadedAt = signal<Date | null>(null);
+  serverClockOffsetMs = signal(0);
   currentTime = signal(new Date());
   activeDetailTab = signal<DetailTab>('dga');
   historyPanelOpen = signal(false);
@@ -1613,6 +1730,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyDateFrom = signal('');
   historyDateTo = signal('');
   historyRecordLimit = signal(500);
+  hoveredRealtimePointIndex = signal<number | null>(null);
   dgaDateFilterOpen = signal(false);
   selectedDgaReport = signal<DgaReportRow | null>(null);
   dgaDateFrom = signal('2026-04-06');
@@ -1679,6 +1797,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   dashboardRefreshLabel = computed(() => this.formatDashboardRefresh(this.dashboardLastLoadedAt(), this.currentTime()));
   latestDeviceReadingLabel = computed(() => this.formatLatestDeviceReading(this.dashboardData()?.ultima_lectura));
+  currentServerTime = computed(() => new Date(this.currentTime().getTime() + this.serverClockOffsetMs()));
+  telemetryStatusBadges = computed<TelemetryStatusBadge[]>(() => {
+    const reading = this.dashboardData()?.ultima_lectura;
+    const officialTimestamp = String(reading?.timestamp_completo || reading?.time || '').trim();
+    const receivedTimestamp = String(reading?.received_at || '').trim();
+    const now = this.currentServerTime();
+
+    return [
+      this.buildTelemetryBadge('Ultimo dato equipo', officialTimestamp, now, 'datetime', 'online_prediction'),
+      this.buildTelemetryBadge('Recibido por plataforma', receivedTimestamp || officialTimestamp, now, 'relative', 'schedule'),
+    ];
+  });
   historySourceRows = computed(() => {
     if (this.historyRows().length) return this.historyRows();
     return this.historyLoading() ? [] : this.historyMockRows;
@@ -1707,6 +1837,24 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyRangeStart = computed(() => this.historyTotalRows() ? ((this.historyPage() - 1) * this.historyPageSize) + 1 : 0);
   historyRangeEnd = computed(() => Math.min(this.historyPage() * this.historyPageSize, this.historyTotalRows()));
   isHistoryMock = computed(() => !this.historyLoading() && this.historyRows().length === 0);
+  realtimeMetrics = computed<RealtimeMetric[]>(() => {
+    const caudal = this.findDashboardNumber('caudal') ?? this.latestHistoryNumber('caudalValue');
+    const totalizador = this.findDashboardNumber('totalizador') ?? this.findDashboardTransformNumber('uint32_registros') ?? this.latestHistoryNumber('totalizadorValue');
+    const nivel = this.findDashboardNumber('nivel') ?? this.latestHistoryNumber('nivelFreaticoValue');
+    const consumoHoy = this.calculateTodayConsumption();
+
+    return [
+      { label: 'Caudal Actual', value: this.formatRealtimeNumber(caudal, 2), unit: 'L/s' },
+      { label: 'Totalizador', value: this.formatRealtimeNumber(totalizador, 0), unit: 'm³' },
+      { label: 'Nivel de Agua', value: this.formatRealtimeNumber(nivel, 2), unit: 'm' },
+      { label: 'Consumo Hoy', value: this.formatRealtimeNumber(consumoHoy, 1), unit: 'm³' },
+    ];
+  });
+  latestRealtimeTimestampLabel = computed(() => {
+    const latest = this.latestRealtimeTimestamp();
+    return latest ? this.formatChileDateTime(latest) : 'Sin registros';
+  });
+  realtimeChart = computed<RealtimeChartData>(() => this.buildRealtimeChart());
   settingsSite = computed<SiteRecord>(() => {
     const site = this.siteVariables().site;
     if (site?.id) return site;
@@ -1808,13 +1956,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600' },
   ];
 
-  readonly realtimeMetrics = [
-    { label: 'Caudal Actual', value: '46.60', unit: 'L/s' },
-    { label: 'Totalizador', value: '6,043,415', unit: 'm³' },
-    { label: 'Nivel de Agua', value: '27.20', unit: 'm' },
-    { label: 'Consumo Hoy', value: '0.0', unit: 'm³' },
-  ];
-
   readonly historyMockRows: HistoricalTelemetryRow[] = [
     { id: 'mock-2026-04-01-06-00', fecha: '01/04/2026 06:00', caudal: '0', totalizador: '531.100', nivelFreatico: '1.6', mock: true },
     { id: 'mock-2026-04-01-05-00', fecha: '01/04/2026 05:00', caudal: '19.75', totalizador: '531.060,063', nivelFreatico: '3.3', mock: true },
@@ -1908,28 +2049,76 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return value === null ? '--%' : `${value}%`;
   }
 
-  private formatDashboardRefresh(date: Date | null, now: Date): string {
-    if (!date) return 'Vista sin actualizar';
+  private buildTelemetryBadge(
+    title: string,
+    rawTimestamp: string,
+    now: Date,
+    display: 'relative' | 'datetime',
+    icon: string
+  ): TelemetryStatusBadge {
+    const parsed = rawTimestamp ? this.parseUtcTimestamp(rawTimestamp) : null;
 
-    return `Vista cargada ${this.formatChileDateTime(date)} - ${this.formatRelativeTime(date, now)}`;
+    if (!parsed) {
+      return {
+        title,
+        value: 'Sin dato',
+        tone: 'empty',
+        icon,
+      };
+    }
+
+    const elapsedMs = Math.max(0, now.getTime() - parsed.getTime());
+
+    return {
+      title,
+      value: display === 'relative' ? this.formatDetailedRelativeTime(parsed, now) : this.formatChileDateTime(parsed),
+      tone: elapsedMs < 60 * 60 * 1000 ? 'ok' : 'warning',
+      icon,
+    };
   }
 
-  private formatRelativeTime(date: Date, now: Date): string {
+  telemetryBadgeClass(tone: TelemetryStatusBadge['tone']): string {
+    const base = 'inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2';
+    if (tone === 'ok') return `${base} border-emerald-200 bg-emerald-50 text-emerald-700`;
+    if (tone === 'warning') return `${base} border-amber-300 bg-amber-50 text-amber-700`;
+    return `${base} border-slate-200 bg-slate-50 text-slate-500`;
+  }
 
+  telemetryBadgeIconClass(tone: TelemetryStatusBadge['tone']): string {
+    const base = 'material-symbols-outlined text-[16px]';
+    if (tone === 'ok') return `${base} text-emerald-600`;
+    if (tone === 'warning') return `${base} text-amber-500`;
+    return `${base} text-slate-400`;
+  }
+
+  private formatDetailedRelativeTime(date: Date, now: Date): string {
     const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+
     if (elapsedSeconds < 60) return `hace ${elapsedSeconds} segundos`;
 
     const elapsedMinutes = Math.floor(elapsedSeconds / 60);
     if (elapsedMinutes < 60) return `hace ${elapsedMinutes} min`;
 
     const elapsedHours = Math.floor(elapsedMinutes / 60);
-    return `hace ${elapsedHours} h`;
+    const remainingMinutes = elapsedMinutes % 60;
+    if (elapsedHours < 24) {
+      return remainingMinutes ? `hace ${elapsedHours}h ${remainingMinutes}m` : `hace ${elapsedHours}h`;
+    }
+
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    const remainingHours = elapsedHours % 24;
+    return remainingHours ? `hace ${elapsedDays}d ${remainingHours}h` : `hace ${elapsedDays}d`;
+  }
+
+  private syncServerClock(rawServerTime: string | null | undefined): void {
+    const serverTime = rawServerTime ? this.parseUtcTimestamp(String(rawServerTime)) : null;
+    if (!serverTime) return;
+    this.serverClockOffsetMs.set(serverTime.getTime() - Date.now());
   }
 
   private formatLatestDeviceReading(reading: SiteDashboardData['ultima_lectura'] | undefined): string {
     const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
     if (!raw) return 'Equipo sin dato';
-
     return `Ultimo dato equipo ${this.formatChileDateTime(raw)}`;
   }
 
@@ -2158,6 +2347,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.variableForm.update((form) => ({
       ...form,
       transformacion: normalizedTransform,
+      wordSwap: normalizedTransform === 'uint32_registros' ? 'true' : form.wordSwap,
       factor: this.isLinearTransformValue(normalizedTransform) ? (form.factor || '1') : '1',
       offset: this.isLinearTransformValue(normalizedTransform) ? (form.offset || '0') : '0',
     }));
@@ -2171,12 +2361,32 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return this.selectedVariableTransform()?.requiresD2 === true;
   }
 
+  usesRegisterOrder(): boolean {
+    return ['ieee754_32', 'uint32_registros'].includes(this.variableForm().transformacion);
+  }
+
+  isUint32TransformSelected(): boolean {
+    return this.variableForm().transformacion === 'uint32_registros';
+  }
+
   selectedVariableRole(): SiteTypeRoleOption | undefined {
     return this.variableRoleOptions().find((role) => role.id === this.variableForm().rol_dashboard);
   }
 
   selectedVariableTransform(): SiteTypeTransformOption | undefined {
     return this.variableTransformOptions().find((transform) => transform.id === this.variableForm().transformacion);
+  }
+
+  registerOrderHint(): string {
+    const form = this.variableForm();
+    const first = form.d1 || 'primer registro';
+    const second = form.d2 || 'segundo registro';
+
+    if (form.wordSwap === 'true') {
+      return `${second} queda como registro alto y ${first} como registro bajo.`;
+    }
+
+    return `${first} queda como registro alto y ${second} como registro bajo.`;
   }
 
   calculatorButtonClass(transformId: string): string {
@@ -2191,7 +2401,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const rawText = String(form.sandboxRaw ?? '').trim();
     const unit = form.unidad ? ` ${form.unidad}` : '';
 
-    if (!rawText) return 'Ingresa un valor crudo';
+    if (!rawText && !this.requiresSecondRegister()) return 'Ingresa un valor crudo';
 
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.toNumber(rawText);
@@ -2202,7 +2412,28 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     }
 
     if (form.transformacion === 'ieee754_32') {
-      return form.d2 ? 'Se calculara con dos registros' : 'Selecciona segundo registro';
+      const rawA = this.valueForVariableKey(form.d1);
+      const rawB = this.valueForVariableKey(form.d2);
+      const decoded = this.decodeFloat32FromRegisters(rawA, rawB, form.wordSwap === 'true');
+
+      if (decoded === null) {
+        return form.d2 ? 'Registros no numericos' : 'Selecciona segundo registro';
+      }
+
+      return `${this.formatPreviewNumber(decoded)}${unit}`;
+    }
+
+    if (form.transformacion === 'uint32_registros') {
+      const rawA = this.toRegisterWord(this.valueForVariableKey(form.d1));
+      const rawB = this.toRegisterWord(this.valueForVariableKey(form.d2));
+
+      if (rawA === null || rawB === null) {
+        return form.d2 ? 'Registros no numericos' : 'Selecciona segundo registro';
+      }
+
+      const high = form.wordSwap === 'true' ? rawB : rawA;
+      const low = form.wordSwap === 'true' ? rawA : rawB;
+      return `${this.formatPreviewNumber((high * 65536) + low)}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -2265,6 +2496,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
       factor: this.configNumberToString(params?.factor) || '1',
       offset: this.configNumberToString(params?.offset) || '0',
+      wordSwap: String(params?.word_swap ?? params?.wordSwap ?? false),
       sandboxRaw: variable.valor_dato === null || variable.valor_dato === undefined ? '' : String(variable.valor_dato),
     });
   }
@@ -2320,6 +2552,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   setOperationMode(mode: OperationMode): void {
     this.operationMode.set(mode);
+  }
+
+  setRealtimeChartHover(index: number): void {
+    this.hoveredRealtimePointIndex.set(index);
+  }
+
+  clearRealtimeChartHover(): void {
+    this.hoveredRealtimePointIndex.set(null);
   }
 
   handleQuickAction(action: { tab?: DetailTab; openHistory?: boolean }): void {
@@ -2575,6 +2815,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
     const form = this.variableForm();
 
+    if (form.transformacion === 'ieee754_32' || form.transformacion === 'uint32_registros') {
+      return {
+        word_swap: form.wordSwap === 'true',
+        formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
+      };
+    }
+
     if (this.transformUsesLinearParameters(form.transformacion)) {
       return {
         factor: this.toNumber(form.factor) ?? 1,
@@ -2615,6 +2862,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
     if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
     if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
+    if (transformacion === 'uint32' || transformacion === 'uint32_registros') return 'uint32_registros';
     if (transformacion === 'caudal' || transformacion === 'caudal_m3h_lps' || transformacion === 'nivel_freatico') return 'lineal';
     return 'directo';
   }
@@ -2636,6 +2884,34 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private findTransformOption(transformacion: string): SiteTypeTransformOption | undefined {
     const normalized = this.normalizeVariableTransformForForm(transformacion);
     return this.variableTransformOptions().find((option) => option.id === normalized);
+  }
+
+  private valueForVariableKey(key: string): unknown {
+    if (!key) return null;
+    return this.siteVariables().variables.find((variable) => variable.nombre_dato === key)?.valor_dato ?? null;
+  }
+
+  private decodeFloat32FromRegisters(rawA: unknown, rawB: unknown, wordSwap: boolean): number | null {
+    const wordA = this.toRegisterWord(rawA);
+    const wordB = this.toRegisterWord(rawB);
+    if (wordA === null || wordB === null) return null;
+
+    const buffer = new ArrayBuffer(4);
+    const view = new DataView(buffer);
+    const first = wordSwap ? wordB : wordA;
+    const second = wordSwap ? wordA : wordB;
+
+    view.setUint16(0, first, false);
+    view.setUint16(2, second, false);
+
+    const decoded = view.getFloat32(0, false);
+    return Number.isFinite(decoded) ? decoded : null;
+  }
+
+  private toRegisterWord(value: unknown): number | null {
+    const parsed = this.toNumber(value);
+    if (parsed === null || !Number.isInteger(parsed) || parsed < 0 || parsed > 65535) return null;
+    return parsed;
   }
 
   private formatPreviewNumber(value: number): string {
@@ -2691,6 +2967,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       if (!res) return;
 
       const payload = res?.ok === false ? null : (res?.data || res || null);
+      this.syncServerClock(payload?.server_time);
       this.dashboardData.set(payload);
       this.dashboardLastLoadedAt.set(new Date());
       this.dashboardError.set(payload ? '' : 'No fue posible cargar datos del pozo.');
@@ -2751,7 +3028,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       caudal: this.formatHistoricalValue(row.caudal),
       totalizador: this.formatHistoricalValue(row.totalizador),
       nivelFreatico: this.formatHistoricalValue(row.nivel_freatico),
+      caudalValue: this.extractHistoricalNumber(row.caudal),
+      totalizadorValue: this.extractHistoricalNumber(row.totalizador),
+      nivelFreaticoValue: this.extractHistoricalNumber(row.nivel_freatico),
     };
+  }
+
+  private extractHistoricalNumber(value: HistoricalTelemetryValue | null | undefined): number | null {
+    if (!value || value.ok === false) return null;
+    return this.toNumber(value.valor);
   }
 
   private formatHistoricalValue(value: HistoricalTelemetryValue | null | undefined): string {
@@ -2768,6 +3053,226 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return new Intl.NumberFormat('es-CL', {
       maximumFractionDigits: 3,
     }).format(numericValue);
+  }
+
+  private findDashboardNumber(role: string): number | null {
+    const summaryValue = this.toNumber(this.dashboardData()?.resumen?.[role]?.valor);
+    if (summaryValue !== null) return summaryValue;
+
+    const variable = (this.dashboardData()?.variables || []).find((item) => {
+      if (item.ok === false) return false;
+      const text = this.normalizeSearchText(item.key, item.alias, item.rol_dashboard);
+      return item.key === role || item.rol_dashboard === role || text.includes(role);
+    });
+
+    return this.toNumber(variable?.valor);
+  }
+
+  private findDashboardTransformNumber(transformacion: string): number | null {
+    const variable = (this.dashboardData()?.variables || []).find((item) =>
+      item.ok !== false && item.transformacion === transformacion
+    );
+    return this.toNumber(variable?.valor);
+  }
+
+  private latestHistoryNumber(field: 'caudalValue' | 'totalizadorValue' | 'nivelFreaticoValue'): number | null {
+    return this.historyRows().find((row) => this.toNumber(row[field]) !== null)?.[field] ?? null;
+  }
+
+  private latestRealtimeTimestamp(): Date | null {
+    const latestHistory = this.historyRows().find((row) => row.timestampMs !== null && row.timestampMs !== undefined);
+    if (latestHistory?.timestampMs) return new Date(latestHistory.timestampMs);
+
+    const reading = this.dashboardData()?.ultima_lectura;
+    const parsed = this.parseUtcTimestamp(String(reading?.timestamp_completo || reading?.time || '').trim());
+    return parsed;
+  }
+
+  private calculateTodayConsumption(): number {
+    const todayKey = this.formatChileDateKey(this.currentTime());
+    const rows = this.historyRows()
+      .filter((row) =>
+        row.timestampMs !== null &&
+        row.timestampMs !== undefined &&
+        row.totalizadorValue !== null &&
+        row.totalizadorValue !== undefined &&
+        this.formatChileDateKey(new Date(row.timestampMs)) === todayKey
+      )
+      .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+
+    if (rows.length < 2) return 0;
+
+    const first = rows[0].totalizadorValue ?? 0;
+    const last = rows[rows.length - 1].totalizadorValue ?? first;
+    return Math.max(0, last - first);
+  }
+
+  private buildRealtimeChart(): RealtimeChartData {
+    const chartLeft = 58;
+    const chartRight = 1092;
+    const chartTop = 24;
+    const chartBottom = 156;
+    const rows = this.historyRows()
+      .filter((row) =>
+        row.timestampMs !== null &&
+        row.timestampMs !== undefined &&
+        row.caudalValue !== null &&
+        row.caudalValue !== undefined
+      )
+      .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0))
+      .slice(-60);
+
+    if (!rows.length) {
+      return { points: [], polyline: '', yTicks: [], xTicks: [], tooltip: null };
+    }
+
+    const values = rows.map((row) => row.caudalValue ?? 0);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const step = this.niceChartStep((maxValue - minValue) / 4 || Math.max(Math.abs(maxValue) * 0.005, 0.05));
+    let yMin = Math.floor((minValue - (step * 0.2)) / step) * step;
+    let yMax = Math.ceil((maxValue + (step * 0.2)) / step) * step;
+
+    if (yMax <= yMin) {
+      yMax = yMin + step;
+    }
+
+    const yRange = yMax - yMin || 1;
+    const minTime = rows[0].timestampMs || 0;
+    const maxTime = rows[rows.length - 1].timestampMs || minTime;
+    const timeRange = Math.max(1000, maxTime - minTime);
+
+    const points = rows.map((row, index) => {
+      const value = row.caudalValue ?? 0;
+      const timestampMs = row.timestampMs || minTime;
+      const x = rows.length > 1
+        ? chartLeft + (((timestampMs - minTime) / timeRange) * (chartRight - chartLeft))
+        : (chartLeft + chartRight) / 2;
+      const y = chartBottom - (((value - yMin) / yRange) * (chartBottom - chartTop));
+
+      return {
+        index,
+        x: Math.round(x * 10) / 10,
+        y: Math.round(y * 10) / 10,
+        value,
+        label: row.fecha,
+        timestampMs,
+      };
+    });
+
+    const yTickPositions = [24, 57, 90, 123, 156];
+    const yTicks = yTickPositions.map((y, index) => {
+      const ratio = index / (yTickPositions.length - 1);
+      const value = yMax - (ratio * yRange);
+      return { y, label: this.formatChartNumber(value) };
+    });
+
+    const xTicks = this.buildFiveMinuteTicks(minTime, maxTime, chartLeft, chartRight);
+    const hoveredIndex = this.hoveredRealtimePointIndex();
+    const tooltipPoint = points.find((point) => point.index === hoveredIndex) || points[points.length - 1] || null;
+    const tooltip = tooltipPoint
+      ? {
+          x: tooltipPoint.x,
+          y: tooltipPoint.y,
+          boxX: this.clamp(tooltipPoint.x + 12, 8, 944),
+          boxY: this.clamp(tooltipPoint.y - 62, 8, 132),
+          dateLabel: this.formatChartTooltipDate(new Date(tooltipPoint.timestampMs)),
+          valueLabel: this.formatChartNumber(tooltipPoint.value),
+        }
+      : null;
+
+    return {
+      points,
+      polyline: points.map((point) => `${point.x},${point.y}`).join(' '),
+      yTicks,
+      xTicks,
+      tooltip,
+    };
+  }
+
+  private buildFiveMinuteTicks(minTime: number, maxTime: number, chartLeft: number, chartRight: number): RealtimeChartTick[] {
+    const intervalMs = 5 * 60 * 1000;
+    const timeRange = Math.max(1000, maxTime - minTime);
+    const firstTick = Math.ceil(minTime / intervalMs) * intervalMs;
+    const ticks: RealtimeChartTick[] = [];
+
+    for (let tick = firstTick; tick <= maxTime; tick += intervalMs) {
+      ticks.push({
+        x: Math.round(chartLeft + (((tick - minTime) / timeRange) * (chartRight - chartLeft))),
+        label: this.formatChileTimeShort(new Date(tick)),
+      });
+    }
+
+    if (!ticks.length) {
+      return [
+        { x: chartLeft, label: this.formatChileTimeShort(new Date(minTime)) },
+        { x: chartRight - 30, label: this.formatChileTimeShort(new Date(maxTime)) },
+      ];
+    }
+
+    return ticks;
+  }
+
+  private niceChartStep(value: number): number {
+    const raw = Math.max(Math.abs(value), 0.01);
+    const exponent = Math.floor(Math.log10(raw));
+    const magnitude = 10 ** exponent;
+    const normalized = raw / magnitude;
+    const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    return nice * magnitude;
+  }
+
+  private formatRealtimeNumber(value: number | null, maximumFractionDigits: number): string {
+    if (value === null) return '--';
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: maximumFractionDigits > 0 ? Math.min(1, maximumFractionDigits) : 0,
+      maximumFractionDigits,
+    }).format(value);
+  }
+
+  formatChartNumber(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 2,
+    }).format(value);
+  }
+
+  private formatChileTimeShort(value: Date): string {
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).format(value);
+  }
+
+  private formatChartTooltipDate(value: Date): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).formatToParts(value);
+    const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+    const month = get('month');
+    const cleanMonth = month ? `${month.charAt(0).toUpperCase()}${month.slice(1)}` : '';
+    return `${get('day')} ${cleanMonth} ${get('year')} ${get('hour')}:${get('minute')}:${get('second')}`;
+  }
+
+  private formatChileDateKey(value: Date): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+    const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+    return `${get('year')}-${get('month')}-${get('day')}`;
   }
 
   private findAccessibleSite(tree: any[], siteId: string): SiteContext | null {

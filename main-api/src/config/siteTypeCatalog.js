@@ -18,6 +18,13 @@ const COMMON_TRANSFORMS = [
     enabled: true,
     requiresD2: true,
   },
+  {
+    id: 'uint32_registros',
+    label: 'D1 * D2',
+    description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
+    enabled: true,
+    requiresD2: true,
+  },
 ];
 
 const SITE_TYPE_CATALOG = {
@@ -89,6 +96,8 @@ const VARIABLE_TRANSFORM_IDS = Object.freeze([
   'lineal',
   'escala_lineal',
   'formula',
+  'uint32_registros',
+  'uint32',
   'nivel_freatico',
   'caudal',
   'caudal_m3h_lps',

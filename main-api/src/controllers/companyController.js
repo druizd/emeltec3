@@ -76,6 +76,7 @@ function normalizeVariableTransform(value) {
   if (normalized === 'escala_lineal') return 'lineal';
   if (normalized === 'ieee754') return 'ieee754_32';
   if (normalized === 'caudal') return 'caudal_m3h_lps';
+  if (normalized === 'uint32') return 'uint32_registros';
   return normalized;
 }
 
@@ -758,6 +759,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
         `
         SELECT
           time,
+          received_at,
           id_serial,
           data,
           ${utcTimestampSql('time')} AS timestamp_completo
@@ -832,10 +834,11 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
       db.query(
         `
-        SELECT time, id_serial, data, timestamp_completo
+        SELECT time, received_at, id_serial, data, timestamp_completo
         FROM (
           SELECT DISTINCT ON (date_trunc('minute', time))
             time,
+            received_at,
             id_serial,
             data,
             ${utcTimestampSql('time')} AS timestamp_completo
@@ -985,8 +988,8 @@ exports.createSiteVariableMap = async (req, res, next) => {
     if (parametros === null) {
       return badRequest(res, 'parametros debe ser un objeto JSON valido.');
     }
-    if (transformacion === 'ieee754_32' && !d2) {
-      return badRequest(res, 'd2 es requerido para interpretar IEEE754 de 32 bits.');
+    if (['ieee754_32', 'uint32_registros'].includes(transformacion) && !d2) {
+      return badRequest(res, 'd2 es requerido para esta transformacion.');
     }
 
     const existing = await db.query(
@@ -1069,8 +1072,8 @@ exports.updateSiteVariableMap = async (req, res, next) => {
 
     const nextD2 = req.body.d2 === undefined ? current.d2 : nullableString(req.body.d2);
     const nextTransform = transformacion || current.transformacion || 'directo';
-    if (nextTransform === 'ieee754_32' && !nextD2) {
-      return badRequest(res, 'd2 es requerido para interpretar IEEE754 de 32 bits.');
+    if (['ieee754_32', 'uint32_registros'].includes(nextTransform) && !nextD2) {
+      return badRequest(res, 'd2 es requerido para esta transformacion.');
     }
 
     const updates = [];
