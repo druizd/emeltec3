@@ -42,11 +42,13 @@ const MODULES = [
       class="flex h-full w-[248px] shrink-0 flex-col overflow-hidden bg-white"
       style="border-right: 1px solid #dfe7f1; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
     >
-      <div class="flex h-[60px] shrink-0 items-center justify-between border-b border-[#dfe7f1] px-4">
-        <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[30px] w-auto object-contain" />
+      <div class="relative flex h-[60px] shrink-0 items-center border-b border-[#dfe7f1] px-4">
+        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[30px] w-auto object-contain" />
+        </div>
         <button
           type="button"
-          class="flex h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8]"
+          class="ml-auto flex h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8]"
         >
           <span class="material-symbols-outlined text-[16px]">keyboard_double_arrow_left</span>
         </button>
