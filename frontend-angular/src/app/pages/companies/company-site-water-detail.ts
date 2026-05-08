@@ -71,6 +71,13 @@ interface DgaReportRow {
   comprobante: string;
 }
 
+interface TelemetryStatusBadge {
+  title: string;
+  value: string;
+  tone: 'ok' | 'warning' | 'empty';
+  icon: string;
+}
+
 interface DashboardVariable {
   key?: string | null;
   alias?: string | null;
@@ -115,6 +122,7 @@ interface VariableForm {
   transformacion: string;
   factor: string;
   offset: string;
+  wordSwap: string;
   sandboxRaw: string;
 }
 
@@ -134,6 +142,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   transformacion: 'directo',
   factor: '1',
   offset: '0',
+  wordSwap: 'false',
   sandboxRaw: '',
 };
 
@@ -240,14 +249,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
 
               <div class="flex flex-wrap items-center gap-2 text-[11px] font-bold xl:justify-end">
-                <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
-                  <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                  {{ latestDeviceReadingLabel() }}
-                </span>
-                <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-2.5 text-blue-700">
-                  <span class="material-symbols-outlined text-[15px]">schedule</span>
-                  {{ dashboardRefreshLabel() }}
-                </span>
+                @for (badge of telemetryStatusBadges(); track badge.title) {
+                  <span [class]="telemetryBadgeClass(badge.tone)">
+                    <span [class]="telemetryBadgeIconClass(badge.tone)">{{ badge.icon }}</span>
+                    <span class="grid leading-tight">
+                      <span class="text-[10px] font-black">{{ badge.title }}</span>
+                      <span class="text-xs font-black">{{ badge.value }}</span>
+                    </span>
+                  </span>
+                }
                 <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
                   <span class="material-symbols-outlined text-[15px]">verified</span>
                   Reporte DGA · Aceptado · 17:00
@@ -401,21 +411,74 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <p class="mt-1 text-xs font-semibold text-slate-400">Se guardan directamente en este sitio, sin seleccionar equipo.</p>
                       </div>
 
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Dato original</label>
-                        <select
-                          required
-                          name="settings-variable-key"
-                          [ngModel]="variableForm().d1"
-                          (ngModelChange)="selectVariableKey($event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona variable</option>
-                          @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                      <div class="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
+                        <div class="grid gap-3">
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Dato original</label>
+                            <select
+                              required
+                              name="settings-variable-key"
+                              [ngModel]="variableForm().d1"
+                              (ngModelChange)="selectVariableKey($event)"
+                              class="field-control bg-white"
+                            >
+                              <option value="" disabled>Selecciona variable</option>
+                              @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                                <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                              }
+                            </select>
+                          </div>
+
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500">Transformacion</label>
+                            <select
+                              name="settings-variable-transform"
+                              [ngModel]="variableForm().transformacion"
+                              (ngModelChange)="updateVariableTransform($event)"
+                              class="field-control bg-white"
+                            >
+                              @for (transform of variableTransformOptions(); track transform.id) {
+                                <option [value]="transform.id">{{ transform.label }}</option>
+                              }
+                            </select>
+                            @if (selectedVariableTransform()?.description) {
+                              <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableTransform()?.description }}</p>
+                            }
+                          </div>
+
+                          @if (requiresSecondRegister()) {
+                            <div class="grid gap-3 sm:grid-cols-2">
+                              <div>
+                                <label class="mb-1 block text-xs font-bold text-slate-500">Segundo registro</label>
+                                <select
+                                  name="settings-variable-key-d2"
+                                  [ngModel]="variableForm().d2"
+                                  (ngModelChange)="updateVariableForm('d2', $event)"
+                                  class="field-control bg-white"
+                                >
+                                  <option value="">Selecciona variable</option>
+                                  @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                                    <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                                  }
+                                </select>
+                              </div>
+                              <div>
+                                <label class="mb-1 block text-xs font-bold text-slate-500">Orden de registros</label>
+                                <select
+                                  name="settings-variable-word-swap"
+                                  [ngModel]="variableForm().wordSwap"
+                                  (ngModelChange)="updateVariableForm('wordSwap', $event)"
+                                  class="field-control bg-white"
+                                >
+                                  <option value="false">Normal ABCD</option>
+                                  <option value="true">Invertido CDAB</option>
+                                </select>
+                                <p class="mt-1 text-xs font-semibold text-slate-400">{{ ieeeRegisterOrderHint() }}</p>
+                              </div>
+                            </div>
                           }
-                        </select>
                       </div>
+                    </div>
 
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500">Alias</label>
@@ -472,40 +535,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           />
                         </div>
                       </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Transformacion</label>
-                        <select
-                          name="settings-variable-transform"
-                          [ngModel]="variableForm().transformacion"
-                          (ngModelChange)="updateVariableTransform($event)"
-                          class="field-control"
-                        >
-                          @for (transform of variableTransformOptions(); track transform.id) {
-                            <option [value]="transform.id">{{ transform.label }}</option>
-                          }
-                        </select>
-                        @if (selectedVariableTransform()?.description) {
-                          <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableTransform()?.description }}</p>
-                        }
-                      </div>
-
-                      @if (requiresSecondRegister()) {
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Segundo registro</label>
-                          <select
-                            name="settings-variable-key-d2"
-                            [ngModel]="variableForm().d2"
-                            (ngModelChange)="updateVariableForm('d2', $event)"
-                            class="field-control"
-                          >
-                            <option value="">Selecciona variable</option>
-                            @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                              <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
-                            }
-                          </select>
-                        </div>
-                      }
 
                       @if (isLinearTransform()) {
                         <div class="grid grid-cols-2 gap-3">
@@ -1529,8 +1558,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
-  dashboardRefreshLabel = computed(() => this.formatDashboardRefresh(this.dashboardLastLoadedAt(), this.currentTime()));
-  latestDeviceReadingLabel = computed(() => this.formatLatestDeviceReading(this.dashboardData()?.ultima_lectura));
+  telemetryStatusBadges = computed<TelemetryStatusBadge[]>(() => {
+    const reading = this.dashboardData()?.ultima_lectura;
+    const dashboardTimestamp = String(reading?.time || reading?.timestamp_completo || '').trim();
+    const deviceTimestamp = String(reading?.timestamp_completo || reading?.time || '').trim();
+    const now = this.currentTime();
+
+    return [
+      this.buildTelemetryBadge('Ultimo dato en dashboard', dashboardTimestamp, now, 'relative', 'schedule'),
+      this.buildTelemetryBadge('Ultimo dato desde el equipo', deviceTimestamp, now, 'datetime', 'online_prediction'),
+    ];
+  });
   historySourceRows = computed(() => {
     if (this.historyRows().length) return this.historyRows();
     return this.historyLoading() ? [] : this.historyMockRows;
@@ -1742,29 +1780,65 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return value === null ? '--%' : `${value}%`;
   }
 
-  private formatDashboardRefresh(date: Date | null, now: Date): string {
-    if (!date) return 'Vista sin actualizar';
+  private buildTelemetryBadge(
+    title: string,
+    rawTimestamp: string,
+    now: Date,
+    display: 'relative' | 'datetime',
+    icon: string
+  ): TelemetryStatusBadge {
+    const parsed = rawTimestamp ? this.parseUtcTimestamp(rawTimestamp) : null;
 
-    return `Vista cargada ${this.formatChileDateTime(date)} - ${this.formatRelativeTime(date, now)}`;
+    if (!parsed) {
+      return {
+        title,
+        value: 'Sin dato',
+        tone: 'empty',
+        icon,
+      };
+    }
+
+    const elapsedMs = Math.max(0, now.getTime() - parsed.getTime());
+
+    return {
+      title,
+      value: display === 'relative' ? this.formatDetailedRelativeTime(parsed, now) : this.formatChileDateTime(parsed),
+      tone: elapsedMs < 60 * 60 * 1000 ? 'ok' : 'warning',
+      icon,
+    };
   }
 
-  private formatRelativeTime(date: Date, now: Date): string {
+  telemetryBadgeClass(tone: TelemetryStatusBadge['tone']): string {
+    const base = 'inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2';
+    if (tone === 'ok') return `${base} border-emerald-200 bg-emerald-50 text-emerald-700`;
+    if (tone === 'warning') return `${base} border-amber-300 bg-amber-50 text-amber-700`;
+    return `${base} border-slate-200 bg-slate-50 text-slate-500`;
+  }
 
+  telemetryBadgeIconClass(tone: TelemetryStatusBadge['tone']): string {
+    const base = 'material-symbols-outlined text-[16px]';
+    if (tone === 'ok') return `${base} text-emerald-600`;
+    if (tone === 'warning') return `${base} text-amber-500`;
+    return `${base} text-slate-400`;
+  }
+
+  private formatDetailedRelativeTime(date: Date, now: Date): string {
     const elapsedSeconds = Math.max(0, Math.floor((now.getTime() - date.getTime()) / 1000));
+
     if (elapsedSeconds < 60) return `hace ${elapsedSeconds} segundos`;
 
     const elapsedMinutes = Math.floor(elapsedSeconds / 60);
     if (elapsedMinutes < 60) return `hace ${elapsedMinutes} min`;
 
     const elapsedHours = Math.floor(elapsedMinutes / 60);
-    return `hace ${elapsedHours} h`;
-  }
+    const remainingMinutes = elapsedMinutes % 60;
+    if (elapsedHours < 24) {
+      return remainingMinutes ? `hace ${elapsedHours}h ${remainingMinutes}m` : `hace ${elapsedHours}h`;
+    }
 
-  private formatLatestDeviceReading(reading: SiteDashboardData['ultima_lectura'] | undefined): string {
-    const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
-    if (!raw) return 'Equipo sin dato';
-
-    return `Ultimo dato equipo ${this.formatChileDateTime(raw)}`;
+    const elapsedDays = Math.floor(elapsedHours / 24);
+    const remainingHours = elapsedHours % 24;
+    return remainingHours ? `hace ${elapsedDays}d ${remainingHours}h` : `hace ${elapsedDays}d`;
   }
 
   private formatChileDateTime(value: Date | string): string {
@@ -2013,6 +2087,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return this.variableTransformOptions().find((transform) => transform.id === this.variableForm().transformacion);
   }
 
+  ieeeRegisterOrderHint(): string {
+    const form = this.variableForm();
+    const first = form.d1 || 'primer registro';
+    const second = form.d2 || 'segundo registro';
+
+    if (form.wordSwap === 'true') {
+      return `${second} queda como dato mayor y ${first} como dato menor.`;
+    }
+
+    return `${first} queda como dato mayor y ${second} como dato menor.`;
+  }
+
   calculatorButtonClass(transformId: string): string {
     const base = 'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-black uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
@@ -2036,7 +2122,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     }
 
     if (form.transformacion === 'ieee754_32') {
-      return form.d2 ? 'Se calculara con dos registros' : 'Selecciona segundo registro';
+      const rawA = this.valueForVariableKey(form.d1);
+      const rawB = this.valueForVariableKey(form.d2);
+      const decoded = this.decodeFloat32FromRegisters(rawA, rawB, form.wordSwap === 'true');
+
+      if (decoded === null) {
+        return form.d2 ? 'Registros no numericos' : 'Selecciona segundo registro';
+      }
+
+      return `${this.formatPreviewNumber(decoded)}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -2099,6 +2193,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
       factor: this.configNumberToString(params?.factor) || '1',
       offset: this.configNumberToString(params?.offset) || '0',
+      wordSwap: String(params?.word_swap ?? params?.wordSwap ?? false),
       sandboxRaw: variable.valor_dato === null || variable.valor_dato === undefined ? '' : String(variable.valor_dato),
     });
   }
@@ -2409,6 +2504,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
     const form = this.variableForm();
 
+    if (form.transformacion === 'ieee754_32') {
+      return {
+        word_swap: form.wordSwap === 'true',
+        formato: 'float32',
+      };
+    }
+
     if (this.transformUsesLinearParameters(form.transformacion)) {
       return {
         factor: this.toNumber(form.factor) ?? 1,
@@ -2470,6 +2572,34 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private findTransformOption(transformacion: string): SiteTypeTransformOption | undefined {
     const normalized = this.normalizeVariableTransformForForm(transformacion);
     return this.variableTransformOptions().find((option) => option.id === normalized);
+  }
+
+  private valueForVariableKey(key: string): unknown {
+    if (!key) return null;
+    return this.siteVariables().variables.find((variable) => variable.nombre_dato === key)?.valor_dato ?? null;
+  }
+
+  private decodeFloat32FromRegisters(rawA: unknown, rawB: unknown, wordSwap: boolean): number | null {
+    const wordA = this.toRegisterWord(rawA);
+    const wordB = this.toRegisterWord(rawB);
+    if (wordA === null || wordB === null) return null;
+
+    const buffer = new ArrayBuffer(4);
+    const view = new DataView(buffer);
+    const first = wordSwap ? wordB : wordA;
+    const second = wordSwap ? wordA : wordB;
+
+    view.setUint16(0, first, false);
+    view.setUint16(2, second, false);
+
+    const decoded = view.getFloat32(0, false);
+    return Number.isFinite(decoded) ? decoded : null;
+  }
+
+  private toRegisterWord(value: unknown): number | null {
+    const parsed = this.toNumber(value);
+    if (parsed === null || !Number.isInteger(parsed) || parsed < 0 || parsed > 65535) return null;
+    return parsed;
   }
 
   private formatPreviewNumber(value: number): string {

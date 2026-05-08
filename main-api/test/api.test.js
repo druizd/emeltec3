@@ -258,6 +258,49 @@ test("siteTelemetryService usa profundidad total como baseDelSensor cuando profu
   assert.equal(historical.nivel_freatico.valor, 773.2);
 });
 
+test("siteTelemetryService calcula caudal desde dos registros IEEE754", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const pozoConfig = { profundidad_sensor_m: 0, profundidad_pozo_m: 800 };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "Flujometro",
+      d1: "REG4",
+      d2: "REG5",
+      tipo_dato: "FLOAT",
+      unidad: "L/s",
+      rol_dashboard: "caudal",
+      transformacion: "ieee754_32",
+      parametros: { word_swap: false, formato: "float32" },
+    },
+  ];
+  const latest = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07T17:00:00Z",
+    id_serial: "PLC-01",
+    data: { REG4: 17096, REG5: 0 },
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
+  assert.equal(dashboard.resumen.caudal.ok, true);
+  assert.equal(dashboard.resumen.caudal.valor, 100);
+
+  const historical = mapHistoricalDashboardRow({
+    row: { ...latest, fecha: latest.timestamp_completo },
+    site,
+    mappings,
+    pozoConfig,
+  });
+  assert.equal(historical.caudal.ok, true);
+  assert.equal(historical.caudal.valor, 100);
+});
+
 test("GET /api/health responde con estado y hora del servidor", async () => {
   const dbMock = createDbMock();
   dbMock.enqueue({
