@@ -201,9 +201,42 @@ function registrosModbusAFloat32(wordAlta, wordBaja, wordSwap = false) {
   };
 }
 
+/**
+ * Convierte dos registros Modbus de 16 bits a un entero unsigned de 32 bits.
+ *
+ * Formula:
+ *   (registroAlto * 65536) + registroBajo
+ *
+ * wordSwap permite invertir el orden cuando el equipo envia primero la word baja:
+ *   false: d1 = registroAlto, d2 = registroBajo
+ *   true:  d2 = registroAlto, d1 = registroBajo
+ */
+function registrosModbusAUInt32(wordAlta, wordBaja, wordSwap = false) {
+  if (!Number.isInteger(wordAlta) || wordAlta < 0 || wordAlta > 65535) {
+    throw new Error('El primer valor debe ser un entero entre 0 y 65535');
+  }
+  if (!Number.isInteger(wordBaja) || wordBaja < 0 || wordBaja > 65535) {
+    throw new Error('El segundo valor debe ser un entero entre 0 y 65535');
+  }
+
+  const registroAlto = wordSwap ? wordBaja : wordAlta;
+  const registroBajo = wordSwap ? wordAlta : wordBaja;
+
+  return {
+    valor: (registroAlto * 65536) + registroBajo,
+    word_swap: wordSwap,
+    detalle: {
+      registro_alto: registroAlto,
+      registro_bajo: registroBajo,
+      formula: `(${registroAlto} * 65536) + ${registroBajo}`,
+    },
+  };
+}
+
 module.exports = {
   parseIEEE754,
   registrosModbusAFloat32,
+  registrosModbusAUInt32,
   bytesToFloat32,
   bytesToInt32,
   bytesToInt16,

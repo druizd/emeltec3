@@ -171,6 +171,38 @@ test("siteTelemetryService expone nivel_freatico cuando la variable Nivel usa la
   assert.equal(historical.fecha, "2026-05-07T17:00:00Z");
 });
 
+test("siteTelemetryService usa equipo.time como timestamp oficial aunque timestamp_completo venga preconvertido", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const latest = {
+    time: "2026-05-08T05:31:00.000Z",
+    timestamp_completo: "2026-05-08T01:31:00Z",
+    received_at: "2026-05-08T05:29:53.041Z",
+    id_serial: "PLC-01",
+    data: {},
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig: null, mappings: [], latest });
+  assert.equal(dashboard.ultima_lectura.time, "2026-05-08T05:31:00Z");
+  assert.equal(dashboard.ultima_lectura.timestamp_completo, "2026-05-08T05:31:00Z");
+  assert.equal(dashboard.ultima_lectura.received_at, "2026-05-08T05:29:53Z");
+
+  const historical = mapHistoricalDashboardRow({
+    row: latest,
+    site,
+    mappings: [],
+    pozoConfig: null,
+  });
+  assert.equal(historical.timestamp, "2026-05-08T05:31:00Z");
+  assert.equal(historical.fecha, "2026-05-08T05:31:00Z");
+  assert.equal(historical.received_at, "2026-05-08T05:29:53Z");
+});
+
 test("siteTelemetryService deriva nivel_freatico desde una variable Nivel lineal", () => {
   clearSrcModules();
   const {
@@ -256,6 +288,122 @@ test("siteTelemetryService usa profundidad total como baseDelSensor cuando profu
   });
   assert.equal(historical.nivel_freatico.ok, true);
   assert.equal(historical.nivel_freatico.valor, 773.2);
+});
+
+test("siteTelemetryService calcula caudal desde dos registros IEEE754", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const pozoConfig = { profundidad_sensor_m: 0, profundidad_pozo_m: 800 };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "Flujometro",
+      d1: "REG4",
+      d2: "REG5",
+      tipo_dato: "FLOAT",
+      unidad: "L/s",
+      rol_dashboard: "caudal",
+      transformacion: "ieee754_32",
+      parametros: { word_swap: false, formato: "float32" },
+    },
+  ];
+  const latest = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07T17:00:00Z",
+    id_serial: "PLC-01",
+    data: { REG4: 17096, REG5: 0 },
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
+  assert.equal(dashboard.resumen.caudal.ok, true);
+  assert.equal(dashboard.resumen.caudal.valor, 100);
+
+  const historical = mapHistoricalDashboardRow({
+    row: { ...latest, fecha: latest.timestamp_completo },
+    site,
+    mappings,
+    pozoConfig,
+  });
+  assert.equal(historical.caudal.ok, true);
+  assert.equal(historical.caudal.valor, 100);
+});
+
+test("siteTelemetryService calcula totalizador como uint32 desde dos registros", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const pozoConfig = { profundidad_sensor_m: 0, profundidad_pozo_m: 800 };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "Caudal Acumulado",
+      d1: "REG4",
+      d2: "REG5",
+      tipo_dato: "FLOAT",
+      unidad: "m3",
+      rol_dashboard: "totalizador",
+      transformacion: "uint32_registros",
+      parametros: { word_swap: true, formato: "uint32" },
+    },
+  ];
+  const latest = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07T17:00:00Z",
+    id_serial: "PLC-01",
+    data: { REG4: 14103, REG5: 92 },
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
+  assert.equal(dashboard.resumen.totalizador.ok, true);
+  assert.equal(dashboard.resumen.totalizador.valor, 6043415);
+
+  const historical = mapHistoricalDashboardRow({
+    row: { ...latest, fecha: latest.timestamp_completo },
+    site,
+    mappings,
+    pozoConfig,
+  });
+  assert.equal(historical.totalizador.ok, true);
+  assert.equal(historical.totalizador.valor, 6043415);
+});
+
+test("siteTelemetryService reconoce uint32 como totalizador en historicos aunque el rol sea generico", () => {
+  clearSrcModules();
+  const { mapHistoricalDashboardRow } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "REG5",
+      d1: "REG4",
+      d2: "REG5",
+      tipo_dato: "FLOAT",
+      unidad: "m3",
+      rol_dashboard: "generico",
+      transformacion: "uint32_registros",
+      parametros: { word_swap: true, formato: "uint32" },
+    },
+  ];
+  const row = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07T17:00:00Z",
+    id_serial: "PLC-01",
+    data: { REG4: 14103, REG5: 92 },
+  };
+
+  const historical = mapHistoricalDashboardRow({ row, site, mappings, pozoConfig: null });
+  assert.equal(historical.totalizador.ok, true);
+  assert.equal(historical.totalizador.valor, 6043415);
 });
 
 test("GET /api/health responde con estado y hora del servidor", async () => {
