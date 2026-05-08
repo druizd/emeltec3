@@ -39,11 +39,11 @@ const MODULES = [
   imports: [CommonModule],
   template: `
     <aside
-      class="flex h-full w-[190px] shrink-0 flex-col overflow-hidden bg-white"
+      class="flex h-full w-[248px] shrink-0 flex-col overflow-hidden bg-white"
       style="border-right: 1px solid #dfe7f1; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
     >
-      <div class="flex h-[42px] shrink-0 items-center justify-between border-b border-[#dfe7f1] px-3.5">
-        <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[21px] w-auto object-contain" />
+      <div class="flex h-[60px] shrink-0 items-center justify-between border-b border-[#dfe7f1] px-4">
+        <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[30px] w-auto object-contain" />
         <button
           type="button"
           class="flex h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8]"
@@ -105,13 +105,13 @@ const MODULES = [
             >
               <span class="flex min-w-0 items-center gap-[7px]">
                 <span
-                  class="flex h-[23px] w-[23px] shrink-0 items-center justify-center rounded-md"
+                  class="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-md"
                   [style.background]="mod.bg"
                   [style.border]="'1px solid ' + mod.border"
                 >
-                  <span class="material-symbols-outlined text-[13px]" [style.color]="mod.color">{{ mod.icon }}</span>
+                  <span class="material-symbols-outlined text-[14px]" [style.color]="mod.color">{{ mod.icon }}</span>
                 </span>
-                <span class="truncate text-left text-[12px] font-medium">{{ mod.label }}</span>
+                <span class="truncate text-left text-[13px] font-medium">{{ mod.label }}</span>
               </span>
 
               @if (mod.companies.length > 0) {
@@ -130,16 +130,9 @@ const MODULES = [
                   <button
                     type="button"
                     (click)="toggleCompany(company.id)"
-                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[3px] text-left text-[9px] font-bold uppercase tracking-[0.07em] text-[#94a3b8] transition-colors hover:bg-[#f8fafc] hover:text-[#64748b]"
+                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-[9px] font-bold uppercase tracking-[0.07em] text-[#94a3b8] transition-colors hover:bg-[#f8fafc] hover:text-[#64748b]"
                   >
-                    <span
-                      class="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border text-[11px] leading-none"
-                      [style.border-color]="isCompanyOpen(company.id) ? mod.color : '#dfe7f1'"
-                      [style.color]="isCompanyOpen(company.id) ? mod.color : '#94a3b8'"
-                      [style.background]="isCompanyOpen(company.id) ? mod.bg : '#ffffff'"
-                    >
-                      {{ isCompanyOpen(company.id) ? '-' : '+' }}
-                    </span>
+                    <span class="material-symbols-outlined text-[11px] opacity-50">domain</span>
                     <span class="truncate">{{ company.name }}</span>
                   </button>
 

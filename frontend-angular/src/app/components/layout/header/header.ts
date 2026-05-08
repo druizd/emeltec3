@@ -9,7 +9,7 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <header class="h-[44px] shrink-0 border-b border-[#dfe7f1] bg-white">
+    <header class="h-[52px] shrink-0 border-b border-[#dfe7f1] bg-white">
       <div class="flex h-full items-stretch px-5">
         <nav class="flex items-stretch">
           <button

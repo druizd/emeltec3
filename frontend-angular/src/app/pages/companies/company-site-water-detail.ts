@@ -274,7 +274,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, CompaniesSiteDetailSkeletonComponent],
   template: `
-    <div class="min-h-full bg-[#f4f7fb] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
+    <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
       @if (loading() && !siteContext()) {
         <app-companies-site-detail-skeleton />
       } @else if (siteContext(); as context) {
@@ -924,52 +924,166 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
                 </div>
               } @else {
-                <div class="grid grid-cols-[minmax(0,1fr)_128px] gap-5">
-                  <div class="relative h-[300px] overflow-hidden rounded-lg border border-slate-100 bg-[#eee7d8]">
-                    <div class="absolute inset-0 opacity-40" style="background-image: radial-gradient(#c6b58f 1px, transparent 1px); background-size: 8px 8px;"></div>
-                    <div class="absolute left-[31%] top-8 h-[238px] w-[12px] rounded-sm bg-slate-300"></div>
-                    <div class="absolute left-[38%] top-8 h-[238px] w-[112px] border-x-4 border-slate-500 bg-white/80"></div>
-                    <div
-                      class="dga-water-column absolute bottom-0 left-[38%] w-[112px] overflow-hidden border-x-4 border-slate-500 bg-gradient-to-b from-cyan-300 via-cyan-500 to-cyan-800"
-                      [style.height.px]="wellWaterColumnHeightPx()"
-                    >
-                      <div class="dga-water-wave dga-water-wave-a"></div>
-                      <div class="dga-water-wave dga-water-wave-b"></div>
-                      <div class="dga-water-shine"></div>
-                    </div>
-                    <div class="absolute left-[16%] top-[112px] w-[215px] border-t-2 border-dashed border-cyan-600"></div>
-                    <div class="absolute left-5 top-[100px] text-[10px] font-black text-cyan-700">Nivel<br>Freatico</div>
-                    <div class="absolute bottom-[116px] left-[57%] z-10 text-2xl font-black text-white drop-shadow-sm">{{ formatPercent(wellFillPercentage()) }}</div>
-                    <div class="absolute right-4 top-8 text-[10px] font-bold text-slate-500">Superficie</div>
-                    <div class="absolute bottom-7 right-5 flex items-center gap-1 text-[10px] font-bold text-orange-500">
-                      <span class="h-2.5 w-2.5 rounded-sm bg-orange-500"></span>
-                      Sensor
-                    </div>
+                <div class="flex gap-3 items-start">
+                  <!-- SVG Well Diagram (flex:1) -->
+                  <div style="flex:1;min-width:0;overflow:visible">
+                  <svg [attr.viewBox]="'0 0 ' + svgW + ' ' + svgH" style="width:100%;height:auto;display:block;overflow:visible">
+                    <style>
+                      @keyframes wdiagWave1{0%,100%{transform:translateX(0)}50%{transform:translateX(-7px)}}
+                      @keyframes wdiagWave2{0%,100%{transform:translateX(0)}50%{transform:translateX(6px)}}
+                      @keyframes wdiagBubble{
+                        0%{opacity:0;transform:translateY(0)}
+                        8%{opacity:0.62}
+                        78%{opacity:0.22}
+                        100%{opacity:0;transform:translateY(-580px)}
+                      }
+                      .wdiag-w1{animation:wdiagWave1 3s ease-in-out infinite}
+                      .wdiag-w2{animation:wdiagWave2 4.8s ease-in-out infinite}
+                      .wdiag-b{
+                        animation-name:wdiagBubble;
+                        animation-timing-function:ease-in;
+                        animation-iteration-count:infinite;
+                        animation-fill-mode:both;
+                        animation-duration:var(--d,4s);
+                        animation-delay:var(--e,0s);
+                      }
+                    </style>
+                    <defs>
+                      <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stop-color="#8EEAF1" stop-opacity="0.85"/>
+                        <stop offset="18%" stop-color="#0DAFBD" stop-opacity="0.92"/>
+                        <stop offset="65%" stop-color="#067D88" stop-opacity="0.97"/>
+                        <stop offset="100%" stop-color="#034851" stop-opacity="1"/>
+                      </linearGradient>
+                      <radialGradient id="shimmer" cx="40%" cy="25%" r="55%">
+                        <stop offset="0%" stop-color="white" stop-opacity="0.22"/>
+                        <stop offset="100%" stop-color="white" stop-opacity="0"/>
+                      </radialGradient>
+                      <pattern id="dots" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                        <rect width="8" height="8" fill="#F5EDD8"/>
+                        <circle cx="3" cy="3" r="1" fill="#C4A882" opacity="0.6"/>
+                        <circle cx="7" cy="7" r="0.7" fill="#C4A882" opacity="0.4"/>
+                      </pattern>
+                      <clipPath id="wellClip">
+                        <rect [attr.x]="svgWellL+4" [attr.y]="svgWellTop" [attr.width]="svgWellR-svgWellL-8" [attr.height]="svgWellH"/>
+                      </clipPath>
+                    </defs>
+
+                    <!-- Soil left -->
+                    <rect x="0" [attr.y]="svgWellTop" [attr.width]="svgWellL" [attr.height]="svgWellH" fill="url(#dots)"/>
+                    <!-- Soil right (extended to SVG edge so annotation zone has background) -->
+                    <rect [attr.x]="svgWellR" [attr.y]="svgWellTop" [attr.width]="svgW-svgWellR" [attr.height]="svgWellH" fill="url(#dots)"/>
+
+                    <!-- Ground surface band -->
+                    <rect x="0" y="0" [attr.width]="svgW" [attr.height]="svgWellTop" fill="#8B7355" opacity="0.15"/>
+                    <line x1="0" [attr.y1]="svgWellTop" [attr.x2]="svgW" [attr.y2]="svgWellTop" stroke="#8B7355" stroke-width="2"/>
+
+                    <!-- Grass marks -->
+                    @for (gx of svgGrassX; track gx) {
+                      <line [attr.x1]="gx" [attr.y1]="svgWellTop" [attr.x2]="gx-3" [attr.y2]="svgWellTop-7" stroke="#6B9B37" stroke-width="1.5" stroke-linecap="round"/>
+                    }
+
+                    <!-- Well casing — empty air gap -->
+                    <rect [attr.x]="svgWellL+4" [attr.y]="svgWellTop" [attr.width]="svgWellR-svgWellL-8" [attr.height]="svgWaterY-svgWellTop" fill="#F0F9FF" opacity="0.9"/>
+
+                    <!-- Water fill (gradient) -->
+                    <rect [attr.x]="svgWellL+4" [attr.y]="svgWaterY" [attr.width]="svgWellR-svgWellL-8" [attr.height]="svgWellBot-svgWaterY" fill="url(#wg)" clip-path="url(#wellClip)"/>
+                    <!-- Water shimmer overlay -->
+                    <rect [attr.x]="svgWellL+4" [attr.y]="svgWaterY" [attr.width]="svgWellR-svgWellL-8" [attr.height]="svgWellBot-svgWaterY" fill="url(#shimmer)" clip-path="url(#wellClip)"/>
+                    <!-- Surface refraction stripe -->
+                    <rect [attr.x]="svgWellL+7" [attr.y]="svgWaterY+3" [attr.width]="svgWellR-svgWellL-16" height="4" fill="white" opacity="0.28" rx="2" clip-path="url(#wellClip)"/>
+                    <!-- Caustic light patches near bottom -->
+                    <ellipse [attr.cx]="svgTextCX-9" [attr.cy]="svgWellBot-24" rx="9" ry="3" fill="white" opacity="0.07" clip-path="url(#wellClip)"/>
+                    <ellipse [attr.cx]="svgTextCX+7" [attr.cy]="svgWellBot-40" rx="6" ry="2" fill="white" opacity="0.05" clip-path="url(#wellClip)"/>
+
+                    <!-- Wave surface (primary, animated) -->
+                    <g class="wdiag-w1" clip-path="url(#wellClip)">
+                      <path [attr.d]="svgWavePath" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round"/>
+                    </g>
+                    <!-- Wave surface (secondary, animated opposite direction) -->
+                    <g class="wdiag-w2" clip-path="url(#wellClip)">
+                      <path [attr.d]="svgWave2Path" fill="none" stroke="rgba(13,175,189,0.45)" stroke-width="1.2"/>
+                    </g>
+                    <!-- Bubbles rising from bottom -->
+                    <g clip-path="url(#wellClip)">
+                      <circle class="wdiag-b" style="--d:4s;--e:0s"     cx="97"  [attr.cy]="svgWellBot-22" r="2"   fill="rgba(255,255,255,0.82)"/>
+                      <circle class="wdiag-b" style="--d:5.5s;--e:1.4s" cx="131" [attr.cy]="svgWellBot-40" r="1.5" fill="rgba(255,255,255,0.70)"/>
+                      <circle class="wdiag-b" style="--d:3.8s;--e:2.7s" cx="113" [attr.cy]="svgWellBot-13" r="2.5" fill="rgba(255,255,255,0.75)"/>
+                      <circle class="wdiag-b" style="--d:5s;--e:0.6s"   cx="145" [attr.cy]="svgWellBot-52" r="1.8" fill="rgba(255,255,255,0.65)"/>
+                      <circle class="wdiag-b" style="--d:4.3s;--e:3.8s" cx="104" [attr.cy]="svgWellBot-30" r="1.2" fill="rgba(255,255,255,0.80)"/>
+                      <circle class="wdiag-b" style="--d:6s;--e:2s"     cx="122" [attr.cy]="svgWellBot-8"  r="1.8" fill="rgba(255,255,255,0.68)"/>
+                    </g>
+
+                    <!-- Fill % label inside water -->
+                    @if (svgFillPct > 12) {
+                      <text [attr.x]="svgTextCX" [attr.y]="svgTextWaterY" font-size="15" font-weight="700" fill="white" text-anchor="middle" font-family="JetBrains Mono" opacity="0.9">{{ svgFillPct }}%</text>
+                    }
+
+                    <!-- Well walls -->
+                    <rect [attr.x]="svgWellL" [attr.y]="svgWellTop" width="8" [attr.height]="svgWellH" fill="#94A3B8" rx="2"/>
+                    <rect [attr.x]="svgWellR-8" [attr.y]="svgWellTop" width="8" [attr.height]="svgWellH" fill="#94A3B8" rx="2"/>
+                    <rect [attr.x]="svgWellL" [attr.y]="svgWellBot-6" [attr.width]="svgWellR-svgWellL" height="7" fill="#64748B" rx="2"/>
+
+                    <!-- Sensor: only shown when depth data exists, right wall, proportional -->
+                    @if (wellSensorDepth() !== null) {
+                      <!-- Vertical depth guide from well top to sensor -->
+                      <line [attr.x1]="svgWellR-4" [attr.y1]="svgWellTop" [attr.x2]="svgWellR-4" [attr.y2]="svgSensorY" stroke="#F97316" stroke-width="1" stroke-dasharray="3 3" opacity="0.35"/>
+                      <!-- Horizontal indicator from right wall outward -->
+                      <line [attr.x1]="svgWellR" [attr.y1]="svgSensorY" [attr.x2]="svgWellR+18" [attr.y2]="svgSensorY" stroke="#F97316" stroke-width="1.5" stroke-dasharray="3 2"/>
+                      <!-- Sensor marker -->
+                      <rect [attr.x]="svgWellR+18" [attr.y]="svgSensorY-5" width="9" height="10" fill="#F97316" rx="2"/>
+                      <!-- Sensor label -->
+                      <text [attr.x]="svgWellR+30" [attr.y]="svgSensorY+4" font-size="8" fill="#F97316" font-family="DM Sans" font-weight="600">Sensor</text>
+                    }
+
+                    <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
+                    <!-- Superficie circle (at ground level) -->
+                    <circle [attr.cx]="svgAnnotX" [attr.cy]="svgWellTop" r="3" fill="#64748B"/>
+                    <!-- Superficie label: left-center, higher above line -->
+                    <text x="100" [attr.y]="svgWellTop-16" font-size="9" fill="#64748B" font-family="DM Sans" font-weight="600" text-anchor="middle">Superficie</text>
+
+                    <!-- Vertical dashed line: Superficie → Nivel Freático -->
+                    <line [attr.x1]="svgAnnotX" [attr.y1]="svgWellTop+3" [attr.x2]="svgAnnotX" [attr.y2]="svgWaterY-3" stroke="#0DAFBD" stroke-width="1.5" stroke-dasharray="4 3"/>
+
+                    <!-- Nivel Freático circle + horizontal line into well -->
+                    <circle [attr.cx]="svgAnnotX" [attr.cy]="svgWaterY" r="3" fill="#0DAFBD"/>
+                    <line [attr.x1]="svgAnnotX" [attr.y1]="svgWaterY" [attr.x2]="svgWellR-5" [attr.y2]="svgWaterY" stroke="#0DAFBD" stroke-width="1.5" stroke-dasharray="4 2"/>
+                    <!-- Nivel Freático label: centered above the horizontal dashed line -->
+                    <text [attr.x]="(svgAnnotX + svgWellR - 5) / 2" [attr.y]="svgWaterY-5" font-size="8" fill="#0DAFBD" font-family="DM Sans" font-weight="700" text-anchor="middle">Nv. Freático</text>
+
+                    <!-- Left depth arrow -->
+                    <line [attr.x1]="svgWellL-10" [attr.y1]="svgWellTop+2" [attr.x2]="svgWellL-10" [attr.y2]="svgWellBot-2" stroke="#CBD5E1" stroke-width="1"/>
+                    <line [attr.x1]="svgWellL-14" [attr.y1]="svgWellTop+2" [attr.x2]="svgWellL-6" [attr.y2]="svgWellTop+2" stroke="#CBD5E1" stroke-width="1"/>
+                    <line [attr.x1]="svgWellL-14" [attr.y1]="svgWellBot-2" [attr.x2]="svgWellL-6" [attr.y2]="svgWellBot-2" stroke="#CBD5E1" stroke-width="1"/>
+                    <text [attr.x]="svgWellL-12" [attr.y]="svgDepthMidY+4" font-size="9" fill="#94A3B8" font-family="JetBrains Mono" text-anchor="middle"
+                      [attr.transform]="'rotate(-90,' + (svgWellL-12) + ',' + svgDepthMidY + ')'">{{ wellTotalDepth() ?? 18 }}m prof.</text>
+                  </svg>
                   </div>
-
-                  <div class="space-y-3">
-                    <div class="rounded-xl border border-cyan-200 bg-cyan-50 p-3">
-                      <p class="text-[10px] font-black uppercase tracking-widest text-cyan-500">Nivel freatico</p>
-                      <p class="mt-1 text-2xl font-black leading-none text-cyan-700">{{ formatMeters(wellNivelFreatico()) }}<span class="text-base"> m</span></p>
-                      <p class="mt-1 text-[10px] font-semibold text-cyan-500">desde superficie</p>
+                  <!-- Stats column (derecha) -->
+                  <div class="flex flex-col gap-2" style="flex-shrink:0;width:124px">
+                    <div style="background:rgba(13,175,189,0.06);border:1px solid rgba(13,175,189,0.2);border-radius:8px;padding:8px 10px">
+                      <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px">Nv. Freático</p>
+                      <p style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0DAFBD;line-height:1">
+                        {{ formatMeters(wellNivelFreatico()) }}<span style="font-size:11px;color:#64748B;margin-left:2px">m</span>
+                      </p>
+                      <p style="font-size:9px;color:#94A3B8;margin-top:2px">desde superficie</p>
                     </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-3">
-                      <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Llenado</p>
-                      <p class="mt-1 text-2xl font-black leading-none text-slate-800">{{ formatPercent(wellFillPercentage()) }}</p>
-                      <div class="mt-2 h-1.5 rounded-full bg-slate-100">
-                        <div class="h-full rounded-full bg-cyan-600 transition-all duration-700" [style.width.%]="wellFillStylePercent()"></div>
+                    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px">
+                      <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px">Llenado</p>
+                      <p style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#1E293B;line-height:1">
+                        {{ svgFillPct }}<span style="font-size:11px;color:#64748B">%</span>
+                      </p>
+                      <div style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden">
+                        <div [style.width.%]="wellFillStylePercent()" style="height:100%;background:linear-gradient(90deg,#0DAFBD,#22C55E);border-radius:999px"></div>
                       </div>
                     </div>
-
-                    <div class="rounded-xl border border-slate-200 bg-white p-3">
-                      <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Prof. total</p>
-                      <p class="mt-1 text-2xl font-black leading-none text-slate-800">{{ formatMeters(wellTotalDepth()) }}<span class="text-base"> m</span></p>
+                    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px">
+                      <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px">Prof. Total</p>
+                      <p style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1">{{ formatMeters(wellTotalDepth()) }} m</p>
                     </div>
-
-                    <div class="rounded-xl border border-orange-200 bg-orange-50 p-3">
-                      <p class="text-[10px] font-black uppercase tracking-widest text-orange-500">Sensor</p>
-                      <p class="mt-1 text-2xl font-black leading-none text-slate-800">{{ formatMeters(wellSensorDepth()) }}<span class="text-base"> m</span></p>
+                    <div style="background:#FFF7F0;border:1px solid #FED7AA;border-radius:8px;padding:8px 10px">
+                      <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#F97316;margin-bottom:3px">Sensor</p>
+                      <p style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1">{{ formatMeters(wellSensorDepth()) }} m</p>
                     </div>
                   </div>
                 </div>
@@ -1077,36 +1191,32 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
             <div class="overflow-x-auto">
               <table class="w-full min-w-[960px] text-left text-sm">
-                <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                  <tr>
-                    <th class="px-4 py-3">FECHA</th>
-                    <th class="px-4 py-3 text-center">NV. FRE&Aacute;TICO [M]</th>
-                    <th class="px-4 py-3 text-center">CAUDAL [L/S]</th>
-                    <th class="px-4 py-3 text-center">TOTALIZADOR [M&sup3;]</th>
-                    <th class="px-4 py-3 text-right">ESTADO</th>
+                <thead style="background:#F8FAFC">
+                  <tr style="border-bottom:1px solid #F1F5F9">
+                    @for (h of ['Fecha','Nv. Freático [m]','Caudal [l/s]','Totalizador [m³]','Estado']; track h) {
+                      <th class="px-4 py-[9px] text-left" style="font-family:'Josefin Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8">{{ h }}</th>
+                    }
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100">
+                <tbody>
                   @for (report of paginatedDgaReports(); track report.id) {
-                    <tr class="bg-white text-slate-600 even:bg-slate-50/50">
-                      <td class="px-4 py-3 font-semibold">
-                        <span class="inline-flex items-center gap-2">
-                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                          {{ report.fecha }}
-                        </span>
-                      </td>
-                      <td class="px-4 py-3 text-center font-semibold">{{ formatDgaNumber(report.nivelFreatico) }}</td>
-                      <td class="px-4 py-3 text-center font-semibold">{{ formatDgaNumber(report.caudal) }}</td>
-                      <td class="px-4 py-3 text-center font-semibold">{{ formatDgaInteger(report.totalizador) }}</td>
+                    <tr style="border-bottom:1px solid #F1F5F9">
+                      <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8">{{ report.fecha }}</td>
+                      <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B">{{ formatDgaNumber(report.nivelFreatico) }}</td>
+                      <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B">{{ formatDgaNumber(report.caudal) }}</td>
+                      <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B">{{ formatDgaInteger(report.totalizador) }}</td>
                       <td class="px-4 py-3 text-right">
                         <button
                           type="button"
                           (click)="openDgaReportDetail(report)"
-                          class="inline-flex h-7 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-100"
+                          class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors"
+                          [style.background]="getDgaStatusBg(report.estado)"
+                          [style.border-color]="getDgaStatusBorder(report.estado)"
+                          [style.color]="getDgaStatusColor(report.estado)"
                         >
-                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          <span class="h-[5px] w-[5px] rounded-full" [style.background]="getDgaStatusColor(report.estado)"></span>
                           {{ report.estado }}
-                          <span class="material-symbols-outlined text-[15px]">chevron_right</span>
+                          <span class="material-symbols-outlined text-[13px]">chevron_right</span>
                         </button>
                       </td>
                     </tr>
@@ -1647,6 +1757,46 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
+
+  // SVG Well Diagram — dimensions & layout
+  readonly svgW = 300;
+  readonly svgH = 500;
+  readonly svgWellL = 80;
+  readonly svgWellR = 168;
+  readonly svgWellTop = 40;
+  readonly svgWellBot = 488;
+  readonly svgWellH = 448;
+  readonly svgAnnotX = 272; // x del bracket derecho Superficie→Nivel Freático
+  readonly svgGrassX = [6, 14, 22, 30, 42, 52, 176, 186, 198, 210, 222, 234];
+
+  // nivelFreatico = profundidad desde superficie → waterY = top + (nivel/totalDepth)*H
+  get svgWaterY(): number {
+    const d = this.wellTotalDepth() ?? 18;
+    const f = this.wellNivelFreatico() ?? 0;
+    const safe = d > 0 ? d : 18;
+    return Math.round(this.svgWellTop + Math.min(1, Math.max(0, f / safe)) * this.svgWellH);
+  }
+  get svgSensorY(): number {
+    const d = this.wellTotalDepth() ?? 18;
+    const s = this.wellSensorDepth() ?? 0;
+    const safe = d > 0 ? d : 18;
+    return Math.round(this.svgWellTop + Math.min(1, Math.max(0, s / safe)) * this.svgWellH);
+  }
+  get svgFillPct(): number { return this.wellFillStylePercent(); }
+  get svgWavePath(): string {
+    const L = this.svgWellL + 4, y = this.svgWaterY;
+    return `M${L},${y} q13,-9 26,0 q13,9 25,0 q12,-6 25,0`;
+  }
+  get svgWave2Path(): string {
+    const L = this.svgWellL + 4, y = this.svgWaterY + 6;
+    return `M${L},${y} q19,5 38,0 q19,-5 38,0`;
+  }
+  get svgTextCX(): number { return Math.round((this.svgWellL + this.svgWellR) / 2); }
+  get svgTextWaterY(): number { return Math.round(this.svgWaterY + (this.svgWellBot - this.svgWaterY) * 0.45 + 6); }
+  get svgDepthMidY(): number { return Math.round((this.svgWellTop + this.svgWellBot) / 2); }
+
+  dashboardRefreshLabel = computed(() => this.formatDashboardRefresh(this.dashboardLastLoadedAt(), this.currentTime()));
+  latestDeviceReadingLabel = computed(() => this.formatLatestDeviceReading(this.dashboardData()?.ultima_lectura));
   currentServerTime = computed(() => new Date(this.currentTime().getTime() + this.serverClockOffsetMs()));
   telemetryStatusBadges = computed<TelemetryStatusBadge[]>(() => {
     const reading = this.dashboardData()?.ultima_lectura;
@@ -1860,6 +2010,24 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   getSiteName(context: SiteContext): string {
     return context.site?.descripcion || context.subCompany?.nombre || 'Instalacion de agua';
+  }
+
+  getDgaStatusBg(estado: string): string {
+    if (estado === 'Enviado') return '#F0FDF4';
+    if (estado === 'Pendiente') return '#FFFBEB';
+    return '#FEF2F2';
+  }
+
+  getDgaStatusBorder(estado: string): string {
+    if (estado === 'Enviado') return '#BBF7D0';
+    if (estado === 'Pendiente') return '#FDE68A';
+    return '#FECACA';
+  }
+
+  getDgaStatusColor(estado: string): string {
+    if (estado === 'Enviado') return '#16A34A';
+    if (estado === 'Pendiente') return '#D97706';
+    return '#DC2626';
   }
 
   getMonthlyFlowHeight(value: number): number {
