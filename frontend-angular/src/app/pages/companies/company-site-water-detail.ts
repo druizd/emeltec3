@@ -912,7 +912,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </article>
           </section>
 
-          <section class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)]">
+          <section class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-start">
+            <div class="space-y-3">
             <article class="rounded-xl border border-cyan-200 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]">
               <p class="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Diagrama del pozo</p>
 
@@ -1033,14 +1034,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <!-- Sensor marker -->
                       <rect [attr.x]="svgWellR+18" [attr.y]="svgSensorY-5" width="9" height="10" fill="#F97316" rx="2"/>
                       <!-- Sensor label -->
-                      <text [attr.x]="svgWellR+30" [attr.y]="svgSensorY+4" font-size="8" fill="#F97316" font-family="DM Sans" font-weight="600">Sensor</text>
+                      <text [attr.x]="svgWellR+30" [attr.y]="svgSensorY+5" font-size="12" fill="#F97316" font-family="DM Sans" font-weight="600">Sensor</text>
                     }
 
                     <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
                     <!-- Superficie circle (at ground level) -->
                     <circle [attr.cx]="svgAnnotX" [attr.cy]="svgWellTop" r="3" fill="#64748B"/>
                     <!-- Superficie label: left-center, higher above line -->
-                    <text x="100" [attr.y]="svgWellTop-16" font-size="9" fill="#64748B" font-family="DM Sans" font-weight="600" text-anchor="middle">Superficie</text>
+                    <text x="124" [attr.y]="svgWellTop-16" font-size="9" fill="#64748B" font-family="DM Sans" font-weight="600" text-anchor="middle">Superficie</text>
 
                     <!-- Vertical dashed line: Superficie → Nivel Freático -->
                     <line [attr.x1]="svgAnnotX" [attr.y1]="svgWellTop+3" [attr.x2]="svgAnnotX" [attr.y2]="svgWaterY-3" stroke="#0DAFBD" stroke-width="1.5" stroke-dasharray="4 3"/>
@@ -1049,13 +1050,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <circle [attr.cx]="svgAnnotX" [attr.cy]="svgWaterY" r="3" fill="#0DAFBD"/>
                     <line [attr.x1]="svgAnnotX" [attr.y1]="svgWaterY" [attr.x2]="svgWellR-5" [attr.y2]="svgWaterY" stroke="#0DAFBD" stroke-width="1.5" stroke-dasharray="4 2"/>
                     <!-- Nivel Freático label: centered above the horizontal dashed line -->
-                    <text [attr.x]="(svgAnnotX + svgWellR - 5) / 2" [attr.y]="svgWaterY-5" font-size="8" fill="#0DAFBD" font-family="DM Sans" font-weight="700" text-anchor="middle">Nv. Freático</text>
+                    <text [attr.x]="(svgAnnotX + svgWellR - 5) / 2" [attr.y]="svgWaterY-7" font-size="12" fill="#0DAFBD" font-family="DM Sans" font-weight="700" text-anchor="middle">Nv. Freático</text>
 
                     <!-- Left depth arrow -->
                     <line [attr.x1]="svgWellL-10" [attr.y1]="svgWellTop+2" [attr.x2]="svgWellL-10" [attr.y2]="svgWellBot-2" stroke="#CBD5E1" stroke-width="1"/>
                     <line [attr.x1]="svgWellL-14" [attr.y1]="svgWellTop+2" [attr.x2]="svgWellL-6" [attr.y2]="svgWellTop+2" stroke="#CBD5E1" stroke-width="1"/>
                     <line [attr.x1]="svgWellL-14" [attr.y1]="svgWellBot-2" [attr.x2]="svgWellL-6" [attr.y2]="svgWellBot-2" stroke="#CBD5E1" stroke-width="1"/>
-                    <text [attr.x]="svgWellL-12" [attr.y]="svgDepthMidY+4" font-size="9" fill="#94A3B8" font-family="JetBrains Mono" text-anchor="middle"
+                    <text [attr.x]="svgWellL-12" [attr.y]="svgDepthMidY+4" font-size="13" fill="#94A3B8" font-family="JetBrains Mono" text-anchor="middle"
                       [attr.transform]="'rotate(-90,' + (svgWellL-12) + ',' + svgDepthMidY + ')'">{{ wellTotalDepth() ?? 18 }}m prof.</text>
                   </svg>
                   </div>
@@ -1089,6 +1090,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
               }
             </article>
+            </div>
 
             <div class="space-y-3">
               <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]">
@@ -1760,14 +1762,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   // SVG Well Diagram — dimensions & layout
   readonly svgW = 300;
-  readonly svgH = 500;
+  readonly svgH = 476;
   readonly svgWellL = 80;
   readonly svgWellR = 168;
   readonly svgWellTop = 40;
-  readonly svgWellBot = 488;
-  readonly svgWellH = 448;
+  readonly svgWellBot = 464;
+  readonly svgWellH = 424;
   readonly svgAnnotX = 272; // x del bracket derecho Superficie→Nivel Freático
-  readonly svgGrassX = [6, 14, 22, 30, 42, 52, 176, 186, 198, 210, 222, 234];
+  readonly svgGrassX = [6, 14, 22, 30, 42, 52, 176, 186, 198, 210, 222, 234, 246, 258, 270, 282, 292];
 
   // nivelFreatico = profundidad desde superficie → waterY = top + (nivel/totalDepth)*H
   get svgWaterY(): number {
