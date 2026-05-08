@@ -48,12 +48,41 @@ interface HistoricalTelemetryRow {
   caudal: string;
   totalizador: string;
   nivelFreatico: string;
+  caudalValue?: number | null;
+  totalizadorValue?: number | null;
+  nivelFreaticoValue?: number | null;
   mock?: boolean;
 }
 
 interface MonthlyFlowPoint {
   label: string;
   value: number;
+}
+
+interface RealtimeMetric {
+  label: string;
+  value: string;
+  unit: string;
+}
+
+interface RealtimeChartPoint {
+  x: number;
+  y: number;
+  value: number;
+  label: string;
+}
+
+interface RealtimeChartTick {
+  x?: number;
+  y?: number;
+  label: string;
+}
+
+interface RealtimeChartData {
+  points: RealtimeChartPoint[];
+  polyline: string;
+  yTicks: RealtimeChartTick[];
+  xTicks: RealtimeChartTick[];
 }
 
 interface DgaReportRow {
@@ -1152,12 +1181,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </div>
                         <span class="inline-flex items-center gap-2 text-xs font-bold text-cyan-50">
                           <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
-                          06/05/2026 09:37
+                          {{ latestRealtimeTimestampLabel() }}
                         </span>
                       </div>
 
                       <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        @for (metric of realtimeMetrics; track metric.label) {
+                        @for (metric of realtimeMetrics(); track metric.label) {
                           <article class="rounded-lg bg-white/12 px-4 py-3 ring-1 ring-white/10">
                             <p class="text-xs font-bold text-cyan-100">{{ metric.label }}</p>
                             <p class="mt-1 text-2xl font-black leading-none">
@@ -1172,11 +1201,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <article class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
                       <div class="flex flex-wrap items-center justify-between gap-2">
                         <h3 class="text-sm font-black text-slate-800">Caudal en Tiempo Real</h3>
-                        <p class="text-xs font-semibold text-slate-400">Últimos 60 registros</p>
+                        <p class="text-xs font-semibold text-slate-400">Ultimos {{ realtimeChart().points.length }} registros minuto a minuto</p>
                       </div>
 
                       <div class="mt-4 h-[310px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
-                        <svg viewBox="0 0 1120 260" class="h-full w-full" role="img" aria-label="Gráfico visual de caudal en tiempo real">
+                        @if (realtimeChart().polyline) {
+                        <svg viewBox="0 0 1120 260" class="h-full w-full" role="img" aria-label="Grafico de caudal en tiempo real">
                           <g class="text-slate-200" stroke="currentColor" stroke-width="1">
                             <line x1="70" y1="26" x2="1070" y2="26" />
                             <line x1="70" y1="78" x2="1070" y2="78" />
@@ -1192,28 +1222,36 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </g>
 
                           <g class="text-slate-400" fill="currentColor" font-size="14" font-weight="700">
-                            <text x="18" y="31">46.7</text>
-                            <text x="18" y="83">46.65</text>
-                            <text x="18" y="135">46.6</text>
-                            <text x="18" y="187">46.55</text>
-                            <text x="18" y="239">46.5</text>
-                            <text x="78" y="254">08:40</text>
-                            <text x="250" y="254">08:45</text>
-                            <text x="420" y="254">08:50</text>
-                            <text x="590" y="254">09:00</text>
-                            <text x="760" y="254">09:10</text>
-                            <text x="930" y="254">09:25</text>
+                            @for (tick of realtimeChart().yTicks; track tick.y) {
+                              <text x="18" [attr.y]="tick.y">{{ tick.label }}</text>
+                            }
+                            @for (tick of realtimeChart().xTicks; track tick.x) {
+                              <text [attr.x]="tick.x" y="254">{{ tick.label }}</text>
+                            }
                           </g>
 
                           <polyline
-                            points="70,26 88,26 105,78 122,26 140,26 157,130 174,130 192,130 209,130 226,26 244,130 261,26 278,26 296,130 313,130 330,130 348,130 365,26 382,130 400,130 417,26 434,130 452,130 469,130 486,26 504,130 521,26 538,130 556,130 573,130 590,130 608,182 625,130 642,182 660,130 677,130 694,130 712,26 729,130 746,130 764,130 781,130 798,26 816,130 833,130 850,26 868,26 885,26 902,130 920,130 937,130 954,130 972,130 989,234 1006,130 1024,130 1041,130 1058,234 1070,26"
+                            [attr.points]="realtimeChart().polyline"
                             fill="none"
                             stroke="#5f7fd4"
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             stroke-width="3"
                           />
+                          @for (point of realtimeChart().points; track point.x) {
+                            <circle [attr.cx]="point.x" [attr.cy]="point.y" r="3" fill="#5f7fd4">
+                              <title>{{ point.label }}: {{ formatChartNumber(point.value) }} L/s</title>
+                            </circle>
+                          }
                         </svg>
+                        } @else {
+                          <div class="flex h-full items-center justify-center bg-slate-50 text-center">
+                            <div>
+                              <span class="material-symbols-outlined text-[32px] text-slate-300">show_chart</span>
+                              <p class="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Sin datos reales para graficar</p>
+                            </div>
+                          </div>
+                        }
                       </div>
                     </article>
                   </div>
@@ -1613,6 +1651,24 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyRangeStart = computed(() => this.historyTotalRows() ? ((this.historyPage() - 1) * this.historyPageSize) + 1 : 0);
   historyRangeEnd = computed(() => Math.min(this.historyPage() * this.historyPageSize, this.historyTotalRows()));
   isHistoryMock = computed(() => !this.historyLoading() && this.historyRows().length === 0);
+  realtimeMetrics = computed<RealtimeMetric[]>(() => {
+    const caudal = this.findDashboardNumber('caudal') ?? this.latestHistoryNumber('caudalValue');
+    const totalizador = this.findDashboardNumber('totalizador') ?? this.findDashboardTransformNumber('uint32_registros') ?? this.latestHistoryNumber('totalizadorValue');
+    const nivel = this.findDashboardNumber('nivel') ?? this.latestHistoryNumber('nivelFreaticoValue');
+    const consumoHoy = this.calculateTodayConsumption();
+
+    return [
+      { label: 'Caudal Actual', value: this.formatRealtimeNumber(caudal, 2), unit: 'L/s' },
+      { label: 'Totalizador', value: this.formatRealtimeNumber(totalizador, 0), unit: 'm³' },
+      { label: 'Nivel de Agua', value: this.formatRealtimeNumber(nivel, 2), unit: 'm' },
+      { label: 'Consumo Hoy', value: this.formatRealtimeNumber(consumoHoy, 1), unit: 'm³' },
+    ];
+  });
+  latestRealtimeTimestampLabel = computed(() => {
+    const latest = this.latestRealtimeTimestamp();
+    return latest ? this.formatChileDateTime(latest) : 'Sin registros';
+  });
+  realtimeChart = computed<RealtimeChartData>(() => this.buildRealtimeChart());
   settingsSite = computed<SiteRecord>(() => {
     const site = this.siteVariables().site;
     if (site?.id) return site;
@@ -1712,13 +1768,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600' },
     { icon: 'open_in_new', title: 'Ver en DGA', subtitle: 'Portal oficial', color: 'text-blue-600' },
     { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600' },
-  ];
-
-  readonly realtimeMetrics = [
-    { label: 'Caudal Actual', value: '46.60', unit: 'L/s' },
-    { label: 'Totalizador', value: '6,043,415', unit: 'm³' },
-    { label: 'Nivel de Agua', value: '27.20', unit: 'm' },
-    { label: 'Consumo Hoy', value: '0.0', unit: 'm³' },
   ];
 
   readonly historyMockRows: HistoricalTelemetryRow[] = [
@@ -2754,7 +2803,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       caudal: this.formatHistoricalValue(row.caudal),
       totalizador: this.formatHistoricalValue(row.totalizador),
       nivelFreatico: this.formatHistoricalValue(row.nivel_freatico),
+      caudalValue: this.extractHistoricalNumber(row.caudal),
+      totalizadorValue: this.extractHistoricalNumber(row.totalizador),
+      nivelFreaticoValue: this.extractHistoricalNumber(row.nivel_freatico),
     };
+  }
+
+  private extractHistoricalNumber(value: HistoricalTelemetryValue | null | undefined): number | null {
+    if (!value || value.ok === false) return null;
+    return this.toNumber(value.valor);
   }
 
   private formatHistoricalValue(value: HistoricalTelemetryValue | null | undefined): string {
@@ -2771,6 +2828,167 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return new Intl.NumberFormat('es-CL', {
       maximumFractionDigits: 3,
     }).format(numericValue);
+  }
+
+  private findDashboardNumber(role: string): number | null {
+    const summaryValue = this.toNumber(this.dashboardData()?.resumen?.[role]?.valor);
+    if (summaryValue !== null) return summaryValue;
+
+    const variable = (this.dashboardData()?.variables || []).find((item) => {
+      if (item.ok === false) return false;
+      const text = this.normalizeSearchText(item.key, item.alias, item.rol_dashboard);
+      return item.key === role || item.rol_dashboard === role || text.includes(role);
+    });
+
+    return this.toNumber(variable?.valor);
+  }
+
+  private findDashboardTransformNumber(transformacion: string): number | null {
+    const variable = (this.dashboardData()?.variables || []).find((item) =>
+      item.ok !== false && item.transformacion === transformacion
+    );
+    return this.toNumber(variable?.valor);
+  }
+
+  private latestHistoryNumber(field: 'caudalValue' | 'totalizadorValue' | 'nivelFreaticoValue'): number | null {
+    return this.historyRows().find((row) => this.toNumber(row[field]) !== null)?.[field] ?? null;
+  }
+
+  private latestRealtimeTimestamp(): Date | null {
+    const latestHistory = this.historyRows().find((row) => row.timestampMs !== null && row.timestampMs !== undefined);
+    if (latestHistory?.timestampMs) return new Date(latestHistory.timestampMs);
+
+    const reading = this.dashboardData()?.ultima_lectura;
+    const parsed = this.parseUtcTimestamp(String(reading?.timestamp_completo || reading?.time || '').trim());
+    return parsed;
+  }
+
+  private calculateTodayConsumption(): number {
+    const todayKey = this.formatChileDateKey(this.currentTime());
+    const rows = this.historyRows()
+      .filter((row) =>
+        row.timestampMs !== null &&
+        row.timestampMs !== undefined &&
+        row.totalizadorValue !== null &&
+        row.totalizadorValue !== undefined &&
+        this.formatChileDateKey(new Date(row.timestampMs)) === todayKey
+      )
+      .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0));
+
+    if (rows.length < 2) return 0;
+
+    const first = rows[0].totalizadorValue ?? 0;
+    const last = rows[rows.length - 1].totalizadorValue ?? first;
+    return Math.max(0, last - first);
+  }
+
+  private buildRealtimeChart(): RealtimeChartData {
+    const chartLeft = 70;
+    const chartRight = 1070;
+    const chartTop = 26;
+    const chartBottom = 234;
+    const rows = this.historyRows()
+      .filter((row) =>
+        row.timestampMs !== null &&
+        row.timestampMs !== undefined &&
+        row.caudalValue !== null &&
+        row.caudalValue !== undefined
+      )
+      .sort((a, b) => (a.timestampMs || 0) - (b.timestampMs || 0))
+      .slice(-60);
+
+    if (!rows.length) {
+      return { points: [], polyline: '', yTicks: [], xTicks: [] };
+    }
+
+    const values = rows.map((row) => row.caudalValue ?? 0);
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const spread = maxValue - minValue;
+    const padding = spread === 0 ? Math.max(0.1, Math.abs(maxValue) * 0.01) : spread * 0.12;
+    const yMin = minValue - padding;
+    const yMax = maxValue + padding;
+    const yRange = yMax - yMin || 1;
+    const xStep = rows.length > 1 ? (chartRight - chartLeft) / (rows.length - 1) : 0;
+
+    const points = rows.map((row, index) => {
+      const value = row.caudalValue ?? 0;
+      const x = rows.length > 1 ? chartLeft + (index * xStep) : (chartLeft + chartRight) / 2;
+      const y = chartBottom - (((value - yMin) / yRange) * (chartBottom - chartTop));
+
+      return {
+        x: Math.round(x * 10) / 10,
+        y: Math.round(y * 10) / 10,
+        value,
+        label: row.fecha,
+      };
+    });
+
+    const yTickPositions = [31, 83, 135, 187, 239];
+    const yTicks = yTickPositions.map((y, index) => {
+      const ratio = index / (yTickPositions.length - 1);
+      const value = yMax - (ratio * yRange);
+      return { y, label: this.formatChartNumber(value) };
+    });
+
+    const xTickIndexes = this.pickChartTickIndexes(rows.length, 6);
+    const xTicks = xTickIndexes.map((index) => ({
+      x: Math.round((rows.length > 1 ? chartLeft + (index * xStep) : (chartLeft + chartRight) / 2) - 8),
+      label: this.formatChileTimeShort(new Date(rows[index].timestampMs || 0)),
+    }));
+
+    return {
+      points,
+      polyline: points.map((point) => `${point.x},${point.y}`).join(' '),
+      yTicks,
+      xTicks,
+    };
+  }
+
+  private pickChartTickIndexes(length: number, maxTicks: number): number[] {
+    if (length <= maxTicks) return Array.from({ length }, (_, index) => index);
+
+    const last = length - 1;
+    const indexes = new Set<number>();
+    for (let i = 0; i < maxTicks; i += 1) {
+      indexes.add(Math.round((last * i) / (maxTicks - 1)));
+    }
+    return [...indexes].sort((a, b) => a - b);
+  }
+
+  private formatRealtimeNumber(value: number | null, maximumFractionDigits: number): string {
+    if (value === null) return '--';
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: maximumFractionDigits > 0 ? Math.min(1, maximumFractionDigits) : 0,
+      maximumFractionDigits,
+    }).format(value);
+  }
+
+  formatChartNumber(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 2,
+    }).format(value);
+  }
+
+  private formatChileTimeShort(value: Date): string {
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).format(value);
+  }
+
+  private formatChileDateKey(value: Date): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+    const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+    return `${get('year')}-${get('month')}-${get('day')}`;
   }
 
   private findAccessibleSite(tree: any[], siteId: string): SiteContext | null {

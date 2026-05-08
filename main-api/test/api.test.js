@@ -344,6 +344,36 @@ test("siteTelemetryService calcula totalizador como uint32 desde dos registros",
   assert.equal(historical.totalizador.valor, 6043415);
 });
 
+test("siteTelemetryService reconoce uint32 como totalizador en historicos aunque el rol sea generico", () => {
+  clearSrcModules();
+  const { mapHistoricalDashboardRow } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const mappings = [
+    {
+      id: "MAP-1",
+      alias: "REG5",
+      d1: "REG4",
+      d2: "REG5",
+      tipo_dato: "FLOAT",
+      unidad: "m3",
+      rol_dashboard: "generico",
+      transformacion: "uint32_registros",
+      parametros: { word_swap: true, formato: "uint32" },
+    },
+  ];
+  const row = {
+    time: "2026-05-07T17:00:00.000Z",
+    timestamp_completo: "2026-05-07T17:00:00Z",
+    id_serial: "PLC-01",
+    data: { REG4: 14103, REG5: 92 },
+  };
+
+  const historical = mapHistoricalDashboardRow({ row, site, mappings, pozoConfig: null });
+  assert.equal(historical.totalizador.ok, true);
+  assert.equal(historical.totalizador.valor, 6043415);
+});
+
 test("GET /api/health responde con estado y hora del servidor", async () => {
   const dbMock = createDbMock();
   dbMock.enqueue({

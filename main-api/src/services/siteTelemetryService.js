@@ -405,6 +405,10 @@ function findHistoricalVariable(variables, role) {
       return true;
     }
 
+    if (role === 'totalizador' && ['uint32_registros', 'uint32'].includes(variable.transformacion)) {
+      return true;
+    }
+
     const text = normalizeSearchText(
       variable.key,
       variable.alias,
