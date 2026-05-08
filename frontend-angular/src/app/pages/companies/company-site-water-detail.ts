@@ -56,6 +56,21 @@ interface MonthlyFlowPoint {
   value: number;
 }
 
+interface DgaReportRow {
+  id: string;
+  recordId: string;
+  fecha: string;
+  dateIso: string;
+  timestampMs: number;
+  nivelFreatico: number;
+  caudal: number;
+  totalizador: number;
+  estado: string;
+  enviadoDga: string;
+  respuesta: string;
+  comprobante: string;
+}
+
 interface DashboardVariable {
   key?: string | null;
   alias?: string | null;
@@ -952,6 +967,107 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </div>
           </section>
 
+          <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 class="text-sm font-black text-slate-800">Detalle de Registros</h2>
+                <p class="mt-1 text-xs font-semibold text-slate-400">Reportes completos enviados a la DGA</p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  (click)="openDgaDateFilter()"
+                  class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                >
+                  <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                  {{ dgaSelectedRangeLabel() }}
+                </button>
+                <span class="text-slate-400">{{ dgaTotalRecordsLabel() }}</span>
+              </div>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[960px] text-left text-sm">
+                <thead class="bg-slate-50 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                  <tr>
+                    <th class="px-4 py-3">FECHA</th>
+                    <th class="px-4 py-3 text-center">NV. FRE&Aacute;TICO [M]</th>
+                    <th class="px-4 py-3 text-center">CAUDAL [L/S]</th>
+                    <th class="px-4 py-3 text-center">TOTALIZADOR [M&sup3;]</th>
+                    <th class="px-4 py-3 text-right">ESTADO</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  @for (report of paginatedDgaReports(); track report.id) {
+                    <tr class="bg-white text-slate-600 even:bg-slate-50/50">
+                      <td class="px-4 py-3 font-semibold">
+                        <span class="inline-flex items-center gap-2">
+                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          {{ report.fecha }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 text-center font-semibold">{{ formatDgaNumber(report.nivelFreatico) }}</td>
+                      <td class="px-4 py-3 text-center font-semibold">{{ formatDgaNumber(report.caudal) }}</td>
+                      <td class="px-4 py-3 text-center font-semibold">{{ formatDgaInteger(report.totalizador) }}</td>
+                      <td class="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          (click)="openDgaReportDetail(report)"
+                          class="inline-flex h-7 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-100"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          {{ report.estado }}
+                          <span class="material-symbols-outlined text-[15px]">chevron_right</span>
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="px-4 py-8 text-center text-sm font-semibold text-slate-400">Sin registros para el periodo seleccionado.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-end gap-5 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500">
+              <label class="inline-flex items-center gap-2">
+                Filas por pagina:
+                <select
+                  [value]="dgaRowsPerPage()"
+                  (change)="setDgaRowsPerPage($event)"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                >
+                  @for (size of dgaRowsPerPageOptions; track size) {
+                    <option [value]="size">{{ size }}</option>
+                  }
+                </select>
+              </label>
+              <span>{{ dgaRangeStart() }} - {{ dgaRangeEnd() }} de {{ dgaDisplayedTotal() }}</span>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="previousDgaPage()"
+                  [disabled]="dgaPage() === 1"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Pagina anterior"
+                >
+                  <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="nextDgaPage()"
+                  [disabled]="dgaPage() === dgaTotalPages()"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Pagina siguiente"
+                >
+                  <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
           } @else {
             <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
@@ -1074,6 +1190,150 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       } @else {
         <div class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700">
           No se encontro la instalacion solicitada.
+        </div>
+      }
+
+      @if (dgaDateFilterOpen()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]">
+          <section class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+              <h2 class="text-xl font-black uppercase tracking-wide text-slate-800">Filtrar por fecha</h2>
+              <button type="button" (click)="closeDgaDateFilter()" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700" aria-label="Cerrar filtro">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div class="grid gap-6 px-6 py-6 md:grid-cols-[190px_minmax(0,1fr)]">
+              <div class="border-slate-200 md:border-r md:pr-6">
+                <p class="mb-4 text-xs font-black uppercase tracking-wide text-slate-400">Acceso rapido</p>
+                <div class="grid gap-1">
+                  @for (preset of dgaDatePresets; track preset.id) {
+                    <button
+                      type="button"
+                      (click)="applyDgaDatePreset(preset.id)"
+                      class="rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-cyan-50 hover:text-cyan-700"
+                    >
+                      {{ preset.label }}
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div>
+                <div class="mb-5 rounded-lg bg-slate-50 px-4 py-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <p class="text-xs font-bold text-slate-400">Rango seleccionado</p>
+                      <p class="mt-0.5 text-sm font-black text-slate-700">{{ dgaSelectedRangeLongLabel() }}</p>
+                    </div>
+                    <span class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-500">{{ dgaSelectedDaysLabel() }}</span>
+                  </div>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <label class="grid gap-2 text-sm font-bold text-slate-600">
+                    Desde
+                    <input
+                      type="date"
+                      [value]="dgaDateFrom()"
+                      (input)="setDgaDateFrom($event)"
+                      class="h-11 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    />
+                  </label>
+                  <label class="grid gap-2 text-sm font-bold text-slate-600">
+                    Hasta
+                    <input
+                      type="date"
+                      [value]="dgaDateTo()"
+                      (input)="setDgaDateTo($event)"
+                      class="h-11 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 text-sm font-semibold">
+              <button type="button" (click)="clearDgaDateFilter()" class="text-slate-500 transition-colors hover:text-slate-800">Limpiar seleccion</button>
+              <div class="flex items-center gap-3">
+                <button type="button" (click)="closeDgaDateFilter()" class="rounded-lg px-4 py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800">Cancelar</button>
+                <button type="button" (click)="applyDgaDateFilter()" class="rounded-lg bg-cyan-600 px-4 py-2 font-black text-white transition-colors hover:bg-cyan-700">Aplicar filtro</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      }
+
+      @if (selectedDgaReport(); as report) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-[2px]">
+          <section class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+              <h2 class="text-xl font-black uppercase tracking-wide text-slate-800">Seguimiento de envio</h2>
+              <button type="button" (click)="closeDgaReportDetail()" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700" aria-label="Cerrar seguimiento">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div class="bg-slate-50 p-6">
+              <div class="mx-auto max-w-[620px]">
+                <div class="mb-5 flex items-center gap-3">
+                  <span class="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700">
+                    <span class="material-symbols-outlined text-[22px]">assignment</span>
+                  </span>
+                  <div>
+                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">Registro {{ report.recordId }}</p>
+                    <p class="text-lg font-black text-slate-800">{{ report.fecha }}</p>
+                  </div>
+                </div>
+
+                <div class="grid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:grid-cols-3">
+                  <div class="px-5 py-5 text-center">
+                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">Nivel freatico</p>
+                    <p class="mt-2 text-2xl font-black text-slate-800">{{ formatDgaNumber(report.nivelFreatico) }}</p>
+                    <p class="mt-1 text-xs font-bold text-slate-400">m</p>
+                  </div>
+                  <div class="border-y border-slate-100 px-5 py-5 text-center sm:border-x sm:border-y-0">
+                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">Caudal</p>
+                    <p class="mt-2 text-2xl font-black text-slate-800">{{ formatDgaNumber(report.caudal) }}</p>
+                    <p class="mt-1 text-xs font-bold text-slate-400">l/s</p>
+                  </div>
+                  <div class="px-5 py-5 text-center">
+                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">Totalizado</p>
+                    <p class="mt-2 text-2xl font-black text-slate-800">{{ formatDgaInteger(report.totalizador) }}</p>
+                    <p class="mt-1 text-xs font-bold text-slate-400">m&sup3;</p>
+                  </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-between gap-4">
+                  <div class="flex items-center gap-3">
+                    <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                      <span class="material-symbols-outlined text-[22px]">send</span>
+                    </span>
+                    <div>
+                      <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">Envio a DGA</p>
+                      <p class="text-sm font-black text-slate-800">{{ report.enviadoDga }}</p>
+                    </div>
+                  </div>
+
+                  <span class="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700">
+                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                    Completado
+                  </span>
+                </div>
+
+                <div class="mt-5 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                  <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">Respuesta del software de DGA</p>
+                  <p class="mt-4 text-sm font-black text-slate-700">Respuesta</p>
+                  <p class="mt-1 text-sm text-slate-600">{{ report.respuesta }}</p>
+                  <p class="mt-4 text-sm font-black text-slate-700">N&deg; Comprobante</p>
+                  <p class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-cyan-600">
+                    {{ report.comprobante }}
+                    <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
       }
     </div>
@@ -1243,8 +1503,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyDateFrom = signal('');
   historyDateTo = signal('');
   historyRecordLimit = signal(500);
+  dgaDateFilterOpen = signal(false);
+  selectedDgaReport = signal<DgaReportRow | null>(null);
+  dgaDateFrom = signal('2026-04-06');
+  dgaDateTo = signal('2026-04-07');
+  dgaRowsPerPage = signal(10);
+  dgaPage = signal(1);
   readonly historyPageSize = 50;
   readonly historyRecordLimitOptions = [50, 100, 250, 500];
+  readonly dgaRowsPerPageOptions = [10, 25, 50];
+  readonly dgaMockTotal = 744;
 
   wellNivelFreatico = computed(() => this.extractNivelFreatico(this.dashboardData()));
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
@@ -1318,6 +1586,31 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   variableTransformOptions = computed<SiteTypeTransformOption[]>(() =>
     this.selectedSiteCatalog().transforms.filter((transform) => transform.enabled !== false)
   );
+  dgaFilteredReports = computed(() => {
+    const from = this.parseDateInputMs(this.dgaDateFrom(), 'start');
+    const to = this.parseDateInputMs(this.dgaDateTo(), 'end');
+
+    return this.dgaReportRows.filter((row) => {
+      if (from !== null && row.timestampMs < from) return false;
+      if (to !== null && row.timestampMs > to) return false;
+      return true;
+    });
+  });
+  paginatedDgaReports = computed(() => {
+    const start = (this.dgaPage() - 1) * this.dgaRowsPerPage();
+    return this.dgaFilteredReports().slice(start, start + this.dgaRowsPerPage());
+  });
+  dgaTotalPages = computed(() => Math.max(1, Math.ceil(this.dgaFilteredReports().length / this.dgaRowsPerPage())));
+  dgaRangeStart = computed(() => this.dgaFilteredReports().length ? ((this.dgaPage() - 1) * this.dgaRowsPerPage()) + 1 : 0);
+  dgaRangeEnd = computed(() => this.paginatedDgaReports().length
+    ? Math.min(this.dgaRangeStart() + this.paginatedDgaReports().length - 1, this.dgaMockTotal)
+    : 0
+  );
+  dgaDisplayedTotal = computed(() => this.dgaFilteredReports().length ? this.dgaMockTotal : 0);
+  dgaTotalRecordsLabel = computed(() => `${this.dgaDisplayedTotal()} registros en el periodo`);
+  dgaSelectedRangeLabel = computed(() => `${this.formatDgaDateInputShort(this.dgaDateFrom())} - ${this.formatDgaDateInputShort(this.dgaDateTo())}`);
+  dgaSelectedRangeLongLabel = computed(() => `${this.formatDgaDateInputLong(this.dgaDateFrom())} - ${this.formatDgaDateInputLong(this.dgaDateTo())}`);
+  dgaSelectedDaysLabel = computed(() => `${this.countDgaSelectedDays()} dias`);
 
   readonly monthlyFlowTicks = ['120,000', '90,000', '60,000', '30,000', '0'];
 
@@ -1334,6 +1627,30 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { label: "Mar '26", value: 73000 },
     { label: "Abr '26", value: 12000 },
     { label: "May '26", value: 0 },
+  ];
+
+  readonly dgaDatePresets = [
+    { id: 'today', label: 'Hoy' },
+    { id: 'yesterday', label: 'Ayer' },
+    { id: 'last7', label: 'Ultimos 7 dias' },
+    { id: 'last30', label: 'Ultimos 30 dias' },
+    { id: 'thisMonth', label: 'Este mes' },
+    { id: 'previousMonth', label: 'Mes anterior' },
+  ];
+
+  readonly dgaReportRows: DgaReportRow[] = [
+    this.createDgaReportRow('dga-001', '#601508', '2026-04-06T20:10:00Z', '06/04/2026 17:10', 54.2, 45.5, 6043411),
+    this.createDgaReportRow('dga-002', '#601509', '2026-04-06T21:10:00Z', '06/04/2026 18:10', 54.1, 45.7, 6043411),
+    this.createDgaReportRow('dga-003', '#601510', '2026-04-06T22:10:00Z', '06/04/2026 19:10', 53.9, 45.4, 6043411),
+    this.createDgaReportRow('dga-004', '#601511', '2026-04-06T23:10:00Z', '06/04/2026 20:10', 37.2, 0, 6043411),
+    this.createDgaReportRow('dga-005', '#601512', '2026-04-07T00:10:00Z', '06/04/2026 21:10', 34.2, 0, 6043411),
+    this.createDgaReportRow('dga-006', '#601513', '2026-04-07T01:10:00Z', '06/04/2026 22:10', 32.9, 0, 6043411),
+    this.createDgaReportRow('dga-007', '#601514', '2026-04-07T02:10:00Z', '06/04/2026 23:10', 31.9, 0, 6043411),
+    this.createDgaReportRow('dga-008', '#601515', '2026-04-07T03:10:00Z', '07/04/2026 00:10', 31.2, 0, 6043411),
+    this.createDgaReportRow('dga-009', '#601516', '2026-04-07T04:10:00Z', '07/04/2026 01:10', 30.7, 0, 6043411),
+    this.createDgaReportRow('dga-010', '#601517', '2026-04-07T05:10:00Z', '07/04/2026 02:10', 30.2, 0, 6043411),
+    this.createDgaReportRow('dga-011', '#601518', '2026-04-07T06:10:00Z', '07/04/2026 03:10', 29.8, 0, 6043411),
+    this.createDgaReportRow('dga-012', '#601519', '2026-04-07T07:10:00Z', '07/04/2026 04:10', 29.4, 0, 6043411),
   ];
 
   readonly quickActions = [
@@ -1507,6 +1824,83 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const chileAsUtc = Date.UTC(part('year'), part('month') - 1, part('day'), part('hour'), part('minute'), part('second'), millisecond);
 
     return utcGuess - (chileAsUtc - utcGuess);
+  }
+
+  private createDgaReportRow(
+    id: string,
+    recordId: string,
+    dateIso: string,
+    fecha: string,
+    nivelFreatico: number,
+    caudal: number,
+    totalizador: number
+  ): DgaReportRow {
+    return {
+      id,
+      recordId,
+      dateIso,
+      fecha,
+      timestampMs: new Date(dateIso).getTime(),
+      nivelFreatico,
+      caudal,
+      totalizador,
+      estado: 'Enviado',
+      enviadoDga: '30/04/2026 20:00',
+      respuesta: 'Medicion subterranea ingresada correctamente',
+      comprobante: '3qaonemdN5SkOozAE9TZAdjFo3CVr4Wg',
+    };
+  }
+
+  private formatDgaDateInputShort(value: string): string {
+    const date = this.dateInputToUtcDate(value);
+    if (!date) return '--';
+
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'UTC',
+      day: '2-digit',
+      month: 'short',
+    }).format(date);
+  }
+
+  private formatDgaDateInputLong(value: string): string {
+    const date = this.dateInputToUtcDate(value);
+    if (!date) return '--';
+
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'UTC',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  }
+
+  private countDgaSelectedDays(): number {
+    const from = this.dateInputToUtcDate(this.dgaDateFrom());
+    const to = this.dateInputToUtcDate(this.dgaDateTo());
+    if (!from || !to) return 0;
+
+    const diff = Math.floor((to.getTime() - from.getTime()) / 86400000) + 1;
+    return Math.max(0, diff);
+  }
+
+  private dateInputToUtcDate(value: string): Date | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+
+    return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  }
+
+  private toDateInputValue(value: Date): string {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private addDays(value: Date, days: number): Date {
+    const next = new Date(value);
+    next.setDate(next.getDate() + days);
+    return next;
   }
 
   openSettingsPanel(): void {
@@ -1804,6 +2198,95 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.historyDateTo.set('');
     this.historyRecordLimit.set(500);
     this.historyPage.set(1);
+  }
+
+  openDgaDateFilter(): void {
+    this.dgaDateFilterOpen.set(true);
+  }
+
+  closeDgaDateFilter(): void {
+    this.dgaDateFilterOpen.set(false);
+  }
+
+  applyDgaDateFilter(): void {
+    this.dgaPage.set(1);
+    this.closeDgaDateFilter();
+  }
+
+  clearDgaDateFilter(): void {
+    this.dgaDateFrom.set('2026-04-06');
+    this.dgaDateTo.set('2026-04-07');
+    this.dgaPage.set(1);
+  }
+
+  setDgaDateFrom(event: Event): void {
+    this.dgaDateFrom.set((event.target as HTMLInputElement).value);
+    this.dgaPage.set(1);
+  }
+
+  setDgaDateTo(event: Event): void {
+    this.dgaDateTo.set((event.target as HTMLInputElement).value);
+    this.dgaPage.set(1);
+  }
+
+  applyDgaDatePreset(presetId: string): void {
+    const today = new Date();
+    let from = new Date(today);
+    let to = new Date(today);
+
+    if (presetId === 'yesterday') {
+      from = this.addDays(today, -1);
+      to = this.addDays(today, -1);
+    } else if (presetId === 'last7') {
+      from = this.addDays(today, -6);
+    } else if (presetId === 'last30') {
+      from = this.addDays(today, -29);
+    } else if (presetId === 'thisMonth') {
+      from = new Date(today.getFullYear(), today.getMonth(), 1);
+      to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (presetId === 'previousMonth') {
+      from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      to = new Date(today.getFullYear(), today.getMonth(), 0);
+    }
+
+    this.dgaDateFrom.set(this.toDateInputValue(from));
+    this.dgaDateTo.set(this.toDateInputValue(to));
+    this.dgaPage.set(1);
+  }
+
+  setDgaRowsPerPage(event: Event): void {
+    const parsed = Number((event.target as HTMLSelectElement).value);
+    this.dgaRowsPerPage.set(this.dgaRowsPerPageOptions.includes(parsed) ? parsed : 10);
+    this.dgaPage.set(1);
+  }
+
+  previousDgaPage(): void {
+    this.dgaPage.set(Math.max(1, this.dgaPage() - 1));
+  }
+
+  nextDgaPage(): void {
+    this.dgaPage.set(Math.min(this.dgaTotalPages(), this.dgaPage() + 1));
+  }
+
+  openDgaReportDetail(report: DgaReportRow): void {
+    this.selectedDgaReport.set(report);
+  }
+
+  closeDgaReportDetail(): void {
+    this.selectedDgaReport.set(null);
+  }
+
+  formatDgaNumber(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      maximumFractionDigits: 1,
+    }).format(value);
+  }
+
+  formatDgaInteger(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      maximumFractionDigits: 0,
+      useGrouping: false,
+    }).format(value);
   }
 
   previousHistoryPage(): void {

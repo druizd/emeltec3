@@ -22,7 +22,7 @@ import {
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
 
-type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'variables';
+type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
 
 interface AdminStatus {
@@ -456,43 +456,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           <option value="false">Inactivo</option>
                         </select>
                       </div>
-                      @if (siteForm().tipo_sitio === 'pozo') {
-                        <div class="rounded-lg border border-cyan-100 bg-cyan-50/50 p-4">
-                          <div class="mb-3 flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px] text-cyan-700">water_drop</span>
-                            <div>
-                              <h3 class="text-sm font-black text-slate-800">Configuracion manual del pozo</h3>
-                              <p class="text-xs font-semibold text-cyan-700/70">Campos opcionales para proyectar el nivel freatico en la vista del pozo.</p>
-                            </div>
-                          </div>
-                          <div class="grid gap-3 md:grid-cols-2">
-                            <div>
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Profundidad total del pozo (m)</label>
-                              <input
-                                name="well-depth"
-                                type="number"
-                                step="0.01"
-                                [ngModel]="siteForm().profundidad_pozo_m"
-                                (ngModelChange)="updateSiteForm('profundidad_pozo_m', $event)"
-                                class="field-control"
-                                placeholder="18"
-                              />
-                            </div>
-                            <div>
-                              <label class="mb-1 block text-xs font-bold text-slate-500">Distancia del sensor desde superficie (m)</label>
-                              <input
-                                name="sensor-depth"
-                                type="number"
-                                step="0.01"
-                                [ngModel]="siteForm().profundidad_sensor_m"
-                                (ngModelChange)="updateSiteForm('profundidad_sensor_m', $event)"
-                                class="field-control"
-                                placeholder="16.5"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      }
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500">Nombre del sitio</label>
                         <input
@@ -644,256 +607,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </section>
               }
 
-              @if (activeSection() === 'variables') {
-                <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-black text-slate-900">Variables del sitio</h2>
-                  </div>
-
-                  <div class="grid gap-6 p-6 lg:grid-cols-[420px_1fr]">
-                    <form (submit)="createVariableMap($event)" class="space-y-4">
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Sitio</label>
-                        <select
-                          required
-                          name="variable-site"
-                          [ngModel]="selectedSiteId()"
-                          (ngModelChange)="selectSite($event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona sitio</option>
-                          @for (site of allSites(); track site.id) {
-                            <option [value]="site.id">{{ site.descripcion }} - {{ site.id_serial }}</option>
-                          }
-                        </select>
-                      </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Dato original</label>
-                        <select
-                          required
-                          name="variable-key"
-                          [ngModel]="variableForm().d1"
-                          (ngModelChange)="selectVariableKey($event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona variable</option>
-                          @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
-                          }
-                        </select>
-                      </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Alias</label>
-                        <input
-                          required
-                          name="variable-alias"
-                          [ngModel]="variableForm().alias"
-                          (ngModelChange)="updateVariableForm('alias', $event)"
-                          class="field-control"
-                          placeholder="Nivel, caudal, energia"
-                        />
-                      </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Uso en dashboard</label>
-                        <select
-                          name="variable-role"
-                          [ngModel]="variableForm().rol_dashboard"
-                          (ngModelChange)="updateVariableRole($event)"
-                          class="field-control"
-                        >
-                          @for (role of variableRoleOptions(); track role.id) {
-                            <option [value]="role.id">{{ role.label }}</option>
-                          }
-                        </select>
-                        @if (selectedVariableRole()?.description) {
-                          <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableRole()?.description }}</p>
-                        }
-                      </div>
-
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
-                          <select
-                            name="variable-type"
-                            [ngModel]="variableForm().tipo_dato"
-                            (ngModelChange)="updateVariableForm('tipo_dato', $event)"
-                            class="field-control"
-                          >
-                            <option value="FLOAT">FLOAT</option>
-                            <option value="INTEGER">INTEGER</option>
-                            <option value="BOOLEAN">BOOLEAN</option>
-                            <option value="TEXT">TEXT</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Unidad</label>
-                          <input
-                            name="variable-unit"
-                            [ngModel]="variableForm().unidad"
-                            (ngModelChange)="updateVariableForm('unidad', $event)"
-                            class="field-control"
-                            placeholder="m, %, L/s"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Transformacion</label>
-                        <select
-                          name="variable-transform"
-                          [ngModel]="variableForm().transformacion"
-                          (ngModelChange)="updateVariableTransform($event)"
-                          class="field-control"
-                        >
-                          @for (transform of variableTransformOptions(); track transform.id) {
-                            <option [value]="transform.id">{{ transform.label }}</option>
-                          }
-                        </select>
-                        @if (selectedVariableTransform()?.description) {
-                          <p class="mt-1 text-xs font-semibold text-slate-400">{{ selectedVariableTransform()?.description }}</p>
-                        }
-                      </div>
-
-                      @if (requiresSecondRegister()) {
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Segundo registro</label>
-                          <select
-                            name="variable-key-d2"
-                            [ngModel]="variableForm().d2"
-                            (ngModelChange)="updateVariableForm('d2', $event)"
-                            class="field-control"
-                          >
-                            <option value="">Selecciona variable</option>
-                            @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                              <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
-                            }
-                          </select>
-                        </div>
-                      }
-
-                      @if (isLinearTransform()) {
-                        <div class="grid grid-cols-2 gap-3">
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500">Factor Multiplicador</label>
-                            <input
-                              type="number"
-                              step="any"
-                              name="variable-factor"
-                              [ngModel]="variableForm().factor"
-                              (ngModelChange)="updateVariableForm('factor', $event)"
-                              class="field-control"
-                              placeholder="1"
-                            />
-                          </div>
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500">Offset</label>
-                            <input
-                              type="number"
-                              step="any"
-                              name="variable-offset"
-                              [ngModel]="variableForm().offset"
-                              (ngModelChange)="updateVariableForm('offset', $event)"
-                              class="field-control"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-                      }
-
-                      <div class="rounded-lg border border-cyan-100 bg-cyan-50/60 p-3">
-                        <div class="mb-3 flex items-center gap-2">
-                          <span class="material-symbols-outlined text-[18px] text-cyan-700">calculate</span>
-                          <h3 class="text-xs font-black uppercase tracking-[0.16em] text-cyan-800">Calculadora de Prueba (Vista Previa)</h3>
-                        </div>
-
-                        <div class="grid gap-3">
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500">Valor Crudo entrante (Simulacion CSV)</label>
-                            <input
-                              name="variable-sandbox-raw"
-                              [ngModel]="variableForm().sandboxRaw"
-                              (ngModelChange)="updateVariableForm('sandboxRaw', $event)"
-                              class="field-control bg-white"
-                              placeholder="Ej: 14.7"
-                            />
-                          </div>
-                        </div>
-
-                        <div class="mt-3 rounded-lg border border-cyan-100 bg-white px-3 py-2 shadow-sm">
-                          <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Resultado proyectado en Grafico</p>
-                          <p class="mt-1 text-xl font-black text-cyan-800">{{ previewResultText() }}</p>
-                        </div>
-
-                        <div class="mt-3 grid gap-2">
-                          @for (transform of variableTransformOptions(); track transform.id) {
-                            <button
-                              type="button"
-                              (click)="updateVariableTransform(transform.id)"
-                              [class]="calculatorButtonClass(transform.id)"
-                            >
-                              <span class="material-symbols-outlined text-[16px]">functions</span>
-                              <span>{{ transform.label }}</span>
-                            </button>
-                          }
-                        </div>
-                      </div>
-
-                      <button type="submit" [disabled]="!selectedSiteId() || busyAction() === 'variable'" class="primary-button">
-                        <span class="material-symbols-outlined text-[18px]">label</span>
-                        {{ busyAction() === 'variable' ? 'Guardando' : (variableForm().mapId ? 'Actualizar variable' : 'Guardar variable') }}
-                      </button>
-                    </form>
-
-                    <div class="overflow-hidden rounded-lg border border-slate-200">
-                      <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
-                          <tr>
-                            <th class="px-4 py-3">Dato</th>
-                            <th class="px-4 py-3">Valor</th>
-                            <th class="px-4 py-3">Alias</th>
-                            <th class="px-4 py-3 text-right">Accion</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <tr class="bg-white">
-                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">{{ variable.nombre_dato }}</td>
-                              <td class="px-4 py-3 font-bold text-slate-900">{{ displayValue(variable.valor_dato) }}</td>
-                              <td class="px-4 py-3">
-                                @if (variable.mapping) {
-                                  <div>
-                                    <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                                    <p class="text-xs text-slate-400">
-                                      {{ variable.mapping.tipo_dato }} - {{ displayVariableTransform(variable.mapping.transformacion) }} {{ variable.mapping.unidad || '' }}
-                                    </p>
-                                  </div>
-                                } @else {
-                                  <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">Sin alias</span>
-                                }
-                              </td>
-                              <td class="px-4 py-3">
-                                <div class="flex justify-end gap-2">
-                                  <button type="button" (click)="prepareVariableMap(variable)" class="icon-button" title="Editar formulario">
-                                    <span class="material-symbols-outlined text-[18px]">edit_square</span>
-                                  </button>
-                                  @if (variable.mapping) {
-                                    <button type="button" (click)="deleteVariableMap(variable.mapping)" class="icon-button text-red-500" title="Eliminar alias">
-                                      <span class="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                  }
-                                </div>
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </section>
-              }
             }
           </main>
         </div>
@@ -990,7 +703,6 @@ export class AdministrationComponent implements OnInit {
     { id: 'subempresas', icon: 'add_business', label: 'Subempresas' },
     { id: 'sitios', icon: 'location_on', label: 'Sitios' },
     { id: 'equipos', icon: 'memory', label: 'Equipos' },
-    { id: 'variables', icon: 'data_object', label: 'Variables' },
   ];
 
   activeSection = signal<SectionId>('empresas');
@@ -1266,7 +978,6 @@ export class AdministrationComponent implements OnInit {
       ubicacion: form.ubicacion || null,
       tipo_sitio: form.tipo_sitio,
       activo: form.activo,
-      pozo_config: this.buildPozoConfigPayload(),
     }).subscribe({
       next: (res) => {
         this.busyAction.set('');
@@ -1307,7 +1018,6 @@ export class AdministrationComponent implements OnInit {
       ubicacion: form.ubicacion || null,
       tipo_sitio: form.tipo_sitio,
       activo: form.activo,
-      pozo_config: this.buildPozoConfigPayload(),
     }).subscribe({
       next: (res) => {
         this.busyAction.set('');
