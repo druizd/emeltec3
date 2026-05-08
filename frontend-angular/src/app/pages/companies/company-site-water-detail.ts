@@ -66,10 +66,12 @@ interface RealtimeMetric {
 }
 
 interface RealtimeChartPoint {
+  index: number;
   x: number;
   y: number;
   value: number;
   label: string;
+  timestampMs: number;
 }
 
 interface RealtimeChartTick {
@@ -78,11 +80,21 @@ interface RealtimeChartTick {
   label: string;
 }
 
+interface RealtimeChartTooltip {
+  x: number;
+  y: number;
+  boxX: number;
+  boxY: number;
+  dateLabel: string;
+  valueLabel: string;
+}
+
 interface RealtimeChartData {
   points: RealtimeChartPoint[];
   polyline: string;
   yTicks: RealtimeChartTick[];
   xTicks: RealtimeChartTick[];
+  tooltip: RealtimeChartTooltip | null;
 }
 
 interface DgaReportRow {
@@ -1204,42 +1216,61 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <p class="text-xs font-semibold text-slate-400">Ultimos {{ realtimeChart().points.length }} registros minuto a minuto</p>
                       </div>
 
-                      <div class="mt-4 h-[310px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
+                      <div class="mt-4 h-[220px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
                         @if (realtimeChart().polyline) {
-                        <svg viewBox="0 0 1120 260" class="h-full w-full" role="img" aria-label="Grafico de caudal en tiempo real">
-                          <g class="text-slate-200" stroke="currentColor" stroke-width="1">
-                            <line x1="70" y1="26" x2="1070" y2="26" />
-                            <line x1="70" y1="78" x2="1070" y2="78" />
-                            <line x1="70" y1="130" x2="1070" y2="130" />
-                            <line x1="70" y1="182" x2="1070" y2="182" />
-                            <line x1="70" y1="234" x2="1070" y2="234" />
-                            <line x1="180" y1="26" x2="180" y2="234" />
-                            <line x1="335" y1="26" x2="335" y2="234" />
-                            <line x1="490" y1="26" x2="490" y2="234" />
-                            <line x1="645" y1="26" x2="645" y2="234" />
-                            <line x1="800" y1="26" x2="800" y2="234" />
-                            <line x1="955" y1="26" x2="955" y2="234" />
-                          </g>
-
-                          <g class="text-slate-400" fill="currentColor" font-size="14" font-weight="700">
+                        <svg viewBox="0 0 1120 210" class="h-full w-full" role="img" aria-label="Grafico de caudal en tiempo real">
+                          <g stroke="#d6dde8" stroke-width="0.8">
                             @for (tick of realtimeChart().yTicks; track tick.y) {
-                              <text x="18" [attr.y]="tick.y">{{ tick.label }}</text>
+                              <line x1="58" [attr.y1]="tick.y" x2="1092" [attr.y2]="tick.y" />
                             }
                             @for (tick of realtimeChart().xTicks; track tick.x) {
-                              <text [attr.x]="tick.x" y="254">{{ tick.label }}</text>
+                              <line [attr.x1]="tick.x" y1="24" [attr.x2]="tick.x" y2="156" />
+                            }
+                          </g>
+
+                          <g fill="#6b7280" font-size="11" font-weight="500">
+                            @for (tick of realtimeChart().yTicks; track tick.y) {
+                              <text x="20" [attr.y]="(tick.y || 0) + 4">{{ tick.label }}</text>
+                            }
+                            @for (tick of realtimeChart().xTicks; track tick.x) {
+                              <text [attr.x]="(tick.x || 0) - 15" y="184">{{ tick.label }}</text>
                             }
                           </g>
 
                           <polyline
                             [attr.points]="realtimeChart().polyline"
                             fill="none"
-                            stroke="#5f7fd4"
+                            stroke="#4f73ff"
                             stroke-linecap="round"
                             stroke-linejoin="round"
-                            stroke-width="3"
+                            stroke-width="1.8"
                           />
-                          @for (point of realtimeChart().points; track point.x) {
-                            <circle [attr.cx]="point.x" [attr.cy]="point.y" r="3" fill="#5f7fd4">
+                          @if (realtimeChart().tooltip; as tooltip) {
+                            <line [attr.x1]="tooltip.x" y1="24" [attr.x2]="tooltip.x" y2="156" stroke="#94a3b8" stroke-width="0.9" stroke-dasharray="4 4" />
+                            <circle [attr.cx]="tooltip.x" [attr.cy]="tooltip.y" r="4" fill="white" stroke="#4f73ff" stroke-width="2" />
+                            <foreignObject [attr.x]="tooltip.boxX" [attr.y]="tooltip.boxY" width="168" height="66">
+                              <div class="rounded-md border border-slate-100 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg">
+                                <p class="font-black text-slate-600">{{ tooltip.dateLabel }}</p>
+                                <p class="mt-1 flex items-center gap-1.5">
+                                  <span class="h-2 w-2 rounded-full bg-[#4f73ff]"></span>
+                                  <span>Caudal (L/s)</span>
+                                  <strong class="ml-auto text-slate-700">{{ tooltip.valueLabel }}</strong>
+                                </p>
+                              </div>
+                            </foreignObject>
+                          }
+                          @for (point of realtimeChart().points; track point.index) {
+                            <circle
+                              [attr.cx]="point.x"
+                              [attr.cy]="point.y"
+                              r="8"
+                              fill="transparent"
+                              class="cursor-crosshair"
+                              (mouseenter)="setRealtimeChartHover(point.index)"
+                              (focus)="setRealtimeChartHover(point.index)"
+                              (mouseleave)="clearRealtimeChartHover()"
+                              tabindex="0"
+                            >
                               <title>{{ point.label }}: {{ formatChartNumber(point.value) }} L/s</title>
                             </circle>
                           }
@@ -1586,6 +1617,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyDateFrom = signal('');
   historyDateTo = signal('');
   historyRecordLimit = signal(500);
+  hoveredRealtimePointIndex = signal<number | null>(null);
   dgaDateFilterOpen = signal(false);
   selectedDgaReport = signal<DgaReportRow | null>(null);
   dgaDateFrom = signal('2026-04-06');
@@ -2338,6 +2370,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.operationMode.set(mode);
   }
 
+  setRealtimeChartHover(index: number): void {
+    this.hoveredRealtimePointIndex.set(index);
+  }
+
+  clearRealtimeChartHover(): void {
+    this.hoveredRealtimePointIndex.set(null);
+  }
+
   handleQuickAction(action: { tab?: DetailTab; openHistory?: boolean }): void {
     if (action.openHistory) {
       this.openHistoryView();
@@ -2883,10 +2923,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   private buildRealtimeChart(): RealtimeChartData {
-    const chartLeft = 70;
-    const chartRight = 1070;
-    const chartTop = 26;
-    const chartBottom = 234;
+    const chartLeft = 58;
+    const chartRight = 1092;
+    const chartTop = 24;
+    const chartBottom = 156;
     const rows = this.historyRows()
       .filter((row) =>
         row.timestampMs !== null &&
@@ -2898,62 +2938,103 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       .slice(-60);
 
     if (!rows.length) {
-      return { points: [], polyline: '', yTicks: [], xTicks: [] };
+      return { points: [], polyline: '', yTicks: [], xTicks: [], tooltip: null };
     }
 
     const values = rows.map((row) => row.caudalValue ?? 0);
     const minValue = Math.min(...values);
     const maxValue = Math.max(...values);
-    const spread = maxValue - minValue;
-    const padding = spread === 0 ? Math.max(0.1, Math.abs(maxValue) * 0.01) : spread * 0.12;
-    const yMin = minValue - padding;
-    const yMax = maxValue + padding;
+    const step = this.niceChartStep((maxValue - minValue) / 4 || Math.max(Math.abs(maxValue) * 0.005, 0.05));
+    let yMin = Math.floor((minValue - (step * 0.2)) / step) * step;
+    let yMax = Math.ceil((maxValue + (step * 0.2)) / step) * step;
+
+    if (yMax <= yMin) {
+      yMax = yMin + step;
+    }
+
     const yRange = yMax - yMin || 1;
-    const xStep = rows.length > 1 ? (chartRight - chartLeft) / (rows.length - 1) : 0;
+    const minTime = rows[0].timestampMs || 0;
+    const maxTime = rows[rows.length - 1].timestampMs || minTime;
+    const timeRange = Math.max(1000, maxTime - minTime);
 
     const points = rows.map((row, index) => {
       const value = row.caudalValue ?? 0;
-      const x = rows.length > 1 ? chartLeft + (index * xStep) : (chartLeft + chartRight) / 2;
+      const timestampMs = row.timestampMs || minTime;
+      const x = rows.length > 1
+        ? chartLeft + (((timestampMs - minTime) / timeRange) * (chartRight - chartLeft))
+        : (chartLeft + chartRight) / 2;
       const y = chartBottom - (((value - yMin) / yRange) * (chartBottom - chartTop));
 
       return {
+        index,
         x: Math.round(x * 10) / 10,
         y: Math.round(y * 10) / 10,
         value,
         label: row.fecha,
+        timestampMs,
       };
     });
 
-    const yTickPositions = [31, 83, 135, 187, 239];
+    const yTickPositions = [24, 57, 90, 123, 156];
     const yTicks = yTickPositions.map((y, index) => {
       const ratio = index / (yTickPositions.length - 1);
       const value = yMax - (ratio * yRange);
       return { y, label: this.formatChartNumber(value) };
     });
 
-    const xTickIndexes = this.pickChartTickIndexes(rows.length, 6);
-    const xTicks = xTickIndexes.map((index) => ({
-      x: Math.round((rows.length > 1 ? chartLeft + (index * xStep) : (chartLeft + chartRight) / 2) - 8),
-      label: this.formatChileTimeShort(new Date(rows[index].timestampMs || 0)),
-    }));
+    const xTicks = this.buildFiveMinuteTicks(minTime, maxTime, chartLeft, chartRight);
+    const hoveredIndex = this.hoveredRealtimePointIndex();
+    const tooltipPoint = points.find((point) => point.index === hoveredIndex) || points[points.length - 1] || null;
+    const tooltip = tooltipPoint
+      ? {
+          x: tooltipPoint.x,
+          y: tooltipPoint.y,
+          boxX: this.clamp(tooltipPoint.x + 12, 8, 944),
+          boxY: this.clamp(tooltipPoint.y - 62, 8, 132),
+          dateLabel: this.formatChartTooltipDate(new Date(tooltipPoint.timestampMs)),
+          valueLabel: this.formatChartNumber(tooltipPoint.value),
+        }
+      : null;
 
     return {
       points,
       polyline: points.map((point) => `${point.x},${point.y}`).join(' '),
       yTicks,
       xTicks,
+      tooltip,
     };
   }
 
-  private pickChartTickIndexes(length: number, maxTicks: number): number[] {
-    if (length <= maxTicks) return Array.from({ length }, (_, index) => index);
+  private buildFiveMinuteTicks(minTime: number, maxTime: number, chartLeft: number, chartRight: number): RealtimeChartTick[] {
+    const intervalMs = 5 * 60 * 1000;
+    const timeRange = Math.max(1000, maxTime - minTime);
+    const firstTick = Math.ceil(minTime / intervalMs) * intervalMs;
+    const ticks: RealtimeChartTick[] = [];
 
-    const last = length - 1;
-    const indexes = new Set<number>();
-    for (let i = 0; i < maxTicks; i += 1) {
-      indexes.add(Math.round((last * i) / (maxTicks - 1)));
+    for (let tick = firstTick; tick <= maxTime; tick += intervalMs) {
+      ticks.push({
+        x: Math.round(chartLeft + (((tick - minTime) / timeRange) * (chartRight - chartLeft))),
+        label: this.formatChileTimeShort(new Date(tick)),
+      });
     }
-    return [...indexes].sort((a, b) => a - b);
+
+    if (!ticks.length) {
+      return [
+        { x: chartLeft, label: this.formatChileTimeShort(new Date(minTime)) },
+        { x: chartRight - 30, label: this.formatChileTimeShort(new Date(maxTime)) },
+      ];
+    }
+
+    return ticks;
+  }
+
+  private niceChartStep(value: number): number {
+    const raw = Math.max(Math.abs(value), 0.01);
+    const exponent = Math.floor(Math.log10(raw));
+    const magnitude = 10 ** exponent;
+    const normalized = raw / magnitude;
+    const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+    return nice * magnitude;
   }
 
   private formatRealtimeNumber(value: number | null, maximumFractionDigits: number): string {
@@ -2978,6 +3059,24 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       hourCycle: 'h23',
       hour12: false,
     }).format(value);
+  }
+
+  private formatChartTooltipDate(value: Date): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).formatToParts(value);
+    const get = (type: string) => parts.find((part) => part.type === type)?.value || '';
+    const month = get('month');
+    const cleanMonth = month ? `${month.charAt(0).toUpperCase()}${month.slice(1)}` : '';
+    return `${get('day')} ${cleanMonth} ${get('year')} ${get('hour')}:${get('minute')}:${get('second')}`;
   }
 
   private formatChileDateKey(value: Date): string {
