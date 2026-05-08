@@ -363,6 +363,7 @@ function buildSiteDashboardData({ site, pozoConfig, mappings, latest }) {
   });
 
   return {
+    server_time: toUtcIsoString(new Date()),
     site: {
       id: site.id,
       descripcion: site.descripcion,
@@ -373,7 +374,8 @@ function buildSiteDashboardData({ site, pozoConfig, mappings, latest }) {
     ultima_lectura: latest
       ? {
           time: toUtcIsoString(latest.time),
-          timestamp_completo: toUtcIsoString(latest.timestamp_completo || latest.time),
+          timestamp_completo: toUtcIsoString(latest.time),
+          received_at: toUtcIsoString(latest.received_at),
           id_serial: latest.id_serial,
         }
       : null,
@@ -445,7 +447,8 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
 
   return {
     timestamp: toUtcIsoString(row.time),
-    fecha: toUtcIsoString(row.timestamp_completo || row.time),
+    fecha: toUtcIsoString(row.time),
+    received_at: toUtcIsoString(row.received_at),
     caudal: serializeHistoricalVariable(findHistoricalVariable(variables, 'caudal')),
     totalizador: serializeHistoricalVariable(findHistoricalVariable(variables, 'totalizador')),
     nivel_freatico: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel_freatico')),

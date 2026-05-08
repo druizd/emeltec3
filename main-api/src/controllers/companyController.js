@@ -759,6 +759,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
         `
         SELECT
           time,
+          received_at,
           id_serial,
           data,
           ${utcTimestampSql('time')} AS timestamp_completo
@@ -833,10 +834,11 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
       db.query(
         `
-        SELECT time, id_serial, data, timestamp_completo
+        SELECT time, received_at, id_serial, data, timestamp_completo
         FROM (
           SELECT DISTINCT ON (date_trunc('minute', time))
             time,
+            received_at,
             id_serial,
             data,
             ${utcTimestampSql('time')} AS timestamp_completo

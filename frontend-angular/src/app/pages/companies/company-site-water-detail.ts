@@ -130,6 +130,7 @@ interface DashboardVariable {
 }
 
 interface SiteDashboardData {
+  server_time?: string | null;
   pozo_config?: {
     profundidad_pozo_m?: number | string | null;
     profundidad_sensor_m?: number | string | null;
@@ -137,6 +138,7 @@ interface SiteDashboardData {
   ultima_lectura?: {
     time?: string | null;
     timestamp_completo?: string | null;
+    received_at?: string | null;
     id_serial?: string | null;
   } | null;
   resumen?: Record<string, { valor?: string | number | null; ok?: boolean; unidad?: string | null } | undefined>;
@@ -1598,6 +1600,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dashboardError = signal('');
   dashboardData = signal<SiteDashboardData | null>(null);
   dashboardLastLoadedAt = signal<Date | null>(null);
+  serverClockOffsetMs = signal(0);
   currentTime = signal(new Date());
   activeDetailTab = signal<DetailTab>('dga');
   historyPanelOpen = signal(false);
@@ -1644,15 +1647,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
+  currentServerTime = computed(() => new Date(this.currentTime().getTime() + this.serverClockOffsetMs()));
   telemetryStatusBadges = computed<TelemetryStatusBadge[]>(() => {
     const reading = this.dashboardData()?.ultima_lectura;
-    const dashboardTimestamp = String(reading?.time || reading?.timestamp_completo || '').trim();
-    const deviceTimestamp = String(reading?.timestamp_completo || reading?.time || '').trim();
-    const now = this.currentTime();
+    const officialTimestamp = String(reading?.timestamp_completo || reading?.time || '').trim();
+    const receivedTimestamp = String(reading?.received_at || '').trim();
+    const now = this.currentServerTime();
 
     return [
-      this.buildTelemetryBadge('Ultimo dato en dashboard', dashboardTimestamp, now, 'relative', 'schedule'),
-      this.buildTelemetryBadge('Ultimo dato desde el equipo', deviceTimestamp, now, 'datetime', 'online_prediction'),
+      this.buildTelemetryBadge('Ultimo dato equipo', officialTimestamp, now, 'datetime', 'online_prediction'),
+      this.buildTelemetryBadge('Recibido por plataforma', receivedTimestamp || officialTimestamp, now, 'relative', 'schedule'),
     ];
   });
   historySourceRows = computed(() => {
@@ -1936,6 +1940,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const elapsedDays = Math.floor(elapsedHours / 24);
     const remainingHours = elapsedHours % 24;
     return remainingHours ? `hace ${elapsedDays}d ${remainingHours}h` : `hace ${elapsedDays}d`;
+  }
+
+  private syncServerClock(rawServerTime: string | null | undefined): void {
+    const serverTime = rawServerTime ? this.parseUtcTimestamp(String(rawServerTime)) : null;
+    if (!serverTime) return;
+    this.serverClockOffsetMs.set(serverTime.getTime() - Date.now());
   }
 
   private formatChileDateTime(value: Date | string): string {
@@ -2783,6 +2793,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       if (!res) return;
 
       const payload = res?.ok === false ? null : (res?.data || res || null);
+      this.syncServerClock(payload?.server_time);
       this.dashboardData.set(payload);
       this.dashboardLastLoadedAt.set(new Date());
       this.dashboardError.set(payload ? '' : 'No fue posible cargar datos del pozo.');

@@ -171,6 +171,38 @@ test("siteTelemetryService expone nivel_freatico cuando la variable Nivel usa la
   assert.equal(historical.fecha, "2026-05-07T17:00:00Z");
 });
 
+test("siteTelemetryService usa equipo.time como timestamp oficial aunque timestamp_completo venga preconvertido", () => {
+  clearSrcModules();
+  const {
+    buildSiteDashboardData,
+    mapHistoricalDashboardRow,
+  } = require(path.join(srcRoot, "services", "siteTelemetryService.js"));
+
+  const site = { id: "SITE-1", descripcion: "Pozo 1", id_serial: "PLC-01", tipo_sitio: "pozo" };
+  const latest = {
+    time: "2026-05-08T05:31:00.000Z",
+    timestamp_completo: "2026-05-08T01:31:00Z",
+    received_at: "2026-05-08T05:29:53.041Z",
+    id_serial: "PLC-01",
+    data: {},
+  };
+
+  const dashboard = buildSiteDashboardData({ site, pozoConfig: null, mappings: [], latest });
+  assert.equal(dashboard.ultima_lectura.time, "2026-05-08T05:31:00Z");
+  assert.equal(dashboard.ultima_lectura.timestamp_completo, "2026-05-08T05:31:00Z");
+  assert.equal(dashboard.ultima_lectura.received_at, "2026-05-08T05:29:53Z");
+
+  const historical = mapHistoricalDashboardRow({
+    row: latest,
+    site,
+    mappings: [],
+    pozoConfig: null,
+  });
+  assert.equal(historical.timestamp, "2026-05-08T05:31:00Z");
+  assert.equal(historical.fecha, "2026-05-08T05:31:00Z");
+  assert.equal(historical.received_at, "2026-05-08T05:29:53Z");
+});
+
 test("siteTelemetryService deriva nivel_freatico desde una variable Nivel lineal", () => {
   clearSrcModules();
   const {
