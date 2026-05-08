@@ -2116,6 +2116,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.serverClockOffsetMs.set(serverTime.getTime() - Date.now());
   }
 
+  private formatLatestDeviceReading(reading: SiteDashboardData['ultima_lectura'] | undefined): string {
+    const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
+    if (!raw) return 'Equipo sin dato';
+    return `Ultimo dato equipo ${this.formatChileDateTime(raw)}`;
+  }
+
   private formatChileDateTime(value: Date | string): string {
     const parsed = value instanceof Date ? value : this.parseUtcTimestamp(value);
 
