@@ -160,6 +160,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   electrico: {
@@ -175,6 +176,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   riles: {
@@ -190,6 +192,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   proceso: {
@@ -205,6 +208,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
   generico: {
@@ -217,6 +221,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
       { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
       { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      { id: 'uint32_registros', label: 'D1 * D2', description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.', enabled: true, requiresD2: true },
     ],
   },
 };
@@ -462,6 +467,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                   }
                                 </select>
                               </div>
+                              @if (usesRegisterOrder()) {
                               <div>
                                 <label class="mb-1 block text-xs font-bold text-slate-500">Orden de registros</label>
                                 <select
@@ -470,11 +476,21 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                   (ngModelChange)="updateVariableForm('wordSwap', $event)"
                                   class="field-control bg-white"
                                 >
+                                  @if (isUint32TransformSelected()) {
+                                  <option value="true">Invertido CDAB</option>
+                                  <option value="false">Normal ABCD</option>
+                                  } @else {
                                   <option value="false">Normal ABCD</option>
                                   <option value="true">Invertido CDAB</option>
+                                  }
                                 </select>
-                                <p class="mt-1 text-xs font-semibold text-slate-400">{{ ieeeRegisterOrderHint() }}</p>
+                                <p class="mt-1 text-xs font-semibold text-slate-400">{{ registerOrderHint() }}</p>
                               </div>
+                              } @else {
+                              <div class="rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800">
+                                Formula: {{ variableForm().d1 || 'primer registro' }} * {{ variableForm().d2 || 'segundo registro' }}
+                              </div>
+                              }
                             </div>
                           }
                       </div>
@@ -2066,6 +2082,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.variableForm.update((form) => ({
       ...form,
       transformacion: normalizedTransform,
+      wordSwap: normalizedTransform === 'uint32_registros' ? 'true' : form.wordSwap,
       factor: this.isLinearTransformValue(normalizedTransform) ? (form.factor || '1') : '1',
       offset: this.isLinearTransformValue(normalizedTransform) ? (form.offset || '0') : '0',
     }));
@@ -2079,6 +2096,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return this.selectedVariableTransform()?.requiresD2 === true;
   }
 
+  usesRegisterOrder(): boolean {
+    return ['ieee754_32', 'uint32_registros'].includes(this.variableForm().transformacion);
+  }
+
+  isUint32TransformSelected(): boolean {
+    return this.variableForm().transformacion === 'uint32_registros';
+  }
+
   selectedVariableRole(): SiteTypeRoleOption | undefined {
     return this.variableRoleOptions().find((role) => role.id === this.variableForm().rol_dashboard);
   }
@@ -2087,16 +2112,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return this.variableTransformOptions().find((transform) => transform.id === this.variableForm().transformacion);
   }
 
-  ieeeRegisterOrderHint(): string {
+  registerOrderHint(): string {
     const form = this.variableForm();
     const first = form.d1 || 'primer registro';
     const second = form.d2 || 'segundo registro';
 
     if (form.wordSwap === 'true') {
-      return `${second} queda como dato mayor y ${first} como dato menor.`;
+      return `${second} queda como registro alto y ${first} como registro bajo.`;
     }
 
-    return `${first} queda como dato mayor y ${second} como dato menor.`;
+    return `${first} queda como registro alto y ${second} como registro bajo.`;
   }
 
   calculatorButtonClass(transformId: string): string {
@@ -2111,7 +2136,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const rawText = String(form.sandboxRaw ?? '').trim();
     const unit = form.unidad ? ` ${form.unidad}` : '';
 
-    if (!rawText) return 'Ingresa un valor crudo';
+    if (!rawText && !this.requiresSecondRegister()) return 'Ingresa un valor crudo';
 
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.toNumber(rawText);
@@ -2131,6 +2156,19 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       }
 
       return `${this.formatPreviewNumber(decoded)}${unit}`;
+    }
+
+    if (form.transformacion === 'uint32_registros') {
+      const rawA = this.toRegisterWord(this.valueForVariableKey(form.d1));
+      const rawB = this.toRegisterWord(this.valueForVariableKey(form.d2));
+
+      if (rawA === null || rawB === null) {
+        return form.d2 ? 'Registros no numericos' : 'Selecciona segundo registro';
+      }
+
+      const high = form.wordSwap === 'true' ? rawB : rawA;
+      const low = form.wordSwap === 'true' ? rawA : rawB;
+      return `${this.formatPreviewNumber((high * 65536) + low)}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -2504,10 +2542,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
     const form = this.variableForm();
 
-    if (form.transformacion === 'ieee754_32') {
+    if (form.transformacion === 'ieee754_32' || form.transformacion === 'uint32_registros') {
       return {
         word_swap: form.wordSwap === 'true',
-        formato: 'float32',
+        formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
       };
     }
 
@@ -2551,6 +2589,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
     if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
     if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
+    if (transformacion === 'uint32' || transformacion === 'uint32_registros') return 'uint32_registros';
     if (transformacion === 'caudal' || transformacion === 'caudal_m3h_lps' || transformacion === 'nivel_freatico') return 'lineal';
     return 'directo';
   }

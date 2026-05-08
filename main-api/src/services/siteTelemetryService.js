@@ -1,5 +1,5 @@
 const { m3hALs } = require('../utils/caudal');
-const { parseIEEE754, registrosModbusAFloat32 } = require('../utils/ieee754');
+const { parseIEEE754, registrosModbusAFloat32, registrosModbusAUInt32 } = require('../utils/ieee754');
 const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
 
@@ -83,6 +83,15 @@ function applyLinearTransform(value, params = {}) {
   return (base * factor) + offset;
 }
 
+function applyUInt32RegistersTransform({ rawData, mapping, params }) {
+  const rawD1 = readRawValue(rawData, mapping.d1);
+  const rawD2 = readRawValue(rawData, mapping.d2);
+  const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
+  const wordBaja = requireFiniteNumber(rawD2, mapping.d2 || 'd2');
+  const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
+  return registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor;
+}
+
 function applyIeeeTransform({ rawData, mapping, params }) {
   const rawD1 = readRawValue(rawData, mapping.d1);
   const rawD2 = readRawValue(rawData, mapping.d2);
@@ -118,6 +127,10 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
 
     case 'ieee754_32':
       return applyIeeeTransform({ rawData, mapping, params });
+
+    case 'uint32_registros':
+    case 'uint32':
+      return applyUInt32RegistersTransform({ rawData, mapping, params });
 
     case 'nivel_freatico': {
       const lecturaPozo = applyLinearTransform(rawD1, params);
