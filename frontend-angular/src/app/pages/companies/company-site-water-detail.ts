@@ -2116,6 +2116,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.serverClockOffsetMs.set(serverTime.getTime() - Date.now());
   }
 
+  private formatDashboardRefresh(loadedAt: Date | null, now: Date): string {
+    if (!loadedAt) return 'Sin datos';
+    return this.formatDetailedRelativeTime(loadedAt, now);
+  }
+
   private formatLatestDeviceReading(reading: SiteDashboardData['ultima_lectura'] | undefined): string {
     const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
     if (!raw) return 'Equipo sin dato';
