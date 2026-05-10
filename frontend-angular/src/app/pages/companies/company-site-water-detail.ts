@@ -19,6 +19,10 @@ import {
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
+import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
+import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
+import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
+import { WaterDetailAnalisisComponent } from './components/water-detail-analisis/water-detail-analisis';
 
 interface SiteContext {
   company: any;
@@ -145,7 +149,7 @@ interface SiteDashboardData {
   variables?: DashboardVariable[];
 }
 
-type DetailTab = 'dga' | 'operacion';
+type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
 type OperationMode = 'realtime' | 'turnos';
 type SettingsStatusType = 'success' | 'error' | '';
 
@@ -272,7 +276,16 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 @Component({
   selector: 'app-company-site-water-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CompaniesSiteDetailSkeletonComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    CompaniesSiteDetailSkeletonComponent,
+    WaterDetailOperacionComponent,
+    WaterDetailAlertasComponent,
+    WaterDetailBitacoraComponent,
+    WaterDetailAnalisisComponent,
+  ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
       @if (loading() && !siteContext()) {
@@ -341,6 +354,39 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <span class="material-symbols-outlined text-[18px]">monitoring</span>
                 Operación
                 @if (activeDetailTab() === 'operacion') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('alertas')"
+                [class]="getDetailTabClass('alertas')"
+              >
+                <span class="material-symbols-outlined text-[18px]">notifications_active</span>
+                Alertas
+                @if (activeDetailTab() === 'alertas') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('bitacora')"
+                [class]="getDetailTabClass('bitacora')"
+              >
+                <span class="material-symbols-outlined text-[18px]">menu_book</span>
+                Bitácora
+                @if (activeDetailTab() === 'bitacora') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('analisis')"
+                [class]="getDetailTabClass('analisis')"
+              >
+                <span class="material-symbols-outlined text-[18px]">insights</span>
+                Análisis
+                @if (activeDetailTab() === 'analisis') {
                   <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
                 }
               </button>
@@ -1268,151 +1314,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </div>
           </section>
 
-          } @else {
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-                <div class="flex flex-wrap items-center gap-1">
-                  <button
-                    type="button"
-                    (click)="setOperationMode('realtime')"
-                    [class]="getOperationModeClass('realtime')"
-                  >
-                    <span class="material-symbols-outlined text-[17px]">sync</span>
-                    Tiempo Real
-                  </button>
-                  <button
-                    type="button"
-                    (click)="setOperationMode('turnos')"
-                    [class]="getOperationModeClass('turnos')"
-                  >
-                    <span class="material-symbols-outlined text-[17px]">schedule</span>
-                    Operación por Turnos
-                  </button>
-                </div>
-
-                <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                  <span class="material-symbols-outlined text-[15px]">help</span>
-                  La visualización puede presentar variaciones o desfases momentáneos en los datos.
-                </p>
-              </div>
-
-              <div class="p-4">
-                @if (operationMode() === 'realtime') {
-                  <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <div class="rounded-xl bg-gradient-to-r from-[#0797ad] to-[#18bfd0] p-4 text-white shadow-sm">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div class="flex items-baseline gap-3">
-                          <h2 class="text-sm font-black">Datos en tiempo real</h2>
-                          <span class="text-xs font-semibold text-cyan-100">(actualización cada minuto)</span>
-                        </div>
-                        <span class="inline-flex items-center gap-2 text-xs font-bold text-cyan-50">
-                          <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
-                          {{ latestRealtimeTimestampLabel() }}
-                        </span>
-                      </div>
-
-                      <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        @for (metric of realtimeMetrics(); track metric.label) {
-                          <article class="rounded-lg bg-white/12 px-4 py-3 ring-1 ring-white/10">
-                            <p class="text-xs font-bold text-cyan-100">{{ metric.label }}</p>
-                            <p class="mt-1 text-2xl font-black leading-none">
-                              {{ metric.value }}
-                              <span class="text-sm font-bold">{{ metric.unit }}</span>
-                            </p>
-                          </article>
-                        }
-                      </div>
-                    </div>
-
-                    <article class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h3 class="text-sm font-black text-slate-800">Caudal en Tiempo Real</h3>
-                        <p class="text-xs font-semibold text-slate-400">Ultimos {{ realtimeChart().points.length }} registros minuto a minuto</p>
-                      </div>
-
-                      <div class="mt-4 h-[220px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
-                        @if (realtimeChart().polyline) {
-                        <svg viewBox="0 0 1120 210" class="h-full w-full" role="img" aria-label="Grafico de caudal en tiempo real">
-                          <g stroke="#d6dde8" stroke-width="0.8">
-                            @for (tick of realtimeChart().yTicks; track tick.y) {
-                              <line x1="58" [attr.y1]="tick.y" x2="1092" [attr.y2]="tick.y" />
-                            }
-                            @for (tick of realtimeChart().xTicks; track tick.x) {
-                              <line [attr.x1]="tick.x" y1="24" [attr.x2]="tick.x" y2="156" />
-                            }
-                          </g>
-
-                          <g fill="#6b7280" font-size="11" font-weight="500">
-                            @for (tick of realtimeChart().yTicks; track tick.y) {
-                              <text x="20" [attr.y]="(tick.y || 0) + 4">{{ tick.label }}</text>
-                            }
-                            @for (tick of realtimeChart().xTicks; track tick.x) {
-                              <text [attr.x]="(tick.x || 0) - 15" y="184">{{ tick.label }}</text>
-                            }
-                          </g>
-
-                          <polyline
-                            [attr.points]="realtimeChart().polyline"
-                            fill="none"
-                            stroke="#4f73ff"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.8"
-                          />
-                          @if (realtimeChart().tooltip; as tooltip) {
-                            <line [attr.x1]="tooltip.x" y1="24" [attr.x2]="tooltip.x" y2="156" stroke="#94a3b8" stroke-width="0.9" stroke-dasharray="4 4" />
-                            <circle [attr.cx]="tooltip.x" [attr.cy]="tooltip.y" r="4" fill="white" stroke="#4f73ff" stroke-width="2" />
-                            <foreignObject [attr.x]="tooltip.boxX" [attr.y]="tooltip.boxY" width="168" height="66">
-                              <div class="rounded-md border border-slate-100 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg">
-                                <p class="font-black text-slate-600">{{ tooltip.dateLabel }}</p>
-                                <p class="mt-1 flex items-center gap-1.5">
-                                  <span class="h-2 w-2 rounded-full bg-[#4f73ff]"></span>
-                                  <span>Caudal (L/s)</span>
-                                  <strong class="ml-auto text-slate-700">{{ tooltip.valueLabel }}</strong>
-                                </p>
-                              </div>
-                            </foreignObject>
-                          }
-                          @for (point of realtimeChart().points; track point.index) {
-                            <circle
-                              [attr.cx]="point.x"
-                              [attr.cy]="point.y"
-                              r="8"
-                              fill="transparent"
-                              class="cursor-crosshair"
-                              (mouseenter)="setRealtimeChartHover(point.index)"
-                              (focus)="setRealtimeChartHover(point.index)"
-                              (mouseleave)="clearRealtimeChartHover()"
-                              tabindex="0"
-                            >
-                              <title>{{ point.label }}: {{ formatChartNumber(point.value) }} L/s</title>
-                            </circle>
-                          }
-                        </svg>
-                        } @else {
-                          <div class="flex h-full items-center justify-center bg-slate-50 text-center">
-                            <div>
-                              <span class="material-symbols-outlined text-[32px] text-slate-300">show_chart</span>
-                              <p class="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Sin datos reales para graficar</p>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    </article>
-                  </div>
-                } @else {
-                  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-5 py-10 text-center">
-                      <span class="material-symbols-outlined text-4xl text-cyan-600">schedule</span>
-                      <h2 class="mt-2 text-lg font-black text-slate-800">Operación por Turnos</h2>
-                      <p class="mx-auto mt-1 max-w-xl text-sm font-semibold text-slate-400">
-                        Esta vista queda preparada para separar horas operativas, pausas y comparativas por turno cuando conectemos los datos reales.
-                      </p>
-                    </div>
-                  </div>
-                }
-              </div>
-            </section>
+          } @else if (activeDetailTab() === 'operacion') {
+            <app-water-detail-operacion />
+          } @else if (activeDetailTab() === 'alertas') {
+            <app-water-detail-alertas />
+          } @else if (activeDetailTab() === 'bitacora') {
+            <app-water-detail-bitacora />
+          } @else if (activeDetailTab() === 'analisis') {
+            <app-water-detail-analisis />
           }
         </div>
       } @else {
