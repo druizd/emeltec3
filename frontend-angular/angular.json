@@ -81,6 +81,12 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "configurations": {
+            "production-api": {
+              "buildTarget": "frontend-angular:build:development",
+              "host": "127.0.0.1",
+              "port": 4300,
+              "proxyConfig": "proxy.production.conf.json"
+            },
             "production": {
               "buildTarget": "frontend-angular:build:production"
             },
@@ -88,7 +94,7 @@
               "buildTarget": "frontend-angular:build:development"
             }
           },
-          "defaultConfiguration": "development",
+          "defaultConfiguration": "production-api",
           "options": {
             "proxyConfig": "proxy.conf.json",
             "allowedHosts": ["nuevacloud.emeltec.cl", "104.46.7.78"]
