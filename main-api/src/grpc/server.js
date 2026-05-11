@@ -8,7 +8,7 @@ const protoLoader = require("@grpc/proto-loader");
 
 const pool = require("../config/db");
 const { getLatestSerialId } = require("../utils/serial");
-const { formatUtcMinus3, parseUtcMinus3 } = require("../utils/timezone");
+const { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } = require("../utils/timezone");
 const {
   trackRequest,
   getRequestMetrics,
@@ -139,6 +139,14 @@ function buildDataFilterClause(selectedKeys, params) {
   return "";
 }
 
+function chileDateSql(column) {
+  return `TO_CHAR(${column} AT TIME ZONE '${CHILE_TIME_ZONE}', 'YYYY-MM-DD')`;
+}
+
+function chileTimeSql(column) {
+  return `TO_CHAR(${column} AT TIME ZONE '${CHILE_TIME_ZONE}', 'HH24:MI:SS')`;
+}
+
 // Ejecuta la consulta historica base usada por latest y preset.
 async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) {
   const params = [serialId];
@@ -146,7 +154,7 @@ async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) 
 
   if (from && to) {
     params.push(from, to);
-    where += ` AND time BETWEEN $2::timestamp AND $3::timestamp`;
+    where += ` AND time BETWEEN ($2::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}') AND ($3::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')`;
   }
 
   where += buildDataFilterClause(selectedKeys, params);
@@ -154,8 +162,8 @@ async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) 
   const query = `
     SELECT
       id_serial,
-      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD') AS fecha,
-      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'HH24:MI:SS') AS hora,
+      ${chileDateSql('time')} AS fecha,
+      ${chileTimeSql('time')} AS hora,
       data
     FROM equipo
     ${where}
@@ -176,8 +184,8 @@ async function getLatestReferenceTimestamp(serialId) {
   const { rows } = await pool.query(
     `
     SELECT
-      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD') AS fecha,
-      TO_CHAR((time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'HH24:MI:SS') AS hora
+      ${chileDateSql('time')} AS fecha,
+      ${chileTimeSql('time')} AS hora
     FROM equipo
     WHERE id_serial = $1
     ORDER BY time DESC
@@ -195,12 +203,12 @@ async function getLatestReferenceTimestamp(serialId) {
 
 // Interpreta fechas literales enviadas por el cliente gRPC.
 function parseTimestampLiteral(rawValue) {
-  return parseUtcMinus3(rawValue);
+  return parseChileTimestamp(rawValue);
 }
 
 // Devuelve un timestamp normalizado en el formato que usan las consultas SQL.
 function formatTimestampLiteral(date) {
-  return formatUtcMinus3(date);
+  return formatChileTimestamp(date);
 }
 
 // Construye el rango from/to a partir de un preset y una fecha final.
@@ -483,8 +491,8 @@ async function getOnlineValues(call, callback) {
         latest.id_serial,
         latest.nombre_dato,
         latest.valor_dato,
-        TO_CHAR((latest.time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'YYYY-MM-DD') AS fecha,
-        TO_CHAR((latest.time AT TIME ZONE 'UTC') - INTERVAL '3 hours', 'HH24:MI:SS') AS hora
+        ${chileDateSql('latest.time')} AS fecha,
+        ${chileTimeSql('latest.time')} AS hora
       FROM (
         SELECT DISTINCT ON (kv.key)
           lr.id_serial,
