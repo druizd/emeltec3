@@ -16,6 +16,7 @@ router.post('/:companyId/sub-companies', companyController.createSubCompany);
 router.post('/:companyId/sub-companies/:subCompanyId/sites', companyController.createSite);
 router.patch('/sites/:siteId', companyController.updateSite);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
+router.get('/sites/:siteId/dashboard-history/export', companyController.exportSiteDashboardHistory);
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);
 router.get('/sites/:siteId/variables', companyController.getSiteVariables);
 router.post('/sites/:siteId/variables', companyController.createSiteVariableMap);

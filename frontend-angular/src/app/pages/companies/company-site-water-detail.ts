@@ -1569,16 +1569,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <div class="flex gap-2">
                   <button
                     type="button"
-                    (click)="downloadFormat.set('xlsx')"
-                    [class]="downloadFormat() === 'xlsx'
-                      ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
-                      : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50'"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">table</span>
-                    Excel (.xlsx)
-                  </button>
-                  <button
-                    type="button"
                     (click)="downloadFormat.set('csv')"
                     [class]="downloadFormat() === 'csv'
                       ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
@@ -1593,7 +1583,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
             <!-- Modal footer -->
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
-              <p class="text-xs font-semibold text-slate-400">
+              @if (downloadError()) {
+                <p class="basis-full text-xs font-semibold text-rose-500">{{ downloadError() }}</p>
+              }
+              <p class="text-xs font-semibold" [class]="downloadError() ? 'text-rose-500' : 'text-slate-400'">
                 {{ downloadSelectedTypes().length === 0 ? 'Selecciona al menos un dato' : downloadSelectedTypes().length + ' variable' + (downloadSelectedTypes().length > 1 ? 's' : '') + ' · ' + downloadFormat().toUpperCase() }}
               </p>
               <div class="flex items-center gap-3">
@@ -1601,11 +1594,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="executeDownload()"
-                  [disabled]="downloadSelectedTypes().length === 0 || !downloadDateFrom() || !downloadDateTo()"
+                  [disabled]="downloadBusy() || downloadSelectedTypes().length === 0 || !downloadDateFrom() || !downloadDateTo()"
                   class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-black text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span class="material-symbols-outlined text-[17px]">download</span>
-                  Descargar
+                  {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
                 </button>
               </div>
             </div>
@@ -1957,8 +1950,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   downloadSelectedMonths = signal<number[]>([]);
   downloadDateFrom = signal('');
   downloadDateTo = signal('');
-  downloadFormat = signal<'xlsx' | 'csv'>('xlsx');
-  downloadSelectedTypes = signal<string[]>(['caudal', 'totalizador', 'nivel_freatico']);
+  downloadFormat = signal<'xlsx' | 'csv'>('csv');
+  downloadSelectedTypes = signal<string[]>(['caudal', 'nivel', 'totalizador', 'nivel_freatico']);
+  downloadBusy = signal(false);
+  downloadError = signal('');
   dgaSelectedPreset = signal<string | null>(null);
   dgaSelectedMonths = signal<number[]>([]);
   dgaReportModalOpen = signal(false);
@@ -2230,7 +2225,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   readonly quickActions = [
     { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600', openHistory: true },
-    { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600', openDownload: true },
+    { icon: 'download', title: 'Descargar', subtitle: 'Exportar CSV', color: 'text-emerald-600', openDownload: true },
     { icon: 'open_in_new', title: 'Ver en DGA', subtitle: 'Portal oficial', color: 'text-blue-600' },
     { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600', openDgaReport: true },
   ];
@@ -2248,6 +2243,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   readonly downloadDataTypeOptions = [
     { id: 'caudal', label: 'Caudal', unit: 'L/s' },
+    { id: 'nivel', label: 'Nivel', unit: 'm' },
     { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
     { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
   ];
@@ -2882,6 +2878,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   openDownloadModal(): void {
     this.downloadSelectedMonths.set([]);
+    this.downloadError.set('');
+    this.downloadFormat.set('csv');
     this.applyDownloadPreset('last30');
     this.downloadModalOpen.set(true);
   }
@@ -2952,7 +2950,67 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   executeDownload(): void {
-    this.closeDownloadModal();
+    const siteId = this.currentSiteId();
+    const from = this.downloadDateFrom();
+    const to = this.downloadDateTo();
+    const fields = this.downloadSelectedTypes();
+
+    if (!siteId) {
+      this.downloadError.set('No se encontro el sitio actual.');
+      return;
+    }
+
+    if (!from || !to || fields.length === 0) {
+      this.downloadError.set('Selecciona rango y datos para exportar.');
+      return;
+    }
+
+    this.downloadBusy.set(true);
+    this.downloadError.set('');
+
+    this.companyService.downloadSiteDashboardHistory(siteId, {
+      from,
+      to,
+      fields,
+      format: 'csv',
+    }).subscribe({
+      next: (response) => {
+        const blob = response.body;
+        if (!blob) {
+          this.downloadBusy.set(false);
+          this.downloadError.set('No se recibio el archivo.');
+          return;
+        }
+
+        const filename = this.filenameFromContentDisposition(response.headers.get('content-disposition'))
+          || `historico_${siteId}_${from}_${to}.csv`;
+        this.saveBlob(blob, filename);
+        this.downloadBusy.set(false);
+        this.closeDownloadModal();
+      },
+      error: (err: unknown) => {
+        this.downloadBusy.set(false);
+        this.downloadError.set(this.errorMessage(err, 'No fue posible descargar los datos historicos.'));
+      },
+    });
+  }
+
+  private filenameFromContentDisposition(value: string | null): string | null {
+    if (!value) return null;
+    const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(value);
+    return match?.[1] ? decodeURIComponent(match[1].replace(/"/g, '')) : null;
+  }
+
+  private saveBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   openDgaReportModal(): void {

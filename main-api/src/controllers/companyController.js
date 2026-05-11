@@ -10,6 +10,7 @@ const {
   VARIABLE_ROLE_IDS,
   VARIABLE_TRANSFORM_IDS,
 } = require('../config/siteTypeCatalog');
+const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
 
 const SITE_COLUMNS = 'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
 const MAP_COLUMNS = 'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
@@ -48,6 +49,19 @@ function parseLimit(value, fallback = 100) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.min(parsed, 500);
+}
+
+function parseDateOnly(value) {
+  const cleaned = cleanString(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return null;
+  const date = new Date(`${cleaned}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : cleaned;
+}
+
+function countInclusiveDays(from, to) {
+  const fromDate = new Date(`${from}T00:00:00Z`);
+  const toDate = new Date(`${to}T00:00:00Z`);
+  return Math.floor((toDate.getTime() - fromDate.getTime()) / 86400000) + 1;
 }
 
 function normalizeId(value) {
@@ -125,6 +139,46 @@ function canReadSite(user, site) {
 
 function utcTimestampSql(column) {
   return `TO_CHAR(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
+}
+
+const HISTORY_EXPORT_FIELDS = {
+  caudal: 'Caudal',
+  nivel: 'Nivel',
+  totalizador: 'Totalizador',
+  nivel_freatico: 'Nivel Freatico',
+};
+
+function parseHistoryExportFields(value) {
+  const selected = cleanString(value)
+    .split(',')
+    .map((field) => field.trim().toLowerCase())
+    .filter((field) => Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_FIELDS, field));
+
+  return selected.length ? [...new Set(selected)] : ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
+}
+
+function csvCell(value, delimiter = ';') {
+  if (value === undefined || value === null) return '';
+  const text = String(value);
+  return /["\r\n;]/.test(text) || text.includes(delimiter)
+    ? `"${text.replace(/"/g, '""')}"`
+    : text;
+}
+
+function csvValue(variable) {
+  if (!variable || variable.ok === false || variable.valor === null || variable.valor === undefined) {
+    return '';
+  }
+
+  return variable.valor;
+}
+
+function exportFileName(site, from, to, format) {
+  const siteLabel = cleanString(site?.descripcion || site?.id || 'sitio')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'sitio';
+  return `${siteLabel}_historico_${from}_${to}.${format}`;
 }
 
 async function generateSequentialId(client, table, prefix) {
@@ -877,6 +931,102 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         },
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/companies/sites/:siteId/dashboard-history/export
+ * Exporta historico transformado en CSV, filtrando por sitio y rango local America/Santiago.
+ */
+exports.exportSiteDashboardHistory = async (req, res, next) => {
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+    const from = parseDateOnly(req.query.from);
+    const to = parseDateOnly(req.query.to);
+    const format = cleanString(req.query.format || 'csv').toLowerCase();
+    const fields = parseHistoryExportFields(req.query.fields);
+
+    if (!site) {
+      return notFound(res, 'Sitio no encontrado.');
+    }
+
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para exportar datos de este sitio.');
+    }
+
+    if (format !== 'csv') {
+      return badRequest(res, 'Por ahora solo esta disponible la exportacion CSV.');
+    }
+
+    if (!from || !to) {
+      return badRequest(res, 'Debe indicar un rango valido con from y to en formato YYYY-MM-DD.');
+    }
+
+    const days = countInclusiveDays(from, to);
+    if (days <= 0) {
+      return badRequest(res, 'La fecha desde no puede ser mayor que la fecha hasta.');
+    }
+
+    if (days > 366) {
+      return badRequest(res, 'El rango maximo de exportacion es de 366 dias.');
+    }
+
+    if (!site.activo) {
+      return badRequest(res, 'El sitio esta inactivo y no tiene telemetria exportable.');
+    }
+
+    const [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
+      db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+      db.query(
+        `
+        SELECT time, received_at, id_serial, data, timestamp_completo
+        FROM (
+          SELECT DISTINCT ON (date_trunc('minute', time))
+            time,
+            received_at,
+            id_serial,
+            data,
+            ${utcTimestampSql('time')} AS timestamp_completo
+          FROM equipo
+          WHERE id_serial = $1
+            AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          ORDER BY date_trunc('minute', time) ASC, time DESC
+        ) latest_by_minute
+        ORDER BY time ASC
+        `,
+        [site.id_serial, from, to]
+      ),
+    ]);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+    const rows = historyRes.rows.map((row) =>
+      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig })
+    );
+
+    const delimiter = ';';
+    const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
+    const lines = [
+      header.map((value) => csvCell(value, delimiter)).join(delimiter),
+      ...rows.map((row) => {
+        const fecha = row.timestamp ? (formatChileTimestamp(row.timestamp) || row.fecha) : row.fecha;
+        return [
+          fecha,
+          ...fields.map((field) => csvValue(row[field])),
+        ].map((value) => csvCell(value, delimiter)).join(delimiter);
+      }),
+    ];
+
+    const filename = exportFileName(site, from, to, 'csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(`\uFEFF${lines.join('\n')}\n`);
   } catch (err) {
     next(err);
   }

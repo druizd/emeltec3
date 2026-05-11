@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
@@ -45,5 +45,22 @@ export class CompanyService {
 
   getSiteDashboardHistory(siteId: string, limit = 500): Observable<any> {
     return this.http.get<any>(`/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`);
+  }
+
+  downloadSiteDashboardHistory(
+    siteId: string,
+    options: { from: string; to: string; fields: string[]; format: 'csv' }
+  ): Observable<HttpResponse<Blob>> {
+    return this.http.get(`/api/companies/sites/${siteId}/dashboard-history/export`, {
+      observe: 'response',
+      responseType: 'blob',
+      params: {
+        from: options.from,
+        to: options.to,
+        fields: options.fields.join(','),
+        format: options.format,
+        t: String(Date.now()),
+      },
+    });
   }
 }
