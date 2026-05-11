@@ -387,6 +387,7 @@ function buildSiteDashboardData({ site, pozoConfig, mappings, latest }) {
 function findHistoricalVariable(variables, role) {
   const roleTokens = {
     caudal: ['caudal', 'flujo', 'flow'],
+    nivel: ['nivel agua', 'nivel', 'level', 'sonda', 'altura agua'],
     totalizador: ['totalizador', 'totalizado', 'acumulado', 'volumen', 'volume', 'totalizer'],
     nivel_freatico: ['nivel freatico', 'freatico'],
   };
@@ -450,6 +451,7 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
     fecha: toUtcIsoString(row.time),
     received_at: toUtcIsoString(row.received_at),
     caudal: serializeHistoricalVariable(findHistoricalVariable(variables, 'caudal')),
+    nivel: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel')),
     totalizador: serializeHistoricalVariable(findHistoricalVariable(variables, 'totalizador')),
     nivel_freatico: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel_freatico')),
   };

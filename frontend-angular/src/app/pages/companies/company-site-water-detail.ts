@@ -41,6 +41,7 @@ interface HistoricalTelemetryApiRow {
   timestamp?: string | null;
   fecha: string;
   caudal?: HistoricalTelemetryValue | null;
+  nivel?: HistoricalTelemetryValue | null;
   totalizador?: HistoricalTelemetryValue | null;
   nivel_freatico?: HistoricalTelemetryValue | null;
 }
@@ -50,9 +51,11 @@ interface HistoricalTelemetryRow {
   fecha: string;
   timestampMs?: number | null;
   caudal: string;
+  nivel?: string;
   totalizador: string;
   nivelFreatico: string;
   caudalValue?: number | null;
+  nivelValue?: number | null;
   totalizadorValue?: number | null;
   nivelFreaticoValue?: number | null;
   mock?: boolean;
@@ -727,48 +730,50 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </div>
 
                     <div class="overflow-x-auto">
-                      <table class="w-full min-w-[760px] text-left text-sm">
+                      <table class="w-full min-w-[700px] text-left text-sm">
                         <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                           <tr>
                             <th class="px-4 py-3">Dato</th>
                             <th class="px-4 py-3">Valor</th>
                             <th class="px-4 py-3">Alias</th>
-                            <th class="px-4 py-3 text-right">Accion</th>
                           </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                           @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <tr class="bg-white">
+                            <tr
+                              class="group cursor-pointer bg-white transition-colors hover:bg-cyan-50/50"
+                              (click)="prepareVariableMap(variable)"
+                              title="Seleccionar variable"
+                            >
                               <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">{{ variable.nombre_dato }}</td>
                               <td class="px-4 py-3 font-bold text-slate-900">{{ displayValue(variable.valor_dato) }}</td>
                               <td class="px-4 py-3">
-                                @if (variable.mapping) {
-                                  <div>
-                                    <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                                    <p class="text-xs text-slate-400">
-                                      {{ variable.mapping.tipo_dato }} - {{ displayVariableTransform(variable.mapping.transformacion) }} {{ variable.mapping.unidad || '' }}
-                                    </p>
-                                  </div>
-                                } @else {
-                                  <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">Sin alias</span>
-                                }
-                              </td>
-                              <td class="px-4 py-3">
-                                <div class="flex justify-end gap-2">
-                                  <button type="button" (click)="prepareVariableMap(variable)" class="icon-button" title="Editar formulario">
-                                    <span class="material-symbols-outlined text-[18px]">edit_square</span>
-                                  </button>
+                                <div class="flex items-center justify-between gap-3">
                                   @if (variable.mapping) {
-                                    <button type="button" (click)="deleteVariableMap(variable.mapping)" class="icon-button text-red-500" title="Eliminar alias">
+                                    <div>
+                                      <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
+                                      <p class="text-xs text-slate-400">
+                                        {{ variable.mapping.tipo_dato }} - {{ displayVariableTransform(variable.mapping.transformacion) }} {{ variable.mapping.unidad || '' }}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      (click)="$event.stopPropagation(); deleteVariableMap(variable.mapping)"
+                                      class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                                      title="Eliminar alias"
+                                      aria-label="Eliminar alias"
+                                    >
                                       <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
+                                  } @else {
+                                    <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">Sin alias</span>
                                   }
                                 </div>
                               </td>
                             </tr>
                           } @empty {
                             <tr class="bg-white">
-                              <td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-400">Aun no hay variables detectadas para el serial de este sitio.</td>
+                              <td colspan="3" class="px-4 py-8 text-center text-sm font-semibold text-slate-400">Aun no hay variables detectadas para el serial de este sitio.</td>
                             </tr>
                           }
                         </tbody>
@@ -877,11 +882,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
 
               <div class="overflow-x-auto">
-                <table class="w-full min-w-[920px] text-left text-xs">
+                <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
                     <tr class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
+                      <th class="px-4 py-3">NIVEL</th>
                       <th class="px-4 py-3">TOTALIZADOR</th>
                       <th class="px-4 py-3">NIVEL FRE&Aacute;TICO</th>
                     </tr>
@@ -896,12 +902,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </span>
                         </td>
                         <td class="px-4 py-3">{{ row.caudal }}</td>
+                        <td class="px-4 py-3">{{ row.nivel || '--' }}</td>
                         <td class="px-4 py-3">{{ row.totalizador }}</td>
                         <td class="px-4 py-3">{{ row.nivelFreatico }}</td>
                       </tr>
                     } @empty {
                       <tr class="border-t border-slate-100 text-[12px] font-semibold text-slate-400">
-                        <td class="px-4 py-8 text-center" colspan="4">Sin registros disponibles para este filtro.</td>
+                        <td class="px-4 py-8 text-center" colspan="5">Sin registros disponibles para este filtro.</td>
                       </tr>
                     }
                   </tbody>
@@ -3458,9 +3465,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       fecha: parsedTimestamp ? this.formatChileDateTime(parsedTimestamp) : rawTimestamp,
       timestampMs,
       caudal: this.formatHistoricalValue(row.caudal),
+      nivel: this.formatHistoricalValue(row.nivel),
       totalizador: this.formatHistoricalValue(row.totalizador),
       nivelFreatico: this.formatHistoricalValue(row.nivel_freatico),
       caudalValue: this.extractHistoricalNumber(row.caudal),
+      nivelValue: this.extractHistoricalNumber(row.nivel),
       totalizadorValue: this.extractHistoricalNumber(row.totalizador),
       nivelFreaticoValue: this.extractHistoricalNumber(row.nivel_freatico),
     };
