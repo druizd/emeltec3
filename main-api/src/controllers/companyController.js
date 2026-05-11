@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { once } = require('events');
 const db = require('../config/db');
 const {
   buildSiteDashboardData,
@@ -45,10 +46,10 @@ function nullableString(value) {
   return cleaned || null;
 }
 
-function parseLimit(value, fallback = 100) {
+function parseLimit(value, fallback = 100, max = 500) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return Math.min(parsed, 500);
+  return Math.min(parsed, max);
 }
 
 function parseDateOnly(value) {
@@ -179,6 +180,12 @@ function exportFileName(site, from, to, format) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '') || 'sitio';
   return `${siteLabel}_historico_${from}_${to}.${format}`;
+}
+
+async function writeResponseChunk(res, chunk) {
+  if (!res.write(chunk)) {
+    await once(res, 'drain');
+  }
 }
 
 async function generateSequentialId(client, table, prefix) {
@@ -850,7 +857,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
 exports.getSiteDashboardHistory = async (req, res, next) => {
   try {
     const siteId = normalizeId(req.params.siteId);
-    const limit = parseLimit(req.query.limit, 500);
+    const limit = parseLimit(req.query.limit, 500, 2500);
     const site = await getSiteById(siteId);
 
     if (!site) {
@@ -978,11 +985,28 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       return badRequest(res, 'El sitio esta inactivo y no tiene telemetria exportable.');
     }
 
-    const [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
+    const [pozoConfigRes, mappingsRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
       db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
-      db.query(
+    ]);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+    const delimiter = ';';
+    const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
+
+    const filename = exportFileName(site, from, to, 'csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+
+    let client;
+    try {
+      client = await db.connect();
+      await client.query('BEGIN');
+      await client.query(
         `
+        DECLARE history_export_cursor NO SCROLL CURSOR FOR
         SELECT time, received_at, id_serial, data, timestamp_completo
         FROM (
           SELECT DISTINCT ON (date_trunc('minute', time))
@@ -1000,33 +1024,44 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         ORDER BY time ASC
         `,
         [site.id_serial, from, to]
-      ),
-    ]);
+      );
 
-    const pozoConfig = pozoConfigRes.rows[0] || null;
-    const mappings = mappingsRes.rows || [];
-    const rows = historyRes.rows.map((row) =>
-      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig })
-    );
+      await writeResponseChunk(res, '\uFEFF');
+      await writeResponseChunk(res, `${header.map((value) => csvCell(value, delimiter)).join(delimiter)}\n`);
 
-    const delimiter = ';';
-    const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
-    const lines = [
-      header.map((value) => csvCell(value, delimiter)).join(delimiter),
-      ...rows.map((row) => {
-        const fecha = row.timestamp ? (formatChileTimestamp(row.timestamp) || row.fecha) : row.fecha;
-        return [
-          fecha,
-          ...fields.map((field) => csvValue(row[field])),
-        ].map((value) => csvCell(value, delimiter)).join(delimiter);
-      }),
-    ];
+      while (true) {
+        const batch = await client.query('FETCH 1000 FROM history_export_cursor');
+        if (batch.rows.length === 0) break;
 
-    const filename = exportFileName(site, from, to, 'csv');
-    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Cache-Control', 'no-store');
-    return res.send(`\uFEFF${lines.join('\n')}\n`);
+        for (const rawRow of batch.rows) {
+          const row = mapHistoricalDashboardRow({ row: rawRow, site, mappings, pozoConfig });
+          const fecha = row.timestamp ? (formatChileTimestamp(row.timestamp) || row.fecha) : row.fecha;
+          const line = [
+            fecha,
+            ...fields.map((field) => csvValue(row[field])),
+          ].map((value) => csvCell(value, delimiter)).join(delimiter);
+          await writeResponseChunk(res, `${line}\n`);
+        }
+      }
+
+      await client.query('CLOSE history_export_cursor');
+      await client.query('COMMIT');
+      return res.end();
+    } catch (streamErr) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (_rollbackErr) {}
+      }
+
+      if (!res.headersSent) {
+        throw streamErr;
+      }
+
+      return res.destroy(streamErr);
+    } finally {
+      if (client) client.release();
+    }
   } catch (err) {
     next(err);
   }
