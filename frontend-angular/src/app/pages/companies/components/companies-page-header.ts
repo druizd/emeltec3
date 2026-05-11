@@ -6,40 +6,33 @@ import { Component, Input } from '@angular/core';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="mb-8">
-      <div class="flex justify-between items-start gap-4">
-        <div class="flex items-center gap-5">
-          <div class="w-14 h-14 bg-primary-container rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-            <span class="material-symbols-outlined text-white text-3xl">corporate_fare</span>
-          </div>
-
-          <div>
-            <h1 class="text-3xl font-black text-primary leading-none tracking-tight">
-              {{ selectedSubCompany?.nombre || 'Seleccione una division' }}
-            </h1>
-            <p class="text-sm text-slate-400 mt-2 font-bold uppercase tracking-wider">
-              {{ sitesCount }} Instalaciones
-            </p>
-          </div>
-        </div>
-
-        @if (showReportButton) {
-          <div class="flex gap-3">
-            <button
-              type="button"
-              class="bg-white border border-slate-200 px-4 py-2 rounded-xl text-primary text-xs font-black hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm uppercase"
-            >
-              <span class="material-symbols-outlined text-lg">download</span>
-              Reporte
-            </button>
-          </div>
-        }
+    <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div class="space-y-2">
+        <p class="text-[12px] font-black uppercase tracking-[0.24em] text-cyan-600/80">
+          {{ selectedSubCompany?.nombre || 'División seleccionada' }}
+        </p>
+        <h1 class="text-[2.35rem] font-black leading-none text-slate-800">
+          {{ title }}
+        </h1>
+        <p class="text-xs font-medium text-slate-400">{{ subtitle }}</p>
       </div>
+
+      @if (showReportButton) {
+        <button
+          type="button"
+          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.06)] transition-all hover:border-cyan-200 hover:text-cyan-700"
+        >
+          <span class="material-symbols-outlined text-lg">download</span>
+          Reporte
+        </button>
+      }
     </div>
   `,
 })
 export class CompaniesPageHeaderComponent {
   @Input() selectedSubCompany: any = null;
   @Input() sitesCount = 0;
+  @Input() title = 'Instalaciones';
+  @Input() subtitle = '';
   @Input() showReportButton = false;
 }

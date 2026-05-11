@@ -37,6 +37,7 @@
     [selectedSubCompany]="selectedSubCompany()"
     [sites]="sites()"
     [loading]="loading()"
+    [subEmpresaId]="companyService.selectedSubCompanyId() || ''"
     (activeTabChange)="setActiveTab($event)"
     (siteSelected)="openSite($event)"
   />

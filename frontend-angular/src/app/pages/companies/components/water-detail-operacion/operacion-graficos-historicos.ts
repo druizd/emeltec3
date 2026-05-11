@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { WaterOperacionStateService } from './water-operacion-state';
 
 interface LineChart {
   polyline: string;
@@ -144,18 +145,67 @@ interface BarChart {
         </div>
       </section>
 
-      <!-- Resumen 7:00-7:00 -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="mb-4 flex items-start justify-between gap-3">
+      <!-- Resumen jornada configurable -->
+      <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex items-start justify-between gap-3 p-5 pb-0">
           <div>
-            <h3 class="text-sm font-black text-slate-800">Resumen Operacional 7:00–7:00</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">Últimos 30 días · flujo acumulado por jornada (07:00 a 07:00 del día siguiente) · m³</p>
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-black text-slate-800">
+                Resumen Operacional {{ jornadaInicio() }}–{{ jornadaFin() }}
+              </h3>
+              <button
+                type="button"
+                (click)="jornadaSettingsOpen.update(v => !v)"
+                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors"
+                [class]="jornadaSettingsOpen() ? 'bg-cyan-100 text-cyan-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'"
+                title="Configurar período de jornada"
+              >
+                <span class="material-symbols-outlined text-[15px]">settings</span>
+              </button>
+            </div>
+            <p class="mt-0.5 text-[11px] text-slate-400">
+              Últimos 30 días · flujo acumulado por jornada ({{ jornadaInicio() }} a {{ jornadaFin() }} del día siguiente) · m³
+            </p>
           </div>
           <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
             <span class="material-symbols-outlined text-[14px]">download</span>.CSV
           </button>
         </div>
-        <div class="h-44 w-full">
+
+        @if (jornadaSettingsOpen()) {
+          <div class="mx-5 mt-3 overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/60 p-4">
+            <p class="mb-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">Período de jornada</p>
+            <div class="flex flex-wrap items-center gap-3 text-[12px] font-semibold text-slate-600">
+              <label class="flex items-center gap-2">
+                <span class="text-slate-400">Inicio</span>
+                <input
+                  type="time"
+                  [value]="jornadaInicio()"
+                  (change)="jornadaInicio.set($any($event.target).value)"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-[12px] text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                />
+              </label>
+              <span class="text-slate-300">–</span>
+              <label class="flex items-center gap-2">
+                <span class="text-slate-400">Fin</span>
+                <input
+                  type="time"
+                  [value]="jornadaFin()"
+                  (change)="jornadaFin.set($any($event.target).value)"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-[12px] text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                />
+              </label>
+              <span class="text-[11px] text-slate-400">(del día siguiente si cruza medianoche)</span>
+            </div>
+            <button type="button" (click)="jornadaSettingsOpen.set(false)"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700">
+              <span class="material-symbols-outlined text-[14px]">check</span>
+              Listo
+            </button>
+          </div>
+        }
+
+        <div class="h-44 w-full px-5 pt-4">
           <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
             @for (t of turno7.yTicks; track t.y) {
               <line x1="55" [attr.y1]="t.y" x2="1090" [attr.y2]="t.y" stroke="#f1f5f9" stroke-width="1"/>
@@ -171,7 +221,7 @@ interface BarChart {
         </div>
 
         <!-- Leyenda -->
-        <div class="mt-3 flex flex-wrap gap-4 text-[11px] text-slate-400">
+        <div class="flex flex-wrap gap-4 px-5 pb-5 pt-3 text-[11px] text-slate-400">
           <span class="flex items-center gap-1.5">
             <span class="inline-block h-3 w-3 rounded-sm bg-violet-500 opacity-85"></span>
             Jornada con operación
@@ -187,6 +237,12 @@ interface BarChart {
   `,
 })
 export class OperacionGraficosHistoricosComponent {
+  private readonly state = inject(WaterOperacionStateService);
+
+  readonly jornadaInicio = this.state.jornadaInicio;
+  readonly jornadaFin = this.state.jornadaFin;
+  readonly jornadaSettingsOpen = signal(false);
+
   // SVG drawing area constants (viewBox: 0 0 1100 220)
   private readonly DX = 55;   // left padding (y-axis labels)
   private readonly DY = 15;   // top padding
