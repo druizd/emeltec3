@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { UserManagementComponent } from '../../../components/ui/user-management';
 import { CompaniesContactsPanelComponent } from '../components/companies-contacts-panel';
-import { CompaniesGeneralSkeletonComponent } from '../components/companies-general-skeleton';
+import { CompaniesGeneralPanelComponent } from '../components/companies-general-panel';
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesPageHeaderComponent } from '../components/companies-page-header';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
@@ -14,23 +14,20 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
     CommonModule,
     CompaniesPageHeaderComponent,
     CompaniesTabNavComponent,
-    CompaniesGeneralSkeletonComponent,
+    CompaniesGeneralPanelComponent,
     CompaniesInstallationsPanelComponent,
     CompaniesContactsPanelComponent,
     UserManagementComponent,
   ],
   template: `
-    <div class="p-8">
+    <div class="min-h-full bg-[#f5f7fb] px-5 pb-8 pt-6 md:px-7 xl:px-8">
       <app-companies-page-header
         [selectedSubCompany]="selectedSubCompany"
         [sitesCount]="sites.length"
+        [title]="headerTitle()"
+        [subtitle]="headerSubtitle()"
         [showReportButton]="false"
       />
-
-      <div class="mb-6 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2">
-        <span class="material-symbols-outlined text-emerald-600 text-sm">shield_person</span>
-        <span class="text-xs font-bold text-emerald-700">Vista de Gerente - Gestión de tu División</span>
-      </div>
 
       <app-companies-tab-nav
         [tabs]="tabs"
@@ -39,7 +36,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
       />
 
       @if (activeTab === 'general') {
-        <app-companies-general-skeleton />
+        <app-companies-general-panel [sites]="sites" [subEmpresaId]="subEmpresaId" />
       }
 
       @if (activeTab === 'instalaciones') {
@@ -87,4 +84,15 @@ export class CompaniesGerenteViewComponent {
     { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
     { key: 'usuarios', label: 'Mi Equipo', icon: 'group' },
   ];
+
+  headerTitle(): string {
+    const map: Record<string, string> = { general: 'General', instalaciones: 'Instalaciones', contactos: 'Contactos', usuarios: 'Mi Equipo' };
+    return map[this.activeTab] ?? 'General';
+  }
+
+  headerSubtitle(): string {
+    if (this.activeTab === 'instalaciones') return `${this.sites.length} sitios registrados`;
+    if (this.activeTab === 'general') return 'Resumen de la división';
+    return '';
+  }
 }

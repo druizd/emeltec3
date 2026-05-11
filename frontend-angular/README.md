@@ -28,7 +28,7 @@ npm install
 
 ## Desarrollo local
 
-Levanta el servidor de desarrollo:
+Levanta el servidor de desarrollo por defecto con el script del proyecto:
 
 ```bash
 npm start
@@ -37,7 +37,19 @@ npm start
 Abre:
 
 ```text
-http://localhost:4200
+http://127.0.0.1:4300
+```
+
+Por defecto, Angular usa `proxy.production.conf.json` con `127.0.0.1:4300`. Si quieres usar el proxy local de APIs, ejecuta:
+
+```bash
+npm run start -- --configuration development
+```
+
+Si prefieres invocar Angular CLI directamente dentro del proyecto, usa:
+
+```bash
+npx ng serve
 ```
 
 Durante desarrollo local, Angular puede usar `proxy.conf.json` para redirigir las llamadas `/api/...` hacia los servicios configurados. Para probar login, empresas, usuarios o datos reales del sistema, las APIs deben estar ejecutandose y accesibles.

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { UserManagementComponent } from '../../../components/ui/user-management';
 import { CompaniesContactsPanelComponent } from '../components/companies-contacts-panel';
-import { CompaniesGeneralSkeletonComponent } from '../components/companies-general-skeleton';
+import { CompaniesGeneralPanelComponent } from '../components/companies-general-panel';
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
 
@@ -12,7 +12,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
   imports: [
     CommonModule,
     CompaniesTabNavComponent,
-    CompaniesGeneralSkeletonComponent,
+    CompaniesGeneralPanelComponent,
     CompaniesInstallationsPanelComponent,
     CompaniesContactsPanelComponent,
     UserManagementComponent,
@@ -49,7 +49,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
       />
 
       @if (activeTab === 'general') {
-        <app-companies-general-skeleton />
+        <app-companies-general-panel [sites]="sites" [subEmpresaId]="subEmpresaId" />
       }
 
       @if (activeTab === 'instalaciones') {

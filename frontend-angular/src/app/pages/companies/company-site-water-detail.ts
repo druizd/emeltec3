@@ -19,6 +19,10 @@ import {
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
+import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
+import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
+import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
+import { WaterDetailAnalisisComponent } from './components/water-detail-analisis/water-detail-analisis';
 
 interface SiteContext {
   company: any;
@@ -145,7 +149,7 @@ interface SiteDashboardData {
   variables?: DashboardVariable[];
 }
 
-type DetailTab = 'dga' | 'operacion';
+type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
 type OperationMode = 'realtime' | 'turnos';
 type SettingsStatusType = 'success' | 'error' | '';
 
@@ -173,6 +177,7 @@ interface PozoConfigForm {
   profundidad_pozo_m: string;
   profundidad_sensor_m: string;
 }
+
 
 const DEFAULT_VARIABLE_FORM: VariableForm = {
   mapId: '',
@@ -272,7 +277,16 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 @Component({
   selector: 'app-company-site-water-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CompaniesSiteDetailSkeletonComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    CompaniesSiteDetailSkeletonComponent,
+    WaterDetailOperacionComponent,
+    WaterDetailAlertasComponent,
+    WaterDetailBitacoraComponent,
+    WaterDetailAnalisisComponent,
+  ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
       @if (loading() && !siteContext()) {
@@ -306,10 +320,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </span>
                   </span>
                 }
-                <span class="inline-flex h-7 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700">
-                  <span class="material-symbols-outlined text-[15px]">verified</span>
-                  Reporte DGA · Aceptado · 17:00
-                </span>
+
                 <button
                   type="button"
                   (click)="openSettingsPanel()"
@@ -341,6 +352,39 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <span class="material-symbols-outlined text-[18px]">monitoring</span>
                 Operación
                 @if (activeDetailTab() === 'operacion') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('alertas')"
+                [class]="getDetailTabClass('alertas')"
+              >
+                <span class="material-symbols-outlined text-[18px]">notifications_active</span>
+                Alertas
+                @if (activeDetailTab() === 'alertas') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('bitacora')"
+                [class]="getDetailTabClass('bitacora')"
+              >
+                <span class="material-symbols-outlined text-[18px]">menu_book</span>
+                Bitácora
+                @if (activeDetailTab() === 'bitacora') {
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                }
+              </button>
+              <button
+                type="button"
+                (click)="setDetailTab('analisis')"
+                [class]="getDetailTabClass('analisis')"
+              >
+                <span class="material-symbols-outlined text-[18px]">insights</span>
+                Análisis
+                @if (activeDetailTab() === 'analisis') {
                   <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
                 }
               </button>
@@ -759,6 +803,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
                     <button
                       type="button"
+                      (click)="openDownloadModal()"
                       class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:bg-slate-50"
                     >
                       <span class="material-symbols-outlined text-[16px]">download</span>
@@ -887,6 +932,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
+            <div class="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-emerald-700">
+              <span class="material-symbols-outlined text-[16px]">verified</span>
+              <span class="text-[11px] font-bold">Último reporte DGA aceptado</span>
+              <span class="text-[11px] text-emerald-500">·</span>
+              <span class="font-mono text-[11px] font-bold">07/04/2026 06:00 – 07:00</span>
+            </div>
             <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
             <article class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm">
               <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Enviados</p>
@@ -1086,6 +1137,18 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#F97316;margin-bottom:3px">Sensor</p>
                       <p style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1">{{ formatMeters(wellSensorDepth()) }} m</p>
                     </div>
+                    <div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:8px 10px">
+                      <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px">% Señal</p>
+                      <p style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1">87<span style="font-size:11px;color:#64748B">%</span></p>
+                      <div style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden">
+                        <div style="width:87%;height:100%;background:linear-gradient(90deg,#0284C7,#22C55E);border-radius:999px"></div>
+                      </div>
+                    </div>
+                    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px">
+                      <p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px">Último dato recibido</p>
+                      <p style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#1E293B;line-height:1">{{ latestDeviceTimeLabel() }}</p>
+                      <p style="font-size:9px;color:#94A3B8;margin-top:3px">{{ latestDeviceDateLabel() }}</p>
+                    </div>
                   </div>
                 </div>
               }
@@ -1170,7 +1233,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </article>
             </div>
           </section>
-
+          <!-- Registros DGA -->
           <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1207,7 +1270,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B">{{ formatDgaNumber(report.nivelFreatico) }}</td>
                       <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B">{{ formatDgaNumber(report.caudal) }}</td>
                       <td class="px-4 py-[9px]" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B">{{ formatDgaInteger(report.totalizador) }}</td>
-                      <td class="px-4 py-3 text-right">
+                      <td class="px-4 py-3">
                         <button
                           type="button"
                           (click)="openDgaReportDetail(report)"
@@ -1268,151 +1331,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </div>
           </section>
 
-          } @else {
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-                <div class="flex flex-wrap items-center gap-1">
-                  <button
-                    type="button"
-                    (click)="setOperationMode('realtime')"
-                    [class]="getOperationModeClass('realtime')"
-                  >
-                    <span class="material-symbols-outlined text-[17px]">sync</span>
-                    Tiempo Real
-                  </button>
-                  <button
-                    type="button"
-                    (click)="setOperationMode('turnos')"
-                    [class]="getOperationModeClass('turnos')"
-                  >
-                    <span class="material-symbols-outlined text-[17px]">schedule</span>
-                    Operación por Turnos
-                  </button>
-                </div>
-
-                <p class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400">
-                  <span class="material-symbols-outlined text-[15px]">help</span>
-                  La visualización puede presentar variaciones o desfases momentáneos en los datos.
-                </p>
-              </div>
-
-              <div class="p-4">
-                @if (operationMode() === 'realtime') {
-                  <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <div class="rounded-xl bg-gradient-to-r from-[#0797ad] to-[#18bfd0] p-4 text-white shadow-sm">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div class="flex items-baseline gap-3">
-                          <h2 class="text-sm font-black">Datos en tiempo real</h2>
-                          <span class="text-xs font-semibold text-cyan-100">(actualización cada minuto)</span>
-                        </div>
-                        <span class="inline-flex items-center gap-2 text-xs font-bold text-cyan-50">
-                          <span class="h-2 w-2 rounded-full bg-emerald-300"></span>
-                          {{ latestRealtimeTimestampLabel() }}
-                        </span>
-                      </div>
-
-                      <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        @for (metric of realtimeMetrics(); track metric.label) {
-                          <article class="rounded-lg bg-white/12 px-4 py-3 ring-1 ring-white/10">
-                            <p class="text-xs font-bold text-cyan-100">{{ metric.label }}</p>
-                            <p class="mt-1 text-2xl font-black leading-none">
-                              {{ metric.value }}
-                              <span class="text-sm font-bold">{{ metric.unit }}</span>
-                            </p>
-                          </article>
-                        }
-                      </div>
-                    </div>
-
-                    <article class="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-                      <div class="flex flex-wrap items-center justify-between gap-2">
-                        <h3 class="text-sm font-black text-slate-800">Caudal en Tiempo Real</h3>
-                        <p class="text-xs font-semibold text-slate-400">Ultimos {{ realtimeChart().points.length }} registros minuto a minuto</p>
-                      </div>
-
-                      <div class="mt-4 h-[220px] w-full overflow-hidden rounded-lg border border-slate-100 bg-white">
-                        @if (realtimeChart().polyline) {
-                        <svg viewBox="0 0 1120 210" class="h-full w-full" role="img" aria-label="Grafico de caudal en tiempo real">
-                          <g stroke="#d6dde8" stroke-width="0.8">
-                            @for (tick of realtimeChart().yTicks; track tick.y) {
-                              <line x1="58" [attr.y1]="tick.y" x2="1092" [attr.y2]="tick.y" />
-                            }
-                            @for (tick of realtimeChart().xTicks; track tick.x) {
-                              <line [attr.x1]="tick.x" y1="24" [attr.x2]="tick.x" y2="156" />
-                            }
-                          </g>
-
-                          <g fill="#6b7280" font-size="11" font-weight="500">
-                            @for (tick of realtimeChart().yTicks; track tick.y) {
-                              <text x="20" [attr.y]="(tick.y || 0) + 4">{{ tick.label }}</text>
-                            }
-                            @for (tick of realtimeChart().xTicks; track tick.x) {
-                              <text [attr.x]="(tick.x || 0) - 15" y="184">{{ tick.label }}</text>
-                            }
-                          </g>
-
-                          <polyline
-                            [attr.points]="realtimeChart().polyline"
-                            fill="none"
-                            stroke="#4f73ff"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.8"
-                          />
-                          @if (realtimeChart().tooltip; as tooltip) {
-                            <line [attr.x1]="tooltip.x" y1="24" [attr.x2]="tooltip.x" y2="156" stroke="#94a3b8" stroke-width="0.9" stroke-dasharray="4 4" />
-                            <circle [attr.cx]="tooltip.x" [attr.cy]="tooltip.y" r="4" fill="white" stroke="#4f73ff" stroke-width="2" />
-                            <foreignObject [attr.x]="tooltip.boxX" [attr.y]="tooltip.boxY" width="168" height="66">
-                              <div class="rounded-md border border-slate-100 bg-white px-3 py-2 text-xs text-slate-500 shadow-lg">
-                                <p class="font-black text-slate-600">{{ tooltip.dateLabel }}</p>
-                                <p class="mt-1 flex items-center gap-1.5">
-                                  <span class="h-2 w-2 rounded-full bg-[#4f73ff]"></span>
-                                  <span>Caudal (L/s)</span>
-                                  <strong class="ml-auto text-slate-700">{{ tooltip.valueLabel }}</strong>
-                                </p>
-                              </div>
-                            </foreignObject>
-                          }
-                          @for (point of realtimeChart().points; track point.index) {
-                            <circle
-                              [attr.cx]="point.x"
-                              [attr.cy]="point.y"
-                              r="8"
-                              fill="transparent"
-                              class="cursor-crosshair"
-                              (mouseenter)="setRealtimeChartHover(point.index)"
-                              (focus)="setRealtimeChartHover(point.index)"
-                              (mouseleave)="clearRealtimeChartHover()"
-                              tabindex="0"
-                            >
-                              <title>{{ point.label }}: {{ formatChartNumber(point.value) }} L/s</title>
-                            </circle>
-                          }
-                        </svg>
-                        } @else {
-                          <div class="flex h-full items-center justify-center bg-slate-50 text-center">
-                            <div>
-                              <span class="material-symbols-outlined text-[32px] text-slate-300">show_chart</span>
-                              <p class="mt-2 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Sin datos reales para graficar</p>
-                            </div>
-                          </div>
-                        }
-                      </div>
-                    </article>
-                  </div>
-                } @else {
-                  <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <div class="rounded-xl border border-slate-200 bg-slate-50 px-5 py-10 text-center">
-                      <span class="material-symbols-outlined text-4xl text-cyan-600">schedule</span>
-                      <h2 class="mt-2 text-lg font-black text-slate-800">Operación por Turnos</h2>
-                      <p class="mx-auto mt-1 max-w-xl text-sm font-semibold text-slate-400">
-                        Esta vista queda preparada para separar horas operativas, pausas y comparativas por turno cuando conectemos los datos reales.
-                      </p>
-                    </div>
-                  </div>
-                }
-              </div>
-            </section>
+          } @else if (activeDetailTab() === 'operacion') {
+            <app-water-detail-operacion />
+          } @else if (activeDetailTab() === 'alertas') {
+            <app-water-detail-alertas />
+          } @else if (activeDetailTab() === 'bitacora') {
+            <app-water-detail-bitacora />
+          } @else if (activeDetailTab() === 'analisis') {
+            <app-water-detail-analisis />
           }
         </div>
       } @else {
@@ -1422,59 +1348,90 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       }
 
       @if (dgaDateFilterOpen()) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]">
-          <section class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-              <h2 class="text-xl font-black uppercase tracking-wide text-slate-800">Filtrar por fecha</h2>
-              <button type="button" (click)="closeDgaDateFilter()" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700" aria-label="Cerrar filtro">
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]" (click)="closeDgaDateFilter()">
+          <section class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl" (click)="$event.stopPropagation()">
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600">
+                  <span class="material-symbols-outlined text-[20px]">calendar_month</span>
+                </span>
+                <div>
+                  <h2 class="text-lg font-black text-slate-800">Filtrar por Período</h2>
+                  <p class="text-xs font-semibold text-slate-400">Registros DGA</p>
+                </div>
+              </div>
+              <button type="button" (click)="closeDgaDateFilter()" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700" aria-label="Cerrar">
                 <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
 
-            <div class="grid gap-6 px-6 py-6 md:grid-cols-[190px_minmax(0,1fr)]">
-              <div class="border-slate-200 md:border-r md:pr-6">
-                <p class="mb-4 text-xs font-black uppercase tracking-wide text-slate-400">Acceso rapido</p>
-                <div class="grid gap-1">
-                  @for (preset of dgaDatePresets; track preset.id) {
+            <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
+              <!-- Left: presets + months -->
+              <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
+                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Períodos rápidos</p>
+                <div class="grid gap-0.5">
+                  @for (preset of downloadPresets; track preset.id) {
                     <button
                       type="button"
                       (click)="applyDgaDatePreset(preset.id)"
-                      class="rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 transition-colors hover:bg-cyan-50 hover:text-cyan-700"
+                      [class]="dgaSelectedPreset() === preset.id
+                        ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-cyan-50 text-cyan-700 border border-cyan-200'
+                        : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'"
                     >
+                      @if (dgaSelectedPreset() === preset.id) {
+                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-500 flex-shrink-0"></span>
+                      }
                       {{ preset.label }}
                     </button>
                   }
                 </div>
+
+                <p class="mb-2 mt-5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Meses {{ 'de ' + (dgaDateFrom() || '2026').slice(0,4) }}</p>
+                <div class="grid grid-cols-3 gap-1.5">
+                  @for (month of downloadMonthNames; track month; let i = $index) {
+                    <button
+                      type="button"
+                      (click)="applyDgaMonth(i)"
+                      [class]="!dgaMonthHasData(i)
+                        ? 'rounded-lg py-1.5 text-[11px] font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
+                        : dgaSelectedMonths().includes(i)
+                          ? 'rounded-lg py-1.5 text-[11px] font-bold bg-cyan-600 text-white ring-2 ring-cyan-300'
+                          : 'rounded-lg py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'"
+                    >{{ month.slice(0, 3) }}</button>
+                  }
+                </div>
+                <p class="mt-2 text-[9px] font-semibold text-slate-300">Verde = datos disponibles</p>
               </div>
 
-              <div>
-                <div class="mb-5 rounded-lg bg-slate-50 px-4 py-3">
-                  <div class="flex items-center justify-between gap-3">
-                    <div>
-                      <p class="text-xs font-bold text-slate-400">Rango seleccionado</p>
-                      <p class="mt-0.5 text-sm font-black text-slate-700">{{ dgaSelectedRangeLongLabel() }}</p>
-                    </div>
-                    <span class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-bold text-slate-500">{{ dgaSelectedDaysLabel() }}</span>
+              <!-- Right: range display + date inputs -->
+              <div class="px-6 py-5">
+                <div class="mb-5 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Rango seleccionado</p>
+                    <p class="mt-0.5 text-sm font-black text-slate-700">{{ dgaModalRangeLabel() }}</p>
                   </div>
+                  <span class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                    {{ dgaModalDaysCount() > 0 ? dgaModalDaysCount() + ' días' : '—' }}
+                  </span>
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-2">
-                  <label class="grid gap-2 text-sm font-bold text-slate-600">
+                <div class="grid gap-3 sm:grid-cols-2">
+                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
                     Desde
                     <input
                       type="date"
                       [value]="dgaDateFrom()"
-                      (input)="setDgaDateFrom($event)"
-                      class="h-11 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      (input)="setDgaDateFrom($event); dgaSelectedPreset.set('custom'); dgaSelectedMonths.set([])"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
                     />
                   </label>
-                  <label class="grid gap-2 text-sm font-bold text-slate-600">
+                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
                     Hasta
                     <input
                       type="date"
                       [value]="dgaDateTo()"
-                      (input)="setDgaDateTo($event)"
-                      class="h-11 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      (input)="setDgaDateTo($event); dgaSelectedPreset.set('custom'); dgaSelectedMonths.set([])"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
                     />
                   </label>
                 </div>
@@ -1482,10 +1439,259 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </div>
 
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 text-sm font-semibold">
-              <button type="button" (click)="clearDgaDateFilter()" class="text-slate-500 transition-colors hover:text-slate-800">Limpiar seleccion</button>
+              <button type="button" (click)="clearDgaDateFilter(); dgaSelectedPreset.set(null); dgaSelectedMonths.set([])" class="text-slate-500 transition-colors hover:text-slate-800">Limpiar selección</button>
               <div class="flex items-center gap-3">
                 <button type="button" (click)="closeDgaDateFilter()" class="rounded-lg px-4 py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800">Cancelar</button>
                 <button type="button" (click)="applyDgaDateFilter()" class="rounded-lg bg-cyan-600 px-4 py-2 font-black text-white transition-colors hover:bg-cyan-700">Aplicar filtro</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      }
+
+      @if (downloadModalOpen()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]" (click)="closeDownloadModal()">
+          <section class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl" (click)="$event.stopPropagation()">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                  <span class="material-symbols-outlined text-[20px]">download</span>
+                </span>
+                <div>
+                  <h2 class="text-lg font-black text-slate-800">Exportar Datos</h2>
+                  @if (siteContext(); as ctx) {
+                    <p class="text-xs font-semibold text-slate-400">{{ getSiteName(ctx) }}</p>
+                  }
+                </div>
+              </div>
+              <button type="button" (click)="closeDownloadModal()" class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700" aria-label="Cerrar">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
+              <!-- Left panel: presets + month selector -->
+              <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
+                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Períodos rápidos</p>
+                <div class="grid gap-0.5">
+                  @for (preset of downloadPresets; track preset.id) {
+                    <button
+                      type="button"
+                      (click)="applyDownloadPreset(preset.id)"
+                      [class]="downloadSelectedPreset() === preset.id
+                        ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-cyan-50 text-cyan-700 border border-cyan-200'
+                        : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'"
+                    >
+                      @if (downloadSelectedPreset() === preset.id) {
+                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-500 flex-shrink-0"></span>
+                      }
+                      {{ preset.label }}
+                    </button>
+                  }
+                </div>
+
+                <p class="mb-2 mt-5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Meses {{ 'de ' + (downloadDateFrom() || '2026').slice(0,4) }}</p>
+                <div class="grid grid-cols-3 gap-1.5">
+                  @for (month of downloadMonthNames; track month; let i = $index) {
+                    <button
+                      type="button"
+                      (click)="applyDownloadMonth(i)"
+                      [class]="!downloadMonthHasData(i)
+                        ? 'rounded-lg py-1.5 text-[11px] font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
+                        : downloadSelectedMonths().includes(i)
+                          ? 'rounded-lg py-1.5 text-[11px] font-bold bg-cyan-600 text-white ring-2 ring-cyan-300'
+                          : 'rounded-lg py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'"
+                    >{{ month.slice(0, 3) }}</button>
+                  }
+                </div>
+                <p class="mt-2 text-[9px] font-semibold text-slate-300">Verde = datos disponibles</p>
+              </div>
+
+              <!-- Right panel: date range + data types + format -->
+              <div class="px-6 py-5">
+                <!-- Selected range pill -->
+                <div class="mb-5 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3">
+                  <div>
+                    <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">Rango seleccionado</p>
+                    <p class="mt-0.5 text-sm font-black text-slate-700">{{ downloadRangeLabel() }}</p>
+                  </div>
+                  <span class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                    {{ downloadDaysCount() > 0 ? downloadDaysCount() + ' días' : '—' }}
+                  </span>
+                </div>
+
+                <!-- Custom date range -->
+                <div class="mb-5 grid gap-3 sm:grid-cols-2">
+                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
+                    Desde
+                    <input
+                      type="date"
+                      [value]="downloadDateFrom()"
+                      (input)="downloadDateFrom.set($any($event.target).value); downloadSelectedPreset.set('custom'); downloadSelectedMonths.set([])"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    />
+                  </label>
+                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
+                    Hasta
+                    <input
+                      type="date"
+                      [value]="downloadDateTo()"
+                      (input)="downloadDateTo.set($any($event.target).value); downloadSelectedPreset.set('custom'); downloadSelectedMonths.set([])"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    />
+                  </label>
+                </div>
+
+                <!-- Data types -->
+                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Datos a incluir</p>
+                <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  @for (dtype of downloadDataTypeOptions; track dtype.id) {
+                    <button
+                      type="button"
+                      (click)="toggleDownloadDataType(dtype.id)"
+                      [class]="isDownloadTypeSelected(dtype.id)
+                        ? 'rounded-lg border border-cyan-400 bg-cyan-50 px-3 py-2.5 text-center text-sm font-bold text-cyan-800 transition-all'
+                        : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'"
+                    >{{ dtype.label }}</button>
+                  }
+                </div>
+
+                <!-- Format -->
+                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Formato de archivo</p>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    (click)="downloadFormat.set('xlsx')"
+                    [class]="downloadFormat() === 'xlsx'
+                      ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
+                      : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50'"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">table</span>
+                    Excel (.xlsx)
+                  </button>
+                  <button
+                    type="button"
+                    (click)="downloadFormat.set('csv')"
+                    [class]="downloadFormat() === 'csv'
+                      ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
+                      : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50'"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">csv</span>
+                    CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
+              <p class="text-xs font-semibold text-slate-400">
+                {{ downloadSelectedTypes().length === 0 ? 'Selecciona al menos un dato' : downloadSelectedTypes().length + ' variable' + (downloadSelectedTypes().length > 1 ? 's' : '') + ' · ' + downloadFormat().toUpperCase() }}
+              </p>
+              <div class="flex items-center gap-3">
+                <button type="button" (click)="closeDownloadModal()" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800">Cancelar</button>
+                <button
+                  type="button"
+                  (click)="executeDownload()"
+                  [disabled]="downloadSelectedTypes().length === 0 || !downloadDateFrom() || !downloadDateTo()"
+                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-black text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span class="material-symbols-outlined text-[17px]">download</span>
+                  Descargar
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      }
+
+      @if (dgaReportModalOpen()) {
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]" (click)="closeDgaReportModal()">
+          <section class="w-full max-w-[480px] overflow-hidden rounded-2xl bg-white shadow-2xl" (click)="$event.stopPropagation()">
+            <!-- Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div class="flex items-center gap-3">
+                <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600">
+                  <span class="material-symbols-outlined text-[18px]">description</span>
+                </span>
+                <div>
+                  <h2 class="text-base font-black text-slate-800">Reporte DGA</h2>
+                  <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Formato oficial · período a exportar</p>
+                </div>
+              </div>
+              <button type="button" (click)="closeDgaReportModal()" class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            <!-- Presets rápidos -->
+            <div class="px-5 pt-4">
+              <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Período rápido</p>
+              <div class="grid grid-cols-3 gap-1.5">
+                @for (preset of downloadPresets; track preset.id) {
+                  <button
+                    type="button"
+                    (click)="applyDgaReportPreset(preset.id)"
+                    [class]="dgaReportSelectedPreset() === preset.id
+                      ? 'rounded-lg border border-violet-300 bg-violet-50 px-2 py-2 text-center text-[11px] font-bold text-violet-800 transition-all'
+                      : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'"
+                  >{{ preset.label }}</button>
+                }
+              </div>
+            </div>
+
+            <!-- Meses -->
+            <div class="px-5 pt-4">
+              <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Meses {{ 'de ' + (dgaReportDateFrom() || '2026').slice(0,4) }}</p>
+              <div class="grid grid-cols-6 gap-1.5">
+                @for (month of downloadMonthNames; track month; let i = $index) {
+                  <button
+                    type="button"
+                    (click)="applyDgaReportMonth(i)"
+                    [class]="!dgaMonthHasData(i)
+                      ? 'rounded-lg py-1.5 text-[10px] font-semibold bg-slate-50 text-slate-300 cursor-not-allowed'
+                      : dgaReportSelectedMonths().includes(i)
+                        ? 'rounded-lg py-1.5 text-[10px] font-bold bg-violet-600 text-white ring-2 ring-violet-300'
+                        : 'rounded-lg py-1.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'"
+                  >{{ month.slice(0, 3) }}</button>
+                }
+              </div>
+            </div>
+
+            <!-- Rango manual -->
+            <div class="grid grid-cols-2 gap-3 px-5 pt-4">
+              <label class="grid gap-1.5 text-[11px] font-bold text-slate-500">
+                Desde
+                <input type="date" [value]="dgaReportDateFrom()"
+                  (input)="dgaReportDateFrom.set($any($event.target).value); dgaReportSelectedPreset.set('custom'); dgaReportSelectedMonths.set([])"
+                  class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 outline-none transition-colors focus:border-violet-300 focus:ring-2 focus:ring-violet-100"/>
+              </label>
+              <label class="grid gap-1.5 text-[11px] font-bold text-slate-500">
+                Hasta
+                <input type="date" [value]="dgaReportDateTo()"
+                  (input)="dgaReportDateTo.set($any($event.target).value); dgaReportSelectedPreset.set('custom'); dgaReportSelectedMonths.set([])"
+                  class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 outline-none transition-colors focus:border-violet-300 focus:ring-2 focus:ring-violet-100"/>
+              </label>
+            </div>
+
+            <!-- Footer: rango + acción -->
+            <div class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
+              <div>
+                <p class="text-xs font-black text-slate-700">{{ dgaReportRangeLabel() }}</p>
+                <p class="text-[10px] font-semibold text-slate-400">{{ dgaReportDaysCount() > 0 ? dgaReportDaysCount() + ' días' : '—' }}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="button" (click)="closeDgaReportModal()" class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50">Cancelar</button>
+                <button
+                  type="button"
+                  (click)="generateDgaReport()"
+                  [disabled]="!dgaReportDateFrom() || !dgaReportDateTo()"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span class="material-symbols-outlined text-[16px]">description</span>
+                  Generar reporte
+                </button>
               </div>
             </div>
           </section>
@@ -1739,6 +1945,20 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaDateTo = signal('2026-04-07');
   dgaRowsPerPage = signal(10);
   dgaPage = signal(1);
+  downloadModalOpen = signal(false);
+  downloadSelectedPreset = signal<string | null>('last30');
+  downloadSelectedMonths = signal<number[]>([]);
+  downloadDateFrom = signal('');
+  downloadDateTo = signal('');
+  downloadFormat = signal<'xlsx' | 'csv'>('xlsx');
+  downloadSelectedTypes = signal<string[]>(['caudal', 'totalizador', 'nivel_freatico']);
+  dgaSelectedPreset = signal<string | null>(null);
+  dgaSelectedMonths = signal<number[]>([]);
+  dgaReportModalOpen = signal(false);
+  dgaReportSelectedPreset = signal<string | null>('last30');
+  dgaReportSelectedMonths = signal<number[]>([]);
+  dgaReportDateFrom = signal('');
+  dgaReportDateTo = signal('');
   readonly historyPageSize = 50;
   readonly historyRecordLimitOptions = [50, 100, 250, 500];
   readonly dgaRowsPerPageOptions = [10, 25, 50];
@@ -1759,6 +1979,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   });
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
+
 
   // SVG Well Diagram — dimensions & layout
   readonly svgW = 300;
@@ -1800,16 +2021,65 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dashboardRefreshLabel = computed(() => this.formatDashboardRefresh(this.dashboardLastLoadedAt(), this.currentTime()));
   latestDeviceReadingLabel = computed(() => this.formatLatestDeviceReading(this.dashboardData()?.ultima_lectura));
   currentServerTime = computed(() => new Date(this.currentTime().getTime() + this.serverClockOffsetMs()));
-  telemetryStatusBadges = computed<TelemetryStatusBadge[]>(() => {
+  telemetryStatusBadges = computed<TelemetryStatusBadge[]>(() => []);
+  latestDeviceTimestampLabel = computed(() => {
     const reading = this.dashboardData()?.ultima_lectura;
-    const officialTimestamp = String(reading?.timestamp_completo || reading?.time || '').trim();
-    const receivedTimestamp = String(reading?.received_at || '').trim();
-    const now = this.currentServerTime();
-
-    return [
-      this.buildTelemetryBadge('Ultimo dato equipo', officialTimestamp, now, 'datetime', 'online_prediction'),
-      this.buildTelemetryBadge('Recibido por plataforma', receivedTimestamp || officialTimestamp, now, 'relative', 'schedule'),
-    ];
+    const raw = String(reading?.timestamp_completo || reading?.time || '').trim();
+    if (!raw) return 'Sin dato';
+    return this.formatChileDateTime(raw);
+  });
+  latestDeviceTimeLabel = computed(() => {
+    const raw = String(this.dashboardData()?.ultima_lectura?.timestamp_completo || this.dashboardData()?.ultima_lectura?.time || '').trim();
+    if (!raw) return '—';
+    const parsed = this.parseUtcTimestamp(raw);
+    if (!parsed) return '—';
+    return new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', hour12: false }).format(parsed);
+  });
+  latestDeviceDateLabel = computed(() => {
+    const raw = String(this.dashboardData()?.ultima_lectura?.timestamp_completo || this.dashboardData()?.ultima_lectura?.time || '').trim();
+    if (!raw) return '';
+    const parsed = this.parseUtcTimestamp(raw);
+    if (!parsed) return '';
+    return new Intl.DateTimeFormat('es-CL', { timeZone: 'America/Santiago', day: '2-digit', month: 'short', year: 'numeric' }).format(parsed);
+  });
+  downloadRangeLabel = computed(() => {
+    const from = this.downloadDateFrom();
+    const to = this.downloadDateTo();
+    if (!from && !to) return 'Sin rango seleccionado';
+    const fmt = (s: string) => s ? s.split('-').reverse().join('/') : '—';
+    return `${fmt(from)} — ${fmt(to)}`;
+  });
+  downloadDaysCount = computed(() => {
+    const f = this.downloadDateFrom();
+    const t = this.downloadDateTo();
+    if (!f || !t) return 0;
+    return Math.round((+new Date(t) - +new Date(f)) / 86400000) + 1;
+  });
+  dgaModalDaysCount = computed(() => {
+    const f = this.dgaDateFrom();
+    const t = this.dgaDateTo();
+    if (!f || !t) return 0;
+    return Math.round((+new Date(t) - +new Date(f)) / 86400000) + 1;
+  });
+  dgaModalRangeLabel = computed(() => {
+    const from = this.dgaDateFrom();
+    const to = this.dgaDateTo();
+    if (!from && !to) return 'Sin rango seleccionado';
+    const fmt = (s: string) => s ? s.split('-').reverse().join('/') : '—';
+    return `${fmt(from)} — ${fmt(to)}`;
+  });
+  dgaReportDaysCount = computed(() => {
+    const f = this.dgaReportDateFrom();
+    const t = this.dgaReportDateTo();
+    if (!f || !t) return 0;
+    return Math.round((+new Date(t) - +new Date(f)) / 86400000) + 1;
+  });
+  dgaReportRangeLabel = computed(() => {
+    const from = this.dgaReportDateFrom();
+    const to = this.dgaReportDateTo();
+    if (!from && !to) return 'Selecciona un período';
+    const fmt = (s: string) => s ? s.split('-').reverse().join('/') : '—';
+    return `${fmt(from)} — ${fmt(to)}`;
   });
   historySourceRows = computed(() => {
     if (this.historyRows().length) return this.historyRows();
@@ -1953,9 +2223,26 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   readonly quickActions = [
     { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600', openHistory: true },
-    { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600' },
+    { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600', openDownload: true },
     { icon: 'open_in_new', title: 'Ver en DGA', subtitle: 'Portal oficial', color: 'text-blue-600' },
-    { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600' },
+    { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600', openDgaReport: true },
+  ];
+
+  readonly downloadPresets = [
+    { id: 'last7', label: 'Últimos 7 días' },
+    { id: 'last30', label: 'Últimos 30 días' },
+    { id: 'last90', label: 'Últimos 90 días' },
+    { id: 'thisYear', label: 'Este año' },
+    { id: 'lastYear', label: 'Año pasado' },
+  ];
+
+  readonly downloadMonthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  readonly downloadMonthShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+  readonly downloadDataTypeOptions = [
+    { id: 'caudal', label: 'Caudal', unit: 'L/s' },
+    { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
+    { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
   ];
 
   readonly historyMockRows: HistoricalTelemetryRow[] = [
@@ -2569,15 +2856,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.hoveredRealtimePointIndex.set(null);
   }
 
-  handleQuickAction(action: { tab?: DetailTab; openHistory?: boolean }): void {
-    if (action.openHistory) {
-      this.openHistoryView();
-      return;
-    }
-
-    if (action.tab) {
-      this.setDetailTab(action.tab);
-    }
+  handleQuickAction(action: { tab?: DetailTab; openHistory?: boolean; openDownload?: boolean; openDgaReport?: boolean }): void {
+    if (action.openHistory) { this.openHistoryView(); return; }
+    if (action.openDownload) { this.openDownloadModal(); return; }
+    if (action.openDgaReport) { this.openDgaReportModal(); return; }
+    if (action.tab) { this.setDetailTab(action.tab); }
   }
 
   openHistoryView(): void {
@@ -2588,6 +2871,128 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   closeHistoryView(): void {
     this.historyPanelOpen.set(false);
+  }
+
+  openDownloadModal(): void {
+    this.downloadSelectedMonths.set([]);
+    this.applyDownloadPreset('last30');
+    this.downloadModalOpen.set(true);
+  }
+
+  closeDownloadModal(): void {
+    this.downloadModalOpen.set(false);
+  }
+
+  applyDownloadPreset(presetId: string): void {
+    this.downloadSelectedMonths.set([]);
+    const now = new Date();
+    const y = now.getFullYear();
+    let from: Date, to: Date;
+    switch (presetId) {
+      case 'last7':
+        from = new Date(now); from.setDate(from.getDate() - 6); to = now; break;
+      case 'last30':
+        from = new Date(now); from.setDate(from.getDate() - 29); to = now; break;
+      case 'last90':
+        from = new Date(now); from.setDate(from.getDate() - 89); to = now; break;
+      case 'thisYear':
+        from = new Date(y, 0, 1); to = now; break;
+      case 'lastYear':
+        from = new Date(y - 1, 0, 1); to = new Date(y - 1, 11, 31); break;
+      default:
+        return;
+    }
+    this.downloadDateFrom.set(this.toDateInputValue(from));
+    this.downloadDateTo.set(this.toDateInputValue(to));
+    this.downloadSelectedPreset.set(presetId);
+  }
+
+  applyDownloadMonth(monthIndex: number): void {
+    if (!this.downloadMonthHasData(monthIndex)) return;
+    const current = this.downloadSelectedMonths();
+    const next = current.includes(monthIndex)
+      ? current.filter(m => m !== monthIndex)
+      : [...current, monthIndex].sort((a, b) => a - b);
+    this.downloadSelectedMonths.set(next);
+    this.downloadSelectedPreset.set(null);
+    if (next.length === 0) return;
+    const year = new Date().getFullYear();
+    const from = new Date(year, Math.min(...next), 1);
+    const to = new Date(year, Math.max(...next) + 1, 0);
+    this.downloadDateFrom.set(this.toDateInputValue(from));
+    this.downloadDateTo.set(this.toDateInputValue(to));
+  }
+
+  downloadMonthHasData(monthIndex: number): boolean {
+    const year = new Date().getFullYear();
+    const shortMonth = this.downloadMonthShort[monthIndex];
+    const shortYear = String(year).slice(2);
+    const match = this.monthlyFlowMonths.find(m => m.label.startsWith(`${shortMonth} '${shortYear}`));
+    return match ? match.value > 0 : false;
+  }
+
+  toggleDownloadDataType(typeId: string): void {
+    const current = this.downloadSelectedTypes();
+    if (current.includes(typeId)) {
+      this.downloadSelectedTypes.set(current.filter(t => t !== typeId));
+    } else {
+      this.downloadSelectedTypes.set([...current, typeId]);
+    }
+  }
+
+  isDownloadTypeSelected(typeId: string): boolean {
+    return this.downloadSelectedTypes().includes(typeId);
+  }
+
+  executeDownload(): void {
+    this.closeDownloadModal();
+  }
+
+  openDgaReportModal(): void {
+    this.dgaReportSelectedMonths.set([]);
+    this.applyDgaReportPreset('last30');
+    this.dgaReportModalOpen.set(true);
+  }
+
+  closeDgaReportModal(): void {
+    this.dgaReportModalOpen.set(false);
+  }
+
+  applyDgaReportPreset(presetId: string): void {
+    this.dgaReportSelectedMonths.set([]);
+    this.dgaReportSelectedPreset.set(presetId);
+    const now = new Date();
+    const y = now.getFullYear();
+    let from = new Date(now), to = new Date(now);
+    switch (presetId) {
+      case 'last7':    from = this.addDays(now, -6); break;
+      case 'last30':   from = this.addDays(now, -29); break;
+      case 'last90':   from = this.addDays(now, -89); break;
+      case 'thisYear': from = new Date(y, 0, 1); break;
+      case 'lastYear': from = new Date(y - 1, 0, 1); to = new Date(y - 1, 11, 31); break;
+    }
+    this.dgaReportDateFrom.set(this.toDateInputValue(from));
+    this.dgaReportDateTo.set(this.toDateInputValue(to));
+  }
+
+  applyDgaReportMonth(monthIndex: number): void {
+    if (!this.dgaMonthHasData(monthIndex)) return;
+    const current = this.dgaReportSelectedMonths();
+    const next = current.includes(monthIndex)
+      ? current.filter(m => m !== monthIndex)
+      : [...current, monthIndex].sort((a, b) => a - b);
+    this.dgaReportSelectedMonths.set(next);
+    this.dgaReportSelectedPreset.set(null);
+    if (next.length === 0) return;
+    const year = new Date().getFullYear();
+    const from = new Date(year, Math.min(...next), 1);
+    const to = new Date(year, Math.max(...next) + 1, 0);
+    this.dgaReportDateFrom.set(this.toDateInputValue(from));
+    this.dgaReportDateTo.set(this.toDateInputValue(to));
+  }
+
+  generateDgaReport(): void {
+    this.closeDgaReportModal();
   }
 
   setHistoryDateFrom(event: Event): void {
@@ -2643,28 +3048,47 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   applyDgaDatePreset(presetId: string): void {
-    const today = new Date();
-    let from = new Date(today);
-    let to = new Date(today);
-
-    if (presetId === 'yesterday') {
-      from = this.addDays(today, -1);
-      to = this.addDays(today, -1);
-    } else if (presetId === 'last7') {
-      from = this.addDays(today, -6);
-    } else if (presetId === 'last30') {
-      from = this.addDays(today, -29);
-    } else if (presetId === 'thisMonth') {
-      from = new Date(today.getFullYear(), today.getMonth(), 1);
-      to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    } else if (presetId === 'previousMonth') {
-      from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      to = new Date(today.getFullYear(), today.getMonth(), 0);
+    this.dgaSelectedMonths.set([]);
+    this.dgaSelectedPreset.set(presetId);
+    const now = new Date();
+    const y = now.getFullYear();
+    let from = new Date(now);
+    let to = new Date(now);
+    switch (presetId) {
+      case 'last7':   from = this.addDays(now, -6); break;
+      case 'last30':  from = this.addDays(now, -29); break;
+      case 'last90':  from = this.addDays(now, -89); break;
+      case 'thisYear': from = new Date(y, 0, 1); break;
+      case 'lastYear': from = new Date(y - 1, 0, 1); to = new Date(y - 1, 11, 31); break;
     }
-
     this.dgaDateFrom.set(this.toDateInputValue(from));
     this.dgaDateTo.set(this.toDateInputValue(to));
     this.dgaPage.set(1);
+  }
+
+  applyDgaMonth(monthIndex: number): void {
+    if (!this.dgaMonthHasData(monthIndex)) return;
+    const current = this.dgaSelectedMonths();
+    const next = current.includes(monthIndex)
+      ? current.filter(m => m !== monthIndex)
+      : [...current, monthIndex].sort((a, b) => a - b);
+    this.dgaSelectedMonths.set(next);
+    this.dgaSelectedPreset.set(null);
+    if (next.length === 0) return;
+    const year = new Date().getFullYear();
+    const from = new Date(year, Math.min(...next), 1);
+    const to = new Date(year, Math.max(...next) + 1, 0);
+    this.dgaDateFrom.set(this.toDateInputValue(from));
+    this.dgaDateTo.set(this.toDateInputValue(to));
+    this.dgaPage.set(1);
+  }
+
+  dgaMonthHasData(monthIndex: number): boolean {
+    const year = new Date().getFullYear();
+    return this.dgaReportRows.some(row => {
+      const d = new Date(row.dateIso);
+      return d.getFullYear() === year && d.getMonth() === monthIndex;
+    });
   }
 
   setDgaRowsPerPage(event: Event): void {
@@ -2725,6 +3149,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       ? `${base} border-cyan-500 bg-cyan-50 font-black text-cyan-700`
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;
   }
+
 
   private loadSiteSettings(): void {
     const siteId = this.currentSiteId();

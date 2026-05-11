@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { CompaniesGeneralSkeletonComponent } from '../components/companies-general-skeleton';
+import { CompaniesGeneralPanelComponent } from '../components/companies-general-panel';
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesPageHeaderComponent } from '../components/companies-page-header';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
@@ -12,21 +12,18 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
     CommonModule,
     CompaniesPageHeaderComponent,
     CompaniesTabNavComponent,
-    CompaniesGeneralSkeletonComponent,
+    CompaniesGeneralPanelComponent,
     CompaniesInstallationsPanelComponent,
   ],
   template: `
-    <div class="p-8">
+    <div class="min-h-full bg-[#f5f7fb] px-5 pb-8 pt-6 md:px-7 xl:px-8">
       <app-companies-page-header
         [selectedSubCompany]="selectedSubCompany"
         [sitesCount]="sites.length"
+        [title]="activeTab === 'instalaciones' ? 'Instalaciones' : 'General'"
+        [subtitle]="activeTab === 'instalaciones' ? sites.length + ' sitios registrados' : 'Resumen de la división'"
         [showReportButton]="false"
       />
-
-      <div class="mb-6 px-4 py-2.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-2">
-        <span class="material-symbols-outlined text-blue-500 text-sm">visibility</span>
-        <span class="text-xs font-bold text-blue-700">Vista de Cliente - Solo Lectura</span>
-      </div>
 
       <app-companies-tab-nav
         [tabs]="tabs"
@@ -35,7 +32,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
       />
 
       @if (activeTab === 'general') {
-        <app-companies-general-skeleton />
+        <app-companies-general-panel [sites]="sites" [subEmpresaId]="subEmpresaId" />
       }
 
       @if (activeTab === 'instalaciones') {
@@ -53,6 +50,7 @@ export class CompaniesClienteViewComponent {
   @Input() selectedSubCompany: any = null;
   @Input() sites: any[] = [];
   @Input() loading = false;
+  @Input() subEmpresaId = '';
 
   @Output() activeTabChange = new EventEmitter<string>();
   @Output() siteSelected = new EventEmitter<any>();
