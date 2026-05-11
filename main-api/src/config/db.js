@@ -4,15 +4,6 @@
  */
 const { Pool } = require("pg");
 const { db }   = require("./env");
-const { formatUtcMinus3 } = require("../utils/timezone");
-
-const TIMESTAMPTZ_OID = 1184;
-const TIMESTAMP_OID = 1114;
-
-const { types } = require("pg");
-
-types.setTypeParser(TIMESTAMPTZ_OID, formatUtcMinus3);
-types.setTypeParser(TIMESTAMP_OID, formatUtcMinus3);
 
 const pool = new Pool({
   host:                    db.host,
@@ -23,7 +14,7 @@ const pool = new Pool({
   max:                     db.max,
   idleTimeoutMillis:       db.idleTimeoutMillis,
   connectionTimeoutMillis: db.connectionTimeoutMillis,
-  options:                 "-c timezone=Etc/GMT+3",
+  options:                 "-c timezone=UTC",
 });
 
 pool.on("error", (err) => {
