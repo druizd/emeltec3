@@ -1,5 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { catchError, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
+import { CompanyService } from '../../../../services/company.service';
 import { OperacionGraficosHistoricosComponent } from './operacion-graficos-historicos';
 import { OperacionResumenPeriodoComponent } from './operacion-resumen-periodo';
 import { WaterOperacionStateService } from './water-operacion-state';
@@ -25,6 +28,44 @@ interface TurnoDistribucion {
   consumo: number;
   pct: number;
   barClass: string;
+}
+
+interface DashboardValue {
+  valor?: string | number | null;
+  unidad?: string | null;
+  ok?: boolean;
+}
+
+interface DashboardData {
+  ultima_lectura?: {
+    time?: string | null;
+    timestamp_completo?: string | null;
+    received_at?: string | null;
+  } | null;
+  resumen?: Record<string, DashboardValue | undefined>;
+}
+
+interface HistoricalValue {
+  valor?: string | number | null;
+  unidad?: string | null;
+  ok?: boolean;
+}
+
+interface HistoricalApiRow {
+  timestamp?: string | null;
+  fecha?: string | null;
+  caudal?: HistoricalValue | null;
+  nivel?: HistoricalValue | null;
+  totalizador?: HistoricalValue | null;
+  nivel_freatico?: HistoricalValue | null;
+}
+
+interface HistoricalRow {
+  timestampMs: number | null;
+  caudal: number | null;
+  nivel: number | null;
+  totalizador: number | null;
+  nivelFreatico: number | null;
 }
 
 @Component({
@@ -65,13 +106,13 @@ interface TurnoDistribucion {
               <p class="font-black text-sm">Datos en tiempo real</p>
               <p class="mt-0.5 text-[11px] text-cyan-100">actualización cada minuto</p>
             </div>
-            <span class="flex items-center gap-2 text-[11px] font-bold text-cyan-50" aria-live="polite">
-              <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-300" aria-hidden="true"></span>
-              06/05/2026 12:35
+            <span class="flex items-center gap-2 text-[11px] font-bold text-cyan-50">
+              <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-300"></span>
+              {{ latestTimestampLabel() }}
             </span>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-            @for (m of metricas; track m.label) {
+            @for (m of metricas(); track m.label) {
               <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
                 <p class="text-[10px] font-bold uppercase tracking-widest text-cyan-100">{{ m.label }}</p>
                 <p class="mt-1 text-2xl font-black leading-none">
@@ -107,7 +148,7 @@ interface TurnoDistribucion {
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true">chevron_left</span>
                 </button>
                 <span class="flex items-center gap-1.5 text-sm font-bold text-slate-700">
-                  {{ fechaDia() }}
+                  {{ fechaDiaReal() }}
                   @if (esHoy()) {
                     <span class="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black text-cyan-700">Hoy</span>
                   }
@@ -175,13 +216,13 @@ interface TurnoDistribucion {
             }
 
             <div class="grid grid-cols-2 gap-2 xl:grid-cols-4">
-              @for (turno of turnos(); track turno.nombre; let i = $index) {
+              @for (turno of turnosReal(); track turno.nombre; let i = $index) {
                 @if (turno.esTotal) {
                   <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ turno.nombre }}</p>
                     <p class="mt-0.5 text-[10px] text-slate-400">{{ turno.horario }}</p>
                     <p class="mt-3 font-mono text-3xl font-black text-slate-800">
-                      {{ turno.consumo }}<span class="ml-1 text-sm font-bold text-slate-400">m³</span>
+                      {{ formatTurnoConsumo(turno.consumo) }}<span class="ml-1 text-sm font-bold text-slate-400">m³</span>
                     </p>
                     <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100">
                       <div class="h-full w-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500"></div>
@@ -199,7 +240,7 @@ interface TurnoDistribucion {
                       </button>
                     </div>
                     <p class="mt-3 font-mono text-3xl font-black text-white">
-                      {{ turno.consumo }}<span class="ml-1 text-base font-bold text-white/60">m³</span>
+                      {{ formatTurnoConsumo(turno.consumo) }}<span class="ml-1 text-base font-bold text-white/60">m³</span>
                     </p>
                   </div>
                 } @else {
@@ -217,7 +258,7 @@ interface TurnoDistribucion {
           <section class="hidden xl:flex w-52 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Distribución</p>
             <div class="flex flex-1 flex-col justify-center gap-3">
-              @for (d of distribucion(); track d.nombre) {
+              @for (d of distribucionReal(); track d.nombre) {
                 <div>
                   <div class="mb-1 flex items-center justify-between gap-1">
                     <span class="text-[11px] font-semibold text-slate-600">{{ d.nombre }}</span>
@@ -226,7 +267,7 @@ interface TurnoDistribucion {
                   <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div class="h-full rounded-full transition-all" [class]="d.barClass" [style.width]="d.pct + '%'"></div>
                   </div>
-                  <p class="mt-0.5 text-right font-mono text-[10px] text-slate-400">{{ d.consumo }} m³</p>
+                  <p class="mt-0.5 text-right font-mono text-[10px] text-slate-400">{{ formatTurnoConsumo(d.consumo) }} m³</p>
                 </div>
               }
             </div>
@@ -241,14 +282,14 @@ interface TurnoDistribucion {
             <span class="text-[11px] font-semibold text-slate-400">% del total diario</span>
           </div>
           <div class="space-y-3">
-            @for (d of distribucion(); track d.nombre) {
+            @for (d of distribucionReal(); track d.nombre) {
               <div class="flex items-center gap-3">
                 <span class="w-14 shrink-0 text-[12px] font-semibold text-slate-600">{{ d.nombre }}</span>
                 <div class="flex-1 h-2 overflow-hidden rounded-full bg-slate-100">
                   <div class="h-full rounded-full transition-all" [class]="d.barClass" [style.width]="d.pct + '%'"></div>
                 </div>
                 <span class="w-8 shrink-0 text-right font-mono text-[11px] text-slate-500">{{ d.pct }}%</span>
-                <span class="w-16 shrink-0 text-right font-mono text-[11px] text-slate-500">{{ d.consumo }} m³</span>
+                <span class="w-16 shrink-0 text-right font-mono text-[11px] text-slate-500">{{ formatTurnoConsumo(d.consumo) }} m³</span>
               </div>
             }
           </div>
@@ -260,7 +301,7 @@ interface TurnoDistribucion {
             <h3 class="text-sm font-black text-slate-800">
               Caudal en <span class="text-cyan-600">Tiempo Real</span>
             </h3>
-            <span class="text-[11px] font-semibold text-slate-400">Últimos {{ realtimePoints.length }} registros</span>
+            <span class="text-[11px] font-semibold text-slate-400">Últimos {{ realtimePoints().length }} registros</span>
           </div>
           <div class="h-20 w-full">
             <svg viewBox="0 0 1120 80" class="h-full w-full" preserveAspectRatio="none">
@@ -270,9 +311,9 @@ interface TurnoDistribucion {
                   <stop offset="100%" stop-color="#0DAFBD" stop-opacity="0.02"/>
                 </linearGradient>
               </defs>
-              <polygon [attr.points]="chartFill(realtimePoints)" fill="url(#rtFill)"/>
+              <polygon [attr.points]="chartFill(realtimePoints())" fill="url(#rtFill)"/>
               <polyline
-                [attr.points]="chartPolyline(realtimePoints)"
+                [attr.points]="chartPolyline(realtimePoints())"
                 fill="none"
                 stroke="#0DAFBD"
                 stroke-width="2.5"
@@ -282,7 +323,9 @@ interface TurnoDistribucion {
             </svg>
           </div>
           <div class="mt-1 flex justify-between font-mono text-[10px] text-slate-400">
-            <span>12:15</span><span>12:20</span><span>12:25</span><span>12:30</span><span>12:35</span>
+            @for (label of realtimeChartLabels(); track $index) {
+              <span>{{ label }}</span>
+            }
           </div>
         </section>
 
@@ -301,30 +344,141 @@ interface TurnoDistribucion {
     </div>
   `,
 })
-export class WaterDetailOperacionComponent {
+export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   private readonly state = inject(WaterOperacionStateService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly companyService = inject(CompanyService);
+  private pollingSub?: Subscription;
+  private readonly CHILE_TIME_ZONE = 'America/Santiago';
+  private readonly historyLimit = 2200;
 
   readonly modo = signal<OperacionModo>('hoy');
   readonly turnosSettingsOpen = signal(false);
+  readonly dashboardData = signal<DashboardData | null>(null);
+  readonly historyRows = signal<HistoricalRow[]>([]);
+  readonly loading = signal(false);
+  readonly loadError = signal('');
 
   readonly diaOffset = this.state.diaOffset;
   readonly numTurnos = this.state.numTurnos;
   readonly turnosConfig = this.state.turnosConfig;
 
-  private readonly HOY = new Date(2026, 4, 6);
+  readonly latestTelemetryDate = computed(() => {
+    const latest = this.dashboardData()?.ultima_lectura;
+    const raw = latest?.timestamp_completo || latest?.time || latest?.received_at || '';
+    const parsed = this.parseDate(raw);
+    if (parsed) return parsed;
 
-  readonly metricas: MetricaTiempoReal[] = [
-    { label: 'Caudal Actual', valor: '3.1', unidad: 'L/s' },
-    { label: 'Totalizador', valor: '541,551', unidad: 'm³' },
-    { label: 'Nivel de Agua', valor: '32.4', unidad: 'm' },
-    { label: 'Consumo Hoy', valor: '24.8', unidad: 'm³' },
-  ];
+    const row = this.historyRows().find((item) => item.timestampMs !== null);
+    return row?.timestampMs ? new Date(row.timestampMs) : null;
+  });
 
-  readonly realtimePoints = [2.8, 3.1, 3.0, 2.9, 3.2, 3.1, 2.8, 3.0, 3.3, 3.1, 2.9, 3.0, 3.2, 3.1, 2.8, 3.0, 3.1, 2.9, 3.2, 3.1];
+  readonly selectedOperationDate = computed(() => {
+    const base = this.latestTelemetryDate() ?? new Date();
+    const date = new Date(base);
+    date.setDate(date.getDate() + this.diaOffset());
+    return date;
+  });
 
+  readonly selectedDayKey = computed(() => this.chileDayKey(this.selectedOperationDate()));
+
+  readonly metricas = computed<MetricaTiempoReal[]>(() => {
+    const caudal = this.dashboardNumber('caudal') ?? this.latestHistoryNumber('caudal');
+    const totalizador = this.dashboardNumber('totalizador') ?? this.latestHistoryNumber('totalizador');
+    const nivel = this.dashboardNumber('nivel') ?? this.latestHistoryNumber('nivel') ?? this.latestHistoryNumber('nivelFreatico');
+    const consumoHoy = this.totalDayConsumption();
+
+    return [
+      { label: 'Caudal Actual', valor: this.formatNumber(caudal, 2), unidad: 'L/s' },
+      { label: 'Totalizador', valor: this.formatNumber(totalizador, 0), unidad: 'm³' },
+      { label: 'Nivel de Agua', valor: this.formatNumber(nivel, 2), unidad: 'm' },
+      { label: 'Consumo Hoy', valor: this.formatNumber(consumoHoy, 1), unidad: 'm³' },
+    ];
+  });
+
+  readonly realtimeChartRows = computed(() =>
+    this.historyRows()
+      .filter((row) => row.timestampMs !== null && row.caudal !== null)
+      .sort((a, b) => (a.timestampMs ?? 0) - (b.timestampMs ?? 0))
+      .slice(-20)
+  );
+
+  readonly realtimePoints = computed(() => {
+    const points = this.realtimeChartRows().map((row) => row.caudal ?? 0);
+    return points.length ? points : [0, 0];
+  });
+
+  readonly realtimeChartLabels = computed(() => {
+    const rows = this.realtimeChartRows();
+    if (!rows.length) return ['--', '--', '--', '--', '--'];
+
+    return [0, 0.25, 0.5, 0.75, 1].map((pct) => {
+      const index = Math.round((rows.length - 1) * pct);
+      return this.formatChileTime(rows[index]?.timestampMs ?? null);
+    });
+  });
+
+  readonly latestTimestampLabel = computed(() => {
+    const latest = this.latestTelemetryDate();
+    return latest ? this.formatChileDateTime(latest) : 'Sin registros';
+  });
+
+  readonly totalDayConsumption = computed(() => {
+    const rows = this.rowsForDay(this.selectedDayKey());
+    return this.consumptionFromTotalizer(rows) ?? 0;
+  });
+  private readonly barClasses = ['bg-cyan-500', 'bg-emerald-500', 'bg-slate-400'];
+  private readonly HOY = new Date();
   private readonly mockConsumo: (number | null)[] = [14.2, 10.6, null];
   private readonly mockPct = [57, 43, 0];
-  private readonly barClasses = ['bg-cyan-500', 'bg-emerald-500', 'bg-slate-400'];
+
+  readonly turnosReal = computed<TurnoCard[]>(() => {
+    const cfg = this.turnosConfig().slice(0, this.numTurnos());
+    const selectedDay = this.selectedDayKey();
+    const cards: TurnoCard[] = cfg.map((c) => {
+      const rows = this.rowsForShift(selectedDay, c.inicio, c.fin);
+      const consumo = this.consumptionFromTotalizer(rows);
+      return {
+        nombre: c.nombre,
+        horario: `${c.inicio} – ${c.fin}`,
+        consumo,
+        activo: rows.length > 0,
+      };
+    });
+
+    cards.push({
+      nombre: 'Total del Día',
+      horario: '24 horas',
+      consumo: this.totalDayConsumption(),
+      activo: true,
+      esTotal: true,
+    });
+    return cards;
+  });
+
+  readonly distribucionReal = computed<TurnoDistribucion[]>(() => {
+    const turnos = this.turnosReal().filter((turno) => !turno.esTotal);
+    const total = turnos.reduce((sum, turno) => sum + (turno.consumo ?? 0), 0);
+
+    return turnos.map((turno, i) => {
+      const consumo = turno.consumo ?? 0;
+      return {
+        nombre: turno.nombre,
+        consumo,
+        pct: total > 0 ? Math.round((consumo / total) * 100) : 0,
+        barClass: this.barClasses[i] ?? 'bg-slate-400',
+      };
+    });
+  });
+
+  readonly fechaDiaReal = computed(() =>
+    this.selectedOperationDate().toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: this.CHILE_TIME_ZONE,
+    })
+  );
 
   readonly turnos = computed<TurnoCard[]>(() => {
     const cfg = this.turnosConfig().slice(0, this.numTurnos());
@@ -355,25 +509,63 @@ export class WaterDetailOperacionComponent {
 
   readonly esHoy = computed(() => this.diaOffset() === 0);
 
+  ngOnInit(): void {
+    const siteId = this.resolveSiteId();
+    if (!siteId) {
+      this.loadError.set('No se encontro el sitio actual.');
+      return;
+    }
+
+    this.loading.set(true);
+    this.pollingSub = timer(0, 60000).pipe(
+      switchMap(() =>
+        forkJoin({
+          dashboard: this.companyService.getSiteDashboardData(siteId),
+          history: this.companyService.getSiteDashboardHistory(siteId, this.historyLimit),
+        }).pipe(
+          catchError((err) => {
+            console.error('No fue posible cargar operacion del pozo', err);
+            this.loadError.set('No fue posible cargar datos de operacion.');
+            this.loading.set(false);
+            return of(null);
+          })
+        )
+      )
+    ).subscribe((res) => {
+      if (!res) return;
+
+      this.dashboardData.set(res.dashboard?.data || null);
+      this.historyRows.set(this.mapHistoryRows(res.history));
+      this.loadError.set('');
+      this.loading.set(false);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.pollingSub?.unsubscribe();
+  }
+
   updateTurnoConfig(index: number, field: 'nombre' | 'inicio' | 'fin', value: string): void {
     this.state.updateTurnoConfig(index, field, value);
   }
 
   chartPolyline(points: number[]): string {
     const W = 1120, H = 74;
-    const min = Math.min(...points), max = Math.max(...points);
+    const safePoints = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
+    const min = Math.min(...safePoints), max = Math.max(...safePoints);
     const range = max - min || 1;
-    const step = W / (points.length - 1);
-    return points.map((v, i) => `${i * step},${H - ((v - min) / range) * (H - 10)}`).join(' ');
+    const step = W / (safePoints.length - 1);
+    return safePoints.map((v, i) => `${i * step},${H - ((v - min) / range) * (H - 10)}`).join(' ');
   }
 
   chartFill(points: number[]): string {
     const W = 1120, H = 74;
-    const min = Math.min(...points), max = Math.max(...points);
+    const safePoints = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
+    const min = Math.min(...safePoints), max = Math.max(...safePoints);
     const range = max - min || 1;
-    const step = W / (points.length - 1);
-    const coords = points.map((v, i) => `${i * step},${H - ((v - min) / range) * (H - 10)}`).join(' ');
-    return `0,${H} ${coords} ${(points.length - 1) * step},${H}`;
+    const step = W / (safePoints.length - 1);
+    const coords = safePoints.map((v, i) => `${i * step},${H - ((v - min) / range) * (H - 10)}`).join(' ');
+    return `0,${H} ${coords} ${(safePoints.length - 1) * step},${H}`;
   }
 
   turnoGradiente(index: number): string {
@@ -392,5 +584,172 @@ export class WaterDetailOperacionComponent {
       'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
       active ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',
     ].join(' ');
+  }
+
+  formatTurnoConsumo(value: number | null): string {
+    return value === null ? '--' : this.formatNumber(value, 1);
+  }
+
+  private resolveSiteId(): string {
+    let current: ActivatedRoute | null = this.route;
+    while (current) {
+      const siteId = current.snapshot.paramMap.get('siteId');
+      if (siteId) return siteId;
+      current = current.parent;
+    }
+    return '';
+  }
+
+  private mapHistoryRows(res: any): HistoricalRow[] {
+    const rows = Array.isArray(res?.data?.rows) ? res.data.rows : [];
+    return rows.map((row: HistoricalApiRow) => {
+      const timestamp = this.parseDate(row.timestamp || row.fecha || '');
+      return {
+        timestampMs: timestamp?.getTime() ?? null,
+        caudal: this.historicalNumber(row.caudal),
+        nivel: this.historicalNumber(row.nivel),
+        totalizador: this.historicalNumber(row.totalizador),
+        nivelFreatico: this.historicalNumber(row.nivel_freatico),
+      };
+    });
+  }
+
+  private dashboardNumber(role: string): number | null {
+    const value = this.dashboardData()?.resumen?.[role];
+    if (!value || value.ok === false) return null;
+    return this.toNumber(value.valor);
+  }
+
+  private latestHistoryNumber(field: keyof Pick<HistoricalRow, 'caudal' | 'nivel' | 'totalizador' | 'nivelFreatico'>): number | null {
+    return this.historyRows().find((row) => row[field] !== null)?.[field] ?? null;
+  }
+
+  private historicalNumber(value: HistoricalValue | null | undefined): number | null {
+    if (!value || value.ok === false) return null;
+    return this.toNumber(value.valor);
+  }
+
+  private toNumber(value: unknown): number | null {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (value === null || value === undefined) return null;
+
+    let text = String(value).trim();
+    if (!text) return null;
+
+    if (text.includes(',') && text.includes('.')) {
+      text = text.replace(/\./g, '').replace(',', '.');
+    } else if (text.includes(',')) {
+      text = text.replace(',', '.');
+    }
+
+    const parsed = Number(text.replace(/[^\d.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private formatNumber(value: number | null, decimals: number): string {
+    if (value === null || value === undefined || !Number.isFinite(value)) return '--';
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
+  }
+
+  private parseDate(value: string | null | undefined): Date | null {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  private formatChileDateTime(value: Date): string {
+    return value.toLocaleString('es-CL', {
+      timeZone: this.CHILE_TIME_ZONE,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  private formatChileTime(timestampMs: number | null): string {
+    if (timestampMs === null) return '--';
+    return new Date(timestampMs).toLocaleTimeString('es-CL', {
+      timeZone: this.CHILE_TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  private chileDayKey(value: Date): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: this.CHILE_TIME_ZONE,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(value);
+    const part = (type: string) => parts.find((item) => item.type === type)?.value || '';
+    return `${part('year')}-${part('month')}-${part('day')}`;
+  }
+
+  private chileMinuteOfDay(timestampMs: number): number {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: this.CHILE_TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).formatToParts(new Date(timestampMs));
+    const part = (type: string) => Number(parts.find((item) => item.type === type)?.value || 0);
+    return (part('hour') * 60) + part('minute');
+  }
+
+  private addDayKey(dayKey: string, days: number): string {
+    const [year, month, day] = dayKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  private parseTimeMinutes(value: string): number {
+    const [hour = '0', minute = '0'] = value.split(':');
+    return (Number(hour) * 60) + Number(minute);
+  }
+
+  private rowsForDay(dayKey: string): HistoricalRow[] {
+    return this.historyRows()
+      .filter((row) => row.timestampMs !== null && this.chileDayKey(new Date(row.timestampMs)) === dayKey)
+      .sort((a, b) => (a.timestampMs ?? 0) - (b.timestampMs ?? 0));
+  }
+
+  private rowsForShift(dayKey: string, start: string, end: string): HistoricalRow[] {
+    const startMin = this.parseTimeMinutes(start);
+    const endMin = this.parseTimeMinutes(end);
+    const nextDayKey = this.addDayKey(dayKey, 1);
+
+    return this.historyRows()
+      .filter((row) => {
+        if (row.timestampMs === null) return false;
+        const rowDayKey = this.chileDayKey(new Date(row.timestampMs));
+        const minute = this.chileMinuteOfDay(row.timestampMs);
+
+        if (startMin <= endMin) {
+          return rowDayKey === dayKey && minute >= startMin && minute <= endMin;
+        }
+
+        return (rowDayKey === dayKey && minute >= startMin) || (rowDayKey === nextDayKey && minute <= endMin);
+      })
+      .sort((a, b) => (a.timestampMs ?? 0) - (b.timestampMs ?? 0));
+  }
+
+  private consumptionFromTotalizer(rows: HistoricalRow[]): number | null {
+    const values = rows
+      .filter((row) => row.totalizador !== null)
+      .sort((a, b) => (a.timestampMs ?? 0) - (b.timestampMs ?? 0))
+      .map((row) => row.totalizador as number);
+
+    if (values.length < 2) return values.length === 1 ? 0 : null;
+    return Math.max(0, values[values.length - 1] - values[0]);
   }
 }

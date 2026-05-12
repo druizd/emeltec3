@@ -41,6 +41,7 @@ interface HistoricalTelemetryApiRow {
   timestamp?: string | null;
   fecha: string;
   caudal?: HistoricalTelemetryValue | null;
+  nivel?: HistoricalTelemetryValue | null;
   totalizador?: HistoricalTelemetryValue | null;
   nivel_freatico?: HistoricalTelemetryValue | null;
 }
@@ -50,9 +51,11 @@ interface HistoricalTelemetryRow {
   fecha: string;
   timestampMs?: number | null;
   caudal: string;
+  nivel?: string;
   totalizador: string;
   nivelFreatico: string;
   caudalValue?: number | null;
+  nivelValue?: number | null;
   totalizadorValue?: number | null;
   nivelFreaticoValue?: number | null;
   mock?: boolean;
@@ -742,48 +745,50 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </div>
 
                     <div class="overflow-x-auto">
-                      <table class="w-full min-w-[760px] text-left text-sm">
+                      <table class="w-full min-w-[700px] text-left text-sm">
                         <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
                           <tr>
                             <th class="px-4 py-3">Dato</th>
                             <th class="px-4 py-3">Valor</th>
                             <th class="px-4 py-3">Alias</th>
-                            <th class="px-4 py-3 text-right">Accion</th>
                           </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                           @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <tr class="bg-white">
+                            <tr
+                              class="group cursor-pointer bg-white transition-colors hover:bg-cyan-50/50"
+                              (click)="prepareVariableMap(variable)"
+                              title="Seleccionar variable"
+                            >
                               <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">{{ variable.nombre_dato }}</td>
                               <td class="px-4 py-3 font-bold text-slate-900">{{ displayValue(variable.valor_dato) }}</td>
                               <td class="px-4 py-3">
-                                @if (variable.mapping) {
-                                  <div>
-                                    <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                                    <p class="text-xs text-slate-400">
-                                      {{ variable.mapping.tipo_dato }} - {{ displayVariableTransform(variable.mapping.transformacion) }} {{ variable.mapping.unidad || '' }}
-                                    </p>
-                                  </div>
-                                } @else {
-                                  <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">Sin alias</span>
-                                }
-                              </td>
-                              <td class="px-4 py-3">
-                                <div class="flex justify-end gap-2">
-                                  <button type="button" (click)="prepareVariableMap(variable)" class="icon-button" aria-label="Editar formulario">
-                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">edit_square</span>
-                                  </button>
+                                <div class="flex items-center justify-between gap-3">
                                   @if (variable.mapping) {
-                                    <button type="button" (click)="deleteVariableMap(variable.mapping)" class="icon-button text-red-500" aria-label="Eliminar alias">
+                                    <div>
+                                      <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
+                                      <p class="text-xs text-slate-400">
+                                        {{ variable.mapping.tipo_dato }} - {{ displayVariableTransform(variable.mapping.transformacion) }} {{ variable.mapping.unidad || '' }}
+                                      </p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      (click)="$event.stopPropagation(); deleteVariableMap(variable.mapping)"
+                                      class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                                      title="Eliminar alias"
+                                      aria-label="Eliminar alias"
+                                    >
                                       <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
+                                  } @else {
+                                    <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">Sin alias</span>
                                   }
                                 </div>
                               </td>
                             </tr>
                           } @empty {
                             <tr class="bg-white">
-                              <td colspan="4" class="px-4 py-8 text-center text-sm font-semibold text-slate-400">Aun no hay variables detectadas para el serial de este sitio.</td>
+                              <td colspan="3" class="px-4 py-8 text-center text-sm font-semibold text-slate-400">Aun no hay variables detectadas para el serial de este sitio.</td>
                             </tr>
                           }
                         </tbody>
@@ -892,11 +897,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
 
               <div class="overflow-x-auto">
-                <table class="w-full min-w-[920px] text-left text-xs">
+                <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
                     <tr class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
+                      <th class="px-4 py-3">NIVEL</th>
                       <th class="px-4 py-3">TOTALIZADOR</th>
                       <th class="px-4 py-3">NIVEL FRE&Aacute;TICO</th>
                     </tr>
@@ -911,12 +917,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </span>
                         </td>
                         <td class="px-4 py-3">{{ row.caudal }}</td>
+                        <td class="px-4 py-3">{{ row.nivel || '--' }}</td>
                         <td class="px-4 py-3">{{ row.totalizador }}</td>
                         <td class="px-4 py-3">{{ row.nivelFreatico }}</td>
                       </tr>
                     } @empty {
                       <tr class="border-t border-slate-100 text-[12px] font-semibold text-slate-400">
-                        <td class="px-4 py-8 text-center" colspan="4">Sin registros disponibles para este filtro.</td>
+                        <td class="px-4 py-8 text-center" colspan="5">Sin registros disponibles para este filtro.</td>
                       </tr>
                     }
                   </tbody>
@@ -1577,16 +1584,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <div class="flex gap-2">
                   <button
                     type="button"
-                    (click)="downloadFormat.set('xlsx')"
-                    [class]="downloadFormat() === 'xlsx'
-                      ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
-                      : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50'"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">table</span>
-                    Excel (.xlsx)
-                  </button>
-                  <button
-                    type="button"
                     (click)="downloadFormat.set('csv')"
                     [class]="downloadFormat() === 'csv'
                       ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
@@ -1601,7 +1598,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
             <!-- Modal footer -->
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4">
-              <p class="text-xs font-semibold text-slate-400">
+              @if (downloadError()) {
+                <p class="basis-full text-xs font-semibold text-rose-500">{{ downloadError() }}</p>
+              }
+              <p class="text-xs font-semibold" [class]="downloadError() ? 'text-rose-500' : 'text-slate-400'">
                 {{ downloadSelectedTypes().length === 0 ? 'Selecciona al menos un dato' : downloadSelectedTypes().length + ' variable' + (downloadSelectedTypes().length > 1 ? 's' : '') + ' · ' + downloadFormat().toUpperCase() }}
               </p>
               <div class="flex items-center gap-3">
@@ -1609,11 +1609,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="executeDownload()"
-                  [disabled]="downloadSelectedTypes().length === 0 || !downloadDateFrom() || !downloadDateTo()"
+                  [disabled]="downloadBusy() || downloadSelectedTypes().length === 0 || !downloadDateFrom() || !downloadDateTo()"
                   class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-black text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span class="material-symbols-outlined text-[17px]">download</span>
-                  Descargar
+                  {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
                 </button>
               </div>
             </div>
@@ -1965,8 +1965,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   downloadSelectedMonths = signal<number[]>([]);
   downloadDateFrom = signal('');
   downloadDateTo = signal('');
-  downloadFormat = signal<'xlsx' | 'csv'>('xlsx');
-  downloadSelectedTypes = signal<string[]>(['caudal', 'totalizador', 'nivel_freatico']);
+  downloadFormat = signal<'xlsx' | 'csv'>('csv');
+  downloadSelectedTypes = signal<string[]>(['caudal', 'nivel', 'totalizador', 'nivel_freatico']);
+  downloadBusy = signal(false);
+  downloadError = signal('');
   dgaSelectedPreset = signal<string | null>(null);
   dgaSelectedMonths = signal<number[]>([]);
   dgaReportModalOpen = signal(false);
@@ -2238,7 +2240,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   readonly quickActions = [
     { icon: 'database', title: 'Datos Historicos', subtitle: 'Ver registros', color: 'text-cyan-600', openHistory: true },
-    { icon: 'download', title: 'Descargar', subtitle: 'Exportar Excel', color: 'text-emerald-600', openDownload: true },
+    { icon: 'download', title: 'Descargar', subtitle: 'Exportar CSV', color: 'text-emerald-600', openDownload: true },
     { icon: 'open_in_new', title: 'Ver en DGA', subtitle: 'Portal oficial', color: 'text-blue-600' },
     { icon: 'description', title: 'Reporte DGA', subtitle: 'Formato oficial', color: 'text-violet-600', openDgaReport: true },
   ];
@@ -2256,6 +2258,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   readonly downloadDataTypeOptions = [
     { id: 'caudal', label: 'Caudal', unit: 'L/s' },
+    { id: 'nivel', label: 'Nivel', unit: 'm' },
     { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
     { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
   ];
@@ -2890,6 +2893,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   openDownloadModal(): void {
     this.downloadSelectedMonths.set([]);
+    this.downloadError.set('');
+    this.downloadFormat.set('csv');
     this.applyDownloadPreset('last30');
     this.downloadModalOpen.set(true);
   }
@@ -2960,7 +2965,67 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   executeDownload(): void {
-    this.closeDownloadModal();
+    const siteId = this.currentSiteId();
+    const from = this.downloadDateFrom();
+    const to = this.downloadDateTo();
+    const fields = this.downloadSelectedTypes();
+
+    if (!siteId) {
+      this.downloadError.set('No se encontro el sitio actual.');
+      return;
+    }
+
+    if (!from || !to || fields.length === 0) {
+      this.downloadError.set('Selecciona rango y datos para exportar.');
+      return;
+    }
+
+    this.downloadBusy.set(true);
+    this.downloadError.set('');
+
+    this.companyService.downloadSiteDashboardHistory(siteId, {
+      from,
+      to,
+      fields,
+      format: 'csv',
+    }).subscribe({
+      next: (response) => {
+        const blob = response.body;
+        if (!blob) {
+          this.downloadBusy.set(false);
+          this.downloadError.set('No se recibio el archivo.');
+          return;
+        }
+
+        const filename = this.filenameFromContentDisposition(response.headers.get('content-disposition'))
+          || `historico_${siteId}_${from}_${to}.csv`;
+        this.saveBlob(blob, filename);
+        this.downloadBusy.set(false);
+        this.closeDownloadModal();
+      },
+      error: (err: unknown) => {
+        this.downloadBusy.set(false);
+        this.downloadError.set(this.errorMessage(err, 'No fue posible descargar los datos historicos.'));
+      },
+    });
+  }
+
+  private filenameFromContentDisposition(value: string | null): string | null {
+    if (!value) return null;
+    const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(value);
+    return match?.[1] ? decodeURIComponent(match[1].replace(/"/g, '')) : null;
+  }
+
+  private saveBlob(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   openDgaReportModal(): void {
@@ -3473,9 +3538,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       fecha: parsedTimestamp ? this.formatChileDateTime(parsedTimestamp) : rawTimestamp,
       timestampMs,
       caudal: this.formatHistoricalValue(row.caudal),
+      nivel: this.formatHistoricalValue(row.nivel),
       totalizador: this.formatHistoricalValue(row.totalizador),
       nivelFreatico: this.formatHistoricalValue(row.nivel_freatico),
       caudalValue: this.extractHistoricalNumber(row.caudal),
+      nivelValue: this.extractHistoricalNumber(row.nivel),
       totalizadorValue: this.extractHistoricalNumber(row.totalizador),
       nivelFreaticoValue: this.extractHistoricalNumber(row.nivel_freatico),
     };

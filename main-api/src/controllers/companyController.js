@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { once } = require('events');
 const db = require('../config/db');
 const {
   buildSiteDashboardData,
@@ -10,6 +11,7 @@ const {
   VARIABLE_ROLE_IDS,
   VARIABLE_TRANSFORM_IDS,
 } = require('../config/siteTypeCatalog');
+const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
 
 const SITE_COLUMNS = 'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
 const MAP_COLUMNS = 'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
@@ -44,10 +46,23 @@ function nullableString(value) {
   return cleaned || null;
 }
 
-function parseLimit(value, fallback = 100) {
+function parseLimit(value, fallback = 100, max = 500) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
-  return Math.min(parsed, 500);
+  return Math.min(parsed, max);
+}
+
+function parseDateOnly(value) {
+  const cleaned = cleanString(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return null;
+  const date = new Date(`${cleaned}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? null : cleaned;
+}
+
+function countInclusiveDays(from, to) {
+  const fromDate = new Date(`${from}T00:00:00Z`);
+  const toDate = new Date(`${to}T00:00:00Z`);
+  return Math.floor((toDate.getTime() - fromDate.getTime()) / 86400000) + 1;
 }
 
 function normalizeId(value) {
@@ -125,6 +140,52 @@ function canReadSite(user, site) {
 
 function utcTimestampSql(column) {
   return `TO_CHAR(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`;
+}
+
+const HISTORY_EXPORT_FIELDS = {
+  caudal: 'Caudal',
+  nivel: 'Nivel',
+  totalizador: 'Totalizador',
+  nivel_freatico: 'Nivel Freatico',
+};
+
+function parseHistoryExportFields(value) {
+  const selected = cleanString(value)
+    .split(',')
+    .map((field) => field.trim().toLowerCase())
+    .filter((field) => Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_FIELDS, field));
+
+  return selected.length ? [...new Set(selected)] : ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
+}
+
+function csvCell(value, delimiter = ';') {
+  if (value === undefined || value === null) return '';
+  const text = String(value);
+  return /["\r\n;]/.test(text) || text.includes(delimiter)
+    ? `"${text.replace(/"/g, '""')}"`
+    : text;
+}
+
+function csvValue(variable) {
+  if (!variable || variable.ok === false || variable.valor === null || variable.valor === undefined) {
+    return '';
+  }
+
+  return variable.valor;
+}
+
+function exportFileName(site, from, to, format) {
+  const siteLabel = cleanString(site?.descripcion || site?.id || 'sitio')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'sitio';
+  return `${siteLabel}_historico_${from}_${to}.${format}`;
+}
+
+async function writeResponseChunk(res, chunk) {
+  if (!res.write(chunk)) {
+    await once(res, 'drain');
+  }
 }
 
 async function generateSequentialId(client, table, prefix) {
@@ -796,7 +857,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
 exports.getSiteDashboardHistory = async (req, res, next) => {
   try {
     const siteId = normalizeId(req.params.siteId);
-    const limit = parseLimit(req.query.limit, 500);
+    const limit = parseLimit(req.query.limit, 500, 2500);
     const site = await getSiteById(siteId);
 
     if (!site) {
@@ -877,6 +938,130 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         },
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/companies/sites/:siteId/dashboard-history/export
+ * Exporta historico transformado en CSV, filtrando por sitio y rango local America/Santiago.
+ */
+exports.exportSiteDashboardHistory = async (req, res, next) => {
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+    const from = parseDateOnly(req.query.from);
+    const to = parseDateOnly(req.query.to);
+    const format = cleanString(req.query.format || 'csv').toLowerCase();
+    const fields = parseHistoryExportFields(req.query.fields);
+
+    if (!site) {
+      return notFound(res, 'Sitio no encontrado.');
+    }
+
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para exportar datos de este sitio.');
+    }
+
+    if (format !== 'csv') {
+      return badRequest(res, 'Por ahora solo esta disponible la exportacion CSV.');
+    }
+
+    if (!from || !to) {
+      return badRequest(res, 'Debe indicar un rango valido con from y to en formato YYYY-MM-DD.');
+    }
+
+    const days = countInclusiveDays(from, to);
+    if (days <= 0) {
+      return badRequest(res, 'La fecha desde no puede ser mayor que la fecha hasta.');
+    }
+
+    if (days > 366) {
+      return badRequest(res, 'El rango maximo de exportacion es de 366 dias.');
+    }
+
+    if (!site.activo) {
+      return badRequest(res, 'El sitio esta inactivo y no tiene telemetria exportable.');
+    }
+
+    const [pozoConfigRes, mappingsRes] = await Promise.all([
+      db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+    ]);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+    const delimiter = ';';
+    const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
+
+    const filename = exportFileName(site, from, to, 'csv');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+
+    let client;
+    try {
+      client = await db.connect();
+      await client.query('BEGIN');
+      await client.query(
+        `
+        DECLARE history_export_cursor NO SCROLL CURSOR FOR
+        SELECT time, received_at, id_serial, data, timestamp_completo
+        FROM (
+          SELECT DISTINCT ON (date_trunc('minute', time))
+            time,
+            received_at,
+            id_serial,
+            data,
+            ${utcTimestampSql('time')} AS timestamp_completo
+          FROM equipo
+          WHERE id_serial = $1
+            AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          ORDER BY date_trunc('minute', time) ASC, time DESC
+        ) latest_by_minute
+        ORDER BY time ASC
+        `,
+        [site.id_serial, from, to]
+      );
+
+      await writeResponseChunk(res, '\uFEFF');
+      await writeResponseChunk(res, `${header.map((value) => csvCell(value, delimiter)).join(delimiter)}\n`);
+
+      while (true) {
+        const batch = await client.query('FETCH 1000 FROM history_export_cursor');
+        if (batch.rows.length === 0) break;
+
+        for (const rawRow of batch.rows) {
+          const row = mapHistoricalDashboardRow({ row: rawRow, site, mappings, pozoConfig });
+          const fecha = row.timestamp ? (formatChileTimestamp(row.timestamp) || row.fecha) : row.fecha;
+          const line = [
+            fecha,
+            ...fields.map((field) => csvValue(row[field])),
+          ].map((value) => csvCell(value, delimiter)).join(delimiter);
+          await writeResponseChunk(res, `${line}\n`);
+        }
+      }
+
+      await client.query('CLOSE history_export_cursor');
+      await client.query('COMMIT');
+      return res.end();
+    } catch (streamErr) {
+      if (client) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (_rollbackErr) {}
+      }
+
+      if (!res.headersSent) {
+        throw streamErr;
+      }
+
+      return res.destroy(streamErr);
+    } finally {
+      if (client) client.release();
+    }
   } catch (err) {
     next(err);
   }
