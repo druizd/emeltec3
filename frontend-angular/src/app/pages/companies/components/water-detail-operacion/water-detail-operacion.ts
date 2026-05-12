@@ -59,7 +59,7 @@ interface TurnoDistribucion {
       @if (modo() === 'hoy') {
 
         <!-- Banner tiempo real -->
-        <div class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0D8A96] to-[#0DAFBD] p-5 text-white shadow-sm">
+        <div class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0899A5] to-[#0DAFBD] p-5 text-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p class="font-black text-sm">Datos en tiempo real</p>

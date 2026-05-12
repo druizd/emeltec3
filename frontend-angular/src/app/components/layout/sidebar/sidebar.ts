@@ -40,9 +40,9 @@ const MODULES = [
   template: `
     <aside
       class="flex h-full w-[248px] shrink-0 flex-col overflow-hidden bg-white"
-      style="border-right: 1px solid #dfe7f1; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
+      style="border-right: 1px solid #E2E8F0; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
     >
-      <div class="relative flex h-[60px] shrink-0 items-center border-b border-[#dfe7f1] px-4">
+      <div class="relative flex h-16 shrink-0 items-center border-b border-[#E2E8F0] px-4">
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
           <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[30px] w-auto object-contain" />
         </div>
@@ -54,7 +54,7 @@ const MODULES = [
         </button>
       </div>
 
-      <div class="mx-2 mt-2.5 rounded-lg border border-[#dfe7f1] bg-[#f8fafc] px-2 py-1.5">
+      <div class="mx-2 mt-2.5 rounded-lg border border-[#E2E8F0] bg-[#f8fafc] px-2 py-1.5">
         <div class="flex items-center gap-1.5">
           <div class="relative shrink-0">
             <div class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[9px] font-bold text-white">
@@ -77,7 +77,7 @@ const MODULES = [
             [value]="searchTerm()"
             (input)="onSearchInput($event)"
             placeholder="Buscar empresa..."
-            class="h-8 w-full rounded-lg border border-[#dfe7f1] bg-white pl-7 pr-7 text-[11px] font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[#8bdde5] focus:bg-[#faffff]"
+            class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-[11px] font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[#8bdde5] focus:bg-[#faffff]"
           />
           @if (searchTerm()) {
             <button
@@ -166,13 +166,13 @@ const MODULES = [
         }
 
         @if (searchTerm() && !hasSearchResults()) {
-          <div class="mx-2 mt-2 rounded-lg border border-dashed border-[#dfe7f1] bg-[#f8fafc] px-2 py-2 text-center text-[11px] font-medium text-[#94a3b8]">
+          <div class="mx-2 mt-2 rounded-lg border border-dashed border-[#E2E8F0] bg-[#f8fafc] px-2 py-2 text-center text-[11px] font-medium text-[#94a3b8]">
             Sin resultados
           </div>
         }
       </div>
 
-      <div class="shrink-0 border-t border-[#dfe7f1] p-1.5">
+      <div class="shrink-0 border-t border-[#E2E8F0] p-1.5">
         <button
           type="button"
           (click)="auth.logout()"

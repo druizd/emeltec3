@@ -9,18 +9,18 @@
 }
 
 @theme {
-  /* Paleta de Colores Industrial Control Center */
-  --color-primary: #001e40;
-  --color-primary-container: #003366;
-  --color-on-primary-container: #799dd6;
-  --color-secondary: #00658d;
-  --color-secondary-container: #41befd;
-  --color-background: #f8f9ff;
-  --color-surface: #ffffff;
-  --color-surface-container: #e5eeff;
-  --color-on-surface: #0b1c30;
-  --color-on-surface-variant: #43474f;
-  --color-outline-variant: #c3c6d1;
+  /* Paleta Emeltec Design System */
+  --color-primary: #0DAFBD;
+  --color-primary-container: #0899A5;
+  --color-on-primary-container: #F0FAFB;
+  --color-secondary: #64748B;
+  --color-secondary-container: #F8FAFC;
+  --color-background: #F0F2F5;
+  --color-surface: #FFFFFF;
+  --color-surface-container: #E2E8F0;
+  --color-on-surface: #1E293B;
+  --color-on-surface-variant: #64748B;
+  --color-outline-variant: #E2E8F0;
 
   /* Fuentes */
   --font-inter: "Inter", sans-serif;

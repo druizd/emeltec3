@@ -9,7 +9,7 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <header class="h-[52px] shrink-0 border-b border-[#dfe7f1] bg-white">
+    <header class="h-16 shrink-0 border-b border-[#E2E8F0] bg-white">
       <div class="flex h-full items-stretch px-5">
         <nav class="flex items-stretch">
           <button
@@ -60,9 +60,9 @@ import { AuthService } from '../../../services/auth.service';
             </button>
 
             @if (userMenuOpen()) {
-              <div class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+              <div class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
                 <!-- User info -->
-                <div class="border-b border-slate-100 px-4 py-3">
+                <div class="border-b border-[#E2E8F0] px-4 py-3">
                   <p class="text-[13px] font-bold text-slate-800">{{ auth.user()?.nombre }} {{ auth.user()?.apellido }}</p>
                   <p class="text-[11px] text-slate-400">{{ auth.user()?.tipo }}</p>
                 </div>
@@ -83,7 +83,7 @@ import { AuthService } from '../../../services/auth.service';
                     Notificaciones
                   </button>
                 </div>
-                <div class="border-t border-slate-100 py-1">
+                <div class="border-t border-[#E2E8F0] py-1">
                   <button
                     type="button"
                     (click)="auth.logout()"

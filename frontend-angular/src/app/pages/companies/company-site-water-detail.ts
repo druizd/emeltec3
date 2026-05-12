@@ -293,7 +293,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         <app-companies-site-detail-skeleton />
       } @else if (siteContext(); as context) {
         <div class="mx-auto max-w-[1360px] space-y-3">
-          <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <section class="rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <div class="grid gap-3 border-b border-slate-100 px-3 py-3 xl:grid-cols-[minmax(360px,1fr)_auto] xl:items-center">
               <div class="flex min-w-0 items-center gap-3">
                 <a
@@ -392,7 +392,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
           </section>
 
           @if (settingsPanelOpen()) {
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div class="border-b border-slate-100 px-4 py-3">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div class="flex min-w-0 items-center gap-3">
@@ -779,7 +779,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               }
             </section>
           } @else if (historyPanelOpen()) {
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div class="border-b border-slate-100 px-4 py-3">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div class="flex min-w-0 items-center gap-3">
@@ -1234,7 +1234,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </div>
           </section>
           <!-- Registros DGA -->
-          <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 class="text-sm font-black text-slate-800">Detalle de Registros</h2>

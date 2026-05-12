@@ -39,7 +39,7 @@ export class CompaniesTabNavComponent {
 
   getContainerClass(): string {
     if (this.variant === 'superadmin') {
-      return 'mb-6 flex flex-wrap items-center gap-1 border-b border-slate-200/90 pb-2';
+      return 'mb-6 flex flex-wrap items-center gap-1 border-b border-[#E2E8F0] pb-2';
     }
 
     return 'mb-8 flex flex-wrap gap-4';
@@ -52,7 +52,7 @@ export class CompaniesTabNavComponent {
       return [
         'group relative inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold transition-all',
         isActive
-          ? 'bg-white text-cyan-700 shadow-[0_8px_24px_rgba(14,116,144,0.08)] ring-1 ring-cyan-100'
+          ? 'bg-white text-cyan-700 shadow-[0_2px_8px_rgba(13,175,189,0.15)] ring-1 ring-[rgba(13,175,189,0.25)]'
           : 'text-slate-400 hover:bg-white hover:text-slate-700',
       ].join(' ');
     }
