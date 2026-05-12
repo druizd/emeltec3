@@ -6,6 +6,7 @@ const db = require('../config/db');
 const PROTO_PATH = path.join(__dirname, '../grpc/pipeline.proto');
 const CSVCONSUMER_HOST = process.env.CSVCONSUMER_HOST || 'localhost';
 const CSVCONSUMER_PORT = process.env.CSVCONSUMER_PORT || '50051';
+const AUTH_API_URL = process.env.AUTH_API_URL || 'http://auth-api:3001';
 
 function pingPipeline() {
   return new Promise((resolve) => {
@@ -51,12 +52,32 @@ async function pingDatabase() {
   }
 }
 
-exports.getStatus = async (req, res) => {
-  const [database, pipeline] = await Promise.all([pingDatabase(), pingPipeline()]);
+async function pingAuth() {
+  const start = Date.now();
+  try {
+    const res = await fetch(`${AUTH_API_URL}/api/health`, {
+      signal: AbortSignal.timeout(3000),
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      return { status: 'degraded', http_status: res.status, response_time_ms: Date.now() - start };
+    }
+    const body = await res.json().catch(() => ({}));
+    return {
+      status: body.ok === false ? 'degraded' : 'online',
+      response_time_ms: Date.now() - start,
+    };
+  } catch (err) {
+    return { status: 'offline', error: err.message };
+  }
+}
 
-  const jwtConfigured = !!(
-    process.env.JWT_SECRET && process.env.JWT_SECRET !== 'super_secret_dev_key_12345'
-  );
+exports.getStatus = async (req, res) => {
+  const [database, pipeline, auth] = await Promise.all([
+    pingDatabase(),
+    pingPipeline(),
+    pingAuth(),
+  ]);
 
   const services = {
     api: {
@@ -64,10 +85,7 @@ exports.getStatus = async (req, res) => {
       uptime_s: Math.floor(process.uptime()),
       environment: process.env.NODE_ENV || 'development',
     },
-    auth: {
-      status: jwtConfigured ? 'online' : 'degraded',
-      jwt_configured: jwtConfigured,
-    },
+    auth,
     database,
     pipeline,
   };
