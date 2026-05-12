@@ -6,3 +6,7 @@ demo/
 sql/
 README.md
 docker-compose.yml
+dist/
+coverage/
+.tsbuildinfo
+test/

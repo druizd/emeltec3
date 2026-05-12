@@ -1,6 +1,12 @@
 -- ============================================================================
 -- init.sql — Schema para main-api (Emeltec)
 -- Requiere: PostgreSQL 14+ con extensión TimescaleDB
+--
+-- ⚠️ DEPRECATED — Este archivo está DESACTUALIZADO respecto al schema real
+--    en producción. El código del backend consulta la tabla `equipo` con
+--    columna `id_serial`, NO las hipertablas `ts_agua/ts_electrico/ts_pozos`
+--    definidas aquí. El schema vivo se mantiene en `infra-db/`.
+--    Mantener este archivo sólo como referencia histórica.
 -- ============================================================================
 
 -- 1. Habilitar TimescaleDB
