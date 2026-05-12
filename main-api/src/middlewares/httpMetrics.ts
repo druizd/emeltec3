@@ -10,9 +10,7 @@ export function httpMetricsMiddleware(req: Request, res: Response, next: NextFun
   res.on('finish', () => {
     const route =
       // route.path se setea sólo cuando matched. Fallback a baseUrl + originalUrl para 404.
-      (req.route?.path && (req.baseUrl ?? '') + req.route.path) ||
-      req.baseUrl ||
-      'unknown';
+      (req.route?.path && (req.baseUrl ?? '') + req.route.path) || req.baseUrl || 'unknown';
     end({ route, status_code: String(res.statusCode) });
   });
   next();

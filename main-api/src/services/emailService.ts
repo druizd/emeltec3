@@ -23,7 +23,12 @@ function escapeHtml(value: unknown): string {
 }
 
 function labelSeveridad(severidad: unknown): string {
-  const labels: Record<string, string> = { critica: 'CRITICA', alta: 'ALTA', media: 'MEDIA', baja: 'BAJA' };
+  const labels: Record<string, string> = {
+    critica: 'CRITICA',
+    alta: 'ALTA',
+    media: 'MEDIA',
+    baja: 'BAJA',
+  };
   return labels[String(severidad)] ?? String(severidad ?? 'ALERTA').toUpperCase();
 }
 
@@ -85,7 +90,10 @@ export async function sendWelcomeEmail(
     });
     return { ok: true, id: data.id, previewUrl: null };
   } catch (error) {
-    logger.error({ err: (error as Error).message }, '[emailService] Error enviando correo de acceso');
+    logger.error(
+      { err: (error as Error).message },
+      '[emailService] Error enviando correo de acceso',
+    );
     return { ok: false, error: (error as Error).message };
   }
 }
@@ -189,6 +197,9 @@ export async function sendAlertEmail(
       `,
     });
   } catch (error) {
-    logger.error({ err: (error as Error).message, emailDestino }, '[emailService] Error enviando alerta');
+    logger.error(
+      { err: (error as Error).message, emailDestino },
+      '[emailService] Error enviando alerta',
+    );
   }
 }

@@ -19,7 +19,8 @@ const requestCodeSchema = z.object({
 
 export async function loginHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   const parsed = loginSchema.safeParse(req.body);
-  if (!parsed.success) return next(new ValidationError('Body inválido', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Body inválido', { details: parsed.error.flatten() }));
   try {
     const result = await svc.login(parsed.data.email, parsed.data.password);
     res.json(ok(result));
@@ -34,7 +35,8 @@ export async function requestCodeHandler(
   next: NextFunction,
 ): Promise<void> {
   const parsed = requestCodeSchema.safeParse(req.body);
-  if (!parsed.success) return next(new ValidationError('Body inválido', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Body inválido', { details: parsed.error.flatten() }));
   try {
     const result = await svc.requestCode(parsed.data.email, parsed.data.expires_minutes);
     res.json(ok(result));

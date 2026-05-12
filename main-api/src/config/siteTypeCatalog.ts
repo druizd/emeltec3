@@ -25,7 +25,12 @@ export interface SiteTypeConfig {
 }
 
 const COMMON_TRANSFORMS: VariableTransform[] = [
-  { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
+  {
+    id: 'directo',
+    label: 'Directo',
+    description: 'Usa el valor entrante sin modificarlo.',
+    enabled: true,
+  },
   { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
   {
     id: 'ieee754_32',
@@ -54,7 +59,12 @@ const SITE_TYPE_CATALOG: Record<string, SiteTypeConfig> = {
         unitHint: 'm',
         description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.',
       },
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo del pozo.' },
+      {
+        id: 'caudal',
+        label: 'Caudal',
+        unitHint: 'L/s',
+        description: 'Flujo instantaneo del pozo.',
+      },
       {
         id: 'totalizador',
         label: 'Totalizador',
@@ -74,7 +84,12 @@ const SITE_TYPE_CATALOG: Record<string, SiteTypeConfig> = {
     id: 'electrico',
     label: 'Electrico',
     roles: [
-      { id: 'energia', label: 'Energia', unitHint: 'kWh', description: 'Energia acumulada o consumida.' },
+      {
+        id: 'energia',
+        label: 'Energia',
+        unitHint: 'kWh',
+        description: 'Energia acumulada o consumida.',
+      },
       { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo del equipo.' },
       {
         id: 'temperatura',
@@ -96,7 +111,12 @@ const SITE_TYPE_CATALOG: Record<string, SiteTypeConfig> = {
     label: 'Riles',
     roles: [
       { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado.' },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado.',
+      },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
       {
         id: 'generico',
@@ -112,7 +132,12 @@ const SITE_TYPE_CATALOG: Record<string, SiteTypeConfig> = {
     label: 'Proceso',
     roles: [
       { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
-      { id: 'temperatura', label: 'Temperatura', unitHint: 'C', description: 'Temperatura de proceso.' },
+      {
+        id: 'temperatura',
+        label: 'Temperatura',
+        unitHint: 'C',
+        description: 'Temperatura de proceso.',
+      },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
       {
         id: 'generico',

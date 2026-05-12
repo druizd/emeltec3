@@ -17,11 +17,7 @@ import {
 import { getHierarchyTreeHandler } from '../../modules/companies/controller';
 import { loginHandler, requestCodeHandler } from '../../modules/auth/controller';
 import { httpMetricsMiddleware } from '../../middlewares/httpMetrics';
-import {
-  liveness,
-  prometheusMetrics,
-  readiness,
-} from '../../modules/health/controller';
+import { liveness, prometheusMetrics, readiness } from '../../modules/health/controller';
 
 const router = Router();
 

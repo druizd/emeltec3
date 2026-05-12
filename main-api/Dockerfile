@@ -13,11 +13,9 @@ RUN npm install --no-audit --no-fund
 FROM node:${NODE_VERSION} AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY tsconfig.json tsconfig.test.json eslint.config.js ./
+COPY package*.json tsconfig.json tsconfig.test.json eslint.config.js ./
 COPY src ./src
-# `npm run build` ejecuta `tsc -p tsconfig.json`. Si no hay TS aún,
-# tsc compila lo que haya y deja JS legacy intacto vía allowJs.
-RUN npm run build || (echo "[Dockerfile] tsc falló — revisar tsconfig" && exit 1)
+RUN npm run build
 
 # ── Stage 3: runtime con sólo prod deps ────────────────────────
 FROM node:${NODE_VERSION} AS runtime

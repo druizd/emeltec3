@@ -29,14 +29,15 @@ export function requireSuperAdmin(user: AuthUser | undefined): void {
   }
 }
 
-export function canReadSite(user: AuthUser | undefined, site: SiteScope | null | undefined): boolean {
+export function canReadSite(
+  user: AuthUser | undefined,
+  site: SiteScope | null | undefined,
+): boolean {
   if (!user || !site) return false;
   if (user.tipo === 'SuperAdmin') return true;
   if (user.tipo === 'Admin' || user.tipo === 'Empresa') return user.empresa_id === site.empresa_id;
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa') {
-    return (
-      user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id
-    );
+    return user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id;
   }
   return false;
 }

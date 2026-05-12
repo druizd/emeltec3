@@ -2,13 +2,7 @@
  * Repositorio del módulo sites: sitio, pozo_config, reg_map + last/history equipo.
  */
 import { query } from '../../config/db';
-import type {
-  HistoryEquipoRow,
-  LatestEquipoRow,
-  PozoConfig,
-  RegMap,
-  Site,
-} from './types';
+import type { HistoryEquipoRow, LatestEquipoRow, PozoConfig, RegMap, Site } from './types';
 
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
@@ -18,11 +12,9 @@ const POZO_CONFIG_COLUMNS =
   'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
 
 export async function getSiteById(id: string): Promise<Site | null> {
-  const result = await query<Site>(
-    `SELECT ${SITE_COLUMNS} FROM sitio WHERE id = $1`,
-    [id],
-    { name: 'sites__by_id' },
-  );
+  const result = await query<Site>(`SELECT ${SITE_COLUMNS} FROM sitio WHERE id = $1`, [id], {
+    name: 'sites__by_id',
+  });
   return result.rows[0] ?? null;
 }
 
@@ -44,9 +36,7 @@ export async function getMappingsBySiteId(siteId: string): Promise<RegMap[]> {
   return result.rows;
 }
 
-export async function getLatestEquipoForSerial(
-  serialId: string,
-): Promise<LatestEquipoRow | null> {
+export async function getLatestEquipoForSerial(serialId: string): Promise<LatestEquipoRow | null> {
   const result = await query<LatestEquipoRow>(
     `
     SELECT

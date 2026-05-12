@@ -53,11 +53,7 @@ export function trackEndpoint(key: EndpointKey, bytesSent: number): void {
   });
 }
 
-export function trackVariable(
-  key: VariableKey,
-  bytesSent: number,
-  durationMs: number,
-): void {
+export function trackVariable(key: VariableKey, bytesSent: number, durationMs: number): void {
   if (!key.nombreDato) return;
   const k = variableKey(key);
   const prev = variableMap.get(k);

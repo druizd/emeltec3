@@ -37,11 +37,14 @@ export async function getHistoryHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   const parsed = historyQuerySchema.safeParse(req.query);
-  if (!parsed.success) return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases(parsed.data);
     const result = await getHistory({
-      ...(resolveSerial(parsed.data) !== undefined ? { serialId: resolveSerial(parsed.data)! } : {}),
+      ...(resolveSerial(parsed.data) !== undefined
+        ? { serialId: resolveSerial(parsed.data)! }
+        : {}),
       selectedKeys,
       ...(parsed.data.from !== undefined ? { from: parsed.data.from } : {}),
       ...(parsed.data.to !== undefined ? { to: parsed.data.to } : {}),
@@ -74,7 +77,8 @@ export async function getLatestHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   const parsed = historyQuerySchema.safeParse(req.query);
-  if (!parsed.success) return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases(parsed.data);
     const result = await getLatest(resolveSerial(parsed.data), selectedKeys);
@@ -105,7 +109,8 @@ export async function getOnlineHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   const parsed = onlineQuerySchema.safeParse(req.query);
-  if (!parsed.success) return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases(parsed.data);
     const result = await getOnline(resolveSerial(parsed.data), selectedKeys);
@@ -138,11 +143,14 @@ export async function getPresetHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   const parsed = presetQuerySchema.safeParse(req.query);
-  if (!parsed.success) return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases({ ...parsed.data, key: parsed.data.key });
     const result = await getPreset({
-      ...(resolveSerial(parsed.data) !== undefined ? { serialId: resolveSerial(parsed.data)! } : {}),
+      ...(resolveSerial(parsed.data) !== undefined
+        ? { serialId: resolveSerial(parsed.data)! }
+        : {}),
       selectedKeys,
       preset: parsed.data.preset,
       ...(parsed.data.base_date !== undefined ? { baseDate: parsed.data.base_date } : {}),
@@ -179,7 +187,8 @@ export async function getKeysHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   const parsed = onlineQuerySchema.safeParse(req.query);
-  if (!parsed.success) return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
+  if (!parsed.success)
+    return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const result = await getAvailableKeysFor(resolveSerial(parsed.data));
     const durationMs = elapsedMs(startedAt);

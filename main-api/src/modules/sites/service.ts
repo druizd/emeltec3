@@ -396,8 +396,6 @@ export async function loadDashboardHistory(
     getMappingsBySiteId(site.id),
     getDashboardHistory(site.id_serial, limit),
   ]);
-  const rows = history.map((row) =>
-    mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }),
-  );
+  const rows = history.map((row) => mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }));
   return { site, rows };
 }

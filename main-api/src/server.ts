@@ -8,10 +8,7 @@ import { startMetricsFlusher, stopMetricsFlusher } from './modules/metrics/flush
 import { startAlertsWorker, stopAlertsWorker } from './modules/alerts/worker';
 
 const httpServer = app.listen(config.port, () => {
-  logger.info(
-    { port: config.port, env: config.nodeEnv },
-    'main-api HTTP iniciado',
-  );
+  logger.info({ port: config.port, env: config.nodeEnv }, 'main-api HTTP iniciado');
   startAlertsWorker();
   void startMetricsFlusher();
 });

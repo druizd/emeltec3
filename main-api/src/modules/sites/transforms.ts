@@ -41,7 +41,9 @@ function parseBooleanParam(value: unknown, fallback = false): boolean {
 }
 
 function normalizeTransform(value: unknown): string {
-  const raw = String(value ?? 'directo').trim().toLowerCase();
+  const raw = String(value ?? 'directo')
+    .trim()
+    .toLowerCase();
   if (raw === 'escala_lineal') return 'lineal';
   if (raw === 'ieee754') return 'ieee754_32';
   if (raw === 'caudal') return 'caudal_m3h_lps';
@@ -102,9 +104,9 @@ export function applyMappingTransform({
       }
       return parseIEEE754(rawD1, {
         formato: ((params.formato as string | undefined) ?? 'float32') as Formato,
-        byteOrder: (((params.byteOrder as string | undefined) ??
+        byteOrder: ((params.byteOrder as string | undefined) ??
           (params.word_order as string | undefined) ??
-          'BE') as ByteOrder),
+          'BE') as ByteOrder,
       });
     }
 
@@ -120,10 +122,7 @@ export function applyMappingTransform({
       return calcularNivelFreatico({
         lecturaPozo,
         profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
-        profundidadTotal: requireFiniteNumber(
-          pozoConfig?.profundidad_pozo_m,
-          'profundidad_pozo_m',
-        ),
+        profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
       });
     }
 

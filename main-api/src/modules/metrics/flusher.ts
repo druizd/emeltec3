@@ -73,13 +73,7 @@ async function flushVariables(): Promise<number> {
          bytes_sent = api_variable_metrics.bytes_sent + EXCLUDED.bytes_sent,
          duration_ms_total = api_variable_metrics.duration_ms_total + EXCLUDED.duration_ms_total,
          updated_at = NOW()`,
-      [
-        item.nombreDato,
-        item.serialId,
-        item.requestCount,
-        item.bytesSent,
-        item.durationMsTotal,
-      ],
+      [item.nombreDato, item.serialId, item.requestCount, item.bytesSent, item.durationMsTotal],
       { name: 'metrics__upsert_variable' },
     );
   }

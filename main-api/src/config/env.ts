@@ -34,7 +34,11 @@ const Schema = z.object({
   RESEND_FROM: z.string().optional(),
   FRONTEND_URL: z.string().url().optional(),
 
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  RATE_LIMIT_WINDOW_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(200),
 
   ENABLE_ALERTS_WORKER: z

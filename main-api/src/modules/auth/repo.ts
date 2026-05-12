@@ -33,14 +33,11 @@ export async function findUserByEmail(email: string): Promise<UserRow | null> {
   return r.rows[0] ?? null;
 }
 
-export async function findUserPublicByEmail(email: string): Promise<
-  | {
-      id: string;
-      nombre: string;
-      email: string;
-    }
-  | null
-> {
+export async function findUserPublicByEmail(email: string): Promise<{
+  id: string;
+  nombre: string;
+  email: string;
+} | null> {
   const r = await query<{ id: string; nombre: string; email: string }>(
     `SELECT id, nombre, email FROM usuario WHERE email = $1`,
     [email],
@@ -49,7 +46,11 @@ export async function findUserPublicByEmail(email: string): Promise<
   return r.rows[0] ?? null;
 }
 
-export async function storeOtp(email: string, plainCode: string, ttlMinutes: number): Promise<Date> {
+export async function storeOtp(
+  email: string,
+  plainCode: string,
+  ttlMinutes: number,
+): Promise<Date> {
   const otpHash = await bcrypt.hash(plainCode, SALT_ROUNDS);
   const expiresAt = new Date(Date.now() + ttlMinutes * 60_000);
 

@@ -14,13 +14,7 @@ const keysField = z
   .transform((v) => {
     if (v === undefined) return [] as string[];
     const arr = Array.isArray(v) ? v : v.split(',');
-    return [
-      ...new Set(
-        arr
-          .map((s) => String(s).trim())
-          .filter((s) => s.length > 0),
-      ),
-    ];
+    return [...new Set(arr.map((s) => String(s).trim()).filter((s) => s.length > 0))];
   });
 
 const limitField = z.coerce.number().int().positive().max(5000).optional();
@@ -108,13 +102,15 @@ export function resolveSerial(q: {
   return q.serial_id ?? q.id_serial;
 }
 
-export const PRESETS: Record<string, { amount: number; unit: 'hours' | 'days'; canonical: string }> =
-  {
-    '24h': { amount: 24, unit: 'hours', canonical: '24h' },
-    '7d': { amount: 7, unit: 'days', canonical: '7d' },
-    '30d': { amount: 30, unit: 'days', canonical: '30d' },
-    '365d': { amount: 365, unit: 'days', canonical: '365d' },
-    '1y': { amount: 365, unit: 'days', canonical: '365d' },
-    '1a': { amount: 365, unit: 'days', canonical: '365d' },
-    '1year': { amount: 365, unit: 'days', canonical: '365d' },
-  };
+export const PRESETS: Record<
+  string,
+  { amount: number; unit: 'hours' | 'days'; canonical: string }
+> = {
+  '24h': { amount: 24, unit: 'hours', canonical: '24h' },
+  '7d': { amount: 7, unit: 'days', canonical: '7d' },
+  '30d': { amount: 30, unit: 'days', canonical: '30d' },
+  '365d': { amount: 365, unit: 'days', canonical: '365d' },
+  '1y': { amount: 365, unit: 'days', canonical: '365d' },
+  '1a': { amount: 365, unit: 'days', canonical: '365d' },
+  '1year': { amount: 365, unit: 'days', canonical: '365d' },
+};
