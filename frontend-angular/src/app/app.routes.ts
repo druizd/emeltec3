@@ -6,8 +6,8 @@ import { LayoutComponent } from './components/layout/layout';
 export const routes: Routes = [
   {
     path: 'login',
-    loadComponent: () => import('./pages/login/login').then(m => m.LoginComponent),
-    canActivate: [publicGuard]
+    loadComponent: () => import('./pages/login/login').then((m) => m.LoginComponent),
+    canActivate: [publicGuard],
   },
   {
     path: '',
@@ -16,23 +16,29 @@ export const routes: Routes = [
     children: [
       {
         path: 'companies/:siteId/water',
-        loadComponent: () => import('./pages/companies/company-site-water-detail').then(m => m.CompanySiteWaterDetailComponent)
+        loadComponent: () =>
+          import('./pages/companies/company-site-water-detail').then(
+            (m) => m.CompanySiteWaterDetailComponent,
+          ),
       },
       {
         path: 'companies',
-        loadComponent: () => import('./pages/companies/companies').then(m => m.CompaniesComponent)
+        loadComponent: () =>
+          import('./pages/companies/companies').then((m) => m.CompaniesComponent),
       },
       {
         path: 'dashboard',
-        loadComponent: () => import('./pages/dashboard/dashboard').then(m => m.DashboardComponent)
+        loadComponent: () =>
+          import('./pages/dashboard/dashboard').then((m) => m.DashboardComponent),
       },
       {
         path: 'administration',
         canActivate: [roleGuard('SuperAdmin')],
-        loadComponent: () => import('./pages/administration/administration').then(m => m.AdministrationComponent)
+        loadComponent: () =>
+          import('./pages/administration/administration').then((m) => m.AdministrationComponent),
       },
-      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
-    ]
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+    ],
   },
-  { path: '**', redirectTo: 'dashboard' }
+  { path: '**', redirectTo: 'dashboard' },
 ];

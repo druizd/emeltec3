@@ -1,47 +1,127 @@
 <main class="min-h-screen bg-[#eef4f7] text-slate-900">
   <div class="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
-
     <!-- ── PANEL IZQUIERDO ── -->
-    <section class="relative isolate hidden min-h-screen overflow-hidden bg-[#041925] px-10 py-10 lg:flex lg:flex-col xl:px-14">
-      <div class="absolute inset-0 -z-30 bg-cover bg-[center_right_18%]" style="background-image: url('/images/login-field-hero-polished.png');"></div>
-      <div class="absolute inset-0 -z-20" style="background: linear-gradient(90deg, rgba(4,18,29,0.97) 0%, rgba(5,34,47,0.85) 35%, rgba(6,48,61,0.30) 65%, rgba(3,14,22,0.08) 100%);"></div>
+    <section
+      class="relative isolate hidden min-h-screen overflow-hidden bg-[#041925] px-10 py-10 lg:flex lg:flex-col xl:px-14"
+    >
+      <div
+        class="absolute inset-0 -z-30 bg-cover bg-[center_right_18%]"
+        style="background-image: url('/images/login-field-hero-polished.png')"
+      ></div>
+      <div
+        class="absolute inset-0 -z-20"
+        style="
+          background: linear-gradient(
+            90deg,
+            rgba(4, 18, 29, 0.97) 0%,
+            rgba(5, 34, 47, 0.85) 35%,
+            rgba(6, 48, 61, 0.3) 65%,
+            rgba(3, 14, 22, 0.08) 100%
+          );
+        "
+      ></div>
       <!-- grid con mask -->
-      <div class="absolute inset-0 -z-10 opacity-25" style="background-image: linear-gradient(rgba(103,232,249,0.20) 1px, transparent 1px), linear-gradient(90deg, rgba(103,232,249,0.14) 1px, transparent 1px); background-size: 52px 52px; mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 60%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.5) 25%, rgba(0,0,0,1) 60%, transparent 100%);"></div>
+      <div
+        class="absolute inset-0 -z-10 opacity-25"
+        style="
+          background-image:
+            linear-gradient(rgba(103, 232, 249, 0.2) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(103, 232, 249, 0.14) 1px, transparent 1px);
+          background-size: 52px 52px;
+          mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            rgba(0, 0, 0, 0.5) 25%,
+            rgba(0, 0, 0, 1) 60%,
+            transparent 100%
+          );
+          -webkit-mask-image: linear-gradient(
+            to bottom,
+            transparent 0%,
+            rgba(0, 0, 0, 0.5) 25%,
+            rgba(0, 0, 0, 1) 60%,
+            transparent 100%
+          );
+        "
+      ></div>
       <!-- scan line -->
-      <div class="absolute inset-x-0 -z-10 h-px" style="background: linear-gradient(90deg, transparent, rgba(103,232,249,0.9) 40%, rgba(103,232,249,1) 50%, rgba(103,232,249,0.9) 60%, transparent); animation: scanline 7s ease-in-out infinite; top: 38%;"></div>
+      <div
+        class="absolute inset-x-0 -z-10 h-px"
+        style="
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(103, 232, 249, 0.9) 40%,
+            rgba(103, 232, 249, 1) 50%,
+            rgba(103, 232, 249, 0.9) 60%,
+            transparent
+          );
+          animation: scanline 7s ease-in-out infinite;
+          top: 38%;
+        "
+      ></div>
       <!-- orbe teal -->
-      <div class="absolute -left-48 top-1/2 -z-10 h-[700px] w-[700px] -translate-y-1/2 rounded-full opacity-[0.12]" style="background: radial-gradient(circle, #0dafbd 0%, transparent 60%);"></div>
+      <div
+        class="absolute -left-48 top-1/2 -z-10 h-[700px] w-[700px] -translate-y-1/2 rounded-full opacity-[0.12]"
+        style="background: radial-gradient(circle, #0dafbd 0%, transparent 60%)"
+      ></div>
       <!-- fade bottom -->
-      <div class="absolute bottom-0 left-0 right-0 -z-10 h-56 bg-gradient-to-t from-[#041925] to-transparent"></div>
+      <div
+        class="absolute bottom-0 left-0 right-0 -z-10 h-56 bg-gradient-to-t from-[#041925] to-transparent"
+      ></div>
       <style>
         @keyframes scanline {
-          0%, 100% { opacity: 0; transform: translateY(-60px); }
-          20% { opacity: 0.20; }
-          50% { opacity: 0.12; transform: translateY(80px); }
-          80% { opacity: 0.20; }
+          0%,
+          100% {
+            opacity: 0;
+            transform: translateY(-60px);
+          }
+          20% {
+            opacity: 0.2;
+          }
+          50% {
+            opacity: 0.12;
+            transform: translateY(80px);
+          }
+          80% {
+            opacity: 0.2;
+          }
         }
       </style>
 
       <!-- logo -->
       <div class="relative z-10">
-        <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[116px] w-auto object-contain brightness-0 invert opacity-90" />
+        <img
+          src="/images/emeltec-logo.webp"
+          alt="Emeltec"
+          class="h-[116px] w-auto object-contain brightness-0 invert opacity-90"
+        />
       </div>
 
       <!-- contenido inferior -->
       <div class="relative z-10 mt-auto max-w-[540px] pb-10">
-        <p class="mb-5 text-[10px] font-black tracking-[0.30em] text-cyan-300/70">PORTAL PRIVADO DE MONITOREO IIoT</p>
+        <p class="mb-5 text-[10px] font-black tracking-[0.30em] text-cyan-300/70">
+          PORTAL PRIVADO DE MONITOREO IIoT
+        </p>
 
         <h1 class="text-[3.2rem] font-black leading-[1.06] text-white xl:text-[3.6rem]">
-          Visibilidad Total.<br>Seguridad sin<br>Concesiones.
+          Visibilidad Total.<br />Seguridad sin<br />Concesiones.
         </h1>
 
         <p class="mt-5 max-w-[480px] text-[14px] font-medium leading-[1.8] text-slate-300/80">
-          Centralice la supervisión de sus activos industriales con acceso flexible, diseñado para la continuidad operativa.
+          Centralice la supervisión de sus activos industriales con acceso flexible, diseñado para
+          la continuidad operativa.
         </p>
 
         <div class="mt-8 flex flex-col gap-0 border-y border-white/10 py-6">
           <div class="flex items-center gap-4 py-2.5">
-            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style="background: rgba(13,175,189,0.15); border: 1px solid rgba(13,175,189,0.25);">
+            <div
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style="
+                background: rgba(13, 175, 189, 0.15);
+                border: 1px solid rgba(13, 175, 189, 0.25);
+              "
+            >
               <span class="material-symbols-outlined text-[14px] text-cyan-300">shield_lock</span>
             </div>
             <div class="flex items-baseline gap-2.5">
@@ -50,7 +130,13 @@
             </div>
           </div>
           <div class="flex items-center gap-4 py-2.5">
-            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style="background: rgba(13,175,189,0.15); border: 1px solid rgba(13,175,189,0.25);">
+            <div
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style="
+                background: rgba(13, 175, 189, 0.15);
+                border: 1px solid rgba(13, 175, 189, 0.25);
+              "
+            >
               <span class="material-symbols-outlined text-[14px] text-cyan-300">bolt</span>
             </div>
             <div class="flex items-baseline gap-2.5">
@@ -59,7 +145,13 @@
             </div>
           </div>
           <div class="flex items-center gap-4 py-2.5">
-            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style="background: rgba(13,175,189,0.15); border: 1px solid rgba(13,175,189,0.25);">
+            <div
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+              style="
+                background: rgba(13, 175, 189, 0.15);
+                border: 1px solid rgba(13, 175, 189, 0.25);
+              "
+            >
               <span class="material-symbols-outlined text-[14px] text-cyan-300">location_on</span>
             </div>
             <div class="flex items-baseline gap-2.5">
@@ -72,60 +164,138 @@
     </section>
 
     <!-- ── PANEL DERECHO ── -->
-    <section class="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-5 py-8 sm:px-8 lg:px-10">
+    <section
+      class="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-5 py-8 sm:px-8 lg:px-10"
+    >
       <!-- base -->
-      <div class="absolute inset-0 -z-40" style="background: linear-gradient(160deg, #f7fafb 0%, #edf6f7 55%, #f3f8f4 100%);"></div>
+      <div
+        class="absolute inset-0 -z-40"
+        style="background: linear-gradient(160deg, #f7fafb 0%, #edf6f7 55%, #f3f8f4 100%)"
+      ></div>
       <!-- grain -->
-      <svg class="absolute inset-0 -z-30 h-full w-full opacity-[0.40]" xmlns="http://www.w3.org/2000/svg">
-        <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
-        <rect width="100%" height="100%" filter="url(#grain)"/>
+      <svg
+        class="absolute inset-0 -z-30 h-full w-full opacity-[0.40]"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <filter id="grain">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.68"
+            numOctaves="4"
+            stitchTiles="stitch"
+          />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#grain)" />
       </svg>
       <!-- orbes -->
-      <div class="absolute -right-40 -top-40 -z-20 h-[680px] w-[680px] rounded-full" style="background: radial-gradient(circle, rgba(13,175,189,0.11) 0%, transparent 65%);"></div>
-      <div class="absolute -bottom-32 -left-32 -z-20 h-[400px] w-[400px] rounded-full" style="background: radial-gradient(circle, rgba(13,175,189,0.07) 0%, transparent 65%);"></div>
+      <div
+        class="absolute -right-40 -top-40 -z-20 h-[680px] w-[680px] rounded-full"
+        style="background: radial-gradient(circle, rgba(13, 175, 189, 0.11) 0%, transparent 65%)"
+      ></div>
+      <div
+        class="absolute -bottom-32 -left-32 -z-20 h-[400px] w-[400px] rounded-full"
+        style="background: radial-gradient(circle, rgba(13, 175, 189, 0.07) 0%, transparent 65%)"
+      ></div>
       <!-- separador izquierdo -->
-      <div class="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-transparent via-cyan-300/60 to-transparent lg:block"></div>
+      <div
+        class="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-transparent via-cyan-300/60 to-transparent lg:block"
+      ></div>
 
       <div class="relative z-10 w-full max-w-[400px]">
-
         <!-- tarjeta mobile -->
-        <div class="mb-5 overflow-hidden rounded-xl border border-white/70 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)] lg:hidden">
-          <div class="h-36 bg-cover bg-[center_right_20%]" style="background-image: url('/images/login-field-hero-polished.png');"></div>
+        <div
+          class="mb-5 overflow-hidden rounded-xl border border-white/70 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)] lg:hidden"
+        >
+          <div
+            class="h-36 bg-cover bg-[center_right_20%]"
+            style="background-image: url('/images/login-field-hero-polished.png')"
+          ></div>
           <div class="border-t border-slate-100 px-5 py-4">
-            <img src="/images/emeltec-logo.webp" alt="Emeltec" class="h-[44px] w-auto object-contain" />
+            <img
+              src="/images/emeltec-logo.webp"
+              alt="Emeltec"
+              class="h-[44px] w-auto object-contain"
+            />
           </div>
         </div>
 
         <!-- card principal -->
-        <div class="relative rounded-2xl bg-white/88 p-7 backdrop-blur-md" style="box-shadow: 0 0 0 1px rgba(13,175,189,0.13), 0 24px 64px rgba(15,23,42,0.10), 0 8px 24px rgba(13,175,189,0.07), inset 0 1px 0 rgba(255,255,255,0.95);">
+        <div
+          class="relative rounded-2xl bg-white/88 p-7 backdrop-blur-md"
+          style="
+            box-shadow:
+              0 0 0 1px rgba(13, 175, 189, 0.13),
+              0 24px 64px rgba(15, 23, 42, 0.1),
+              0 8px 24px rgba(13, 175, 189, 0.07),
+              inset 0 1px 0 rgba(255, 255, 255, 0.95);
+          "
+        >
           <!-- línea teal superior -->
-          <div class="absolute inset-x-8 top-0 h-[2px] rounded-full" style="background: linear-gradient(90deg, transparent, rgba(13,175,189,0.5) 20%, rgba(13,175,189,1) 50%, rgba(13,175,189,0.5) 80%, transparent);"></div>
+          <div
+            class="absolute inset-x-8 top-0 h-[2px] rounded-full"
+            style="
+              background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(13, 175, 189, 0.5) 20%,
+                rgba(13, 175, 189, 1) 50%,
+                rgba(13, 175, 189, 0.5) 80%,
+                transparent
+              );
+            "
+          ></div>
 
           <!-- header -->
-          <div class="mb-6 pb-5" style="border-bottom: 1px solid rgba(13,175,189,0.08);">
+          <div class="mb-6 pb-5" style="border-bottom: 1px solid rgba(13, 175, 189, 0.08)">
             <!-- progress dots -->
             <div class="mb-5 flex items-center gap-2">
-              <div class="h-1.5 w-8 rounded-full" style="background: {{ isCodeSent() ? 'rgba(13,175,189,0.25)' : 'linear-gradient(90deg, #0dafbd, #0899a5)' }};"></div>
-              <div class="h-1.5 w-8 rounded-full" style="background: {{ isCodeSent() ? 'linear-gradient(90deg, #0dafbd, #0899a5)' : 'rgba(13,175,189,0.15)' }};"></div>
-              <span class="ml-1 text-[10px] font-black tracking-[0.20em] text-[#0dafbd]/60">{{ isCodeSent() ? 'PASO 2 DE 2' : 'PASO 1 DE 2' }}</span>
+              <div
+                class="h-1.5 w-8 rounded-full"
+                style="background: {{
+                  isCodeSent()
+                    ? 'rgba(13,175,189,0.25)'
+                    : 'linear-gradient(90deg, #0dafbd, #0899a5)'
+                }};"
+              ></div>
+              <div
+                class="h-1.5 w-8 rounded-full"
+                style="background: {{
+                  isCodeSent()
+                    ? 'linear-gradient(90deg, #0dafbd, #0899a5)'
+                    : 'rgba(13,175,189,0.15)'
+                }};"
+              ></div>
+              <span class="ml-1 text-[10px] font-black tracking-[0.20em] text-[#0dafbd]/60">{{
+                isCodeSent() ? 'PASO 2 DE 2' : 'PASO 1 DE 2'
+              }}</span>
             </div>
             <h2 class="text-[1.55rem] font-black leading-tight text-slate-900">
               {{ isCodeSent() ? 'Ingresa tu código' : 'Acceso seguro' }}
             </h2>
             <p class="mt-1.5 text-[13px] leading-5 text-slate-400">
-              {{ isCodeSent() ? 'Revisa tu correo — el código expira en 10 minutos.' : 'Escribe tu correo para recibir un código de un solo uso.' }}
+              {{
+                isCodeSent()
+                  ? 'Revisa tu correo — el código expira en 10 minutos.'
+                  : 'Escribe tu correo para recibir un código de un solo uso.'
+              }}
             </p>
           </div>
 
           @if (errorMsg()) {
-            <div role="alert" class="mb-5 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-600">
+            <div
+              role="alert"
+              class="mb-5 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-600"
+            >
               <span class="material-symbols-outlined text-[18px]">error</span>
               <p>{{ errorMsg() }}</p>
             </div>
           }
 
           @if (successMsg()) {
-            <div class="mb-5 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[13px] font-semibold text-emerald-700">
+            <div
+              class="mb-5 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[13px] font-semibold text-emerald-700"
+            >
               <span class="material-symbols-outlined text-[18px]">check_circle</span>
               <p>{{ successMsg() }}</p>
             </div>
@@ -134,9 +304,14 @@
           @if (!isCodeSent()) {
             <form (submit)="handleRequestCode($event)" class="space-y-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Correo registrado</label>
+                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"
+                  >Correo registrado</label
+                >
                 <div class="relative">
-                  <span class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#0dafbd]/70">mail</span>
+                  <span
+                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#0dafbd]/70"
+                    >mail</span
+                  >
                   <input
                     type="email"
                     required
@@ -154,17 +329,30 @@
                 type="submit"
                 [disabled]="isSubmitting()"
                 class="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[13px] font-black text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                style="background: linear-gradient(135deg, #0dafbd 0%, #0899a5 60%, #04606a 100%); box-shadow: 0 6px 20px rgba(13,175,189,0.30);"
+                style="
+                  background: linear-gradient(135deg, #0dafbd 0%, #0899a5 60%, #04606a 100%);
+                  box-shadow: 0 6px 20px rgba(13, 175, 189, 0.3);
+                "
               >
                 @if (isSubmitting()) {
-                  <div class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                  <div
+                    class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"
+                  ></div>
                 } @else {
                   <span class="material-symbols-outlined text-[17px]">send</span>
                   Recibir código por correo
                 }
               </button>
 
-              <button type="button" (click)="goToCodeEntry()" class="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]" style="border: 1px solid rgba(13,175,189,0.13); background: rgba(13,175,189,0.03);">
+              <button
+                type="button"
+                (click)="goToCodeEntry()"
+                class="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]"
+                style="
+                  border: 1px solid rgba(13, 175, 189, 0.13);
+                  background: rgba(13, 175, 189, 0.03);
+                "
+              >
                 <span class="material-symbols-outlined text-[16px]">password</span>
                 Ya tengo un código
               </button>
@@ -172,9 +360,14 @@
           } @else {
             <form (submit)="handleLogin($event)" class="space-y-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Correo electrónico</label>
+                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"
+                  >Correo electrónico</label
+                >
                 <div class="relative">
-                  <span class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-300">mail</span>
+                  <span
+                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-slate-300"
+                    >mail</span
+                  >
                   <input
                     type="email"
                     required
@@ -186,14 +379,16 @@
               </div>
 
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Código de acceso</label>
+                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"
+                  >Código de acceso</label
+                >
                 <div class="relative">
                   <input
                     type="text"
                     required
                     maxlength="6"
                     class="h-14 w-full rounded-xl border bg-white pr-4 text-center font-mono text-2xl font-black tracking-[0.30em] text-slate-800 outline-none transition-all placeholder:text-slate-200 focus:bg-white"
-                    style="border-color: rgba(13,175,189,0.20); letter-spacing: 0.35em;"
+                    style="border-color: rgba(13, 175, 189, 0.2); letter-spacing: 0.35em"
                     placeholder="——————"
                     [ngModel]="password()"
                     (ngModelChange)="password.set($event)"
@@ -206,17 +401,30 @@
                 type="submit"
                 [disabled]="isSubmitting()"
                 class="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-                style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 6px 20px rgba(16,185,129,0.28);"
+                style="
+                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.28);
+                "
               >
                 @if (isSubmitting()) {
-                  <div class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+                  <div
+                    class="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"
+                  ></div>
                 } @else {
                   <span class="material-symbols-outlined text-[17px]">login</span>
                   Iniciar sesión segura
                 }
               </button>
 
-              <button type="button" (click)="goBack()" class="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]" style="border: 1px solid rgba(13,175,189,0.13); background: rgba(13,175,189,0.03);">
+              <button
+                type="button"
+                (click)="goBack()"
+                class="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]"
+                style="
+                  border: 1px solid rgba(13, 175, 189, 0.13);
+                  background: rgba(13, 175, 189, 0.03);
+                "
+              >
                 <span class="material-symbols-outlined text-[16px]">arrow_back</span>
                 Solicitar otro código
               </button>
@@ -230,9 +438,7 @@
           <p class="text-[10px] font-black tracking-[0.32em] text-slate-400">EMELTEC HUB · 2026</p>
           <span class="h-px w-8 bg-gradient-to-l from-transparent to-slate-300"></span>
         </div>
-
       </div>
     </section>
-
   </div>
 </main>

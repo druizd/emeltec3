@@ -27,7 +27,7 @@ export class WaterOperacionStateService {
   readonly fechaHasta = signal('2026-05-10');
 
   updateTurnoConfig(index: number, field: keyof TurnoConfig, value: string): void {
-    this.turnosConfig.update(prev => {
+    this.turnosConfig.update((prev) => {
       const next = [...prev];
       next[index] = { ...next[index], [field]: value };
       return next;

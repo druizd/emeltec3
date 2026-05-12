@@ -1,5 +1,5 @@
-const express    = require('express');
-const router     = express.Router();
+const express = require('express');
+const router = express.Router();
 const { sendOtpEmail } = require('../controllers/internalController');
 const { requireEnv } = require('../config/requireEnv');
 

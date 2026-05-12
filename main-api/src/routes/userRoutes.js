@@ -13,9 +13,17 @@ router.get('/empresas', userController.getEmpresas);
 router.get('/', userController.getAllUsers);
 
 // Crear usuarios (Solo Admin, SuperAdmin y Gerente)
-router.post('/', authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'), userController.createUser);
+router.post(
+  '/',
+  authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  userController.createUser,
+);
 
 // Eliminar usuarios (Solo Admin, SuperAdmin y Gerente)
-router.delete('/:id', authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'), userController.deleteUser);
+router.delete(
+  '/:id',
+  authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  userController.deleteUser,
+);
 
 module.exports = router;

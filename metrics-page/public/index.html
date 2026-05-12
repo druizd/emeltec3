@@ -1,738 +1,1067 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Panel de Salud de Servicios — Emeltec</title>
-<link rel="stylesheet" href="styles.css">
-<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
-<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body, #root { height: 100%; }
-  body {
-    background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(13,175,189,0.06), transparent 60%),
-      radial-gradient(900px 500px at -10% 110%, rgba(13,175,189,0.04), transparent 60%),
-      var(--bg-base);
-    font-family: var(--font-body);
-    color: var(--text-primary);
-    overflow: auto;
-  }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel de Salud de Servicios — Emeltec</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script
+      src="https://unpkg.com/react@18.3.1/umd/react.development.js"
+      integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js"
+      integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js"
+      integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y"
+      crossorigin="anonymous"
+    ></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body,
+      #root {
+        height: 100%;
+      }
+      body {
+        background:
+          radial-gradient(1200px 600px at 80% -10%, rgba(13, 175, 189, 0.06), transparent 60%),
+          radial-gradient(900px 500px at -10% 110%, rgba(13, 175, 189, 0.04), transparent 60%),
+          var(--bg-base);
+        font-family: var(--font-body);
+        color: var(--text-primary);
+        overflow: auto;
+      }
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border-default);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--border-strong);
+      }
 
-  @keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%      { opacity: 0.55; transform: scale(0.85); }
-  }
-  .pulse-dot::before {
-    content: '';
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.25;
-    animation: pulse-dot 1.6s ease-in-out infinite;
-  }
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.55;
+          transform: scale(0.85);
+        }
+      }
+      .pulse-dot::before {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        background: currentColor;
+        opacity: 0.25;
+        animation: pulse-dot 1.6s ease-in-out infinite;
+      }
 
-  @keyframes shimmer {
-    0%   { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  .live-bar {
-    background: linear-gradient(90deg,
-      transparent 0%,
-      currentColor 50%,
-      transparent 100%);
-    background-size: 200% 100%;
-    animation: shimmer 2.4s linear infinite;
-  }
+      @keyframes shimmer {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
+      }
+      .live-bar {
+        background: linear-gradient(90deg, transparent 0%, currentColor 50%, transparent 100%);
+        background-size: 200% 100%;
+        animation: shimmer 2.4s linear infinite;
+      }
 
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
-  }
+      @keyframes spin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
-  /* Tiny sparkline strip */
-  .sparkline { display: flex; align-items: flex-end; gap: 2px; height: 22px; }
-  .sparkline > span {
-    display: block;
-    width: 3px;
-    border-radius: 1px;
-    background: currentColor;
-    opacity: 0.55;
-  }
-</style>
-</head>
-<body>
-<div id="root"></div>
+      /* Tiny sparkline strip */
+      .sparkline {
+        display: flex;
+        align-items: flex-end;
+        gap: 2px;
+        height: 22px;
+      }
+      .sparkline > span {
+        display: block;
+        width: 3px;
+        border-radius: 1px;
+        background: currentColor;
+        opacity: 0.55;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
 
-<script type="text/babel">
-const { useState, useEffect, useMemo } = React;
+    <script type="text/babel">
+      const { useState, useEffect, useMemo } = React;
 
-const SERVICE_META = {
-  api:      { label: "Main API",      role: "Capa pública REST",          icon: "server",       path: "/api/v1"    },
-  auth:     { label: "Auth Service",  role: "JWT · OAuth2 · Sesiones",    icon: "shield-check", path: "/auth"      },
-  database: { label: "Database",      role: "PostgreSQL primaria",        icon: "database",     path: "pg-primary" },
-  pipeline: { label: "Pipeline gRPC", role: "Ingesta de telemetría",      icon: "git-branch",   path: ":50051"     },
-  dga:      { label: "DGA Reporter",  role: "Envíos a DGA · Ministerio",  icon: "radio-tower",  path: "dga.queue"  },
-};
+      const SERVICE_META = {
+        api: { label: 'Main API', role: 'Capa pública REST', icon: 'server', path: '/api/v1' },
+        auth: {
+          label: 'Auth Service',
+          role: 'JWT · OAuth2 · Sesiones',
+          icon: 'shield-check',
+          path: '/auth',
+        },
+        database: {
+          label: 'Database',
+          role: 'PostgreSQL primaria',
+          icon: 'database',
+          path: 'pg-primary',
+        },
+        pipeline: {
+          label: 'Pipeline gRPC',
+          role: 'Ingesta de telemetría',
+          icon: 'git-branch',
+          path: ':50051',
+        },
+        dga: {
+          label: 'DGA Reporter',
+          role: 'Envíos a DGA · Ministerio',
+          icon: 'radio-tower',
+          path: 'dga.queue',
+        },
+      };
 
-const STATUS_TONE = {
-  online:   { label: "Operativo", color: "var(--color-success)", bg: "var(--color-success-bg)", border: "var(--color-success-border)" },
-  degraded: { label: "Degradado", color: "var(--color-warning)", bg: "var(--color-warning-bg)", border: "var(--color-warning-border)" },
-  offline:  { label: "Caído",     color: "var(--color-danger)",  bg: "var(--color-danger-bg)",  border: "var(--color-danger-border)"  },
-};
+      const STATUS_TONE = {
+        online: {
+          label: 'Operativo',
+          color: 'var(--color-success)',
+          bg: 'var(--color-success-bg)',
+          border: 'var(--color-success-border)',
+        },
+        degraded: {
+          label: 'Degradado',
+          color: 'var(--color-warning)',
+          bg: 'var(--color-warning-bg)',
+          border: 'var(--color-warning-border)',
+        },
+        offline: {
+          label: 'Caído',
+          color: 'var(--color-danger)',
+          bg: 'var(--color-danger-bg)',
+          border: 'var(--color-danger-border)',
+        },
+      };
 
-function fmtUptime(s) {
-  if (s == null) return "—";
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
-  if (m > 0) return `${m}m ${String(sec).padStart(2,'0')}s`;
-  return `${sec}s`;
-}
+      function fmtUptime(s) {
+        if (s == null) return '—';
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+        if (m > 0) return `${m}m ${String(sec).padStart(2, '0')}s`;
+        return `${sec}s`;
+      }
 
-function fmtAge(ms) {
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `hace ${s}s`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `hace ${m}m`;
-  return `hace ${Math.floor(m/60)}h`;
-}
+      function fmtAge(ms) {
+        const s = Math.floor(ms / 1000);
+        if (s < 60) return `hace ${s}s`;
+        const m = Math.floor(s / 60);
+        if (m < 60) return `hace ${m}m`;
+        return `hace ${Math.floor(m / 60)}h`;
+      }
 
-function fmtTime(iso) {
-  const d = new Date(iso);
-  const pad = n => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
+      function fmtTime(iso) {
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
 
-function sparkData(seed, n = 14) {
-  const out = [];
-  let x = seed;
-  for (let i = 0; i < n; i++) {
-    x = (x * 9301 + 49297) % 233280;
-    out.push(0.35 + (x / 233280) * 0.65);
-  }
-  return out;
-}
+      function sparkData(seed, n = 14) {
+        const out = [];
+        let x = seed;
+        for (let i = 0; i < n; i++) {
+          x = (x * 9301 + 49297) % 233280;
+          out.push(0.35 + (x / 233280) * 0.65);
+        }
+        return out;
+      }
 
-/* ============================================================
+      /* ============================================================
    ATOMS
    ============================================================ */
-function Icon({ name, size = 16, color, style }) {
-  const ref = React.useRef(null);
-  useEffect(() => { if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide' }); }, [name]);
-  return <i ref={ref} data-lucide={name} style={{ width: size, height: size, color, ...style }}></i>;
-}
+      function Icon({ name, size = 16, color, style }) {
+        const ref = React.useRef(null);
+        useEffect(() => {
+          if (window.lucide) lucide.createIcons({ nameAttr: 'data-lucide' });
+        }, [name]);
+        return (
+          <i
+            ref={ref}
+            data-lucide={name}
+            style={{ width: size, height: size, color, ...style }}
+          ></i>
+        );
+      }
 
-function StatusDot({ status, size = 8 }) {
-  const tone = STATUS_TONE[status] || STATUS_TONE.offline;
-  return (
-    <span
-      className={status === "online" ? "pulse-dot" : ""}
-      style={{
-        position: 'relative',
-        display: 'inline-block',
-        width: size, height: size,
-        borderRadius: '50%',
-        background: tone.color,
-        color: tone.color,
-        flexShrink: 0,
-      }}
-    />
-  );
-}
-
-function StatusPill({ status }) {
-  const tone = STATUS_TONE[status] || STATUS_TONE.offline;
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 6,
-      padding: '3px 9px 3px 8px',
-      borderRadius: 'var(--radius-full)',
-      background: tone.bg,
-      border: `1px solid ${tone.border}`,
-      color: tone.color,
-      fontFamily: 'var(--font-body)',
-      fontSize: 11,
-      fontWeight: 600,
-      letterSpacing: 'var(--ls-wide)',
-      textTransform: 'uppercase',
-    }}>
-      <StatusDot status={status} size={6} />
-      {tone.label}
-    </span>
-  );
-}
-
-function KeyVal({ k, v, mono = true, color }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-      <div className="label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{k}</div>
-      <div style={{
-        fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)',
-        fontSize: 14,
-        fontWeight: 500,
-        color: color || 'var(--text-primary)',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}>{v}</div>
-    </div>
-  );
-}
-
-function Sparkline({ values, color }) {
-  return (
-    <div className="sparkline" style={{ color }}>
-      {values.map((v, i) => (
-        <span key={i} style={{
-          height: `${Math.max(3, v * 22)}px`,
-          opacity: i === values.length - 1 ? 1 : 0.45 + v * 0.4,
-        }} />
-      ))}
-    </div>
-  );
-}
-
-/* ============================================================
-   HERO BANNER
-   ============================================================ */
-function HeroBanner({ overall, summary, lastUpdate, autoRefresh, onRefresh, refreshing }) {
-  const isOk   = overall === 'online';
-  const isWarn = overall === 'degraded';
-  const tone   = STATUS_TONE[overall] || STATUS_TONE.degraded;
-
-  const headline =
-    isOk   ? "Todos los sistemas operativos" :
-    isWarn ? "Operación con alertas activas" :
-             "Interrupción detectada";
-
-  const subhead =
-    isOk   ? "Todos los servicios responden dentro de los umbrales esperados." :
-    isWarn ? `${summary.degraded} servicio${summary.degraded === 1 ? '' : 's'} en estado degradado · monitorear configuración.` :
-             `${summary.offline} servicio${summary.offline === 1 ? '' : 's'} sin respuesta · intervención requerida.`;
-
-  return (
-    <div style={{
-      position: 'relative',
-      borderRadius: 'var(--radius-xl)',
-      border: `1px solid ${tone.border}`,
-      background: `linear-gradient(135deg, ${tone.bg} 0%, rgba(15,21,32,0.6) 60%)`,
-      padding: '22px 26px',
-      overflow: 'hidden',
-    }}>
-      <div className="live-bar" style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, color: tone.color }} />
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
-        <div style={{
-          width: 56, height: 56,
-          borderRadius: 'var(--radius-lg)',
-          background: tone.bg,
-          border: `1px solid ${tone.border}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
-        }}>
-          <Icon
-            name={isOk ? "check-circle-2" : isWarn ? "alert-triangle" : "x-octagon"}
-            size={28}
-            color={tone.color}
-          />
-        </div>
-
-        <div style={{ flex: 1, minWidth: 220 }}>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'var(--text-2xl)',
-            fontWeight: 600,
-            letterSpacing: 'var(--ls-tight)',
-            color: 'var(--text-primary)',
-            lineHeight: 1.15,
-          }}>{headline}</div>
-          <div style={{
-            marginTop: 4,
-            fontFamily: 'var(--font-body)',
-            fontSize: 'var(--text-sm)',
-            color: 'var(--text-secondary)',
-          }}>{subhead}</div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <CountChip count={summary.online}   label="Operativos" tone="online" />
-          <CountChip count={summary.degraded} label="Degradados" tone="degraded" />
-          <CountChip count={summary.offline}  label="Caídos"     tone="offline" />
-
-          <div style={{ width: 1, height: 36, background: 'var(--border-muted)', margin: '0 4px' }} />
-
-          <button
-            onClick={onRefresh}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              height: 'var(--btn-height-sm)',
-              padding: '0 12px',
-              borderRadius: 'var(--btn-radius)',
-              background: 'var(--color-primary-bg)',
-              border: '1px solid var(--color-primary-border)',
-              color: 'var(--color-primary)',
-              fontFamily: 'var(--font-body)',
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: 'var(--ls-wide)',
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(13,175,189,0.18)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--color-primary-bg)'; }}
-          >
-            <Icon name="refresh-cw" size={13} style={refreshing ? { animation: 'spin 0.8s linear infinite' } : {}} />
-            Actualizar
-          </button>
-        </div>
-      </div>
-
-      <div style={{
-        marginTop: 18,
-        paddingTop: 14,
-        borderTop: '1px dashed var(--border-muted)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap', gap: 12,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Icon name="clock" size={13} color="var(--text-muted)" />
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Última verificación</span>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--text-primary)' }}>
-            {fmtTime(lastUpdate)}
-          </span>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            · {fmtAge(Date.now() - new Date(lastUpdate).getTime())}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      function StatusDot({ status, size = 8 }) {
+        const tone = STATUS_TONE[status] || STATUS_TONE.offline;
+        return (
           <span
-            className="pulse-dot"
+            className={status === 'online' ? 'pulse-dot' : ''}
             style={{
               position: 'relative',
               display: 'inline-block',
-              width: 6, height: 6,
+              width: size,
+              height: size,
               borderRadius: '50%',
-              background: autoRefresh ? 'var(--color-success)' : 'var(--text-muted)',
-              color: autoRefresh ? 'var(--color-success)' : 'transparent',
+              background: tone.color,
+              color: tone.color,
+              flexShrink: 0,
             }}
           />
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-            {autoRefresh ? 'Sondeo automático cada 10 s' : 'Sondeo automático pausado'}
+        );
+      }
+
+      function StatusPill({ status }) {
+        const tone = STATUS_TONE[status] || STATUS_TONE.offline;
+        return (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '3px 9px 3px 8px',
+              borderRadius: 'var(--radius-full)',
+              background: tone.bg,
+              border: `1px solid ${tone.border}`,
+              color: tone.color,
+              fontFamily: 'var(--font-body)',
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 'var(--ls-wide)',
+              textTransform: 'uppercase',
+            }}
+          >
+            <StatusDot status={status} size={6} />
+            {tone.label}
           </span>
-        </div>
-      </div>
-    </div>
-  );
-}
+        );
+      }
 
-function CountChip({ count, label, tone }) {
-  const t = STATUS_TONE[tone];
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 22,
-        fontWeight: 600,
-        color: count > 0 ? t.color : 'var(--text-muted)',
-        lineHeight: 1,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{String(count).padStart(2,'0')}</div>
-      <div style={{
-        fontFamily: 'var(--font-body)',
-        fontSize: 10,
-        fontWeight: 600,
-        letterSpacing: 'var(--ls-widest)',
-        textTransform: 'uppercase',
-        color: 'var(--text-muted)',
-        lineHeight: 1.1,
-      }}>{label}</div>
-    </div>
-  );
-}
+      function KeyVal({ k, v, mono = true, color }) {
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+            <div className="label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              {k}
+            </div>
+            <div
+              style={{
+                fontFamily: mono ? 'var(--font-mono)' : 'var(--font-body)',
+                fontSize: 14,
+                fontWeight: 500,
+                color: color || 'var(--text-primary)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {v}
+            </div>
+          </div>
+        );
+      }
 
-/* ============================================================
+      function Sparkline({ values, color }) {
+        return (
+          <div className="sparkline" style={{ color }}>
+            {values.map((v, i) => (
+              <span
+                key={i}
+                style={{
+                  height: `${Math.max(3, v * 22)}px`,
+                  opacity: i === values.length - 1 ? 1 : 0.45 + v * 0.4,
+                }}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      /* ============================================================
+   HERO BANNER
+   ============================================================ */
+      function HeroBanner({ overall, summary, lastUpdate, autoRefresh, onRefresh, refreshing }) {
+        const isOk = overall === 'online';
+        const isWarn = overall === 'degraded';
+        const tone = STATUS_TONE[overall] || STATUS_TONE.degraded;
+
+        const headline = isOk
+          ? 'Todos los sistemas operativos'
+          : isWarn
+            ? 'Operación con alertas activas'
+            : 'Interrupción detectada';
+
+        const subhead = isOk
+          ? 'Todos los servicios responden dentro de los umbrales esperados.'
+          : isWarn
+            ? `${summary.degraded} servicio${summary.degraded === 1 ? '' : 's'} en estado degradado · monitorear configuración.`
+            : `${summary.offline} servicio${summary.offline === 1 ? '' : 's'} sin respuesta · intervención requerida.`;
+
+        return (
+          <div
+            style={{
+              position: 'relative',
+              borderRadius: 'var(--radius-xl)',
+              border: `1px solid ${tone.border}`,
+              background: `linear-gradient(135deg, ${tone.bg} 0%, rgba(15,21,32,0.6) 60%)`,
+              padding: '22px 26px',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              className="live-bar"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 2,
+                color: tone.color,
+              }}
+            />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 'var(--radius-lg)',
+                  background: tone.bg,
+                  border: `1px solid ${tone.border}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Icon
+                  name={isOk ? 'check-circle-2' : isWarn ? 'alert-triangle' : 'x-octagon'}
+                  size={28}
+                  color={tone.color}
+                />
+              </div>
+
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 'var(--text-2xl)',
+                    fontWeight: 600,
+                    letterSpacing: 'var(--ls-tight)',
+                    color: 'var(--text-primary)',
+                    lineHeight: 1.15,
+                  }}
+                >
+                  {headline}
+                </div>
+                <div
+                  style={{
+                    marginTop: 4,
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  {subhead}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <CountChip count={summary.online} label="Operativos" tone="online" />
+                <CountChip count={summary.degraded} label="Degradados" tone="degraded" />
+                <CountChip count={summary.offline} label="Caídos" tone="offline" />
+
+                <div
+                  style={{
+                    width: 1,
+                    height: 36,
+                    background: 'var(--border-muted)',
+                    margin: '0 4px',
+                  }}
+                />
+
+                <button
+                  onClick={onRefresh}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    height: 'var(--btn-height-sm)',
+                    padding: '0 12px',
+                    borderRadius: 'var(--btn-radius)',
+                    background: 'var(--color-primary-bg)',
+                    border: '1px solid var(--color-primary-border)',
+                    color: 'var(--color-primary)',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: 'var(--ls-wide)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(13,175,189,0.18)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'var(--color-primary-bg)';
+                  }}
+                >
+                  <Icon
+                    name="refresh-cw"
+                    size={13}
+                    style={refreshing ? { animation: 'spin 0.8s linear infinite' } : {}}
+                  />
+                  Actualizar
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                marginTop: 18,
+                paddingTop: 14,
+                borderTop: '1px dashed var(--border-muted)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Icon name="clock" size={13} color="var(--text-muted)" />
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  Última verificación
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 12,
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {fmtTime(lastUpdate)}
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  · {fmtAge(Date.now() - new Date(lastUpdate).getTime())}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  className="pulse-dot"
+                  style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: autoRefresh ? 'var(--color-success)' : 'var(--text-muted)',
+                    color: autoRefresh ? 'var(--color-success)' : 'transparent',
+                  }}
+                />
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  {autoRefresh ? 'Sondeo automático cada 10 s' : 'Sondeo automático pausado'}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      function CountChip({ count, label, tone }) {
+        const t = STATUS_TONE[tone];
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 22,
+                fontWeight: 600,
+                color: count > 0 ? t.color : 'var(--text-muted)',
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {String(count).padStart(2, '0')}
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-body)',
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: 'var(--ls-widest)',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                lineHeight: 1.1,
+              }}
+            >
+              {label}
+            </div>
+          </div>
+        );
+      }
+
+      /* ============================================================
    SERVICE CARD
    ============================================================ */
-function ServiceCard({ id, data }) {
-  const meta = SERVICE_META[id] || { label: id, role: id, icon: 'cpu', path: id };
-  const tone = STATUS_TONE[data.status] || STATUS_TONE.offline;
-  const isPrimary = data.status !== 'online';
+      function ServiceCard({ id, data }) {
+        const meta = SERVICE_META[id] || { label: id, role: id, icon: 'cpu', path: id };
+        const tone = STATUS_TONE[data.status] || STATUS_TONE.offline;
+        const isPrimary = data.status !== 'online';
 
-  const metrics = [];
-  if (data.response_time_ms != null) {
-    metrics.push({
-      k: 'Latencia',
-      v: <><span>{data.response_time_ms}</span><span style={{ color: 'var(--text-muted)', marginLeft: 3 }}>ms</span></>,
-      color: data.response_time_ms < 50  ? 'var(--color-success)' :
-             data.response_time_ms < 200 ? 'var(--color-warning)' :
-             'var(--color-danger)',
-    });
-  }
-  if (data.uptime_s != null)        metrics.push({ k: 'Uptime',  v: fmtUptime(data.uptime_s) });
-  if (data.environment)             metrics.push({ k: 'Entorno', v: data.environment, mono: false });
-  if (data.jwt_configured != null)  metrics.push({
-    k: 'JWT',
-    v: data.jwt_configured ? 'Configurado' : 'No configurado',
-    mono: false,
-    color: data.jwt_configured ? 'var(--color-success)' : 'var(--color-warning)',
-  });
-  metrics.push({ k: 'Ruta', v: meta.path });
+        const metrics = [];
+        if (data.response_time_ms != null) {
+          metrics.push({
+            k: 'Latencia',
+            v: (
+              <>
+                <span>{data.response_time_ms}</span>
+                <span style={{ color: 'var(--text-muted)', marginLeft: 3 }}>ms</span>
+              </>
+            ),
+            color:
+              data.response_time_ms < 50
+                ? 'var(--color-success)'
+                : data.response_time_ms < 200
+                  ? 'var(--color-warning)'
+                  : 'var(--color-danger)',
+          });
+        }
+        if (data.uptime_s != null) metrics.push({ k: 'Uptime', v: fmtUptime(data.uptime_s) });
+        if (data.environment) metrics.push({ k: 'Entorno', v: data.environment, mono: false });
+        if (data.jwt_configured != null)
+          metrics.push({
+            k: 'JWT',
+            v: data.jwt_configured ? 'Configurado' : 'No configurado',
+            mono: false,
+            color: data.jwt_configured ? 'var(--color-success)' : 'var(--color-warning)',
+          });
+        metrics.push({ k: 'Ruta', v: meta.path });
 
-  const seed  = id.charCodeAt(0) * 7 + (data.response_time_ms || data.uptime_s || 17);
-  const spark = useMemo(() => sparkData(seed), [seed]);
+        const seed = id.charCodeAt(0) * 7 + (data.response_time_ms || data.uptime_s || 17);
+        const spark = useMemo(() => sparkData(seed), [seed]);
 
-  return (
-    <div style={{
-      position: 'relative',
-      background: 'var(--card-bg)',
-      border: `1px solid ${isPrimary ? tone.border : 'var(--border-default)'}`,
-      borderRadius: 'var(--radius-lg)',
-      padding: '18px 18px 16px',
-      overflow: 'hidden',
-      transition: 'all 0.15s',
-      display: 'flex', flexDirection: 'column', gap: 16,
-    }}>
-      <div style={{
-        position: 'absolute',
-        top: 14, bottom: 14, left: 0,
-        width: 3,
-        borderRadius: '0 2px 2px 0',
-        background: tone.color,
-        opacity: isPrimary ? 1 : 0.55,
-      }} />
+        return (
+          <div
+            style={{
+              position: 'relative',
+              background: 'var(--card-bg)',
+              border: `1px solid ${isPrimary ? tone.border : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-lg)',
+              padding: '18px 18px 16px',
+              overflow: 'hidden',
+              transition: 'all 0.15s',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                top: 14,
+                bottom: 14,
+                left: 0,
+                width: 3,
+                borderRadius: '0 2px 2px 0',
+                background: tone.color,
+                opacity: isPrimary ? 1 : 0.55,
+              }}
+            />
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
-          <div style={{
-            width: 38, height: 38,
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--bg-elevated)',
-            border: '1px solid var(--border-muted)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
-          }}>
-            <Icon name={meta.icon} size={18} color={tone.color} />
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0 }}>
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Icon name={meta.icon} size={18} color={tone.color} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: 'var(--text-md)',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                      letterSpacing: 'var(--ls-tight)',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {meta.label}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: 'var(--font-body)',
+                      fontSize: 12,
+                      color: 'var(--text-secondary)',
+                      marginTop: 2,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {meta.role}
+                  </div>
+                </div>
+              </div>
+              <StatusPill status={data.status} />
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                gap: 12,
+                paddingTop: 12,
+                borderTop: '1px solid var(--border-muted)',
+              }}
+            >
+              {metrics.slice(0, 3).map((m, i) => (
+                <KeyVal key={i} k={m.k} v={m.v} mono={m.mono !== false} color={m.color} />
+              ))}
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'flex-end',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div className="label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                  {data.status === 'online' ? '60 min · ok' : '60 min · eventos'}
+                </div>
+                <Sparkline
+                  values={data.status === 'offline' ? spark.map((v) => v * 0.3) : spark}
+                  color={tone.color}
+                />
+              </div>
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  color: 'var(--text-muted)',
+                  letterSpacing: 'var(--ls-wide)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                svc.{id}
+              </div>
+            </div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 'var(--text-md)',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-              letterSpacing: 'var(--ls-tight)',
-              lineHeight: 1.2,
-            }}>{meta.label}</div>
-            <div style={{
-              fontFamily: 'var(--font-body)',
-              fontSize: 12,
-              color: 'var(--text-secondary)',
-              marginTop: 2,
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{meta.role}</div>
-          </div>
-        </div>
-        <StatusPill status={data.status} />
-      </div>
+        );
+      }
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-        gap: 12,
-        paddingTop: 12,
-        borderTop: '1px solid var(--border-muted)',
-      }}>
-        {metrics.slice(0, 3).map((m, i) => (
-          <KeyVal key={i} k={m.k} v={m.v} mono={m.mono !== false} color={m.color} />
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          <div className="label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-            {data.status === 'online' ? '60 min · ok' : '60 min · eventos'}
-          </div>
-          <Sparkline
-            values={data.status === 'offline' ? spark.map(v => v * 0.3) : spark}
-            color={tone.color}
-          />
-        </div>
-        <div style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: 10,
-          color: 'var(--text-muted)',
-          letterSpacing: 'var(--ls-wide)',
-          textTransform: 'uppercase',
-        }}>svc.{id}</div>
-      </div>
-    </div>
-  );
-}
-
-/* ============================================================
+      /* ============================================================
    TOP BAR
    ============================================================ */
-function TopBar({ summary, avgLatency, environment }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      gap: 24, padding: '0 4px', flexWrap: 'wrap',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div style={{
-          width: 36, height: 36,
-          borderRadius: 'var(--radius-md)',
-          background: 'var(--color-primary-bg)',
-          border: '1px solid var(--color-primary-border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon name="activity" size={18} color="var(--color-primary)" />
-        </div>
-        <div>
-          <div style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'var(--text-xl)',
-            fontWeight: 600,
-            color: 'var(--text-primary)',
-            letterSpacing: 'var(--ls-tight)',
-            lineHeight: 1,
-          }}>Panel de Salud de Servicios</div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, marginTop: 6,
-            fontSize: 12, color: 'var(--text-secondary)',
-          }}>
-            <span>Endpoint</span>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              padding: '1px 6px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--bg-elevated)',
-              border: '1px solid var(--border-muted)',
-              color: 'var(--text-primary)',
-              fontSize: 11,
-            }}>GET /api/status</span>
-            <span style={{ color: 'var(--text-muted)' }}>·</span>
-            <span>entorno</span>
-            <span style={{
-              fontFamily: 'var(--font-mono)',
-              color: environment === 'production' ? 'var(--color-success)' : 'var(--color-warning)',
-            }}>{environment}</span>
+      function TopBar({ summary, avgLatency, environment }) {
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 24,
+              padding: '0 4px',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-primary-bg)',
+                  border: '1px solid var(--color-primary-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="activity" size={18} color="var(--color-primary)" />
+              </div>
+              <div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 'var(--text-xl)',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                    letterSpacing: 'var(--ls-tight)',
+                    lineHeight: 1,
+                  }}
+                >
+                  Panel de Salud de Servicios
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginTop: 6,
+                    fontSize: 12,
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <span>Endpoint</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      padding: '1px 6px',
+                      borderRadius: 'var(--radius-sm)',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-muted)',
+                      color: 'var(--text-primary)',
+                      fontSize: 11,
+                    }}
+                  >
+                    GET /api/status
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>·</span>
+                  <span>entorno</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono)',
+                      color:
+                        environment === 'production'
+                          ? 'var(--color-success)'
+                          : 'var(--color-warning)',
+                    }}
+                  >
+                    {environment}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+              <SummaryStat
+                label="Servicios"
+                value={`${summary.online}/${summary.total}`}
+                accent={
+                  summary.online === summary.total ? 'var(--color-success)' : 'var(--color-warning)'
+                }
+              />
+              <SummaryStat label="Disponibilidad" value="99.98%" accent="var(--color-primary)" />
+              <SummaryStat
+                label="Latencia media"
+                value={
+                  <>
+                    <span>{avgLatency}</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: 13, marginLeft: 3 }}>
+                      ms
+                    </span>
+                  </>
+                }
+                accent="var(--color-primary)"
+              />
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      }
 
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
-        <SummaryStat
-          label="Servicios"
-          value={`${summary.online}/${summary.total}`}
-          accent={summary.online === summary.total ? 'var(--color-success)' : 'var(--color-warning)'}
-        />
-        <SummaryStat label="Disponibilidad" value="99.98%" accent="var(--color-primary)" />
-        <SummaryStat
-          label="Latencia media"
-          value={<><span>{avgLatency}</span><span style={{ color:'var(--text-muted)', fontSize:13, marginLeft:3 }}>ms</span></>}
-          accent="var(--color-primary)"
-        />
-      </div>
-    </div>
-  );
-}
+      function SummaryStat({ label, value, accent }) {
+        return (
+          <div
+            style={{
+              minWidth: 110,
+              padding: '8px 14px',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-surface)',
+              border: '1px solid var(--border-muted)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+            }}
+          >
+            <div className="label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+              {label}
+            </div>
+            <div
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 18,
+                fontWeight: 600,
+                color: accent,
+                lineHeight: 1.1,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
+              {value}
+            </div>
+          </div>
+        );
+      }
 
-function SummaryStat({ label, value, accent }) {
-  return (
-    <div style={{
-      minWidth: 110,
-      padding: '8px 14px',
-      borderRadius: 'var(--radius-md)',
-      background: 'var(--bg-surface)',
-      border: '1px solid var(--border-muted)',
-      display: 'flex', flexDirection: 'column', gap: 2,
-    }}>
-      <div className="label" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{label}</div>
-      <div style={{
-        fontFamily: 'var(--font-mono)',
-        fontSize: 18,
-        fontWeight: 600,
-        color: accent,
-        lineHeight: 1.1,
-        fontVariantNumeric: 'tabular-nums',
-      }}>{value}</div>
-    </div>
-  );
-}
+      function Legend({ tone, label }) {
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <StatusDot status={tone} size={6} />
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
+          </div>
+        );
+      }
 
-function Legend({ tone, label }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <StatusDot status={tone} size={6} />
-      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{label}</span>
-    </div>
-  );
-}
+      function RawPayload({ payload }) {
+        const [open, setOpen] = useState(false);
+        return (
+          <div
+            style={{
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-muted)',
+              background: 'var(--bg-surface)',
+              overflow: 'hidden',
+            }}
+          >
+            <button
+              onClick={() => setOpen((o) => !o)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Icon name="braces" size={14} color="var(--color-primary)" />
+                <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500 }}>
+                  Respuesta cruda
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                    padding: '1px 6px',
+                    background: 'var(--bg-elevated)',
+                    borderRadius: 'var(--radius-sm)',
+                  }}
+                >
+                  application/json
+                </span>
+              </div>
+              <Icon
+                name={open ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color="var(--text-muted)"
+              />
+            </button>
+            {open && (
+              <pre
+                style={{
+                  margin: 0,
+                  padding: '14px 18px 18px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                  lineHeight: 1.55,
+                  color: 'var(--text-secondary)',
+                  background: 'var(--bg-base)',
+                  borderTop: '1px solid var(--border-muted)',
+                  overflowX: 'auto',
+                }}
+              >
+                {JSON.stringify(payload, null, 2)}
+              </pre>
+            )}
+          </div>
+        );
+      }
 
-function RawPayload({ payload }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{
-      borderRadius: 'var(--radius-lg)',
-      border: '1px solid var(--border-muted)',
-      background: 'var(--bg-surface)',
-      overflow: 'hidden',
-    }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px',
-          background: 'transparent', border: 'none', cursor: 'pointer',
-          color: 'var(--text-primary)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Icon name="braces" size={14} color="var(--color-primary)" />
-          <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 500 }}>Respuesta cruda</span>
-          <span style={{
-            fontFamily: 'var(--font-mono)', fontSize: 11,
-            color: 'var(--text-muted)',
-            padding: '1px 6px',
-            background: 'var(--bg-elevated)',
-            borderRadius: 'var(--radius-sm)',
-          }}>application/json</span>
-        </div>
-        <Icon name={open ? 'chevron-up' : 'chevron-down'} size={14} color="var(--text-muted)" />
-      </button>
-      {open && (
-        <pre style={{
-          margin: 0,
-          padding: '14px 18px 18px',
-          fontFamily: 'var(--font-mono)',
-          fontSize: 12,
-          lineHeight: 1.55,
-          color: 'var(--text-secondary)',
-          background: 'var(--bg-base)',
-          borderTop: '1px solid var(--border-muted)',
-          overflowX: 'auto',
-        }}>{JSON.stringify(payload, null, 2)}</pre>
-      )}
-    </div>
-  );
-}
-
-/* ============================================================
+      /* ============================================================
    APP — conectado a /api/status
    ============================================================ */
-function App() {
-  const [statusData, setStatusData] = useState(null);
-  const [lastUpdate, setLastUpdate] = useState(Date.now());
-  const [refreshing, setRefreshing] = useState(false);
-  const [now, setNow] = useState(Date.now());
+      function App() {
+        const [statusData, setStatusData] = useState(null);
+        const [lastUpdate, setLastUpdate] = useState(Date.now());
+        const [refreshing, setRefreshing] = useState(false);
+        const [now, setNow] = useState(Date.now());
 
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
+        useEffect(() => {
+          const id = setInterval(() => setNow(Date.now()), 1000);
+          return () => clearInterval(id);
+        }, []);
 
-  const doFetch = async () => {
-    try {
-      const res = await fetch('/api/status', { cache: 'no-store', headers: { Accept: 'application/json' } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      setStatusData(json);
-      setLastUpdate(new Date(json.timestamp || Date.now()).getTime());
-    } catch (err) {
-      console.error('[health]', err);
-    }
-  };
+        const doFetch = async () => {
+          try {
+            const res = await fetch('/api/status', {
+              cache: 'no-store',
+              headers: { Accept: 'application/json' },
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            setStatusData(json);
+            setLastUpdate(new Date(json.timestamp || Date.now()).getTime());
+          } catch (err) {
+            console.error('[health]', err);
+          }
+        };
 
-  useEffect(() => {
-    doFetch();
-    const id = setInterval(doFetch, 10000);
-    return () => clearInterval(id);
-  }, []);
+        useEffect(() => {
+          doFetch();
+          const id = setInterval(doFetch, 10000);
+          return () => clearInterval(id);
+        }, []);
 
-  useEffect(() => { if (window.lucide) lucide.createIcons(); });
+        useEffect(() => {
+          if (window.lucide) lucide.createIcons();
+        });
 
-  const handleRefresh = () => {
-    setRefreshing(true);
-    doFetch().finally(() => setTimeout(() => setRefreshing(false), 800));
-  };
+        const handleRefresh = () => {
+          setRefreshing(true);
+          doFetch().finally(() => setTimeout(() => setRefreshing(false), 800));
+        };
 
-  const services = useMemo(() => statusData?.services || {}, [statusData]);
+        const services = useMemo(() => statusData?.services || {}, [statusData]);
 
-  const summary = useMemo(() => {
-    const vals = Object.values(services);
-    return {
-      total:    vals.length,
-      online:   vals.filter(s => s.status === 'online').length,
-      degraded: vals.filter(s => s.status === 'degraded').length,
-      offline:  vals.filter(s => s.status === 'offline').length,
-    };
-  }, [services]);
+        const summary = useMemo(() => {
+          const vals = Object.values(services);
+          return {
+            total: vals.length,
+            online: vals.filter((s) => s.status === 'online').length,
+            degraded: vals.filter((s) => s.status === 'degraded').length,
+            offline: vals.filter((s) => s.status === 'offline').length,
+          };
+        }, [services]);
 
-  const overall =
-    !statusData          ? 'degraded' :
-    summary.offline  > 0 ? 'offline'  :
-    summary.degraded > 0 ? 'degraded' :
-                           'online';
+        const overall = !statusData
+          ? 'degraded'
+          : summary.offline > 0
+            ? 'offline'
+            : summary.degraded > 0
+              ? 'degraded'
+              : 'online';
 
-  const avgLatency = useMemo(() => {
-    const lats = Object.values(services).map(s => s.response_time_ms).filter(v => v != null);
-    if (!lats.length) return '—';
-    return Math.round(lats.reduce((a, b) => a + b, 0) / lats.length);
-  }, [services]);
+        const avgLatency = useMemo(() => {
+          const lats = Object.values(services)
+            .map((s) => s.response_time_ms)
+            .filter((v) => v != null);
+          if (!lats.length) return '—';
+          return Math.round(lats.reduce((a, b) => a + b, 0) / lats.length);
+        }, [services]);
 
-  return (
-    <div style={{ minHeight: '100vh', padding: '32px 36px 60px', maxWidth: 1280, margin: '0 auto' }}>
-      <TopBar summary={summary} avgLatency={avgLatency} environment={services.api?.environment || '—'} />
+        return (
+          <div
+            style={{
+              minHeight: '100vh',
+              padding: '32px 36px 60px',
+              maxWidth: 1280,
+              margin: '0 auto',
+            }}
+          >
+            <TopBar
+              summary={summary}
+              avgLatency={avgLatency}
+              environment={services.api?.environment || '—'}
+            />
 
-      <div style={{ height: 24 }} />
+            <div style={{ height: 24 }} />
 
-      <HeroBanner
-        overall={overall}
-        summary={summary}
-        lastUpdate={lastUpdate}
-        autoRefresh={true}
-        onRefresh={handleRefresh}
-        refreshing={refreshing}
-      />
+            <HeroBanner
+              overall={overall}
+              summary={summary}
+              lastUpdate={lastUpdate}
+              autoRefresh={true}
+              onRefresh={handleRefresh}
+              refreshing={refreshing}
+            />
 
-      <div style={{ height: 28 }} />
+            <div style={{ height: 28 }} />
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div className="label" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-          Servicios monitoreados
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Legend tone="online"   label="Operativo" />
-          <Legend tone="degraded" label="Degradado" />
-          <Legend tone="offline"  label="Caído" />
-        </div>
-      </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 14,
+              }}
+            >
+              <div className="label" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                Servicios monitoreados
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <Legend tone="online" label="Operativo" />
+                <Legend tone="degraded" label="Degradado" />
+                <Legend tone="offline" label="Caído" />
+              </div>
+            </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-        {Object.entries(services).map(([id, data]) => (
-          <ServiceCard key={id} id={id} data={data} />
-        ))}
-      </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                gap: 16,
+              }}
+            >
+              {Object.entries(services).map(([id, data]) => (
+                <ServiceCard key={id} id={id} data={data} />
+              ))}
+            </div>
 
-      <div style={{ marginTop: 32 }}>
-        <RawPayload payload={statusData || {}} />
-      </div>
-    </div>
-  );
-}
+            <div style={{ marginTop: 32 }}>
+              <RawPayload payload={statusData || {}} />
+            </div>
+          </div>
+        );
+      }
 
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-</script>
-</body>
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+  </body>
 </html>

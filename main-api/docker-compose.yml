@@ -3,7 +3,7 @@ services:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-timescaledb
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       POSTGRES_DB: ${DB_NAME:-telemetry_platform}
       POSTGRES_USER: ${DB_USER:-postgres}
@@ -13,7 +13,7 @@ services:
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres}']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -22,7 +22,7 @@ services:
     build: .
     container_name: emeltec-main-api
     ports:
-      - "${PORT:-3000}:${PORT:-3000}"
+      - '${PORT:-3000}:${PORT:-3000}'
     env_file:
       - .env
     environment:

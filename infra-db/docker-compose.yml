@@ -10,7 +10,7 @@ services:
     container_name: timescaledb-infra
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - '5433:5432'
     environment:
       POSTGRES_USER: admin_infra
       POSTGRES_PASSWORD: Infra2026Secure!
@@ -21,7 +21,7 @@ services:
       # Script SQL de inicialización (se ejecuta SOLO la primera vez)
       - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin_infra -d db_infra"]
+      test: ['CMD-SHELL', 'pg_isready -U admin_infra -d db_infra']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     container_name: pgadmin4
     restart: unless-stopped
     ports:
-      - "5050:80"
+      - '5050:80'
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@infraproject.com
       PGADMIN_DEFAULT_PASSWORD: Admin2026!

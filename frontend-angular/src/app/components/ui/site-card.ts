@@ -15,7 +15,9 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
       @if (variant === 'superadmin') {
         <div class="flex items-start justify-between gap-3">
           <div class="flex min-w-0 items-start gap-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-600">
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-600"
+            >
               <span class="material-symbols-outlined text-[18px]">sensors</span>
             </div>
 
@@ -25,7 +27,9 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
             </div>
           </div>
 
-          <span class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-cyan-500">
+          <span
+            class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-cyan-500"
+          >
             chevron_right
           </span>
         </div>
@@ -47,20 +51,37 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
         <div class="mb-4 flex items-start justify-between">
           <div class="flex items-center gap-3">
             <div
-              [class]="'flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' + (selected ? 'bg-blue-50' : 'bg-slate-100 group-hover:bg-blue-50')"
+              [class]="
+                'flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
+                (selected ? 'bg-blue-50' : 'bg-slate-100 group-hover:bg-blue-50')
+              "
             >
               <span
-                [class]="'material-symbols-outlined transition-colors ' + (selected ? 'text-primary-container' : 'text-slate-500 group-hover:text-primary-container')"
-              >location_on</span>
+                [class]="
+                  'material-symbols-outlined transition-colors ' +
+                  (selected
+                    ? 'text-primary-container'
+                    : 'text-slate-500 group-hover:text-primary-container')
+                "
+                >location_on</span
+              >
             </div>
             <div>
-              <h3 class="max-w-[150px] truncate text-sm font-bold text-primary">{{ getSiteTitle() }}</h3>
+              <h3 class="max-w-[150px] truncate text-sm font-bold text-primary">
+                {{ getSiteTitle() }}
+              </h3>
               <p class="mt-0.5 text-xs text-slate-500">{{ getSiteSecondary() }}</p>
             </div>
           </div>
           <span
-            [class]="'material-symbols-outlined transition-all ' + (selected ? 'translate-x-1 text-primary-container' : 'text-slate-300 group-hover:translate-x-1 group-hover:text-primary-container')"
-          >chevron_right</span>
+            [class]="
+              'material-symbols-outlined transition-all ' +
+              (selected
+                ? 'translate-x-1 text-primary-container'
+                : 'text-slate-300 group-hover:translate-x-1 group-hover:text-primary-container')
+            "
+            >chevron_right</span
+          >
         </div>
 
         <div class="flex items-center justify-between border-t border-slate-100 pt-3">
@@ -108,12 +129,17 @@ export class SiteCardComponent {
   }
 
   getSiteSecondary(): string {
-    return this.pickFirst(['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) ?? 'Sin referencia';
+    return (
+      this.pickFirst(['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) ??
+      'Sin referencia'
+    );
   }
 
   getContextLine(): string {
-    return this.pickFirst(['empresa_nombre', 'company_name', 'sub_empresa_nombre', 'subCompanyName'])
-      ?? (this.contextLabel || 'Sin ubicacion');
+    return (
+      this.pickFirst(['empresa_nombre', 'company_name', 'sub_empresa_nombre', 'subCompanyName']) ??
+      (this.contextLabel || 'Sin ubicacion')
+    );
   }
 
   getDepthLabel(): string {

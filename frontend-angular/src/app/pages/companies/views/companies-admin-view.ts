@@ -86,7 +86,12 @@ export class CompaniesAdminViewComponent {
   ];
 
   headerTitle(): string {
-    const map: Record<string, string> = { general: 'General', instalaciones: 'Instalaciones', contactos: 'Contactos', usuarios: 'Usuarios' };
+    const map: Record<string, string> = {
+      general: 'General',
+      instalaciones: 'Instalaciones',
+      contactos: 'Contactos',
+      usuarios: 'Usuarios',
+    };
     return map[this.activeTab] ?? 'General';
   }
 

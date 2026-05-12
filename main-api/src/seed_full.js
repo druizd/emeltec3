@@ -29,7 +29,9 @@ function rand(min, max, decimals = 0) {
 
 async function insertTelemetry(rows) {
   if (!rows.length) return;
-  const placeholders = rows.map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`).join(', ');
+  const placeholders = rows
+    .map((_, i) => `($${i * 3 + 1}, $${i * 3 + 2}, $${i * 3 + 3})`)
+    .join(', ');
   const params = rows.flatMap(([time, serial, data]) => [time, serial, JSON.stringify(data)]);
   await db.query(`INSERT INTO equipo (time, id_serial, data) VALUES ${placeholders}`, params);
 }
@@ -133,27 +135,163 @@ async function seed() {
 
     const users = [
       // ── SuperAdmin ──────────────────────────────────────────────────────
-      { email: 'superadmin@gmail.com',        nombre: 'Jefe',       apellido: 'Maestro',    tipo: 'SuperAdmin', empresa: null,   sub: null,    cargo: 'Super Administrador',  tel: '+56912345678' },
-      { email: 'nicolas@emeltec.cl',          nombre: 'Nicolás',    apellido: 'Garrido',    tipo: 'SuperAdmin', empresa: null,   sub: null,    cargo: 'CTO Emeltec',          tel: '+56911111111' },
+      {
+        email: 'superadmin@gmail.com',
+        nombre: 'Jefe',
+        apellido: 'Maestro',
+        tipo: 'SuperAdmin',
+        empresa: null,
+        sub: null,
+        cargo: 'Super Administrador',
+        tel: '+56912345678',
+      },
+      {
+        email: 'nicolas@emeltec.cl',
+        nombre: 'Nicolás',
+        apellido: 'Garrido',
+        tipo: 'SuperAdmin',
+        empresa: null,
+        sub: null,
+        cargo: 'CTO Emeltec',
+        tel: '+56911111111',
+      },
       // ── Admin ────────────────────────────────────────────────────────────
-      { email: 'admin@gmail.com',             nombre: 'Administrador', apellido: 'Empresarial', tipo: 'Admin', empresa: 'E100', sub: null,   cargo: 'Jefe de Planta',       tel: '+56922222222' },
-      { email: 'andrea.gonzalez@demo.cl',     nombre: 'Andrea',     apellido: 'González',   tipo: 'Admin',      empresa: 'E100', sub: null,    cargo: 'Jefa de Operaciones',  tel: '+56933333333' },
-      { email: 'roberto.morales@minera.cl',   nombre: 'Roberto',    apellido: 'Morales',    tipo: 'Admin',      empresa: 'E200', sub: null,    cargo: 'Gerente de Mina',      tel: '+56944444444' },
-      { email: 'carmen.vidal@acuicola.cl',    nombre: 'Carmen',     apellido: 'Vidal',      tipo: 'Admin',      empresa: 'E300', sub: null,    cargo: 'Directora Técnica',    tel: '+56955555555' },
-      { email: 'pablo.rojas@agro.cl',         nombre: 'Pablo',      apellido: 'Rojas',      tipo: 'Admin',      empresa: 'E400', sub: null,    cargo: 'Administrador General', tel: '+56966666666' },
+      {
+        email: 'admin@gmail.com',
+        nombre: 'Administrador',
+        apellido: 'Empresarial',
+        tipo: 'Admin',
+        empresa: 'E100',
+        sub: null,
+        cargo: 'Jefe de Planta',
+        tel: '+56922222222',
+      },
+      {
+        email: 'andrea.gonzalez@demo.cl',
+        nombre: 'Andrea',
+        apellido: 'González',
+        tipo: 'Admin',
+        empresa: 'E100',
+        sub: null,
+        cargo: 'Jefa de Operaciones',
+        tel: '+56933333333',
+      },
+      {
+        email: 'roberto.morales@minera.cl',
+        nombre: 'Roberto',
+        apellido: 'Morales',
+        tipo: 'Admin',
+        empresa: 'E200',
+        sub: null,
+        cargo: 'Gerente de Mina',
+        tel: '+56944444444',
+      },
+      {
+        email: 'carmen.vidal@acuicola.cl',
+        nombre: 'Carmen',
+        apellido: 'Vidal',
+        tipo: 'Admin',
+        empresa: 'E300',
+        sub: null,
+        cargo: 'Directora Técnica',
+        tel: '+56955555555',
+      },
+      {
+        email: 'pablo.rojas@agro.cl',
+        nombre: 'Pablo',
+        apellido: 'Rojas',
+        tipo: 'Admin',
+        empresa: 'E400',
+        sub: null,
+        cargo: 'Administrador General',
+        tel: '+56966666666',
+      },
       // ── Cliente / Operador ───────────────────────────────────────────────
-      { email: 'cliente@gmail.com',           nombre: 'Observador', apellido: 'Visual',     tipo: 'Cliente',    empresa: 'E100', sub: 'SE101', cargo: 'Operador Turno',       tel: '+56977777777' },
-      { email: 'juan.perez@demo.cl',          nombre: 'Juan',       apellido: 'Pérez',      tipo: 'Cliente',    empresa: 'E100', sub: 'SE101', cargo: 'Técnico Eléctrico',    tel: '+56988888888' },
-      { email: 'maria.silva@demo.cl',         nombre: 'María',      apellido: 'Silva',      tipo: 'Cliente',    empresa: 'E100', sub: 'SE102', cargo: 'Supervisora de Turno', tel: '+56999999999' },
-      { email: 'felipe.castro@minera.cl',     nombre: 'Felipe',     apellido: 'Castro',     tipo: 'Cliente',    empresa: 'E200', sub: 'SE201', cargo: 'Operador Mina',        tel: '+56900000001' },
-      { email: 'diego.fuentes@minera.cl',     nombre: 'Diego',      apellido: 'Fuentes',    tipo: 'Cliente',    empresa: 'E200', sub: 'SE202', cargo: 'Operador Planta',      tel: '+56900000003' },
-      { email: 'valentina.rios@acuicola.cl',  nombre: 'Valentina',  apellido: 'Ríos',       tipo: 'Cliente',    empresa: 'E300', sub: 'SE301', cargo: 'Técnica Acuicultura',  tel: '+56900000002' },
-      { email: 'carlos.mendoza@acuicola.cl',  nombre: 'Carlos',     apellido: 'Mendoza',    tipo: 'Cliente',    empresa: 'E300', sub: 'SE302', cargo: 'Buzo Técnico',         tel: '+56900000005' },
-      { email: 'patricia.herrera@agro.cl',    nombre: 'Patricia',   apellido: 'Herrera',    tipo: 'Cliente',    empresa: 'E400', sub: 'SE401', cargo: 'Supervisora General',  tel: '+56900000004' },
+      {
+        email: 'cliente@gmail.com',
+        nombre: 'Observador',
+        apellido: 'Visual',
+        tipo: 'Cliente',
+        empresa: 'E100',
+        sub: 'SE101',
+        cargo: 'Operador Turno',
+        tel: '+56977777777',
+      },
+      {
+        email: 'juan.perez@demo.cl',
+        nombre: 'Juan',
+        apellido: 'Pérez',
+        tipo: 'Cliente',
+        empresa: 'E100',
+        sub: 'SE101',
+        cargo: 'Técnico Eléctrico',
+        tel: '+56988888888',
+      },
+      {
+        email: 'maria.silva@demo.cl',
+        nombre: 'María',
+        apellido: 'Silva',
+        tipo: 'Cliente',
+        empresa: 'E100',
+        sub: 'SE102',
+        cargo: 'Supervisora de Turno',
+        tel: '+56999999999',
+      },
+      {
+        email: 'felipe.castro@minera.cl',
+        nombre: 'Felipe',
+        apellido: 'Castro',
+        tipo: 'Cliente',
+        empresa: 'E200',
+        sub: 'SE201',
+        cargo: 'Operador Mina',
+        tel: '+56900000001',
+      },
+      {
+        email: 'diego.fuentes@minera.cl',
+        nombre: 'Diego',
+        apellido: 'Fuentes',
+        tipo: 'Cliente',
+        empresa: 'E200',
+        sub: 'SE202',
+        cargo: 'Operador Planta',
+        tel: '+56900000003',
+      },
+      {
+        email: 'valentina.rios@acuicola.cl',
+        nombre: 'Valentina',
+        apellido: 'Ríos',
+        tipo: 'Cliente',
+        empresa: 'E300',
+        sub: 'SE301',
+        cargo: 'Técnica Acuicultura',
+        tel: '+56900000002',
+      },
+      {
+        email: 'carlos.mendoza@acuicola.cl',
+        nombre: 'Carlos',
+        apellido: 'Mendoza',
+        tipo: 'Cliente',
+        empresa: 'E300',
+        sub: 'SE302',
+        cargo: 'Buzo Técnico',
+        tel: '+56900000005',
+      },
+      {
+        email: 'patricia.herrera@agro.cl',
+        nombre: 'Patricia',
+        apellido: 'Herrera',
+        tipo: 'Cliente',
+        empresa: 'E400',
+        sub: 'SE401',
+        cargo: 'Supervisora General',
+        tel: '+56900000004',
+      },
     ];
 
     for (const u of users) {
-      await db.query(`
+      await db.query(
+        `
         INSERT INTO usuario (id, nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id, password_hash)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
         ON CONFLICT (email) DO UPDATE SET
@@ -163,7 +301,9 @@ async function seed() {
           sub_empresa_id = EXCLUDED.sub_empresa_id,
           password_hash = EXCLUDED.password_hash,
           updated_at = NOW()
-      `, [uid(), u.nombre, u.apellido, u.email, u.tel, u.cargo, u.tipo, u.empresa, u.sub, hash]);
+      `,
+        [uid(), u.nombre, u.apellido, u.email, u.tel, u.cargo, u.tipo, u.empresa, u.sub, hash],
+      );
     }
 
     // ─────────────────────────────────────────────
@@ -202,7 +342,11 @@ async function seed() {
       const t = new Date(now - i * 30 * 60 * 1000);
       const reg1 = rand(1350, 1650);
       const reg4 = rand(205, 235);
-      telemetry.push([t, '151.65.22.2', { REG1: reg1, REG4: reg4, IR1: reg4 < 210 ? 'WARN' : 'OK' }]);
+      telemetry.push([
+        t,
+        '151.65.22.2',
+        { REG1: reg1, REG4: reg4, IR1: reg4 < 210 ? 'WARN' : 'OK' },
+      ]);
     }
 
     // S200 — Mina: oxígeno + CO (24h, cada 15min → 97 puntos)
@@ -242,7 +386,9 @@ async function seed() {
     console.log('  E300 — Acuícola del Sur S.A.       (Acuicultura)');
     console.log('  E400 — Agropecuaria Valle Verde    (Agroindustria)');
     console.log('\nSUB-EMPRESAS: SE101, SE102 (E100) | SE201, SE202 (E200) | SE301, SE302 (E300)');
-    console.log('\nSITIOS: S100–S101 (Demo) | S200–S202 (Minera) | S300–S301 (Acuícola) | S400 (Agro)');
+    console.log(
+      '\nSITIOS: S100–S101 (Demo) | S200–S202 (Minera) | S300–S301 (Acuícola) | S400 (Agro)',
+    );
     console.log('\nUSUARIOS — password: Test1234');
     console.log('  SuperAdmin:');
     console.log('    superadmin@gmail.com       → sin empresa');
@@ -264,7 +410,6 @@ async function seed() {
     console.log('    patricia.herrera@agro.cl   → E400');
     console.log(`\nTELEMETRÍA: ${telemetry.length} registros en 4 sitios`);
     console.log('ALERTAS: 8 configuradas\n');
-
   } catch (err) {
     console.error('\n[ERROR] Seed falló:', err.message);
     console.error(err.stack);

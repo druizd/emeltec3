@@ -20,7 +20,7 @@ exports.login = async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ ok: false, error: "Email y password son requeridos" });
+      return res.status(400).json({ ok: false, error: 'Email y password son requeridos' });
     }
 
     // Buscar al usuario (ahora incluye otp_hash y otp_expires_at)
@@ -28,11 +28,11 @@ exports.login = async (req, res, next) => {
       `SELECT id, nombre, email, tipo, empresa_id, sub_empresa_id,
               password_hash, otp_hash, otp_expires_at
        FROM usuario WHERE email = $1`,
-      [email]
+      [email],
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ ok: false, error: "Credenciales inválidas" });
+      return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
     const unUsuario = result.rows[0];
@@ -40,7 +40,8 @@ exports.login = async (req, res, next) => {
 
     // 1️⃣ Intentar con OTP (si tiene uno pendiente y no ha expirado)
     if (unUsuario.otp_hash) {
-      const otpExpired = unUsuario.otp_expires_at && new Date() > new Date(unUsuario.otp_expires_at);
+      const otpExpired =
+        unUsuario.otp_expires_at && new Date() > new Date(unUsuario.otp_expires_at);
 
       if (!otpExpired) {
         const otpMatch = await bcrypt.compare(password, unUsuario.otp_hash);
@@ -48,7 +49,7 @@ exports.login = async (req, res, next) => {
           // Invalidar OTP después de usarlo (un solo uso)
           await db.query(
             'UPDATE usuario SET otp_hash = NULL, otp_expires_at = NULL WHERE email = $1',
-            [email]
+            [email],
           );
           authenticated = true;
         }
@@ -62,7 +63,7 @@ exports.login = async (req, res, next) => {
     }
 
     if (!authenticated) {
-      return res.status(401).json({ ok: false, error: "Credenciales inválidas" });
+      return res.status(401).json({ ok: false, error: 'Credenciales inválidas' });
     }
 
     // Firmar JWT
@@ -71,7 +72,7 @@ exports.login = async (req, res, next) => {
       email: unUsuario.email,
       tipo: unUsuario.tipo,
       empresa_id: unUsuario.empresa_id,
-      sub_empresa_id: unUsuario.sub_empresa_id
+      sub_empresa_id: unUsuario.sub_empresa_id,
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '12h' });
@@ -84,10 +85,9 @@ exports.login = async (req, res, next) => {
         email: unUsuario.email,
         tipo: unUsuario.tipo,
         empresa_id: unUsuario.empresa_id,
-        sub_empresa_id: unUsuario.sub_empresa_id
-      }
+        sub_empresa_id: unUsuario.sub_empresa_id,
+      },
     });
-
   } catch (error) {
     next(error);
   }
@@ -101,9 +101,9 @@ exports.login = async (req, res, next) => {
 exports.requestCode = async (req, res, next) => {
   try {
     const { email, expires_minutes } = req.body;
-    
+
     if (!email) {
-      return res.status(400).json({ ok: false, error: "El correo es requerido" });
+      return res.status(400).json({ ok: false, error: 'El correo es requerido' });
     }
 
     // Calcular minutos de expiración
@@ -112,9 +112,14 @@ exports.requestCode = async (req, res, next) => {
     if (minutes > MAX_OTP_MINS) minutes = MAX_OTP_MINS;
 
     // 1. Validar que el usuario fue ingresado en la BDD por un Admin
-    const result = await db.query('SELECT id, nombre, email FROM usuario WHERE email = $1', [email]);
+    const result = await db.query('SELECT id, nombre, email FROM usuario WHERE email = $1', [
+      email,
+    ]);
     if (result.rows.length === 0) {
-      return res.status(403).json({ ok: false, error: "Este correo no ha sido autorizado en el sistema. Contacte a su administrador." });
+      return res.status(403).json({
+        ok: false,
+        error: 'Este correo no ha sido autorizado en el sistema. Contacte a su administrador.',
+      });
     }
 
     const usr = result.rows[0];
@@ -126,10 +131,11 @@ exports.requestCode = async (req, res, next) => {
     const expiresAt = new Date(Date.now() + minutes * 60 * 1000);
 
     // 3. Guardar OTP en columna separada — password_hash NO se toca
-    await db.query(
-      'UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE email = $3',
-      [otpHash, expiresAt, email]
-    );
+    await db.query('UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE email = $3', [
+      otpHash,
+      expiresAt,
+      email,
+    ]);
 
     // 4. Enviar OTP al correo
     const emailInfo = await emailService.sendWelcomeEmail(email, usr.nombre, otpCode);
@@ -138,9 +144,8 @@ exports.requestCode = async (req, res, next) => {
       ok: true,
       message: `Código enviado exitosamente. Válido por ${minutes} minutos.`,
       expires_at: expiresAt.toISOString(),
-      previewUrl: emailInfo.previewUrl || null
+      previewUrl: emailInfo.previewUrl || null,
     });
-
   } catch (error) {
     next(error);
   }

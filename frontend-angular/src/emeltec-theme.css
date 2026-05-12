@@ -20,105 +20,105 @@
 
 :root {
   /* --- Background Scale (dark mode) --- */
-  --bg-base: #080C12;
+  --bg-base: #080c12;
   /* deepest — body background */
-  --bg-surface: #0F1520;
+  --bg-surface: #0f1520;
   /* cards, panels */
   --bg-elevated: #162030;
   /* elevated cards, dropdowns */
-  --bg-subtle: #1C2A3E;
+  --bg-subtle: #1c2a3e;
   /* hover states, subtle fills */
   --bg-overlay: rgba(8, 12, 18, 0.85);
   /* modal backdrops */
 
   /* --- Border Scale --- */
-  --border-muted: #1E2D42;
+  --border-muted: #1e2d42;
   /* subtle separators */
   --border-default: #253550;
   /* default card borders */
-  --border-strong: #3A5070;
+  --border-strong: #3a5070;
   /* inputs, active borders */
-  --border-focus: #0DAFBD;
+  --border-focus: #0dafbd;
   /* focus ring */
 
   /* --- Text Scale --- */
-  --text-primary: #E8EDF5;
+  --text-primary: #e8edf5;
   /* headings, primary labels */
-  --text-secondary: #8B9BB8;
+  --text-secondary: #8b9bb8;
   /* supporting text */
-  --text-muted: #4A5A72;
+  --text-muted: #4a5a72;
   /* placeholders, disabled */
-  --text-inverse: #080C12;
+  --text-inverse: #080c12;
   /* text on teal backgrounds */
-  --text-link: #0DAFBD;
+  --text-link: #0dafbd;
   /* links */
 
   /* --- Brand / Primary: Electric Teal --- */
-  --teal-50: #E6FAFB;
-  --teal-100: #BDEFEF;
-  --teal-200: #7EDDE0;
-  --teal-300: #39C9CD;
-  --teal-400: #0DAFBD;
+  --teal-50: #e6fafb;
+  --teal-100: #bdefef;
+  --teal-200: #7edde0;
+  --teal-300: #39c9cd;
+  --teal-400: #0dafbd;
   /* ← primary brand */
-  --teal-500: #0899A5;
-  --teal-600: #067D88;
-  --teal-700: #04606A;
-  --teal-800: #02444C;
-  --teal-900: #01282D;
+  --teal-500: #0899a5;
+  --teal-600: #067d88;
+  --teal-700: #04606a;
+  --teal-800: #02444c;
+  --teal-900: #01282d;
 
   --color-primary: var(--teal-400);
   --color-primary-hover: var(--teal-300);
   --color-primary-dark: var(--teal-600);
-  --color-primary-bg: rgba(13, 175, 189, 0.10);
+  --color-primary-bg: rgba(13, 175, 189, 0.1);
   --color-primary-border: rgba(13, 175, 189, 0.25);
 
   /* --- Success (Enviado / active) --- */
-  --green-400: #22C55E;
-  --green-500: #16A34A;
-  --green-900: #052E16;
-  --color-success: #22C55E;
-  --color-success-bg: rgba(34, 197, 94, 0.10);
+  --green-400: #22c55e;
+  --green-500: #16a34a;
+  --green-900: #052e16;
+  --color-success: #22c55e;
+  --color-success-bg: rgba(34, 197, 94, 0.1);
   --color-success-border: rgba(34, 197, 94, 0.25);
 
   /* --- Warning (Pendiente) --- */
-  --amber-400: #FBBF24;
-  --amber-500: #F59E0B;
+  --amber-400: #fbbf24;
+  --amber-500: #f59e0b;
   --amber-900: #241600;
-  --color-warning: #FBBF24;
-  --color-warning-bg: rgba(251, 191, 36, 0.10);
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(251, 191, 36, 0.1);
   --color-warning-border: rgba(251, 191, 36, 0.25);
 
   /* --- Danger (Rechazado) --- */
-  --red-400: #F87171;
-  --red-500: #EF4444;
+  --red-400: #f87171;
+  --red-500: #ef4444;
   --red-900: #250606;
-  --color-danger: #F87171;
-  --color-danger-bg: rgba(248, 113, 113, 0.10);
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.1);
   --color-danger-border: rgba(248, 113, 113, 0.25);
 
   /* --- Info (secondary actions) --- */
-  --blue-400: #60A5FA;
-  --blue-500: #3B82F6;
-  --color-info: #60A5FA;
-  --color-info-bg: rgba(96, 165, 250, 0.10);
+  --blue-400: #60a5fa;
+  --blue-500: #3b82f6;
+  --color-info: #60a5fa;
+  --color-info-bg: rgba(96, 165, 250, 0.1);
   --color-info-border: rgba(96, 165, 250, 0.25);
 
   /* --- Accent: Purple (period selector) --- */
-  --purple-400: #A78BFA;
-  --purple-500: #7C3AED;
-  --color-accent-purple: #A78BFA;
+  --purple-400: #a78bfa;
+  --purple-500: #7c3aed;
+  --color-accent-purple: #a78bfa;
   --color-accent-purple-bg: rgba(167, 139, 250, 0.12);
 
   /* --- Accent: Magenta (full-period CTA) --- */
-  --pink-400: #F472B6;
-  --pink-500: #EC4899;
-  --color-accent-magenta: #F472B6;
+  --pink-400: #f472b6;
+  --pink-500: #ec4899;
+  --color-accent-magenta: #f472b6;
   --color-accent-magenta-bg: rgba(244, 114, 182, 0.12);
 
   /* --- Neutral/Slate Scale (shift cards, muted) --- */
   --slate-700: #334155;
-  --slate-800: #1E293B;
-  --slate-900: #0F172A;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
 
   /* ============================================================
      TYPOGRAPHY TOKENS
@@ -195,13 +195,13 @@
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.40);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.50);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.60);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
 
   /* Glow shadows (teal accent, for active cards) */
   --shadow-teal-sm: 0 0 0 1px rgba(13, 175, 189, 0.25), 0 2px 8px rgba(13, 175, 189, 0.15);
-  --shadow-teal-md: 0 0 0 1px rgba(13, 175, 189, 0.35), 0 4px 20px rgba(13, 175, 189, 0.20);
+  --shadow-teal-md: 0 0 0 1px rgba(13, 175, 189, 0.35), 0 4px 20px rgba(13, 175, 189, 0.2);
 
   /* ============================================================
      LAYOUT TOKENS

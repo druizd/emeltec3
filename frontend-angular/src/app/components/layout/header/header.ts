@@ -61,10 +61,14 @@ import { AuthService } from '../../../services/auth.service';
             </button>
 
             @if (userMenuOpen()) {
-              <div class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+              <div
+                class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+              >
                 <!-- User info -->
                 <div class="border-b border-[#E2E8F0] px-4 py-3">
-                  <p class="text-[13px] font-bold text-slate-800">{{ auth.user()?.nombre }} {{ auth.user()?.apellido }}</p>
+                  <p class="text-[13px] font-bold text-slate-800">
+                    {{ auth.user()?.nombre }} {{ auth.user()?.apellido }}
+                  </p>
                   <p class="text-[11px] text-slate-400">{{ auth.user()?.tipo }}</p>
                 </div>
                 <!-- Actions -->
@@ -80,7 +84,9 @@ import { AuthService } from '../../../services/auth.service';
                     type="button"
                     class="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
-                    <span class="material-symbols-outlined text-[16px] text-slate-400">notifications</span>
+                    <span class="material-symbols-outlined text-[16px] text-slate-400"
+                      >notifications</span
+                    >
                     Notificaciones
                   </button>
                 </div>
@@ -110,7 +116,7 @@ export class HeaderComponent implements OnInit {
   readonly userMenuOpen = signal(false);
 
   ngOnInit(): void {
-    this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe((e: any) => {
+    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e: any) => {
       this.currentUrl.set(e.urlAfterRedirects || e.url);
       this.userMenuOpen.set(false);
     });
@@ -125,7 +131,7 @@ export class HeaderComponent implements OnInit {
   }
 
   toggleUserMenu(): void {
-    this.userMenuOpen.update(v => !v);
+    this.userMenuOpen.update((v) => !v);
   }
 
   isDashboard(): boolean {

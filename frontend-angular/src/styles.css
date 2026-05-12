@@ -1,8 +1,8 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @font-face {
-  font-family: "Josefin Sans";
-  src: url("/fonts/JosefinSans-VariableFont_wght.ttf") format("truetype");
+  font-family: 'Josefin Sans';
+  src: url('/fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
   font-weight: 100 700;
   font-style: normal;
   font-display: swap;
@@ -10,21 +10,21 @@
 
 @theme {
   /* Paleta Emeltec Design System */
-  --color-primary: #0DAFBD;
-  --color-primary-container: #0899A5;
-  --color-on-primary-container: #F0FAFB;
-  --color-secondary: #64748B;
-  --color-secondary-container: #F8FAFC;
-  --color-background: #F0F2F5;
-  --color-surface: #FFFFFF;
-  --color-surface-container: #E2E8F0;
-  --color-on-surface: #1E293B;
-  --color-on-surface-variant: #64748B;
-  --color-outline-variant: #E2E8F0;
+  --color-primary: #0dafbd;
+  --color-primary-container: #0899a5;
+  --color-on-primary-container: #f0fafb;
+  --color-secondary: #64748b;
+  --color-secondary-container: #f8fafc;
+  --color-background: #f0f2f5;
+  --color-surface: #ffffff;
+  --color-surface-container: #e2e8f0;
+  --color-on-surface: #1e293b;
+  --color-on-surface-variant: #64748b;
+  --color-outline-variant: #e2e8f0;
 
   /* Fuentes */
-  --font-inter: "Inter", sans-serif;
-  --font-josefin: "Josefin Sans", sans-serif;
+  --font-inter: 'Inter', sans-serif;
+  --font-josefin: 'Josefin Sans', sans-serif;
 }
 
 @layer base {

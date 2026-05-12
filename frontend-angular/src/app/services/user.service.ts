@@ -15,10 +15,10 @@ export class UserService {
     const url = this.buildUsersUrl(filters);
 
     return this.http.get<ApiResponse<User[]>>(url).pipe(
-      tap(res => {
+      tap((res) => {
         if (res.ok) this.users.set(res.data);
       }),
-      finalize(() => this.loading.set(false))
+      finalize(() => this.loading.set(false)),
     );
   }
 

@@ -1,5 +1,9 @@
 const { m3hALs } = require('../utils/caudal');
-const { parseIEEE754, registrosModbusAFloat32, registrosModbusAUInt32 } = require('../utils/ieee754');
+const {
+  parseIEEE754,
+  registrosModbusAFloat32,
+  registrosModbusAUInt32,
+} = require('../utils/ieee754');
 const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
 
@@ -80,7 +84,7 @@ function applyLinearTransform(value, params = {}) {
   const base = requireFiniteNumber(value, 'valor');
   const factor = numberOrNull(params.factor) ?? 1;
   const offset = numberOrNull(params.offset) ?? 0;
-  return (base * factor) + offset;
+  return base * factor + offset;
 }
 
 function applyUInt32RegistersTransform({ rawData, mapping, params }) {
@@ -156,12 +160,14 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
 
 function responseKeyForMapping(mapping) {
   if (mapping.rol_dashboard && mapping.rol_dashboard !== 'generico') return mapping.rol_dashboard;
-  return cleanString(mapping.alias)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '') || mapping.d1;
+  return (
+    cleanString(mapping.alias)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || mapping.d1
+  );
 }
 
 function dashboardRoleForVariable(variable) {
@@ -214,7 +220,10 @@ function findRawLevelSensor(rawData) {
     if (
       numericValue !== null &&
       !text.includes('freatico') &&
-      (text.includes('nivel') || text.includes('level') || text.includes('sonda') || text.includes('altura agua'))
+      (text.includes('nivel') ||
+        text.includes('level') ||
+        text.includes('sonda') ||
+        text.includes('altura agua'))
     ) {
       return {
         key,
@@ -229,12 +238,14 @@ function findRawLevelSensor(rawData) {
 }
 
 function buildDerivedNivelFreatico({ variables, pozoConfig, rawData }) {
-  const source = variables.find((variable) =>
-    variable.ok &&
-    variable.transformacion !== 'nivel_freatico' &&
-    Number.isFinite(Number(variable.valor)) &&
-    isLevelSensorVariable(variable)
-  ) || findRawLevelSensor(rawData);
+  const source =
+    variables.find(
+      (variable) =>
+        variable.ok &&
+        variable.transformacion !== 'nivel_freatico' &&
+        Number.isFinite(Number(variable.valor)) &&
+        isLevelSensorVariable(variable),
+    ) || findRawLevelSensor(rawData);
 
   if (!source) return null;
 
@@ -273,7 +284,13 @@ function buildDerivedNivelFreatico({ variables, pozoConfig, rawData }) {
   return derived;
 }
 
-function buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData, telemetryError = null }) {
+function buildDashboardVariablesForRaw({
+  site,
+  mappings,
+  pozoConfig,
+  rawData,
+  telemetryError = null,
+}) {
   const variables = [];
 
   for (const mapping of mappings) {
@@ -285,7 +302,9 @@ function buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData, te
       id: mapping.id,
       key: isNivelFreaticoTransform ? 'nivel_freatico' : responseKeyForMapping(mapping),
       alias: mapping.alias,
-      rol_dashboard: isNivelFreaticoTransform ? 'nivel_freatico' : (mapping.rol_dashboard || 'generico'),
+      rol_dashboard: isNivelFreaticoTransform
+        ? 'nivel_freatico'
+        : mapping.rol_dashboard || 'generico',
       transformacion,
       unidad: mapping.unidad || null,
       fuente: {
@@ -314,8 +333,8 @@ function buildDashboardVariablesForRaw({ site, mappings, pozoConfig, rawData, te
     variables.push(variable);
   }
 
-  const alreadyHasNivelFreatico = variables.some((variable) =>
-    variable.key === 'nivel_freatico' || variable.transformacion === 'nivel_freatico'
+  const alreadyHasNivelFreatico = variables.some(
+    (variable) => variable.key === 'nivel_freatico' || variable.transformacion === 'nivel_freatico',
   );
 
   if (site.tipo_sitio === 'pozo' && !alreadyHasNivelFreatico && !telemetryError) {
@@ -393,34 +412,39 @@ function findHistoricalVariable(variables, role) {
   };
   const tokens = roleTokens[role] || [normalizeSearchText(role)];
 
-  return variables.find((variable) => {
-    if (role === 'nivel_freatico') {
+  return (
+    variables.find((variable) => {
+      if (role === 'nivel_freatico') {
+        const text = normalizeSearchText(
+          variable.key,
+          variable.alias,
+          variable.rol_dashboard,
+          variable.transformacion,
+        );
+        return text.includes('nivel freatico');
+      }
+
+      if (variable.rol_dashboard === role || variable.key === role) {
+        return true;
+      }
+
+      if (
+        role === 'totalizador' &&
+        ['uint32_registros', 'uint32'].includes(variable.transformacion)
+      ) {
+        return true;
+      }
+
       const text = normalizeSearchText(
         variable.key,
         variable.alias,
         variable.rol_dashboard,
-        variable.transformacion
+        variable.fuente?.d1,
+        variable.fuente?.d2,
       );
-      return text.includes('nivel freatico');
-    }
-
-    if (variable.rol_dashboard === role || variable.key === role) {
-      return true;
-    }
-
-    if (role === 'totalizador' && ['uint32_registros', 'uint32'].includes(variable.transformacion)) {
-      return true;
-    }
-
-    const text = normalizeSearchText(
-      variable.key,
-      variable.alias,
-      variable.rol_dashboard,
-      variable.fuente?.d1,
-      variable.fuente?.d2
-    );
-    return tokens.some((token) => text.includes(token));
-  }) || null;
+      return tokens.some((token) => text.includes(token));
+    }) || null
+  );
 }
 
 function serializeHistoricalVariable(variable) {
@@ -453,7 +477,9 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
     caudal: serializeHistoricalVariable(findHistoricalVariable(variables, 'caudal')),
     nivel: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel')),
     totalizador: serializeHistoricalVariable(findHistoricalVariable(variables, 'totalizador')),
-    nivel_freatico: serializeHistoricalVariable(findHistoricalVariable(variables, 'nivel_freatico')),
+    nivel_freatico: serializeHistoricalVariable(
+      findHistoricalVariable(variables, 'nivel_freatico'),
+    ),
   };
 }
 

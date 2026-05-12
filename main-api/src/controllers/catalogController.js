@@ -2,8 +2,8 @@
  * Controladores del catalogo.
  * Manejan dominios disponibles y dispositivos registrados en la base.
  */
-const pool = require("../config/db");
-const { listDomains, getDomain } = require("../utils/domains");
+const pool = require('../config/db');
+const { listDomains, getDomain } = require('../utils/domains');
 
 let devicesTableChecked = false;
 let devicesTableExists = false;
@@ -18,7 +18,7 @@ async function hasDevicesTable() {
          SELECT 1
          FROM information_schema.tables
          WHERE table_schema = 'public' AND table_name = 'devices'
-       ) AS exists`
+       ) AS exists`,
     );
     devicesTableExists = Boolean(rows[0]?.exists);
   } catch (err) {
@@ -48,12 +48,12 @@ async function getDevices(req, res, next) {
         ok: true,
         count: 0,
         data: [],
-        message: "La tabla public.devices no existe en esta base de datos.",
+        message: 'La tabla public.devices no existe en esta base de datos.',
       });
     }
 
     const params = [];
-    let where = "WHERE 1=1";
+    let where = 'WHERE 1=1';
 
     if (domain_slug) {
       where += ` AND dm.slug = $${params.length + 1}`;
@@ -86,7 +86,7 @@ async function getDevices(req, res, next) {
        LEFT JOIN public.domains dm ON dm.id = d.domain_id
        ${where}
        ORDER BY d.serial_id ASC`,
-      params
+      params,
     );
 
     return res.json({
@@ -109,7 +109,7 @@ async function createDevice(req, res, next) {
     if (!(await hasDevicesTable())) {
       return res.status(400).json({
         ok: false,
-        message: "La tabla public.devices no existe en esta base de datos.",
+        message: 'La tabla public.devices no existe en esta base de datos.',
       });
     }
 
@@ -118,7 +118,7 @@ async function createDevice(req, res, next) {
     if (!serial_id || !domain_slug) {
       return res.status(400).json({
         ok: false,
-        message: "Parámetros obligatorios: serial_id, domain_slug",
+        message: 'Parámetros obligatorios: serial_id, domain_slug',
       });
     }
 
@@ -157,8 +157,8 @@ async function createDevice(req, res, next) {
         name || null,
         location || null,
         JSON.stringify(metadata || {}),
-        typeof is_active === "boolean" ? is_active : null,
-      ]
+        typeof is_active === 'boolean' ? is_active : null,
+      ],
     );
 
     return res.status(201).json({ ok: true, data: rows[0] });

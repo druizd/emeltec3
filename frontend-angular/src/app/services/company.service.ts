@@ -22,22 +22,22 @@ export class CompanyService {
   fetchCompanies(): Observable<ApiResponse<Company[]>> {
     this.loading.set(true);
     return this.http.get<ApiResponse<Company[]>>('/api/companies').pipe(
-      tap(res => {
+      tap((res) => {
         if (res.ok) this.companies.set(res.data);
         this.loading.set(false);
-      })
+      }),
     );
   }
 
   fetchHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
     this.loading.set(true);
     return this.http.get<ApiResponse<CompanyNode[]>>(`/api/companies/tree?t=${Date.now()}`).pipe(
-      tap(res => {
+      tap((res) => {
         if (res.ok) {
           this.hierarchy.set(res.data);
         }
         this.loading.set(false);
-      })
+      }),
     );
   }
 
@@ -47,22 +47,22 @@ export class CompanyService {
 
   getSiteDashboardData(siteId: string): Observable<ApiResponse<SiteDashboardData>> {
     return this.http.get<ApiResponse<SiteDashboardData>>(
-      `/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`
+      `/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`,
     );
   }
 
   getSiteDashboardHistory(
     siteId: string,
-    limit = 500
+    limit = 500,
   ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
     return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
-      `/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`
+      `/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`,
     );
   }
 
   downloadSiteDashboardHistory(
     siteId: string,
-    options: { from: string; to: string; fields: string[]; format: 'csv' }
+    options: { from: string; to: string; fields: string[]; format: 'csv' },
   ): Observable<HttpResponse<Blob>> {
     return this.http.get(`/api/companies/sites/${siteId}/dashboard-history/export`, {
       observe: 'response',

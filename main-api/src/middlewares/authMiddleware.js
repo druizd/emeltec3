@@ -27,7 +27,10 @@ exports.protect = (req, res, next) => {
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.tipo)) {
-      return res.status(403).json({ ok: false, error: `El rol ${req.user ? req.user.tipo : 'desconocido'} no tiene acceso a esta acción` });
+      return res.status(403).json({
+        ok: false,
+        error: `El rol ${req.user ? req.user.tipo : 'desconocido'} no tiene acceso a esta acción`,
+      });
     }
     next();
   };

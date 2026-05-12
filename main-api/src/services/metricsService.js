@@ -2,7 +2,7 @@
  * Servicio de metricas de uso de la API.
  * Mantiene metricas generales por endpoint y metricas agregadas por variable.
  */
-const pool = require("../config/db");
+const pool = require('../config/db');
 
 let endpointMetricsTableEnsured = false;
 let variableMetricsTableEnsured = false;
@@ -25,13 +25,13 @@ async function ensureEndpointMetricsTable() {
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE (endpoint, domain_slug, serial_id)
       )
-      `
+      `,
     );
 
     endpointMetricsTableEnsured = true;
     return true;
   } catch (err) {
-    console.error("[metrics] Error al preparar api_metrics:", err.message);
+    console.error('[metrics] Error al preparar api_metrics:', err.message);
     return false;
   }
 }
@@ -54,13 +54,13 @@ async function ensureVariableMetricsTable() {
         updated_at TIMESTAMPTZ DEFAULT NOW(),
         UNIQUE (nombre_dato, serial_id)
       )
-      `
+      `,
     );
 
     variableMetricsTableEnsured = true;
     return true;
   } catch (err) {
-    console.error("[metrics] Error al preparar api_variable_metrics:", err.message);
+    console.error('[metrics] Error al preparar api_variable_metrics:', err.message);
     return false;
   }
 }
@@ -95,15 +95,10 @@ async function trackRequest(endpoint, domainSlug, serialId, bytesSent) {
          request_count = api_metrics.request_count + 1,
          bytes_sent = api_metrics.bytes_sent + EXCLUDED.bytes_sent,
          updated_at = NOW()`,
-      [
-        endpoint,
-        domainSlug || null,
-        serialId || null,
-        normalizeMetricValue(bytesSent),
-      ]
+      [endpoint, domainSlug || null, serialId || null, normalizeMetricValue(bytesSent)],
     );
   } catch (err) {
-    console.error("[metrics] Error al registrar endpoint:", err.message);
+    console.error('[metrics] Error al registrar endpoint:', err.message);
   }
 }
 
@@ -127,7 +122,7 @@ async function getRequestMetrics(endpoint, domainSlug, serialId) {
          AND domain_slug IS NOT DISTINCT FROM $2
          AND serial_id IS NOT DISTINCT FROM $3
        LIMIT 1`,
-      [endpoint, domainSlug || null, serialId || null]
+      [endpoint, domainSlug || null, serialId || null],
     );
 
     if (rows.length === 0) {
@@ -144,7 +139,7 @@ async function getRequestMetrics(endpoint, domainSlug, serialId) {
       updated_at: rows[0].updated_at || null,
     };
   } catch (err) {
-    console.error("[metrics] Error al consultar endpoint:", err.message);
+    console.error('[metrics] Error al consultar endpoint:', err.message);
 
     return {
       request_count_total: 0,
@@ -187,10 +182,10 @@ async function registerVariableMetric(nombreDato, serialId, bytesSent, durationM
         serialId || null,
         normalizeMetricValue(bytesSent),
         normalizeMetricValue(durationMs),
-      ]
+      ],
     );
   } catch (err) {
-    console.error("[metrics] Error al registrar variable:", err.message);
+    console.error('[metrics] Error al registrar variable:', err.message);
   }
 }
 
@@ -200,7 +195,7 @@ async function registerVariableMetrics(entries = []) {
       entry?.nombre_dato,
       entry?.serial_id,
       entry?.bytes_sent,
-      entry?.duration_ms
+      entry?.duration_ms,
     );
   }
 }
@@ -212,7 +207,7 @@ async function getVariableMetrics({ serialId = null, keys = [] } = {}) {
     }
 
     const params = [];
-    let where = "WHERE 1=1";
+    let where = 'WHERE 1=1';
 
     if (serialId) {
       params.push(serialId);
@@ -237,7 +232,7 @@ async function getVariableMetrics({ serialId = null, keys = [] } = {}) {
       ${where}
       ORDER BY bytes_sent DESC, request_count DESC, nombre_dato ASC
       `,
-      params
+      params,
     );
 
     return rows.map((row) => {
@@ -252,14 +247,12 @@ async function getVariableMetrics({ serialId = null, keys = [] } = {}) {
         bytes_sent: bytesSent,
         bytes_sent_kb: Number((bytesSent / 1024).toFixed(2)),
         duration_ms_total: durationMsTotal,
-        avg_duration_ms: requestCount > 0
-          ? Number((durationMsTotal / requestCount).toFixed(2))
-          : 0,
+        avg_duration_ms: requestCount > 0 ? Number((durationMsTotal / requestCount).toFixed(2)) : 0,
         updated_at: row.updated_at || null,
       };
     });
   } catch (err) {
-    console.error("[metrics] Error al consultar variables:", err.message);
+    console.error('[metrics] Error al consultar variables:', err.message);
     return [];
   }
 }

@@ -86,7 +86,12 @@ export class CompaniesGerenteViewComponent {
   ];
 
   headerTitle(): string {
-    const map: Record<string, string> = { general: 'General', instalaciones: 'Instalaciones', contactos: 'Contactos', usuarios: 'Mi Equipo' };
+    const map: Record<string, string> = {
+      general: 'General',
+      instalaciones: 'Instalaciones',
+      contactos: 'Contactos',
+      usuarios: 'Mi Equipo',
+    };
     return map[this.activeTab] ?? 'General';
   }
 

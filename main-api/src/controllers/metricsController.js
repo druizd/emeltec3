@@ -2,9 +2,9 @@
  * Controlador de metricas acumuladas.
  * Expone metricas generales por endpoint y metricas agregadas por variable.
  */
-const pool = require("../config/db");
-const { getLatestSerialId } = require("../utils/serial");
-const { getVariableMetrics } = require("../services/metricsService");
+const pool = require('../config/db');
+const { getLatestSerialId } = require('../utils/serial');
+const { getVariableMetrics } = require('../services/metricsService');
 
 function parseRequestedKeys(query) {
   const rawValues = [
@@ -16,23 +16,25 @@ function parseRequestedKeys(query) {
     query.variables,
   ];
 
-  return [...new Set(
-    rawValues
-      .flatMap((value) => {
-        if (Array.isArray(value)) return value;
-        if (value === undefined || value === null) return [];
-        return String(value).split(",");
-      })
-      .map((value) => String(value).trim())
-      .filter(Boolean)
-  )];
+  return [
+    ...new Set(
+      rawValues
+        .flatMap((value) => {
+          if (Array.isArray(value)) return value;
+          if (value === undefined || value === null) return [];
+          return String(value).split(',');
+        })
+        .map((value) => String(value).trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 async function getMetrics(req, res, next) {
   try {
     const { domain, serial_id } = req.query;
     const params = [];
-    let where = "WHERE 1=1";
+    let where = 'WHERE 1=1';
 
     if (domain) {
       where += ` AND domain_slug = $${params.length + 1}`;
@@ -48,7 +50,7 @@ async function getMetrics(req, res, next) {
        FROM api_metrics
        ${where}
        ORDER BY request_count DESC, bytes_sent DESC`,
-      params
+      params,
     );
 
     return res.json({

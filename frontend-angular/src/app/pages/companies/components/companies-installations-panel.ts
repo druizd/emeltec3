@@ -20,7 +20,13 @@ import { SiteCardComponent } from '../../../components/ui/site-card';
       @if (sites.length === 0 && !loading) {
         <div [class]="getEmptyStateClass()">
           <span class="material-symbols-outlined text-slate-300 text-5xl mb-4">inventory_2</span>
-          <p [class]="variant === 'superadmin' ? 'text-slate-500 text-sm font-semibold' : 'text-slate-400 font-bold uppercase tracking-widest'">
+          <p
+            [class]="
+              variant === 'superadmin'
+                ? 'text-slate-500 text-sm font-semibold'
+                : 'text-slate-400 font-bold uppercase tracking-widest'
+            "
+          >
             No hay instalaciones registradas
           </p>
         </div>

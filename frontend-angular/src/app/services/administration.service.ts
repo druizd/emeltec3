@@ -48,7 +48,9 @@ export class AdministrationService {
   }
 
   getDetectedDevices(limit = 100): Observable<ApiResponse<DetectedDevice[]>> {
-    return this.http.get<ApiResponse<DetectedDevice[]>>(`/api/companies/detected-devices?limit=${limit}`);
+    return this.http.get<ApiResponse<DetectedDevice[]>>(
+      `/api/companies/detected-devices?limit=${limit}`,
+    );
   }
 
   getSiteTypeCatalog(): Observable<ApiResponse<SiteTypeCatalogResponse>> {
@@ -61,55 +63,62 @@ export class AdministrationService {
 
   createSubCompany(
     companyId: string,
-    payload: CreateSubCompanyPayload
+    payload: CreateSubCompanyPayload,
   ): Observable<ApiResponse<SubCompanyNode>> {
     return this.http.post<ApiResponse<SubCompanyNode>>(
       `/api/companies/${companyId}/sub-companies`,
-      payload
+      payload,
     );
   }
 
   createSite(
     companyId: string,
     subCompanyId: string,
-    payload: CreateSitePayload
+    payload: CreateSitePayload,
   ): Observable<ApiResponse<SiteRecord>> {
     return this.http.post<ApiResponse<SiteRecord>>(
       `/api/companies/${companyId}/sub-companies/${subCompanyId}/sites`,
-      payload
+      payload,
     );
   }
 
-  updateSite(siteId: string, payload: Partial<CreateSitePayload>): Observable<ApiResponse<SiteRecord>> {
+  updateSite(
+    siteId: string,
+    payload: Partial<CreateSitePayload>,
+  ): Observable<ApiResponse<SiteRecord>> {
     return this.http.patch<ApiResponse<SiteRecord>>(`/api/companies/sites/${siteId}`, payload);
   }
 
   getSiteVariables(siteId: string): Observable<ApiResponse<SiteVariablesPayload>> {
-    return this.http.get<ApiResponse<SiteVariablesPayload>>(`/api/companies/sites/${siteId}/variables`);
+    return this.http.get<ApiResponse<SiteVariablesPayload>>(
+      `/api/companies/sites/${siteId}/variables`,
+    );
   }
 
   createSiteVariableMap(
     siteId: string,
-    payload: CreateVariableMapPayload
+    payload: CreateVariableMapPayload,
   ): Observable<ApiResponse<VariableMapping>> {
     return this.http.post<ApiResponse<VariableMapping>>(
       `/api/companies/sites/${siteId}/variables`,
-      payload
+      payload,
     );
   }
 
   updateSiteVariableMap(
     siteId: string,
     mapId: string,
-    payload: Partial<CreateVariableMapPayload>
+    payload: Partial<CreateVariableMapPayload>,
   ): Observable<ApiResponse<VariableMapping>> {
     return this.http.patch<ApiResponse<VariableMapping>>(
       `/api/companies/sites/${siteId}/variables/${mapId}`,
-      payload
+      payload,
     );
   }
 
   deleteSiteVariableMap(siteId: string, mapId: string): Observable<ApiResponse<unknown>> {
-    return this.http.delete<ApiResponse<unknown>>(`/api/companies/sites/${siteId}/variables/${mapId}`);
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/companies/sites/${siteId}/variables/${mapId}`,
+    );
   }
 }

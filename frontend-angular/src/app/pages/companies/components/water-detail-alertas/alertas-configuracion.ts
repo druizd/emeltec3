@@ -28,9 +28,10 @@ interface ReglaAlerta {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-3">
-
       <div class="flex items-center justify-between gap-3">
-        <p class="text-[11px] font-semibold text-slate-400">{{ reglas.length }} reglas configuradas</p>
+        <p class="text-[11px] font-semibold text-slate-400">
+          {{ reglas.length }} reglas configuradas
+        </p>
         <button
           type="button"
           class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-bold text-cyan-700 transition-colors hover:bg-cyan-100"
@@ -41,9 +42,11 @@ interface ReglaAlerta {
       </div>
 
       @for (regla of reglas; track regla.id) {
-        <article class="rounded-2xl border bg-white shadow-sm transition-all" [class]="regla.activa ? 'border-slate-200' : 'border-slate-100 opacity-60'">
+        <article
+          class="rounded-2xl border bg-white shadow-sm transition-all"
+          [class]="regla.activa ? 'border-slate-200' : 'border-slate-100 opacity-60'"
+        >
           <div class="flex items-start justify-between gap-3 px-5 py-4">
-
             <!-- Indicador activo + variable -->
             <div class="flex items-start gap-3">
               <button
@@ -62,7 +65,10 @@ interface ReglaAlerta {
                 <p class="font-black text-slate-800">{{ regla.variable }}</p>
                 <p class="mt-0.5 text-[12px] text-slate-500">
                   {{ condicionLabel(regla.condicion) }}
-                  <span class="font-mono font-bold text-slate-700">{{ regla.umbral }}{{ regla.umbralMax ? '–' + regla.umbralMax : '' }} {{ regla.unidad }}</span>
+                  <span class="font-mono font-bold text-slate-700"
+                    >{{ regla.umbral }}{{ regla.umbralMax ? '–' + regla.umbralMax : '' }}
+                    {{ regla.unidad }}</span
+                  >
                 </p>
               </div>
             </div>
@@ -75,14 +81,18 @@ interface ReglaAlerta {
                 class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
                 [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
               >
-                <span class="material-symbols-outlined text-[18px]">{{ reglaExpandida() === regla.id ? 'expand_less' : 'edit' }}</span>
+                <span class="material-symbols-outlined text-[18px]">{{
+                  reglaExpandida() === regla.id ? 'expand_less' : 'edit'
+                }}</span>
               </button>
             </div>
           </div>
 
           <!-- Resumen cuando está colapsado -->
           @if (reglaExpandida() !== regla.id) {
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-3">
+            <div
+              class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-3"
+            >
               <span class="flex items-center gap-1 text-[11px] text-slate-400">
                 <span class="material-symbols-outlined text-[14px]">calendar_today</span>
                 {{ diasResumen(regla.diasActivos) }}
@@ -93,7 +103,10 @@ interface ReglaAlerta {
               </span>
               <div class="flex gap-1">
                 @for (canal of regla.canales; track canal) {
-                  <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">{{ canalLabel(canal) }}</span>
+                  <span
+                    class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500"
+                    >{{ canalLabel(canal) }}</span
+                  >
                 }
               </div>
               @if (regla.escalarA.length) {
@@ -108,18 +121,21 @@ interface ReglaAlerta {
           <!-- Detalle editable cuando está expandido -->
           @if (reglaExpandida() === regla.id) {
             <div class="space-y-4 border-t border-slate-100 px-5 py-4">
-
               <!-- Días activos -->
               <div>
-                <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Días activos</p>
+                <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Días activos
+                </p>
                 <div class="flex gap-1.5">
                   @for (dia of diasSemana; track $index) {
                     <button
                       type="button"
                       (click)="toggleDia(regla, $index)"
-                      [class]="regla.diasActivos[$index]
-                        ? 'bg-cyan-600 text-white'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+                      [class]="
+                        regla.diasActivos[$index]
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      "
                       class="h-8 w-8 rounded-lg text-[11px] font-black transition-colors"
                     >
                       {{ dia }}
@@ -131,7 +147,9 @@ interface ReglaAlerta {
               <!-- Horario -->
               <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div class="sm:col-span-2">
-                  <p class="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">Desde</p>
+                  <p class="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Desde
+                  </p>
                   <input
                     type="time"
                     [(ngModel)]="regla.horaDesde"
@@ -139,7 +157,9 @@ interface ReglaAlerta {
                   />
                 </div>
                 <div class="sm:col-span-2">
-                  <p class="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">Hasta</p>
+                  <p class="mb-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Hasta
+                  </p>
                   <input
                     type="time"
                     [(ngModel)]="regla.horaHasta"
@@ -151,15 +171,19 @@ interface ReglaAlerta {
               <!-- Destinatarios + canales -->
               <div class="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Notifica a</p>
+                  <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Notifica a
+                  </p>
                   <div class="flex flex-wrap gap-1.5">
                     @for (rol of rolesDisponibles; track rol) {
                       <button
                         type="button"
                         (click)="toggleDestinatario(regla, rol)"
-                        [class]="regla.destinatarios.includes(rol)
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+                        [class]="
+                          regla.destinatarios.includes(rol)
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        "
                         class="rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors"
                       >
                         {{ rol }}
@@ -168,15 +192,19 @@ interface ReglaAlerta {
                   </div>
                 </div>
                 <div>
-                  <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Por canal</p>
+                  <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    Por canal
+                  </p>
                   <div class="flex flex-wrap gap-1.5">
                     @for (canal of canalesDisponibles; track canal.key) {
                       <button
                         type="button"
                         (click)="toggleCanal(regla, canal.key)"
-                        [class]="regla.canales.includes(canal.key)
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+                        [class]="
+                          regla.canales.includes(canal.key)
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        "
                         class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors"
                       >
                         <span class="material-symbols-outlined text-[13px]">{{ canal.icon }}</span>
@@ -205,9 +233,11 @@ interface ReglaAlerta {
                     <button
                       type="button"
                       (click)="toggleEscalamiento(regla, rol)"
-                      [class]="regla.escalarA.includes(rol)
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'"
+                      [class]="
+                        regla.escalarA.includes(rol)
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      "
                       class="rounded-full px-2.5 py-1 text-[11px] font-bold transition-colors"
                     >
                       {{ rol }}
@@ -248,25 +278,49 @@ export class AlertasConfiguracionComponent {
 
   reglas: ReglaAlerta[] = [
     {
-      id: '1', variable: 'Caudal mínimo', condicion: 'menor_que', umbral: 2.0, unidad: 'L/s',
-      activa: true, diasActivos: [true, true, true, true, true, false, false],
-      horaDesde: '07:00', horaHasta: '19:00',
-      destinatarios: ['SuperAdmin', 'Gerente'], canales: ['in_app', 'email'],
-      escalarA: ['Admin'], escalarMinutos: 15,
+      id: '1',
+      variable: 'Caudal mínimo',
+      condicion: 'menor_que',
+      umbral: 2.0,
+      unidad: 'L/s',
+      activa: true,
+      diasActivos: [true, true, true, true, true, false, false],
+      horaDesde: '07:00',
+      horaHasta: '19:00',
+      destinatarios: ['SuperAdmin', 'Gerente'],
+      canales: ['in_app', 'email'],
+      escalarA: ['Admin'],
+      escalarMinutos: 15,
     },
     {
-      id: '2', variable: 'Nivel freático crítico', condicion: 'mayor_que', umbral: 45.0, unidad: 'm',
-      activa: true, diasActivos: [true, true, true, true, true, true, true],
-      horaDesde: '00:00', horaHasta: '23:59',
-      destinatarios: ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'], canales: ['in_app', 'email', 'sms'],
-      escalarA: ['Admin', 'SuperAdmin'], escalarMinutos: 10,
+      id: '2',
+      variable: 'Nivel freático crítico',
+      condicion: 'mayor_que',
+      umbral: 45.0,
+      unidad: 'm',
+      activa: true,
+      diasActivos: [true, true, true, true, true, true, true],
+      horaDesde: '00:00',
+      horaHasta: '23:59',
+      destinatarios: ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'],
+      canales: ['in_app', 'email', 'sms'],
+      escalarA: ['Admin', 'SuperAdmin'],
+      escalarMinutos: 10,
     },
     {
-      id: '3', variable: 'Sin comunicación', condicion: 'mayor_que', umbral: 60, unidad: 'min',
-      activa: false, diasActivos: [true, true, true, true, true, false, false],
-      horaDesde: '08:00', horaHasta: '18:00',
-      destinatarios: ['SuperAdmin'], canales: ['in_app'],
-      escalarA: [], escalarMinutos: 30,
+      id: '3',
+      variable: 'Sin comunicación',
+      condicion: 'mayor_que',
+      umbral: 60,
+      unidad: 'min',
+      activa: false,
+      diasActivos: [true, true, true, true, true, false, false],
+      horaDesde: '08:00',
+      horaHasta: '18:00',
+      destinatarios: ['SuperAdmin'],
+      canales: ['in_app'],
+      escalarA: [],
+      escalarMinutos: 30,
     },
   ];
 

@@ -7,9 +7,8 @@
     "start:production-api": "ng serve --configuration production-api",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test --watch=false --browsers=ChromeHeadless",
-    "lint": "ng lint",
-    "lint:fix": "ng lint --fix"
+    "lint": "eslint \"src/**/*.{ts,html}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,html}\" --fix"
   },
   "private": true,
   "packageManager": "npm@11.12.1",

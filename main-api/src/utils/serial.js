@@ -8,7 +8,7 @@ async function getLatestSerialId(pool) {
     FROM equipo
     ORDER BY time DESC
     LIMIT 1
-    `
+    `,
   );
 
   return rows[0]?.id_serial || null;

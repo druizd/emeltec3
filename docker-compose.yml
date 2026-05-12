@@ -38,7 +38,7 @@ services:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-db
     ports:
-      - "${POSTGRES_HOST_PORT:-5433}:5432"
+      - '${POSTGRES_HOST_PORT:-5433}:5432'
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -48,7 +48,7 @@ services:
       - ./infra-db/init-db:/docker-entrypoint-initdb.d
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 5s
       timeout: 3s
       retries: 5
@@ -57,7 +57,7 @@ services:
     build: ./main-api
     container_name: emeltec-api
     ports:
-      - "${MAIN_API_HOST_PORT:-3000}:3000"
+      - '${MAIN_API_HOST_PORT:-3000}:3000'
     env_file:
       - ./main-api/.env
     environment:
@@ -76,7 +76,7 @@ services:
     build: ./auth-api
     container_name: emeltec-auth
     ports:
-      - "${AUTH_API_HOST_PORT:-3001}:3001"
+      - '${AUTH_API_HOST_PORT:-3001}:3001'
     env_file:
       - ./auth-api/.env
     environment:
@@ -96,7 +96,7 @@ services:
     build: ./frontend-angular
     container_name: emeltec-frontend
     ports:
-      - "${FRONTEND_HOST_PORT:-5173}:80"
+      - '${FRONTEND_HOST_PORT:-5173}:80'
     depends_on:
       main-api:
         condition: service_healthy
@@ -108,7 +108,7 @@ services:
     build: ./metrics-page
     container_name: emeltec-metrics-page
     ports:
-      - "127.0.0.1:${METRICS_HOST_PORT:-8081}:80"
+      - '127.0.0.1:${METRICS_HOST_PORT:-8081}:80'
     depends_on:
       main-api:
         condition: service_healthy
@@ -122,7 +122,7 @@ services:
       dockerfile: csvconsumer.Dockerfile
     container_name: emeltec-csvconsumer
     ports:
-      - "${CSVCONSUMER_HOST_PORT:-50051}:50051"
+      - '${CSVCONSUMER_HOST_PORT:-50051}:50051'
     environment:
       <<: *db-env
       GRPC_PORT: 50051

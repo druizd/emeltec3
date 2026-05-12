@@ -99,30 +99,82 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     id: 'pozo',
     label: 'Pozo',
     roles: [
-      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.' },
+      {
+        id: 'nivel',
+        label: 'Nivel',
+        unitHint: 'm',
+        description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.',
+      },
       { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado.' },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado.',
+      },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
-      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
-      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
-      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
     ],
   },
   electrico: {
     id: 'electrico',
     label: 'Electrico',
     roles: [
-      { id: 'energia', label: 'Energia', unitHint: 'kWh', description: 'Energia acumulada o consumida.' },
+      {
+        id: 'energia',
+        label: 'Energia',
+        unitHint: 'kWh',
+        description: 'Energia acumulada o consumida.',
+      },
       { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
-      { id: 'temperatura', label: 'Temperatura', unitHint: 'C', description: 'Temperatura asociada.' },
+      {
+        id: 'temperatura',
+        label: 'Temperatura',
+        unitHint: 'C',
+        description: 'Temperatura asociada.',
+      },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
-      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
-      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
-      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
     ],
   },
   riles: {
@@ -130,14 +182,35 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     label: 'Riles',
     roles: [
       { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      { id: 'totalizador', label: 'Totalizador', unitHint: 'm3', description: 'Volumen acumulado.' },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado.',
+      },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
-      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
-      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
-      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
     ],
   },
   proceso: {
@@ -145,14 +218,35 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     label: 'Proceso',
     roles: [
       { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
-      { id: 'temperatura', label: 'Temperatura', unitHint: 'C', description: 'Temperatura de proceso.' },
+      {
+        id: 'temperatura',
+        label: 'Temperatura',
+        unitHint: 'C',
+        description: 'Temperatura de proceso.',
+      },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
-      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
-      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
-      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
     ],
   },
   generico: {
@@ -160,9 +254,25 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     label: 'Generico',
     roles: [{ id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' }],
     transforms: [
-      { id: 'directo', label: 'Directo', description: 'Usa el valor entrante sin modificarlo.', enabled: true },
-      { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
-      { id: 'ieee754_32', label: 'IEEE754 32 bits', description: 'Une dos registros Modbus para obtener FLOAT32.', enabled: true, requiresD2: true },
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
     ],
   },
 };
@@ -174,26 +284,38 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 font-['Inter'] text-slate-800">
       <div class="mx-auto flex max-w-[1500px] flex-col gap-5">
-        <header class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between">
+        <header
+          class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between"
+        >
           <div class="min-w-0">
             <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[22px] text-cyan-700">settings_applications</span>
-              <p class="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700">SuperAdmin</p>
+              <span class="material-symbols-outlined text-[22px] text-cyan-700"
+                >settings_applications</span
+              >
+              <p class="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700">
+                SuperAdmin
+              </p>
             </div>
             <h1 class="mt-1 text-2xl font-black text-slate-900">Administracion</h1>
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
             <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Empresas</p>
+              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                Empresas
+              </p>
               <p class="text-lg font-black text-slate-900">{{ hierarchy().length }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Sitios</p>
+              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                Sitios
+              </p>
               <p class="text-lg font-black text-slate-900">{{ allSites().length }}</p>
             </div>
             <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">Seriales</p>
+              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                Seriales
+              </p>
               <p class="text-lg font-black text-slate-900">{{ detectedDevices().length }}</p>
             </div>
             <button
@@ -210,7 +332,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
         @if (status().message) {
           <div [class]="statusClass()" role="alert">
-            <span class="material-symbols-outlined text-[19px]">{{ status().type === 'success' ? 'check_circle' : 'error' }}</span>
+            <span class="material-symbols-outlined text-[19px]">{{
+              status().type === 'success' ? 'check_circle' : 'error'
+            }}</span>
             <span>{{ status().message }}</span>
           </div>
         }
@@ -235,7 +359,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             @if (loading()) {
               <section class="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
                 <div class="flex items-center gap-3 text-sm font-bold text-slate-500">
-                  <span class="material-symbols-outlined animate-spin text-[22px] text-cyan-600">progress_activity</span>
+                  <span class="material-symbols-outlined animate-spin text-[22px] text-cyan-600"
+                    >progress_activity</span
+                  >
                   Cargando administracion
                 </div>
               </section>
@@ -284,7 +410,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           <option value="Cliente">Cliente</option>
                         </select>
                       </div>
-                      <button type="submit" [disabled]="busyAction() === 'company'" class="primary-button">
+                      <button
+                        type="submit"
+                        [disabled]="busyAction() === 'company'"
+                        class="primary-button"
+                      >
                         <span class="material-symbols-outlined text-[18px]">domain_add</span>
                         {{ busyAction() === 'company' ? 'Guardando' : 'Crear empresa' }}
                       </button>
@@ -292,7 +422,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
                     <div class="overflow-hidden rounded-lg border border-slate-200">
                       <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                        <thead
+                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                        >
                           <tr>
                             <th class="px-4 py-3">Nombre</th>
                             <th class="px-4 py-3">RUT</th>
@@ -303,10 +435,19 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <tbody class="divide-y divide-slate-100">
                           @for (company of hierarchy(); track company.id) {
                             <tr class="bg-white">
-                              <td class="px-4 py-3 font-bold text-slate-800">{{ company.nombre }}</td>
+                              <td class="px-4 py-3 font-bold text-slate-800">
+                                {{ company.nombre }}
+                              </td>
                               <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
-                              <td class="px-4 py-3"><span class="rounded-md bg-cyan-50 px-2 py-1 text-xs font-bold text-cyan-700">{{ company.tipo_empresa }}</span></td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600">{{ countCompanySites(company) }}</td>
+                              <td class="px-4 py-3">
+                                <span
+                                  class="rounded-md bg-cyan-50 px-2 py-1 text-xs font-bold text-cyan-700"
+                                  >{{ company.tipo_empresa }}</span
+                                >
+                              </td>
+                              <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                {{ countCompanySites(company) }}
+                              </td>
                             </tr>
                           }
                         </tbody>
@@ -325,7 +466,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <div class="grid gap-6 p-6 lg:grid-cols-[420px_1fr]">
                     <form (submit)="createSubCompany($event)" class="space-y-4">
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Empresa padre</label>
+                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                          >Empresa padre</label
+                        >
                         <select
                           required
                           name="sub-company-parent"
@@ -361,7 +504,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           placeholder="76000000-0"
                         />
                       </div>
-                      <button type="submit" [disabled]="busyAction() === 'subcompany'" class="primary-button">
+                      <button
+                        type="submit"
+                        [disabled]="busyAction() === 'subcompany'"
+                        class="primary-button"
+                      >
                         <span class="material-symbols-outlined text-[18px]">add_business</span>
                         {{ busyAction() === 'subcompany' ? 'Guardando' : 'Crear subempresa' }}
                       </button>
@@ -369,7 +516,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
                     <div class="overflow-hidden rounded-lg border border-slate-200">
                       <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                        <thead
+                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                        >
                           <tr>
                             <th class="px-4 py-3">Nombre</th>
                             <th class="px-4 py-3">Empresa</th>
@@ -383,7 +532,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
                               <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
                               <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600">{{ sub.sites.length }}</td>
+                              <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                {{ sub.sites.length }}
+                              </td>
                             </tr>
                           }
                         </tbody>
@@ -402,7 +553,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <div class="grid gap-6 p-6 lg:grid-cols-[420px_1fr]">
                     <form (submit)="createSite($event)" class="space-y-4">
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Empresa padre</label>
+                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                          >Empresa padre</label
+                        >
                         <select
                           required
                           name="site-company"
@@ -417,7 +570,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </select>
                       </div>
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Subempresa</label>
+                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                          >Subempresa</label
+                        >
                         <select
                           required
                           name="site-subcompany"
@@ -432,7 +587,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </select>
                       </div>
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Tipo de instalacion</label>
+                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                          >Tipo de instalacion</label
+                        >
                         <select
                           name="site-type"
                           [ngModel]="siteForm().tipo_sitio"
@@ -457,7 +614,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </select>
                       </div>
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Nombre del sitio</label>
+                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                          >Nombre del sitio</label
+                        >
                         <input
                           required
                           name="site-description"
@@ -468,7 +627,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         />
                       </div>
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Serial del equipo</label>
+                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                          >Serial del equipo</label
+                        >
                         <input
                           required
                           name="site-serial"
@@ -488,14 +649,27 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           placeholder="Ciudad, faena o coordenadas"
                         />
                       </div>
-                      <button type="submit" [disabled]="busyAction() === 'site'" class="primary-button">
+                      <button
+                        type="submit"
+                        [disabled]="busyAction() === 'site'"
+                        class="primary-button"
+                      >
                         <span class="material-symbols-outlined text-[18px]">add_location_alt</span>
                         {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
                       </button>
                       @if (selectedSiteId()) {
-                        <button type="button" (click)="saveSelectedSite()" [disabled]="busyAction() === 'site-update'" class="secondary-button w-full">
+                        <button
+                          type="button"
+                          (click)="saveSelectedSite()"
+                          [disabled]="busyAction() === 'site-update'"
+                          class="secondary-button w-full"
+                        >
                           <span class="material-symbols-outlined text-[18px]">save</span>
-                          {{ busyAction() === 'site-update' ? 'Actualizando' : 'Actualizar seleccionado' }}
+                          {{
+                            busyAction() === 'site-update'
+                              ? 'Actualizando'
+                              : 'Actualizar seleccionado'
+                          }}
                         </button>
                       }
                     </form>
@@ -503,7 +677,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div class="space-y-4">
                       <div class="overflow-hidden rounded-lg border border-slate-200">
                         <table class="w-full text-left text-sm">
-                          <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                          <thead
+                            class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                          >
                             <tr>
                               <th class="px-4 py-3">Sitio</th>
                               <th class="px-4 py-3">Tipo</th>
@@ -514,20 +690,48 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </thead>
                           <tbody class="divide-y divide-slate-100">
                             @for (site of allSites(); track site.id) {
-                              <tr [class]="selectedSiteId() === site.id ? 'bg-cyan-50/70' : 'bg-white'">
-                                <td class="px-4 py-3 font-bold text-slate-800">{{ site.descripcion }}</td>
-                                <td class="px-4 py-3">
-                                  <span [class]="siteTypeBadgeClass(site.tipo_sitio)">{{ siteTypeLabel(site.tipo_sitio) }}</span>
+                              <tr
+                                [class]="
+                                  selectedSiteId() === site.id ? 'bg-cyan-50/70' : 'bg-white'
+                                "
+                              >
+                                <td class="px-4 py-3 font-bold text-slate-800">
+                                  {{ site.descripcion }}
                                 </td>
-                                <td class="px-4 py-3 font-mono text-xs text-slate-600">{{ site.id_serial }}</td>
+                                <td class="px-4 py-3">
+                                  <span [class]="siteTypeBadgeClass(site.tipo_sitio)">{{
+                                    siteTypeLabel(site.tipo_sitio)
+                                  }}</span>
+                                </td>
+                                <td class="px-4 py-3 font-mono text-xs text-slate-600">
+                                  {{ site.id_serial }}
+                                </td>
                                 <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
                                 <td class="px-4 py-3">
                                   <div class="flex justify-end gap-2">
-                                    <button type="button" (click)="selectSite(site.id)" class="icon-button" aria-label="Seleccionar sitio">
-                                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>
+                                    <button
+                                      type="button"
+                                      (click)="selectSite(site.id)"
+                                      class="icon-button"
+                                      aria-label="Seleccionar sitio"
+                                    >
+                                      <span
+                                        class="material-symbols-outlined text-[18px]"
+                                        aria-hidden="true"
+                                        >check_circle</span
+                                      >
                                     </button>
-                                    <button type="button" (click)="openSite(site)" class="icon-button" aria-label="Abrir sitio">
-                                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">monitoring</span>
+                                    <button
+                                      type="button"
+                                      (click)="openSite(site)"
+                                      class="icon-button"
+                                      aria-label="Abrir sitio"
+                                    >
+                                      <span
+                                        class="material-symbols-outlined text-[18px]"
+                                        aria-hidden="true"
+                                        >monitoring</span
+                                      >
                                     </button>
                                   </div>
                                 </td>
@@ -557,7 +761,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       >
                         <option value="">Selecciona sitio</option>
                         @for (site of allSites(); track site.id) {
-                          <option [value]="site.id">{{ site.descripcion }} - {{ site.id_serial }}</option>
+                          <option [value]="site.id">
+                            {{ site.descripcion }} - {{ site.id_serial }}
+                          </option>
                         }
                       </select>
                       <button type="button" (click)="loadDashboard()" class="secondary-button">
@@ -568,7 +774,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
                     <div class="overflow-hidden rounded-lg border border-slate-200">
                       <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                        <thead
+                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                        >
                           <tr>
                             <th class="px-4 py-3">Serial</th>
                             <th class="px-4 py-3">Ultimo registro</th>
@@ -580,21 +788,55 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <tbody class="divide-y divide-slate-100">
                           @for (device of detectedDevices(); track device.id_serial) {
                             <tr class="bg-white">
-                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">{{ device.id_serial }}</td>
+                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
+                                {{ device.id_serial }}
+                              </td>
                               <td class="px-4 py-3 text-slate-500">{{ device.ultimo_registro }}</td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-700">{{ device.total_registros }}</td>
+                              <td class="px-4 py-3 text-right font-bold text-slate-700">
+                                {{ device.total_registros }}
+                              </td>
                               <td class="px-4 py-3">
-                                <span [class]="device.sitio_id ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700' : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'">
+                                <span
+                                  [class]="
+                                    device.sitio_id
+                                      ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
+                                      : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'
+                                  "
+                                >
                                   {{ device.sitio_descripcion || 'Sin asignar' }}
                                 </span>
                               </td>
                               <td class="px-4 py-3">
                                 <div class="flex justify-end gap-2">
-                                  <button type="button" (click)="useDeviceInSiteForm(device)" class="icon-button" aria-label="Usar serial del dispositivo">
-                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">input</span>
+                                  <button
+                                    type="button"
+                                    (click)="useDeviceInSiteForm(device)"
+                                    class="icon-button"
+                                    aria-label="Usar serial del dispositivo"
+                                  >
+                                    <span
+                                      class="material-symbols-outlined text-[18px]"
+                                      aria-hidden="true"
+                                      >input</span
+                                    >
                                   </button>
-                                  <button type="button" (click)="assignDeviceToSelectedSite(device)" [disabled]="!selectedSiteId() || busyAction() === 'assign-device'" class="icon-button disabled:cursor-not-allowed disabled:opacity-40" aria-label="Asignar dispositivo al sitio" [attr.aria-disabled]="!selectedSiteId() || busyAction() === 'assign-device'">
-                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">link</span>
+                                  <button
+                                    type="button"
+                                    (click)="assignDeviceToSelectedSite(device)"
+                                    [disabled]="
+                                      !selectedSiteId() || busyAction() === 'assign-device'
+                                    "
+                                    class="icon-button disabled:cursor-not-allowed disabled:opacity-40"
+                                    aria-label="Asignar dispositivo al sitio"
+                                    [attr.aria-disabled]="
+                                      !selectedSiteId() || busyAction() === 'assign-device'
+                                    "
+                                  >
+                                    <span
+                                      class="material-symbols-outlined text-[18px]"
+                                      aria-hidden="true"
+                                      >link</span
+                                    >
                                   </button>
                                 </div>
                               </td>
@@ -606,92 +848,100 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
                 </section>
               }
-
             }
           </main>
         </div>
       </div>
     </div>
   `,
-  styles: [`
-    .field-control {
-      width: 100%;
-      border-radius: 0.5rem;
-      border: 1px solid rgb(203 213 225);
-      background: rgb(248 250 252);
-      padding: 0.625rem 0.75rem;
-      font-size: 0.875rem;
-      color: rgb(15 23 42);
-      outline: none;
-      transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease;
-    }
+  styles: [
+    `
+      .field-control {
+        width: 100%;
+        border-radius: 0.5rem;
+        border: 1px solid rgb(203 213 225);
+        background: rgb(248 250 252);
+        padding: 0.625rem 0.75rem;
+        font-size: 0.875rem;
+        color: rgb(15 23 42);
+        outline: none;
+        transition:
+          border-color 160ms ease,
+          background-color 160ms ease,
+          box-shadow 160ms ease;
+      }
 
-    .field-control:focus {
-      border-color: rgb(6 182 212);
-      background: white;
-      box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.14);
-    }
+      .field-control:focus {
+        border-color: rgb(6 182 212);
+        background: white;
+        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.14);
+      }
 
-    .primary-button,
-    .secondary-button,
-    .icon-button {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.45rem;
-      transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease;
-    }
+      .primary-button,
+      .secondary-button,
+      .icon-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.45rem;
+        transition:
+          background-color 160ms ease,
+          color 160ms ease,
+          border-color 160ms ease,
+          transform 160ms ease;
+      }
 
-    .primary-button {
-      min-height: 2.5rem;
-      width: 100%;
-      border-radius: 0.5rem;
-      background: rgb(8 145 178);
-      padding: 0.625rem 1rem;
-      font-size: 0.875rem;
-      font-weight: 800;
-      color: white;
-    }
+      .primary-button {
+        min-height: 2.5rem;
+        width: 100%;
+        border-radius: 0.5rem;
+        background: rgb(8 145 178);
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 800;
+        color: white;
+      }
 
-    .primary-button:hover:not(:disabled) {
-      background: rgb(14 116 144);
-    }
+      .primary-button:hover:not(:disabled) {
+        background: rgb(14 116 144);
+      }
 
-    .primary-button:disabled {
-      cursor: not-allowed;
-      opacity: 0.55;
-    }
+      .primary-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
 
-    .secondary-button {
-      min-height: 2.5rem;
-      border-radius: 0.5rem;
-      border: 1px solid rgb(203 213 225);
-      background: white;
-      padding: 0.625rem 1rem;
-      font-size: 0.875rem;
-      font-weight: 800;
-      color: rgb(71 85 105);
-    }
+      .secondary-button {
+        min-height: 2.5rem;
+        border-radius: 0.5rem;
+        border: 1px solid rgb(203 213 225);
+        background: white;
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 800;
+        color: rgb(71 85 105);
+      }
 
-    .secondary-button:hover {
-      background: rgb(248 250 252);
-    }
+      .secondary-button:hover {
+        background: rgb(248 250 252);
+      }
 
-    .icon-button {
-      height: 2rem;
-      width: 2rem;
-      border-radius: 0.5rem;
-      border: 1px solid rgb(226 232 240);
-      background: white;
-      color: rgb(71 85 105);
-    }
+      .icon-button {
+        height: 2rem;
+        width: 2rem;
+        border-radius: 0.5rem;
+        border: 1px solid rgb(226 232 240);
+        background: white;
+        color: rgb(71 85 105);
+      }
 
-    .icon-button:hover:not(:disabled) {
-      border-color: rgb(165 243 252);
-      background: rgb(236 254 255);
-      color: rgb(8 145 178);
-    }
-  `],
+      .icon-button:hover:not(:disabled) {
+        border-color: rgb(165 243 252);
+        background: rgb(236 254 255);
+        color: rgb(8 145 178);
+      }
+    `,
+  ],
 })
 export class AdministrationComponent implements OnInit {
   private api = inject(AdministrationService);
@@ -716,7 +966,12 @@ export class AdministrationComponent implements OnInit {
   selectedSubCompanyId = signal('');
   selectedSiteId = signal('');
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
-  siteVariables = signal<SiteVariablesPayload>({ site: this.emptySite(), pozo_config: null, variables: [], mappings: [] });
+  siteVariables = signal<SiteVariablesPayload>({
+    site: this.emptySite(),
+    pozo_config: null,
+    variables: [],
+    mappings: [],
+  });
 
   companyForm = signal<CompanyForm>({ nombre: '', rut: '', tipo_empresa: 'Agua' });
   subCompanyForm = signal<SubCompanyForm>({ empresa_id: '', nombre: '', rut: '' });
@@ -741,8 +996,8 @@ export class AdministrationComponent implements OnInit {
       company.subCompanies.map((subCompany) => ({
         ...subCompany,
         companyName: company.nombre,
-      }))
-    )
+      })),
+    ),
   );
 
   allSites = computed<SiteOption[]>(() =>
@@ -752,26 +1007,32 @@ export class AdministrationComponent implements OnInit {
           ...site,
           companyName: company.nombre,
           subCompanyName: subCompany.nombre,
-        }))
-      )
-    )
+        })),
+      ),
+    ),
   );
 
   subCompaniesForSiteForm = computed<SubCompanyOption[]>(() =>
-    this.allSubCompanies().filter((subCompany) => subCompany.empresa_id === this.siteForm().empresa_id)
+    this.allSubCompanies().filter(
+      (subCompany) => subCompany.empresa_id === this.siteForm().empresa_id,
+    ),
   );
 
   siteTypeOptions = computed<SiteTypeCatalogItem[]>(() => Object.values(this.siteTypeCatalog()));
 
   selectedSiteCatalog = computed<SiteTypeCatalogItem>(() => {
     const type = this.siteVariables().site.tipo_sitio || this.siteForm().tipo_sitio || 'generico';
-    return this.siteTypeCatalog()[type] || this.siteTypeCatalog()['generico'] || DEFAULT_SITE_TYPE_CATALOG['generico'];
+    return (
+      this.siteTypeCatalog()[type] ||
+      this.siteTypeCatalog()['generico'] ||
+      DEFAULT_SITE_TYPE_CATALOG['generico']
+    );
   });
 
   variableRoleOptions = computed<SiteTypeRoleOption[]>(() => this.selectedSiteCatalog().roles);
 
   variableTransformOptions = computed<SiteTypeTransformOption[]>(() =>
-    this.selectedSiteCatalog().transforms.filter((transform) => transform.enabled !== false)
+    this.selectedSiteCatalog().transforms.filter((transform) => transform.enabled !== false),
   );
 
   ngOnInit(): void {
@@ -843,7 +1104,7 @@ export class AdministrationComponent implements OnInit {
     const nextRole = this.inferVariableRoleFromValues(
       this.variableForm().alias || selected?.nombre_dato,
       d1,
-      this.variableForm().unidad
+      this.variableForm().unidad,
     );
     const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
 
@@ -854,10 +1115,14 @@ export class AdministrationComponent implements OnInit {
       tipo_dato: form.tipo_dato || this.guessDataType(selected?.valor_dato ?? null),
       rol_dashboard: form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
       unidad: form.unidad || roleOption?.unitHint || '',
-      transformacion: this.suggestTransformForRole(form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard, form.transformacion),
-      sandboxRaw: selected?.valor_dato === null || selected?.valor_dato === undefined
-        ? form.sandboxRaw
-        : String(selected.valor_dato),
+      transformacion: this.suggestTransformForRole(
+        form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
+        form.transformacion,
+      ),
+      sandboxRaw:
+        selected?.valor_dato === null || selected?.valor_dato === undefined
+          ? form.sandboxRaw
+          : String(selected.valor_dato),
     }));
   }
 
@@ -867,8 +1132,8 @@ export class AdministrationComponent implements OnInit {
     this.variableForm.update((form) => ({
       ...form,
       transformacion: normalizedTransform,
-      factor: this.isLinearTransformValue(normalizedTransform) ? (form.factor || '1') : '1',
-      offset: this.isLinearTransformValue(normalizedTransform) ? (form.offset || '0') : '0',
+      factor: this.isLinearTransformValue(normalizedTransform) ? form.factor || '1' : '1',
+      offset: this.isLinearTransformValue(normalizedTransform) ? form.offset || '0' : '0',
     }));
   }
 
@@ -885,11 +1150,14 @@ export class AdministrationComponent implements OnInit {
   }
 
   selectedVariableTransform(): SiteTypeTransformOption | undefined {
-    return this.variableTransformOptions().find((transform) => transform.id === this.variableForm().transformacion);
+    return this.variableTransformOptions().find(
+      (transform) => transform.id === this.variableForm().transformacion,
+    );
   }
 
   calculatorButtonClass(transformId: string): string {
-    const base = 'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-black uppercase tracking-[0.1em] transition';
+    const base =
+      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-black uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
       ? `${base} border-cyan-300 bg-cyan-100 text-cyan-900`
       : `${base} border-cyan-100 bg-white text-cyan-800 hover:border-cyan-200 hover:bg-cyan-50`;
@@ -907,7 +1175,7 @@ export class AdministrationComponent implements OnInit {
       const factor = this.parsePreviewNumber(form.factor) ?? 1;
       const offset = this.parsePreviewNumber(form.offset) ?? 0;
       if (raw === null) return 'Valor crudo no numerico';
-      return `${this.formatPreviewNumber((raw * factor) + offset)}${unit}`;
+      return `${this.formatPreviewNumber(raw * factor + offset)}${unit}`;
     }
 
     if (form.transformacion === 'ieee754_32') {
@@ -972,34 +1240,36 @@ export class AdministrationComponent implements OnInit {
     }
 
     this.busyAction.set('site');
-    this.api.createSite(form.empresa_id, form.sub_empresa_id, {
-      descripcion: form.descripcion,
-      id_serial: form.id_serial,
-      ubicacion: form.ubicacion || null,
-      tipo_sitio: form.tipo_sitio,
-      activo: form.activo,
-    }).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
-        this.setSuccess(res.message || 'Sitio creado.');
-        this.selectedSiteId.set(res.data.id);
-        this.siteForm.update((current) => ({
-          ...current,
-          descripcion: '',
-          ubicacion: '',
-          profundidad_pozo_m: '',
-          profundidad_sensor_m: '',
-          nivel_estatico_manual_m: '',
-          obra_dga: '',
-          slug: '',
-        }));
-        this.loadDashboard();
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible crear el sitio.'));
-      },
-    });
+    this.api
+      .createSite(form.empresa_id, form.sub_empresa_id, {
+        descripcion: form.descripcion,
+        id_serial: form.id_serial,
+        ubicacion: form.ubicacion || null,
+        tipo_sitio: form.tipo_sitio,
+        activo: form.activo,
+      })
+      .subscribe({
+        next: (res) => {
+          this.busyAction.set('');
+          this.setSuccess(res.message || 'Sitio creado.');
+          this.selectedSiteId.set(res.data.id);
+          this.siteForm.update((current) => ({
+            ...current,
+            descripcion: '',
+            ubicacion: '',
+            profundidad_pozo_m: '',
+            profundidad_sensor_m: '',
+            nivel_estatico_manual_m: '',
+            obra_dga: '',
+            slug: '',
+          }));
+          this.loadDashboard();
+        },
+        error: (err: unknown) => {
+          this.busyAction.set('');
+          this.setError(this.errorMessage(err, 'No fue posible crear el sitio.'));
+        },
+      });
   }
 
   saveSelectedSite(): void {
@@ -1012,27 +1282,31 @@ export class AdministrationComponent implements OnInit {
     }
 
     this.busyAction.set('site-update');
-    this.api.updateSite(siteId, {
-      descripcion: form.descripcion,
-      id_serial: form.id_serial,
-      ubicacion: form.ubicacion || null,
-      tipo_sitio: form.tipo_sitio,
-      activo: form.activo,
-    }).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
-        this.setSuccess(res.message || 'Sitio actualizado.');
-        this.loadDashboard();
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible actualizar el sitio.'));
-      },
-    });
+    this.api
+      .updateSite(siteId, {
+        descripcion: form.descripcion,
+        id_serial: form.id_serial,
+        ubicacion: form.ubicacion || null,
+        tipo_sitio: form.tipo_sitio,
+        activo: form.activo,
+      })
+      .subscribe({
+        next: (res) => {
+          this.busyAction.set('');
+          this.setSuccess(res.message || 'Sitio actualizado.');
+          this.loadDashboard();
+        },
+        error: (err: unknown) => {
+          this.busyAction.set('');
+          this.setError(this.errorMessage(err, 'No fue posible actualizar el sitio.'));
+        },
+      });
   }
 
   selectCompanyForSite(companyId: string): void {
-    const firstSubCompany = this.allSubCompanies().find((subCompany) => subCompany.empresa_id === companyId);
+    const firstSubCompany = this.allSubCompanies().find(
+      (subCompany) => subCompany.empresa_id === companyId,
+    );
     this.siteForm.update((form) => ({
       ...form,
       empresa_id: companyId,
@@ -1044,7 +1318,12 @@ export class AdministrationComponent implements OnInit {
     this.selectedSiteId.set(siteId);
     const site = this.allSites().find((item) => item.id === siteId);
     if (!site) {
-      this.siteVariables.set({ site: this.emptySite(), pozo_config: null, variables: [], mappings: [] });
+      this.siteVariables.set({
+        site: this.emptySite(),
+        pozo_config: null,
+        variables: [],
+        mappings: [],
+      });
       return;
     }
 
@@ -1075,7 +1354,8 @@ export class AdministrationComponent implements OnInit {
           this.patchPozoConfigForm(res.data.pozo_config);
         }
       },
-      error: (err: unknown) => this.setError(this.errorMessage(err, 'No fue posible cargar variables.')),
+      error: (err: unknown) =>
+        this.setError(this.errorMessage(err, 'No fue posible cargar variables.')),
     });
   }
 
@@ -1119,7 +1399,10 @@ export class AdministrationComponent implements OnInit {
       transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
       factor: this.configNumberToString(params?.factor) || '1',
       offset: this.configNumberToString(params?.offset) || '0',
-      sandboxRaw: variable.valor_dato === null || variable.valor_dato === undefined ? '' : String(variable.valor_dato),
+      sandboxRaw:
+        variable.valor_dato === null || variable.valor_dato === undefined
+          ? ''
+          : String(variable.valor_dato),
     });
   }
 
@@ -1225,9 +1508,13 @@ export class AdministrationComponent implements OnInit {
 
   private seedSelections(): void {
     const firstCompany = this.hierarchy()[0];
-    const currentCompanyExists = this.hierarchy().some((company) => company.id === this.selectedCompanyId());
+    const currentCompanyExists = this.hierarchy().some(
+      (company) => company.id === this.selectedCompanyId(),
+    );
     const companyId = currentCompanyExists ? this.selectedCompanyId() : firstCompany?.id || '';
-    const firstSubCompany = this.allSubCompanies().find((subCompany) => subCompany.empresa_id === companyId);
+    const firstSubCompany = this.allSubCompanies().find(
+      (subCompany) => subCompany.empresa_id === companyId,
+    );
     const currentSiteExists = this.allSites().some((site) => site.id === this.selectedSiteId());
 
     this.selectedCompanyId.set(companyId);
@@ -1312,9 +1599,22 @@ export class AdministrationComponent implements OnInit {
     const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
 
     if (text.includes('freatico') && availableRoles.has('nivel')) return 'nivel';
-    if ((text.includes('nivel') || text.includes('level') || text.includes('sonda')) && availableRoles.has('nivel')) return 'nivel';
-    if ((text.includes('caudal') || text.includes('l s') || text.includes('lps')) && availableRoles.has('caudal')) return 'caudal';
-    if (text.includes('totalizador') || text.includes('totalizado') || text.includes('acumulado') || text.includes('volumen')) {
+    if (
+      (text.includes('nivel') || text.includes('level') || text.includes('sonda')) &&
+      availableRoles.has('nivel')
+    )
+      return 'nivel';
+    if (
+      (text.includes('caudal') || text.includes('l s') || text.includes('lps')) &&
+      availableRoles.has('caudal')
+    )
+      return 'caudal';
+    if (
+      text.includes('totalizador') ||
+      text.includes('totalizado') ||
+      text.includes('acumulado') ||
+      text.includes('volumen')
+    ) {
       return availableRoles.has('totalizador') ? 'totalizador' : 'generico';
     }
 
@@ -1339,14 +1639,24 @@ export class AdministrationComponent implements OnInit {
   private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
     if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
     if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
-    if (transformacion === 'caudal' || transformacion === 'caudal_m3h_lps' || transformacion === 'nivel_freatico') return 'lineal';
+    if (
+      transformacion === 'caudal' ||
+      transformacion === 'caudal_m3h_lps' ||
+      transformacion === 'nivel_freatico'
+    )
+      return 'lineal';
     return 'directo';
   }
 
   private normalizeVariableRoleForForm(role: string | null | undefined): string {
-    const normalizedInput = String(role ?? '').trim().toLowerCase();
-    const normalized = normalizedInput === 'nivel_freatico' ? 'nivel' : normalizedInput || 'generico';
-    return this.variableRoleOptions().some((option) => option.id === normalized) ? normalized : 'generico';
+    const normalizedInput = String(role ?? '')
+      .trim()
+      .toLowerCase();
+    const normalized =
+      normalizedInput === 'nivel_freatico' ? 'nivel' : normalizedInput || 'generico';
+    return this.variableRoleOptions().some((option) => option.id === normalized)
+      ? normalized
+      : 'generico';
   }
 
   private suggestTransformForRole(role: string, currentTransform: string): string {
@@ -1376,7 +1686,9 @@ export class AdministrationComponent implements OnInit {
   }
 
   private parsePreviewNumber(value: string): number | null {
-    const normalized = String(value ?? '').trim().replace(',', '.');
+    const normalized = String(value ?? '')
+      .trim()
+      .replace(',', '.');
     if (!normalized) return null;
     const parsed = Number(normalized);
     return Number.isFinite(parsed) ? parsed : null;
@@ -1385,7 +1697,11 @@ export class AdministrationComponent implements OnInit {
   private formatPreviewNumber(value: number): string {
     if (!Number.isFinite(value)) return 'No calculable';
     const rounded = Math.round(value * 1000) / 1000;
-    return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+    return Number.isInteger(rounded)
+      ? String(rounded)
+      : String(rounded)
+          .replace(/(\.\d*?)0+$/, '$1')
+          .replace(/\.$/, '');
   }
 
   private numberOrNull(value: string): number | null {

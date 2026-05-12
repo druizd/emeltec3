@@ -46,7 +46,9 @@ import { Component } from '@angular/core';
             <div class="skeleton h-10 w-24 rounded-full"></div>
           </div>
 
-          <div class="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(360px,1.4fr)]">
+          <div
+            class="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(360px,1.4fr)]"
+          >
             <div class="skeleton h-56 rounded-[28px]"></div>
             <div class="skeleton h-56 rounded-[28px]"></div>
 

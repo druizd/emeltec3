@@ -3,31 +3,31 @@
  * Exponen consultas historicas, por preset y una vista "online"
  * con el ultimo valor conocido de cada variable por equipo.
  */
-const pool = require("../config/db");
-const { getLatestSerialId } = require("../utils/serial");
-const { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } = require("../utils/timezone");
+const pool = require('../config/db');
+const { getLatestSerialId } = require('../utils/serial');
+const { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } = require('../utils/timezone');
 const {
   trackRequest,
   getRequestMetrics,
   registerVariableMetrics,
-} = require("../services/metricsService");
+} = require('../services/metricsService');
 
 const PRESET_ALIASES = {
-  "24h": { amount: 24, unit: "hours", canonical: "24h" },
-  "7d": { amount: 7, unit: "days", canonical: "7d" },
-  "30d": { amount: 30, unit: "days", canonical: "30d" },
-  "365d": { amount: 365, unit: "days", canonical: "365d" },
-  "1y": { amount: 365, unit: "days", canonical: "365d" },
-  "1a": { amount: 365, unit: "days", canonical: "365d" },
-  "1year": { amount: 365, unit: "days", canonical: "365d" },
+  '24h': { amount: 24, unit: 'hours', canonical: '24h' },
+  '7d': { amount: 7, unit: 'days', canonical: '7d' },
+  '30d': { amount: 30, unit: 'days', canonical: '30d' },
+  '365d': { amount: 365, unit: 'days', canonical: '365d' },
+  '1y': { amount: 365, unit: 'days', canonical: '365d' },
+  '1a': { amount: 365, unit: 'days', canonical: '365d' },
+  '1year': { amount: 365, unit: 'days', canonical: '365d' },
 };
 
 function payloadBytes(obj) {
-  return Buffer.byteLength(JSON.stringify(obj), "utf8");
+  return Buffer.byteLength(JSON.stringify(obj), 'utf8');
 }
 
 function elapsedMilliseconds(startedAt) {
-  if (typeof startedAt !== "bigint") {
+  if (typeof startedAt !== 'bigint') {
     return 0;
   }
 
@@ -36,12 +36,17 @@ function elapsedMilliseconds(startedAt) {
 }
 
 function collectHistoryKeys(rows) {
-  return [...new Set(
-    rows.flatMap((row) => Object.keys(row?.data || {}))
-  )];
+  return [...new Set(rows.flatMap((row) => Object.keys(row?.data || {})))];
 }
 
-function buildHistoryVariableMetricEntries(filters, rows, extras, selectedKeys, serialId, durationMs) {
+function buildHistoryVariableMetricEntries(
+  filters,
+  rows,
+  extras,
+  selectedKeys,
+  serialId,
+  durationMs,
+) {
   const keysToTrack = selectedKeys.length ? selectedKeys : collectHistoryKeys(rows);
 
   if (!keysToTrack.length) {
@@ -100,7 +105,7 @@ function buildOnlineVariableMetricEntries(filters, rows, serialId, durationMs) {
   return keysToTrack.map((key) => {
     const projectedRows = rows.filter((row) => row.nombre_dato === key);
     const snapshot = Object.fromEntries(
-      projectedRows.map((row) => [row.nombre_dato, row.valor_dato])
+      projectedRows.map((row) => [row.nombre_dato, row.valor_dato]),
     );
     const payload = {
       ok: true,
@@ -133,9 +138,9 @@ async function respond(res, filters, rows, endpoint, serialId, options = {}) {
   };
   const bytes = payloadBytes(basePayload);
 
-  await trackRequest(endpoint, "data", serialId, bytes);
+  await trackRequest(endpoint, 'data', serialId, bytes);
   await registerVariableMetrics(variableMetrics);
-  const metrics = await getRequestMetrics(endpoint, "data", serialId);
+  const metrics = await getRequestMetrics(endpoint, 'data', serialId);
 
   return res.json({
     ...basePayload,
@@ -148,7 +153,7 @@ async function respond(res, filters, rows, endpoint, serialId, options = {}) {
 function sendMissing(res, ...params) {
   return res.status(400).json({
     ok: false,
-    message: `Los parametros ${params.join(", ")} son obligatorios`,
+    message: `Los parametros ${params.join(', ')} son obligatorios`,
   });
 }
 
@@ -172,11 +177,11 @@ async function respondWithoutAvailableSerial(res, endpoint, startedAt, extras = 
     null,
     {
       extras: {
-        message: "No hay registros disponibles todavia.",
+        message: 'No hay registros disponibles todavia.',
         ...extras,
       },
       durationMs: elapsedMilliseconds(startedAt),
-    }
+    },
   );
 }
 
@@ -187,7 +192,7 @@ function parseLimit(limit, fallback = 100) {
 }
 
 function parseOptionalLimit(limit, fallback = 500) {
-  if (limit === undefined || limit === null || String(limit).trim() === "") {
+  if (limit === undefined || limit === null || String(limit).trim() === '') {
     return null;
   }
 
@@ -195,7 +200,13 @@ function parseOptionalLimit(limit, fallback = 500) {
 }
 
 function normalizePreset(rawPreset) {
-  return PRESET_ALIASES[String(rawPreset || "").trim().toLowerCase()] || null;
+  return (
+    PRESET_ALIASES[
+      String(rawPreset || '')
+        .trim()
+        .toLowerCase()
+    ] || null
+  );
 }
 
 function parseSelectedKeys(query) {
@@ -212,7 +223,7 @@ function parseSelectedKeys(query) {
     .flatMap((value) => {
       if (Array.isArray(value)) return value;
       if (value === undefined || value === null) return [];
-      return String(value).split(",");
+      return String(value).split(',');
     })
     .map((value) => String(value).trim())
     .filter(Boolean);
@@ -269,7 +280,7 @@ function chileTimeSql(column) {
 function buildRangeFromPreset(presetConfig, endDate) {
   const startDate = new Date(endDate);
 
-  if (presetConfig.unit === "hours") {
+  if (presetConfig.unit === 'hours') {
     startDate.setUTCHours(startDate.getUTCHours() - presetConfig.amount);
   } else {
     startDate.setUTCDate(startDate.getUTCDate() - presetConfig.amount);
@@ -292,7 +303,7 @@ async function getLatestReferenceTimestamp(serialId) {
     ORDER BY time DESC
     LIMIT 1
     `,
-    [serialId]
+    [serialId],
   );
 
   if (!rows.length) {
@@ -313,12 +324,12 @@ function buildDataFilterClause(selectedKeys, params) {
     return ` AND data ?| $${params.length}::text[]`;
   }
 
-  return "";
+  return '';
 }
 
 async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) {
   const params = [serialId];
-  let where = "WHERE id_serial = $1";
+  let where = 'WHERE id_serial = $1';
 
   if (from && to) {
     params.push(from, to);
@@ -336,7 +347,7 @@ async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) 
     FROM equipo
     ${where}
     ORDER BY time DESC
-    ${Number.isFinite(limit) ? `LIMIT $${params.length + 1}` : ""}
+    ${Number.isFinite(limit) ? `LIMIT $${params.length + 1}` : ''}
   `;
 
   if (Number.isFinite(limit)) {
@@ -356,7 +367,7 @@ async function getData(req, res, next) {
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!serialValue) {
-      return respondWithoutAvailableSerial(res, "GET /api/data", startedAt);
+      return respondWithoutAvailableSerial(res, 'GET /api/data', startedAt);
     }
 
     const parsedLimit = parseLimit(limit, 100);
@@ -373,7 +384,7 @@ async function getData(req, res, next) {
     };
     const durationMs = elapsedMilliseconds(startedAt);
 
-    return respond(res, filters, rows, "GET /api/data", serialValue, {
+    return respond(res, filters, rows, 'GET /api/data', serialValue, {
       durationMs,
       variableMetrics: buildHistoryVariableMetricEntries(
         filters,
@@ -381,7 +392,7 @@ async function getData(req, res, next) {
         {},
         selectedKeys,
         serialValue,
-        durationMs
+        durationMs,
       ),
     });
   } catch (err) {
@@ -398,7 +409,7 @@ async function getLatest(req, res, next) {
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!serialValue) {
-      return respondWithoutAvailableSerial(res, "GET /api/data/latest", startedAt);
+      return respondWithoutAvailableSerial(res, 'GET /api/data/latest', startedAt);
     }
 
     const rows = await executeHistoryQuery({
@@ -413,7 +424,7 @@ async function getLatest(req, res, next) {
     };
     const durationMs = elapsedMilliseconds(startedAt);
 
-    return respond(res, filters, rows, "GET /api/data/latest", serialValue, {
+    return respond(res, filters, rows, 'GET /api/data/latest', serialValue, {
       durationMs,
       variableMetrics: buildHistoryVariableMetricEntries(
         filters,
@@ -421,7 +432,7 @@ async function getLatest(req, res, next) {
         {},
         selectedKeys,
         serialValue,
-        durationMs
+        durationMs,
       ),
     });
   } catch (err) {
@@ -438,11 +449,11 @@ async function getByRange(req, res, next) {
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!from || !to) {
-      return sendMissing(res, "from", "to");
+      return sendMissing(res, 'from', 'to');
     }
 
     if (!serialValue) {
-      return respondWithoutAvailableSerial(res, "GET /api/data/range", startedAt);
+      return respondWithoutAvailableSerial(res, 'GET /api/data/range', startedAt);
     }
 
     const parsedLimit = parseOptionalLimit(limit, 500);
@@ -463,7 +474,7 @@ async function getByRange(req, res, next) {
     };
     const durationMs = elapsedMilliseconds(startedAt);
 
-    return respond(res, filters, rows, "GET /api/data/range", serialValue, {
+    return respond(res, filters, rows, 'GET /api/data/range', serialValue, {
       durationMs,
       variableMetrics: buildHistoryVariableMetricEntries(
         filters,
@@ -471,7 +482,7 @@ async function getByRange(req, res, next) {
         {},
         selectedKeys,
         serialValue,
-        durationMs
+        durationMs,
       ),
     });
   } catch (err) {
@@ -489,22 +500,21 @@ async function getByPreset(req, res, next) {
     const normalizedPreset = normalizePreset(preset);
 
     if (!preset) {
-      return sendMissing(res, "preset");
+      return sendMissing(res, 'preset');
     }
 
     if (!normalizedPreset) {
       return res.status(400).json({
         ok: false,
-        message: "Preset invalido. Usa 24h, 7d, 30d o 365d",
+        message: 'Preset invalido. Usa 24h, 7d, 30d o 365d',
       });
     }
 
     if (!serialValue) {
-      return respondWithoutAvailableSerial(res, "GET /api/data/preset", startedAt);
+      return respondWithoutAvailableSerial(res, 'GET /api/data/preset', startedAt);
     }
 
-    const resolvedBaseDate =
-      base_date || (await getLatestReferenceTimestamp(serialValue));
+    const resolvedBaseDate = base_date || (await getLatestReferenceTimestamp(serialValue));
 
     if (!resolvedBaseDate) {
       const filters = {
@@ -516,35 +526,28 @@ async function getByPreset(req, res, next) {
         to: null,
         limit: parseOptionalLimit(limit, 500),
       };
-      const extras = { message: "No hay registros para ese serial." };
+      const extras = { message: 'No hay registros para ese serial.' };
       const durationMs = elapsedMilliseconds(startedAt);
 
-      return respond(
-        res,
-        filters,
-        [],
-        "GET /api/data/preset",
-        serialValue,
-        {
+      return respond(res, filters, [], 'GET /api/data/preset', serialValue, {
+        extras,
+        durationMs,
+        variableMetrics: buildHistoryVariableMetricEntries(
+          filters,
+          [],
           extras,
+          selectedKeys,
+          serialValue,
           durationMs,
-          variableMetrics: buildHistoryVariableMetricEntries(
-            filters,
-            [],
-            extras,
-            selectedKeys,
-            serialValue,
-            durationMs
-          ),
-        }
-      );
+        ),
+      });
     }
 
     const endDate = parseTimestampLiteral(resolvedBaseDate);
     if (!endDate) {
       return res.status(400).json({
         ok: false,
-        message: "base_date no tiene un formato valido",
+        message: 'base_date no tiene un formato valido',
       });
     }
 
@@ -570,7 +573,7 @@ async function getByPreset(req, res, next) {
     };
     const durationMs = elapsedMilliseconds(startedAt);
 
-    return respond(res, filters, rows, "GET /api/data/preset", serialValue, {
+    return respond(res, filters, rows, 'GET /api/data/preset', serialValue, {
       durationMs,
       variableMetrics: buildHistoryVariableMetricEntries(
         filters,
@@ -578,7 +581,7 @@ async function getByPreset(req, res, next) {
         {},
         selectedKeys,
         serialValue,
-        durationMs
+        durationMs,
       ),
     });
   } catch (err) {
@@ -594,7 +597,7 @@ async function getAvailableKeys(req, res, next) {
     const serialValue = await resolveSerialId(serial_id || id_serial);
 
     if (!serialValue) {
-      return respondWithoutAvailableSerial(res, "GET /api/data/keys", startedAt);
+      return respondWithoutAvailableSerial(res, 'GET /api/data/keys', startedAt);
     }
 
     const { rows } = await pool.query(
@@ -604,7 +607,7 @@ async function getAvailableKeys(req, res, next) {
       WHERE id_serial = $1
       ORDER BY nombre_dato ASC
       `,
-      [serialValue]
+      [serialValue],
     );
 
     const keys = rows.map((row) => row.nombre_dato);
@@ -615,11 +618,11 @@ async function getAvailableKeys(req, res, next) {
         serial_id: serialValue,
       },
       keys,
-      "GET /api/data/keys",
+      'GET /api/data/keys',
       serialValue,
       {
         durationMs: elapsedMilliseconds(startedAt),
-      }
+      },
     );
   } catch (err) {
     next(err);
@@ -635,16 +638,13 @@ async function getOnlineValues(req, res, next) {
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!serialValue) {
-      return respondWithoutAvailableSerial(
-        res,
-        "GET /api/data/online",
-        startedAt,
-        { snapshot: {} }
-      );
+      return respondWithoutAvailableSerial(res, 'GET /api/data/online', startedAt, {
+        snapshot: {},
+      });
     }
 
     const params = [serialValue];
-    let keyWhere = "";
+    let keyWhere = '';
 
     if (selectedKeys.length === 1) {
       params.push(selectedKeys[0]);
@@ -676,7 +676,7 @@ async function getOnlineValues(req, res, next) {
       ) latest
       ORDER BY latest.nombre_dato ASC
       `,
-      params
+      params,
     );
 
     const mapped = rows.map((row) => ({
@@ -688,9 +688,7 @@ async function getOnlineValues(req, res, next) {
       timestamp_completo: `${row.fecha} ${row.hora}`,
     }));
 
-    const snapshot = Object.fromEntries(
-      mapped.map((row) => [row.nombre_dato, row.valor_dato])
-    );
+    const snapshot = Object.fromEntries(mapped.map((row) => [row.nombre_dato, row.valor_dato]));
 
     const filters = {
       serial_id: serialValue,
@@ -698,15 +696,10 @@ async function getOnlineValues(req, res, next) {
     };
     const durationMs = elapsedMilliseconds(startedAt);
 
-    return respond(res, filters, mapped, "GET /api/data/online", serialValue, {
+    return respond(res, filters, mapped, 'GET /api/data/online', serialValue, {
       extras: { snapshot },
       durationMs,
-      variableMetrics: buildOnlineVariableMetricEntries(
-        filters,
-        mapped,
-        serialValue,
-        durationMs
-      ),
+      variableMetrics: buildOnlineVariableMetricEntries(filters, mapped, serialValue, durationMs),
     });
   } catch (err) {
     next(err);
@@ -717,7 +710,7 @@ async function insertData(req, res, next) {
   try {
     return res.status(501).json({
       ok: false,
-      message: "Insercion no implementada en esta etapa.",
+      message: 'Insercion no implementada en esta etapa.',
     });
   } catch (err) {
     next(err);

@@ -1,4 +1,12 @@
-import { Component, Input, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Chart, registerables } from 'chart.js';
 
@@ -8,7 +16,7 @@ Chart.register(...registerables);
   selector: 'app-chart-card',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './chart-card.html'
+  templateUrl: './chart-card.html',
 })
 export class ChartCardComponent implements OnChanges, AfterViewInit {
   @Input() title: string = '';
@@ -39,7 +47,7 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
     const ctx = this.chartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
 
-    const labels = this.data.map(d => {
+    const labels = this.data.map((d) => {
       try {
         const date = new Date(d.time);
         return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
@@ -48,7 +56,7 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
       }
     });
 
-    const values = this.data.map(d => d[this.dataKey]);
+    const values = this.data.map((d) => d[this.dataKey]);
 
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
@@ -59,19 +67,21 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
       type: 'line',
       data: {
         labels,
-        datasets: [{
-          data: values,
-          borderColor: this.color,
-          backgroundColor: gradient,
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointHoverBackgroundColor: this.color,
-          pointHoverBorderColor: '#fff',
-          pointHoverBorderWidth: 2
-        }]
+        datasets: [
+          {
+            data: values,
+            borderColor: this.color,
+            backgroundColor: gradient,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointHoverBackgroundColor: this.color,
+            pointHoverBorderColor: '#fff',
+            pointHoverBorderWidth: 2,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -88,22 +98,22 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
             bodyFont: { weight: 'bold', size: 14 },
             padding: 12,
             cornerRadius: 8,
-            displayColors: false
-          }
+            displayColors: false,
+          },
         },
         scales: {
           x: {
             grid: { display: false },
             ticks: { color: '#94a3b8', font: { size: 12 }, maxTicksLimit: 8 },
-            border: { display: false }
+            border: { display: false },
           },
           y: {
             grid: { color: '#f1f5f9' },
             ticks: { color: '#94a3b8', font: { size: 12 } },
-            border: { display: false }
-          }
-        }
-      }
+            border: { display: false },
+          },
+        },
+      },
     });
   }
 

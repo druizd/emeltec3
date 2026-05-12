@@ -2,11 +2,11 @@
  * Entry point del proceso Node.
  * Levanta el servidor HTTP y el servidor gRPC en el mismo proceso.
  */
-require("dotenv").config();
-const config = require("./config/env");
-const app = require("./app");
-const { startGrpcServer } = require("./grpc/server");
-const alertaService = require("./services/alertaService");
+require('dotenv').config();
+const config = require('./config/env');
+const app = require('./app');
+const { startGrpcServer } = require('./grpc/server');
+const alertaService = require('./services/alertaService');
 
 let grpcServerRef = null;
 
@@ -24,7 +24,7 @@ startGrpcServer(`0.0.0.0:${config.grpcPort}`)
     console.log(`[main-api] gRPC corriendo en 0.0.0.0:${port}`);
   })
   .catch((error) => {
-    console.error("[main-api] No se pudo iniciar gRPC:", error.message);
+    console.error('[main-api] No se pudo iniciar gRPC:', error.message);
   });
 
 // Apaga ambos servidores de forma ordenada cuando el proceso recibe una senal del sistema.
@@ -34,7 +34,7 @@ function shutdown(signal) {
   alertaService.stop();
 
   httpServer.close(() => {
-    console.log("[main-api] HTTP detenido");
+    console.log('[main-api] HTTP detenido');
   });
 
   if (!grpcServerRef) {
@@ -43,14 +43,14 @@ function shutdown(signal) {
 
   grpcServerRef.tryShutdown((error) => {
     if (error) {
-      console.error("[main-api] Error al cerrar gRPC:", error.message);
+      console.error('[main-api] Error al cerrar gRPC:', error.message);
       grpcServerRef.forceShutdown();
       return;
     }
 
-    console.log("[main-api] gRPC detenido");
+    console.log('[main-api] gRPC detenido');
   });
 }
 
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));

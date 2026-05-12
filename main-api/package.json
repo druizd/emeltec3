@@ -4,7 +4,7 @@
   "description": "API principal de Emeltec — Node.js + TimescaleDB + JSONB",
   "main": "src/server.js",
   "scripts": {
-    "test": "node --test --test-concurrency=1 --test-isolation=none",
+    "test": "node --test --test-concurrency=1",
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "lint": "eslint src test",

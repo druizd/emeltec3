@@ -43,11 +43,36 @@ export interface DetectedDevice {
   sub_empresa_nombre?: string | null;
 }
 
+export interface DashboardVariable {
+  key?: string | null;
+  alias?: string | null;
+  rol_dashboard?: string | null;
+  transformacion?: string | null;
+  unidad?: string | null;
+  ok?: boolean;
+  valor?: string | number | null;
+}
+
+export interface DashboardResumenEntry {
+  valor?: string | number | null;
+  ok?: boolean;
+  unidad?: string | null;
+}
+
 export interface SiteDashboardData {
-  site: SiteRecord;
-  pozo_config: PozoConfig | null;
-  variables: Record<string, unknown>;
-  last_update?: string | null;
+  server_time?: string | null;
+  pozo_config?: {
+    profundidad_pozo_m?: number | string | null;
+    profundidad_sensor_m?: number | string | null;
+  } | null;
+  ultima_lectura?: {
+    time?: string | null;
+    timestamp_completo?: string | null;
+    received_at?: string | null;
+    id_serial?: string | null;
+  } | null;
+  resumen?: Record<string, DashboardResumenEntry | undefined>;
+  variables?: DashboardVariable[];
 }
 
 export interface SiteDashboardHistoryEntry {
