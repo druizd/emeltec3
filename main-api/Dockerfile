@@ -1,7 +1,7 @@
 ################################################################
 # main-api — build TypeScript en stage de build, runtime slim.
 ################################################################
-ARG NODE_VERSION=22-alpine
+ARG NODE_VERSION=24-alpine
 
 # ── Stage 1: dependencias (con dev) ────────────────────────────
 FROM node:${NODE_VERSION} AS deps

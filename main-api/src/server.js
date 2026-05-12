@@ -18,7 +18,15 @@ const httpServer = app.listen(config.port, () => {
 
   // Metrics flusher TS (buffer in-memory → DB cada 5 s).
   try {
-    const { startMetricsFlusher } = require('../dist/modules/metrics/flusher');
+    const flusherPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'metrics',
+      'flusher',
+    );
+    const { startMetricsFlusher } = require(flusherPath);
     startMetricsFlusher();
   } catch (err) {
     if (err && err.code !== 'MODULE_NOT_FOUND') {
