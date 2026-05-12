@@ -93,7 +93,9 @@ services:
     restart: unless-stopped
 
   frontend-angular:
-    build: ./frontend-angular
+    build:
+      context: .
+      dockerfile: frontend-angular/Dockerfile
     container_name: emeltec-frontend
     ports:
       - '${FRONTEND_HOST_PORT:-5173}:80'
