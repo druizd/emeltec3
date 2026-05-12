@@ -1,7 +1,7 @@
 /**
  * Repositorio de companies (empresa + sub_empresa + sitios).
  */
-import { query } from '../../config/db';
+import { query } from '../../config/dbHelpers';
 import type { Company, HierarchySite, SubCompany } from './types';
 
 const SITE_COLUMNS =

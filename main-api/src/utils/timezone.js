@@ -1,26 +1,18 @@
-export const CHILE_TIME_ZONE = 'America/Santiago';
+const CHILE_TIME_ZONE = 'America/Santiago';
 
-function toDate(value: unknown): Date {
+function toDate(value) {
   if (value instanceof Date) return value;
-  return new Date(value as string | number);
+  return new Date(value);
 }
 
-function pad(value: unknown, size = 2): string {
+function pad(value, size = 2) {
   return String(value).padStart(size, '0');
 }
 
-interface ChileParts {
-  year: number;
-  month: number;
-  day: number;
-  hour: number;
-  minute: number;
-  second: number;
-}
-
-function getChileParts(value: unknown): ChileParts | null {
+function getChileParts(value) {
   const date = toDate(value);
   if (Number.isNaN(date.getTime())) return null;
+
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: CHILE_TIME_ZONE,
     year: 'numeric',
@@ -32,8 +24,9 @@ function getChileParts(value: unknown): ChileParts | null {
     hourCycle: 'h23',
     hour12: false,
   }).formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes): number =>
-    Number(parts.find((p) => p.type === type)?.value || 0);
+
+  const part = (type) => Number(parts.find((item) => item.type === type)?.value || 0);
+
   return {
     year: part('year'),
     month: part('month'),
@@ -44,22 +37,26 @@ function getChileParts(value: unknown): ChileParts | null {
   };
 }
 
-export function formatChileTimestamp(value: unknown): string | null {
+function formatChileTimestamp(value) {
   const parts = getChileParts(value);
   if (!parts) return null;
+
   return [
     `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`,
     `${pad(parts.hour)}:${pad(parts.minute)}:${pad(parts.second)}`,
   ].join(' ');
 }
 
-export function parseChileTimestamp(rawValue: unknown): Date | null {
+function parseChileTimestamp(rawValue) {
   if (!rawValue) return null;
+
   const value = String(rawValue).trim().replace('T', ' ').replace('Z', '');
   const match = value.match(
     /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/,
   );
+
   if (!match) return null;
+
   const [, year, month, day, hour = '00', minute = '00', second = '00', millis = '0'] = match;
   const millisecond = Number(pad(millis, 3).slice(0, 3));
   const utcGuess = Date.UTC(
@@ -72,7 +69,9 @@ export function parseChileTimestamp(rawValue: unknown): Date | null {
     millisecond,
   );
   const chileParts = getChileParts(new Date(utcGuess));
+
   if (!chileParts) return null;
+
   const chileAsUtc = Date.UTC(
     chileParts.year,
     chileParts.month - 1,
@@ -83,5 +82,12 @@ export function parseChileTimestamp(rawValue: unknown): Date | null {
     millisecond,
   );
   const parsed = new Date(utcGuess - (chileAsUtc - utcGuess));
+
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
+
+module.exports = {
+  CHILE_TIME_ZONE,
+  formatChileTimestamp,
+  parseChileTimestamp,
+};

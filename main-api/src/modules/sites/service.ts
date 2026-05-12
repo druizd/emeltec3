@@ -24,7 +24,15 @@ import type {
   Site,
 } from './types';
 
-import { calcularNivelFreatico } from '../../utils/nivelFreatico';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const nfMod = require('../../utils/nivelFreatico.js') as {
+  calcularNivelFreatico: (p: {
+    lecturaPozo: number;
+    profundidadSensor: number | null;
+    profundidadTotal: number;
+  }) => number;
+};
+const { calcularNivelFreatico } = nfMod;
 
 function cleanString(value: unknown): string {
   if (value === undefined || value === null) return '';

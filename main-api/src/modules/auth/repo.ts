@@ -2,9 +2,9 @@
  * Repositorio de auth: usuario + OTP (columna legacy + Redis).
  */
 import bcrypt from 'bcrypt';
-import { query, transaction } from '../../config/db';
+import { query, transaction } from '../../config/dbHelpers';
 import { cache } from '../../config/redis';
-import { config } from '../../config/env';
+import { config } from '../../config/appConfig';
 
 const OTP_REDIS_PREFIX = 'otp:';
 const SALT_ROUNDS = 10;

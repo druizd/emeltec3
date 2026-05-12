@@ -3,7 +3,7 @@
  */
 import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
-import { config } from '../../config/env';
+import { config } from '../../config/appConfig';
 import { UnauthorizedError, ValidationError, ForbiddenError } from '../../shared/errors';
 import {
   consumeOtpIfMatches,
@@ -13,7 +13,16 @@ import {
   verifyPassword,
 } from './repo';
 
-import { sendWelcomeEmail } from '../../services/emailService';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const emailMod = require('../../services/emailService.js') as {
+  sendWelcomeEmail: (
+    email: string,
+    nombre: string,
+    otp: string,
+    minutes?: number,
+  ) => Promise<{ previewUrl?: string | null }>;
+};
+const { sendWelcomeEmail } = emailMod;
 
 const DEFAULT_OTP_MINS = 30;
 const MAX_OTP_MINS = 1440;

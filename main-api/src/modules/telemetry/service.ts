@@ -3,7 +3,7 @@
  * Único consumidor para HTTP v1, HTTP v2 y gRPC.
  */
 import { cache } from '../../config/redis';
-import { config } from '../../config/env';
+import { config } from '../../config/appConfig';
 import { logger } from '../../config/logger';
 import {
   findAvailableKeys,

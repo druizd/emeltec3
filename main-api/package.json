@@ -4,13 +4,13 @@
   "description": "API principal de Emeltec — Node.js + TypeScript + TimescaleDB + Redis",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx --watch src/server.ts",
+    "dev": "node --watch src/server.js",
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc -p tsconfig.test.json --noEmit",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "test": "echo 'No tests yet — TS migration en curso. Pendiente: tests v2 con vitest+testcontainers.'"
+    "test": "echo 'No tests legacy; pendiente vitest+testcontainers contra /api/v2/*.'"
   },
   "keywords": [],
   "author": "Emeltec",

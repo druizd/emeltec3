@@ -1,49 +1,34 @@
 /**
- * Pool PostgreSQL/TimescaleDB compartido + helpers tipados.
- * Reglas:
- *  - statement_timeout por conexión (defensa contra queries colgadas)
- *  - slow-query log a pino para queries > DB_SLOW_LOG_MS
- *  - prepared statements vía `query({ name, text, values })`
+ * Helpers tipados de DB sobre el pool legacy `config/db.js`.
+ * Añade statement_timeout, slow-log y prom-client.
  */
-import { Pool, type PoolClient, type QueryConfig, type QueryResult, type QueryResultRow } from 'pg';
-import { config } from './env';
+import type { Pool, PoolClient, QueryConfig, QueryResult, QueryResultRow } from 'pg';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const legacyPool = require('./db.js') as Pool;
+import { config } from './appConfig';
 import { logger } from './logger';
 import { dbQueryDuration } from './metrics';
-
-export const pool = new Pool({
-  host: config.db.host,
-  port: config.db.port,
-  database: config.db.database,
-  user: config.db.user,
-  password: config.db.password,
-  max: config.db.max,
-  idleTimeoutMillis: config.db.idleTimeoutMillis,
-  connectionTimeoutMillis: config.db.connectionTimeoutMillis,
-  options: '-c timezone=UTC',
-});
 
 const SLOW_LOG_MS = config.db.slowLogMs;
 const STATEMENT_TIMEOUT_MS = config.db.statementTimeoutMs;
 
-pool.on('error', (err) => logger.error({ err: err.message }, 'DB pool error'));
-pool.on('connect', (client) => {
-  client
-    .query(`SET statement_timeout TO ${STATEMENT_TIMEOUT_MS}`)
-    .catch((err: Error) =>
-      logger.warn({ err: err.message }, 'No se pudo setear statement_timeout'),
-    );
-});
-
-// Smoke connectivity check al boot.
-pool
-  .query('SELECT NOW()')
-  .then(() => logger.info('DB conectada (TimescaleDB)'))
-  .catch((err: Error) => logger.error({ err: err.message }, 'DB conexión falló'));
+let timeoutsApplied = false;
+function applyConnectionDefaults(): void {
+  if (timeoutsApplied) return;
+  timeoutsApplied = true;
+  if (typeof (legacyPool as Pool).on !== 'function') return;
+  legacyPool.on('connect', (client: PoolClient) => {
+    client
+      .query(`SET statement_timeout TO ${STATEMENT_TIMEOUT_MS}`)
+      .catch((err: Error) =>
+        logger.warn({ err: err.message }, 'No se pudo setear statement_timeout'),
+      );
+  });
+}
+applyConnectionDefaults();
 
 export interface QueryOptions {
-  /** Nombre del prepared statement — habilita plan caching en pg. */
   name?: string;
-  /** Etiqueta humana para logs (no la usa pg). */
   label?: string;
 }
 
@@ -60,7 +45,7 @@ export async function query<R extends QueryResultRow = QueryResultRow>(
   const queryName = cfg.name ?? opts.label ?? 'inline';
 
   try {
-    const result = await pool.query<R>(cfg);
+    const result = await legacyPool.query<R>(cfg);
     const durationNs = Number(process.hrtime.bigint() - startedAt);
     const durationMs = Math.round(durationNs / 1e6);
     dbQueryDuration.observe({ name: queryName, status: 'ok' }, durationNs / 1e9);
@@ -84,11 +69,11 @@ export async function query<R extends QueryResultRow = QueryResultRow>(
 }
 
 export function getClient(): Promise<PoolClient> {
-  return pool.connect();
+  return legacyPool.connect();
 }
 
 export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
+  const client = await legacyPool.connect();
   try {
     await client.query('BEGIN');
     const result = await fn(client);
@@ -101,3 +86,5 @@ export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Pr
     client.release();
   }
 }
+
+export { legacyPool as pool };

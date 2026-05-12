@@ -7,7 +7,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { isAppError } from '../shared/errors';
 import { err as buildErr } from '../shared/httpEnvelope';
 import { logger } from '../config/logger';
-import { config } from '../config/env';
+import { config } from '../config/appConfig';
 import { getRequestId } from '../shared/requestContext';
 
 export function errorMiddleware(

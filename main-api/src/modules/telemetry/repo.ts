@@ -2,7 +2,7 @@
  * Capa de acceso a datos para telemetría (tabla `equipo`).
  * Queries con nombre (prepared statements) para reusar plan en pg.
  */
-import { query } from '../../config/db';
+import { query } from '../../config/dbHelpers';
 import { CHILE_TIME_ZONE } from '../../shared/time';
 
 function chileDateSql(col: string): string {

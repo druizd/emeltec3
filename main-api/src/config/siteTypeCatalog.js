@@ -1,37 +1,16 @@
-/**
- * Catálogo de tipos de sitio y sus roles + transformaciones disponibles.
- */
-
-export interface VariableTransform {
-  id: string;
-  label: string;
-  description: string;
-  enabled: boolean;
-  requiresD2?: boolean;
-}
-
-export interface VariableRole {
-  id: string;
-  label: string;
-  unitHint: string;
-  description: string;
-}
-
-export interface SiteTypeConfig {
-  id: string;
-  label: string;
-  roles: VariableRole[];
-  transforms: VariableTransform[];
-}
-
-const COMMON_TRANSFORMS: VariableTransform[] = [
+const COMMON_TRANSFORMS = [
   {
     id: 'directo',
     label: 'Directo',
     description: 'Usa el valor entrante sin modificarlo.',
     enabled: true,
   },
-  { id: 'lineal', label: 'Lineal', description: 'Aplica valor * factor + offset.', enabled: true },
+  {
+    id: 'lineal',
+    label: 'Lineal',
+    description: 'Aplica valor * factor + offset.',
+    enabled: true,
+  },
   {
     id: 'ieee754_32',
     label: 'IEEE754 32 bits',
@@ -48,7 +27,7 @@ const COMMON_TRANSFORMS: VariableTransform[] = [
   },
 ];
 
-const SITE_TYPE_CATALOG: Record<string, SiteTypeConfig> = {
+const SITE_TYPE_CATALOG = {
   pozo: {
     id: 'pozo',
     label: 'Pozo',
@@ -163,16 +142,14 @@ const SITE_TYPE_CATALOG: Record<string, SiteTypeConfig> = {
   },
 };
 
-export const SITE_TYPE_IDS: ReadonlyArray<string> = Object.freeze(Object.keys(SITE_TYPE_CATALOG));
-
-export const VARIABLE_ROLE_IDS: ReadonlyArray<string> = Object.freeze([
+const SITE_TYPE_IDS = Object.freeze(Object.keys(SITE_TYPE_CATALOG));
+const VARIABLE_ROLE_IDS = Object.freeze([
   ...new Set([
-    ...Object.values(SITE_TYPE_CATALOG).flatMap((c) => c.roles.map((r) => r.id)),
+    ...Object.values(SITE_TYPE_CATALOG).flatMap((config) => config.roles.map((role) => role.id)),
     'nivel_freatico',
   ]),
 ]);
-
-export const VARIABLE_TRANSFORM_IDS: ReadonlyArray<string> = Object.freeze([
+const VARIABLE_TRANSFORM_IDS = Object.freeze([
   'directo',
   'ieee754',
   'ieee754_32',
@@ -186,6 +163,13 @@ export const VARIABLE_TRANSFORM_IDS: ReadonlyArray<string> = Object.freeze([
   'caudal_m3h_lps',
 ]);
 
-export function getSiteTypeCatalog(): Record<string, SiteTypeConfig> {
-  return JSON.parse(JSON.stringify(SITE_TYPE_CATALOG)) as Record<string, SiteTypeConfig>;
+function getSiteTypeCatalog() {
+  return JSON.parse(JSON.stringify(SITE_TYPE_CATALOG));
 }
+
+module.exports = {
+  getSiteTypeCatalog,
+  SITE_TYPE_IDS,
+  VARIABLE_ROLE_IDS,
+  VARIABLE_TRANSFORM_IDS,
+};

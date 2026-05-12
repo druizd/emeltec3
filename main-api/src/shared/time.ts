@@ -1,7 +1,17 @@
 /**
  * Helpers de tiempo con zona horaria Chile (America/Santiago).
+ * Re-export tipado del módulo JS legacy `utils/timezone.js`.
  */
-export { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } from '../utils/timezone';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const tz = require('../utils/timezone.js') as {
+  CHILE_TIME_ZONE: string;
+  formatChileTimestamp: (value: unknown) => string | null;
+  parseChileTimestamp: (raw: unknown) => Date | null;
+};
+
+export const CHILE_TIME_ZONE: string = tz.CHILE_TIME_ZONE;
+export const formatChileTimestamp = tz.formatChileTimestamp;
+export const parseChileTimestamp = tz.parseChileTimestamp;
 
 export function elapsedMs(startedAt: bigint): number {
   const ns = process.hrtime.bigint() - startedAt;

@@ -2,7 +2,7 @@
  * Flusher periódico: vuelca el buffer in-memory a api_metrics / api_variable_metrics.
  * Idempotente: si no hay datos no toca la DB.
  */
-import { query } from '../../config/db';
+import { query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
 import { drainEndpoints, drainVariables, bufferSizes } from './buffer';
 

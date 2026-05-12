@@ -2,7 +2,7 @@
  * Logger pino con request-id automático desde AsyncLocalStorage.
  */
 import pino from 'pino';
-import { config } from './env';
+import { config } from './appConfig';
 import { getRequestId } from '../shared/requestContext';
 
 const isPretty = config.isDev || process.stdout.isTTY;

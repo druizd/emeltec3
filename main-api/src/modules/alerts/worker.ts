@@ -5,10 +5,26 @@
  * Activación: env `ENABLE_ALERTS_WORKER=true` (default true). En despliegues con
  * múltiples réplicas, encender SOLO en una para evitar duplicación de eventos.
  */
-import { getClient, query } from '../../config/db';
+import { getClient, query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
-import { config } from '../../config/env';
-import { sendAlertEmail, type AlertRegla } from '../../services/emailService';
+import { config } from '../../config/appConfig';
+interface AlertRegla {
+  nombre: string;
+  severidad: string;
+  reg_alias?: string;
+  variable_key: string;
+  sitio_desc?: string;
+  sitio_id: string;
+  valor_detectado?: unknown;
+  condicion_texto?: string;
+  condicion: string;
+  id_serial?: string;
+}
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const emailMod = require('../../services/emailService.js') as {
+  sendAlertEmail: (to: string, name: string, msg: string, alerta: AlertRegla) => Promise<void>;
+};
+const { sendAlertEmail } = emailMod;
 
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
 const DIAS_VALIDOS = [
