@@ -121,7 +121,7 @@ services:
   csvconsumer:
     build:
       context: ./grpc-pipeline
-      dockerfile: csvconsumer.Dockerfile
+      dockerfile: csvconsumer-rust.Dockerfile
     container_name: emeltec-csvconsumer
     ports:
       - '${CSVCONSUMER_HOST_PORT:-50051}:50051'
