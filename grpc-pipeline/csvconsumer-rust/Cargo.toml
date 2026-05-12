@@ -1,18 +1,34 @@
+# Manifest del crate csvconsumer (Rust).
+# Define metadata, dependencias y el binario que se compila.
+
 [package]
 name = "csvconsumer"
 version = "0.1.0"
+# edition 2021 = sintaxis estable de Rust 2021 (requiere rustc >= 1.56).
 edition = "2021"
 
 [dependencies]
+# tonic        — framework gRPC sobre tokio. Provee el servidor, codecs y transport.
 tonic = "0.12"
+# prost        — serialización/deserialización de mensajes protobuf que tonic usa.
 prost = "0.13"
+# tokio        — runtime async. Features:
+#   - macros            → habilita el atributo `#[tokio::main]`
+#   - rt-multi-thread   → scheduler multi-hilo (no un solo thread)
+#   - signal            → soporte para SIGTERM/SIGINT (graceful shutdown)
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
+# tokio-postgres — driver async de PostgreSQL (puro Rust, sin libpq).
 tokio-postgres = "0.7"
+# dotenvy        — carga variables desde un archivo .env opcional al arrancar.
 dotenvy = "0.15"
 
 [build-dependencies]
+# tonic-build — generador de código a partir de archivos .proto.
+# Se invoca desde build.rs antes de compilar src/.
 tonic-build = "0.12"
 
+# Define el binario que se compila con `cargo build --release`.
+# El Dockerfile copia este ejecutable al runtime image.
 [[bin]]
 name = "csvconsumer"
 path = "src/main.rs"
