@@ -5,7 +5,7 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../config/env';
+import { config } from '../config/appConfig';
 import { ForbiddenError, UnauthorizedError } from '../shared/errors';
 import type { AuthUser, UserTipo } from '../shared/permissions';
 

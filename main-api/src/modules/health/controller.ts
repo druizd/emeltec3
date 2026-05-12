@@ -2,10 +2,10 @@
  * Healthchecks: liveness (proceso vivo) y readiness (DB + Redis OK).
  */
 import type { Request, Response } from 'express';
-import { query } from '../../config/db';
+import { query } from '../../config/dbHelpers';
 import { cache } from '../../config/redis';
 import { registry } from '../../config/metrics';
-import { config } from '../../config/env';
+import { config } from '../../config/appConfig';
 
 export function liveness(_req: Request, res: Response): void {
   res.json({ ok: true, status: 'alive', timestamp: new Date().toISOString() });

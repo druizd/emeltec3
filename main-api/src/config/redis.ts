@@ -4,7 +4,7 @@
  * sea opcional en desarrollo local.
  */
 import Redis, { type Redis as RedisClient } from 'ioredis';
-import { config } from './env';
+import { config } from './appConfig';
 import { logger } from './logger';
 import { cacheOps } from './metrics';
 

@@ -1,19 +1,19 @@
-import { Resend } from 'resend';
-import { config } from '../config/env';
-import { logger } from '../config/logger';
+const { Resend } = require('resend');
 
-const FROM_ADDRESS = config.email.from ?? 'Emeltec - Panel Industrial <noreply@emeltec.cl>';
-const ACCESS_URL = config.email.frontendUrl ?? 'https://nuevacloud.emeltec.cl/login';
-const resend = config.email.apiKey ? new Resend(config.email.apiKey) : null;
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const FROM_ADDRESS = process.env.RESEND_FROM || 'Emeltec - Panel Industrial <noreply@emeltec.cl>';
+const ACCESS_URL = process.env.FRONTEND_URL || 'https://nuevacloud.emeltec.cl/login';
 
-const SEVERIDAD_COLOR: Record<string, string> = {
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
+
+const SEVERIDAD_COLOR = {
   critica: '#dc2626',
   alta: '#ea580c',
   media: '#d97706',
   baja: '#65a30d',
 };
 
-function escapeHtml(value: unknown): string {
+function escapeHtml(value) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -22,54 +22,38 @@ function escapeHtml(value: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
-function labelSeveridad(severidad: unknown): string {
-  const labels: Record<string, string> = {
-    critica: 'CRITICA',
-    alta: 'ALTA',
-    media: 'MEDIA',
-    baja: 'BAJA',
-  };
-  return labels[String(severidad)] ?? String(severidad ?? 'ALERTA').toUpperCase();
+function labelSeveridad(severidad) {
+  const labels = { critica: 'CRITICA', alta: 'ALTA', media: 'MEDIA', baja: 'BAJA' };
+  return labels[severidad] || String(severidad || 'ALERTA').toUpperCase();
 }
 
-interface SendArgs {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}
-
-async function enviar({ to, subject, html, text }: SendArgs): Promise<{ id: string }> {
+async function enviar({ to, subject, html, text }) {
   if (!resend) {
-    if (config.isProd) throw new Error('RESEND_API_KEY no esta configurada');
-    logger.info({ to, subject }, '[emailService] Sin RESEND_API_KEY — correo simulado');
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('RESEND_API_KEY no esta configurada');
+    }
+
+    console.log('[emailService] Sin RESEND_API_KEY - correo simulado:');
+    console.log(`  Para:    ${to}`);
+    console.log(`  Asunto:  ${subject}`);
+    console.log(`  Cuerpo:  ${text || '(ver html)'}`);
     return { id: 'dev-mode' };
   }
+
   const { data, error } = await resend.emails.send({
     from: FROM_ADDRESS,
     to: [to],
     subject,
     html,
-    text: text ?? '',
+    text,
   });
+
   if (error) throw new Error(`Resend error: ${error.message}`);
-  logger.info({ to, id: data?.id }, '[emailService] Correo enviado');
-  return { id: data?.id ?? '' };
+  console.log(`[emailService] Correo enviado a ${to} - id: ${data.id}`);
+  return data;
 }
 
-export interface SendWelcomeResult {
-  ok: boolean;
-  id?: string;
-  error?: string;
-  previewUrl?: string | null;
-}
-
-export async function sendWelcomeEmail(
-  emailDestino: string,
-  nombreCompleto: string,
-  passwordGenerado: string,
-  minutes = 30,
-): Promise<SendWelcomeResult> {
+exports.sendWelcomeEmail = async (emailDestino, nombreCompleto, passwordGenerado, minutes = 30) => {
   try {
     const data = await enviar({
       to: emailDestino,
@@ -88,27 +72,14 @@ export async function sendWelcomeEmail(
         </div>
       `,
     });
-    return { ok: true, id: data.id, previewUrl: null };
+    return { ok: true, id: data.id };
   } catch (error) {
-    logger.error(
-      { err: (error as Error).message },
-      '[emailService] Error enviando correo de acceso',
-    );
-    return { ok: false, error: (error as Error).message };
+    console.error('[emailService] Error enviando correo de acceso:', error.message);
+    return { ok: false, error: error.message };
   }
-}
+};
 
-export interface NewUserData {
-  nombre: string;
-  email: string;
-  tipo: string;
-}
-
-export async function sendNewUserNotificationToAdmin(
-  emailAdmin: string,
-  nombreAdmin: string,
-  datosUsuario: NewUserData,
-): Promise<void> {
+exports.sendNewUserNotificationToAdmin = async (emailAdmin, nombreAdmin, datosUsuario) => {
   try {
     await enviar({
       to: emailAdmin,
@@ -124,41 +95,24 @@ export async function sendNewUserNotificationToAdmin(
             <p><strong>Email:</strong> ${escapeHtml(datosUsuario.email)}</p>
             <p><strong>Tipo:</strong> ${escapeHtml(datosUsuario.tipo)}</p>
           </div>
+          <p style="color:#64748b;font-size:0.9em;">Plataforma de Monitoreo Industrial</p>
         </div>
       `,
     });
   } catch (error) {
-    logger.error({ err: (error as Error).message }, '[emailService] Error notificando admin');
+    console.error('[emailService] Error notificando admin:', error.message);
   }
-}
+};
 
-export interface AlertRegla {
-  nombre: string;
-  severidad: string;
-  reg_alias?: string;
-  variable_key: string;
-  sitio_desc?: string;
-  sitio_id: string;
-  valor_detectado?: unknown;
-  condicion_texto?: string;
-  condicion: string;
-  id_serial?: string;
-}
-
-export async function sendAlertEmail(
-  emailDestino: string,
-  nombreCompleto: string,
-  mensaje: string,
-  regla: AlertRegla,
-): Promise<void> {
+exports.sendAlertEmail = async (emailDestino, nombreCompleto, mensaje, regla) => {
   try {
-    const color = SEVERIDAD_COLOR[regla.severidad] ?? '#64748b';
-    const alias = regla.reg_alias ?? regla.variable_key;
-    const sitio = regla.sitio_desc ?? regla.sitio_id;
+    const color = SEVERIDAD_COLOR[regla.severidad] || '#64748b';
+    const alias = regla.reg_alias || regla.variable_key;
+    const sitio = regla.sitio_desc || regla.sitio_id;
     const severidad = labelSeveridad(regla.severidad);
     const valorDetectado = regla.valor_detectado ?? 'sin dato disponible';
-    const condicion = regla.condicion_texto ?? regla.condicion;
-    const serial = regla.id_serial ?? 'N/A';
+    const condicion = regla.condicion_texto || regla.condicion;
+    const serial = regla.id_serial || 'N/A';
 
     await enviar({
       to: emailDestino,
@@ -193,13 +147,11 @@ export async function sendAlertEmail(
               <tr><td style="padding:8px;font-weight:bold;color:#475569;">Nombre alerta</td><td style="padding:8px;">${escapeHtml(regla.nombre)}</td></tr>
             </table>
           </div>
+          <p style="text-align:center;color:#94a3b8;font-size:0.8em;margin-top:16px;">Plataforma de Monitoreo Industrial - no responder a este correo</p>
         </div>
       `,
     });
   } catch (error) {
-    logger.error(
-      { err: (error as Error).message, emailDestino },
-      '[emailService] Error enviando alerta',
-    );
+    console.error('[emailService] Error enviando alerta a', emailDestino, ':', error.message);
   }
-}
+};

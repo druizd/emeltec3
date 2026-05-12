@@ -1,6 +1,6 @@
 /**
- * Validación de variables de entorno con zod.
- * Falla rápido al boot si falta cualquier variable requerida.
+ * Validación tipada de variables de entorno (zod) — usada por los módulos TS
+ * nuevos. Coexiste con el legacy `config/env.js` (CommonJS, sin zod).
  */
 import 'dotenv/config';
 import { z } from 'zod';

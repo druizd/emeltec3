@@ -2,15 +2,31 @@
  * Capa TS sobre las transformaciones físicas (IEEE754, lineal, nivel freático,
  * caudal). Reusa los helpers en `src/utils/*.js` para no duplicar matemática.
  */
-import {
-  parseIEEE754,
-  registrosModbusAFloat32,
-  registrosModbusAUInt32,
-  type ByteOrder,
-  type Formato,
-} from '../../utils/ieee754';
-import { m3hALs } from '../../utils/caudal';
-import { calcularNivelFreatico } from '../../utils/nivelFreatico';
+type ByteOrder = 'BE' | 'LE' | 'MID-BE' | 'MID-LE';
+type Formato = 'float32' | 'int32' | 'uint32' | 'int16' | 'uint16';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const ieee754Mod = require('../../utils/ieee754.js') as {
+  parseIEEE754: (input: unknown, opts: { formato?: Formato; byteOrder?: ByteOrder }) => number;
+  registrosModbusAFloat32: (a: number, b: number, swap: boolean) => { valor: number };
+  registrosModbusAUInt32: (a: number, b: number, swap: boolean) => { valor: number };
+};
+const { parseIEEE754, registrosModbusAFloat32, registrosModbusAUInt32 } = ieee754Mod;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const caudalMod = require('../../utils/caudal.js') as { m3hALs: (v: unknown) => number };
+const { m3hALs } = caudalMod;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const nfMod = require('../../utils/nivelFreatico.js') as {
+  calcularNivelFreatico: (p: {
+    lecturaPozo: number;
+    profundidadSensor: number | null;
+    profundidadTotal: number;
+  }) => number;
+};
+const { calcularNivelFreatico } = nfMod;
+
 import type { PozoConfig, RegMap } from './types';
 
 function numberOrNull(value: unknown): number | null {

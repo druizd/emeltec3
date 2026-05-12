@@ -1,7 +1,7 @@
 /**
  * Repositorio del módulo sites: sitio, pozo_config, reg_map + last/history equipo.
  */
-import { query } from '../../config/db';
+import { query } from '../../config/dbHelpers';
 import type { HistoryEquipoRow, LatestEquipoRow, PozoConfig, RegMap, Site } from './types';
 
 const SITE_COLUMNS =

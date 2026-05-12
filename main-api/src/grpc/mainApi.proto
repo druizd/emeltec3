@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package mainapi;
+
+// Servicio principal gRPC que replica las consultas clave de la API HTTP.
+service MainApi {
+  rpc Health (Empty) returns (HealthResponse);
+  rpc GetLatest (QueryRequest) returns (HistoryResponse);
+  rpc GetOnlineValues (QueryRequest) returns (OnlineResponse);
+  rpc GetPreset (PresetRequest) returns (HistoryResponse);
+  rpc GetAvailableKeys (QueryRequest) returns (KeysResponse);
+  rpc GetVariableMetrics (QueryRequest) returns (VariableMetricsResponse);
+}
+
+// Mensaje vacio reutilizado por llamadas sin parametros.
+message Empty {}
+
+// Request base para consultas por serial y variables.
+message QueryRequest {
+  string serial_id = 1;
+  repeated string keys = 2;
+  int32 limit = 3;
+}
+
+// Request especifico para consultas por preset temporal.
+message PresetRequest {
+  string serial_id = 1;
+  repeated string keys = 2;
+  string preset = 3;
+  string base_date = 4;
+  int32 limit = 5;
+}
+
+// Representa una variable y su valor serializado como JSON.
+message VariableValue {
+  string nombre_dato = 1;
+  string valor_json = 2;
+}
+
+// Fila historica devuelta por latest o preset.
+message HistoryRecord {
+  string id_serial = 1;
+  string fecha = 2;
+  string hora = 3;
+  string timestamp_completo = 4;
+  repeated string selected_keys = 5;
+  repeated string keys_present = 6;
+  repeated VariableValue values = 7;
+}
+
+// Fila "online" con el ultimo valor conocido de una variable.
+message OnlineRecord {
+  string id_serial = 1;
+  string nombre_dato = 2;
+  string valor_json = 3;
+  string fecha = 4;
+  string hora = 5;
+  string timestamp_completo = 6;
+}
+
+// Metrica acumulada por nombre_dato.
+message VariableMetric {
+  string nombre_dato = 1;
+  string serial_id = 2;
+  int64 request_count = 3;
+  int64 bytes_sent = 4;
+  double bytes_sent_kb = 5;
+  int64 duration_ms_total = 6;
+  double avg_duration_ms = 7;
+  string updated_at = 8;
+}
+
+// Respuesta del chequeo de salud.
+message HealthResponse {
+  bool ok = 1;
+  string message = 2;
+  string database = 3;
+  string server_time = 4;
+}
+
+// Respuesta base para consultas historicas.
+message HistoryResponse {
+  bool ok = 1;
+  string message = 2;
+  string serial_id = 3;
+  repeated string selected_keys = 4;
+  int32 count = 5;
+  repeated HistoryRecord data = 6;
+  int64 payload_bytes = 7;
+  int64 response_time_ms = 8;
+  int64 request_count_total = 9;
+  int64 bytes_sent_total = 10;
+  string metrics_updated_at = 11;
+  string preset = 12;
+  string base_date = 13;
+  string from = 14;
+  string to = 15;
+}
+
+// Respuesta base para consultas online.
+message OnlineResponse {
+  bool ok = 1;
+  string message = 2;
+  string serial_id = 3;
+  repeated string selected_keys = 4;
+  int32 count = 5;
+  repeated OnlineRecord data = 6;
+  int64 payload_bytes = 7;
+  int64 response_time_ms = 8;
+  int64 request_count_total = 9;
+  int64 bytes_sent_total = 10;
+  string metrics_updated_at = 11;
+}
+
+// Respuesta para listar variables detectadas.
+message KeysResponse {
+  bool ok = 1;
+  string message = 2;
+  string serial_id = 3;
+  int32 count = 4;
+  repeated string data = 5;
+  int64 payload_bytes = 6;
+  int64 response_time_ms = 7;
+  int64 request_count_total = 8;
+  int64 bytes_sent_total = 9;
+  string metrics_updated_at = 10;
+}
+
+// Respuesta para metricas agrupadas por variable.
+message VariableMetricsResponse {
+  bool ok = 1;
+  string message = 2;
+  string serial_id = 3;
+  repeated string selected_keys = 4;
+  int32 count = 5;
+  repeated VariableMetric data = 6;
+}
