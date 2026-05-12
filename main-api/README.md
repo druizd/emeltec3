@@ -1,6 +1,50 @@
 # 🖥️ main-api — Backend REST API
 
-Servidor backend construido con **Node.js + Express 5** que maneja toda la lógica de negocio: autenticación, gestión de usuarios, datos de telemetría y envío de correos.
+Servidor backend construido con **Node.js + Express 5 + TypeScript** que maneja toda la lógica de negocio: autenticación, gestión de usuarios, datos de telemetría y envío de correos.
+
+> Estado: refactor en curso a TypeScript + módulos. Endpoints `/api/*` (v1) siguen vivos para compatibilidad con el frontend. Los nuevos endpoints viven bajo `/api/v2/*` y se construyen a partir de `src/modules/<bounded-context>/{repo,service,controller,schema}.ts`.
+
+## 🏗️ Arquitectura (v2 — TypeScript)
+
+```
+src/
+├── config/        env.ts (zod), db.ts (statement_timeout + slow-log + prom-client),
+│                  redis.ts (fallback degradado si no hay REDIS_URL), logger.ts (pino),
+│                  metrics.ts (prom-client registry)
+├── shared/        errors.ts (AppError, ValidationError, …), httpEnvelope.ts (ok/paginated/err),
+│                  permissions.ts (canReadSite, requireSuperAdmin, scopeByTenant),
+│                  time.ts, pagination.ts, requestContext.ts (AsyncLocalStorage + request-id)
+├── middlewares/   auth.ts (JWT protect), error.ts (AppError → JSON), requestId.ts,
+│                  httpMetrics.ts
+├── http/v2/       routes.ts — router montado en /api/v2 desde src/app.js
+├── modules/
+│   ├── telemetry/  repo + service + controller + transforms + schema. Caché Redis online.
+│   ├── sites/      repo + service + controller + transforms + types. Dashboard data/history.
+│   ├── companies/  repo + service + controller. Árbol jerárquico empresa→sub→sitio.
+│   ├── auth/       repo (OTP en Redis dual-write) + service + controller. Login + requestCode.
+│   ├── alerts/     worker.ts — polling de alertas, controlado por ENABLE_ALERTS_WORKER.
+│   ├── metrics/    buffer.ts (in-memory) + flusher.ts (batch upsert cada 5 s).
+│   └── health/     liveness, readiness (DB+Redis), /metrics Prometheus.
+└── server.js / app.js  (legacy entry — montan routers v1 + cargan dist/http/v2 si existe)
+```
+
+**Reglas:** controllers no importan repos directamente — sólo services. Repos sólo consultan DB. Schemas zod son la fuente de verdad para validación + tipos derivados.
+
+## 📊 Optimizaciones de performance
+
+- Prepared statements en queries calientes (`pool.query({ name, text, values })`).
+- Caché Redis para `/telemetry/online` (TTL 5 s); degradación a noop si `REDIS_URL` ausente.
+- Buffer in-memory + flusher batch para `api_metrics` (elimina UPSERT por request).
+- `time_bucket('1 minute', time)` de TimescaleDB en dashboard-history.
+- `statement_timeout` por conexión (default 10 s) + slow-log a pino para queries > 500 ms.
+- Migración `003_telemetry_perf_indices.js`: índice `equipo(id_serial, time DESC)` + GIN sobre `data`.
+- Histograma Prometheus de duración HTTP/DB en `/api/v2/metrics` (protegido con `INTERNAL_API_KEY`).
+
+## 🔁 Cómo migrar el frontend a v2
+
+1. Para cada endpoint legacy de `/api/data/*` o `/api/companies/sites/:id/dashboard-*`, hay equivalente en `/api/v2/telemetry/*` y `/api/v2/sites/:id/dashboard-*`.
+2. Respuesta v2 sigue envelope `{ ok: true, data, meta }`. Errores: `{ ok: false, error: { code, message, requestId } }`.
+3. v1 sigue funcionando — migrar módulo por módulo con flag de feature.
 
 ---
 
