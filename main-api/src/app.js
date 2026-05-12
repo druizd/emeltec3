@@ -65,7 +65,8 @@ app.use('/api/alertas', alertaRoutes);
 // /api/v2/* — router TS compilado. Endpoints nuevos con envelopes estándar,
 // caché Redis online, Prometheus metrics, healthcheck liveness/readiness.
 try {
-  const v2Router = require('../dist/http/v2/routes').default;
+  const v2RoutesPath = require('path').join(__dirname, '..', 'dist', 'http', 'v2', 'routes');
+  const v2Router = require(v2RoutesPath).default;
   app.use('/api/v2', v2Router);
 } catch (err) {
   if (err && err.code !== 'MODULE_NOT_FOUND') {
