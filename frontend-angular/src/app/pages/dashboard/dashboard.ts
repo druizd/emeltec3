@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CompanyService } from '../../services/company.service';
+import type { ApiResponse, CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 interface InstallationCard {
   id: string;
@@ -35,7 +36,7 @@ export class DashboardComponent implements OnInit {
     this.loading.set(true);
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res: ApiResponse<CompanyNode[]>) => {
         this.installations.set(res.ok ? this.flattenInstallations(res.data || []) : []);
         this.loading.set(false);
       },
@@ -71,10 +72,10 @@ export class DashboardComponent implements OnInit {
     return 'sensors';
   }
 
-  private flattenInstallations(tree: any[]): InstallationCard[] {
-    return tree.flatMap((company: any) =>
-      (company.subCompanies || []).flatMap((subCompany: any) =>
-        (subCompany.sites || []).map((site: any) => ({
+  private flattenInstallations(tree: CompanyNode[]): InstallationCard[] {
+    return tree.flatMap((company: CompanyNode) =>
+      (company.subCompanies || []).flatMap((subCompany: SubCompanyNode) =>
+        (subCompany.sites || []).map((site: SiteRecord) => ({
           id: site.id,
           name: this.pickFirst(site, ['descripcion', 'nombre', 'name', 'codigo']) || 'Instalacion',
           companyName: company.nombre || 'Empresa sin nombre',
@@ -97,9 +98,9 @@ export class DashboardComponent implements OnInit {
     );
   }
 
-  private pickFirst(source: any, keys: string[]): string | null {
+  private pickFirst(source: object, keys: string[]): string | null {
     for (const key of keys) {
-      const value = source?.[key];
+      const value = (source as Record<string, unknown>)?.[key];
       if (value !== undefined && value !== null && `${value}`.trim() !== '') {
         return `${value}`;
       }

@@ -31,8 +31,8 @@ import { CommonModule } from '@angular/common';
   `,
 })
 export class KpiCardComponent {
-  @Input() label: string = '';
+  @Input() label = '';
   @Input() value: string | number = '';
-  @Input() unit: string = '';
-  @Input() trend: string = '';
+  @Input() unit = '';
+  @Input() trend = '';
 }

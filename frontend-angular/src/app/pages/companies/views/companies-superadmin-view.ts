@@ -5,6 +5,7 @@ import { CompaniesContactsPanelComponent } from '../components/companies-contact
 import { CompaniesGeneralPanelComponent } from '../components/companies-general-panel';
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
+import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-superadmin-view',
@@ -89,14 +90,14 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
 })
 export class CompaniesSuperAdminViewComponent {
   @Input() activeTab = 'instalaciones';
-  @Input() selectedSubCompany: any = null;
-  @Input() sites: any[] = [];
+  @Input() selectedSubCompany: SubCompanyNode | null = null;
+  @Input() sites: SiteRecord[] = [];
   @Input() loading = false;
   @Input() subEmpresaId = '';
   @Input() empresaId = '';
 
   @Output() activeTabChange = new EventEmitter<string>();
-  @Output() siteSelected = new EventEmitter<any>();
+  @Output() siteSelected = new EventEmitter<SiteRecord>();
 
   contactsCount = 0;
 

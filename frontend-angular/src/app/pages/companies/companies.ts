@@ -7,6 +7,7 @@ import { CompaniesAdminViewComponent } from './views/companies-admin-view';
 import { CompaniesClienteViewComponent } from './views/companies-cliente-view';
 import { CompaniesGerenteViewComponent } from './views/companies-gerente-view';
 import { CompaniesSuperAdminViewComponent } from './views/companies-superadmin-view';
+import type { ApiResponse, CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies',
@@ -26,8 +27,8 @@ export class CompaniesComponent implements OnInit {
   router = inject(Router);
 
   activeTab = signal('instalaciones');
-  selectedSubCompany = signal<any>(null);
-  sites = signal<any[]>([]);
+  selectedSubCompany = signal<SubCompanyNode | null>(null);
+  sites = signal<SiteRecord[]>([]);
   loading = signal(false);
 
   constructor() {
@@ -40,7 +41,7 @@ export class CompaniesComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.companyService.fetchHierarchy().subscribe((res: any) => {
+    this.companyService.fetchHierarchy().subscribe((res: ApiResponse<CompanyNode[]>) => {
       if (res.ok) {
         if (res.data.length > 0 && !this.companyService.selectedSubCompanyId()) {
           const firstSub = res.data[0].subCompanies?.[0];
@@ -57,7 +58,7 @@ export class CompaniesComponent implements OnInit {
 
     const tree = this.companyService.hierarchy();
     for (const comp of tree) {
-      const sub = comp.subCompanies?.find((s: any) => s.id === id);
+      const sub = comp.subCompanies?.find((s) => s.id === id);
       if (sub) {
         this.selectedSubCompany.set({ ...sub, empresa_id: comp.id });
         break;
@@ -65,7 +66,7 @@ export class CompaniesComponent implements OnInit {
     }
 
     this.companyService.getSites(id).subscribe({
-      next: (json: any) => {
+      next: (json: ApiResponse<SiteRecord[]>) => {
         if (json.ok) {
           this.sites.set(json.data);
         }
@@ -79,7 +80,7 @@ export class CompaniesComponent implements OnInit {
     this.activeTab.set(tab);
   }
 
-  openSite(site: any): void {
+  openSite(site: SiteRecord): void {
     if (!site?.id) {
       return;
     }

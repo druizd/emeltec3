@@ -948,7 +948,7 @@ export class AdministrationComponent implements OnInit {
   private companyService = inject(CompanyService);
   private router = inject(Router);
 
-  readonly sectionItems: Array<{ id: SectionId; icon: string; label: string }> = [
+  readonly sectionItems: { id: SectionId; icon: string; label: string }[] = [
     { id: 'empresas', icon: 'domain', label: 'Empresas' },
     { id: 'subempresas', icon: 'add_business', label: 'Subempresas' },
     { id: 'sitios', icon: 'location_on', label: 'Sitios' },
@@ -1594,7 +1594,7 @@ export class AdministrationComponent implements OnInit {
     return {};
   }
 
-  private inferVariableRoleFromValues(...values: Array<string | null | undefined>): string {
+  private inferVariableRoleFromValues(...values: (string | null | undefined)[]): string {
     const text = this.normalizeSearchText(...values);
     const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
 
@@ -1674,7 +1674,7 @@ export class AdministrationComponent implements OnInit {
     return this.variableTransformOptions().find((option) => option.id === normalized);
   }
 
-  private normalizeSearchText(...values: Array<string | null | undefined>): string {
+  private normalizeSearchText(...values: (string | null | undefined)[]): string {
     return values
       .map((value) => String(value ?? '').trim())
       .join(' ')

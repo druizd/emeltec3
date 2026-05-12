@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { UserService } from '../../services/user.service';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
+import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
 
 @Component({
   selector: 'app-user-management',
@@ -279,9 +280,9 @@ export class UserManagementComponent implements OnInit, OnChanges {
   companyService = inject(CompanyService);
   auth = inject(AuthService);
 
-  @Input() subEmpresaId: string = '';
-  @Input() empresaId: string = '';
-  @Input() readOnly: boolean = false;
+  @Input() subEmpresaId = '';
+  @Input() empresaId = '';
+  @Input() readOnly = false;
 
   inputEmpresaId = signal('');
   inputSubEmpresaId = signal('');
@@ -305,11 +306,11 @@ export class UserManagementComponent implements OnInit, OnChanges {
     if (!id || tree.length === 0) return 'Buscando División...';
 
     const emp = tree.find((e) => e.id === parentId);
-    const sub = emp?.subCompanies?.find((s: any) => s.id === id);
+    const sub = emp?.subCompanies?.find((s) => s.id === id);
     return sub?.nombre || 'Desconocida';
   });
 
-  newUser: any = {
+  newUser: CreateUserPayload & { rut_usuario?: string } = {
     nombre: '',
     apellido: '',
     rut_usuario: '',
@@ -374,7 +375,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     };
 
     this.userService.createUser(data).subscribe({
-      next: (res: any) => {
+      next: (res: ApiResponse<User>) => {
         if (res.ok) {
           this.status.set({ type: 'success', msg: 'Invitación enviada.' });
           this.loadUsers();

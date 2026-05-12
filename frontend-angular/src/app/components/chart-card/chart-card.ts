@@ -19,10 +19,10 @@ Chart.register(...registerables);
   templateUrl: './chart-card.html',
 })
 export class ChartCardComponent implements OnChanges, AfterViewInit {
-  @Input() title: string = '';
-  @Input() data: any[] = [];
-  @Input() dataKey: string = '';
-  @Input() color: string = '#6366f1';
+  @Input() title = '';
+  @Input() data: Record<string, string | number | null | undefined>[] = [];
+  @Input() dataKey = '';
+  @Input() color = '#6366f1';
 
   @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
   private chart: Chart | null = null;
@@ -48,15 +48,19 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
     if (!ctx) return;
 
     const labels = this.data.map((d) => {
+      const t = d['time'];
       try {
-        const date = new Date(d.time);
+        const date = new Date(t as string | number);
         return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       } catch {
-        return d.time;
+        return t == null ? '' : String(t);
       }
     });
 
-    const values = this.data.map((d) => d[this.dataKey]);
+    const values = this.data.map((d) => {
+      const v = d[this.dataKey];
+      return typeof v === 'number' ? v : v == null ? null : Number(v);
+    });
 
     // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);

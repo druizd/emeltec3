@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, Input } from '@angular/core';
+import type { SubCompanyNode } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-page-header',
@@ -33,7 +34,7 @@ import { Component, Input } from '@angular/core';
   `,
 })
 export class CompaniesPageHeaderComponent {
-  @Input() selectedSubCompany: any = null;
+  @Input() selectedSubCompany: SubCompanyNode | null = null;
   @Input() sitesCount = 0;
   @Input() title = 'Instalaciones';
   @Input() subtitle = '';

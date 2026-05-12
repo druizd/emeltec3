@@ -6,6 +6,7 @@ import { CompaniesGeneralPanelComponent } from '../components/companies-general-
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesPageHeaderComponent } from '../components/companies-page-header';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
+import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-admin-view',
@@ -69,14 +70,14 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
 })
 export class CompaniesAdminViewComponent {
   @Input() activeTab = 'instalaciones';
-  @Input() selectedSubCompany: any = null;
-  @Input() sites: any[] = [];
+  @Input() selectedSubCompany: SubCompanyNode | null = null;
+  @Input() sites: SiteRecord[] = [];
   @Input() loading = false;
   @Input() subEmpresaId = '';
   @Input() empresaId = '';
 
   @Output() activeTabChange = new EventEmitter<string>();
-  @Output() siteSelected = new EventEmitter<any>();
+  @Output() siteSelected = new EventEmitter<SiteRecord>();
 
   readonly tabs: CompaniesTabItem[] = [
     { key: 'general', label: 'General', icon: 'info' },
