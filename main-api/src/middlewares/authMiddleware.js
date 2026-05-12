@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { requireEnv } = require('../config/requireEnv');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_dev_key_12345';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 exports.protect = (req, res, next) => {
   let token;

@@ -1,13 +1,12 @@
 const express    = require('express');
 const router     = express.Router();
 const { sendOtpEmail } = require('../controllers/internalController');
+const { requireEnv } = require('../config/requireEnv');
 
-const INTERNAL_KEY = process.env.INTERNAL_API_KEY || '';
+const INTERNAL_KEY = requireEnv('INTERNAL_API_KEY');
 
 // Sólo acepta llamadas de servicios internos que presenten la clave compartida.
-// Si no hay clave configurada (dev), se permite sin restricción.
 function internalAuth(req, res, next) {
-  if (!INTERNAL_KEY) return next();
   if (req.headers['x-internal-key'] !== INTERNAL_KEY) {
     return res.status(401).json({ ok: false, error: 'No autorizado' });
   }

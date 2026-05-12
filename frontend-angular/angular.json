@@ -99,6 +99,15 @@
             "proxyConfig": "proxy.conf.json",
             "allowedHosts": ["nuevacloud.emeltec.cl", "104.46.7.78"]
           }
+        },
+        "lint": {
+          "builder": "angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "src/**/*.ts",
+              "src/**/*.html"
+            ]
+          }
         }
       }
     }

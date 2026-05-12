@@ -7,7 +7,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
-const path = require("path");
 
 const healthRoutes   = require("./routes/healthRoutes");
 const statusRoutes   = require("./routes/statusRoutes");
@@ -64,17 +63,6 @@ app.use("/api/internal", internalRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/alertas", alertaRoutes);
-
-
-/* Servir archivos estáticos desde la carpeta demo */
-// La carpeta demo se sirve como frontend liviano para pruebas manuales.
-app.use(express.static(path.join(__dirname, "..", "demo")));
-
-/* Ruta principal del HTML */
-// La raiz publica entrega la pantalla HTML de prueba.
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "demo", "index.html"));
-});
 
 // Ultimo middleware: normaliza errores de cualquier ruta anterior.
 app.use(errorMiddleware);

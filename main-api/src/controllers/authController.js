@@ -3,8 +3,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const emailService = require('../services/emailService');
+const { requireEnv } = require('../config/requireEnv');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_dev_key_12345';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 const DEFAULT_OTP_MINS = 30;
 const MAX_OTP_MINS = 1440; // 24 horas máximo
 

@@ -2,8 +2,9 @@
  * Entry point del proceso Node.
  * Levanta el servidor HTTP y el servidor gRPC en el mismo proceso.
  */
-const app = require("./app");
+require("dotenv").config();
 const config = require("./config/env");
+const app = require("./app");
 const { startGrpcServer } = require("./grpc/server");
 const alertaService = require("./services/alertaService");
 

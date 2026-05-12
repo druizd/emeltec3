@@ -1,0 +1,26 @@
+{
+  "name": "emeltec-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo Emeltec Cloud — frontend Angular + APIs Node + pipeline Go",
+  "workspaces": [
+    "shared",
+    "frontend-angular",
+    "main-api",
+    "auth-api"
+  ],
+  "scripts": {
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

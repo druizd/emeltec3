@@ -1,6 +1,6 @@
 /**
  * Seed de datos de prueba para Emeltec Platform
- * Ejecutar desde la raíz: node seed.js
+ * Ejecutar desde la raíz: node scripts/seed.js
  */
 const { Pool } = require('pg');
 const bcrypt   = require('bcrypt');

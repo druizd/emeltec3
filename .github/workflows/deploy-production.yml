@@ -19,8 +19,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare example env file
-        run: cp main-api/.env.example main-api/.env
+      - name: Prepare example env files
+        run: |
+          cp main-api/.env.example main-api/.env
+          cp auth-api/.env.example auth-api/.env
+          cp .env.example .env
 
       - name: Validate compose file
         run: docker compose config --quiet

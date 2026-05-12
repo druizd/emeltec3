@@ -1,0 +1,9 @@
+{
+  "name": "@emeltec/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DTOs y tipos compartidos entre frontend y APIs Emeltec",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "sideEffects": false
+}

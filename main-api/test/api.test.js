@@ -1,4 +1,6 @@
 process.env.TZ = "UTC";
+process.env.JWT_SECRET = process.env.JWT_SECRET || "test_jwt_secret_only_for_unit_tests";
+process.env.INTERNAL_API_KEY = process.env.INTERNAL_API_KEY || "test_internal_key_only_for_unit_tests";
 
 // Suite de pruebas end-to-end con DB mockeada para HTTP y gRPC.
 const test = require("node:test");
