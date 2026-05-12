@@ -28,7 +28,7 @@ jobs:
           cache: 'npm'
 
       - name: Install workspaces
-        run: npm install --no-audit --no-fund
+        run: npm install --no-package-lock --no-audit --no-fund
 
       - name: Lint
         run: npm run lint

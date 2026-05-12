@@ -2,15 +2,16 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-# Manifests primero para mejor cache de capa npm install
-COPY package.json package-lock.json* ./
+# Manifests primero para mejor cache de capa npm install.
+# No copiamos package-lock.json: fue generado en Windows y omite binarios
+# nativos Linux (lightningcss-linux-x64-musl, etc). Resolver desde registry.
+COPY package.json ./
 COPY shared/package.json ./shared/
 COPY frontend-angular/package.json ./frontend-angular/
 COPY main-api/package.json ./main-api/
 COPY auth-api/package.json ./auth-api/
 
-# npm install (no npm ci) para que regenere binarios opcionales por plataforma
-RUN npm install --no-audit --no-fund
+RUN npm install --no-package-lock --no-audit --no-fund
 
 # Fuentes solo de lo necesario para build del frontend
 COPY shared/ ./shared/
