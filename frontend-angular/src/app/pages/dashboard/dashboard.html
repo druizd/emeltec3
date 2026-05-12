@@ -1,6 +1,9 @@
 <section class="min-h-full bg-[#F0F2F5] px-5 py-5">
   <div class="mb-5">
-    <h1 class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1e293b]" style="font-family: 'Josefin Sans', sans-serif;">
+    <h1
+      class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
+      style="font-family: 'Josefin Sans', sans-serif"
+    >
       Instalaciones
     </h1>
     <p class="mt-0.5 text-[13px] text-[#94a3b8]">
@@ -13,7 +16,9 @@
   @if (loading()) {
     <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2 2xl:grid-cols-3">
       @for (item of [1, 2, 3, 4, 5, 6]; track item) {
-        <div class="h-[65px] animate-pulse rounded-[10px] border border-[#e2e8f0] bg-white px-3 py-3 shadow-[0_2px_6px_rgba(15,23,42,0.06)]">
+        <div
+          class="h-[65px] animate-pulse rounded-[10px] border border-[#e2e8f0] bg-white px-3 py-3 shadow-[0_2px_6px_rgba(15,23,42,0.06)]"
+        >
           <div class="flex gap-2">
             <div class="h-[26px] w-[26px] rounded-md bg-[#f1f5f9]"></div>
             <div class="flex-1">
@@ -25,8 +30,12 @@
       }
     </div>
   } @else if (installations().length === 0) {
-    <div class="rounded-[10px] border border-dashed border-[#dbe4ef] bg-white px-6 py-12 text-center">
-      <span class="material-symbols-outlined mb-3 block text-[32px] text-[#cbd5e1]">sensors_off</span>
+    <div
+      class="rounded-[10px] border border-dashed border-[#dbe4ef] bg-white px-6 py-12 text-center"
+    >
+      <span class="material-symbols-outlined mb-3 block text-[32px] text-[#cbd5e1]"
+        >sensors_off</span
+      >
       <p class="text-[14px] font-semibold text-[#64748b]">No hay instalaciones registradas.</p>
     </div>
   } @else {
@@ -36,34 +45,56 @@
           type="button"
           (click)="openInstallation(installation)"
           class="group flex h-[65px] w-full flex-col justify-between rounded-[10px] border bg-white px-3.5 py-3 text-left transition-all"
-          [style.border-color]="installation.status === 'online' ? 'rgba(34,197,94,0.25)' : '#e2e8f0'"
-          [style.box-shadow]="installation.status === 'online' ? '0 0 0 1px rgba(34,197,94,0.10), 0 2px 8px rgba(15,23,42,0.06)' : '0 2px 6px rgba(15,23,42,0.06)'"
+          [style.border-color]="
+            installation.status === 'online' ? 'rgba(34,197,94,0.25)' : '#e2e8f0'
+          "
+          [style.box-shadow]="
+            installation.status === 'online'
+              ? '0 0 0 1px rgba(34,197,94,0.10), 0 2px 8px rgba(15,23,42,0.06)'
+              : '0 2px 6px rgba(15,23,42,0.06)'
+          "
         >
           <div class="flex items-start justify-between gap-2">
             <div class="flex min-w-0 items-center gap-2">
-              <div class="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border border-[rgba(13,175,189,0.20)] bg-[rgba(13,175,189,0.10)]">
-                <span class="material-symbols-outlined text-[13px] text-[#0dafbd]">{{ getTypeIcon(installation.type) }}</span>
+              <div
+                class="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-md border border-[rgba(13,175,189,0.20)] bg-[rgba(13,175,189,0.10)]"
+              >
+                <span class="material-symbols-outlined text-[13px] text-[#0dafbd]">{{
+                  getTypeIcon(installation.type)
+                }}</span>
               </div>
 
               <div class="min-w-0">
-                <h2 class="truncate text-[13px] font-semibold leading-tight text-[#1e293b]">{{ installation.name }}</h2>
+                <h2 class="truncate text-[13px] font-semibold leading-tight text-[#1e293b]">
+                  {{ installation.name }}
+                </h2>
                 <p class="truncate text-[11px] text-[#64748b]">{{ installation.location }}</p>
               </div>
             </div>
 
-            <span class="material-symbols-outlined shrink-0 text-[14px] text-[#94a3b8]">chevron_right</span>
+            <span class="material-symbols-outlined shrink-0 text-[14px] text-[#94a3b8]"
+              >chevron_right</span
+            >
           </div>
 
           <div class="flex items-center justify-between gap-2">
-            <p class="max-w-[145px] truncate text-[11px] text-[#94a3b8]">{{ installation.companyName }}</p>
+            <p class="max-w-[145px] truncate text-[11px] text-[#94a3b8]">
+              {{ installation.companyName }}
+            </p>
 
             <div class="flex shrink-0 items-center gap-3">
               @if (installation.depth) {
                 <span class="text-[10px] text-[#94a3b8]">Prof. {{ installation.depth }}</span>
               }
 
-              <span class="flex items-center gap-[3px] text-[10px] font-semibold" [style.color]="getStatusColor(installation.status)">
-                <span class="h-[5px] w-[5px] rounded-full" [style.background]="getStatusColor(installation.status)"></span>
+              <span
+                class="flex items-center gap-[3px] text-[10px] font-semibold"
+                [style.color]="getStatusColor(installation.status)"
+              >
+                <span
+                  class="h-[5px] w-[5px] rounded-full"
+                  [style.background]="getStatusColor(installation.status)"
+                ></span>
                 {{ getStatusLabel(installation.status) }}
               </span>
             </div>

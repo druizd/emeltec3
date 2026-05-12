@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, OnChanges, Output, signal, SimpleChanges } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  signal,
+  SimpleChanges,
+} from '@angular/core';
 import { UserService } from '../../../services/user.service';
 
 @Component({
@@ -7,10 +16,18 @@ import { UserService } from '../../../services/user.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section [class]="variant === 'superadmin' ? 'animate-in fade-in duration-500' : 'animate-in fade-in duration-500 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm'">
+    <section
+      [class]="
+        variant === 'superadmin'
+          ? 'animate-in fade-in duration-500'
+          : 'animate-in fade-in duration-500 rounded-3xl border border-slate-200 bg-white p-8 shadow-sm'
+      "
+    >
       @if (variant !== 'superadmin') {
         <div class="mb-8">
-          <h3 class="mb-2 border-l-4 border-primary-container pl-4 text-sm font-black uppercase tracking-widest text-primary">
+          <h3
+            class="mb-2 border-l-4 border-primary-container pl-4 text-sm font-black uppercase tracking-widest text-primary"
+          >
             Contactos
           </h3>
           <p class="pl-4 text-sm text-slate-400">
@@ -44,7 +61,9 @@ import { UserService } from '../../../services/user.service';
             <article [class]="getContactCardClass()">
               <div class="mb-4 flex items-start gap-3">
                 <div class="flex min-w-0 items-center gap-3">
-                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-[11px] font-black text-white shadow-sm">
+                  <div
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-[11px] font-black text-white shadow-sm"
+                  >
                     {{ getContactInitials(contact) }}
                   </div>
 
@@ -60,30 +79,48 @@ import { UserService } from '../../../services/user.service';
               </div>
 
               <div class="space-y-2.5">
-                <div class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600">badge</span>
+                <div
+                  class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
+                >
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600"
+                    >badge</span
+                  >
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Cargo</p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      Cargo
+                    </p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
                       {{ getContactPosition(contact) }}
                     </p>
                   </div>
                 </div>
 
-                <div class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600">call</span>
+                <div
+                  class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
+                >
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600"
+                    >call</span
+                  >
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Teléfono</p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      Teléfono
+                    </p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
                       {{ getContactPhone(contact) }}
                     </p>
                   </div>
                 </div>
 
-                <div class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5">
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600">mail</span>
+                <div
+                  class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
+                >
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600"
+                    >mail</span
+                  >
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Correo</p>
+                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                      Correo
+                    </p>
                     <p class="break-all text-[13px] font-semibold text-slate-700">
                       {{ getContactEmail(contact) }}
                     </p>
@@ -96,7 +133,9 @@ import { UserService } from '../../../services/user.service';
       } @else {
         <div [class]="getEmptyStateClass()">
           <span class="material-symbols-outlined mb-4 text-5xl text-slate-300">contact_phone</span>
-          <p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">Sin contactos registrados</p>
+          <p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
+            Sin contactos registrados
+          </p>
           <p class="mt-2 max-w-md text-sm text-slate-400">
             No hay personas asociadas a {{ selectedLabel || 'esta division' }} por ahora.
           </p>
@@ -137,9 +176,11 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     this.loading.set(true);
     this.userService.getUsers(filters).subscribe({
       next: (res: any) => {
-        const users = res?.ok ? res.data ?? [] : [];
+        const users = res?.ok ? (res.data ?? []) : [];
         const filteredUsers = this.subEmpresaId
-          ? users.filter((user: any) => user.sub_empresa_id === this.subEmpresaId || !user.sub_empresa_id)
+          ? users.filter(
+              (user: any) => user.sub_empresa_id === this.subEmpresaId || !user.sub_empresa_id,
+            )
           : users;
 
         this.contacts.set(filteredUsers);

@@ -80,11 +80,20 @@ export class DashboardComponent implements OnInit {
           companyName: company.nombre || 'Empresa sin nombre',
           subCompanyName: subCompany.nombre || 'Division sin nombre',
           type: company.tipo_empresa || 'Instalacion',
-          location: this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) || subCompany.nombre || 'Sin referencia',
-          depth: this.pickFirst(site, ['profundidad', 'profundidad_m', 'prof_total', 'depth', 'profundidad_pozo']),
+          location:
+            this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) ||
+            subCompany.nombre ||
+            'Sin referencia',
+          depth: this.pickFirst(site, [
+            'profundidad',
+            'profundidad_m',
+            'prof_total',
+            'depth',
+            'profundidad_pozo',
+          ]),
           status: 'pending' as const,
-        }))
-      )
+        })),
+      ),
     );
   }
 

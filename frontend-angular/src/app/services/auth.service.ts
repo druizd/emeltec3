@@ -1,15 +1,8 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
+import type { User, UserRole } from '@emeltec/shared';
 
-export interface User {
-  id: string;
-  nombre: string;
-  apellido: string;
-  email: string;
-  tipo: string;
-  empresa_id?: string;
-  sub_empresa_id?: string;
-}
+export type { User, UserRole };
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -22,7 +15,6 @@ export class AuthService {
   readonly loading = this.loadingSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.userSignal());
 
-  // ── Role helpers ──────────────────────────────────────────────────────
   readonly isSuperAdmin = computed(() => this.userSignal()?.tipo === 'SuperAdmin');
   readonly isAdmin = computed(() => this.userSignal()?.tipo === 'Admin');
   readonly isGerente = computed(() => this.userSignal()?.tipo === 'Gerente');

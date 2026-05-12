@@ -12,7 +12,13 @@ function pingPipeline() {
     const start = Date.now();
     let pkg;
     try {
-      const def = protoLoader.loadSync(PROTO_PATH, { keepCase: true, longs: String, enums: String, defaults: true, oneofs: true });
+      const def = protoLoader.loadSync(PROTO_PATH, {
+        keepCase: true,
+        longs: String,
+        enums: String,
+        defaults: true,
+        oneofs: true,
+      });
       pkg = grpc.loadPackageDefinition(def).logpipeline;
     } catch {
       return resolve({ status: 'offline', error: 'proto load failed' });
@@ -20,14 +26,17 @@ function pingPipeline() {
 
     const client = new pkg.LogIngestion(
       `${CSVCONSUMER_HOST}:${CSVCONSUMER_PORT}`,
-      grpc.credentials.createInsecure()
+      grpc.credentials.createInsecure(),
     );
 
     const deadline = new Date(Date.now() + 3000);
     client.Ping({}, { deadline }, (err, response) => {
       client.close();
       if (err) return resolve({ status: 'offline', error: err.message });
-      resolve({ status: response.status === 'ok' ? 'online' : 'degraded', response_time_ms: Date.now() - start });
+      resolve({
+        status: response.status === 'ok' ? 'online' : 'degraded',
+        response_time_ms: Date.now() - start,
+      });
     });
   });
 }
@@ -45,7 +54,9 @@ async function pingDatabase() {
 exports.getStatus = async (req, res) => {
   const [database, pipeline] = await Promise.all([pingDatabase(), pingPipeline()]);
 
-  const jwtConfigured = !!(process.env.JWT_SECRET && process.env.JWT_SECRET !== 'super_secret_dev_key_12345');
+  const jwtConfigured = !!(
+    process.env.JWT_SECRET && process.env.JWT_SECRET !== 'super_secret_dev_key_12345'
+  );
 
   const services = {
     api: {

@@ -2,12 +2,12 @@
  * Utilidades de dominio.
  * Resuelven el catalogo de dominios disponible para el modulo de catalogo.
  */
-const pool = require("../config/db");
+const pool = require('../config/db');
 
 const FALLBACK_DOMAINS = [
-  { id: 1, slug: "agua", name: "Agua" },
-  { id: 2, slug: "electrico", name: "Eléctrico" },
-  { id: 3, slug: "pozos", name: "Pozos" },
+  { id: 1, slug: 'agua', name: 'Agua' },
+  { id: 2, slug: 'electrico', name: 'Eléctrico' },
+  { id: 3, slug: 'pozos', name: 'Pozos' },
 ];
 
 let domainsCache = [];
@@ -25,7 +25,7 @@ async function hasDomainsTable() {
          SELECT 1
          FROM information_schema.tables
          WHERE table_schema = 'public' AND table_name = 'domains'
-       ) AS exists`
+       ) AS exists`,
     );
     domainsTableExists = Boolean(rows[0]?.exists);
   } catch (err) {
@@ -44,16 +44,14 @@ async function refreshDomains() {
 
   try {
     if (await hasDomainsTable()) {
-      const { rows } = await pool.query(
-        "SELECT id, slug, name FROM public.domains ORDER BY id"
-      );
+      const { rows } = await pool.query('SELECT id, slug, name FROM public.domains ORDER BY id');
       domainsCache = rows.length > 0 ? rows : FALLBACK_DOMAINS;
     } else {
       domainsCache = FALLBACK_DOMAINS;
     }
     lastRefresh = now;
   } catch (err) {
-    console.error("[domains] Error al refrescar dominios:", err.message);
+    console.error('[domains] Error al refrescar dominios:', err.message);
     domainsCache = domainsCache.length > 0 ? domainsCache : FALLBACK_DOMAINS;
   }
 

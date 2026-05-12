@@ -1,85 +1,121 @@
+# Stack Emeltec Platform.
+# Variables compartidas se leen desde el .env raíz (ver .env.example).
+# Cada API toma sus secretos sensibles desde su propio .env por servicio.
+
+x-db-env: &db-env
+  DB_HOST: timescaledb
+  DB_PORT: 5432
+  DB_NAME: ${POSTGRES_DB}
+  DB_USER: ${POSTGRES_USER}
+  DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+x-healthcheck-main-api: &healthcheck-main-api
+  test:
+    - CMD-SHELL
+    - >-
+      node -e "fetch('http://localhost:3000/api/health')
+      .then(r => process.exit(r.ok ? 0 : 1))
+      .catch(() => process.exit(1))"
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 20s
+
+x-healthcheck-auth-api: &healthcheck-auth-api
+  test:
+    - CMD-SHELL
+    - >-
+      node -e "fetch('http://localhost:3001/api/health')
+      .then(r => process.exit(r.ok ? 0 : 1))
+      .catch(() => process.exit(1))"
+  interval: 10s
+  timeout: 5s
+  retries: 5
+  start_period: 20s
+
 services:
   timescaledb:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-db
     ports:
-      - "5433:5432"
+      - '${POSTGRES_HOST_PORT:-5433}:5432'
     environment:
-      POSTGRES_DB: telemetry_platform
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin_password
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - timescale_data:/var/lib/postgresql/data
       - ./infra-db/init-db:/docker-entrypoint-initdb.d
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 5s
       timeout: 3s
       retries: 5
+
+  main-api:
+    build: ./main-api
+    container_name: emeltec-api
+    ports:
+      - '${MAIN_API_HOST_PORT:-3000}:3000'
+    env_file:
+      - ./main-api/.env
+    environment:
+      <<: *db-env
+      NODE_ENV: production
+      PORT: 3000
+      CSVCONSUMER_HOST: csvconsumer
+      CSVCONSUMER_PORT: 50051
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck: *healthcheck-main-api
+    restart: unless-stopped
 
   auth-api:
     build: ./auth-api
     container_name: emeltec-auth
     ports:
-      - "3001:3001"
+      - '${AUTH_API_HOST_PORT:-3001}:3001'
     env_file:
-      - ./main-api/.env
+      - ./auth-api/.env
     environment:
+      <<: *db-env
       NODE_ENV: production
-      DB_HOST: timescaledb
-      DB_PORT: 5432
-      DB_NAME: telemetry_platform
-      DB_USER: postgres
-      DB_PASSWORD: admin_password
       PORT: 3001
       MAIN_API_URL: http://main-api:3000
     depends_on:
       timescaledb:
         condition: service_healthy
       main-api:
-        condition: service_started
-    restart: unless-stopped
-
-  main-api:
-    build: ./main-api
-    container_name: emeltec-api
-    ports:
-      - "3000:3000"
-    env_file:
-      - ./main-api/.env
-    environment:
-      NODE_ENV: production
-      DB_HOST: timescaledb
-      DB_PORT: 5432
-      DB_NAME: telemetry_platform
-      DB_USER: postgres
-      DB_PASSWORD: admin_password
-      CSVCONSUMER_HOST: csvconsumer
-      CSVCONSUMER_PORT: 50051
-    depends_on:
-      timescaledb:
         condition: service_healthy
+    healthcheck: *healthcheck-auth-api
     restart: unless-stopped
 
   frontend-angular:
-    build: ./frontend-angular
+    build:
+      context: .
+      dockerfile: frontend-angular/Dockerfile
     container_name: emeltec-frontend
     ports:
-      - "5173:80"
+      - '${FRONTEND_HOST_PORT:-5173}:80'
     depends_on:
-      - main-api
-      - auth-api
+      main-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
     restart: unless-stopped
 
   metrics-page:
     build: ./metrics-page
     container_name: emeltec-metrics-page
     ports:
-      - "127.0.0.1:8081:80"
+      - '127.0.0.1:${METRICS_HOST_PORT:-8081}:80'
     depends_on:
-      - main-api
-      - auth-api
+      main-api:
+        condition: service_healthy
+      auth-api:
+        condition: service_healthy
     restart: unless-stopped
 
   csvconsumer:
@@ -88,19 +124,14 @@ services:
       dockerfile: csvconsumer.Dockerfile
     container_name: emeltec-csvconsumer
     ports:
-      - "50051:50051"
+      - '${CSVCONSUMER_HOST_PORT:-50051}:50051'
     environment:
-      DB_HOST: timescaledb
-      DB_PORT: 5432
-      DB_NAME: telemetry_platform
-      DB_USER: postgres
-      DB_PASSWORD: admin_password
+      <<: *db-env
       GRPC_PORT: 50051
     depends_on:
       timescaledb:
         condition: service_healthy
     restart: unless-stopped
-
 
 volumes:
   timescale_data:

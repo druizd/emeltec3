@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+dist
+**/dist
+frontend-angular/.angular
+**/.angular
+coverage
+**/coverage
+package-lock.json
+**/package-lock.json
+*.min.js
+*.min.css
+grpc-pipeline/**/*.go
+infra-db/init-db

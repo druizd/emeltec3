@@ -2,31 +2,31 @@
  * Servidor gRPC principal.
  * Expone una capa paralela a la API HTTP para consultar salud, datos y metricas.
  */
-const path = require("path");
-const grpc = require("@grpc/grpc-js");
-const protoLoader = require("@grpc/proto-loader");
+const path = require('path');
+const grpc = require('@grpc/grpc-js');
+const protoLoader = require('@grpc/proto-loader');
 
-const pool = require("../config/db");
-const { getLatestSerialId } = require("../utils/serial");
-const { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } = require("../utils/timezone");
+const pool = require('../config/db');
+const { getLatestSerialId } = require('../utils/serial');
+const { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } = require('../utils/timezone');
 const {
   trackRequest,
   getRequestMetrics,
   registerVariableMetrics,
   getVariableMetrics,
-} = require("../services/metricsService");
+} = require('../services/metricsService');
 
-const PROTO_PATH = path.join(__dirname, "mainApi.proto");
+const PROTO_PATH = path.join(__dirname, 'mainApi.proto');
 
 // Equivalencias aceptadas para los presets temporales en gRPC.
 const PRESET_ALIASES = {
-  "24h": { amount: 24, unit: "hours", canonical: "24h" },
-  "7d": { amount: 7, unit: "days", canonical: "7d" },
-  "30d": { amount: 30, unit: "days", canonical: "30d" },
-  "365d": { amount: 365, unit: "days", canonical: "365d" },
-  "1y": { amount: 365, unit: "days", canonical: "365d" },
-  "1a": { amount: 365, unit: "days", canonical: "365d" },
-  "1year": { amount: 365, unit: "days", canonical: "365d" },
+  '24h': { amount: 24, unit: 'hours', canonical: '24h' },
+  '7d': { amount: 7, unit: 'days', canonical: '7d' },
+  '30d': { amount: 30, unit: 'days', canonical: '30d' },
+  '365d': { amount: 365, unit: 'days', canonical: '365d' },
+  '1y': { amount: 365, unit: 'days', canonical: '365d' },
+  '1a': { amount: 365, unit: 'days', canonical: '365d' },
+  '1year': { amount: 365, unit: 'days', canonical: '365d' },
 };
 
 // Carga el archivo .proto y devuelve el paquete tipado que usa grpc-js.
@@ -44,7 +44,7 @@ function loadProto() {
 
 // Calcula el peso en bytes de la respuesta serializada para registrar metricas.
 function payloadBytes(obj) {
-  return Buffer.byteLength(JSON.stringify(obj), "utf8");
+  return Buffer.byteLength(JSON.stringify(obj), 'utf8');
 }
 
 // Convierte el tiempo transcurrido desde process.hrtime a milisegundos enteros.
@@ -55,7 +55,13 @@ function elapsedMilliseconds(startedAt) {
 
 // Normaliza el preset recibido a una configuracion valida o null.
 function normalizePreset(rawPreset) {
-  return PRESET_ALIASES[String(rawPreset || "").trim().toLowerCase()] || null;
+  return (
+    PRESET_ALIASES[
+      String(rawPreset || '')
+        .trim()
+        .toLowerCase()
+    ] || null
+  );
 }
 
 // Acepta un arreglo de keys desde gRPC y lo limpia para usarlo en consultas SQL.
@@ -64,12 +70,14 @@ function parseSelectedKeys(rawKeys) {
     return [];
   }
 
-  return [...new Set(
-    rawKeys
-      .flatMap((value) => String(value || "").split(","))
-      .map((value) => value.trim())
-      .filter(Boolean)
-  )];
+  return [
+    ...new Set(
+      rawKeys
+        .flatMap((value) => String(value || '').split(','))
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 // Limita un entero positivo para consultas donde siempre debe existir limite.
@@ -136,7 +144,7 @@ function buildDataFilterClause(selectedKeys, params) {
     return ` AND data ?| $${params.length}::text[]`;
   }
 
-  return "";
+  return '';
 }
 
 function chileDateSql(column) {
@@ -150,7 +158,7 @@ function chileTimeSql(column) {
 // Ejecuta la consulta historica base usada por latest y preset.
 async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) {
   const params = [serialId];
-  let where = "WHERE id_serial = $1";
+  let where = 'WHERE id_serial = $1';
 
   if (from && to) {
     params.push(from, to);
@@ -168,7 +176,7 @@ async function executeHistoryQuery({ serialId, selectedKeys, from, to, limit }) 
     FROM equipo
     ${where}
     ORDER BY time DESC
-    ${Number.isFinite(limit) ? `LIMIT $${params.length + 1}` : ""}
+    ${Number.isFinite(limit) ? `LIMIT $${params.length + 1}` : ''}
   `;
 
   if (Number.isFinite(limit)) {
@@ -191,7 +199,7 @@ async function getLatestReferenceTimestamp(serialId) {
     ORDER BY time DESC
     LIMIT 1
     `,
-    [serialId]
+    [serialId],
   );
 
   if (!rows.length) {
@@ -215,7 +223,7 @@ function formatTimestampLiteral(date) {
 function buildRangeFromPreset(presetConfig, endDate) {
   const startDate = new Date(endDate);
 
-  if (presetConfig.unit === "hours") {
+  if (presetConfig.unit === 'hours') {
     startDate.setUTCHours(startDate.getUTCHours() - presetConfig.amount);
   } else {
     startDate.setUTCDate(startDate.getUTCDate() - presetConfig.amount);
@@ -275,7 +283,14 @@ function collectHistoryKeys(rows) {
 }
 
 // Genera metricas por variable a partir de respuestas historicas gRPC.
-function buildHistoryVariableMetricEntries(filters, rows, extras, selectedKeys, serialId, durationMs) {
+function buildHistoryVariableMetricEntries(
+  filters,
+  rows,
+  extras,
+  selectedKeys,
+  serialId,
+  durationMs,
+) {
   const keysToTrack = selectedKeys.length ? selectedKeys : collectHistoryKeys(rows);
 
   if (!keysToTrack.length) {
@@ -301,7 +316,7 @@ function buildHistoryVariableMetricEntries(filters, rows, extras, selectedKeys, 
 
     const payload = {
       ok: true,
-      serial_id: serialId || "",
+      serial_id: serialId || '',
       selected_keys: [key],
       count: projectedRows.length,
       data: toGrpcHistoryRows(projectedRows),
@@ -333,7 +348,7 @@ function buildOnlineVariableMetricEntries(selectedKeys, rows, serialId, duration
     const projectedRows = rows.filter((row) => row.nombre_dato === key);
     const payload = {
       ok: true,
-      serial_id: serialId || "",
+      serial_id: serialId || '',
       selected_keys: [key],
       count: projectedRows.length,
       data: toGrpcOnlineRows(projectedRows),
@@ -357,27 +372,27 @@ function grpcError(code, message) {
 async function finalizeHistoryResponse(baseResponse, endpoint, serialId, variableMetrics) {
   const bytes = payloadBytes(baseResponse);
 
-  await trackRequest(endpoint, "grpc", serialId, bytes);
+  await trackRequest(endpoint, 'grpc', serialId, bytes);
   await registerVariableMetrics(variableMetrics);
-  const metrics = await getRequestMetrics(endpoint, "grpc", serialId);
+  const metrics = await getRequestMetrics(endpoint, 'grpc', serialId);
 
   return {
     ...baseResponse,
     payload_bytes: bytes,
     request_count_total: metrics.request_count_total,
     bytes_sent_total: metrics.bytes_sent_total,
-    metrics_updated_at: metrics.updated_at || "",
+    metrics_updated_at: metrics.updated_at || '',
   };
 }
 
 // RPC de salud: verifica que el proceso y la base esten operativos.
 async function getHealth(call, callback) {
   try {
-    const { rows } = await pool.query("SELECT NOW() AS server_time");
+    const { rows } = await pool.query('SELECT NOW() AS server_time');
     callback(null, {
       ok: true,
-      message: "API principal operativa",
-      database: "Conexion exitosa",
+      message: 'API principal operativa',
+      database: 'Conexion exitosa',
       server_time: String(rows[0].server_time),
     });
   } catch (error) {
@@ -397,16 +412,16 @@ async function getLatest(call, callback) {
       const response = await finalizeHistoryResponse(
         {
           ok: true,
-          message: "No hay registros disponibles todavia.",
-          serial_id: "",
+          message: 'No hay registros disponibles todavia.',
+          serial_id: '',
           selected_keys: selectedKeys,
           count: 0,
           data: [],
           response_time_ms: elapsedMilliseconds(startedAt),
         },
-        "gRPC MainApi/GetLatest",
+        'gRPC MainApi/GetLatest',
         null,
-        []
+        [],
       );
       callback(null, response);
       return;
@@ -421,14 +436,14 @@ async function getLatest(call, callback) {
     const response = await finalizeHistoryResponse(
       {
         ok: true,
-        message: "",
+        message: '',
         serial_id: serialId,
         selected_keys: selectedKeys,
         count: rows.length,
         data: toGrpcHistoryRows(rows),
         response_time_ms: durationMs,
       },
-      "gRPC MainApi/GetLatest",
+      'gRPC MainApi/GetLatest',
       serialId,
       buildHistoryVariableMetricEntries(
         { serial_id: serialId, selected_keys: selectedKeys },
@@ -436,8 +451,8 @@ async function getLatest(call, callback) {
         {},
         selectedKeys,
         serialId,
-        durationMs
-      )
+        durationMs,
+      ),
     );
 
     callback(null, response);
@@ -457,8 +472,8 @@ async function getOnlineValues(call, callback) {
     if (!serialId) {
       const bytesResponse = {
         ok: true,
-        message: "No hay registros disponibles todavia.",
-        serial_id: "",
+        message: 'No hay registros disponibles todavia.',
+        serial_id: '',
         selected_keys: selectedKeys,
         count: 0,
         data: [],
@@ -466,16 +481,16 @@ async function getOnlineValues(call, callback) {
       };
       const response = await finalizeHistoryResponse(
         bytesResponse,
-        "gRPC MainApi/GetOnlineValues",
+        'gRPC MainApi/GetOnlineValues',
         null,
-        []
+        [],
       );
       callback(null, response);
       return;
     }
 
     const params = [serialId];
-    let keyWhere = "";
+    let keyWhere = '';
 
     if (selectedKeys.length === 1) {
       params.push(selectedKeys[0]);
@@ -507,7 +522,7 @@ async function getOnlineValues(call, callback) {
       ) latest
       ORDER BY latest.nombre_dato ASC
       `,
-      params
+      params,
     );
 
     const mapped = rows.map((row) => ({
@@ -521,7 +536,7 @@ async function getOnlineValues(call, callback) {
     const durationMs = elapsedMilliseconds(startedAt);
     const baseResponse = {
       ok: true,
-      message: "",
+      message: '',
       serial_id: serialId,
       selected_keys: selectedKeys,
       count: mapped.length,
@@ -530,18 +545,18 @@ async function getOnlineValues(call, callback) {
     };
     const bytes = payloadBytes(baseResponse);
 
-    await trackRequest("gRPC MainApi/GetOnlineValues", "grpc", serialId, bytes);
+    await trackRequest('gRPC MainApi/GetOnlineValues', 'grpc', serialId, bytes);
     await registerVariableMetrics(
-      buildOnlineVariableMetricEntries(selectedKeys, mapped, serialId, durationMs)
+      buildOnlineVariableMetricEntries(selectedKeys, mapped, serialId, durationMs),
     );
-    const metrics = await getRequestMetrics("gRPC MainApi/GetOnlineValues", "grpc", serialId);
+    const metrics = await getRequestMetrics('gRPC MainApi/GetOnlineValues', 'grpc', serialId);
 
     callback(null, {
       ...baseResponse,
       payload_bytes: bytes,
       request_count_total: metrics.request_count_total,
       bytes_sent_total: metrics.bytes_sent_total,
-      metrics_updated_at: metrics.updated_at || "",
+      metrics_updated_at: metrics.updated_at || '',
     });
   } catch (error) {
     callback(grpcError(grpc.status.INTERNAL, error.message));
@@ -558,12 +573,12 @@ async function getPreset(call, callback) {
     const presetConfig = normalizePreset(call.request.preset);
 
     if (!call.request.preset) {
-      callback(grpcError(grpc.status.INVALID_ARGUMENT, "preset es obligatorio"));
+      callback(grpcError(grpc.status.INVALID_ARGUMENT, 'preset es obligatorio'));
       return;
     }
 
     if (!presetConfig) {
-      callback(grpcError(grpc.status.INVALID_ARGUMENT, "Preset invalido. Usa 24h, 7d, 30d o 365d"));
+      callback(grpcError(grpc.status.INVALID_ARGUMENT, 'Preset invalido. Usa 24h, 7d, 30d o 365d'));
       return;
     }
 
@@ -571,20 +586,20 @@ async function getPreset(call, callback) {
       const response = await finalizeHistoryResponse(
         {
           ok: true,
-          message: "No hay registros disponibles todavia.",
-          serial_id: "",
+          message: 'No hay registros disponibles todavia.',
+          serial_id: '',
           selected_keys: selectedKeys,
           count: 0,
           data: [],
           response_time_ms: elapsedMilliseconds(startedAt),
           preset: presetConfig.canonical,
-          base_date: "",
-          from: "",
-          to: "",
+          base_date: '',
+          from: '',
+          to: '',
         },
-        "gRPC MainApi/GetPreset",
+        'gRPC MainApi/GetPreset',
         null,
-        []
+        [],
       );
       callback(null, response);
       return;
@@ -597,20 +612,20 @@ async function getPreset(call, callback) {
       const response = await finalizeHistoryResponse(
         {
           ok: true,
-          message: "No hay registros para ese serial.",
+          message: 'No hay registros para ese serial.',
           serial_id: serialId,
           selected_keys: selectedKeys,
           count: 0,
           data: [],
           response_time_ms: elapsedMilliseconds(startedAt),
           preset: presetConfig.canonical,
-          base_date: "",
-          from: "",
-          to: "",
+          base_date: '',
+          from: '',
+          to: '',
         },
-        "gRPC MainApi/GetPreset",
+        'gRPC MainApi/GetPreset',
         serialId,
-        []
+        [],
       );
       callback(null, response);
       return;
@@ -619,7 +634,7 @@ async function getPreset(call, callback) {
     const endDate = parseTimestampLiteral(resolvedBaseDate);
 
     if (!endDate) {
-      callback(grpcError(grpc.status.INVALID_ARGUMENT, "base_date no tiene un formato valido"));
+      callback(grpcError(grpc.status.INVALID_ARGUMENT, 'base_date no tiene un formato valido'));
       return;
     }
 
@@ -635,7 +650,7 @@ async function getPreset(call, callback) {
     const response = await finalizeHistoryResponse(
       {
         ok: true,
-        message: "",
+        message: '',
         serial_id: serialId,
         selected_keys: selectedKeys,
         count: rows.length,
@@ -646,7 +661,7 @@ async function getPreset(call, callback) {
         from,
         to,
       },
-      "gRPC MainApi/GetPreset",
+      'gRPC MainApi/GetPreset',
       serialId,
       buildHistoryVariableMetricEntries(
         { serial_id: serialId, selected_keys: selectedKeys },
@@ -654,8 +669,8 @@ async function getPreset(call, callback) {
         {},
         selectedKeys,
         serialId,
-        durationMs
-      )
+        durationMs,
+      ),
     );
 
     callback(null, response);
@@ -674,21 +689,21 @@ async function getAvailableKeys(call, callback) {
     if (!serialId) {
       const baseResponse = {
         ok: true,
-        message: "No hay registros disponibles todavia.",
-        serial_id: "",
+        message: 'No hay registros disponibles todavia.',
+        serial_id: '',
         count: 0,
         data: [],
         response_time_ms: elapsedMilliseconds(startedAt),
       };
       const bytes = payloadBytes(baseResponse);
-      await trackRequest("gRPC MainApi/GetAvailableKeys", "grpc", null, bytes);
-      const metrics = await getRequestMetrics("gRPC MainApi/GetAvailableKeys", "grpc", null);
+      await trackRequest('gRPC MainApi/GetAvailableKeys', 'grpc', null, bytes);
+      const metrics = await getRequestMetrics('gRPC MainApi/GetAvailableKeys', 'grpc', null);
       callback(null, {
         ...baseResponse,
         payload_bytes: bytes,
         request_count_total: metrics.request_count_total,
         bytes_sent_total: metrics.bytes_sent_total,
-        metrics_updated_at: metrics.updated_at || "",
+        metrics_updated_at: metrics.updated_at || '',
       });
       return;
     }
@@ -700,27 +715,27 @@ async function getAvailableKeys(call, callback) {
       WHERE id_serial = $1
       ORDER BY nombre_dato ASC
       `,
-      [serialId]
+      [serialId],
     );
     const keys = rows.map((row) => row.nombre_dato);
     const baseResponse = {
       ok: true,
-      message: "",
+      message: '',
       serial_id: serialId,
       count: keys.length,
       data: keys,
       response_time_ms: elapsedMilliseconds(startedAt),
     };
     const bytes = payloadBytes(baseResponse);
-    await trackRequest("gRPC MainApi/GetAvailableKeys", "grpc", serialId, bytes);
-    const metrics = await getRequestMetrics("gRPC MainApi/GetAvailableKeys", "grpc", serialId);
+    await trackRequest('gRPC MainApi/GetAvailableKeys', 'grpc', serialId, bytes);
+    const metrics = await getRequestMetrics('gRPC MainApi/GetAvailableKeys', 'grpc', serialId);
 
     callback(null, {
       ...baseResponse,
       payload_bytes: bytes,
       request_count_total: metrics.request_count_total,
       bytes_sent_total: metrics.bytes_sent_total,
-      metrics_updated_at: metrics.updated_at || "",
+      metrics_updated_at: metrics.updated_at || '',
     });
   } catch (error) {
     callback(grpcError(grpc.status.INTERNAL, error.message));
@@ -739,13 +754,13 @@ async function getVariableMetricsHandler(call, callback) {
 
     callback(null, {
       ok: true,
-      message: "",
-      serial_id: serialId || "",
+      message: '',
+      serial_id: serialId || '',
       selected_keys: keys,
       count: rows.length,
       data: rows.map((row) => ({
         ...row,
-        updated_at: row.updated_at ? String(row.updated_at) : "",
+        updated_at: row.updated_at ? String(row.updated_at) : '',
       })),
     });
   } catch (error) {
@@ -773,7 +788,7 @@ function createGrpcServer() {
 // Inicia el bind del servidor gRPC y devuelve la referencia para control externo.
 async function startGrpcServer(bindTarget) {
   const { server, proto } = createGrpcServer();
-  const target = bindTarget || "0.0.0.0:50051";
+  const target = bindTarget || '0.0.0.0:50051';
 
   const port = await new Promise((resolve, reject) => {
     server.bindAsync(target, grpc.ServerCredentials.createInsecure(), (error, boundPort) => {

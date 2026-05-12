@@ -1,6 +1,6 @@
 const express = require('express');
-const pool    = require('../config/db');
-const router  = express.Router();
+const pool = require('../config/db');
+const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {

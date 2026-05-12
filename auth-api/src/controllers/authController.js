@@ -1,16 +1,16 @@
-const db                              = require('../config/db');
-const bcrypt                          = require('bcrypt');
-const jwt                             = require('jsonwebtoken');
+const db = require('../config/db');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { jwtSecret, mainApiUrl, internalApiKey } = require('../config/env');
 
 const DEFAULT_OTP_MINS = 30;
-const MAX_OTP_MINS     = 1440;
+const MAX_OTP_MINS = 1440;
 
 async function dispararCorreoOtp(email, nombre, code, minutes) {
   const res = await fetch(`${mainApiUrl}/api/internal/email/otp`, {
-    method:  'POST',
+    method: 'POST',
     headers: {
-      'Content-Type':   'application/json',
+      'Content-Type': 'application/json',
       'X-Internal-Key': internalApiKey,
     },
     body: JSON.stringify({ email, nombre, code, minutes }),
@@ -20,7 +20,7 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
 
   if (!res.ok) {
     const err = new Error(
-      payload.error || payload.message || 'No se pudo enviar el codigo por correo.'
+      payload.error || payload.message || 'No se pudo enviar el codigo por correo.',
     );
     err.status = 502;
     throw err;
@@ -58,7 +58,7 @@ exports.login = async (req, res, next) => {
       `SELECT id, nombre, email, tipo, empresa_id, sub_empresa_id,
               password_hash, otp_hash, otp_expires_at
        FROM usuario WHERE email = $1`,
-      [email]
+      [email],
     );
 
     if (result.rows.length === 0) {
@@ -75,7 +75,7 @@ exports.login = async (req, res, next) => {
         if (otpMatch) {
           await db.query(
             'UPDATE usuario SET otp_hash = NULL, otp_expires_at = NULL WHERE email = $1',
-            [email]
+            [email],
           );
           authenticated = true;
         }
@@ -93,24 +93,24 @@ exports.login = async (req, res, next) => {
 
     const token = jwt.sign(
       {
-        id:            user.id,
-        email:         user.email,
-        tipo:          user.tipo,
-        empresa_id:    user.empresa_id,
+        id: user.id,
+        email: user.email,
+        tipo: user.tipo,
+        empresa_id: user.empresa_id,
         sub_empresa_id: user.sub_empresa_id,
       },
       jwtSecret,
-      { expiresIn: '12h' }
+      { expiresIn: '12h' },
     );
 
     res.json({
       ok: true,
       token,
       user: {
-        nombre:         user.nombre,
-        email:          user.email,
-        tipo:           user.tipo,
-        empresa_id:     user.empresa_id,
+        nombre: user.nombre,
+        email: user.email,
+        tipo: user.tipo,
+        empresa_id: user.empresa_id,
         sub_empresa_id: user.sub_empresa_id,
       },
     });
@@ -128,13 +128,12 @@ exports.requestCode = async (req, res, next) => {
     }
 
     let minutes = parseInt(expires_minutes) || DEFAULT_OTP_MINS;
-    if (minutes < 1)          minutes = DEFAULT_OTP_MINS;
+    if (minutes < 1) minutes = DEFAULT_OTP_MINS;
     if (minutes > MAX_OTP_MINS) minutes = MAX_OTP_MINS;
 
-    const result = await db.query(
-      'SELECT id, nombre, email FROM usuario WHERE email = $1',
-      [email]
-    );
+    const result = await db.query('SELECT id, nombre, email FROM usuario WHERE email = $1', [
+      email,
+    ]);
 
     if (result.rows.length === 0) {
       return res.status(403).json({
@@ -143,16 +142,20 @@ exports.requestCode = async (req, res, next) => {
       });
     }
 
-    const usr       = result.rows[0];
+    const usr = result.rows[0];
     const OTP_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    const otpCode   = Array.from({ length: 6 }, () => OTP_CHARS[Math.floor(Math.random() * OTP_CHARS.length)]).join('');
-    const otpHash   = await bcrypt.hash(otpCode, 10);
+    const otpCode = Array.from(
+      { length: 6 },
+      () => OTP_CHARS[Math.floor(Math.random() * OTP_CHARS.length)],
+    ).join('');
+    const otpHash = await bcrypt.hash(otpCode, 10);
     const expiresAt = new Date(Date.now() + minutes * 60 * 1000);
 
-    await db.query(
-      'UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE email = $3',
-      [otpHash, expiresAt, email]
-    );
+    await db.query('UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE email = $3', [
+      otpHash,
+      expiresAt,
+      email,
+    ]);
 
     try {
       await dispararCorreoOtp(email, usr.nombre, otpCode, minutes);
@@ -160,7 +163,7 @@ exports.requestCode = async (req, res, next) => {
       try {
         await db.query(
           'UPDATE usuario SET otp_hash = NULL, otp_expires_at = NULL WHERE email = $1 AND otp_hash = $2',
-          [email, otpHash]
+          [email, otpHash],
         );
       } catch (cleanupErr) {
         console.error('[auth-api] No se pudo limpiar el OTP fallido:', cleanupErr);
@@ -169,8 +172,8 @@ exports.requestCode = async (req, res, next) => {
     }
 
     res.json({
-      ok:         true,
-      message:    `Código enviado exitosamente. Válido por ${minutes} minutos.`,
+      ok: true,
+      message: `Código enviado exitosamente. Válido por ${minutes} minutos.`,
       expires_at: expiresAt.toISOString(),
     });
   } catch (err) {

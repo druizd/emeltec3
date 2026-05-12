@@ -21,7 +21,11 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
         [selectedSubCompany]="selectedSubCompany"
         [sitesCount]="sites.length"
         [title]="activeTab === 'instalaciones' ? 'Instalaciones' : 'General'"
-        [subtitle]="activeTab === 'instalaciones' ? sites.length + ' sitios registrados' : 'Resumen de la división'"
+        [subtitle]="
+          activeTab === 'instalaciones'
+            ? sites.length + ' sitios registrados'
+            : 'Resumen de la división'
+        "
         [showReportButton]="false"
       />
 

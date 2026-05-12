@@ -22,7 +22,9 @@ export interface CompaniesTabItem {
           [attr.aria-selected]="activeTab === tab.key"
           [attr.aria-controls]="'tabpanel-' + tab.key"
         >
-          <span [class]="'material-symbols-outlined ' + getIconClass()" aria-hidden="true">{{ tab.icon }}</span>
+          <span [class]="'material-symbols-outlined ' + getIconClass()" aria-hidden="true">{{
+            tab.icon
+          }}</span>
           <span [class]="getLabelClass()">{{ tab.label }}</span>
         </button>
       }
@@ -70,9 +72,7 @@ export class CompaniesTabNavComponent {
   }
 
   getLabelClass(): string {
-    return this.variant === 'superadmin'
-      ? 'tracking-tight'
-      : 'uppercase tracking-widest';
+    return this.variant === 'superadmin' ? 'tracking-tight' : 'uppercase tracking-widest';
   }
 
   getIconClass(): string {

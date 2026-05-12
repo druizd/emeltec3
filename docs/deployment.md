@@ -41,10 +41,10 @@ bash scripts/deploy-production.sh
 
 En GitHub, entra a `Settings > Secrets and variables > Actions` y agrega:
 
-| Secret | Ejemplo |
-|---|---|
-| `AZURE_VM_HOST` | `104.46.7.78` |
-| `AZURE_VM_USER` | `azureuser` |
+| Secret             | Ejemplo                                    |
+| ------------------ | ------------------------------------------ |
+| `AZURE_VM_HOST`    | `104.46.7.78`                              |
+| `AZURE_VM_USER`    | `azureuser`                                |
 | `AZURE_VM_SSH_KEY` | clave privada SSH usada por GitHub Actions |
 | `AZURE_VM_APP_DIR` | `/home/azureuser/emeltec-platform-actions` |
 

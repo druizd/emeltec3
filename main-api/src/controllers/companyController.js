@@ -13,9 +13,12 @@ const {
 } = require('../config/siteTypeCatalog');
 const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
 
-const SITE_COLUMNS = 'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
-const MAP_COLUMNS = 'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
-const POZO_CONFIG_COLUMNS = 'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
+const SITE_COLUMNS =
+  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
+const MAP_COLUMNS =
+  'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
+const POZO_CONFIG_COLUMNS =
+  'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
 const SITE_TYPES = new Set(SITE_TYPE_IDS);
 const VARIABLE_ROLES = new Set(VARIABLE_ROLE_IDS);
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
@@ -155,19 +158,24 @@ function parseHistoryExportFields(value) {
     .map((field) => field.trim().toLowerCase())
     .filter((field) => Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_FIELDS, field));
 
-  return selected.length ? [...new Set(selected)] : ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
+  return selected.length
+    ? [...new Set(selected)]
+    : ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
 }
 
 function csvCell(value, delimiter = ';') {
   if (value === undefined || value === null) return '';
   const text = String(value);
-  return /["\r\n;]/.test(text) || text.includes(delimiter)
-    ? `"${text.replace(/"/g, '""')}"`
-    : text;
+  return /["\r\n;]/.test(text) || text.includes(delimiter) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 function csvValue(variable) {
-  if (!variable || variable.ok === false || variable.valor === null || variable.valor === undefined) {
+  if (
+    !variable ||
+    variable.ok === false ||
+    variable.valor === null ||
+    variable.valor === undefined
+  ) {
     return '';
   }
 
@@ -175,10 +183,11 @@ function csvValue(variable) {
 }
 
 function exportFileName(site, from, to, format) {
-  const siteLabel = cleanString(site?.descripcion || site?.id || 'sitio')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'sitio';
+  const siteLabel =
+    cleanString(site?.descripcion || site?.id || 'sitio')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'sitio';
   return `${siteLabel}_historico_${from}_${to}.${format}`;
 }
 
@@ -194,10 +203,7 @@ async function generateSequentialId(client, table, prefix) {
     throw new Error('Tabla no permitida para generar id');
   }
 
-  const { rows } = await client.query(
-    `SELECT id FROM ${table} WHERE id LIKE $1`,
-    [`${prefix}%`]
-  );
+  const { rows } = await client.query(`SELECT id FROM ${table} WHERE id LIKE $1`, [`${prefix}%`]);
 
   const idPattern = new RegExp(`^${prefix}(\\d+)$`);
   const lastNumber = rows.reduce((max, row) => {
@@ -216,7 +222,7 @@ function generateMapId() {
 async function getCompanyById(id) {
   const { rows } = await db.query(
     'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa WHERE id = $1',
-    [id]
+    [id],
   );
   return rows[0] || null;
 }
@@ -224,23 +230,20 @@ async function getCompanyById(id) {
 async function getSubCompanyById(id) {
   const { rows } = await db.query(
     'SELECT id, nombre, rut, sitios, empresa_id FROM sub_empresa WHERE id = $1',
-    [id]
+    [id],
   );
   return rows[0] || null;
 }
 
 async function getSiteById(id) {
-  const { rows } = await db.query(
-    `SELECT ${SITE_COLUMNS} FROM sitio WHERE id = $1`,
-    [id]
-  );
+  const { rows } = await db.query(`SELECT ${SITE_COLUMNS} FROM sitio WHERE id = $1`, [id]);
   return rows[0] || null;
 }
 
 async function getPozoConfigBySiteId(siteId) {
   const { rows } = await db.query(
     `SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`,
-    [siteId]
+    [siteId],
   );
   return rows[0] || null;
 }
@@ -251,7 +254,7 @@ async function attachPozoConfigsToSites(sites) {
   const siteIds = sites.map((site) => site.id);
   const { rows } = await db.query(
     `SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = ANY($1::text[])`,
-    [siteIds]
+    [siteIds],
   );
   const configsBySiteId = new Map(rows.map((row) => [row.sitio_id, row]));
 
@@ -295,7 +298,7 @@ async function upsertPozoConfig(client, siteId, rawConfig = {}) {
       config.nivel_estatico_manual_m,
       config.obra_dga,
       config.slug,
-    ]
+    ],
   );
 
   return rows[0] || null;
@@ -346,8 +349,12 @@ exports.getHierarchyTree = async (req, res, next) => {
     let sites = [];
 
     if (tipo === 'SuperAdmin') {
-      const compRes = await db.query('SELECT id, nombre, rut, tipo_empresa FROM empresa ORDER BY nombre ASC');
-      const subRes = await db.query('SELECT id, nombre, rut, empresa_id FROM sub_empresa ORDER BY nombre ASC');
+      const compRes = await db.query(
+        'SELECT id, nombre, rut, tipo_empresa FROM empresa ORDER BY nombre ASC',
+      );
+      const subRes = await db.query(
+        'SELECT id, nombre, rut, empresa_id FROM sub_empresa ORDER BY nombre ASC',
+      );
       const siteRes = await db.query(`SELECT ${SITE_COLUMNS} FROM sitio ORDER BY descripcion ASC`);
 
       companies = compRes.rows;
@@ -358,14 +365,17 @@ exports.getHierarchyTree = async (req, res, next) => {
         return res.json({ ok: true, data: [] });
       }
 
-      const compRes = await db.query('SELECT id, nombre, rut, tipo_empresa FROM empresa WHERE id = $1', [empresa_id]);
+      const compRes = await db.query(
+        'SELECT id, nombre, rut, tipo_empresa FROM empresa WHERE id = $1',
+        [empresa_id],
+      );
       const subRes = await db.query(
         'SELECT id, nombre, rut, empresa_id FROM sub_empresa WHERE empresa_id = $1 ORDER BY nombre ASC',
-        [empresa_id]
+        [empresa_id],
       );
       const siteRes = await db.query(
         `SELECT ${SITE_COLUMNS} FROM sitio WHERE empresa_id = $1 ORDER BY descripcion ASC`,
-        [empresa_id]
+        [empresa_id],
       );
 
       companies = compRes.rows;
@@ -376,14 +386,17 @@ exports.getHierarchyTree = async (req, res, next) => {
         return res.json({ ok: true, data: [] });
       }
 
-      const compRes = await db.query('SELECT id, nombre, rut, tipo_empresa FROM empresa WHERE id = $1', [empresa_id]);
+      const compRes = await db.query(
+        'SELECT id, nombre, rut, tipo_empresa FROM empresa WHERE id = $1',
+        [empresa_id],
+      );
       const subRes = await db.query(
         'SELECT id, nombre, rut, empresa_id FROM sub_empresa WHERE id = $1 AND empresa_id = $2',
-        [sub_empresa_id, empresa_id]
+        [sub_empresa_id, empresa_id],
       );
       const siteRes = await db.query(
         `SELECT ${SITE_COLUMNS} FROM sitio WHERE sub_empresa_id = $1 ORDER BY descripcion ASC`,
-        [sub_empresa_id]
+        [sub_empresa_id],
       );
 
       companies = compRes.rows;
@@ -426,7 +439,8 @@ exports.getAllCompanies = async (req, res, next) => {
       query = 'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa ORDER BY nombre ASC';
       params = [];
     } else {
-      query = 'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa WHERE id = $1 ORDER BY nombre ASC';
+      query =
+        'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa WHERE id = $1 ORDER BY nombre ASC';
       params = [empresa_id];
     }
 
@@ -460,13 +474,13 @@ exports.createCompany = async (req, res, next) => {
     await client.query('BEGIN');
 
     const requestedId = normalizeId(req.body.id);
-    const id = requestedId || await generateSequentialId(client, 'empresa', 'E');
+    const id = requestedId || (await generateSequentialId(client, 'empresa', 'E'));
 
     const { rows } = await client.query(
       `INSERT INTO empresa (id, nombre, rut, tipo_empresa)
        VALUES ($1, $2, $3, $4)
        RETURNING id, nombre, rut, sitios, tipo_empresa, created_at, updated_at`,
-      [id, nombre, rut, tipoEmpresa]
+      [id, nombre, rut, tipoEmpresa],
     );
 
     await client.query('COMMIT');
@@ -515,13 +529,13 @@ exports.createSubCompany = async (req, res, next) => {
     await client.query('BEGIN');
 
     const requestedId = normalizeId(req.body.id);
-    const id = requestedId || await generateSequentialId(client, 'sub_empresa', 'SE');
+    const id = requestedId || (await generateSequentialId(client, 'sub_empresa', 'SE'));
 
     const { rows } = await client.query(
       `INSERT INTO sub_empresa (id, nombre, rut, empresa_id)
        VALUES ($1, $2, $3, $4)
        RETURNING id, nombre, rut, sitios, empresa_id, created_at, updated_at`,
-      [id, nombre, rut, empresaId]
+      [id, nombre, rut, empresaId],
     );
 
     await client.query('COMMIT');
@@ -583,13 +597,13 @@ exports.createSite = async (req, res, next) => {
     await client.query('BEGIN');
 
     const requestedId = normalizeId(req.body.id);
-    const id = requestedId || await generateSequentialId(client, 'sitio', 'S');
+    const id = requestedId || (await generateSequentialId(client, 'sitio', 'S'));
 
     const { rows } = await client.query(
       `INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion, tipo_sitio, activo)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING ${SITE_COLUMNS}, created_at, updated_at`,
-      [id, descripcion, idSerial, empresaId, subEmpresaId, ubicacion, tipoSitio, activo]
+      [id, descripcion, idSerial, empresaId, subEmpresaId, ubicacion, tipoSitio, activo],
     );
 
     let pozoConfig = null;
@@ -602,14 +616,14 @@ exports.createSite = async (req, res, next) => {
        SET sitios = (SELECT COUNT(*) FROM sitio WHERE sub_empresa_id = $1),
            updated_at = NOW()
        WHERE id = $1`,
-      [subEmpresaId]
+      [subEmpresaId],
     );
     await client.query(
       `UPDATE empresa
        SET sitios = (SELECT COUNT(*) FROM sitio WHERE empresa_id = $1),
            updated_at = NOW()
        WHERE id = $1`,
-      [empresaId]
+      [empresaId],
     );
 
     await client.query('COMMIT');
@@ -651,9 +665,12 @@ exports.updateSite = async (req, res, next) => {
 
     const descripcion = nullableString(req.body.descripcion || req.body.nombre);
     const idSerial = nullableString(req.body.id_serial || req.body.serial_id);
-    const ubicacion = req.body.ubicacion === undefined ? undefined : nullableString(req.body.ubicacion);
-    const tipoSitio = req.body.tipo_sitio === undefined ? undefined : normalizeSiteType(req.body.tipo_sitio);
-    const activo = req.body.activo === undefined ? undefined : parseBoolean(req.body.activo, site.activo);
+    const ubicacion =
+      req.body.ubicacion === undefined ? undefined : nullableString(req.body.ubicacion);
+    const tipoSitio =
+      req.body.tipo_sitio === undefined ? undefined : normalizeSiteType(req.body.tipo_sitio);
+    const activo =
+      req.body.activo === undefined ? undefined : parseBoolean(req.body.activo, site.activo);
 
     if (descripcion) {
       params.push(descripcion);
@@ -710,7 +727,7 @@ exports.updateSite = async (req, res, next) => {
            SET ${updates.join(', ')}, updated_at = NOW()
            WHERE id = $${params.length}
            RETURNING ${SITE_COLUMNS}, created_at, updated_at`,
-          params
+          params,
         );
         updatedSite = rows[0];
       }
@@ -779,7 +796,7 @@ exports.getDetectedDevices = async (req, res, next) => {
       ORDER BY l.ultimo_registro DESC
       LIMIT $1
       `,
-      params
+      params,
     );
 
     res.json({ ok: true, count: rows.length, data: rows });
@@ -815,7 +832,9 @@ exports.getSiteDashboardData = async (req, res, next) => {
 
     const [pozoConfigRes, mappingsRes, latestRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
-      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+        siteId,
+      ]),
       db.query(
         `
         SELECT
@@ -829,7 +848,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
         ORDER BY time DESC
         LIMIT 1
         `,
-        [site.id_serial]
+        [site.id_serial],
       ),
     ]);
 
@@ -892,7 +911,9 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
 
     const [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
-      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+        siteId,
+      ]),
       db.query(
         `
         SELECT time, received_at, id_serial, data, timestamp_completo
@@ -910,14 +931,14 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         ORDER BY time DESC
         LIMIT $2
         `,
-        [site.id_serial, limit]
+        [site.id_serial, limit],
       ),
     ]);
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
     const mappings = mappingsRes.rows || [];
     const rows = historyRes.rows.map((row) =>
-      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig })
+      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }),
     );
 
     return res.json({
@@ -987,7 +1008,9 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
 
     const [pozoConfigRes, mappingsRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
-      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+        siteId,
+      ]),
     ]);
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
@@ -1023,11 +1046,14 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         ) latest_by_minute
         ORDER BY time ASC
         `,
-        [site.id_serial, from, to]
+        [site.id_serial, from, to],
       );
 
       await writeResponseChunk(res, '\uFEFF');
-      await writeResponseChunk(res, `${header.map((value) => csvCell(value, delimiter)).join(delimiter)}\n`);
+      await writeResponseChunk(
+        res,
+        `${header.map((value) => csvCell(value, delimiter)).join(delimiter)}\n`,
+      );
 
       while (true) {
         const batch = await client.query('FETCH 1000 FROM history_export_cursor');
@@ -1035,11 +1061,12 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
 
         for (const rawRow of batch.rows) {
           const row = mapHistoricalDashboardRow({ row: rawRow, site, mappings, pozoConfig });
-          const fecha = row.timestamp ? (formatChileTimestamp(row.timestamp) || row.fecha) : row.fecha;
-          const line = [
-            fecha,
-            ...fields.map((field) => csvValue(row[field])),
-          ].map((value) => csvCell(value, delimiter)).join(delimiter);
+          const fecha = row.timestamp
+            ? formatChileTimestamp(row.timestamp) || row.fecha
+            : row.fecha;
+          const line = [fecha, ...fields.map((field) => csvValue(row[field]))]
+            .map((value) => csvCell(value, delimiter))
+            .join(delimiter);
           await writeResponseChunk(res, `${line}\n`);
         }
       }
@@ -1087,7 +1114,7 @@ exports.getSiteVariables = async (req, res, next) => {
 
     const mappingsRes = await db.query(
       `SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`,
-      [siteId]
+      [siteId],
     );
 
     const detectedRes = await db.query(
@@ -1108,7 +1135,7 @@ exports.getSiteVariables = async (req, res, next) => {
       ) latest
       ORDER BY latest.nombre_dato ASC
       `,
-      [site.id_serial]
+      [site.id_serial],
     );
 
     const mappingsByKey = new Map(mappingsRes.rows.map((mapping) => [mapping.d1, mapping]));
@@ -1116,9 +1143,7 @@ exports.getSiteVariables = async (req, res, next) => {
       ...variable,
       mapping: mappingsByKey.get(variable.nombre_dato) || null,
     }));
-    const pozoConfig = site.tipo_sitio === 'pozo'
-      ? await getPozoConfigBySiteId(siteId)
-      : null;
+    const pozoConfig = site.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(siteId) : null;
 
     res.json({
       ok: true,
@@ -1179,7 +1204,7 @@ exports.createSiteVariableMap = async (req, res, next) => {
 
     const existing = await db.query(
       'SELECT id FROM reg_map WHERE sitio_id = $1 AND d1 = $2 LIMIT 1',
-      [siteId, d1]
+      [siteId, d1],
     );
 
     if (existing.rows.length) {
@@ -1193,7 +1218,18 @@ exports.createSiteVariableMap = async (req, res, next) => {
       `INSERT INTO reg_map (id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)
        RETURNING ${MAP_COLUMNS}`,
-      [id, alias, d1, d2, tipoDato, unidad, rolDashboard, transformacion, JSON.stringify(parametros), siteId]
+      [
+        id,
+        alias,
+        d1,
+        d2,
+        tipoDato,
+        unidad,
+        rolDashboard,
+        transformacion,
+        JSON.stringify(parametros),
+        siteId,
+      ],
     );
 
     res.status(201).json({
@@ -1227,7 +1263,7 @@ exports.updateSiteVariableMap = async (req, res, next) => {
 
     const currentMap = await db.query(
       `SELECT ${MAP_COLUMNS} FROM reg_map WHERE id = $1 AND sitio_id = $2`,
-      [mapId, siteId]
+      [mapId, siteId],
     );
 
     if (!currentMap.rows.length) {
@@ -1235,15 +1271,16 @@ exports.updateSiteVariableMap = async (req, res, next) => {
     }
 
     const current = currentMap.rows[0];
-    const rolDashboard = req.body.rol_dashboard === undefined
-      ? undefined
-      : normalizeVariableRole(req.body.rol_dashboard);
-    const transformacion = req.body.transformacion === undefined
-      ? undefined
-      : normalizeVariableTransform(req.body.transformacion);
-    const parametros = req.body.parametros === undefined
-      ? undefined
-      : parseJsonObject(req.body.parametros);
+    const rolDashboard =
+      req.body.rol_dashboard === undefined
+        ? undefined
+        : normalizeVariableRole(req.body.rol_dashboard);
+    const transformacion =
+      req.body.transformacion === undefined
+        ? undefined
+        : normalizeVariableTransform(req.body.transformacion);
+    const parametros =
+      req.body.parametros === undefined ? undefined : parseJsonObject(req.body.parametros);
 
     if (req.body.rol_dashboard !== undefined && !rolDashboard) {
       return badRequest(res, 'rol_dashboard no es valido.');
@@ -1265,7 +1302,12 @@ exports.updateSiteVariableMap = async (req, res, next) => {
     const params = [];
     const fields = [
       ['alias', req.body.alias === undefined ? undefined : cleanString(req.body.alias)],
-      ['d1', req.body.d1 === undefined && req.body.nombre_dato === undefined ? undefined : cleanString(req.body.d1 || req.body.nombre_dato)],
+      [
+        'd1',
+        req.body.d1 === undefined && req.body.nombre_dato === undefined
+          ? undefined
+          : cleanString(req.body.d1 || req.body.nombre_dato),
+      ],
       ['d2', req.body.d2 === undefined ? undefined : nullableString(req.body.d2)],
       ['tipo_dato', req.body.tipo_dato === undefined ? undefined : cleanString(req.body.tipo_dato)],
       ['unidad', req.body.unidad === undefined ? undefined : nullableString(req.body.unidad)],
@@ -1295,7 +1337,7 @@ exports.updateSiteVariableMap = async (req, res, next) => {
        SET ${updates.join(', ')}, updated_at = NOW()
        WHERE id = $${params.length - 1} AND sitio_id = $${params.length}
        RETURNING ${MAP_COLUMNS}`,
-      params
+      params,
     );
 
     res.json({
@@ -1327,10 +1369,10 @@ exports.deleteSiteVariableMap = async (req, res, next) => {
       return superAdminError;
     }
 
-    const { rowCount } = await db.query(
-      'DELETE FROM reg_map WHERE id = $1 AND sitio_id = $2',
-      [mapId, siteId]
-    );
+    const { rowCount } = await db.query('DELETE FROM reg_map WHERE id = $1 AND sitio_id = $2', [
+      mapId,
+      siteId,
+    ]);
 
     if (!rowCount) {
       return notFound(res, 'Mapeo no encontrado para este sitio.');
@@ -1354,7 +1396,9 @@ exports.getCompanySites = async (req, res, next) => {
     const { id } = req.params;
     const { tipo, empresa_id, sub_empresa_id } = req.user;
 
-    const subCompanyRes = await db.query('SELECT id, empresa_id FROM sub_empresa WHERE id = $1', [id]);
+    const subCompanyRes = await db.query('SELECT id, empresa_id FROM sub_empresa WHERE id = $1', [
+      id,
+    ]);
     const subCompany = subCompanyRes.rows[0];
 
     if (subCompany) {
@@ -1368,7 +1412,7 @@ exports.getCompanySites = async (req, res, next) => {
 
       const { rows } = await db.query(
         `SELECT ${SITE_COLUMNS} FROM sitio WHERE sub_empresa_id = $1 ORDER BY descripcion ASC`,
-        [id]
+        [id],
       );
       return res.json({ ok: true, data: await attachPozoConfigsToSites(rows) });
     }

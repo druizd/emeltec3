@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/.angular
+**/coverage
+**/out-tsc
+.git
+.github
+.vscode
+.idea
+.history
+*.log
+.env
+**/.env
+.angular
+backup-pre-rebase
+docs/demo

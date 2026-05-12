@@ -1,9 +1,9 @@
-const express    = require('express');
-const cors       = require('cors');
-const helmet     = require('helmet');
-const morgan     = require('morgan');
-const rateLimit  = require('express-rate-limit');
-const authRoutes   = require('./routes/authRoutes');
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
+const authRoutes = require('./routes/authRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 
@@ -16,9 +16,9 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max:      20,
+  max: 20,
   standardHeaders: true,
-  legacyHeaders:   false,
+  legacyHeaders: false,
   message: { ok: false, message: 'Demasiados intentos. Espera 15 minutos.' },
 });
 

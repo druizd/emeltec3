@@ -24,7 +24,10 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
           <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">
             {{ selectedSubCompany?.nombre || 'División seleccionada' }}
           </p>
-          <h1 class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1E293B]" style="font-family: 'Josefin Sans', sans-serif;">
+          <h1
+            class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1E293B]"
+            style="font-family: 'Josefin Sans', sans-serif;"
+          >
             {{ getActiveTitle() }}
           </h1>
           <p class="text-[13px] text-[#64748B]">

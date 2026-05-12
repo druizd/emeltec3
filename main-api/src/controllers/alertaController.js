@@ -4,8 +4,9 @@ const DIAS_VALIDOS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'saba
 
 function normalizarDiasActivos(dias) {
   if (!Array.isArray(dias) || dias.length === 0) return DIAS_VALIDOS;
-  return [...new Set(dias.map(d => String(d).toLowerCase().trim()))]
-    .filter(d => DIAS_VALIDOS.includes(d));
+  return [...new Set(dias.map((d) => String(d).toLowerCase().trim()))].filter((d) =>
+    DIAS_VALIDOS.includes(d),
+  );
 }
 
 function esSuperAdmin(req) {
@@ -18,9 +19,17 @@ function tieneAccesoAAlerta(req, alerta) {
 
 exports.crearAlerta = async (req, res) => {
   const {
-    nombre, descripcion, sitio_id, empresa_id,
-    variable_key, condicion, umbral_bajo, umbral_alto,
-    severidad = 'media', cooldown_minutos = 5, dias_activos,
+    nombre,
+    descripcion,
+    sitio_id,
+    empresa_id,
+    variable_key,
+    condicion,
+    umbral_bajo,
+    umbral_alto,
+    severidad = 'media',
+    cooldown_minutos = 5,
+    dias_activos,
   } = req.body;
 
   if (!nombre || !sitio_id || !empresa_id || !variable_key || !condicion) {
@@ -31,13 +40,17 @@ exports.crearAlerta = async (req, res) => {
   }
 
   if (req.user.tipo !== 'SuperAdmin' && empresa_id !== req.user.empresa_id) {
-    return res.status(403).json({ ok: false, error: 'No puedes crear alertas en una empresa que no es la tuya' });
+    return res
+      .status(403)
+      .json({ ok: false, error: 'No puedes crear alertas en una empresa que no es la tuya' });
   }
 
   const sub_empresa_id = req.user.sub_empresa_id ?? null;
   const diasActivos = normalizarDiasActivos(dias_activos);
   if (!diasActivos.length) {
-    return res.status(400).json({ ok: false, error: 'Debe seleccionar al menos un dia activo valido' });
+    return res
+      .status(400)
+      .json({ ok: false, error: 'Debe seleccionar al menos un dia activo valido' });
   }
 
   const { rows } = await pool.query(
@@ -46,9 +59,21 @@ exports.crearAlerta = async (req, res) => {
         condicion, umbral_bajo, umbral_alto, severidad, cooldown_minutos, dias_activos, creado_por)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      RETURNING *`,
-    [nombre, descripcion ?? null, sitio_id, empresa_id, sub_empresa_id, variable_key,
-     condicion, umbral_bajo ?? null, umbral_alto ?? null,
-     severidad, cooldown_minutos, diasActivos, req.user.id]
+    [
+      nombre,
+      descripcion ?? null,
+      sitio_id,
+      empresa_id,
+      sub_empresa_id,
+      variable_key,
+      condicion,
+      umbral_bajo ?? null,
+      umbral_alto ?? null,
+      severidad,
+      cooldown_minutos,
+      diasActivos,
+      req.user.id,
+    ],
   );
 
   res.status(201).json({ ok: true, data: rows[0] });
@@ -69,8 +94,14 @@ exports.listarAlertas = async (req, res) => {
     conditions.push(`a.creado_por = $${params.length}`);
   }
 
-  if (sitio_id) { params.push(sitio_id); conditions.push(`a.sitio_id = $${params.length}`); }
-  if (activa !== undefined) { params.push(activa === 'true'); conditions.push(`a.activa = $${params.length}`); }
+  if (sitio_id) {
+    params.push(sitio_id);
+    conditions.push(`a.sitio_id = $${params.length}`);
+  }
+  if (activa !== undefined) {
+    params.push(activa === 'true');
+    conditions.push(`a.activa = $${params.length}`);
+  }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -81,7 +112,7 @@ exports.listarAlertas = async (req, res) => {
        LEFT JOIN empresa e ON e.id = a.empresa_id
        ${where}
       ORDER BY a.severidad DESC, a.created_at DESC`,
-    params
+    params,
   );
 
   res.json({ ok: true, data: rows });
@@ -95,7 +126,7 @@ exports.obtenerAlerta = async (req, res) => {
        JOIN sitio s ON s.id = a.sitio_id
        LEFT JOIN empresa e ON e.id = a.empresa_id
       WHERE a.id = $1`,
-    [id]
+    [id],
   );
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Alerta no encontrada' });
 
@@ -117,24 +148,37 @@ exports.actualizarAlerta = async (req, res) => {
     return res.status(403).json({ ok: false, error: 'Sin acceso a esta alerta' });
   }
 
-  const campos = ['nombre', 'descripcion', 'variable_key', 'condicion',
-                  'umbral_bajo', 'umbral_alto', 'severidad', 'cooldown_minutos', 'dias_activos', 'activa'];
+  const campos = [
+    'nombre',
+    'descripcion',
+    'variable_key',
+    'condicion',
+    'umbral_bajo',
+    'umbral_alto',
+    'severidad',
+    'cooldown_minutos',
+    'dias_activos',
+    'activa',
+  ];
   const updates = [];
   const params = [];
 
   for (const campo of campos) {
     if (req.body[campo] !== undefined) {
-      params.push(campo === 'dias_activos' ? normalizarDiasActivos(req.body[campo]) : req.body[campo]);
+      params.push(
+        campo === 'dias_activos' ? normalizarDiasActivos(req.body[campo]) : req.body[campo],
+      );
       updates.push(`${campo} = $${params.length}`);
     }
   }
-  if (!updates.length) return res.status(400).json({ ok: false, error: 'No hay campos para actualizar' });
+  if (!updates.length)
+    return res.status(400).json({ ok: false, error: 'No hay campos para actualizar' });
 
   params.push(id);
   const { rows } = await pool.query(
     `UPDATE alertas SET ${updates.join(', ')}, updated_at = NOW()
      WHERE id = $${params.length} RETURNING *`,
-    params
+    params,
   );
 
   res.json({ ok: true, data: rows[0] });
@@ -155,10 +199,19 @@ exports.eliminarAlerta = async (req, res) => {
 };
 
 exports.listarEventos = async (req, res) => {
-  const { empresa_id, sitio_id, severidad, resuelta, desde, hasta, page = 1, limit = 50 } = req.query;
+  const {
+    empresa_id,
+    sitio_id,
+    severidad,
+    resuelta,
+    desde,
+    hasta,
+    page = 1,
+    limit = 50,
+  } = req.query;
 
   const countParams = [];
-  const conditions  = [];
+  const conditions = [];
 
   if (req.user.tipo !== 'SuperAdmin') {
     countParams.push(req.user.empresa_id);
@@ -173,16 +226,31 @@ exports.listarEventos = async (req, res) => {
     conditions.push(`e.sub_empresa_id = $${countParams.length}`);
   }
 
-  if (sitio_id)  { countParams.push(sitio_id);           conditions.push(`e.sitio_id = $${countParams.length}`); }
-  if (severidad) { countParams.push(severidad);          conditions.push(`e.severidad = $${countParams.length}`); }
-  if (resuelta !== undefined) { countParams.push(resuelta === 'true'); conditions.push(`e.resuelta = $${countParams.length}`); }
-  if (desde)     { countParams.push(desde);              conditions.push(`e.triggered_at >= $${countParams.length}`); }
-  if (hasta)     { countParams.push(hasta);              conditions.push(`e.triggered_at <= $${countParams.length}`); }
+  if (sitio_id) {
+    countParams.push(sitio_id);
+    conditions.push(`e.sitio_id = $${countParams.length}`);
+  }
+  if (severidad) {
+    countParams.push(severidad);
+    conditions.push(`e.severidad = $${countParams.length}`);
+  }
+  if (resuelta !== undefined) {
+    countParams.push(resuelta === 'true');
+    conditions.push(`e.resuelta = $${countParams.length}`);
+  }
+  if (desde) {
+    countParams.push(desde);
+    conditions.push(`e.triggered_at >= $${countParams.length}`);
+  }
+  if (hasta) {
+    countParams.push(hasta);
+    conditions.push(`e.triggered_at <= $${countParams.length}`);
+  }
 
-  const where  = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  const limitPh  = countParams.length + 1;
+  const limitPh = countParams.length + 1;
   const offsetPh = countParams.length + 2;
   const mainParams = [...countParams, parseInt(limit), offset];
 
@@ -199,12 +267,12 @@ exports.listarEventos = async (req, res) => {
      ${where}
      ORDER BY e.triggered_at DESC
      LIMIT $${limitPh} OFFSET $${offsetPh}`,
-    mainParams
+    mainParams,
   );
 
   const { rows: countRows } = await pool.query(
     `SELECT COUNT(*) FROM alertas_eventos e ${where}`,
-    countParams
+    countParams,
   );
 
   res.json({
@@ -228,7 +296,7 @@ exports.obtenerEvento = async (req, res) => {
      LEFT JOIN sitio s ON s.id = e.sitio_id
      LEFT JOIN empresa emp ON emp.id = e.empresa_id
      WHERE e.id = $1`,
-    [id]
+    [id],
   );
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Evento no encontrado' });
 
@@ -245,7 +313,10 @@ exports.obtenerEvento = async (req, res) => {
 
 exports.marcarLeido = async (req, res) => {
   const { id } = req.params;
-  const { rows } = await pool.query('SELECT empresa_id, sub_empresa_id FROM alertas_eventos WHERE id = $1', [id]);
+  const { rows } = await pool.query(
+    'SELECT empresa_id, sub_empresa_id FROM alertas_eventos WHERE id = $1',
+    [id],
+  );
   if (!rows.length) return res.status(404).json({ ok: false, error: 'Evento no encontrado' });
 
   if (req.user.tipo !== 'SuperAdmin' && rows[0].empresa_id !== req.user.empresa_id) {
@@ -261,7 +332,8 @@ exports.marcarLeido = async (req, res) => {
 exports.resolverEvento = async (req, res) => {
   const { id } = req.params;
   const { rows: existing } = await pool.query(
-    'SELECT empresa_id, sub_empresa_id, resuelta FROM alertas_eventos WHERE id = $1', [id]
+    'SELECT empresa_id, sub_empresa_id, resuelta FROM alertas_eventos WHERE id = $1',
+    [id],
   );
   if (!existing.length) return res.status(404).json({ ok: false, error: 'Evento no encontrado' });
 
@@ -278,7 +350,7 @@ exports.resolverEvento = async (req, res) => {
 
   const { rows } = await pool.query(
     `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1 RETURNING *`,
-    [id]
+    [id],
   );
 
   res.json({ ok: true, data: rows[0] });
@@ -310,7 +382,7 @@ exports.resumen = async (req, res) => {
        COUNT(*) FILTER (WHERE resuelta = FALSE AND severidad = 'baja')    AS bajas
      FROM alertas_eventos
      WHERE 1=1 ${where}`,
-    params
+    params,
   );
 
   res.json({

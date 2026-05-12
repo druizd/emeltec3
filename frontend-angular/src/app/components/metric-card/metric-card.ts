@@ -5,7 +5,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-metric-card',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './metric-card.html'
+  templateUrl: './metric-card.html',
 })
 export class MetricCardComponent {
   @Input() title: string = '';
@@ -17,7 +17,11 @@ export class MetricCardComponent {
     if (!this.time) return 'Sin datos';
     try {
       return new Date(this.time).toLocaleString('es-ES', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch {
       return 'Sin datos';

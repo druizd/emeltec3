@@ -55,7 +55,7 @@ function reorderBytes(bytes, order) {
   const indices = BYTE_ORDER_MAP[order];
   if (!indices) {
     throw new Error(
-      `Orden de bytes invalido: "${order}". Opciones validas: ${Object.keys(BYTE_ORDER_MAP).join(', ')}`
+      `Orden de bytes invalido: "${order}". Opciones validas: ${Object.keys(BYTE_ORDER_MAP).join(', ')}`,
     );
   }
 
@@ -168,9 +168,7 @@ function registrosModbusAFloat32(wordAlta, wordBaja, wordSwap = false) {
   bufAlto.writeUInt16BE(wordAlta, 0);
   bufBajo.writeUInt16BE(wordBaja, 0);
 
-  const combined = wordSwap
-    ? Buffer.concat([bufBajo, bufAlto])
-    : Buffer.concat([bufAlto, bufBajo]);
+  const combined = wordSwap ? Buffer.concat([bufBajo, bufAlto]) : Buffer.concat([bufAlto, bufBajo]);
 
   const valor = combined.readFloatBE(0);
 
@@ -223,7 +221,7 @@ function registrosModbusAUInt32(wordAlta, wordBaja, wordSwap = false) {
   const registroBajo = wordSwap ? wordAlta : wordBaja;
 
   return {
-    valor: (registroAlto * 65536) + registroBajo,
+    valor: registroAlto * 65536 + registroBajo,
     word_swap: wordSwap,
     detalle: {
       registro_alto: registroAlto,

@@ -68,45 +68,49 @@ main-api/
 
 ## 🔑 Variables de Entorno (.env)
 
-| Variable | Descripción | Ejemplo |
-|---|---|---|
-| `DB_HOST` | Host de la base de datos | `localhost` |
-| `DB_PORT` | Puerto de TimescaleDB | `5433` |
-| `DB_NAME` | Nombre de la base de datos | `db_infra` |
-| `DB_USER` | Usuario de PostgreSQL | `admin_infra` |
-| `DB_PASSWORD` | Contraseña de PostgreSQL | `MiClave123` |
-| `PORT` | Puerto del servidor HTTP | `3000` |
-| `SMTP_HOST` | Servidor SMTP de correo | `smtp.gmail.com` |
-| `SMTP_PORT` | Puerto SMTP (465=SSL) | `465` |
-| `SMTP_USER` | Correo remitente | `alertas@empresa.com` |
-| `SMTP_PASS` | Contraseña de App de Google | `xxxx xxxx xxxx xxxx` |
+| Variable      | Descripción                 | Ejemplo               |
+| ------------- | --------------------------- | --------------------- |
+| `DB_HOST`     | Host de la base de datos    | `localhost`           |
+| `DB_PORT`     | Puerto de TimescaleDB       | `5433`                |
+| `DB_NAME`     | Nombre de la base de datos  | `db_infra`            |
+| `DB_USER`     | Usuario de PostgreSQL       | `admin_infra`         |
+| `DB_PASSWORD` | Contraseña de PostgreSQL    | `MiClave123`          |
+| `PORT`        | Puerto del servidor HTTP    | `3000`                |
+| `SMTP_HOST`   | Servidor SMTP de correo     | `smtp.gmail.com`      |
+| `SMTP_PORT`   | Puerto SMTP (465=SSL)       | `465`                 |
+| `SMTP_USER`   | Correo remitente            | `alertas@empresa.com` |
+| `SMTP_PASS`   | Contraseña de App de Google | `xxxx xxxx xxxx xxxx` |
 
 ---
 
 ## 🌐 Endpoints de la API
 
 ### Autenticación (Público)
-| Método | Ruta | Descripción |
-|---|---|---|
-| `POST` | `/api/auth/login` | Iniciar sesión con email + código OTP |
+
+| Método | Ruta                     | Descripción                              |
+| ------ | ------------------------ | ---------------------------------------- |
+| `POST` | `/api/auth/login`        | Iniciar sesión con email + código OTP    |
 | `POST` | `/api/auth/request-code` | Solicitar código de 6 dígitos por correo |
 
 ### Usuarios (Protegido — Admin/SuperAdmin)
-| Método | Ruta | Descripción |
-|---|---|---|
-| `POST` | `/api/users` | Crear un nuevo usuario (sin enviar correo) |
-| `GET` | `/api/users/empresas` | Listar empresas y sub-empresas disponibles |
+
+| Método | Ruta                  | Descripción                                |
+| ------ | --------------------- | ------------------------------------------ |
+| `POST` | `/api/users`          | Crear un nuevo usuario (sin enviar correo) |
+| `GET`  | `/api/users/empresas` | Listar empresas y sub-empresas disponibles |
 
 ### Datos de Telemetría (Protegido)
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/data/latest` | Última lectura de todos los sensores |
-| `GET` | `/api/data/preset?preset=24h` | Datos por rango de tiempo predefinido |
+
+| Método | Ruta                          | Descripción                           |
+| ------ | ----------------------------- | ------------------------------------- |
+| `GET`  | `/api/data/latest`            | Última lectura de todos los sensores  |
+| `GET`  | `/api/data/preset?preset=24h` | Datos por rango de tiempo predefinido |
 
 ### Salud del Sistema
-| Método | Ruta | Descripción |
-|---|---|---|
-| `GET` | `/api/health` | Estado del servidor y conexión a BD |
+
+| Método | Ruta          | Descripción                         |
+| ------ | ------------- | ----------------------------------- |
+| `GET`  | `/api/health` | Estado del servidor y conexión a BD |
 
 ---
 
@@ -119,6 +123,7 @@ El servicio de correos (`src/services/emailService.js`) funciona en dos modos:
 2. **Modo Desarrollo (Ethereal):** Si NO existen esas variables, crea automáticamente una cuenta temporal en [Ethereal](https://ethereal.email) y los correos se pueden visualizar via URL en la consola del servidor.
 
 ### Configurar Gmail para envío real
+
 1. Accede a tu cuenta de Google → Seguridad → Verificación en 2 pasos (activar).
 2. Ve a [Contraseñas de Aplicaciones](https://myaccount.google.com/apppasswords).
 3. Crea una app llamada "Panel Industrial" → Copia las 16 letras generadas.

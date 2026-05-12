@@ -9,7 +9,7 @@ import { AuthService } from '../../services/auth.service';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './login.html'
+  templateUrl: './login.html',
 })
 export class LoginComponent {
   private http = inject(HttpClient);
@@ -46,9 +46,11 @@ export class LoginComponent {
       },
       error: (err) => {
         this.isCodeSent.set(false);
-        this.errorMsg.set(this.getApiError(err, 'No se pudo enviar el codigo. Intenta nuevamente.'));
+        this.errorMsg.set(
+          this.getApiError(err, 'No se pudo enviar el codigo. Intenta nuevamente.'),
+        );
         this.isSubmitting.set(false);
-      }
+      },
     });
   }
 
@@ -58,19 +60,21 @@ export class LoginComponent {
     this.successMsg.set(null);
     this.isSubmitting.set(true);
 
-    this.http.post<any>('/api/auth/login', { email: this.email(), password: this.password() }).subscribe({
-      next: (res) => {
-        if (res.ok) {
-          this.auth.login(res.token, res.user);
-          this.router.navigate(['/dashboard']);
-        }
-        this.isSubmitting.set(false);
-      },
-      error: (err) => {
-        this.errorMsg.set(this.getApiError(err, 'Fallo al conectar con el servidor.'));
-        this.isSubmitting.set(false);
-      }
-    });
+    this.http
+      .post<any>('/api/auth/login', { email: this.email(), password: this.password() })
+      .subscribe({
+        next: (res) => {
+          if (res.ok) {
+            this.auth.login(res.token, res.user);
+            this.router.navigate(['/dashboard']);
+          }
+          this.isSubmitting.set(false);
+        },
+        error: (err) => {
+          this.errorMsg.set(this.getApiError(err, 'Fallo al conectar con el servidor.'));
+          this.isSubmitting.set(false);
+        },
+      });
   }
 
   goToCodeEntry(): void {

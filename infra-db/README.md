@@ -6,10 +6,10 @@ Esta carpeta contiene la configuración de **Docker Compose** para levantar la b
 
 ## 📦 Servicios incluidos
 
-| Servicio | Imagen Docker | Puerto Local | Descripción |
-|---|---|---|---|
-| **TimescaleDB** | `timescale/timescaledb:latest-pg16` | `5433` | Base de datos PostgreSQL optimizada para series temporales |
-| **pgAdmin 4** | `dpage/pgadmin4:latest` | `5050` | Interfaz web para administrar la BD visualmente |
+| Servicio        | Imagen Docker                       | Puerto Local | Descripción                                                |
+| --------------- | ----------------------------------- | ------------ | ---------------------------------------------------------- |
+| **TimescaleDB** | `timescale/timescaledb:latest-pg16` | `5433`       | Base de datos PostgreSQL optimizada para series temporales |
+| **pgAdmin 4**   | `dpage/pgadmin4:latest`             | `5050`       | Interfaz web para administrar la BD visualmente            |
 
 ---
 
@@ -28,6 +28,7 @@ docker ps
 ```
 
 ### Acceder a pgAdmin
+
 - URL: `http://localhost:5050`
 - Email: El que definiste en `.env` (por defecto: `admin@infra.local`)
 - Password: El que definiste en `.env`
@@ -53,15 +54,16 @@ infra-db/
 
 El script `init-db/01-init-schema.sql` crea automáticamente las siguientes tablas:
 
-| Tabla | Descripción |
-|---|---|
-| `empresa` | Empresas principales (ej: "PepsiCo Internacional") |
-| `sub_empresa` | Sucursales/faenas de cada empresa |
-| `usuario` | Usuarios del sistema con roles, empresa asignada y hash de contraseña |
-| `equipo` | Equipos de medición registrados |
-| `mediciones` | Hypertable de TimescaleDB para datos de telemetría en tiempo real |
+| Tabla         | Descripción                                                           |
+| ------------- | --------------------------------------------------------------------- |
+| `empresa`     | Empresas principales (ej: "PepsiCo Internacional")                    |
+| `sub_empresa` | Sucursales/faenas de cada empresa                                     |
+| `usuario`     | Usuarios del sistema con roles, empresa asignada y hash de contraseña |
+| `equipo`      | Equipos de medición registrados                                       |
+| `mediciones`  | Hypertable de TimescaleDB para datos de telemetría en tiempo real     |
 
 ### Características de TimescaleDB
+
 - La tabla `mediciones` es una **Hypertable** con chunks de 1 día.
 - Compresión automática activada para datos mayores a 7 días.
 - Optimizada para consultas de series temporales (últimas lecturas, rangos de fecha, etc.).

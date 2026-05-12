@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { requireEnv } = require('../config/requireEnv');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_dev_key_12345';
+const JWT_SECRET = requireEnv('JWT_SECRET');
 
 exports.protect = (req, res, next) => {
   let token;
@@ -26,7 +27,10 @@ exports.protect = (req, res, next) => {
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.tipo)) {
-      return res.status(403).json({ ok: false, error: `El rol ${req.user ? req.user.tipo : 'desconocido'} no tiene acceso a esta acción` });
+      return res.status(403).json({
+        ok: false,
+        error: `El rol ${req.user ? req.user.tipo : 'desconocido'} no tiene acceso a esta acción`,
+      });
     }
     next();
   };

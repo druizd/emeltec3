@@ -19,29 +19,29 @@ El frontend consume APIs internas mediante rutas relativas (`/api/...`). En desa
 
 ## Arquitectura
 
-| Capa | Tecnologia | Descripcion |
-|---|---|---|
-| Frontend | Angular | Interfaz web principal de la plataforma. |
-| API principal | Node.js + Express | Gestion de empresas, sitios, usuarios, datos y consultas operativas. |
-| Auth API | Node.js + Express | Autenticacion, JWT, usuarios y codigos de acceso. |
-| Base de datos | TimescaleDB/PostgreSQL | Persistencia relacional y datos de telemetria. |
-| Pipeline | Go + gRPC | Procesamiento e ingestion de datos. |
-| Proxy/servidor web | Nginx | Publicacion del frontend y enrutamiento de APIs en produccion. |
-| Deploy | Docker Compose + GitHub Actions | Construccion, reinicio y despliegue automatico en VM. |
+| Capa               | Tecnologia                      | Descripcion                                                          |
+| ------------------ | ------------------------------- | -------------------------------------------------------------------- |
+| Frontend           | Angular                         | Interfaz web principal de la plataforma.                             |
+| API principal      | Node.js + Express               | Gestion de empresas, sitios, usuarios, datos y consultas operativas. |
+| Auth API           | Node.js + Express               | Autenticacion, JWT, usuarios y codigos de acceso.                    |
+| Base de datos      | TimescaleDB/PostgreSQL          | Persistencia relacional y datos de telemetria.                       |
+| Pipeline           | Go + gRPC                       | Procesamiento e ingestion de datos.                                  |
+| Proxy/servidor web | Nginx                           | Publicacion del frontend y enrutamiento de APIs en produccion.       |
+| Deploy             | Docker Compose + GitHub Actions | Construccion, reinicio y despliegue automatico en VM.                |
 
 ## Estructura del repositorio
 
-| Ruta | Proposito |
-|---|---|
+| Ruta                | Proposito                                                                                 |
+| ------------------- | ----------------------------------------------------------------------------------------- |
 | `frontend-angular/` | Frontend oficial Angular. Es el unico frontend usado por Docker Compose y GitHub Actions. |
-| `main-api/` | API principal de la plataforma. |
-| `auth-api/` | Servicio de autenticacion. |
-| `grpc-pipeline/` | Servicios Go/gRPC para procesamiento de datos. |
-| `metrics-page/` | Pagina liviana de metricas operativas. |
-| `infra-db/` | Scripts de inicializacion y migraciones de base de datos. |
-| `infra-nginx/` | Configuracion Nginx usada en la VM. |
-| `scripts/` | Scripts operativos, incluido el deploy remoto. |
-| `docs/` | Documentacion tecnica del proyecto. |
+| `main-api/`         | API principal de la plataforma.                                                           |
+| `auth-api/`         | Servicio de autenticacion.                                                                |
+| `grpc-pipeline/`    | Servicios Go/gRPC para procesamiento de datos.                                            |
+| `metrics-page/`     | Pagina liviana de metricas operativas.                                                    |
+| `infra-db/`         | Scripts de inicializacion y migraciones de base de datos.                                 |
+| `infra-nginx/`      | Configuracion Nginx usada en la VM.                                                       |
+| `scripts/`          | Scripts operativos, incluido el deploy remoto.                                            |
+| `docs/`             | Documentacion tecnica del proyecto.                                                       |
 
 ## Requisitos
 
@@ -53,15 +53,42 @@ El frontend consume APIs internas mediante rutas relativas (`/api/...`). En desa
 
 ## Configuracion local
 
-Antes de levantar los servicios, crea el archivo de entorno local para las APIs:
+Antes de levantar los servicios, crea los archivos de entorno (cada `.env.example` indica los valores requeridos):
 
 ```bash
+cp .env.example .env
 cp main-api/.env.example main-api/.env
+cp auth-api/.env.example auth-api/.env
 ```
 
-Edita `main-api/.env` con los valores que correspondan para tu ambiente. Ese archivo tambien alimenta a `auth-api` dentro de Docker Compose, por lo que valores como `JWT_SECRET` e `INTERNAL_API_KEY` deben mantenerse consistentes.
+Reemplaza los placeholders `CHANGE_ME` por valores reales. Para `JWT_SECRET` e `INTERNAL_API_KEY` usa una clave fuerte (mismo valor en ambas APIs):
 
-Los secretos reales de produccion no deben versionarse en Git.
+```bash
+openssl rand -hex 32
+```
+
+Si `JWT_SECRET` o `INTERNAL_API_KEY` no estan definidas las APIs **abortan al arrancar** (fail-fast).
+
+Los archivos `.env` reales no deben versionarse en Git.
+
+## Instalacion (workspaces npm)
+
+El repositorio usa npm workspaces. Un solo `npm install` desde la raiz instala dependencias de `frontend-angular`, `main-api` y `auth-api`:
+
+```bash
+npm install
+```
+
+Scripts disponibles desde la raiz:
+
+```bash
+npm run lint          # lint en todos los workspaces
+npm run lint:fix      # lint con autofix
+npm run format        # prettier write
+npm run format:check  # prettier check
+npm test              # tests de todos los workspaces
+npm run build         # build de todos los workspaces (Angular productivo)
+```
 
 ## Levantar todo en local
 
@@ -73,13 +100,13 @@ docker compose up -d --build
 
 Servicios principales:
 
-| Servicio | URL local |
-|---|---|
-| Frontend | `http://localhost:5173` |
-| Main API | `http://localhost:3000` |
-| Auth API | `http://localhost:3001` |
-| Metrics page | `http://localhost:8081` |
-| PostgreSQL/TimescaleDB | `localhost:5433` |
+| Servicio               | URL local               |
+| ---------------------- | ----------------------- |
+| Frontend               | `http://localhost:5173` |
+| Main API               | `http://localhost:3000` |
+| Auth API               | `http://localhost:3001` |
+| Metrics page           | `http://localhost:8081` |
+| PostgreSQL/TimescaleDB | `localhost:5433`        |
 
 Para revisar el estado:
 

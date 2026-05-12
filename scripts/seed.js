@@ -1,15 +1,15 @@
 /**
  * Seed de datos de prueba para Emeltec Platform
- * Ejecutar desde la raíz: node seed.js
+ * Ejecutar desde la raíz: node scripts/seed.js
  */
 const { Pool } = require('pg');
-const bcrypt   = require('bcrypt');
+const bcrypt = require('bcrypt');
 
 const pool = new Pool({
-  host:     process.env.DB_HOST     || 'localhost',
-  port:     parseInt(process.env.DB_PORT || '5433'),
-  database: process.env.DB_NAME     || 'telemetry_platform',
-  user:     process.env.DB_USER     || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5433'),
+  database: process.env.DB_NAME || 'telemetry_platform',
+  user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || 'admin_password',
 });
 
@@ -52,25 +52,99 @@ async function seed() {
 
     const usuarios = [
       // SuperAdmin — sin empresa
-      { id: 'U001', nombre: 'Carlos',   apellido: 'Ramírez',  email: 'superadmin@emeltec.cl',  telefono: '+56912345001', cargo: 'Super Administrador', tipo: 'SuperAdmin', empresa_id: null,  sub_empresa_id: null  },
+      {
+        id: 'U001',
+        nombre: 'Carlos',
+        apellido: 'Ramírez',
+        email: 'superadmin@emeltec.cl',
+        telefono: '+56912345001',
+        cargo: 'Super Administrador',
+        tipo: 'SuperAdmin',
+        empresa_id: null,
+        sub_empresa_id: null,
+      },
       // Admin de E001
-      { id: 'U002', nombre: 'Alejandra', apellido: 'Muñoz',   email: 'admin.acero@emeltec.cl',  telefono: '+56912345002', cargo: 'Administrador',        tipo: 'Admin',      empresa_id: 'E001', sub_empresa_id: null  },
+      {
+        id: 'U002',
+        nombre: 'Alejandra',
+        apellido: 'Muñoz',
+        email: 'admin.acero@emeltec.cl',
+        telefono: '+56912345002',
+        cargo: 'Administrador',
+        tipo: 'Admin',
+        empresa_id: 'E001',
+        sub_empresa_id: null,
+      },
       // Admin de E002
-      { id: 'U003', nombre: 'Pedro',    apellido: 'Soto',     email: 'admin.aqua@emeltec.cl',   telefono: '+56912345003', cargo: 'Administrador',        tipo: 'Admin',      empresa_id: 'E002', sub_empresa_id: null  },
+      {
+        id: 'U003',
+        nombre: 'Pedro',
+        apellido: 'Soto',
+        email: 'admin.aqua@emeltec.cl',
+        telefono: '+56912345003',
+        cargo: 'Administrador',
+        tipo: 'Admin',
+        empresa_id: 'E002',
+        sub_empresa_id: null,
+      },
       // Gerente de SE01
-      { id: 'U004', nombre: 'Valentina', apellido: 'Lagos',   email: 'gerente.norte@emeltec.cl', telefono: '+56912345004', cargo: 'Gerente de Planta',   tipo: 'Gerente',    empresa_id: 'E001', sub_empresa_id: 'SE01' },
+      {
+        id: 'U004',
+        nombre: 'Valentina',
+        apellido: 'Lagos',
+        email: 'gerente.norte@emeltec.cl',
+        telefono: '+56912345004',
+        cargo: 'Gerente de Planta',
+        tipo: 'Gerente',
+        empresa_id: 'E001',
+        sub_empresa_id: 'SE01',
+      },
       // Cliente de SE01
-      { id: 'U005', nombre: 'Rodrigo',  apellido: 'Vega',     email: 'cliente.norte@emeltec.cl', telefono: '+56912345005', cargo: 'Operador',            tipo: 'Cliente',    empresa_id: 'E001', sub_empresa_id: 'SE01' },
+      {
+        id: 'U005',
+        nombre: 'Rodrigo',
+        apellido: 'Vega',
+        email: 'cliente.norte@emeltec.cl',
+        telefono: '+56912345005',
+        cargo: 'Operador',
+        tipo: 'Cliente',
+        empresa_id: 'E001',
+        sub_empresa_id: 'SE01',
+      },
       // Cliente de SE03
-      { id: 'U006', nombre: 'Sofía',    apellido: 'Herrera',  email: 'cliente.riego@emeltec.cl', telefono: '+56912345006', cargo: 'Técnico de Campo',    tipo: 'Cliente',    empresa_id: 'E002', sub_empresa_id: 'SE03' },
+      {
+        id: 'U006',
+        nombre: 'Sofía',
+        apellido: 'Herrera',
+        email: 'cliente.riego@emeltec.cl',
+        telefono: '+56912345006',
+        cargo: 'Técnico de Campo',
+        tipo: 'Cliente',
+        empresa_id: 'E002',
+        sub_empresa_id: 'SE03',
+      },
     ];
 
     for (const u of usuarios) {
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO usuario (id, nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id, password_hash)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
         ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash;
-      `, [u.id, u.nombre, u.apellido, u.email, u.telefono, u.cargo, u.tipo, u.empresa_id, u.sub_empresa_id, passHash]);
+      `,
+        [
+          u.id,
+          u.nombre,
+          u.apellido,
+          u.email,
+          u.telefono,
+          u.cargo,
+          u.tipo,
+          u.empresa_id,
+          u.sub_empresa_id,
+          passHash,
+        ],
+      );
     }
     console.log('✓ Usuarios insertados (password: Test1234)');
 
@@ -103,11 +177,11 @@ async function seed() {
     // ── 6. Datos de telemetría (últimas 24h) ───────────────────────────
     const serials = [
       { id: 'SN-001-ACE', base: { REG1: 850, REG2: 860 }, variance: 30 },
-      { id: 'SN-002-ACE', base: { REG1: 6.5 },            variance: 1.5 },
-      { id: 'SN-003-ACE', base: { REG1: 45 },             variance: 10 },
-      { id: 'SN-004-AQT', base: { REG1: 7.2 },            variance: 0.5 },
-      { id: 'SN-005-AQT', base: { REG1: 3.8 },            variance: 0.8 },
-      { id: 'SN-006-ENP', base: { REG1: 12.5 },           variance: 5 },
+      { id: 'SN-002-ACE', base: { REG1: 6.5 }, variance: 1.5 },
+      { id: 'SN-003-ACE', base: { REG1: 45 }, variance: 10 },
+      { id: 'SN-004-AQT', base: { REG1: 7.2 }, variance: 0.5 },
+      { id: 'SN-005-AQT', base: { REG1: 3.8 }, variance: 0.8 },
+      { id: 'SN-006-ENP', base: { REG1: 12.5 }, variance: 5 },
     ];
 
     let telemetryCount = 0;
@@ -119,7 +193,7 @@ async function seed() {
         }
         await client.query(
           `INSERT INTO equipo (time, id_serial, data) VALUES (NOW() - INTERVAL '${h} hours', $1, $2)`,
-          [s.id, JSON.stringify(data)]
+          [s.id, JSON.stringify(data)],
         );
         telemetryCount++;
       }
@@ -147,7 +221,6 @@ async function seed() {
     console.log('  gerente.norte@emeltec.cl → Gerente (Planta Norte)');
     console.log('  cliente.norte@emeltec.cl → Cliente (Planta Norte)');
     console.log('  cliente.riego@emeltec.cl → Cliente (División Riego)');
-
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error en seed:', err.message);

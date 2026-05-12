@@ -1,55 +1,68 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import type {
+  ApiResponse,
+  Company,
+  CompanyNode,
+  SiteRecord,
+  SiteDashboardData,
+  SiteDashboardHistoryEntry,
+} from '@emeltec/shared';
 
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
-  
-  companies = signal<any[]>([]);
-  hierarchy = signal<any[]>([]);
+
+  companies = signal<Company[]>([]);
+  hierarchy = signal<CompanyNode[]>([]);
   selectedSubCompanyId = signal<string | null>(null);
   loading = signal(false);
 
-  fetchCompanies(): Observable<any> {
+  fetchCompanies(): Observable<ApiResponse<Company[]>> {
     this.loading.set(true);
-    return this.http.get<any>('/api/companies').pipe(
-      tap(res => {
+    return this.http.get<ApiResponse<Company[]>>('/api/companies').pipe(
+      tap((res) => {
         if (res.ok) this.companies.set(res.data);
         this.loading.set(false);
-      })
+      }),
     );
   }
 
-  fetchHierarchy(): Observable<any> {
+  fetchHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
     this.loading.set(true);
-    // Agregamos un timestamp (?t=...) para obligar al navegador a traer datos nuevos siempre
-    return this.http.get<any>(`/api/companies/tree?t=${Date.now()}`).pipe(
-      tap(res => {
+    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/companies/tree?t=${Date.now()}`).pipe(
+      tap((res) => {
         if (res.ok) {
-          console.log('Datos de Jerarquía recibidos:', res.data);
           this.hierarchy.set(res.data);
         }
         this.loading.set(false);
-      })
+      }),
     );
   }
 
-  getSites(id: string): Observable<any> {
-     return this.http.get<any>(`/api/companies/${id}/sites`); 
+  getSites(id: string): Observable<ApiResponse<SiteRecord[]>> {
+    return this.http.get<ApiResponse<SiteRecord[]>>(`/api/companies/${id}/sites`);
   }
 
-  getSiteDashboardData(siteId: string): Observable<any> {
-    return this.http.get<any>(`/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`);
+  getSiteDashboardData(siteId: string): Observable<ApiResponse<SiteDashboardData>> {
+    return this.http.get<ApiResponse<SiteDashboardData>>(
+      `/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`,
+    );
   }
 
-  getSiteDashboardHistory(siteId: string, limit = 500): Observable<any> {
-    return this.http.get<any>(`/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`);
+  getSiteDashboardHistory(
+    siteId: string,
+    limit = 500,
+  ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
+    return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
+      `/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`,
+    );
   }
 
   downloadSiteDashboardHistory(
     siteId: string,
-    options: { from: string; to: string; fields: string[]; format: 'csv' }
+    options: { from: string; to: string; fields: string[]; format: 'csv' },
   ): Observable<HttpResponse<Blob>> {
     return this.http.get(`/api/companies/sites/${siteId}/dashboard-history/export`, {
       observe: 'response',

@@ -72,14 +72,14 @@ En el despliegue real, este build se ejecuta dentro de Docker mediante el `Docke
 
 ## Estructura principal
 
-| Ruta | Proposito |
-|---|---|
-| `src/app/components/` | Componentes reutilizables de layout, UI y visualizacion. |
-| `src/app/pages/` | Paginas principales de la aplicacion. |
-| `src/app/services/` | Servicios Angular para comunicacion con APIs. |
-| `src/app/guards/` | Protecciones de rutas. |
-| `src/app/interceptors/` | Interceptores HTTP. |
-| `src/styles.css` | Estilos globales. |
+| Ruta                    | Proposito                                                |
+| ----------------------- | -------------------------------------------------------- |
+| `src/app/components/`   | Componentes reutilizables de layout, UI y visualizacion. |
+| `src/app/pages/`        | Paginas principales de la aplicacion.                    |
+| `src/app/services/`     | Servicios Angular para comunicacion con APIs.            |
+| `src/app/guards/`       | Protecciones de rutas.                                   |
+| `src/app/interceptors/` | Interceptores HTTP.                                      |
+| `src/styles.css`        | Estilos globales.                                        |
 
 ## Integracion con APIs
 
