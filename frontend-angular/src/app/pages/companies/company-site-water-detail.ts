@@ -332,60 +332,75 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
             </div>
 
-            <div class="flex items-center gap-5 px-3">
+            <div class="flex items-center gap-5 px-3" role="tablist" aria-label="Pestañas de detalle del sitio">
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('dga')"
                 [class]="getDetailTabClass('dga')"
+                [attr.aria-selected]="activeDetailTab() === 'dga'"
+                aria-controls="tabpanel-dga"
               >
-                <span class="material-symbols-outlined text-[18px]">layers</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
                 DGA
                 @if (activeDetailTab() === 'dga') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('operacion')"
                 [class]="getDetailTabClass('operacion')"
+                [attr.aria-selected]="activeDetailTab() === 'operacion'"
+                aria-controls="tabpanel-operacion"
               >
-                <span class="material-symbols-outlined text-[18px]">monitoring</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">monitoring</span>
                 Operación
                 @if (activeDetailTab() === 'operacion') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('alertas')"
                 [class]="getDetailTabClass('alertas')"
+                [attr.aria-selected]="activeDetailTab() === 'alertas'"
+                aria-controls="tabpanel-alertas"
               >
-                <span class="material-symbols-outlined text-[18px]">notifications_active</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">notifications_active</span>
                 Alertas
                 @if (activeDetailTab() === 'alertas') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('bitacora')"
                 [class]="getDetailTabClass('bitacora')"
+                [attr.aria-selected]="activeDetailTab() === 'bitacora'"
+                aria-controls="tabpanel-bitacora"
               >
-                <span class="material-symbols-outlined text-[18px]">menu_book</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">menu_book</span>
                 Bitácora
                 @if (activeDetailTab() === 'bitacora') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('analisis')"
                 [class]="getDetailTabClass('analisis')"
+                [attr.aria-selected]="activeDetailTab() === 'analisis'"
+                aria-controls="tabpanel-analisis"
               >
-                <span class="material-symbols-outlined text-[18px]">insights</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">insights</span>
                 Análisis
                 @if (activeDetailTab() === 'analisis') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
             </div>
@@ -755,11 +770,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               </td>
                               <td class="px-4 py-3">
                                 <div class="flex justify-end gap-2">
-                                  <button type="button" (click)="prepareVariableMap(variable)" class="icon-button" title="Editar formulario">
-                                    <span class="material-symbols-outlined text-[18px]">edit_square</span>
+                                  <button type="button" (click)="prepareVariableMap(variable)" class="icon-button" aria-label="Editar formulario">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">edit_square</span>
                                   </button>
                                   @if (variable.mapping) {
-                                    <button type="button" (click)="deleteVariableMap(variable.mapping)" class="icon-button text-red-500" title="Eliminar alias">
+                                    <button type="button" (click)="deleteVariableMap(variable.mapping)" class="icon-button text-red-500" aria-label="Eliminar alias">
                                       <span class="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                   }
@@ -3136,7 +3151,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   getDetailTabClass(tab: DetailTab): string {
     const active = this.activeDetailTab() === tab;
-    const base = 'relative inline-flex h-9 items-center gap-2 text-xs transition-colors';
+    const base = 'relative inline-flex h-9 items-center gap-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
     return active
       ? `${base} font-black text-cyan-700`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;

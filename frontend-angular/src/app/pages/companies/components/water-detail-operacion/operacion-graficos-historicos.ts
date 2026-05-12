@@ -39,10 +39,12 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <button
               type="button"
               (click)="chartRangeOpen.update(v => !v)"
-              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[12px] font-bold transition-colors"
+              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
               [class]="chartRangeOpen()
                 ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
                 : 'border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'"
+              aria-label="Selector de rango de tiempo"
+              [attr.aria-expanded]="chartRangeOpen()"
             >
               <span class="material-symbols-outlined text-[15px]">calendar_month</span>
               {{ chartPreset() === 'custom' ? chartRangeLabel() : presetBadge() }}
@@ -61,15 +63,16 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 <!-- Presets -->
                 <div class="p-3">
                   <p class="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Rango de tiempo</p>
-                  <div class="flex flex-wrap gap-1.5">
+                  <div class="flex flex-wrap gap-1.5" role="group" aria-label="Presets de rango">
                     @for (p of PRESETS; track p.key) {
                       <button
                         type="button"
                         (click)="setPreset(p.key)"
-                        class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors"
+                        class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                         [class]="chartPreset() === p.key
                           ? 'bg-cyan-600 text-white'
                           : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+                        [attr.aria-pressed]="chartPreset() === p.key"
                       >{{ p.label }}</button>
                     }
                   </div>
@@ -124,8 +127,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 <p class="text-xs font-black text-slate-700">Nivel Freático</p>
                 <p class="text-[11px] text-slate-400">m bajo superficie</p>
               </div>
-              <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50">
-                <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+              <button type="button" aria-label="Descargar Nivel Freático en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
               </button>
             </div>
             <div class="h-44 w-full">
@@ -156,8 +159,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 <p class="text-xs font-black text-slate-700">Caudal Instantáneo</p>
                 <p class="text-[11px] text-slate-400">L/s</p>
               </div>
-              <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50">
-                <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+              <button type="button" aria-label="Descargar Caudal Instantáneo en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
               </button>
             </div>
             <div class="h-44 w-full">
@@ -191,8 +194,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <h3 class="text-sm font-black text-slate-800">Flujo Mensual</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">Últimos 12 meses · m³ totales por mes</p>
           </div>
-          <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+          <button type="button" aria-label="Descargar Flujo Mensual en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
         <div class="h-44 w-full">
@@ -218,8 +221,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <h3 class="text-sm font-black text-slate-800">Flujo Diario</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">Últimos 30 días · m³/día · días sin operación en gris</p>
           </div>
-          <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+          <button type="button" aria-label="Descargar Flujo Diario en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
         <div class="h-44 w-full">
@@ -249,9 +252,10 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               <button
                 type="button"
                 (click)="jornadaSettingsOpen.update(v => !v)"
-                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors"
+                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                 [class]="jornadaSettingsOpen() ? 'bg-cyan-100 text-cyan-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'"
-                title="Configurar período de jornada"
+                aria-label="Configurar período de jornada"
+                [attr.aria-expanded]="jornadaSettingsOpen()"
               >
                 <span class="material-symbols-outlined text-[15px]">settings</span>
               </button>
@@ -260,8 +264,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               Últimos 30 días · flujo acumulado por jornada ({{ jornadaInicio() }} a {{ jornadaFin() }} del día siguiente) · m³
             </p>
           </div>
-          <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+          <button type="button" aria-label="Descargar Resumen Jornada en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
 

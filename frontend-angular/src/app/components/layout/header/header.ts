@@ -11,7 +11,7 @@ import { AuthService } from '../../../services/auth.service';
   template: `
     <header class="h-16 shrink-0 border-b border-[#E2E8F0] bg-white">
       <div class="flex h-full items-stretch px-5">
-        <nav class="flex items-stretch">
+        <nav class="flex items-stretch" aria-label="Navegación principal">
           <button
             type="button"
             (click)="router.navigate(['/dashboard'])"
@@ -41,8 +41,8 @@ import { AuthService } from '../../../services/auth.service';
           @if (auth.isSuperAdmin()) {
             <button
               (click)="router.navigate(['/administration'])"
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569]"
-              title="Administración"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              aria-label="Administración"
             >
               <span class="material-symbols-outlined text-[16px]">settings</span>
             </button>
@@ -53,8 +53,9 @@ import { AuthService } from '../../../services/auth.service';
             <button
               type="button"
               (click)="toggleUserMenu()"
-              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[11px] font-bold text-white ring-2 ring-transparent transition-all hover:ring-cyan-200"
-              [title]="auth.user()?.nombre ?? ''"
+              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[11px] font-bold text-white ring-2 ring-transparent transition-all hover:ring-cyan-200 focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
+              aria-label="Menú de usuario"
+              [attr.aria-expanded]="userMenuOpen()"
             >
               {{ getUserInitials() }}
             </button>

@@ -11,10 +11,10 @@ import { Component, Input } from '@angular/core';
         <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">
           {{ selectedSubCompany?.nombre || 'División seleccionada' }}
         </p>
-        <h1 class="text-[2.35rem] font-black leading-none text-slate-800">
+        <h1 class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1E293B]" style="font-family: 'Josefin Sans', sans-serif;">
           {{ title }}
         </h1>
-        <p class="text-xs font-medium text-slate-400">{{ subtitle }}</p>
+        <p class="text-[13px] text-[#64748B]">{{ subtitle }}</p>
       </div>
 
       @if (showReportButton) {

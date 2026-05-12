@@ -201,9 +201,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               (click)="loadDashboard()"
               [disabled]="loading()"
               class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              title="Actualizar"
+              aria-label="Actualizar"
             >
-              <span class="material-symbols-outlined text-[19px]">refresh</span>
+              <span class="material-symbols-outlined text-[19px]" aria-hidden="true">refresh</span>
             </button>
           </div>
         </header>
@@ -523,11 +523,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
                                 <td class="px-4 py-3">
                                   <div class="flex justify-end gap-2">
-                                    <button type="button" (click)="selectSite(site.id)" class="icon-button" title="Seleccionar">
-                                      <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                                    <button type="button" (click)="selectSite(site.id)" class="icon-button" aria-label="Seleccionar sitio">
+                                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>
                                     </button>
-                                    <button type="button" (click)="openSite(site)" class="icon-button" title="Abrir sitio">
-                                      <span class="material-symbols-outlined text-[18px]">monitoring</span>
+                                    <button type="button" (click)="openSite(site)" class="icon-button" aria-label="Abrir sitio">
+                                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">monitoring</span>
                                     </button>
                                   </div>
                                 </td>
@@ -590,11 +590,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               </td>
                               <td class="px-4 py-3">
                                 <div class="flex justify-end gap-2">
-                                  <button type="button" (click)="useDeviceInSiteForm(device)" class="icon-button" title="Usar serial">
-                                    <span class="material-symbols-outlined text-[18px]">input</span>
+                                  <button type="button" (click)="useDeviceInSiteForm(device)" class="icon-button" aria-label="Usar serial del dispositivo">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">input</span>
                                   </button>
-                                  <button type="button" (click)="assignDeviceToSelectedSite(device)" [disabled]="!selectedSiteId() || busyAction() === 'assign-device'" class="icon-button disabled:cursor-not-allowed disabled:opacity-40" title="Asignar">
-                                    <span class="material-symbols-outlined text-[18px]">link</span>
+                                  <button type="button" (click)="assignDeviceToSelectedSite(device)" [disabled]="!selectedSiteId() || busyAction() === 'assign-device'" class="icon-button disabled:cursor-not-allowed disabled:opacity-40" aria-label="Asignar dispositivo al sitio" [attr.aria-disabled]="!selectedSiteId() || busyAction() === 'assign-device'">
+                                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true">link</span>
                                   </button>
                                 </div>
                               </td>

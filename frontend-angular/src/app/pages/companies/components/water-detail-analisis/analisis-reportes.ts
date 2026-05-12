@@ -84,17 +84,17 @@ interface Reporte {
               <div class="mt-1.5 flex items-center justify-end gap-1">
                 <button
                   type="button"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-                  title="Previsualizar"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                  aria-label="Previsualizar reporte"
                 >
-                  <span class="material-symbols-outlined text-[15px]">visibility</span>
+                  <span class="material-symbols-outlined text-[15px]" aria-hidden="true">visibility</span>
                 </button>
                 <button
                   type="button"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
-                  title="Descargar PDF"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                  aria-label="Descargar PDF"
                 >
-                  <span class="material-symbols-outlined text-[15px]">download</span>
+                  <span class="material-symbols-outlined text-[15px]" aria-hidden="true">download</span>
                 </button>
               </div>
             </div>
