@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import type { SiteRecord } from '@emeltec/shared';
 
 @Component({
   selector: 'app-site-card',
@@ -99,12 +100,12 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   `,
 })
 export class SiteCardComponent {
-  @Input() site: any;
+  @Input() site!: SiteRecord;
   @Input() selected = false;
   @Input() contextLabel = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
 
-  @Output() siteSelected = new EventEmitter<any>();
+  @Output() siteSelected = new EventEmitter<SiteRecord>();
 
   getCardClass(): string {
     if (this.variant === 'superadmin') {
@@ -194,11 +195,12 @@ export class SiteCardComponent {
     return 'text-slate-400';
   }
 
-  private pickFirst(keys: string[]): any {
+  private pickFirst(keys: string[]): string | null {
+    const source = this.site as unknown as Record<string, unknown>;
     for (const key of keys) {
-      const value = this.site?.[key];
+      const value = source?.[key];
       if (value !== undefined && value !== null && `${value}`.trim() !== '') {
-        return value;
+        return `${value}`;
       }
     }
 

@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { CompanyService } from '../../../services/company.service';
+import type { CompanyNode, SubCompanyNode } from '@emeltec/shared';
 
 interface SiteItem {
   id: string;
@@ -288,8 +289,8 @@ export class SidebarComponent implements OnInit {
 
     const modules = MODULES.map((def) => {
       const companies = tree
-        .filter((company: any) => this.matchesModule(company.tipo_empresa, def.key))
-        .map((company: any) => this.toCompanyItem(def, company, tokens))
+        .filter((company) => this.matchesModule(company.tipo_empresa, def.key))
+        .map((company) => this.toCompanyItem(def, company, tokens))
         .filter((company): company is CompanyItem => Boolean(company));
 
       return { ...def, companies };
@@ -426,12 +427,12 @@ export class SidebarComponent implements OnInit {
 
   private toCompanyItem(
     def: (typeof MODULES)[number],
-    company: any,
+    company: CompanyNode,
     tokens: string[],
   ): CompanyItem | null {
-    const sites: SiteItem[] = (company.subCompanies || []).map((sub: any) => ({
+    const sites: SiteItem[] = (company.subCompanies || []).map((sub: SubCompanyNode) => ({
       id: sub.id,
-      label: sub.nombre || sub.descripcion || sub.id,
+      label: sub.nombre || sub.id,
     }));
 
     const item: CompanyItem = {

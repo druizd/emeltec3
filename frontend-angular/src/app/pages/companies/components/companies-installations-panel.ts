@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { SiteCardComponent } from '../../../components/ui/site-card';
+import type { SiteRecord } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-installations-panel',
@@ -35,12 +36,12 @@ import { SiteCardComponent } from '../../../components/ui/site-card';
   `,
 })
 export class CompaniesInstallationsPanelComponent {
-  @Input() sites: any[] = [];
+  @Input() sites: SiteRecord[] = [];
   @Input() loading = false;
   @Input() contextLabel = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
 
-  @Output() siteSelected = new EventEmitter<any>();
+  @Output() siteSelected = new EventEmitter<SiteRecord>();
 
   getGridClass(): string {
     if (this.variant === 'superadmin') {

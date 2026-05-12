@@ -4814,7 +4814,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return {};
   }
 
-  private inferVariableRoleFromValues(...values: Array<string | null | undefined>): string {
+  private inferVariableRoleFromValues(...values: (string | null | undefined)[]): string {
     const text = this.normalizeSearchText(...values);
     const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
 
@@ -5175,7 +5175,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const step = this.niceChartStep(
       (maxValue - minValue) / 4 || Math.max(Math.abs(maxValue) * 0.005, 0.05),
     );
-    let yMin = Math.floor((minValue - step * 0.2) / step) * step;
+    const yMin = Math.floor((minValue - step * 0.2) / step) * step;
     let yMax = Math.ceil((maxValue + step * 0.2) / step) * step;
 
     if (yMax <= yMin) {
@@ -5404,7 +5404,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return Math.max(min, Math.min(max, value));
   }
 
-  private normalizeSearchText(...values: Array<string | null | undefined>): string {
+  private normalizeSearchText(...values: (string | null | undefined)[]): string {
     return values
       .map((value) => String(value ?? '').trim())
       .join(' ')

@@ -10,6 +10,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { UserService } from '../../../services/user.service';
+import type { ApiResponse, User } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-contacts-panel',
@@ -154,7 +155,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
 
   @Output() contactsCountChange = new EventEmitter<number>();
 
-  readonly contacts = signal<any[]>([]);
+  readonly contacts = signal<User[]>([]);
   readonly loading = signal(false);
   readonly skeletonItems = Array.from({ length: 3 }, (_, index) => index);
 
@@ -175,11 +176,11 @@ export class CompaniesContactsPanelComponent implements OnChanges {
 
     this.loading.set(true);
     this.userService.getUsers(filters).subscribe({
-      next: (res: any) => {
-        const users = res?.ok ? (res.data ?? []) : [];
+      next: (res: ApiResponse<User[]>) => {
+        const users: User[] = res?.ok ? (res.data ?? []) : [];
         const filteredUsers = this.subEmpresaId
           ? users.filter(
-              (user: any) => user.sub_empresa_id === this.subEmpresaId || !user.sub_empresa_id,
+              (user) => user.sub_empresa_id === this.subEmpresaId || !user.sub_empresa_id,
             )
           : users;
 
@@ -195,7 +196,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     });
   }
 
-  getContactName(contact: any): string {
+  getContactName(contact: User): string {
     const firstName = contact?.nombre?.trim?.() || '';
     const lastName = contact?.apellido?.trim?.() || '';
     const fullName = `${firstName} ${lastName}`.trim();
@@ -203,23 +204,23 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     return fullName || 'Sin nombre';
   }
 
-  getContactPosition(contact: any): string {
+  getContactPosition(contact: User): string {
     return contact?.cargo?.trim?.() || 'Cargo no asignado';
   }
 
-  getContactPhone(contact: any): string {
+  getContactPhone(contact: User): string {
     return contact?.telefono?.trim?.() || 'Sin numero registrado';
   }
 
-  getContactEmail(contact: any): string {
+  getContactEmail(contact: User): string {
     return contact?.email?.trim?.() || 'Sin correo registrado';
   }
 
-  getContactRole(contact: any): string {
+  getContactRole(contact: User): string {
     return contact?.tipo?.trim?.() || 'Usuario';
   }
 
-  getContactInitials(contact: any): string {
+  getContactInitials(contact: User): string {
     const first = contact?.nombre?.charAt?.(0) ?? '';
     const last = contact?.apellido?.charAt?.(0) ?? '';
     const initials = `${first}${last}`.trim();

@@ -8,10 +8,10 @@ import { CommonModule } from '@angular/common';
   templateUrl: './metric-card.html',
 })
 export class MetricCardComponent {
-  @Input() title: string = '';
-  @Input() value: any;
-  @Input() unit: string = '';
-  @Input() time: string = '';
+  @Input() title = '';
+  @Input() value: string | number | null | undefined = undefined;
+  @Input() unit = '';
+  @Input() time = '';
 
   get formattedTime(): string {
     if (!this.time) return 'Sin datos';

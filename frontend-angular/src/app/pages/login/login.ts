@@ -3,7 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
+import type { ApiResponse, User } from '@emeltec/shared';
+
+interface LoginResponse extends ApiResponse<unknown> {
+  token?: string;
+  user?: User;
+}
 
 @Component({
   selector: 'app-login',
@@ -23,8 +30,12 @@ export class LoginComponent {
   errorMsg = signal<string | null>(null);
   isSubmitting = signal(false);
 
-  private getApiError(err: any, fallback: string): string {
-    return err?.error?.error || err?.error?.message || err?.message || fallback;
+  private getApiError(err: HttpErrorResponse | Error | null, fallback: string): string {
+    if (!err) return fallback;
+    if (err instanceof HttpErrorResponse) {
+      return err.error?.error || err.error?.message || err.message || fallback;
+    }
+    return err.message || fallback;
   }
 
   handleRequestCode(event: Event): void {
@@ -33,14 +44,14 @@ export class LoginComponent {
     this.successMsg.set(null);
     this.isSubmitting.set(true);
 
-    this.http.post<any>('/api/auth/request-code', { email: this.email() }).subscribe({
+    this.http.post<LoginResponse>('/api/auth/request-code', { email: this.email() }).subscribe({
       next: (res) => {
         if (res.ok) {
           this.isCodeSent.set(true);
-          this.successMsg.set(res.message);
+          this.successMsg.set(res.message ?? null);
         } else {
           this.isCodeSent.set(false);
-          this.errorMsg.set(res.error || res.message || 'No se pudo enviar el codigo.');
+          this.errorMsg.set(res.error ?? res.message ?? 'No se pudo enviar el codigo.');
         }
         this.isSubmitting.set(false);
       },
@@ -61,10 +72,10 @@ export class LoginComponent {
     this.isSubmitting.set(true);
 
     this.http
-      .post<any>('/api/auth/login', { email: this.email(), password: this.password() })
+      .post<LoginResponse>('/api/auth/login', { email: this.email(), password: this.password() })
       .subscribe({
         next: (res) => {
-          if (res.ok) {
+          if (res.ok && res.token && res.user) {
             this.auth.login(res.token, res.user);
             this.router.navigate(['/dashboard']);
           }

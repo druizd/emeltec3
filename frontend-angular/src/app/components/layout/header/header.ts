@@ -116,10 +116,12 @@ export class HeaderComponent implements OnInit {
   readonly userMenuOpen = signal(false);
 
   ngOnInit(): void {
-    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e: any) => {
-      this.currentUrl.set(e.urlAfterRedirects || e.url);
-      this.userMenuOpen.set(false);
-    });
+    this.router.events
+      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
+      .subscribe((e) => {
+        this.currentUrl.set(e.urlAfterRedirects || e.url);
+        this.userMenuOpen.set(false);
+      });
   }
 
   @HostListener('document:click', ['$event'])
