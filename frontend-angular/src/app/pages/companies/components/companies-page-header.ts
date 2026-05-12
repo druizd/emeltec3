@@ -8,19 +8,19 @@ import { Component, Input } from '@angular/core';
   template: `
     <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
       <div class="space-y-2">
-        <p class="text-[12px] font-black uppercase tracking-[0.24em] text-cyan-600/80">
+        <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">
           {{ selectedSubCompany?.nombre || 'División seleccionada' }}
         </p>
-        <h1 class="text-[2.35rem] font-black leading-none text-slate-800">
+        <h1 class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1E293B]" style="font-family: 'Josefin Sans', sans-serif;">
           {{ title }}
         </h1>
-        <p class="text-xs font-medium text-slate-400">{{ subtitle }}</p>
+        <p class="text-[13px] text-[#64748B]">{{ subtitle }}</p>
       </div>
 
       @if (showReportButton) {
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.06)] transition-all hover:border-cyan-200 hover:text-cyan-700"
+          class="inline-flex items-center gap-2 rounded-md border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#1E293B] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-all hover:border-[#0DAFBD] hover:text-[#0899A5]"
         >
           <span class="material-symbols-outlined text-lg">download</span>
           Reporte

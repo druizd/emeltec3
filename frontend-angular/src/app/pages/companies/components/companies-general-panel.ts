@@ -77,7 +77,7 @@ interface Periodo {
       <!-- KPIs principales -->
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
 
-        <article class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0D8A96] to-[#0DAFBD] p-5 shadow-sm">
+        <article class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0899A5] to-[#0DAFBD] p-5 shadow-sm">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
               <p class="text-[10px] font-black uppercase tracking-widest text-cyan-100">Flujo acumulado mensual</p>

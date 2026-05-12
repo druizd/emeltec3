@@ -52,26 +52,28 @@ interface IncidenciaPeriodo {
         <div class="flex flex-wrap items-center gap-3">
 
           <!-- Presets -->
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-1" role="group" aria-label="Presets de período">
             @for (p of presets; track p.key) {
-              <button type="button" (click)="setPreset(p.key)" [class]="presetClass(p.key)">{{ p.label }}</button>
+              <button type="button" (click)="setPreset(p.key)" [class]="presetClass(p.key)" [attr.aria-pressed]="preset() === p.key">{{ p.label }}</button>
             }
           </div>
 
           <!-- Rango custom -->
           <div class="flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
-            <span class="font-semibold">Desde</span>
+            <span class="font-semibold" id="label-desde">Desde</span>
             <input
               type="date"
               [value]="fechaDesde()"
               (change)="onFechaChange('desde', $any($event.target).value)"
+              aria-labelledby="label-desde"
               class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-[12px] text-slate-700 focus:border-cyan-400 focus:outline-none"
             />
-            <span class="font-semibold">hasta</span>
+            <span class="font-semibold" id="label-hasta">Hasta</span>
             <input
               type="date"
               [value]="fechaHasta()"
               (change)="onFechaChange('hasta', $any($event.target).value)"
+              aria-labelledby="label-hasta"
               class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-[12px] text-slate-700 focus:border-cyan-400 focus:outline-none"
             />
           </div>
@@ -107,9 +109,10 @@ interface IncidenciaPeriodo {
           <button
             type="button"
             (click)="resumenSettingsOpen.update(v => !v)"
-            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
             [class]="resumenSettingsOpen() ? 'bg-cyan-100 text-cyan-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'"
-            title="Configurar horarios de turno"
+            aria-label="Configurar horarios de turno"
+            [attr.aria-expanded]="resumenSettingsOpen()"
           >
             <span class="material-symbols-outlined text-[16px]">settings</span>
           </button>
@@ -119,15 +122,17 @@ interface IncidenciaPeriodo {
           <div class="border-b border-cyan-100 bg-cyan-50/60 p-4">
             <div class="mb-3 flex items-center justify-between">
               <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">Configurar horarios</p>
-              <div class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] font-bold">
+              <div class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] font-bold" role="group" aria-label="Cantidad de turnos">
                 <button type="button" (click)="numTurnos.set(2)"
-                  class="px-3 py-1.5 transition-colors"
-                  [class]="numTurnos() === 2 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'">
+                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                  [class]="numTurnos() === 2 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'"
+                  [attr.aria-pressed]="numTurnos() === 2">
                   2 turnos
                 </button>
                 <button type="button" (click)="numTurnos.set(3)"
-                  class="px-3 py-1.5 transition-colors"
-                  [class]="numTurnos() === 3 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'">
+                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                  [class]="numTurnos() === 3 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'"
+                  [attr.aria-pressed]="numTurnos() === 3">
                   3 turnos
                 </button>
               </div>
@@ -211,8 +216,8 @@ interface IncidenciaPeriodo {
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
           <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">Resumen diario — últimos 7 días del período</h3>
-          <button type="button" class="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-700 hover:underline">
-            <span class="material-symbols-outlined text-[13px]">download</span>.CSV
+          <button type="button" aria-label="Descargar resumen diario en CSV" class="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[13px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
         <div class="overflow-x-auto">

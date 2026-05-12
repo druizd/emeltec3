@@ -9,9 +9,9 @@ import { AuthService } from '../../../services/auth.service';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <header class="h-[52px] shrink-0 border-b border-[#dfe7f1] bg-white">
+    <header class="h-16 shrink-0 border-b border-[#E2E8F0] bg-white">
       <div class="flex h-full items-stretch px-5">
-        <nav class="flex items-stretch">
+        <nav class="flex items-stretch" aria-label="Navegación principal">
           <button
             type="button"
             (click)="router.navigate(['/dashboard'])"
@@ -41,8 +41,8 @@ import { AuthService } from '../../../services/auth.service';
           @if (auth.isSuperAdmin()) {
             <button
               (click)="router.navigate(['/administration'])"
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569]"
-              title="Administración"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              aria-label="Administración"
             >
               <span class="material-symbols-outlined text-[16px]">settings</span>
             </button>
@@ -53,16 +53,17 @@ import { AuthService } from '../../../services/auth.service';
             <button
               type="button"
               (click)="toggleUserMenu()"
-              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[11px] font-bold text-white ring-2 ring-transparent transition-all hover:ring-cyan-200"
-              [title]="auth.user()?.nombre ?? ''"
+              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[11px] font-bold text-white ring-2 ring-transparent transition-all hover:ring-cyan-200 focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
+              aria-label="Menú de usuario"
+              [attr.aria-expanded]="userMenuOpen()"
             >
               {{ getUserInitials() }}
             </button>
 
             @if (userMenuOpen()) {
-              <div class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
+              <div class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]">
                 <!-- User info -->
-                <div class="border-b border-slate-100 px-4 py-3">
+                <div class="border-b border-[#E2E8F0] px-4 py-3">
                   <p class="text-[13px] font-bold text-slate-800">{{ auth.user()?.nombre }} {{ auth.user()?.apellido }}</p>
                   <p class="text-[11px] text-slate-400">{{ auth.user()?.tipo }}</p>
                 </div>
@@ -83,7 +84,7 @@ import { AuthService } from '../../../services/auth.service';
                     Notificaciones
                   </button>
                 </div>
-                <div class="border-t border-slate-100 py-1">
+                <div class="border-t border-[#E2E8F0] py-1">
                   <button
                     type="button"
                     (click)="auth.logout()"

@@ -18,25 +18,25 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
     UserManagementComponent,
   ],
   template: `
-    <div class="min-h-full bg-[#f5f7fb] px-5 pb-8 pt-6 md:px-7 xl:px-8">
+    <div class="min-h-full bg-[#F0F2F5] px-5 pb-8 pt-6 md:px-7 xl:px-8">
       <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div class="space-y-2">
-          <p class="text-[12px] font-black uppercase tracking-[0.24em] text-cyan-600/80">
+        <div class="space-y-1.5">
+          <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">
             {{ selectedSubCompany?.nombre || 'División seleccionada' }}
           </p>
-          <h1 class="text-[2.35rem] font-black leading-none text-slate-800">
+          <h1 class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1E293B]" style="font-family: 'Josefin Sans', sans-serif;">
             {{ getActiveTitle() }}
           </h1>
-          <p class="text-xs font-medium text-slate-400">
+          <p class="text-[13px] text-[#64748B]">
             {{ getActiveSubtitle() }}
           </p>
         </div>
 
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-[0_10px_25px_rgba(15,23,42,0.06)] transition-all hover:border-cyan-200 hover:text-cyan-700"
+          class="inline-flex items-center gap-2 rounded-md border border-[#E2E8F0] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#1E293B] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-all hover:border-[#0DAFBD] hover:text-[#0899A5]"
         >
-          <span class="material-symbols-outlined text-lg">download</span>
+          <span class="material-symbols-outlined text-lg" aria-hidden="true">download</span>
           Reporte
         </button>
       </div>

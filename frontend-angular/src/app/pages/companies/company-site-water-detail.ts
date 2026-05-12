@@ -296,7 +296,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         <app-companies-site-detail-skeleton />
       } @else if (siteContext(); as context) {
         <div class="mx-auto max-w-[1360px] space-y-3">
-          <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <section class="rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <div class="grid gap-3 border-b border-slate-100 px-3 py-3 xl:grid-cols-[minmax(360px,1fr)_auto] xl:items-center">
               <div class="flex min-w-0 items-center gap-3">
                 <a
@@ -335,67 +335,82 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
             </div>
 
-            <div class="flex items-center gap-5 px-3">
+            <div class="flex items-center gap-5 px-3" role="tablist" aria-label="Pestañas de detalle del sitio">
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('dga')"
                 [class]="getDetailTabClass('dga')"
+                [attr.aria-selected]="activeDetailTab() === 'dga'"
+                aria-controls="tabpanel-dga"
               >
-                <span class="material-symbols-outlined text-[18px]">layers</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
                 DGA
                 @if (activeDetailTab() === 'dga') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('operacion')"
                 [class]="getDetailTabClass('operacion')"
+                [attr.aria-selected]="activeDetailTab() === 'operacion'"
+                aria-controls="tabpanel-operacion"
               >
-                <span class="material-symbols-outlined text-[18px]">monitoring</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">monitoring</span>
                 Operación
                 @if (activeDetailTab() === 'operacion') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('alertas')"
                 [class]="getDetailTabClass('alertas')"
+                [attr.aria-selected]="activeDetailTab() === 'alertas'"
+                aria-controls="tabpanel-alertas"
               >
-                <span class="material-symbols-outlined text-[18px]">notifications_active</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">notifications_active</span>
                 Alertas
                 @if (activeDetailTab() === 'alertas') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('bitacora')"
                 [class]="getDetailTabClass('bitacora')"
+                [attr.aria-selected]="activeDetailTab() === 'bitacora'"
+                aria-controls="tabpanel-bitacora"
               >
-                <span class="material-symbols-outlined text-[18px]">menu_book</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">menu_book</span>
                 Bitácora
                 @if (activeDetailTab() === 'bitacora') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
               <button
                 type="button"
+                role="tab"
                 (click)="setDetailTab('analisis')"
                 [class]="getDetailTabClass('analisis')"
+                [attr.aria-selected]="activeDetailTab() === 'analisis'"
+                aria-controls="tabpanel-analisis"
               >
-                <span class="material-symbols-outlined text-[18px]">insights</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">insights</span>
                 Análisis
                 @if (activeDetailTab() === 'analisis') {
-                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"></span>
+                  <span class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600" aria-hidden="true"></span>
                 }
               </button>
             </div>
           </section>
 
           @if (settingsPanelOpen()) {
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div class="border-b border-slate-100 px-4 py-3">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div class="flex min-w-0 items-center gap-3">
@@ -784,7 +799,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               }
             </section>
           } @else if (historyPanelOpen()) {
-            <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
               <div class="border-b border-slate-100 px-4 py-3">
                 <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div class="flex min-w-0 items-center gap-3">
@@ -1241,7 +1256,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </div>
           </section>
           <!-- Registros DGA -->
-          <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
             <div class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 class="text-sm font-black text-slate-800">Detalle de Registros</h2>
@@ -3201,7 +3216,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   getDetailTabClass(tab: DetailTab): string {
     const active = this.activeDetailTab() === tab;
-    const base = 'relative inline-flex h-9 items-center gap-2 text-xs transition-colors';
+    const base = 'relative inline-flex h-9 items-center gap-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
     return active
       ? `${base} font-black text-cyan-700`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;

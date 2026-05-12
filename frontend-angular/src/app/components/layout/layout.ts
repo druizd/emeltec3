@@ -31,7 +31,7 @@ import { SidebarComponent } from './sidebar/sidebar';
             (click)="chatDocked.set(false)"
             class="absolute left-0 top-1/2 z-20 flex h-20 w-11 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-l-2xl hover:brightness-110 active:brightness-95"
             style="background: linear-gradient(180deg, #0dafbd 0%, #04606a 100%); box-shadow: -4px 0 16px rgba(13,175,189,0.35);"
-            title="Expandir chat">
+            aria-label="Expandir chat">
             <span class="material-symbols-outlined text-[20px] text-white">chevron_left</span>
             <span class="text-[9px] font-bold tracking-[0.12em] text-white/75">AI</span>
           </button>
@@ -54,13 +54,13 @@ import { SidebarComponent } from './sidebar/sidebar';
             <button
               (click)="chatDocked.set(true)"
               class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white"
-              title="Ocultar al costado">
+              aria-label="Ocultar chat al costado">
               <span class="material-symbols-outlined text-[18px]">last_page</span>
             </button>
             <button
               (click)="chatOpen.set(false); chatDocked.set(false)"
               class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white"
-              title="Cerrar">
+              aria-label="Cerrar chat">
               <span class="material-symbols-outlined text-[18px]">close</span>
             </button>
           </div>
@@ -103,7 +103,7 @@ import { SidebarComponent } from './sidebar/sidebar';
         <button
           (click)="bubbleHidden.set(true)"
           class="absolute -left-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 opacity-0 transition-opacity group-hover:opacity-100"
-          title="Ocultar burbuja">
+          aria-label="Ocultar burbuja de chat">
           <span class="material-symbols-outlined text-[11px] text-white">close</span>
         </button>
       }
@@ -112,7 +112,7 @@ import { SidebarComponent } from './sidebar/sidebar';
         (click)="bubbleHidden() ? bubbleHidden.set(false) : toggleChat()"
         class="h-[72px] w-[72px] overflow-hidden rounded-full p-0 transition-all hover:scale-105 active:scale-95"
         style="box-shadow: 0 8px 28px rgba(13,175,189,0.40), 0 2px 8px rgba(15,23,42,0.15);"
-        title="Emeltec AI">
+        aria-label="Abrir chat Emeltec AI">
         <img src="/images/emeltechuman.png" alt="Chat" class="h-full w-full object-cover" />
       </button>
     </div>

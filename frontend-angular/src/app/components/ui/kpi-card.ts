@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+    <div class="bg-white border border-[#E2E8F0] rounded-xl p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md transition-shadow">
       <div class="flex justify-between mb-4">
         <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ label }}</span>
         <div class="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">

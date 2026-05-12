@@ -16,7 +16,7 @@ import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/compan
     CompaniesInstallationsPanelComponent,
   ],
   template: `
-    <div class="min-h-full bg-[#f5f7fb] px-5 pb-8 pt-6 md:px-7 xl:px-8">
+    <div class="min-h-full bg-[#F0F2F5] px-5 pb-8 pt-6 md:px-7 xl:px-8">
       <app-companies-page-header
         [selectedSubCompany]="selectedSubCompany"
         [sitesCount]="sites.length"

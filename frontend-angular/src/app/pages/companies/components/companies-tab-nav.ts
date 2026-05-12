@@ -12,14 +12,17 @@ export interface CompaniesTabItem {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div [class]="getContainerClass()">
+    <div [class]="getContainerClass()" role="tablist" [attr.aria-label]="ariaLabel">
       @for (tab of tabs; track tab.key) {
         <button
           type="button"
+          role="tab"
           (click)="selectTab(tab.key)"
           [class]="getButtonClass(tab.key)"
+          [attr.aria-selected]="activeTab === tab.key"
+          [attr.aria-controls]="'tabpanel-' + tab.key"
         >
-          <span [class]="'material-symbols-outlined ' + getIconClass()">{{ tab.icon }}</span>
+          <span [class]="'material-symbols-outlined ' + getIconClass()" aria-hidden="true">{{ tab.icon }}</span>
           <span [class]="getLabelClass()">{{ tab.label }}</span>
         </button>
       }
@@ -30,6 +33,7 @@ export class CompaniesTabNavComponent {
   @Input() tabs: CompaniesTabItem[] = [];
   @Input() activeTab = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
+  @Input() ariaLabel = 'Pestañas de navegación';
 
   @Output() activeTabChange = new EventEmitter<string>();
 
@@ -39,7 +43,7 @@ export class CompaniesTabNavComponent {
 
   getContainerClass(): string {
     if (this.variant === 'superadmin') {
-      return 'mb-6 flex flex-wrap items-center gap-1 border-b border-slate-200/90 pb-2';
+      return 'mb-6 flex flex-wrap items-center gap-1 border-b border-[#E2E8F0] pb-2';
     }
 
     return 'mb-8 flex flex-wrap gap-4';
@@ -50,15 +54,15 @@ export class CompaniesTabNavComponent {
 
     if (this.variant === 'superadmin') {
       return [
-        'group relative inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold transition-all',
+        'group relative inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]',
         isActive
-          ? 'bg-white text-cyan-700 shadow-[0_8px_24px_rgba(14,116,144,0.08)] ring-1 ring-cyan-100'
+          ? 'bg-white text-cyan-700 shadow-[0_2px_8px_rgba(13,175,189,0.15)] ring-1 ring-[rgba(13,175,189,0.25)]'
           : 'text-slate-400 hover:bg-white hover:text-slate-700',
       ].join(' ');
     }
 
     return [
-      'flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all',
+      'flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]',
       isActive
         ? 'bg-white text-primary-container shadow-sm ring-1 ring-slate-200'
         : 'text-slate-400 hover:bg-slate-100',

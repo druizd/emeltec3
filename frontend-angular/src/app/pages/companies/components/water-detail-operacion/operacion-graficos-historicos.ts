@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { WaterOperacionStateService } from './water-operacion-state';
 
 interface LineChart {
@@ -15,6 +15,8 @@ interface BarChart {
   xLabels: { x: number; label: string }[];
 }
 
+type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
+
 @Component({
   selector: 'app-operacion-graficos-historicos',
   standalone: true,
@@ -22,73 +24,167 @@ interface BarChart {
   template: `
     <div class="space-y-3">
 
-      <!-- 24H: Nivel + Caudal -->
-      <div class="grid gap-3 xl:grid-cols-2">
+      <!-- Gráficos de tendencia: Nivel Freático + Caudal (rango compartido) -->
+      <div class="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-        <!-- Nivel Freático 24H -->
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-black text-slate-800">Nivel Freático</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Últimas 24 horas · m bajo superficie</p>
-            </div>
-            <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-              <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+        <!-- Header con selector de rango -->
+        <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+          <div>
+            <h3 class="text-sm font-black text-slate-800">Gráficos de Tendencia</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">{{ chartSubtitle() }}</p>
+          </div>
+
+          <!-- Dropdown button -->
+          <div class="relative">
+            <button
+              type="button"
+              (click)="chartRangeOpen.update(v => !v)"
+              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              [class]="chartRangeOpen()
+                ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'"
+              aria-label="Selector de rango de tiempo"
+              [attr.aria-expanded]="chartRangeOpen()"
+            >
+              <span class="material-symbols-outlined text-[15px]">calendar_month</span>
+              {{ chartPreset() === 'custom' ? chartRangeLabel() : presetBadge() }}
+              <span
+                class="material-symbols-outlined text-[14px] transition-transform duration-200"
+                [class.rotate-180]="chartRangeOpen()"
+              >expand_more</span>
             </button>
-          </div>
-          <div class="h-44 w-full">
-            <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="nfGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.25"/>
-                  <stop offset="100%" stop-color="#0DAFBD" stop-opacity="0.02"/>
-                </linearGradient>
-              </defs>
-              @for (t of nivel24.yTicks; track t.y) {
-                <line x1="55" [attr.y1]="t.y" x2="1090" [attr.y2]="t.y" stroke="#f1f5f9" stroke-width="1"/>
-                <text x="50" [attr.y]="t.y + 4" font-size="11" fill="#94a3b8" text-anchor="end" font-family="monospace">{{ t.label }}</text>
-              }
-              @for (l of nivel24.xLabels; track l.x) {
-                <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">{{ l.label }}</text>
-              }
-              <polygon [attr.points]="nivel24.fill" fill="url(#nfGrad)"/>
-              <polyline [attr.points]="nivel24.polyline" fill="none" stroke="#0DAFBD" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </section>
 
-        <!-- Caudal Instantáneo 24H -->
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-black text-slate-800">Caudal Instantáneo</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">Últimas 24 horas · L/s</p>
+            @if (chartRangeOpen()) {
+              <!-- Backdrop -->
+              <div class="fixed inset-0 z-10" (click)="chartRangeOpen.set(false)"></div>
+
+              <!-- Panel flotante -->
+              <div class="absolute right-0 top-full z-20 mt-1.5 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                <!-- Presets -->
+                <div class="p-3">
+                  <p class="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Rango de tiempo</p>
+                  <div class="flex flex-wrap gap-1.5" role="group" aria-label="Presets de rango">
+                    @for (p of PRESETS; track p.key) {
+                      <button
+                        type="button"
+                        (click)="setPreset(p.key)"
+                        class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                        [class]="chartPreset() === p.key
+                          ? 'bg-cyan-600 text-white'
+                          : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+                        [attr.aria-pressed]="chartPreset() === p.key"
+                      >{{ p.label }}</button>
+                    }
+                  </div>
+                </div>
+
+                <!-- Custom dates -->
+                <div class="border-t border-slate-100 px-3 pb-3 pt-2.5 space-y-2">
+                  <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Personalizado</p>
+                  <div class="space-y-1.5">
+                    <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                      <span class="w-9 shrink-0">Desde</span>
+                      <input
+                        type="datetime-local"
+                        [value]="editStart()"
+                        (change)="onEditStart($any($event.target).value)"
+                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-700 outline-none focus:border-cyan-400 focus:bg-white focus:ring-1 focus:ring-cyan-100"
+                      />
+                    </label>
+                    <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                      <span class="w-9 shrink-0">Hasta</span>
+                      <input
+                        type="datetime-local"
+                        [value]="editEnd()"
+                        (change)="onEditEnd($any($event.target).value)"
+                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-700 outline-none focus:border-cyan-400 focus:bg-white focus:ring-1 focus:ring-cyan-100"
+                      />
+                    </label>
+                  </div>
+                  @if (chartPreset() === 'custom') {
+                    <button
+                      type="button"
+                      (click)="applyCustomRange()"
+                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-cyan-600 py-2 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">check</span>
+                      Aplicar rango
+                    </button>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Charts grid -->
+        <div class="grid gap-0 xl:grid-cols-2">
+
+          <!-- Nivel Freático -->
+          <div class="p-5 xl:border-r xl:border-slate-100">
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-black text-slate-700">Nivel Freático</p>
+                <p class="text-[11px] text-slate-400">m bajo superficie</p>
+              </div>
+              <button type="button" aria-label="Descargar Nivel Freático en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
+              </button>
             </div>
-            <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-              <span class="material-symbols-outlined text-[14px]">download</span>.CSV
-            </button>
+            <div class="h-44 w-full">
+              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="nfGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.25"/>
+                    <stop offset="100%" stop-color="#0DAFBD" stop-opacity="0.02"/>
+                  </linearGradient>
+                </defs>
+                @for (t of nivel24().yTicks; track t.y) {
+                  <line x1="55" [attr.y1]="t.y" x2="1090" [attr.y2]="t.y" stroke="#f1f5f9" stroke-width="1"/>
+                  <text x="50" [attr.y]="t.y + 4" font-size="11" fill="#94a3b8" text-anchor="end" font-family="monospace">{{ t.label }}</text>
+                }
+                @for (l of nivel24().xLabels; track l.x) {
+                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">{{ l.label }}</text>
+                }
+                <polygon [attr.points]="nivel24().fill" fill="url(#nfGrad)"/>
+                <polyline [attr.points]="nivel24().polyline" fill="none" stroke="#0DAFBD" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
           </div>
-          <div class="h-44 w-full">
-            <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="cqGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2"/>
-                  <stop offset="100%" stop-color="#4F46E5" stop-opacity="0.02"/>
-                </linearGradient>
-              </defs>
-              @for (t of caudal24.yTicks; track t.y) {
-                <line x1="55" [attr.y1]="t.y" x2="1090" [attr.y2]="t.y" stroke="#f1f5f9" stroke-width="1"/>
-                <text x="50" [attr.y]="t.y + 4" font-size="11" fill="#94a3b8" text-anchor="end" font-family="monospace">{{ t.label }}</text>
-              }
-              @for (l of caudal24.xLabels; track l.x) {
-                <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">{{ l.label }}</text>
-              }
-              <polygon [attr.points]="caudal24.fill" fill="url(#cqGrad)"/>
-              <polyline [attr.points]="caudal24.polyline" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </section>
 
+          <!-- Caudal Instantáneo -->
+          <div class="p-5">
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p class="text-xs font-black text-slate-700">Caudal Instantáneo</p>
+                <p class="text-[11px] text-slate-400">L/s</p>
+              </div>
+              <button type="button" aria-label="Descargar Caudal Instantáneo en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
+              </button>
+            </div>
+            <div class="h-44 w-full">
+              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="cqGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2"/>
+                    <stop offset="100%" stop-color="#4F46E5" stop-opacity="0.02"/>
+                  </linearGradient>
+                </defs>
+                @for (t of caudal24().yTicks; track t.y) {
+                  <line x1="55" [attr.y1]="t.y" x2="1090" [attr.y2]="t.y" stroke="#f1f5f9" stroke-width="1"/>
+                  <text x="50" [attr.y]="t.y + 4" font-size="11" fill="#94a3b8" text-anchor="end" font-family="monospace">{{ t.label }}</text>
+                }
+                @for (l of caudal24().xLabels; track l.x) {
+                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">{{ l.label }}</text>
+                }
+                <polygon [attr.points]="caudal24().fill" fill="url(#cqGrad)"/>
+                <polyline [attr.points]="caudal24().polyline" fill="none" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <!-- Flujo Mensual -->
@@ -98,8 +194,8 @@ interface BarChart {
             <h3 class="text-sm font-black text-slate-800">Flujo Mensual</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">Últimos 12 meses · m³ totales por mes</p>
           </div>
-          <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+          <button type="button" aria-label="Descargar Flujo Mensual en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
         <div class="h-44 w-full">
@@ -125,8 +221,8 @@ interface BarChart {
             <h3 class="text-sm font-black text-slate-800">Flujo Diario</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">Últimos 30 días · m³/día · días sin operación en gris</p>
           </div>
-          <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+          <button type="button" aria-label="Descargar Flujo Diario en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
         <div class="h-44 w-full">
@@ -156,9 +252,10 @@ interface BarChart {
               <button
                 type="button"
                 (click)="jornadaSettingsOpen.update(v => !v)"
-                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors"
+                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                 [class]="jornadaSettingsOpen() ? 'bg-cyan-100 text-cyan-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'"
-                title="Configurar período de jornada"
+                aria-label="Configurar período de jornada"
+                [attr.aria-expanded]="jornadaSettingsOpen()"
               >
                 <span class="material-symbols-outlined text-[15px]">settings</span>
               </button>
@@ -167,8 +264,8 @@ interface BarChart {
               Últimos 30 días · flujo acumulado por jornada ({{ jornadaInicio() }} a {{ jornadaFin() }} del día siguiente) · m³
             </p>
           </div>
-          <button type="button" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50">
-            <span class="material-symbols-outlined text-[14px]">download</span>.CSV
+          <button type="button" aria-label="Descargar Resumen Jornada en CSV" class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]">
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>.CSV
           </button>
         </div>
 
@@ -243,13 +340,53 @@ export class OperacionGraficosHistoricosComponent {
   readonly jornadaFin = this.state.jornadaFin;
   readonly jornadaSettingsOpen = signal(false);
 
-  // SVG drawing area constants (viewBox: 0 0 1100 220)
-  private readonly DX = 55;   // left padding (y-axis labels)
-  private readonly DY = 15;   // top padding
-  private readonly DW = 1035; // drawing width  (1100 - 55 - 10)
-  private readonly DH = 170;  // drawing height (220 - 15 - 35)
+  // ── Date range ────────────────────────────────────────────
 
-  // ── Raw mock data ──────────────────────────────────────────
+  private readonly NOW = new Date(2026, 4, 12, 12, 35);
+
+  readonly PRESETS: { key: ChartPreset; label: string }[] = [
+    { key: '6h',  label: 'Últimas 6h' },
+    { key: '12h', label: 'Últimas 12h' },
+    { key: '24h', label: 'Últimas 24h' },
+    { key: '48h', label: 'Últimas 48h' },
+    { key: '7d',  label: 'Últimos 7 días' },
+  ];
+
+  readonly chartPreset    = signal<ChartPreset>('24h');
+  readonly chartRangeOpen = signal(false);
+  readonly chartStart     = signal<Date>(new Date(this.NOW.getTime() - 24 * 3_600_000));
+  readonly chartEnd       = signal<Date>(new Date(this.NOW));
+  readonly editStart      = signal(this.toDatetimeLocal(new Date(this.NOW.getTime() - 24 * 3_600_000)));
+  readonly editEnd        = signal(this.toDatetimeLocal(this.NOW));
+
+  readonly chartRangeLabel = computed(() =>
+    `${this.fmtDate(this.chartStart())} – ${this.fmtDate(this.chartEnd())}`
+  );
+
+  readonly presetBadge = computed(() => {
+    const map: Partial<Record<ChartPreset, string>> = {
+      '6h': 'Últimas 6H', '12h': 'Últimas 12H', '24h': 'Últimas 24H',
+      '48h': 'Últimas 48H', '7d': 'Últimos 7 días',
+    };
+    return map[this.chartPreset()] ?? '';
+  });
+
+  readonly chartSubtitle = computed(() => {
+    const map: Partial<Record<ChartPreset, string>> = {
+      '6h': 'Últimas 6 horas', '12h': 'Últimas 12 horas', '24h': 'Últimas 24 horas',
+      '48h': 'Últimas 48 horas', '7d': 'Últimos 7 días',
+    };
+    return map[this.chartPreset()] ?? this.chartRangeLabel();
+  });
+
+  // ── SVG drawing area (viewBox: 0 0 1100 220) ─────────────
+
+  private readonly DX = 55;
+  private readonly DY = 15;
+  private readonly DW = 1035;
+  private readonly DH = 170;
+
+  // ── Raw mock data (24 hourly points, cycled for longer ranges) ────────────
 
   private readonly nivelRaw = [
     32.4, 32.3, 32.2, 32.1, 32.0, 32.1, 32.3, 32.5,
@@ -265,7 +402,7 @@ export class OperacionGraficosHistoricosComponent {
     3.0, 0, 0, 0,
   ];
 
-  private readonly mensualRaw  = [4821, 5102, 4953, 5231, 4987, 5340, 5108, 4876, 5012, 5230, 5089, 4920];
+  private readonly mensualRaw    = [4821, 5102, 4953, 5231, 4987, 5340, 5108, 4876, 5012, 5230, 5089, 4920];
   private readonly mensualLabels = ['Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar', 'Abr', 'May'];
 
   private readonly diarioRaw = [
@@ -284,36 +421,91 @@ export class OperacionGraficosHistoricosComponent {
     165, 0, 162,
   ];
 
-  // ── Precomputed charts ────────────────────────────────────
+  // ── Reactive line charts ──────────────────────────────────
 
-  readonly nivel24: LineChart;
-  readonly caudal24: LineChart;
+  readonly nivel24  = computed(() => this.buildLineForRange(this.nivelRaw,  this.chartStart(), this.chartEnd()));
+  readonly caudal24 = computed(() => this.buildLineForRange(this.caudalRaw, this.chartStart(), this.chartEnd()));
+
+  // ── Static bar charts ─────────────────────────────────────
+
   readonly mensual: BarChart;
-  readonly diario: BarChart;
-  readonly turno7: BarChart;
+  readonly diario:  BarChart;
+  readonly turno7:  BarChart;
 
   constructor() {
-    const h24 = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-
-    const startDate = new Date(2026, 3, 11); // 11 Apr 2026
+    const startDate = new Date(2026, 3, 11);
     const day30 = Array.from({ length: 30 }, (_, i) => {
       const d = new Date(startDate);
       d.setDate(d.getDate() + i);
       return `${d.getDate()}/${d.getMonth() + 1}`;
     });
+    this.mensual = this.buildBars(this.mensualRaw, this.mensualLabels, '#0DAFBD', 1);
+    this.diario  = this.buildBars(this.diarioRaw,  day30,             '#0DAFBD', 5);
+    this.turno7  = this.buildBars(this.turno7Raw,  day30,             '#7C3AED', 5);
+  }
 
-    this.nivel24  = this.buildLine(this.nivelRaw, h24, 4);
-    this.caudal24 = this.buildLine(this.caudalRaw, h24, 4);
-    this.mensual  = this.buildBars(this.mensualRaw, this.mensualLabels, '#0DAFBD', 1);
-    this.diario   = this.buildBars(this.diarioRaw, day30, '#0DAFBD', 5);
-    this.turno7   = this.buildBars(this.turno7Raw, day30, '#7C3AED', 5);
+  // ── Date range actions ────────────────────────────────────
+
+  setPreset(key: ChartPreset): void {
+    const hoursMap: Partial<Record<ChartPreset, number>> = {
+      '6h': 6, '12h': 12, '24h': 24, '48h': 48, '7d': 168,
+    };
+    const hours = hoursMap[key];
+    if (!hours) return;
+
+    const end   = new Date(this.NOW);
+    const start = new Date(end.getTime() - hours * 3_600_000);
+    this.chartPreset.set(key);
+    this.chartStart.set(start);
+    this.chartEnd.set(end);
+    this.editStart.set(this.toDatetimeLocal(start));
+    this.editEnd.set(this.toDatetimeLocal(end));
+    this.chartRangeOpen.set(false);
+  }
+
+  onEditStart(value: string): void {
+    this.editStart.set(value);
+    this.chartPreset.set('custom');
+  }
+
+  onEditEnd(value: string): void {
+    this.editEnd.set(value);
+    this.chartPreset.set('custom');
+  }
+
+  applyCustomRange(): void {
+    const start = new Date(this.editStart());
+    const end   = new Date(this.editEnd());
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || start >= end) return;
+    this.chartStart.set(start);
+    this.chartEnd.set(end);
+    this.chartRangeOpen.set(false);
+  }
+
+  // ── Chart builders ────────────────────────────────────────
+
+  private buildLineForRange(rawData: number[], start: Date, end: Date): LineChart {
+    const hours = Math.max(2, Math.round((end.getTime() - start.getTime()) / 3_600_000));
+    const pts   = Array.from({ length: hours }, (_, i) => rawData[i % rawData.length]);
+
+    const showDate = hours > 48;
+    const xStep    = Math.max(1, Math.round(hours / 6));
+
+    const labels = pts.map((_, i) => {
+      const d = new Date(start.getTime() + i * 3_600_000);
+      return showDate
+        ? `${d.getDate()}/${d.getMonth() + 1}`
+        : `${String(d.getHours()).padStart(2, '0')}:00`;
+    });
+
+    return this.buildLine(pts, labels, xStep);
   }
 
   private buildLine(pts: number[], labels: string[], xStep: number): LineChart {
-    const min = Math.min(...pts);
-    const max = Math.max(...pts);
+    const min   = Math.min(...pts);
+    const max   = Math.max(...pts);
     const range = max - min || 1;
-    const step = this.DW / (pts.length - 1);
+    const step  = this.DW / Math.max(pts.length - 1, 1);
 
     const coords = pts.map((v, i) => {
       const x = this.DX + i * step;
@@ -322,11 +514,11 @@ export class OperacionGraficosHistoricosComponent {
     });
 
     const polyline = coords.join(' ');
-    const fill = `${this.DX},${this.DY + this.DH} ${polyline} ${this.DX + this.DW},${this.DY + this.DH}`;
+    const fill     = `${this.DX},${this.DY + this.DH} ${polyline} ${this.DX + this.DW},${this.DY + this.DH}`;
 
     const nTicks = 5;
     const yTicks = Array.from({ length: nTicks }, (_, i) => ({
-      y: Math.round(this.DY + this.DH - (i / (nTicks - 1)) * this.DH),
+      y:     Math.round(this.DY + this.DH - (i / (nTicks - 1)) * this.DH),
       label: (min + (range * i) / (nTicks - 1)).toFixed(1),
     }));
 
@@ -340,9 +532,9 @@ export class OperacionGraficosHistoricosComponent {
 
   private buildBars(vals: number[], labels: string[], color: string, xStep: number): BarChart {
     const maxVal = Math.max(...vals) || 1;
-    const slotW = this.DW / vals.length;
-    const barW = Math.max(slotW * 0.72, 4);
-    const gapW = (slotW - barW) / 2;
+    const slotW  = this.DW / vals.length;
+    const barW   = Math.max(slotW * 0.72, 4);
+    const gapW   = (slotW - barW) / 2;
 
     const bars = vals.map((v, i) => {
       const h = Math.round((v / maxVal) * this.DH);
@@ -357,7 +549,7 @@ export class OperacionGraficosHistoricosComponent {
 
     const nTicks = 4;
     const yTicks = Array.from({ length: nTicks }, (_, i) => ({
-      y: Math.round(this.DY + this.DH - (i / (nTicks - 1)) * this.DH),
+      y:     Math.round(this.DY + this.DH - (i / (nTicks - 1)) * this.DH),
       label: i === 0 ? '0' : Math.round((maxVal * i) / (nTicks - 1)).toLocaleString('es-CL'),
     }));
 
@@ -367,5 +559,17 @@ export class OperacionGraficosHistoricosComponent {
     }
 
     return { bars, yTicks, xLabels };
+  }
+
+  // ── Formatting helpers ────────────────────────────────────
+
+  private fmtDate(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+
+  private toDatetimeLocal(d: Date): string {
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   }
 }

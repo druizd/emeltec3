@@ -77,17 +77,17 @@ interface HistoricalRow {
     <div class="space-y-3">
 
       <!-- Toggle de modo -->
-      <nav class="flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white px-2 py-2 shadow-sm">
-        <button type="button" (click)="modo.set('hoy')" [class]="modoClass('hoy')">
-          <span class="material-symbols-outlined text-[17px]">today</span>
+      <nav class="flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white px-2 py-2 shadow-sm" aria-label="Selector de modo de operación" role="tablist">
+        <button type="button" role="tab" (click)="modo.set('hoy')" [class]="modoClass('hoy')" [attr.aria-selected]="modo() === 'hoy'">
+          <span class="material-symbols-outlined text-[17px]" aria-hidden="true">today</span>
           Hoy en tiempo real
         </button>
-        <button type="button" (click)="modo.set('historico')" [class]="modoClass('historico')">
-          <span class="material-symbols-outlined text-[17px]">query_stats</span>
+        <button type="button" role="tab" (click)="modo.set('historico')" [class]="modoClass('historico')" [attr.aria-selected]="modo() === 'historico'">
+          <span class="material-symbols-outlined text-[17px]" aria-hidden="true">query_stats</span>
           Gráficos Históricos
         </button>
-        <button type="button" (click)="modo.set('resumen')" [class]="modoClass('resumen')">
-          <span class="material-symbols-outlined text-[17px]">calendar_view_month</span>
+        <button type="button" role="tab" (click)="modo.set('resumen')" [class]="modoClass('resumen')" [attr.aria-selected]="modo() === 'resumen'">
+          <span class="material-symbols-outlined text-[17px]" aria-hidden="true">calendar_view_month</span>
           Resumen por Período
         </button>
         <p class="ml-auto flex items-center gap-1 text-[11px] font-semibold text-slate-400">
@@ -100,7 +100,7 @@ interface HistoricalRow {
       @if (modo() === 'hoy') {
 
         <!-- Banner tiempo real -->
-        <div class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0D8A96] to-[#0DAFBD] p-5 text-white shadow-sm">
+        <div class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0899A5] to-[#0DAFBD] p-5 text-white shadow-sm">
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p class="font-black text-sm">Datos en tiempo real</p>
@@ -134,17 +134,18 @@ interface HistoricalRow {
                 <button
                   type="button"
                   (click)="turnosSettingsOpen.update(v => !v)"
-                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors"
+                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                   [class]="turnosSettingsOpen() ? 'bg-cyan-100 text-cyan-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'"
-                  title="Configurar horarios de turno"
+                  aria-label="Configurar horarios de turno"
+                  [attr.aria-expanded]="turnosSettingsOpen()"
                 >
                   <span class="material-symbols-outlined text-[15px]">settings</span>
                 </button>
               </div>
               <!-- Navegación de fecha -->
               <div class="flex items-center gap-1.5">
-                <button type="button" (click)="diaOffset.update(v => v - 1)" class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50">
-                  <span class="material-symbols-outlined text-[16px]">chevron_left</span>
+                <button type="button" (click)="diaOffset.update(v => v - 1)" class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]" aria-label="Día anterior">
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">chevron_left</span>
                 </button>
                 <span class="flex items-center gap-1.5 text-sm font-bold text-slate-700">
                   {{ fechaDiaReal() }}
@@ -156,9 +157,11 @@ interface HistoricalRow {
                   type="button"
                   (click)="diaOffset.update(v => v + 1)"
                   [disabled]="esHoy()"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  [attr.aria-disabled]="esHoy()"
+                  aria-label="Día siguiente"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                 >
-                  <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">chevron_right</span>
                 </button>
                 @if (!esHoy()) {
                   <button type="button" (click)="diaOffset.set(0)" class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-600 hover:bg-slate-50">Hoy</button>
@@ -171,15 +174,17 @@ interface HistoricalRow {
               <div class="overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/60 p-4 shadow-sm">
                 <div class="mb-3 flex items-center justify-between">
                   <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">Configurar horarios</p>
-                  <div class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] font-bold">
+                  <div class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] font-bold" role="group" aria-label="Cantidad de turnos">
                     <button type="button" (click)="numTurnos.set(2)"
-                      class="px-3 py-1.5 transition-colors"
-                      [class]="numTurnos() === 2 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'">
+                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                      [class]="numTurnos() === 2 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'"
+                      [attr.aria-pressed]="numTurnos() === 2">
                       2 turnos
                     </button>
                     <button type="button" (click)="numTurnos.set(3)"
-                      class="px-3 py-1.5 transition-colors"
-                      [class]="numTurnos() === 3 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'">
+                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                      [class]="numTurnos() === 3 ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:bg-slate-50'"
+                      [attr.aria-pressed]="numTurnos() === 3">
                       3 turnos
                     </button>
                   </div>
@@ -230,8 +235,8 @@ interface HistoricalRow {
                         <p class="text-[10px] font-black uppercase tracking-widest text-white/80">{{ turno.nombre }}</p>
                         <p class="mt-0.5 text-[10px] text-white/50">{{ turno.horario }}</p>
                       </div>
-                      <button type="button" class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/15 text-white/70 hover:bg-white/25">
-                        <span class="material-symbols-outlined text-[13px]">download</span>
+                      <button type="button" class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/15 text-white/70 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50" aria-label="Descargar datos del turno">
+                        <span class="material-symbols-outlined text-[13px]" aria-hidden="true">download</span>
                       </button>
                     </div>
                     <p class="mt-3 font-mono text-3xl font-black text-white">
