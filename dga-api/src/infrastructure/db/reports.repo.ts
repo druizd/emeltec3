@@ -1,22 +1,65 @@
-// Repositorio de la hypertable de reportes DGA (stub).
-// Cada fila es un reporte generado por el worker o consultable vía API.
+import { pool } from './pool';
 import type { DgaReport, ReportQuery } from '../../domain/reports/report.types';
+import { NotFoundError } from '../../shared/errors';
 
-// TODO(bloqueado): la hypertable destino la define el compañero.
-//   Cuando confirme nombre + columnas, completar las queries.
-//   Estructura tentativa: hypertable `dga` con
-//     (timestamp TIMESTAMPTZ, sitio_id VARCHAR, nivel_freatico NUMERIC,
-//      caudal NUMERIC, totalizado BIGINT, PK (sitio_id, timestamp))
-
-const TABLE = process.env.DGA_REPORTS_TABLE || 'dga';
-
-// Persiste un reporte generado por el worker.
-export async function insertReport(_report: DgaReport): Promise<void> {
-  void TABLE;
-  throw new Error('NOT_IMPLEMENTED: reports.repo.insertReport — falta nombre real de hypertable');
+export async function insertReport(report: DgaReport): Promise<void> {
+  const { rowCount } = await pool.query(
+    `INSERT INTO dato_dga (id_dgauser, obra, ts, caudal_instantaneo, flujo_acumulado, nivel_freatico)
+     SELECT du.id_dgauser,
+            COALESCE(pc.obra_dga, ''),
+            $2::TIMESTAMPTZ,
+            $3,
+            $4,
+            $5
+       FROM dga_user du
+       LEFT JOIN pozo_config pc ON pc.sitio_id = du.site_id
+      WHERE du.site_id = $1 AND du.activo = TRUE
+      LIMIT 1
+     ON CONFLICT (id_dgauser, ts) DO NOTHING`,
+    [report.sitioId, report.timestamp, report.caudal, report.totalizado, report.nivelFreatico],
+  );
+  if (!rowCount) throw new NotFoundError(`dga_user activo no encontrado para sitio ${report.sitioId}`);
 }
 
-// Lista reportes de un sitio con filtros por rango temporal y paginación.
-export async function findBySite(_q: ReportQuery): Promise<{ items: DgaReport[]; total: number }> {
-  throw new Error('NOT_IMPLEMENTED: reports.repo.findBySite — falta nombre real de hypertable');
+export async function findBySite(q: ReportQuery): Promise<{ items: DgaReport[]; total: number }> {
+  const params: unknown[] = [q.sitioId, q.from ?? null, q.to ?? null];
+  const where = `u.site_id = $1
+    AND ($2::TIMESTAMPTZ IS NULL OR d.ts >= $2)
+    AND ($3::TIMESTAMPTZ IS NULL OR d.ts <= $3)`;
+
+  const { rows: countRows } = await pool.query(
+    `SELECT COUNT(*) AS total
+       FROM dato_dga d
+       JOIN dga_user u USING (id_dgauser)
+      WHERE ${where}`,
+    params,
+  );
+  const total = Number(countRows[0].total);
+
+  const offset = (q.page - 1) * q.pageSize;
+  const { rows } = await pool.query(
+    `SELECT d.ts,
+            u.site_id,
+            d.obra,
+            d.nivel_freatico,
+            d.caudal_instantaneo,
+            d.flujo_acumulado
+       FROM dato_dga d
+       JOIN dga_user u USING (id_dgauser)
+      WHERE ${where}
+      ORDER BY d.ts DESC
+      LIMIT $4 OFFSET $5`,
+    [...params, q.pageSize, offset],
+  );
+
+  const items: DgaReport[] = rows.map((r) => ({
+    sitioId: r.site_id,
+    obra: r.obra ?? null,
+    timestamp: new Date(r.ts),
+    nivelFreatico: r.nivel_freatico == null ? null : Number(r.nivel_freatico),
+    caudal: r.caudal_instantaneo == null ? null : Number(r.caudal_instantaneo),
+    totalizado: r.flujo_acumulado == null ? null : Number(r.flujo_acumulado),
+  }));
+
+  return { items, total };
 }

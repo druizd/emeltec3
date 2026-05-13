@@ -24,7 +24,10 @@ export function isDue(p: Periodicity, now: Date = new Date()): boolean {
 }
 
 // Filtra de una lista de periodicidades aquellas que están vencidas y arma candidatos.
-export function selectDueSites(periodicities: Periodicity[], now: Date = new Date()): PeriodicityCandidate[] {
+export function selectDueSites(
+  periodicities: Periodicity[],
+  now: Date = new Date(),
+): PeriodicityCandidate[] {
   return periodicities
     .filter((p) => isDue(p, now))
     .map((p) => ({ sitioId: p.sitioId, dueAt: now }));

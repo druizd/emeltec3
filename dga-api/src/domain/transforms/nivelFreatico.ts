@@ -4,9 +4,9 @@
 // Si no se conoce la profundidad del sensor, se asume que está al fondo del pozo (profundidad total).
 
 export interface NivelFreaticoParams {
-  lecturaPozo: number;          // Lectura cruda del sensor en metros.
+  lecturaPozo: number; // Lectura cruda del sensor en metros.
   profundidadSensor?: number | null; // Profundidad a la que está instalado el sensor (opcional).
-  profundidadTotal: number;     // Profundidad total del pozo en metros.
+  profundidadTotal: number; // Profundidad total del pozo en metros.
 }
 
 // Redondeo a `decimals` cifras. Usado para limitar a 3 decimales el valor final.

@@ -4,10 +4,11 @@
 // si la telemetría del momento no incluía el sensor (se reporta como dato faltante).
 export interface DgaReport {
   sitioId: string;
+  obra: string | null;
   timestamp: Date;
-  nivelFreatico: number | null;  // metros
-  caudal: number | null;         // L/s
-  totalizado: number | null;     // m³ acumulado
+  nivelFreatico: number | null; // metros
+  caudal: number | null; // L/s
+  totalizado: number | null; // m³ acumulado
 }
 
 // Variante para filas leídas de la DB; añade el instante en que se persistió.

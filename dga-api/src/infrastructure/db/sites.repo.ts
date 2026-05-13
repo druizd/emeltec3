@@ -11,7 +11,7 @@ export interface SiteRow {
   descripcion: string;
   idSerial: string;
   empresaId: string;
-  subEmpresaId: string;
+  subEmpresaId: string | null;
   tipoSitio: string;
   activo: boolean;
 }
@@ -45,7 +45,7 @@ export interface RegMapRow {
 // Trae los datos básicos de un sitio por id. Devuelve null si no existe.
 export async function getSiteById(sitioId: string): Promise<SiteRow | null> {
   const { rows } = await pool.query(
-    `SELECT id, descripcion, id_serial, empresa_id, sub_empresa_id, tipo_sitio, activo
+    `SELECT id, descripcion, id_serial, empresa_id, tipo_sitio, activo
        FROM sitio
       WHERE id = $1`,
     [sitioId],
@@ -57,7 +57,7 @@ export async function getSiteById(sitioId: string): Promise<SiteRow | null> {
     descripcion: r.descripcion,
     idSerial: r.id_serial,
     empresaId: r.empresa_id,
-    subEmpresaId: r.sub_empresa_id,
+    subEmpresaId: null,
     tipoSitio: r.tipo_sitio,
     activo: r.activo,
   };
@@ -77,7 +77,8 @@ export async function getPozoConfig(sitioId: string): Promise<PozoConfigRow | nu
     sitioId: r.sitio_id,
     profundidadPozoM: r.profundidad_pozo_m == null ? null : Number(r.profundidad_pozo_m),
     profundidadSensorM: r.profundidad_sensor_m == null ? null : Number(r.profundidad_sensor_m),
-    nivelEstaticoManualM: r.nivel_estatico_manual_m == null ? null : Number(r.nivel_estatico_manual_m),
+    nivelEstaticoManualM:
+      r.nivel_estatico_manual_m == null ? null : Number(r.nivel_estatico_manual_m),
     obraDga: r.obra_dga,
     slug: r.slug,
   };

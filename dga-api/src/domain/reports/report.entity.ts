@@ -14,6 +14,7 @@ export function isValidReport(report: Partial<DgaReport>): report is DgaReport {
 export function buildEmptyReport(sitioId: string, timestamp: Date): DgaReport {
   return {
     sitioId,
+    obra: null,
     timestamp,
     nivelFreatico: null,
     caudal: null,

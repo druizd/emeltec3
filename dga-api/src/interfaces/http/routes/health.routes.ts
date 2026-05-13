@@ -14,7 +14,9 @@ healthRouter.get('/live', (_req, res) => {
 healthRouter.get('/ready', async (_req, res) => {
   const dbOk = await pingDb();
   if (!dbOk) {
-    res.status(503).json({ ok: false, error: { code: 'DB_UNAVAILABLE', message: 'DB no responde' } });
+    res
+      .status(503)
+      .json({ ok: false, error: { code: 'DB_UNAVAILABLE', message: 'DB no responde' } });
     return;
   }
   res.json(ok({ status: 'ready', checks: { db: 'ok' } }));

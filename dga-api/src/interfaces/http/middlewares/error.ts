@@ -8,11 +8,18 @@ import { err as envErr } from '../../../shared/envelope';
 import { logger } from '../../../shared/logger';
 
 export function notFoundHandler(req: Request, res: Response): void {
-  res.status(404).json(envErr('NOT_FOUND', `Ruta no encontrada: ${req.method} ${req.path}`, req.requestId));
+  res
+    .status(404)
+    .json(envErr('NOT_FOUND', `Ruta no encontrada: ${req.method} ${req.path}`, req.requestId));
 }
 
 // Express identifica este middleware como "error handler" por su firma de 4 args.
-export function errorHandler(error: unknown, req: Request, res: Response, _next: NextFunction): void {
+export function errorHandler(
+  error: unknown,
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+): void {
   if (error instanceof AppError) {
     if (error.status >= 500) {
       logger.error({ err: error, requestId: req.requestId }, '[http] error servidor');

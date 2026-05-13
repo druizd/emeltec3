@@ -10,7 +10,12 @@ import type { DgaReport } from '../../domain/reports/report.types';
 import { calcularNivelFreatico, calcularTotalizador, m3hToLps } from '../../domain/transforms';
 import * as equipoRepo from '../../infrastructure/db/equipo.repo';
 import * as reportsRepo from '../../infrastructure/db/reports.repo';
-import { getPozoConfig, getRegMapsBySite, getSiteById, type RegMapRow } from '../../infrastructure/db/sites.repo';
+import {
+  getPozoConfig,
+  getRegMapsBySite,
+  getSiteById,
+  type RegMapRow,
+} from '../../infrastructure/db/sites.repo';
 import { NotFoundError } from '../../shared/errors';
 import { logger } from '../../shared/logger';
 
@@ -30,7 +35,11 @@ export async function generateReport(sitioId: string, timestamp: Date): Promise<
   const site = await getSiteById(sitioId);
   if (!site) throw new NotFoundError(`sitio ${sitioId}`);
 
-  const report = buildEmptyReport(sitioId, timestamp);
+  // Snap a la hora exacta (XX:00:00 UTC) para que DGA siempre reciba tiempos limpios.
+  const snapped = new Date(timestamp);
+  snapped.setUTCMinutes(0, 0, 0);
+
+  const report = buildEmptyReport(sitioId, snapped);
 
   // Toma la telemetría más cercana (anterior o igual a `timestamp`).
   const latest = await equipoRepo.getLatestBefore(site.idSerial, timestamp);

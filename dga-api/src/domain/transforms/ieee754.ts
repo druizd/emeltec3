@@ -38,20 +38,23 @@ function reorderBytes(bytes: number[], order: ByteOrder): number[] {
 
 // Convierte 4 bytes a float32 IEEE-754.
 function bytesToFloat32(bytes: number[], order: ByteOrder = 'BE'): number {
-  if (bytes.length < 4) throw new Error(`Se necesitan 4 bytes para float32, se recibieron ${bytes.length}`);
+  if (bytes.length < 4)
+    throw new Error(`Se necesitan 4 bytes para float32, se recibieron ${bytes.length}`);
   return Buffer.from(reorderBytes(bytes.slice(0, 4), order)).readFloatBE(0);
 }
 
 // Convierte 4 bytes a entero de 32 bits (con signo o sin signo).
 function bytesToInt32(bytes: number[], order: ByteOrder = 'BE', signed = true): number {
-  if (bytes.length < 4) throw new Error(`Se necesitan 4 bytes para int32, se recibieron ${bytes.length}`);
+  if (bytes.length < 4)
+    throw new Error(`Se necesitan 4 bytes para int32, se recibieron ${bytes.length}`);
   const buf = Buffer.from(reorderBytes(bytes.slice(0, 4), order));
   return signed ? buf.readInt32BE(0) : buf.readUInt32BE(0);
 }
 
 // Convierte 2 bytes a entero de 16 bits (solo soporta BE y LE).
 function bytesToInt16(bytes: number[], order: ByteOrder = 'BE', signed = true): number {
-  if (bytes.length < 2) throw new Error(`Se necesitan 2 bytes para int16, se recibieron ${bytes.length}`);
+  if (bytes.length < 2)
+    throw new Error(`Se necesitan 2 bytes para int16, se recibieron ${bytes.length}`);
   const indices: [number, number] = order === 'LE' ? [1, 0] : [0, 1];
   const buf = Buffer.from(indices.map((i) => bytes[i] ?? 0));
   return signed ? buf.readInt16BE(0) : buf.readUInt16BE(0);
@@ -64,14 +67,22 @@ export interface ParseOptions {
 
 // API pública: dado un valor crudo (hex/buffer/array) y opciones de formato + byte-order,
 // devuelve el número decodificado. Punto de entrada genérico para todas las transformaciones.
-export function parseIEEE754(input: unknown, { formato = 'float32', byteOrder = 'BE' }: ParseOptions = {}): number {
+export function parseIEEE754(
+  input: unknown,
+  { formato = 'float32', byteOrder = 'BE' }: ParseOptions = {},
+): number {
   const bytes = normalizeToBytes(input);
   switch (formato) {
-    case 'float32': return bytesToFloat32(bytes, byteOrder);
-    case 'int32':   return bytesToInt32(bytes, byteOrder, true);
-    case 'uint32':  return bytesToInt32(bytes, byteOrder, false);
-    case 'int16':   return bytesToInt16(bytes, byteOrder, true);
-    case 'uint16':  return bytesToInt16(bytes, byteOrder, false);
+    case 'float32':
+      return bytesToFloat32(bytes, byteOrder);
+    case 'int32':
+      return bytesToInt32(bytes, byteOrder, true);
+    case 'uint32':
+      return bytesToInt32(bytes, byteOrder, false);
+    case 'int16':
+      return bytesToInt16(bytes, byteOrder, true);
+    case 'uint16':
+      return bytesToInt16(bytes, byteOrder, false);
   }
 }
 
@@ -89,7 +100,11 @@ export interface RegistersResult {
 
 // Combina dos registros Modbus (16 bits c/u) en un float32.
 // `wordSwap=true` invierte el orden (word baja → word alta) — algunos PLCs lo requieren.
-export function registrosModbusAFloat32(wordAlta: number, wordBaja: number, wordSwap = false): RegistersResult {
+export function registrosModbusAFloat32(
+  wordAlta: number,
+  wordBaja: number,
+  wordSwap = false,
+): RegistersResult {
   validateWord(wordAlta, 'wordAlta');
   validateWord(wordBaja, 'wordBaja');
   const bufAlto = Buffer.allocUnsafe(2);
@@ -102,7 +117,11 @@ export function registrosModbusAFloat32(wordAlta: number, wordBaja: number, word
 
 // Combina dos registros Modbus en un uint32 (típicamente para totalizadores).
 // `wordSwap=true` invierte el orden de las words antes de combinar.
-export function registrosModbusAUInt32(wordAlta: number, wordBaja: number, wordSwap = false): RegistersResult {
+export function registrosModbusAUInt32(
+  wordAlta: number,
+  wordBaja: number,
+  wordSwap = false,
+): RegistersResult {
   validateWord(wordAlta, 'wordAlta');
   validateWord(wordBaja, 'wordBaja');
   const alto = wordSwap ? wordBaja : wordAlta;

@@ -43,6 +43,9 @@ const Schema = z.object({
   ENABLE_INGESTION_WORKER: BoolFlag.default('true'),
   ENABLE_SUBMISSION_WORKER: BoolFlag.default('false'),
   INGESTION_CRON: z.string().default('* * * * *'),
+
+  DGA_API_URL: z.string().url().default('https://mia.dga.cl/api/recepcion'),
+  DGA_RUT_EMPRESA: z.string().min(1).default(''),
 });
 
 export type Env = z.infer<typeof Schema>;
@@ -95,6 +98,10 @@ export const config = {
     ingestionEnabled: env.ENABLE_INGESTION_WORKER,
     submissionEnabled: env.ENABLE_SUBMISSION_WORKER,
     ingestionCron: env.INGESTION_CRON,
+  },
+  dga: {
+    apiUrl: env.DGA_API_URL,
+    rutEmpresa: env.DGA_RUT_EMPRESA,
   },
 } as const;
 

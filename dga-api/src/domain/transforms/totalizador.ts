@@ -3,9 +3,9 @@
 import { registrosModbusAUInt32 } from './ieee754';
 
 export interface TotalizadorParams {
-  d1: number;            // Word alta (más significativa).
-  d2: number;            // Word baja (menos significativa).
-  wordSwap?: boolean;    // Invierte d1/d2 si el PLC entrega las words al revés.
+  d1: number; // Word alta (más significativa).
+  d2: number; // Word baja (menos significativa).
+  wordSwap?: boolean; // Invierte d1/d2 si el PLC entrega las words al revés.
 }
 
 export function calcularTotalizador({ d1, d2, wordSwap = false }: TotalizadorParams): number {

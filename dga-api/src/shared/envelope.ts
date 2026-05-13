@@ -33,7 +33,12 @@ export function ok<T>(data: T, meta?: Record<string, unknown>): OkEnvelope<T> {
 }
 
 // Helper: respuesta paginada. Calcula `totalPages` a partir de `total` y `pageSize`.
-export function paginated<T>(items: T[], page: number, pageSize: number, total: number): OkEnvelope<T[]> {
+export function paginated<T>(
+  items: T[],
+  page: number,
+  pageSize: number,
+  total: number,
+): OkEnvelope<T[]> {
   const totalPages = pageSize > 0 ? Math.ceil(total / pageSize) : 0;
   return {
     ok: true,
@@ -43,7 +48,12 @@ export function paginated<T>(items: T[], page: number, pageSize: number, total: 
 }
 
 // Helper: construye envelope de error. Usado por `errorHandler` y `notFoundHandler`.
-export function err(code: string, message: string, requestId?: string, details?: unknown): ErrEnvelope {
+export function err(
+  code: string,
+  message: string,
+  requestId?: string,
+  details?: unknown,
+): ErrEnvelope {
   const errorPayload: ErrEnvelope['error'] = { code, message };
   if (requestId) errorPayload.requestId = requestId;
   if (details !== undefined) errorPayload.details = details;
