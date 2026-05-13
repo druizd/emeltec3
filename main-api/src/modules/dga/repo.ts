@@ -62,7 +62,9 @@ export async function insertDgaUser(input: {
     ],
     { name: 'dga__insert_user' },
   );
-  return r.rows[0];
+  const row = r.rows[0];
+  if (!row) throw new Error('INSERT dga_user no devolvió fila');
+  return row;
 }
 
 export async function listDgaUsersBySite(siteId: string): Promise<DgaUserRow[]> {
