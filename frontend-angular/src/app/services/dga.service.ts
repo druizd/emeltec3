@@ -40,6 +40,15 @@ export interface DatoDgaRow {
   nivel_freatico: string | null;
 }
 
+export interface DgaApiReport {
+  obra: string | null;
+  fecha: string; // DD-MM-YYYY (hora Chile)
+  hora: string; // H:MM:SS (hora Chile)
+  caudalInstantaneo: number | null;
+  flujoAcumulado: number | null;
+  nivelFreatico: number | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DgaService {
   private readonly http = inject(HttpClient);
@@ -89,6 +98,25 @@ export class DgaService {
    * No depende de informantes ni de dato_dga.
    * bucket = granularidad de agregación (1 fila por bucket).
    */
+  getReportsBySite(
+    sitioId: string,
+    from?: string,
+    to?: string,
+    page = 1,
+    pageSize = 500,
+  ): Observable<{ items: DgaApiReport[]; total: number }> {
+    let params = new HttpParams().set('page', page).set('pageSize', pageSize);
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    return this.http
+      .get<{
+        ok: boolean;
+        data: DgaApiReport[];
+        meta: { total: number };
+      }>(`/api/dga/sites/${encodeURIComponent(sitioId)}/reports`, { params })
+      .pipe(map((r) => (r.ok ? { items: r.data, total: r.meta.total } : { items: [], total: 0 })));
+  }
+
   exportCsvUrlDirecto(
     siteId: string,
     desdeIso: string,

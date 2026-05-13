@@ -14,11 +14,7 @@ import {
   type DatoDgaRow,
   type DgaUserRow,
 } from './repo';
-import {
-  getMappingsBySiteId,
-  getPozoConfigBySiteId,
-  getSiteById,
-} from '../sites/repo';
+import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
 import type { HistoryEquipoRow } from '../sites/types';
@@ -155,7 +151,7 @@ async function fetchEquipoBucketed(
          WHERE id_serial = $1
            AND time >= $2::timestamptz
            AND time <  $3::timestamptz
-         ORDER BY time_bucket($4::interval, time) DESC, time DESC
+         ORDER BY time_bucket($4::interval, time) DESC, time ASC
        ) latest_by_bucket
       ORDER BY time DESC`,
     [serialId, fromIso, toIso, interval],

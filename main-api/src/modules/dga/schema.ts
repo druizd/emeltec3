@@ -12,12 +12,8 @@ export const CreateDgaUserPayload = z.object({
   rut_informante: z.string().trim().min(1, 'rut_informante requerido').max(20),
   clave_informante: z.string().min(1, 'clave_informante requerida').max(200),
   periodicidad: Periodicidad,
-  fecha_inicio: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha_inicio debe ser YYYY-MM-DD'),
-  hora_inicio: z
-    .string()
-    .regex(/^\d{2}:\d{2}(:\d{2})?$/, 'hora_inicio debe ser HH:MM o HH:MM:SS'),
+  fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha_inicio debe ser YYYY-MM-DD'),
+  hora_inicio: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'hora_inicio debe ser HH:MM o HH:MM:SS'),
 });
 export type CreateDgaUserPayload = z.infer<typeof CreateDgaUserPayload>;
 

@@ -1,20 +1,8 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import {
-  DgaPeriodicidad,
-  DgaService,
-  DgaUserPublic,
-} from '../../../../services/dga.service';
+import { DgaPeriodicidad, DgaService, DgaUserPublic } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
 interface PeriodicidadOption {
@@ -73,7 +61,9 @@ interface DatoReportableInfo {
           <div class="px-6 py-5 space-y-5">
             <!-- Bloque informativo: datos que se reportarán (no editable) -->
             <div class="rounded-lg border border-cyan-200 bg-cyan-50/60 px-4 py-3">
-              <div class="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-cyan-700">
+              <div
+                class="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-cyan-700"
+              >
                 <span class="material-symbols-outlined text-[14px]">info</span>
                 Datos que se reportarán automáticamente
               </div>
@@ -86,8 +76,9 @@ interface DatoReportableInfo {
                 }
               </ul>
               <p class="mt-2 text-[11px] text-slate-500">
-                La obra (<span class="font-mono">{{ siteName || siteId }}</span>) y la zona horaria
-                <span class="font-mono">UTC-4</span> se asignan automáticamente.
+                La obra (<span class="font-mono">{{ siteName || siteId }}</span
+                >) y la zona horaria <span class="font-mono">UTC-4</span> se asignan
+                automáticamente.
               </p>
             </div>
 
@@ -149,9 +140,7 @@ interface DatoReportableInfo {
                   (ngModelChange)="clave.set($event)"
                   class="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[14px] font-mono focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-200"
                 />
-                <p class="mt-1 text-[10px] text-slate-400">
-                  Se almacena cifrada (AES-256-GCM).
-                </p>
+                <p class="mt-1 text-[10px] text-slate-400">Se almacena cifrada (AES-256-GCM).</p>
               </div>
 
               <!-- Periodicidad -->
@@ -167,7 +156,9 @@ interface DatoReportableInfo {
                       [class]="periodicidadBtnClass(opt.value)"
                     >
                       <span class="block font-semibold">{{ opt.label }}</span>
-                      <span class="block text-[10px] font-normal opacity-75">{{ opt.cadencia }}</span>
+                      <span class="block text-[10px] font-normal opacity-75">{{
+                        opt.cadencia
+                      }}</span>
                     </button>
                   }
                 </div>
@@ -225,14 +216,18 @@ interface DatoReportableInfo {
             </div>
 
             @if (errorMsg()) {
-              <div class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700">
+              <div
+                class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-700"
+              >
                 <span class="material-symbols-outlined text-[18px]">error</span>
                 <span>{{ errorMsg() }}</span>
               </div>
             }
 
             @if (successMsg()) {
-              <div class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700">
+              <div
+                class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[13px] text-emerald-700"
+              >
                 <span class="material-symbols-outlined text-[18px]">check_circle</span>
                 <span>{{ successMsg() }}</span>
               </div>
@@ -240,7 +235,9 @@ interface DatoReportableInfo {
           </div>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50/60">
+          <div
+            class="flex items-center justify-end gap-2 px-6 py-4 border-t border-slate-200 bg-slate-50/60"
+          >
             <button
               type="button"
               (click)="cerrar()"
