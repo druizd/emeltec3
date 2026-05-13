@@ -113,14 +113,12 @@ async function processBucket(
     bucketStart.toISOString(),
     bucketEnd.toISOString(),
   );
-  if (rawRows.length === 0) {
+  // Tomamos la lectura más reciente del bucket (repo ordena DESC).
+  const representative = rawRows[0];
+  if (!representative) {
     // Sin datos en el bucket: avanzamos last_run_at igual para no quedar en loop.
     return false;
   }
-
-  // Tomamos la lectura más reciente del bucket como representativa.
-  // Repo ordena DESC, así que rawRows[0] es la más reciente.
-  const representative = rawRows[0];
   const processed = mapHistoricalDashboardRow({
     row: representative,
     site: bundle.site,
