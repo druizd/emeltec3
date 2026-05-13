@@ -46,6 +46,11 @@ const Schema = z.object({
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
 
+  DGA_ENCRYPTION_KEY: z
+    .string()
+    .min(32, 'DGA_ENCRYPTION_KEY debe tener al menos 32 caracteres (clave AES-256)')
+    .optional(),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 
@@ -106,6 +111,9 @@ export const config = {
   },
   workers: {
     alerts: env.ENABLE_ALERTS_WORKER,
+  },
+  dga: {
+    encryptionKey: env.DGA_ENCRYPTION_KEY,
   },
 } as const;
 
