@@ -10,9 +10,17 @@ import {
   insertDgaUser,
   listDgaUsersBySite,
   queryDatoDga,
+  queryDatoDgaBySite,
   type DatoDgaRow,
   type DgaUserRow,
 } from './repo';
+import {
+  getDashboardHistoryRange,
+  getMappingsBySiteId,
+  getPozoConfigBySiteId,
+  getSiteById,
+} from '../sites/repo';
+import { mapHistoricalDashboardRow } from '../sites/service';
 import type { CreateDgaUserPayload } from './schema';
 
 export interface DgaUserPublic {
@@ -86,6 +94,83 @@ export async function getDatoDga(
   const user = await findDgaUserById(idDgaUser);
   if (!user) throw new NotFoundError('Informante DGA no encontrado');
   return queryDatoDga(idDgaUser, desde, hasta);
+}
+
+export async function getDatoDgaBySite(
+  siteId: string,
+  desde: string,
+  hasta: string,
+): Promise<DatoDgaRow[]> {
+  return queryDatoDgaBySite(siteId, desde, hasta);
+}
+
+function numericOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function utcToChileFecha(iso: string): string {
+  // UTC → UTC-4 chileno (offset fijo, sin DST)
+  const d = new Date(iso);
+  d.setUTCHours(d.getUTCHours() - 4);
+  return d.toISOString().slice(0, 10);
+}
+
+function utcToChileHora(iso: string): string {
+  const d = new Date(iso);
+  d.setUTCHours(d.getUTCHours() - 4);
+  return d.toISOString().slice(11, 19);
+}
+
+/**
+ * Genera filas DGA leyendo directo de `equipo` y aplicando las transformaciones
+ * existentes del dashboard (caudal, totalizador, nivel_freatico). No depende de
+ * `dato_dga` ni de informantes registrados. Ideal para descarga manual del dueño.
+ */
+export async function getDatoDgaDirectoFromEquipo(
+  siteId: string,
+  desdeIso: string,
+  hastaIso: string,
+): Promise<DatoDgaRow[]> {
+  const site = await getSiteById(siteId);
+  if (!site) throw new NotFoundError('Sitio no encontrado');
+  if (!site.id_serial) return [];
+
+  const [pozoConfig, mappings, rawRows] = await Promise.all([
+    getPozoConfigBySiteId(siteId),
+    getMappingsBySiteId(siteId),
+    getDashboardHistoryRange(site.id_serial, desdeIso, hastaIso),
+  ]);
+
+  const obra = pozoConfig?.obra_dga?.trim() || site.descripcion;
+
+  // Repo devuelve DESC; DGA exige cronológico ASC.
+  const processed = rawRows
+    .slice()
+    .reverse()
+    .map((raw) => {
+      const mapped = mapHistoricalDashboardRow({ row: raw, site, mappings, pozoConfig });
+      const ts =
+        mapped.timestamp ??
+        (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
+      return {
+        id_dgauser: '',
+        obra,
+        ts,
+        fecha: utcToChileFecha(ts),
+        hora: utcToChileHora(ts),
+        caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
+        flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
+        nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
+      } satisfies DatoDgaRow;
+    });
+  return processed;
+}
+
+function stringifyNumeric(value: number | null): string | null {
+  if (value === null) return null;
+  return value.toString();
 }
 
 export function toCsv(rows: DatoDgaRow[]): string {

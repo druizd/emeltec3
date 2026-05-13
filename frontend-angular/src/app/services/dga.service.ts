@@ -74,4 +74,26 @@ export class DgaService {
     }).toString();
     return `/api/v2/dga/dato/export.csv?${qs}`;
   }
+
+  exportCsvUrlBySite(siteId: string, desdeIso: string, hastaIso: string): string {
+    const qs = new URLSearchParams({
+      site_id: siteId,
+      desde: desdeIso,
+      hasta: hastaIso,
+    }).toString();
+    return `/api/v2/dga/dato/export.csv?${qs}`;
+  }
+
+  /**
+   * Descarga manual directa: arma CSV DGA leyendo `equipo` al vuelo.
+   * No depende de informantes ni de dato_dga.
+   */
+  exportCsvUrlDirecto(siteId: string, desdeIso: string, hastaIso: string): string {
+    const qs = new URLSearchParams({
+      site_id: siteId,
+      desde: desdeIso,
+      hasta: hastaIso,
+    }).toString();
+    return `/api/v2/dga/export-directo.csv?${qs}`;
+  }
 }

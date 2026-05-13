@@ -149,3 +149,24 @@ export async function queryDatoDga(
   );
   return r.rows;
 }
+
+export async function queryDatoDgaBySite(
+  siteId: string,
+  desde: string,
+  hasta: string,
+): Promise<DatoDgaRow[]> {
+  const r = await query<DatoDgaRow>(
+    `SELECT d.id_dgauser, d.obra, d.ts,
+            to_char(d.fecha, 'YYYY-MM-DD')      AS fecha,
+            to_char(d.hora,  'HH24:MI:SS')      AS hora,
+            d.caudal_instantaneo, d.flujo_acumulado, d.nivel_freatico
+       FROM dato_dga d
+       JOIN dga_user u USING (id_dgauser)
+      WHERE u.site_id = $1
+        AND d.ts >= $2 AND d.ts < $3
+      ORDER BY d.ts ASC`,
+    [siteId, desde, hasta],
+    { name: 'dga__query_dato_by_site' },
+  );
+  return r.rows;
+}
