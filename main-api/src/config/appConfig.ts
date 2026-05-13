@@ -37,9 +37,9 @@ const Schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce
     .number()
     .int()
-    .positive()
-    .default(15 * 60 * 1000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(200),
+    .nonnegative()
+    .default(60 * 60 * 1000),
+  RATE_LIMIT_MAX: z.coerce.number().int().nonnegative().default(5000),
 
   ENABLE_ALERTS_WORKER: z
     .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])

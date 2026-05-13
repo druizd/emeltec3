@@ -38,16 +38,25 @@ app.use(
   }),
 );
 
-// Limite global para evitar abuso simple de la API.
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { ok: false, message: 'Demasiadas solicitudes. Intenta en 15 minutos.' },
-});
+// Limite global opcional para evitar abuso simple de la API.
+// RATE_LIMIT_MAX=0 o RATE_LIMIT_WINDOW_MS=0 lo deshabilita.
+const rateLimitWindowMs = Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '3600000', 10);
+const rateLimitMax = Number.parseInt(process.env.RATE_LIMIT_MAX || '5000', 10);
 
-app.use('/api/', globalLimiter);
+if (rateLimitWindowMs > 0 && rateLimitMax > 0) {
+  const globalLimiter = rateLimit({
+    windowMs: rateLimitWindowMs,
+    max: rateLimitMax,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      ok: false,
+      message: 'Demasiadas solicitudes. Intenta nuevamente en unos momentos.',
+    },
+  });
+
+  app.use('/api/', globalLimiter);
+}
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
