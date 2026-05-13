@@ -31,7 +31,7 @@ const Schema = z.object({
   DB_SLOW_LOG_MS: z.coerce.number().int().nonnegative().default(500),
 
   JWT_SECRET: z.string().min(16, 'JWT_SECRET debe tener al menos 16 caracteres'),
-  INTERNAL_API_KEY: z.string().min(1).optional(),
+  INTERNAL_API_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
 
   RATE_LIMIT_WINDOW_MS: z.coerce
     .number()
