@@ -89,11 +89,9 @@ export async function findDgaUserById(idDgaUser: number): Promise<DgaUserRow | n
 }
 
 export async function listActiveDgaUsers(): Promise<DgaUserRow[]> {
-  const r = await query<DgaUserRow>(
-    `SELECT ${USER_COLS} FROM dga_user WHERE activo = TRUE`,
-    [],
-    { name: 'dga__list_active' },
-  );
+  const r = await query<DgaUserRow>(`SELECT ${USER_COLS} FROM dga_user WHERE activo = TRUE`, [], {
+    name: 'dga__list_active',
+  });
   return r.rows;
 }
 

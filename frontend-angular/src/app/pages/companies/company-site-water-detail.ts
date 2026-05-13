@@ -2749,11 +2749,17 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
                 <ul class="grid grid-cols-1 gap-1 text-[12px] sm:grid-cols-2">
                   @for (inf of dgaInformantes(); track inf.id_dgauser) {
-                    <li class="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1">
-                      <span class="material-symbols-outlined text-[14px] text-violet-600">person</span>
+                    <li
+                      class="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1"
+                    >
+                      <span class="material-symbols-outlined text-[14px] text-violet-600"
+                        >person</span
+                      >
                       <span class="font-semibold text-slate-700">{{ inf.nombre_informante }}</span>
                       <span class="font-mono text-slate-500">{{ inf.rut_informante }}</span>
-                      <span class="ml-auto text-[10px] font-semibold uppercase text-violet-700">{{ inf.periodicidad }}</span>
+                      <span class="ml-auto text-[10px] font-semibold uppercase text-violet-700">{{
+                        inf.periodicidad
+                      }}</span>
                     </li>
                   }
                 </ul>
@@ -2794,9 +2800,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="generateDgaReport()"
-                  [disabled]="
-                    !dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()
-                  "
+                  [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
                   class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   @if (dgaReportDownloading()) {
@@ -3126,7 +3130,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaReportDownloading = signal<boolean>(false);
   dgaReportError = signal<string>('');
   dgaReportBucket = signal<'minuto' | 'hora' | 'dia' | 'semana' | 'mes'>('hora');
-  readonly dgaReportBucketOptions: { value: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes'; label: string }[] = [
+  readonly dgaReportBucketOptions: {
+    value: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes';
+    label: string;
+  }[] = [
     { value: 'minuto', label: 'Cada minuto' },
     { value: 'hora', label: 'Cada hora' },
     { value: 'dia', label: 'Cada día' },
@@ -3483,7 +3490,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { id: 'thisMonth', label: 'Este mes' },
     { id: 'previousMonth', label: 'Mes anterior' },
   ];
-
 
   readonly quickActions = [
     {
@@ -4623,7 +4629,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     hastaDate.setUTCDate(hastaDate.getUTCDate() + 1);
     const hastaIso = hastaDate.toISOString();
 
-    const url = this.dgaService.exportCsvUrlDirecto(siteId, desdeIso, hastaIso, this.dgaReportBucket());
+    const url = this.dgaService.exportCsvUrlDirecto(
+      siteId,
+      desdeIso,
+      hastaIso,
+      this.dgaReportBucket(),
+    );
     const filename = `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
 
     this.dgaReportDownloading.set(true);

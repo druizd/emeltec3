@@ -1,5 +1,8 @@
 import { buildDgaPayload } from '../../domain/submission/dgaEnvelope';
-import type { DgaSubmissionPayload, DgaSubmissionResponse } from '../../domain/submission/dgaEnvelope';
+import type {
+  DgaSubmissionPayload,
+  DgaSubmissionResponse,
+} from '../../domain/submission/dgaEnvelope';
 import { ExternalServiceError } from '../../shared/errors';
 import { config } from '../../shared/env';
 import { logger } from '../../shared/logger';
@@ -33,8 +36,7 @@ export async function submitToDga(payload: DgaSubmissionPayload): Promise<DgaSub
     );
   }
 
-  const comprobante =
-    typeof raw === 'object' && raw !== null ? JSON.stringify(raw) : undefined;
+  const comprobante = typeof raw === 'object' && raw !== null ? JSON.stringify(raw) : undefined;
 
   return {
     url,

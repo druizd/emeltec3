@@ -36,14 +36,7 @@ const httpServer = app.listen(config.port, () => {
 
   // DGA worker TS (snapshot periódico de mediciones procesadas → dato_dga).
   try {
-    const dgaWorkerPath = require('path').join(
-      __dirname,
-      '..',
-      'dist',
-      'modules',
-      'dga',
-      'worker',
-    );
+    const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
     const { startDgaWorker } = require(dgaWorkerPath);
     startDgaWorker();
   } catch (err) {
@@ -70,14 +63,7 @@ function shutdown(signal) {
   alertaService.stop();
 
   try {
-    const dgaWorkerPath = require('path').join(
-      __dirname,
-      '..',
-      'dist',
-      'modules',
-      'dga',
-      'worker',
-    );
+    const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
     const { stopDgaWorker } = require(dgaWorkerPath);
     stopDgaWorker();
   } catch (_err) {

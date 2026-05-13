@@ -1,7 +1,7 @@
 import type { DgaReport } from '../reports/report.types';
 
 export interface DgaInformante {
-  rut: string;       // rutUsuario
+  rut: string; // rutUsuario
   clave: string;
   rutEmpresa: string; // RUT Centro de Control (Emeltec)
 }
@@ -25,8 +25,8 @@ function toChile(ts: Date) {
   const local = new Date(ts.getTime() + offsetMs);
   const iso = local.toISOString(); // YYYY-MM-DDTHH:mm:ss.sssZ
   return {
-    fecha: iso.slice(0, 10),            // "2023-09-07"
-    hora: iso.slice(11, 19),            // "10:00:00"
+    fecha: iso.slice(0, 10), // "2023-09-07"
+    hora: iso.slice(11, 19), // "10:00:00"
     headerTs: `${iso.slice(0, 19)}-04:00`, // "2023-09-07T10:00:00-04:00"
   };
 }

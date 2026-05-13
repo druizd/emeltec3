@@ -18,7 +18,8 @@ export async function insertReport(report: DgaReport): Promise<void> {
      ON CONFLICT (id_dgauser, ts) DO NOTHING`,
     [report.sitioId, report.timestamp, report.caudal, report.totalizado, report.nivelFreatico],
   );
-  if (!rowCount) throw new NotFoundError(`dga_user activo no encontrado para sitio ${report.sitioId}`);
+  if (!rowCount)
+    throw new NotFoundError(`dga_user activo no encontrado para sitio ${report.sitioId}`);
 }
 
 export async function findBySite(q: ReportQuery): Promise<{ items: DgaReport[]; total: number }> {

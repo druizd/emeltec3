@@ -24,19 +24,14 @@ import {
   markDgaUserRun,
   type DgaUserRow,
 } from './repo';
-import {
-  getMappingsBySiteId,
-  getPozoConfigBySiteId,
-  getSiteById,
-} from '../sites/repo';
+import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { getDashboardHistoryRange } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import type { HistoryEquipoRow, RegMap, PozoConfig, Site } from '../sites/types';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_WORKER_POLL_MS ?? 60_000);
 const MAX_CATCHUP_BUCKETS = Number(process.env.DGA_WORKER_CATCHUP ?? 24);
-const WORKER_ENABLED =
-  String(process.env.ENABLE_DGA_WORKER ?? 'true').toLowerCase() !== 'false';
+const WORKER_ENABLED = String(process.env.ENABLE_DGA_WORKER ?? 'true').toLowerCase() !== 'false';
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
@@ -155,7 +150,10 @@ async function processInformante(user: DgaUserRow): Promise<void> {
 
   const bundle = await loadSiteBundle(user.site_id);
   if (!bundle) {
-    logger.warn({ id_dgauser: user.id_dgauser, site_id: user.site_id }, 'DGA worker: sitio no encontrado');
+    logger.warn(
+      { id_dgauser: user.id_dgauser, site_id: user.site_id },
+      'DGA worker: sitio no encontrado',
+    );
     return;
   }
 

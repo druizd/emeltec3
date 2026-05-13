@@ -6,12 +6,18 @@ type DgaPeriodicidad = 'minuto' | 'hora' | 'dia' | 'semana' | 'mes' | 'anio';
 
 function mapPeriodicidad(p: DgaPeriodicidad): { every: number; unit: PeriodicityUnit } {
   switch (p) {
-    case 'minuto': return { every: 1,  unit: 'minute' };
-    case 'hora':   return { every: 1,  unit: 'hour'   };
-    case 'dia':    return { every: 1,  unit: 'day'    };
-    case 'semana': return { every: 7,  unit: 'day'    };
-    case 'mes':    return { every: 1,  unit: 'month'  };
-    case 'anio':   return { every: 1,  unit: 'year'   };
+    case 'minuto':
+      return { every: 1, unit: 'minute' };
+    case 'hora':
+      return { every: 1, unit: 'hour' };
+    case 'dia':
+      return { every: 1, unit: 'day' };
+    case 'semana':
+      return { every: 7, unit: 'day' };
+    case 'mes':
+      return { every: 1, unit: 'month' };
+    case 'anio':
+      return { every: 1, unit: 'year' };
   }
 }
 

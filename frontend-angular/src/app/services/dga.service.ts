@@ -42,8 +42,8 @@ export interface DatoDgaRow {
 
 export interface DgaApiReport {
   obra: string | null;
-  fecha: string;             // DD-MM-YYYY (hora Chile)
-  hora: string;              // H:MM:SS (hora Chile)
+  fecha: string; // DD-MM-YYYY (hora Chile)
+  hora: string; // H:MM:SS (hora Chile)
   caudalInstantaneo: number | null;
   flujoAcumulado: number | null;
   nivelFreatico: number | null;
@@ -109,10 +109,11 @@ export class DgaService {
     if (from) params = params.set('from', from);
     if (to) params = params.set('to', to);
     return this.http
-      .get<{ ok: boolean; data: DgaApiReport[]; meta: { total: number } }>(
-        `/api/dga/sites/${encodeURIComponent(sitioId)}/reports`,
-        { params },
-      )
+      .get<{
+        ok: boolean;
+        data: DgaApiReport[];
+        meta: { total: number };
+      }>(`/api/dga/sites/${encodeURIComponent(sitioId)}/reports`, { params })
       .pipe(map((r) => (r.ok ? { items: r.data, total: r.meta.total } : { items: [], total: 0 })));
   }
 

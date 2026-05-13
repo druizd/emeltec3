@@ -14,11 +14,7 @@ import {
   type DatoDgaRow,
   type DgaUserRow,
 } from './repo';
-import {
-  getMappingsBySiteId,
-  getPozoConfigBySiteId,
-  getSiteById,
-} from '../sites/repo';
+import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
 import type { HistoryEquipoRow } from '../sites/types';
