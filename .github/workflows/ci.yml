@@ -57,10 +57,11 @@ jobs:
         run: |
           cp main-api/.env.example main-api/.env
           cp auth-api/.env.example auth-api/.env
+          cp dga-api/.env.example dga-api/.env
           cp .env.example .env
 
       - name: Validate compose file
         run: docker compose config --quiet
 
       - name: Build application images
-        run: docker compose build main-api auth-api frontend-angular metrics-page csvconsumer
+        run: docker compose build main-api auth-api dga-api frontend-angular metrics-page csvconsumer
