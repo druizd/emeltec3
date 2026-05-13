@@ -1,3 +1,9 @@
+// Entrada del proceso dga-api.
+// Pasos del bootstrap:
+//  1. Ping a la DB (loguea si falla, pero no aborta — la app puede levantar igual).
+//  2. Construye la app Express y la pone a escuchar en config.port.
+//  3. Arranca el scheduler de workers (ingestion + submission).
+//  4. Registra handlers de SIGINT/SIGTERM para shutdown ordenado.
 import { config } from './shared/env';
 import { logger } from './shared/logger';
 import { closePool, pingDb } from './infrastructure/db/pool';
@@ -19,6 +25,7 @@ async function bootstrap(): Promise<void> {
     startScheduler();
   });
 
+  // Shutdown ordenado: detiene los crons, cierra el HTTP, libera el pool de DB y sale.
   const shutdown = (signal: string): void => {
     logger.info({ signal }, '[dga-api] cerrando servicios');
     stopScheduler();

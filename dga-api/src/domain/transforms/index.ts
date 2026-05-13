@@ -1,3 +1,5 @@
+// Barrel del paquete `transforms`: expone funciones puras de cálculo/decodificación
+// que la capa de aplicación usa para convertir telemetría cruda en valores reportables a DGA.
 export { m3hToLps } from './caudal';
 export { calcularNivelFreatico } from './nivelFreatico';
 export { calcularTotalizador } from './totalizador';

@@ -1,3 +1,6 @@
+// Endpoints de salud para orquestadores (k8s, docker swarm, balanceador).
+//  - GET /live  → liveness: el proceso responde (no chequea dependencias).
+//  - GET /ready → readiness: además chequea que la DB responda; si no, 503.
 import { Router } from 'express';
 import { pingDb } from '../../../infrastructure/db/pool';
 import { ok } from '../../../shared/envelope';

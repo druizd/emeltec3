@@ -1,3 +1,5 @@
+// Pool único de conexiones a Postgres compartido por toda la app.
+// Forza UTC y aplica statement_timeout para evitar queries colgadas.
 import { Pool, type PoolConfig } from 'pg';
 import { config } from '../../shared/env';
 import { logger } from '../../shared/logger';
@@ -21,6 +23,7 @@ pool.on('error', (err) => {
   logger.error({ err }, '[db] error inesperado en pool');
 });
 
+// Healthcheck: SELECT 1. Lo usan /health/ready y el bootstrap del proceso.
 export async function pingDb(): Promise<boolean> {
   try {
     const res = await pool.query('SELECT 1 AS ok');
@@ -31,6 +34,7 @@ export async function pingDb(): Promise<boolean> {
   }
 }
 
+// Cierre ordenado del pool al shutdown (SIGINT/SIGTERM).
 export async function closePool(): Promise<void> {
   await pool.end();
 }

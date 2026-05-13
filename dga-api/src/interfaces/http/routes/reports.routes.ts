@@ -1,3 +1,5 @@
+// Rutas HTTP de reportes DGA. Protegidas con JWT (authProtect).
+//  - GET /sites/:sitioId/reports?from&to&page&pageSize → listado paginado de reportes generados.
 import { Router } from 'express';
 import { z } from 'zod';
 import { getReportsBySite } from '../../../application/reports/getReportsBySite.usecase';
@@ -8,6 +10,7 @@ import { authProtect } from '../middlewares/auth';
 
 export const reportsRouter = Router();
 
+// Validación de query string con Zod. Limita pageSize a 500 para evitar payloads excesivos.
 const QuerySchema = z.object({
   from: z.string().datetime().optional(),
   to: z.string().datetime().optional(),

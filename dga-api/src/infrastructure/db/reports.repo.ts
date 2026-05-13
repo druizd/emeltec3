@@ -1,3 +1,5 @@
+// Repositorio de la hypertable de reportes DGA (stub).
+// Cada fila es un reporte generado por el worker o consultable vía API.
 import type { DgaReport, ReportQuery } from '../../domain/reports/report.types';
 
 // TODO(bloqueado): la hypertable destino la define el compañero.
@@ -8,11 +10,13 @@ import type { DgaReport, ReportQuery } from '../../domain/reports/report.types';
 
 const TABLE = process.env.DGA_REPORTS_TABLE || 'dga';
 
+// Persiste un reporte generado por el worker.
 export async function insertReport(_report: DgaReport): Promise<void> {
   void TABLE;
   throw new Error('NOT_IMPLEMENTED: reports.repo.insertReport — falta nombre real de hypertable');
 }
 
+// Lista reportes de un sitio con filtros por rango temporal y paginación.
 export async function findBySite(_q: ReportQuery): Promise<{ items: DgaReport[]; total: number }> {
   throw new Error('NOT_IMPLEMENTED: reports.repo.findBySite — falta nombre real de hypertable');
 }

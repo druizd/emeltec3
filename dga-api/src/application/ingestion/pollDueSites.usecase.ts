@@ -1,3 +1,9 @@
+// Caso de uso "polling": el scheduler lo invoca cada minuto.
+// Pasos:
+//  1. Lee todas las periodicidades configuradas.
+//  2. Filtra los sitios vencidos (los que toca reportar ahora).
+//  3. Para cada candidato: genera reporte + marca como reportado.
+// Falla en silencio por sitio para no bloquear el procesamiento del resto.
 import { selectDueSites } from '../../domain/periodicity/periodicity.rules';
 import * as periodicityRepo from '../../infrastructure/db/periodicity.repo';
 import { logger } from '../../shared/logger';

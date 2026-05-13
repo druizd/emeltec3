@@ -1,3 +1,10 @@
+// Caso de uso "generar reporte DGA" para un sitio en un instante dado.
+// Pipeline:
+//  1. Resuelve la identidad del sitio (con id_serial del equipo).
+//  2. Toma la última telemetría recibida en o antes de `timestamp`.
+//  3. Lee los reg_map y la config del pozo.
+//  4. Por cada rol (caudal/nivel/totalizador) aplica su transformación pura.
+//  5. Persiste el reporte (incluso si todas las métricas son null → marca dato faltante).
 import { buildEmptyReport } from '../../domain/reports/report.entity';
 import type { DgaReport } from '../../domain/reports/report.types';
 import { calcularNivelFreatico, calcularTotalizador, m3hToLps } from '../../domain/transforms';
@@ -7,10 +14,12 @@ import { getPozoConfig, getRegMapsBySite, getSiteById, type RegMapRow } from '..
 import { NotFoundError } from '../../shared/errors';
 import { logger } from '../../shared/logger';
 
+// Encuentra el primer reg_map cuyo rol coincida (caudal, nivel, totalizador).
 function firstByRole(maps: RegMapRow[], role: string): RegMapRow | undefined {
   return maps.find((m) => m.rolDashboard === role);
 }
 
+// Coerción segura a number; devuelve null si no es finito.
 function toNumber(v: unknown): number | null {
   if (v === null || v === undefined) return null;
   const n = typeof v === 'number' ? v : Number(v);
@@ -23,8 +32,10 @@ export async function generateReport(sitioId: string, timestamp: Date): Promise<
 
   const report = buildEmptyReport(sitioId, timestamp);
 
+  // Toma la telemetría más cercana (anterior o igual a `timestamp`).
   const latest = await equipoRepo.getLatestBefore(site.idSerial, timestamp);
   if (!latest) {
+    // Sin telemetría → persistir reporte con nulls para dejar constancia del dato faltante.
     logger.warn({ sitioId, idSerial: site.idSerial }, '[ingestion] sin telemetría reciente');
     await reportsRepo.insertReport(report);
     return report;
@@ -33,6 +44,7 @@ export async function generateReport(sitioId: string, timestamp: Date): Promise<
   const maps = await getRegMapsBySite(sitioId);
   const pozoConfig = await getPozoConfig(sitioId);
 
+  // Caudal: lee el campo `d1` del JSON `data` y aplica conversión m³/h → L/s.
   const caudalMap = firstByRole(maps, 'caudal');
   if (caudalMap) {
     const raw = toNumber(latest.data[caudalMap.d1]);
@@ -45,6 +57,7 @@ export async function generateReport(sitioId: string, timestamp: Date): Promise<
     }
   }
 
+  // Nivel freático: requiere geometría del pozo (profundidad total y sensor) + lectura del sensor.
   const nivelMap = firstByRole(maps, 'nivel') ?? firstByRole(maps, 'nivel_freatico');
   if (nivelMap && pozoConfig?.profundidadPozoM != null) {
     const lectura = toNumber(latest.data[nivelMap.d1]);
@@ -61,6 +74,7 @@ export async function generateReport(sitioId: string, timestamp: Date): Promise<
     }
   }
 
+  // Totalizador: combina dos registros Modbus (d1 + d2) en un uint32. `word_swap` viene en `parametros`.
   const totalizadorMap = firstByRole(maps, 'totalizador');
   if (totalizadorMap?.d2) {
     const d1 = toNumber(latest.data[totalizadorMap.d1]);

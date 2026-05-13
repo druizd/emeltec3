@@ -1,6 +1,10 @@
+// Worker de ingestión: cada tick busca sitios vencidos y genera sus reportes.
+// El scheduler lo dispara según INGESTION_CRON (default: cada minuto).
 import { pollDueSites } from '../../application/ingestion/pollDueSites.usecase';
 import { logger } from '../../shared/logger';
 
+// Guard contra solapamiento: si un tick aún corre, descarta el siguiente
+// para no duplicar trabajo ni saturar la DB.
 let running = false;
 
 export async function runIngestionTick(): Promise<void> {

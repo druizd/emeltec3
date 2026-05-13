@@ -1,12 +1,18 @@
+// Carga y valida las variables de entorno (.env) usando Zod.
+// Expone `env` (valores crudos validados) y `config` (objeto agrupado por dominio: db, auth, workers, etc.).
+// Si falta una variable requerida o tiene un formato inválido, el proceso aborta al arranque.
 import 'dotenv/config';
 import { z } from 'zod';
 
+// Entornos soportados por la app.
 const NodeEnv = z.enum(['development', 'test', 'production']).default('development');
 
+// Permite que las flags booleanas se escriban como "true"/"false" o "1"/"0".
 const BoolFlag = z
   .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
   .transform((v) => v === 'true' || v === '1');
 
+// Esquema completo: cada variable de entorno con su tipo, default y validaciones.
 const Schema = z.object({
   NODE_ENV: NodeEnv,
   PORT: z.coerce.number().int().positive().default(3002),
@@ -41,6 +47,7 @@ const Schema = z.object({
 
 export type Env = z.infer<typeof Schema>;
 
+// Parsea process.env contra el esquema. Si falla, imprime cada error y termina el proceso.
 function load(): Env {
   const parsed = Schema.safeParse(process.env);
   if (!parsed.success) {
@@ -55,6 +62,7 @@ function load(): Env {
 
 export const env = load();
 
+// Vista agrupada por dominio (db, auth, rateLimit, workers). El resto del código consume `config`, no `env`.
 export const config = {
   nodeEnv: env.NODE_ENV,
   isProd: env.NODE_ENV === 'production',
