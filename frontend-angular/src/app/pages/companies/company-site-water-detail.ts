@@ -2716,27 +2716,51 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </label>
             </div>
 
-            <!-- Selector informante DGA + error/status -->
-            <div class="mt-4 border-t border-slate-100 px-5 py-3 space-y-2">
+            <!-- Granularidad del CSV -->
+            <div class="mt-4 border-t border-slate-100 px-5 pt-4 pb-2">
+              <label class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                Granularidad de los datos en el CSV
+              </label>
+              <div class="mt-2 grid grid-cols-5 gap-2">
+                @for (opt of dgaReportBucketOptions; track opt.value) {
+                  <button
+                    type="button"
+                    (click)="dgaReportBucket.set(opt.value)"
+                    [class]="
+                      dgaReportBucket() === opt.value
+                        ? 'rounded-lg border border-violet-500 bg-violet-50 px-2 py-1.5 text-[11px] font-semibold text-violet-700'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-violet-200 hover:text-violet-700'
+                    "
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <p class="mt-1 text-[10px] text-slate-400">
+                1 fila por bucket. La medición es la más reciente dentro del bucket.
+              </p>
+            </div>
+
+            <!-- Informantes registrados (solo informativo) + error/status -->
+            <div class="border-t border-slate-100 px-5 py-3 space-y-2">
               @if (dgaInformantes().length > 0) {
-                <label
-                  for="dga-informante-select"
-                  class="text-[10px] uppercase tracking-wider font-semibold text-slate-500"
-                >
-                  Informante para el reporte
-                </label>
-                <select
-                  id="dga-informante-select"
-                  [ngModel]="dgaInformanteSeleccionado()"
-                  (ngModelChange)="dgaInformanteSeleccionado.set($event)"
-                  class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-200"
-                >
+                <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                  Informantes registrados para este sitio
+                </div>
+                <ul class="grid grid-cols-1 gap-1 text-[12px] sm:grid-cols-2">
                   @for (inf of dgaInformantes(); track inf.id_dgauser) {
-                    <option [value]="inf.id_dgauser">
-                      {{ inf.nombre_informante }} — {{ inf.rut_informante }} ({{ inf.periodicidad }})
-                    </option>
+                    <li class="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1">
+                      <span class="material-symbols-outlined text-[14px] text-violet-600">person</span>
+                      <span class="font-semibold text-slate-700">{{ inf.nombre_informante }}</span>
+                      <span class="font-mono text-slate-500">{{ inf.rut_informante }}</span>
+                      <span class="ml-auto text-[10px] font-semibold uppercase text-violet-700">{{ inf.periodicidad }}</span>
+                    </li>
                   }
-                </select>
+                </ul>
+              } @else {
+                <div class="text-[11px] text-slate-500 italic">
+                  No hay informantes registrados aún para este sitio.
+                </div>
               }
               @if (dgaReportError()) {
                 <div
@@ -2771,10 +2795,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   type="button"
                   (click)="generateDgaReport()"
                   [disabled]="
-                    !dgaReportDateFrom() ||
-                    !dgaReportDateTo() ||
-                    !dgaInformanteSeleccionado() ||
-                    dgaReportDownloading()
+                    !dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()
                   "
                   class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -3104,6 +3125,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaInformanteSeleccionado = signal<string | null>(null);
   dgaReportDownloading = signal<boolean>(false);
   dgaReportError = signal<string>('');
+  dgaReportBucket = signal<'minuto' | 'hora' | 'dia' | 'semana' | 'mes'>('hora');
+  readonly dgaReportBucketOptions: { value: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes'; label: string }[] = [
+    { value: 'minuto', label: 'Cada minuto' },
+    { value: 'hora', label: 'Cada hora' },
+    { value: 'dia', label: 'Cada día' },
+    { value: 'semana', label: 'Cada semana' },
+    { value: 'mes', label: 'Cada mes' },
+  ];
   settingsStatus = signal<SettingsStatus>({ type: '', message: '' });
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
@@ -4637,11 +4666,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   generateDgaReport(): void {
-    const idDgaUser = this.dgaInformanteSeleccionado();
+    const siteId = this.siteContext()?.site?.id;
     const from = this.dgaReportDateFrom();
     const to = this.dgaReportDateTo();
-    if (!idDgaUser) {
-      this.dgaReportError.set('Seleccioná un informante.');
+    if (!siteId) {
+      this.dgaReportError.set('No se pudo determinar el sitio.');
       return;
     }
     if (!from || !to) {
@@ -4655,9 +4684,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     hastaDate.setUTCDate(hastaDate.getUTCDate() + 1);
     const hastaIso = hastaDate.toISOString();
 
-    const url = this.dgaService.exportCsvUrl(idDgaUser, desdeIso, hastaIso);
-    const informante = this.dgaInformantes().find((i) => i.id_dgauser === idDgaUser);
-    const filename = `reporte_dga_${informante?.rut_informante ?? idDgaUser}_${from}_${to}.csv`;
+    const url = this.dgaService.exportCsvUrlDirecto(siteId, desdeIso, hastaIso, this.dgaReportBucket());
+    const filename = `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
 
     this.dgaReportDownloading.set(true);
     this.dgaReportError.set('');
@@ -4782,12 +4810,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.dgaPage.set(1);
   }
 
-  dgaMonthHasData(monthIndex: number): boolean {
-    const year = new Date().getFullYear();
-    return this.dgaReportRows.some((row) => {
-      const d = new Date(row.dateIso);
-      return d.getFullYear() === year && d.getMonth() === monthIndex;
-    });
+  dgaMonthHasData(_monthIndex: number): boolean {
+    // Todos los meses seleccionables. El rango lo valida el backend al
+    // consultar `dato_dga`; si no hay data, el CSV queda con header solo.
+    return true;
   }
 
   setDgaRowsPerPage(event: Event): void {

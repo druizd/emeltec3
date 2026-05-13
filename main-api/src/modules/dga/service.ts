@@ -10,9 +10,28 @@ import {
   insertDgaUser,
   listDgaUsersBySite,
   queryDatoDga,
+  queryDatoDgaBySite,
   type DatoDgaRow,
   type DgaUserRow,
 } from './repo';
+import {
+  getMappingsBySiteId,
+  getPozoConfigBySiteId,
+  getSiteById,
+} from '../sites/repo';
+import { mapHistoricalDashboardRow } from '../sites/service';
+import { query as dbQuery } from '../../config/dbHelpers';
+import type { HistoryEquipoRow } from '../sites/types';
+
+export type BucketGranularidad = 'minuto' | 'hora' | 'dia' | 'semana' | 'mes';
+
+const BUCKET_TO_INTERVAL: Record<BucketGranularidad, string> = {
+  minuto: '1 minute',
+  hora: '1 hour',
+  dia: '1 day',
+  semana: '1 week',
+  mes: '1 month',
+};
 import type { CreateDgaUserPayload } from './schema';
 
 export interface DgaUserPublic {
@@ -86,6 +105,109 @@ export async function getDatoDga(
   const user = await findDgaUserById(idDgaUser);
   if (!user) throw new NotFoundError('Informante DGA no encontrado');
   return queryDatoDga(idDgaUser, desde, hasta);
+}
+
+export async function getDatoDgaBySite(
+  siteId: string,
+  desde: string,
+  hasta: string,
+): Promise<DatoDgaRow[]> {
+  return queryDatoDgaBySite(siteId, desde, hasta);
+}
+
+function numericOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function utcToChileFecha(iso: string): string {
+  // UTC → UTC-4 chileno (offset fijo, sin DST)
+  const d = new Date(iso);
+  d.setUTCHours(d.getUTCHours() - 4);
+  return d.toISOString().slice(0, 10);
+}
+
+function utcToChileHora(iso: string): string {
+  const d = new Date(iso);
+  d.setUTCHours(d.getUTCHours() - 4);
+  return d.toISOString().slice(11, 19);
+}
+
+/**
+ * Genera filas DGA leyendo directo de `equipo` y aplicando las transformaciones
+ * existentes del dashboard (caudal, totalizador, nivel_freatico). No depende de
+ * `dato_dga` ni de informantes registrados. Ideal para descarga manual del dueño.
+ */
+async function fetchEquipoBucketed(
+  serialId: string,
+  fromIso: string,
+  toIso: string,
+  bucket: BucketGranularidad,
+): Promise<HistoryEquipoRow[]> {
+  const interval = BUCKET_TO_INTERVAL[bucket];
+  const r = await dbQuery<HistoryEquipoRow>(
+    `SELECT time, received_at, id_serial, data
+       FROM (
+         SELECT DISTINCT ON (time_bucket($4::interval, time))
+           time, received_at, id_serial, data
+         FROM equipo
+         WHERE id_serial = $1
+           AND time >= $2::timestamptz
+           AND time <  $3::timestamptz
+         ORDER BY time_bucket($4::interval, time) DESC, time DESC
+       ) latest_by_bucket
+      ORDER BY time DESC`,
+    [serialId, fromIso, toIso, interval],
+    { name: 'dga__equipo_bucketed' },
+  );
+  return r.rows;
+}
+
+export async function getDatoDgaDirectoFromEquipo(
+  siteId: string,
+  desdeIso: string,
+  hastaIso: string,
+  bucket: BucketGranularidad = 'hora',
+): Promise<DatoDgaRow[]> {
+  const site = await getSiteById(siteId);
+  if (!site) throw new NotFoundError('Sitio no encontrado');
+  if (!site.id_serial) return [];
+
+  const [pozoConfig, mappings, rawRows] = await Promise.all([
+    getPozoConfigBySiteId(siteId),
+    getMappingsBySiteId(siteId),
+    fetchEquipoBucketed(site.id_serial, desdeIso, hastaIso, bucket),
+  ]);
+
+  const obra = pozoConfig?.obra_dga?.trim() || site.descripcion;
+
+  // Repo devuelve DESC; DGA exige cronológico ASC.
+  const processed = rawRows
+    .slice()
+    .reverse()
+    .map((raw) => {
+      const mapped = mapHistoricalDashboardRow({ row: raw, site, mappings, pozoConfig });
+      const ts =
+        mapped.timestamp ??
+        (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
+      return {
+        id_dgauser: '',
+        obra,
+        ts,
+        fecha: utcToChileFecha(ts),
+        hora: utcToChileHora(ts),
+        caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
+        flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
+        nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
+      } satisfies DatoDgaRow;
+    });
+  return processed;
+}
+
+function stringifyNumeric(value: number | null): string | null {
+  if (value === null) return null;
+  return value.toString();
 }
 
 export function toCsv(rows: DatoDgaRow[]): string {
