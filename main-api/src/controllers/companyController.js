@@ -321,6 +321,28 @@ async function ensureSerialAvailable(serialId, currentSiteId = null) {
   return rows[0] || null;
 }
 
+async function refreshCompanySiteCount(client, companyId) {
+  if (!companyId) return;
+  await client.query(
+    `UPDATE empresa
+     SET sitios = (SELECT COUNT(*) FROM sitio WHERE empresa_id = $1),
+         updated_at = NOW()
+     WHERE id = $1`,
+    [companyId],
+  );
+}
+
+async function refreshSubCompanySiteCount(client, subCompanyId) {
+  if (!subCompanyId) return;
+  await client.query(
+    `UPDATE sub_empresa
+     SET sitios = (SELECT COUNT(*) FROM sitio WHERE sub_empresa_id = $1),
+         updated_at = NOW()
+     WHERE id = $1`,
+    [subCompanyId],
+  );
+}
+
 function handleUniqueViolation(err, res) {
   if (err.code !== '23505') return false;
 
@@ -500,6 +522,113 @@ exports.createCompany = async (req, res, next) => {
 };
 
 /**
+ * PATCH /api/companies/:companyId
+ * Actualiza datos basicos de una empresa padre. Solo SuperAdmin.
+ */
+exports.updateCompany = async (req, res, next) => {
+  try {
+    const companyId = normalizeId(req.params.companyId);
+
+    const superAdminError = requireSuperAdmin(req, res);
+    if (superAdminError) {
+      return superAdminError;
+    }
+
+    const company = await getCompanyById(companyId);
+    if (!company) {
+      return notFound(res, 'Empresa no encontrada.');
+    }
+
+    const updates = [];
+    const params = [];
+
+    const fields = [
+      ['nombre', req.body.nombre === undefined ? undefined : cleanString(req.body.nombre)],
+      ['rut', req.body.rut === undefined ? undefined : cleanString(req.body.rut)],
+      [
+        'tipo_empresa',
+        req.body.tipo_empresa === undefined ? undefined : cleanString(req.body.tipo_empresa),
+      ],
+    ];
+
+    for (const [field, value] of fields) {
+      if (value === undefined) continue;
+      if (!value) {
+        return badRequest(res, `${field} no puede quedar vacio.`);
+      }
+      params.push(value);
+      updates.push(`${field} = $${params.length}`);
+    }
+
+    if (!updates.length) {
+      return badRequest(res, 'Debe enviar al menos un campo para actualizar.');
+    }
+
+    params.push(companyId);
+    const { rows } = await db.query(
+      `UPDATE empresa
+       SET ${updates.join(', ')}, updated_at = NOW()
+       WHERE id = $${params.length}
+       RETURNING id, nombre, rut, sitios, tipo_empresa, created_at, updated_at`,
+      params,
+    );
+
+    res.json({
+      ok: true,
+      message: 'Empresa actualizada correctamente.',
+      data: rows[0],
+    });
+  } catch (err) {
+    if (handleUniqueViolation(err, res)) return;
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/companies/:companyId
+ * Elimina una empresa padre y sus subempresas/sitios asociados por cascada.
+ */
+exports.deleteCompany = async (req, res, next) => {
+  const client = await db.connect();
+
+  try {
+    const companyId = normalizeId(req.params.companyId);
+
+    const superAdminError = requireSuperAdmin(req, res);
+    if (superAdminError) {
+      return superAdminError;
+    }
+
+    await client.query('BEGIN');
+    await client.query('DELETE FROM reg_map WHERE sitio_id IN (SELECT id FROM sitio WHERE empresa_id = $1)', [
+      companyId,
+    ]);
+    const { rows } = await client.query(
+      'DELETE FROM empresa WHERE id = $1 RETURNING id, nombre',
+      [companyId],
+    );
+
+    if (!rows.length) {
+      await client.query('ROLLBACK').catch(() => {});
+      return notFound(res, 'Empresa no encontrada.');
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      ok: true,
+      message: 'Empresa eliminada correctamente.',
+      data: rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+/**
  * POST /api/companies/:companyId/sub-companies
  * Crea una subempresa dentro de una empresa padre.
  */
@@ -548,6 +677,144 @@ exports.createSubCompany = async (req, res, next) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     if (handleUniqueViolation(err, res)) return;
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * PATCH /api/companies/:companyId/sub-companies/:subCompanyId
+ * Actualiza una subempresa. Si cambia de empresa padre, mueve tambien sus sitios.
+ */
+exports.updateSubCompany = async (req, res, next) => {
+  const client = await db.connect();
+
+  try {
+    const empresaId = normalizeId(req.params.companyId);
+    const subEmpresaId = normalizeId(req.params.subCompanyId);
+
+    const superAdminError = requireSuperAdmin(req, res);
+    if (superAdminError) {
+      return superAdminError;
+    }
+
+    const current = await getSubCompanyById(subEmpresaId);
+    if (!current || current.empresa_id !== empresaId) {
+      return notFound(res, 'Subempresa no encontrada para esa empresa.');
+    }
+
+    const nextEmpresaId =
+      req.body.empresa_id === undefined ? current.empresa_id : normalizeId(req.body.empresa_id);
+    if (!nextEmpresaId) {
+      return badRequest(res, 'empresa_id no puede quedar vacio.');
+    }
+
+    const nextCompany = await getCompanyById(nextEmpresaId);
+    if (!nextCompany) {
+      return notFound(res, 'Empresa destino no encontrada.');
+    }
+
+    const fields = [
+      ['nombre', req.body.nombre === undefined ? undefined : cleanString(req.body.nombre)],
+      ['rut', req.body.rut === undefined ? undefined : cleanString(req.body.rut)],
+      ['empresa_id', nextEmpresaId === current.empresa_id ? undefined : nextEmpresaId],
+    ];
+    const updates = [];
+    const params = [];
+
+    for (const [field, value] of fields) {
+      if (value === undefined) continue;
+      if (!value) {
+        return badRequest(res, `${field} no puede quedar vacio.`);
+      }
+      params.push(value);
+      updates.push(`${field} = $${params.length}`);
+    }
+
+    if (!updates.length) {
+      return badRequest(res, 'Debe enviar al menos un campo para actualizar.');
+    }
+
+    await client.query('BEGIN');
+
+    params.push(subEmpresaId);
+    const { rows } = await client.query(
+      `UPDATE sub_empresa
+       SET ${updates.join(', ')}, updated_at = NOW()
+       WHERE id = $${params.length}
+       RETURNING id, nombre, rut, sitios, empresa_id, created_at, updated_at`,
+      params,
+    );
+
+    if (nextEmpresaId !== current.empresa_id) {
+      await client.query(
+        `UPDATE sitio
+         SET empresa_id = $1, updated_at = NOW()
+         WHERE sub_empresa_id = $2`,
+        [nextEmpresaId, subEmpresaId],
+      );
+      await refreshCompanySiteCount(client, current.empresa_id);
+      await refreshCompanySiteCount(client, nextEmpresaId);
+    }
+
+    await refreshSubCompanySiteCount(client, subEmpresaId);
+    await client.query('COMMIT');
+
+    res.json({
+      ok: true,
+      message: 'Subempresa actualizada correctamente.',
+      data: rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (handleUniqueViolation(err, res)) return;
+    next(err);
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * DELETE /api/companies/:companyId/sub-companies/:subCompanyId
+ * Elimina una subempresa y sus sitios asociados por cascada.
+ */
+exports.deleteSubCompany = async (req, res, next) => {
+  const client = await db.connect();
+
+  try {
+    const empresaId = normalizeId(req.params.companyId);
+    const subEmpresaId = normalizeId(req.params.subCompanyId);
+
+    const superAdminError = requireSuperAdmin(req, res);
+    if (superAdminError) {
+      return superAdminError;
+    }
+
+    const current = await getSubCompanyById(subEmpresaId);
+    if (!current || current.empresa_id !== empresaId) {
+      return notFound(res, 'Subempresa no encontrada para esa empresa.');
+    }
+
+    await client.query('BEGIN');
+    await client.query(
+      'DELETE FROM reg_map WHERE sitio_id IN (SELECT id FROM sitio WHERE sub_empresa_id = $1)',
+      [subEmpresaId],
+    );
+    const { rows } = await client.query(
+      'DELETE FROM sub_empresa WHERE id = $1 RETURNING id, nombre',
+      [subEmpresaId],
+    );
+    await refreshCompanySiteCount(client, empresaId);
+    await client.query('COMMIT');
+
+    res.json({
+      ok: true,
+      message: 'Subempresa eliminada correctamente.',
+      data: rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     next(err);
   } finally {
     client.release();
@@ -611,20 +878,8 @@ exports.createSite = async (req, res, next) => {
       pozoConfig = await upsertPozoConfig(client, id, req.body.pozo_config);
     }
 
-    await client.query(
-      `UPDATE sub_empresa
-       SET sitios = (SELECT COUNT(*) FROM sitio WHERE sub_empresa_id = $1),
-           updated_at = NOW()
-       WHERE id = $1`,
-      [subEmpresaId],
-    );
-    await client.query(
-      `UPDATE empresa
-       SET sitios = (SELECT COUNT(*) FROM sitio WHERE empresa_id = $1),
-           updated_at = NOW()
-       WHERE id = $1`,
-      [empresaId],
-    );
+    await refreshSubCompanySiteCount(client, subEmpresaId);
+    await refreshCompanySiteCount(client, empresaId);
 
     await client.query('COMMIT');
 
@@ -658,6 +913,22 @@ exports.updateSite = async (req, res, next) => {
     const superAdminError = requireSuperAdmin(req, res);
     if (superAdminError) {
       return superAdminError;
+    }
+
+    const nextEmpresaId =
+      req.body.empresa_id === undefined ? site.empresa_id : normalizeId(req.body.empresa_id);
+    const nextSubEmpresaId =
+      req.body.sub_empresa_id === undefined
+        ? site.sub_empresa_id
+        : normalizeId(req.body.sub_empresa_id);
+
+    if (!nextEmpresaId || !nextSubEmpresaId) {
+      return badRequest(res, 'empresa_id y sub_empresa_id no pueden quedar vacios.');
+    }
+
+    const subCompany = await getSubCompanyById(nextSubEmpresaId);
+    if (!subCompany || subCompany.empresa_id !== nextEmpresaId) {
+      return notFound(res, 'Subempresa no encontrada para esa empresa.');
     }
 
     const updates = [];
@@ -706,6 +977,16 @@ exports.updateSite = async (req, res, next) => {
       updates.push(`activo = $${params.length}`);
     }
 
+    if (nextEmpresaId !== site.empresa_id) {
+      params.push(nextEmpresaId);
+      updates.push(`empresa_id = $${params.length}`);
+    }
+
+    if (nextSubEmpresaId !== site.sub_empresa_id) {
+      params.push(nextSubEmpresaId);
+      updates.push(`sub_empresa_id = $${params.length}`);
+    }
+
     const shouldUpsertPozoConfig =
       req.body.pozo_config !== undefined && (tipoSitio || site.tipo_sitio) === 'pozo';
 
@@ -738,6 +1019,13 @@ exports.updateSite = async (req, res, next) => {
         pozoConfig = await getPozoConfigBySiteId(siteId);
       }
 
+      if (nextEmpresaId !== site.empresa_id || nextSubEmpresaId !== site.sub_empresa_id) {
+        await refreshSubCompanySiteCount(client, site.sub_empresa_id);
+        await refreshSubCompanySiteCount(client, nextSubEmpresaId);
+        await refreshCompanySiteCount(client, site.empresa_id);
+        await refreshCompanySiteCount(client, nextEmpresaId);
+      }
+
       await client.query('COMMIT');
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
@@ -753,6 +1041,48 @@ exports.updateSite = async (req, res, next) => {
     });
   } catch (err) {
     next(err);
+  }
+};
+
+/**
+ * DELETE /api/companies/sites/:siteId
+ * Elimina un sitio y refresca los contadores de empresa/subempresa.
+ */
+exports.deleteSite = async (req, res, next) => {
+  const client = await db.connect();
+
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+
+    if (!site) {
+      return notFound(res, 'Sitio no encontrado.');
+    }
+
+    const superAdminError = requireSuperAdmin(req, res);
+    if (superAdminError) {
+      return superAdminError;
+    }
+
+    await client.query('BEGIN');
+    await client.query('DELETE FROM reg_map WHERE sitio_id = $1', [siteId]);
+    const { rows } = await client.query('DELETE FROM sitio WHERE id = $1 RETURNING id, descripcion', [
+      siteId,
+    ]);
+    await refreshSubCompanySiteCount(client, site.sub_empresa_id);
+    await refreshCompanySiteCount(client, site.empresa_id);
+    await client.query('COMMIT');
+
+    res.json({
+      ok: true,
+      message: 'Sitio eliminado correctamente.',
+      data: rows[0],
+    });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    next(err);
+  } finally {
+    client.release();
   }
 };
 
@@ -773,13 +1103,27 @@ exports.getDetectedDevices = async (req, res, next) => {
     const { rows } = await db.query(
       `
       WITH latest AS (
-        SELECT id_serial, COUNT(*)::int AS total_registros, MAX(time) AS ultimo_registro
+        SELECT
+          id_serial,
+          COUNT(*)::int AS total_registros,
+          MAX(COALESCE(received_at, time)) AS ultimo_registro
         FROM equipo
         GROUP BY id_serial
+        ORDER BY MAX(COALESCE(received_at, time)) DESC
+        LIMIT $1
+      ),
+      detected_keys AS (
+        SELECT e.id_serial, COUNT(DISTINCT kv.key)::int AS total_datos
+        FROM equipo e
+        JOIN latest l ON l.id_serial = e.id_serial
+        CROSS JOIN LATERAL jsonb_each(COALESCE(e.data, '{}'::jsonb)) AS kv(key, value)
+        GROUP BY e.id_serial
       )
       SELECT
         l.id_serial,
         l.total_registros,
+        COALESCE(dk.total_datos, 0)::int AS total_datos,
+        l.ultimo_registro AS ultimo_registro_raw,
         ${utcTimestampSql('l.ultimo_registro')} AS ultimo_registro,
         s.id AS sitio_id,
         s.descripcion AS sitio_descripcion,
@@ -790,16 +1134,22 @@ exports.getDetectedDevices = async (req, res, next) => {
         s.sub_empresa_id,
         se.nombre AS sub_empresa_nombre
       FROM latest l
+      LEFT JOIN detected_keys dk ON dk.id_serial = l.id_serial
       LEFT JOIN sitio s ON s.id_serial = l.id_serial
       LEFT JOIN empresa e ON e.id = s.empresa_id
       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
       ORDER BY l.ultimo_registro DESC
-      LIMIT $1
       `,
       params,
     );
 
-    res.json({ ok: true, count: rows.length, data: rows });
+    const data = rows.map(({ ultimo_registro_raw, ...row }) => ({
+      ...row,
+      total_datos: Number(row.total_datos || 0),
+      ultimo_registro_local: formatChileTimestamp(ultimo_registro_raw),
+    }));
+
+    res.json({ ok: true, count: data.length, data });
   } catch (err) {
     next(err);
   }
