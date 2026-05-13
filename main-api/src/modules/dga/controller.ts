@@ -21,6 +21,7 @@ const ExportDirectoParams = z.object({
   site_id: z.string().trim().min(1).max(10),
   desde: z.string().datetime({ offset: true }),
   hasta: z.string().datetime({ offset: true }),
+  bucket: z.enum(['minuto', 'hora', 'dia', 'semana', 'mes']).default('hora'),
 });
 
 export async function createDgaUserHandler(
@@ -100,6 +101,7 @@ export async function exportDgaDirectoCsvHandler(
       parsed.data.site_id,
       parsed.data.desde,
       parsed.data.hasta,
+      parsed.data.bucket,
     );
     const csv = toCsv(rows);
     const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;

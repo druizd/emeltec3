@@ -15,12 +15,23 @@ import {
   type DgaUserRow,
 } from './repo';
 import {
-  getDashboardHistoryRange,
   getMappingsBySiteId,
   getPozoConfigBySiteId,
   getSiteById,
 } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
+import { query as dbQuery } from '../../config/dbHelpers';
+import type { HistoryEquipoRow } from '../sites/types';
+
+export type BucketGranularidad = 'minuto' | 'hora' | 'dia' | 'semana' | 'mes';
+
+const BUCKET_TO_INTERVAL: Record<BucketGranularidad, string> = {
+  minuto: '1 minute',
+  hora: '1 hour',
+  dia: '1 day',
+  semana: '1 week',
+  mes: '1 month',
+};
 import type { CreateDgaUserPayload } from './schema';
 
 export interface DgaUserPublic {
@@ -128,10 +139,36 @@ function utcToChileHora(iso: string): string {
  * existentes del dashboard (caudal, totalizador, nivel_freatico). No depende de
  * `dato_dga` ni de informantes registrados. Ideal para descarga manual del dueño.
  */
+async function fetchEquipoBucketed(
+  serialId: string,
+  fromIso: string,
+  toIso: string,
+  bucket: BucketGranularidad,
+): Promise<HistoryEquipoRow[]> {
+  const interval = BUCKET_TO_INTERVAL[bucket];
+  const r = await dbQuery<HistoryEquipoRow>(
+    `SELECT time, received_at, id_serial, data
+       FROM (
+         SELECT DISTINCT ON (time_bucket($4::interval, time))
+           time, received_at, id_serial, data
+         FROM equipo
+         WHERE id_serial = $1
+           AND time >= $2::timestamptz
+           AND time <  $3::timestamptz
+         ORDER BY time_bucket($4::interval, time) DESC, time DESC
+       ) latest_by_bucket
+      ORDER BY time DESC`,
+    [serialId, fromIso, toIso, interval],
+    { name: 'dga__equipo_bucketed' },
+  );
+  return r.rows;
+}
+
 export async function getDatoDgaDirectoFromEquipo(
   siteId: string,
   desdeIso: string,
   hastaIso: string,
+  bucket: BucketGranularidad = 'hora',
 ): Promise<DatoDgaRow[]> {
   const site = await getSiteById(siteId);
   if (!site) throw new NotFoundError('Sitio no encontrado');
@@ -140,7 +177,7 @@ export async function getDatoDgaDirectoFromEquipo(
   const [pozoConfig, mappings, rawRows] = await Promise.all([
     getPozoConfigBySiteId(siteId),
     getMappingsBySiteId(siteId),
-    getDashboardHistoryRange(site.id_serial, desdeIso, hastaIso),
+    fetchEquipoBucketed(site.id_serial, desdeIso, hastaIso, bucket),
   ]);
 
   const obra = pozoConfig?.obra_dga?.trim() || site.descripcion;

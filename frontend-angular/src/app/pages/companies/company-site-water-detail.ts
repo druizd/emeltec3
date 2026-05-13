@@ -2716,8 +2716,33 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </label>
             </div>
 
+            <!-- Granularidad del CSV -->
+            <div class="mt-4 border-t border-slate-100 px-5 pt-4 pb-2">
+              <label class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                Granularidad de los datos en el CSV
+              </label>
+              <div class="mt-2 grid grid-cols-5 gap-2">
+                @for (opt of dgaReportBucketOptions; track opt.value) {
+                  <button
+                    type="button"
+                    (click)="dgaReportBucket.set(opt.value)"
+                    [class]="
+                      dgaReportBucket() === opt.value
+                        ? 'rounded-lg border border-violet-500 bg-violet-50 px-2 py-1.5 text-[11px] font-semibold text-violet-700'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-violet-200 hover:text-violet-700'
+                    "
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <p class="mt-1 text-[10px] text-slate-400">
+                1 fila por bucket. La medición es la más reciente dentro del bucket.
+              </p>
+            </div>
+
             <!-- Informantes registrados (solo informativo) + error/status -->
-            <div class="mt-4 border-t border-slate-100 px-5 py-3 space-y-2">
+            <div class="border-t border-slate-100 px-5 py-3 space-y-2">
               @if (dgaInformantes().length > 0) {
                 <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
                   Informantes registrados para este sitio
@@ -3100,6 +3125,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaInformanteSeleccionado = signal<string | null>(null);
   dgaReportDownloading = signal<boolean>(false);
   dgaReportError = signal<string>('');
+  dgaReportBucket = signal<'minuto' | 'hora' | 'dia' | 'semana' | 'mes'>('hora');
+  readonly dgaReportBucketOptions: { value: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes'; label: string }[] = [
+    { value: 'minuto', label: 'Cada minuto' },
+    { value: 'hora', label: 'Cada hora' },
+    { value: 'dia', label: 'Cada día' },
+    { value: 'semana', label: 'Cada semana' },
+    { value: 'mes', label: 'Cada mes' },
+  ];
   settingsStatus = signal<SettingsStatus>({ type: '', message: '' });
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
@@ -4651,8 +4684,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     hastaDate.setUTCDate(hastaDate.getUTCDate() + 1);
     const hastaIso = hastaDate.toISOString();
 
-    const url = this.dgaService.exportCsvUrlDirecto(siteId, desdeIso, hastaIso);
-    const filename = `reporte_dga_${siteId}_${from}_${to}.csv`;
+    const url = this.dgaService.exportCsvUrlDirecto(siteId, desdeIso, hastaIso, this.dgaReportBucket());
+    const filename = `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
 
     this.dgaReportDownloading.set(true);
     this.dgaReportError.set('');
