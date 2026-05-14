@@ -1,0 +1,17 @@
+packages:
+  - shared
+  - frontend-angular
+  - main-api
+  - auth-api
+
+# Native build scripts approved — required for runtime compilation.
+# bcrypt: auth-api password hashing
+# esbuild / @parcel/watcher / lmdb / msgpackr-extract: Angular dev server + build cache
+# protobufjs: main-api gRPC proto loader
+allowBuilds:
+  '@parcel/watcher': true
+  bcrypt: true
+  esbuild: true
+  lmdb: true
+  msgpackr-extract: true
+  protobufjs: true

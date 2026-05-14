@@ -72,7 +72,9 @@ export class AdministrationService {
   }
 
   deleteCompany(companyId: string): Observable<ApiResponse<unknown>> {
-    return this.http.delete<ApiResponse<unknown>>(`/api/companies/${encodeURIComponent(companyId)}`);
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/companies/${encodeURIComponent(companyId)}`,
+    );
   }
 
   createSubCompany(

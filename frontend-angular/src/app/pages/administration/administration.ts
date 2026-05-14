@@ -382,7 +382,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         }
 
         @if (confirmDialog(); as dialog) {
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
+          <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          >
             <section
               class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
               role="dialog"
@@ -402,7 +404,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>
-              <div class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+              <div
+                class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end"
+              >
                 <button type="button" (click)="cancelConfirmDialog()" class="secondary-button">
                   {{ dialog.cancelText }}
                 </button>
@@ -453,7 +457,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
 
                   <div class="space-y-5 p-6">
-                    <form (submit)="submitCompany($event)" class="editor-panel grid gap-4 lg:grid-cols-3">
+                    <form
+                      (submit)="submitCompany($event)"
+                      class="editor-panel grid gap-4 lg:grid-cols-3"
+                    >
                       <div class="flex items-start justify-between gap-3 lg:col-span-3">
                         <div>
                           <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
@@ -468,7 +475,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </p>
                         </div>
                         @if (selectedCompanyId()) {
-                          <button type="button" (click)="startCreateCompany()" class="secondary-button">
+                          <button
+                            type="button"
+                            (click)="startCreateCompany()"
+                            class="secondary-button"
+                          >
                             <span class="material-symbols-outlined text-[18px]">add</span>
                             Nueva
                           </button>
@@ -514,47 +525,55 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </select>
                       </div>
                       <div class="flex flex-wrap gap-2 lg:col-span-3">
-                      @if (!selectedCompanyId()) {
-                        <button
-                          type="submit"
-                          [disabled]="busyAction() === 'company'"
-                          class="primary-button"
-                        >
-                          <span class="material-symbols-outlined text-[18px]">domain_add</span>
-                          {{ busyAction() === 'company' ? 'Guardando' : 'Crear empresa' }}
-                        </button>
-                      } @else if (!companyEditMode()) {
-                        <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-                          <button type="button" (click)="enableCompanyEdit()" class="secondary-button">
-                            <span class="material-symbols-outlined text-[18px]">edit</span>
-                            Editar datos
-                          </button>
-                          <button
-                            type="button"
-                            (click)="deleteSelectedCompany()"
-                            [disabled]="busyAction() === 'company-delete'"
-                            class="danger-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                      } @else {
-                        <div class="grid gap-2 sm:grid-cols-2">
+                        @if (!selectedCompanyId()) {
                           <button
                             type="submit"
-                            [disabled]="busyAction() === 'company-update'"
+                            [disabled]="busyAction() === 'company'"
                             class="primary-button"
                           >
-                            <span class="material-symbols-outlined text-[18px]">save</span>
-                            {{
-                              busyAction() === 'company-update' ? 'Actualizando' : 'Actualizar'
-                            }}
+                            <span class="material-symbols-outlined text-[18px]">domain_add</span>
+                            {{ busyAction() === 'company' ? 'Guardando' : 'Crear empresa' }}
                           </button>
-                          <button type="button" (click)="cancelCompanyEdit()" class="secondary-button">
-                            Cancelar
-                          </button>
-                        </div>
-                      }
+                        } @else if (!companyEditMode()) {
+                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <button
+                              type="button"
+                              (click)="enableCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">edit</span>
+                              Editar datos
+                            </button>
+                            <button
+                              type="button"
+                              (click)="deleteSelectedCompany()"
+                              [disabled]="busyAction() === 'company-delete'"
+                              class="danger-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <button
+                              type="submit"
+                              [disabled]="busyAction() === 'company-update'"
+                              class="primary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">save</span>
+                              {{
+                                busyAction() === 'company-update' ? 'Actualizando' : 'Actualizar'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        }
                       </div>
                     </form>
 
@@ -579,54 +598,76 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </div>
 
                       <div class="overflow-x-auto">
-                      <table class="min-w-[680px] w-full text-left text-sm">
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (company of paginatedCompanies(); track company.id) {
-                            <tr
-                              (click)="selectCompany(company.id)"
-                              [class]="rowClass(selectedCompanyId() === company.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800">
-                                {{ company.nombre }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
-                              <td class="px-4 py-3">
-                                <span
-                                  [class]="companyTypeBadgeClass(company.tipo_empresa)"
-                                  >{{ company.tipo_empresa }}</span
-                                >
-                              </td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600">
-                                {{ countCompanySites(company) }}
-                              </td>
+                        <table class="min-w-[680px] w-full text-left text-sm">
+                          <thead class="table-head">
+                            <tr>
+                              <th class="px-4 py-3">Nombre</th>
+                              <th class="px-4 py-3">RUT</th>
+                              <th class="px-4 py-3">Tipo</th>
+                              <th class="px-4 py-3 text-right">Sitios</th>
                             </tr>
-                          }
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            @for (company of paginatedCompanies(); track company.id) {
+                              <tr
+                                (click)="selectCompany(company.id)"
+                                [class]="rowClass(selectedCompanyId() === company.id)"
+                              >
+                                <td class="px-4 py-3 font-bold text-slate-800">
+                                  {{ company.nombre }}
+                                </td>
+                                <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
+                                <td class="px-4 py-3">
+                                  <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
+                                    company.tipo_empresa
+                                  }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                  {{ countCompanySites(company) }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
                       </div>
-                      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
                         <p class="text-xs font-bold text-slate-400">
-                          Mostrando {{ paginationStart(filteredCompanies().length, companyPage()) }}-{{ paginationEnd(filteredCompanies().length, companyPage()) }} de {{ filteredCompanies().length }}
+                          Mostrando
+                          {{ paginationStart(filteredCompanies().length, companyPage()) }}-{{
+                            paginationEnd(filteredCompanies().length, companyPage())
+                          }}
+                          de {{ filteredCompanies().length }}
                         </p>
                         @if (totalPages(filteredCompanies().length) > 1) {
                           <div class="flex flex-wrap items-center gap-1.5">
-                            <button type="button" (click)="setPage('empresas', companyPage() - 1)" [disabled]="companyPage() === 1" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('empresas', companyPage() - 1)"
+                              [disabled]="companyPage() === 1"
+                              class="pagination-button"
+                            >
                               Anterior
                             </button>
-                            @for (page of paginationPages(filteredCompanies().length, companyPage()); track page) {
-                              <button type="button" (click)="setPage('empresas', page)" [class]="paginationButtonClass(companyPage() === page)">
+                            @for (
+                              page of paginationPages(filteredCompanies().length, companyPage());
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('empresas', page)"
+                                [class]="paginationButtonClass(companyPage() === page)"
+                              >
                                 {{ page }}
                               </button>
                             }
-                            <button type="button" (click)="setPage('empresas', companyPage() + 1)" [disabled]="companyPage() >= totalPages(filteredCompanies().length)" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('empresas', companyPage() + 1)"
+                              [disabled]="companyPage() >= totalPages(filteredCompanies().length)"
+                              class="pagination-button"
+                            >
                               Siguiente
                             </button>
                           </div>
@@ -644,11 +685,18 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
 
                   <div class="space-y-5 p-6">
-                    <form (submit)="submitSubCompany($event)" class="editor-panel grid gap-4 lg:grid-cols-3">
+                    <form
+                      (submit)="submitSubCompany($event)"
+                      class="editor-panel grid gap-4 lg:grid-cols-3"
+                    >
                       <div class="flex items-start justify-between gap-3 lg:col-span-3">
                         <div>
                           <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
-                            {{ selectedSubCompanyId() ? 'Subempresa seleccionada' : 'Nueva subempresa' }}
+                            {{
+                              selectedSubCompanyId()
+                                ? 'Subempresa seleccionada'
+                                : 'Nueva subempresa'
+                            }}
                           </p>
                           <p class="mt-1 text-sm text-slate-500">
                             {{
@@ -659,7 +707,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </p>
                         </div>
                         @if (selectedSubCompanyId()) {
-                          <button type="button" (click)="startCreateSubCompany()" class="secondary-button">
+                          <button
+                            type="button"
+                            (click)="startCreateSubCompany()"
+                            class="secondary-button"
+                          >
                             <span class="material-symbols-outlined text-[18px]">add</span>
                             Nueva
                           </button>
@@ -708,57 +760,55 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         />
                       </div>
                       <div class="flex flex-wrap gap-2 lg:col-span-3">
-                      @if (!selectedSubCompanyId()) {
-                        <button
-                          type="submit"
-                          [disabled]="busyAction() === 'subcompany'"
-                          class="primary-button"
-                        >
-                          <span class="material-symbols-outlined text-[18px]">add_business</span>
-                          {{ busyAction() === 'subcompany' ? 'Guardando' : 'Crear subempresa' }}
-                        </button>
-                      } @else if (!subCompanyEditMode()) {
-                        <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-                          <button
-                            type="button"
-                            (click)="enableSubCompanyEdit()"
-                            class="secondary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">edit</span>
-                            Editar datos
-                          </button>
-                          <button
-                            type="button"
-                            (click)="deleteSelectedSubCompany()"
-                            [disabled]="busyAction() === 'subcompany-delete'"
-                            class="danger-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                      } @else {
-                        <div class="grid gap-2 sm:grid-cols-2">
+                        @if (!selectedSubCompanyId()) {
                           <button
                             type="submit"
-                            [disabled]="busyAction() === 'subcompany-update'"
+                            [disabled]="busyAction() === 'subcompany'"
                             class="primary-button"
                           >
-                            <span class="material-symbols-outlined text-[18px]">save</span>
-                            {{
-                              busyAction() === 'subcompany-update'
-                                ? 'Actualizando'
-                                : 'Actualizar'
-                            }}
+                            <span class="material-symbols-outlined text-[18px]">add_business</span>
+                            {{ busyAction() === 'subcompany' ? 'Guardando' : 'Crear subempresa' }}
                           </button>
-                          <button
-                            type="button"
-                            (click)="cancelSubCompanyEdit()"
-                            class="secondary-button"
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      }
+                        } @else if (!subCompanyEditMode()) {
+                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <button
+                              type="button"
+                              (click)="enableSubCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">edit</span>
+                              Editar datos
+                            </button>
+                            <button
+                              type="button"
+                              (click)="deleteSelectedSubCompany()"
+                              [disabled]="busyAction() === 'subcompany-delete'"
+                              class="danger-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <button
+                              type="submit"
+                              [disabled]="busyAction() === 'subcompany-update'"
+                              class="primary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">save</span>
+                              {{
+                                busyAction() === 'subcompany-update' ? 'Actualizando' : 'Actualizar'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelSubCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        }
                       </div>
                     </form>
 
@@ -767,7 +817,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <div>
                           <p class="text-sm font-black text-slate-800">Subempresas registradas</p>
                           <p class="text-xs font-bold text-slate-400">
-                            {{ filteredSubCompanies().length }} de {{ allSubCompanies().length }} visibles
+                            {{ filteredSubCompanies().length }} de
+                            {{ allSubCompanies().length }} visibles
                           </p>
                         </div>
                         <label class="search-control">
@@ -783,47 +834,75 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </div>
 
                       <div class="overflow-x-auto">
-                      <table class="min-w-[760px] w-full text-left text-sm">
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">Empresa</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (sub of paginatedSubCompanies(); track sub.id) {
-                            <tr
-                              (click)="selectSubCompany(sub.id)"
-                              [class]="rowClass(selectedSubCompanyId() === sub.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
-                              <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
-                              <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600">
-                                {{ sub.sites.length }}
-                              </td>
+                        <table class="min-w-[760px] w-full text-left text-sm">
+                          <thead class="table-head">
+                            <tr>
+                              <th class="px-4 py-3">Nombre</th>
+                              <th class="px-4 py-3">Empresa</th>
+                              <th class="px-4 py-3">RUT</th>
+                              <th class="px-4 py-3 text-right">Sitios</th>
                             </tr>
-                          }
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            @for (sub of paginatedSubCompanies(); track sub.id) {
+                              <tr
+                                (click)="selectSubCompany(sub.id)"
+                                [class]="rowClass(selectedSubCompanyId() === sub.id)"
+                              >
+                                <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
+                                <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                  {{ sub.sites.length }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
                       </div>
-                      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
                         <p class="text-xs font-bold text-slate-400">
-                          Mostrando {{ paginationStart(filteredSubCompanies().length, subCompanyPage()) }}-{{ paginationEnd(filteredSubCompanies().length, subCompanyPage()) }} de {{ filteredSubCompanies().length }}
+                          Mostrando
+                          {{ paginationStart(filteredSubCompanies().length, subCompanyPage()) }}-{{
+                            paginationEnd(filteredSubCompanies().length, subCompanyPage())
+                          }}
+                          de {{ filteredSubCompanies().length }}
                         </p>
                         @if (totalPages(filteredSubCompanies().length) > 1) {
                           <div class="flex flex-wrap items-center gap-1.5">
-                            <button type="button" (click)="setPage('subempresas', subCompanyPage() - 1)" [disabled]="subCompanyPage() === 1" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('subempresas', subCompanyPage() - 1)"
+                              [disabled]="subCompanyPage() === 1"
+                              class="pagination-button"
+                            >
                               Anterior
                             </button>
-                            @for (page of paginationPages(filteredSubCompanies().length, subCompanyPage()); track page) {
-                              <button type="button" (click)="setPage('subempresas', page)" [class]="paginationButtonClass(subCompanyPage() === page)">
+                            @for (
+                              page of paginationPages(
+                                filteredSubCompanies().length,
+                                subCompanyPage()
+                              );
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('subempresas', page)"
+                                [class]="paginationButtonClass(subCompanyPage() === page)"
+                              >
                                 {{ page }}
                               </button>
                             }
-                            <button type="button" (click)="setPage('subempresas', subCompanyPage() + 1)" [disabled]="subCompanyPage() >= totalPages(filteredSubCompanies().length)" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('subempresas', subCompanyPage() + 1)"
+                              [disabled]="
+                                subCompanyPage() >= totalPages(filteredSubCompanies().length)
+                              "
+                              class="pagination-button"
+                            >
                               Siguiente
                             </button>
                           </div>
@@ -841,7 +920,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
 
                   <div class="space-y-5 p-6">
-                    <form (submit)="submitSite($event)" class="editor-panel grid gap-4 lg:grid-cols-4">
+                    <form
+                      (submit)="submitSite($event)"
+                      class="editor-panel grid gap-4 lg:grid-cols-4"
+                    >
                       <div class="flex items-start justify-between gap-3 lg:col-span-4">
                         <div>
                           <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
@@ -856,7 +938,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </p>
                         </div>
                         @if (selectedSiteId()) {
-                          <button type="button" (click)="startCreateSite()" class="secondary-button">
+                          <button
+                            type="button"
+                            (click)="startCreateSite()"
+                            class="secondary-button"
+                          >
                             <span class="material-symbols-outlined text-[18px]">add</span>
                             Nuevo
                           </button>
@@ -967,47 +1053,55 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         />
                       </div>
                       <div class="lg:col-span-4 flex flex-wrap gap-2">
-                      @if (!selectedSiteId()) {
-                        <button
-                          type="submit"
-                          [disabled]="busyAction() === 'site'"
-                          class="primary-button"
-                        >
-                          <span class="material-symbols-outlined text-[18px]">add_location_alt</span>
-                          {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
-                        </button>
-                      } @else if (!siteEditMode()) {
-                        <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-                          <button type="button" (click)="enableSiteEdit()" class="secondary-button">
-                            <span class="material-symbols-outlined text-[18px]">edit</span>
-                            Editar datos
-                          </button>
-                          <button
-                            type="button"
-                            (click)="deleteSelectedSite()"
-                            [disabled]="busyAction() === 'site-delete'"
-                            class="danger-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                      } @else {
-                        <div class="grid gap-2 sm:grid-cols-2">
+                        @if (!selectedSiteId()) {
                           <button
                             type="submit"
-                            [disabled]="busyAction() === 'site-update'"
+                            [disabled]="busyAction() === 'site'"
                             class="primary-button"
                           >
-                            <span class="material-symbols-outlined text-[18px]">save</span>
-                            {{
-                              busyAction() === 'site-update' ? 'Actualizando' : 'Actualizar'
-                            }}
+                            <span class="material-symbols-outlined text-[18px]"
+                              >add_location_alt</span
+                            >
+                            {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
                           </button>
-                          <button type="button" (click)="cancelSiteEdit()" class="secondary-button">
-                            Cancelar
-                          </button>
-                        </div>
-                      }
+                        } @else if (!siteEditMode()) {
+                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <button
+                              type="button"
+                              (click)="enableSiteEdit()"
+                              class="secondary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">edit</span>
+                              Editar datos
+                            </button>
+                            <button
+                              type="button"
+                              (click)="deleteSelectedSite()"
+                              [disabled]="busyAction() === 'site-delete'"
+                              class="danger-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <button
+                              type="submit"
+                              [disabled]="busyAction() === 'site-update'"
+                              class="primary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">save</span>
+                              {{ busyAction() === 'site-update' ? 'Actualizando' : 'Actualizar' }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelSiteEdit()"
+                              class="secondary-button"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        }
                       </div>
                       @if (selectedSiteId() && !siteEditMode()) {
                         <div
@@ -1087,21 +1181,43 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </tbody>
                         </table>
                       </div>
-                      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
                         <p class="text-xs font-bold text-slate-400">
-                          Mostrando {{ paginationStart(filteredSites().length, sitePage()) }}-{{ paginationEnd(filteredSites().length, sitePage()) }} de {{ filteredSites().length }}
+                          Mostrando {{ paginationStart(filteredSites().length, sitePage()) }}-{{
+                            paginationEnd(filteredSites().length, sitePage())
+                          }}
+                          de {{ filteredSites().length }}
                         </p>
                         @if (totalPages(filteredSites().length) > 1) {
                           <div class="flex flex-wrap items-center gap-1.5">
-                            <button type="button" (click)="setPage('sitios', sitePage() - 1)" [disabled]="sitePage() === 1" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('sitios', sitePage() - 1)"
+                              [disabled]="sitePage() === 1"
+                              class="pagination-button"
+                            >
                               Anterior
                             </button>
-                            @for (page of paginationPages(filteredSites().length, sitePage()); track page) {
-                              <button type="button" (click)="setPage('sitios', page)" [class]="paginationButtonClass(sitePage() === page)">
+                            @for (
+                              page of paginationPages(filteredSites().length, sitePage());
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('sitios', page)"
+                                [class]="paginationButtonClass(sitePage() === page)"
+                              >
                                 {{ page }}
                               </button>
                             }
-                            <button type="button" (click)="setPage('sitios', sitePage() + 1)" [disabled]="sitePage() >= totalPages(filteredSites().length)" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('sitios', sitePage() + 1)"
+                              [disabled]="sitePage() >= totalPages(filteredSites().length)"
+                              class="pagination-button"
+                            >
                               Siguiente
                             </button>
                           </div>
@@ -1124,7 +1240,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <div>
                           <p class="text-sm font-black text-slate-800">Equipos detectados</p>
                           <p class="text-xs font-bold text-slate-400">
-                            {{ filteredDevices().length }} de {{ detectedDevices().length }} visibles
+                            {{ filteredDevices().length }} de
+                            {{ detectedDevices().length }} visibles
                           </p>
                         </div>
                         <div class="flex flex-wrap items-center justify-end gap-2">
@@ -1146,58 +1263,80 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </div>
 
                       <div class="overflow-x-auto">
-                      <table class="min-w-[760px] w-full text-left text-sm">
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Ultimo registro</th>
-                            <th class="px-4 py-3 text-right">Cantidad de datos</th>
-                            <th class="px-4 py-3">Sitio</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (device of paginatedDevices(); track device.id_serial) {
-                            <tr class="bg-white transition-colors hover:bg-slate-50">
-                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
-                                {{ device.id_serial }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500">
-                                {{ deviceLastSeenLabel(device) }}
-                              </td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-700">
-                                {{ deviceDataCountLabel(device) }}
-                              </td>
-                              <td class="px-4 py-3">
-                                <span
-                                  [class]="
-                                    device.sitio_id
-                                      ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
-                                      : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'
-                                  "
-                                >
-                                  {{ device.sitio_descripcion || 'Sin asignar' }}
-                                </span>
-                              </td>
+                        <table class="min-w-[760px] w-full text-left text-sm">
+                          <thead class="table-head">
+                            <tr>
+                              <th class="px-4 py-3">Serial</th>
+                              <th class="px-4 py-3">Ultimo registro</th>
+                              <th class="px-4 py-3 text-right">Cantidad de datos</th>
+                              <th class="px-4 py-3">Sitio</th>
                             </tr>
-                          }
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            @for (device of paginatedDevices(); track device.id_serial) {
+                              <tr class="bg-white transition-colors hover:bg-slate-50">
+                                <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
+                                  {{ device.id_serial }}
+                                </td>
+                                <td class="px-4 py-3 text-slate-500">
+                                  {{ deviceLastSeenLabel(device) }}
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-slate-700">
+                                  {{ deviceDataCountLabel(device) }}
+                                </td>
+                                <td class="px-4 py-3">
+                                  <span
+                                    [class]="
+                                      device.sitio_id
+                                        ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
+                                        : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'
+                                    "
+                                  >
+                                    {{ device.sitio_descripcion || 'Sin asignar' }}
+                                  </span>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
                       </div>
-                      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3">
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
                         <p class="text-xs font-bold text-slate-400">
-                          Mostrando {{ paginationStart(filteredDevices().length, devicePage()) }}-{{ paginationEnd(filteredDevices().length, devicePage()) }} de {{ filteredDevices().length }}
+                          Mostrando {{ paginationStart(filteredDevices().length, devicePage()) }}-{{
+                            paginationEnd(filteredDevices().length, devicePage())
+                          }}
+                          de {{ filteredDevices().length }}
                         </p>
                         @if (totalPages(filteredDevices().length) > 1) {
                           <div class="flex flex-wrap items-center gap-1.5">
-                            <button type="button" (click)="setPage('equipos', devicePage() - 1)" [disabled]="devicePage() === 1" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('equipos', devicePage() - 1)"
+                              [disabled]="devicePage() === 1"
+                              class="pagination-button"
+                            >
                               Anterior
                             </button>
-                            @for (page of paginationPages(filteredDevices().length, devicePage()); track page) {
-                              <button type="button" (click)="setPage('equipos', page)" [class]="paginationButtonClass(devicePage() === page)">
+                            @for (
+                              page of paginationPages(filteredDevices().length, devicePage());
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('equipos', page)"
+                                [class]="paginationButtonClass(devicePage() === page)"
+                              >
                                 {{ page }}
                               </button>
                             }
-                            <button type="button" (click)="setPage('equipos', devicePage() + 1)" [disabled]="devicePage() >= totalPages(filteredDevices().length)" class="pagination-button">
+                            <button
+                              type="button"
+                              (click)="setPage('equipos', devicePage() + 1)"
+                              [disabled]="devicePage() >= totalPages(filteredDevices().length)"
+                              class="pagination-button"
+                            >
                               Siguiente
                             </button>
                           </div>
@@ -1220,8 +1359,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         border-radius: 0.9rem;
         border: 1px solid rgb(226 232 240);
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95)),
-          white;
+          linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95)), white;
         box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
       }
 
@@ -1231,8 +1369,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         overflow-x: auto;
         border-bottom: 1px solid rgb(226 232 240);
         background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.86)),
-          white;
+          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.86)), white;
         padding: 0.9rem 1rem 0;
       }
 
@@ -1285,8 +1422,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         border: 1px solid rgb(207 250 254);
         background:
           radial-gradient(circle at top left, rgba(6, 182, 212, 0.12), transparent 34rem),
-          linear-gradient(180deg, rgba(236, 254, 255, 0.72), rgba(255, 255, 255, 0.96)),
-          white;
+          linear-gradient(180deg, rgba(236, 254, 255, 0.72), rgba(255, 255, 255, 0.96)), white;
         padding: 1.25rem;
         box-shadow: 0 14px 30px rgba(15, 23, 42, 0.055);
       }
@@ -1607,7 +1743,9 @@ export class AdministrationComponent implements OnInit {
     this.paginate(this.filteredSubCompanies(), this.subCompanyPage()),
   );
 
-  paginatedSites = computed<SiteOption[]>(() => this.paginate(this.filteredSites(), this.sitePage()));
+  paginatedSites = computed<SiteOption[]>(() =>
+    this.paginate(this.filteredSites(), this.sitePage()),
+  );
 
   paginatedDevices = computed<DetectedDevice[]>(() =>
     this.paginate(this.filteredDevices(), this.devicePage()),
@@ -2235,7 +2373,7 @@ export class AdministrationComponent implements OnInit {
           this.busyAction.set('');
           this.setError(this.errorMessage(err, 'No fue posible crear el sitio.'));
         },
-    });
+      });
   }
 
   saveSelectedSite(event?: Event): void {
@@ -2568,7 +2706,8 @@ export class AdministrationComponent implements OnInit {
   }
 
   deviceLastSeenLabel(device: DetectedDevice): string {
-    if (device.ultimo_registro_local) return this.readableDeviceDateTime(device.ultimo_registro_local);
+    if (device.ultimo_registro_local)
+      return this.readableDeviceDateTime(device.ultimo_registro_local);
 
     const date = new Date(device.ultimo_registro);
     if (Number.isNaN(date.getTime())) return device.ultimo_registro || 'Sin registro';
@@ -2595,8 +2734,7 @@ export class AdministrationComponent implements OnInit {
   }
 
   sectionButtonClass(section: SectionId): string {
-    const base =
-      `section-tab-button section-tab-${section} inline-flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-black transition-all`;
+    const base = `section-tab-button section-tab-${section} inline-flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-black transition-all`;
     return this.activeSection() === section
       ? `${base} section-tab-active`
       : `${base} text-slate-500 hover:text-cyan-800`;
@@ -2637,7 +2775,9 @@ export class AdministrationComponent implements OnInit {
 
   private clampAllPages(): void {
     this.companyPage.set(this.clampPage(this.companyPage(), this.filteredCompanies().length));
-    this.subCompanyPage.set(this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length));
+    this.subCompanyPage.set(
+      this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length),
+    );
     this.sitePage.set(this.clampPage(this.sitePage(), this.filteredSites().length));
     this.devicePage.set(this.clampPage(this.devicePage(), this.filteredDevices().length));
   }
@@ -2699,7 +2839,9 @@ export class AdministrationComponent implements OnInit {
     this.status.set({ type: 'error', message });
   }
 
-  private confirmAdminAction(dialog: Omit<ConfirmDialog, 'cancelText'> & { cancelText?: string }): void {
+  private confirmAdminAction(
+    dialog: Omit<ConfirmDialog, 'cancelText'> & { cancelText?: string },
+  ): void {
     this.confirmDialog.set({
       cancelText: 'Cancelar',
       ...dialog,

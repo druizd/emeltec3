@@ -46,6 +46,13 @@ const Schema = z.object({
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
 
+  ENABLE_HEALTH_DIGEST_WORKER: z
+    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
+  MONITOR_PRIMARY_EMAIL: z.string().email().optional(),
+
   DGA_ENCRYPTION_KEY: z
     .string()
     .min(32, 'DGA_ENCRYPTION_KEY debe tener al menos 32 caracteres (clave AES-256)')
@@ -111,6 +118,10 @@ export const config = {
   },
   workers: {
     alerts: env.ENABLE_ALERTS_WORKER,
+    healthDigest: env.ENABLE_HEALTH_DIGEST_WORKER,
+  },
+  monitor: {
+    primaryEmail: env.MONITOR_PRIMARY_EMAIL,
   },
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,

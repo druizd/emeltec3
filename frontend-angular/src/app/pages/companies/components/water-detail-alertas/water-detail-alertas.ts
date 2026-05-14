@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AlertasBandejaComponent } from './alertas-bandeja';
 import { AlertasConfiguracionComponent } from './alertas-configuracion';
@@ -78,7 +78,7 @@ interface AlertasTabItem {
       @if (activeSection() === 'bandeja') {
         <app-alertas-bandeja />
       } @else if (activeSection() === 'configuracion') {
-        <app-alertas-configuracion />
+        <app-alertas-configuracion [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'historico') {
         <app-alertas-historico />
       }
@@ -86,6 +86,8 @@ interface AlertasTabItem {
   `,
 })
 export class WaterDetailAlertasComponent {
+  readonly sitioId = input<string>('');
+  readonly empresaId = input<string>('');
   readonly activeSection = signal<AlertasSection>('bandeja');
 
   readonly tabs: AlertasTabItem[] = [
