@@ -24,7 +24,11 @@ fi
 echo "Fetching latest code from origin/$BRANCH..."
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
+
+# Los .env del VM tienen credenciales reales — preservarlos durante el pull.
+git stash --include-untracked --quiet || true
 git pull --ff-only origin "$BRANCH"
+git stash pop --quiet || true
 
 echo "Validating Docker Compose configuration..."
 docker compose -f "$COMPOSE_FILE" config >/dev/null
