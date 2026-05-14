@@ -46,8 +46,8 @@ El frontend consume APIs internas mediante rutas relativas (`/api/...`). En desa
 ## Requisitos
 
 - Git.
-- Node.js compatible con Angular 21.
-- npm.
+- Node.js 24+ (Angular 21).
+- pnpm 11+ (recomendado vía `corepack enable`).
 - Docker Desktop o Docker Engine.
 - Docker Compose.
 
@@ -71,23 +71,24 @@ Si `JWT_SECRET` o `INTERNAL_API_KEY` no estan definidas las APIs **abortan al ar
 
 Los archivos `.env` reales no deben versionarse en Git.
 
-## Instalacion (workspaces npm)
+## Instalacion (workspaces pnpm)
 
-El repositorio usa npm workspaces. Un solo `npm install` desde la raiz instala dependencias de `frontend-angular`, `main-api` y `auth-api`:
+El repositorio usa pnpm workspaces (`pnpm-workspace.yaml`). Un solo `pnpm install` desde la raiz instala dependencias de `frontend-angular`, `main-api`, `auth-api` y `shared`:
 
 ```bash
-npm install
+pnpm install
 ```
 
 Scripts disponibles desde la raiz:
 
 ```bash
-npm run lint          # lint en todos los workspaces
-npm run lint:fix      # lint con autofix
-npm run format        # prettier write
-npm run format:check  # prettier check
-npm test              # tests de todos los workspaces
-npm run build         # build de todos los workspaces (Angular productivo)
+pnpm start            # frontend + auth-api + main-api en paralelo (concurrently)
+pnpm run lint         # lint en todos los workspaces
+pnpm run lint:fix     # lint con autofix
+pnpm run format       # prettier write
+pnpm run format:check # prettier check
+pnpm test             # tests de todos los workspaces
+pnpm run build        # build de todos los workspaces (Angular productivo)
 ```
 
 ## Levantar todo en local
@@ -133,9 +134,7 @@ docker compose down
 Tambien puedes trabajar solo el frontend con el servidor de desarrollo de Angular:
 
 ```bash
-cd frontend-angular
-npm install
-npm start
+pnpm --filter frontend-angular start
 ```
 
 Luego abre:
@@ -151,8 +150,7 @@ Para probar integracion completa, las APIs necesarias deben estar levantadas y a
 Build del frontend:
 
 ```bash
-cd frontend-angular
-npm run build -- --configuration=production
+pnpm --filter frontend-angular exec ng build --configuration=production
 ```
 
 Validar Docker Compose desde la raiz:

@@ -1,24 +1,25 @@
-# Build stage: workspaces npm + Angular productivo
+# Build stage: pnpm workspaces + Angular productivo
 FROM node:24-alpine AS build
 WORKDIR /app
 
-# Manifests primero para mejor cache de capa npm install.
-# No copiamos package-lock.json: fue generado en Windows y omite binarios
-# nativos Linux (lightningcss-linux-x64-musl, etc). Resolver desde registry.
-COPY package.json ./
+# pnpm via corepack — versión fija en root package.json (packageManager field)
+RUN corepack enable
+
+# Manifests + lockfile primero (mejor cache).
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY shared/package.json ./shared/
 COPY frontend-angular/package.json ./frontend-angular/
 COPY main-api/package.json ./main-api/
 COPY auth-api/package.json ./auth-api/
 
-RUN npm install --no-package-lock --no-audit --no-fund
+RUN pnpm install --frozen-lockfile
 
 # Fuentes solo de lo necesario para build del frontend
 COPY shared/ ./shared/
 COPY frontend-angular/ ./frontend-angular/
 
 WORKDIR /app/frontend-angular
-RUN npm run build
+RUN pnpm run build
 
 # Production stage: nginx sirve el bundle
 FROM nginx:alpine
