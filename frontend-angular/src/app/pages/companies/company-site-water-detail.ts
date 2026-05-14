@@ -4249,6 +4249,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.setSettingsSuccess(res.message || 'Variable guardada.');
         this.resetVariableForm();
         this.loadSiteVariables(siteId);
+        this.refreshDashboardSnapshot(siteId);
       },
       error: (err: unknown) => {
         this.settingsBusy.set('');
@@ -4289,6 +4290,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.settingsBusy.set('');
         this.setSettingsSuccess(res.message || 'Variable eliminada.');
         this.loadSiteVariables(siteId);
+        this.refreshDashboardSnapshot(siteId);
       },
       error: (err: unknown) => {
         this.settingsBusy.set('');
@@ -4871,6 +4873,20 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       },
       error: (err: unknown) =>
         this.setSettingsError(this.errorMessage(err, 'No fue posible recargar variables.')),
+    });
+  }
+
+  private refreshDashboardSnapshot(siteId: string): void {
+    this.companyService.getSiteDashboardData(siteId).subscribe({
+      next: (res: any) => {
+        const payload = res?.ok === false ? null : res?.data || res || null;
+        if (!payload) return;
+        this.syncServerClock(payload.server_time);
+        this.dashboardData.set(payload);
+        this.dashboardLastLoadedAt.set(new Date());
+        this.dashboardError.set('');
+      },
+      error: () => undefined,
     });
   }
 

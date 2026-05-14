@@ -30,6 +30,16 @@ interface AdminStatus {
   message: string;
 }
 
+interface ConfirmDialog {
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  tone: 'danger' | 'primary';
+  icon: string;
+  onConfirm: () => void;
+}
+
 interface SubCompanyOption extends SubCompanyNode {
   companyName: string;
 }
@@ -368,6 +378,46 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               status().type === 'success' ? 'check_circle' : 'error'
             }}</span>
             <span>{{ status().message }}</span>
+          </div>
+        }
+
+        @if (confirmDialog(); as dialog) {
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
+            <section
+              class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+              role="dialog"
+              aria-modal="true"
+            >
+              <div class="flex gap-4 border-b border-slate-100 px-5 py-5">
+                <span
+                  [class]="
+                    dialog.tone === 'danger'
+                      ? 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-50 text-[24px] text-red-600'
+                      : 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-50 text-[24px] text-cyan-700'
+                  "
+                  >{{ dialog.icon }}</span
+                >
+                <div class="min-w-0">
+                  <h3 class="text-lg font-black text-slate-900">{{ dialog.title }}</h3>
+                  <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
+                </div>
+              </div>
+              <div class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+                <button type="button" (click)="cancelConfirmDialog()" class="secondary-button">
+                  {{ dialog.cancelText }}
+                </button>
+                <button
+                  type="button"
+                  (click)="confirmDialogAction()"
+                  [class]="dialog.tone === 'danger' ? 'danger-button' : 'primary-button'"
+                >
+                  <span class="material-symbols-outlined text-[18px]">{{
+                    dialog.tone === 'danger' ? 'delete' : 'check'
+                  }}</span>
+                  {{ dialog.confirmText }}
+                </button>
+              </div>
+            </section>
           </div>
         }
 
@@ -1432,6 +1482,7 @@ export class AdministrationComponent implements OnInit {
   loading = signal(false);
   busyAction = signal('');
   status = signal<AdminStatus>({ type: '', message: '' });
+  confirmDialog = signal<ConfirmDialog | null>(null);
 
   hierarchy = signal<CompanyNode[]>([]);
   detectedDevices = signal<DetectedDevice[]>([]);
@@ -1605,9 +1656,11 @@ export class AdministrationComponent implements OnInit {
     this.activeSection.set(section);
   }
 
-  loadDashboard(): void {
-    this.loading.set(true);
-    this.status.set({ type: '', message: '' });
+  loadDashboard(showLoader = true): void {
+    if (showLoader) {
+      this.loading.set(true);
+      this.status.set({ type: '', message: '' });
+    }
 
     forkJoin({
       hierarchy: this.api.getHierarchy(),
@@ -1615,12 +1668,11 @@ export class AdministrationComponent implements OnInit {
       catalog: this.api.getSiteTypeCatalog(),
     }).subscribe({
       next: ({ hierarchy, devices, catalog }) => {
-        this.hierarchy.set(hierarchy.ok ? hierarchy.data : []);
+        this.setHierarchy(hierarchy.ok ? hierarchy.data : []);
         this.detectedDevices.set(devices.ok ? devices.data : []);
         this.siteTypeCatalog.set(catalog.ok ? catalog.data : DEFAULT_SITE_TYPE_CATALOG);
         this.seedSelections();
         this.clampAllPages();
-        this.companyService.fetchHierarchy().subscribe();
         this.loading.set(false);
       },
       error: (err: unknown) => {
@@ -1673,6 +1725,18 @@ export class AdministrationComponent implements OnInit {
     if (section === 'subempresas') this.subCompanyPage.set(nextPage);
     if (section === 'sitios') this.sitePage.set(nextPage);
     if (section === 'equipos') this.devicePage.set(nextPage);
+  }
+
+  cancelConfirmDialog(): void {
+    if (this.busyAction()) return;
+    this.confirmDialog.set(null);
+  }
+
+  confirmDialogAction(): void {
+    const dialog = this.confirmDialog();
+    if (!dialog) return;
+    this.confirmDialog.set(null);
+    dialog.onConfirm();
   }
 
   totalPages(totalItems: number): number {
@@ -1869,7 +1933,7 @@ export class AdministrationComponent implements OnInit {
         this.setSuccess(res.message || 'Empresa creada.');
         this.selectedCompanyId.set(res.data.id);
         this.companyEditMode.set(false);
-        this.loadDashboard();
+        this.loadDashboard(false);
       },
       error: (err: unknown) => {
         this.busyAction.set('');
@@ -1889,19 +1953,26 @@ export class AdministrationComponent implements OnInit {
       this.enableCompanyEdit();
       return;
     }
-    if (!this.confirmAdminAction('Confirmar actualizacion de empresa.')) return;
-
-    this.busyAction.set('company-update');
-    this.api.updateCompany(companyId, this.companyForm()).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
-        this.companyEditMode.set(false);
-        this.setSuccess(res.message || 'Empresa actualizada.');
-        this.loadDashboard();
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible actualizar la empresa.'));
+    this.confirmAdminAction({
+      title: 'Actualizar empresa',
+      message: 'Se guardaran los cambios de la empresa seleccionada.',
+      confirmText: 'Actualizar',
+      tone: 'primary',
+      icon: 'save',
+      onConfirm: () => {
+        this.busyAction.set('company-update');
+        this.api.updateCompany(companyId, this.companyForm()).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.companyEditMode.set(false);
+            this.setSuccess(res.message || 'Empresa actualizada.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setError(this.errorMessage(err, 'No fue posible actualizar la empresa.'));
+          },
+        });
       },
     });
   }
@@ -1912,26 +1983,33 @@ export class AdministrationComponent implements OnInit {
       this.setError('Selecciona una empresa.');
       return;
     }
-    if (
-      !this.confirmAdminAction(
-        `Eliminar ${company.nombre}? Tambien se eliminaran sus subempresas y sitios asociados.`,
-      )
-    ) {
-      return;
-    }
-
-    this.busyAction.set('company-delete');
-    this.api.deleteCompany(company.id).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
+    this.confirmAdminAction({
+      title: 'Eliminar empresa',
+      message: `Se eliminara ${company.nombre} junto a sus subempresas y sitios asociados.`,
+      confirmText: 'Eliminar',
+      tone: 'danger',
+      icon: 'warning',
+      onConfirm: () => {
+        const previousHierarchy = this.hierarchy();
+        this.setHierarchy(previousHierarchy.filter((item) => item.id !== company.id));
         this.selectedCompanyId.set('');
         this.companyEditMode.set(false);
-        this.setSuccess(res.message || 'Empresa eliminada.');
-        this.loadDashboard();
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible eliminar la empresa.'));
+        this.clampAllPages();
+
+        this.busyAction.set('company-delete');
+        this.api.deleteCompany(company.id).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.setSuccess(res.message || 'Empresa eliminada.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setHierarchy(previousHierarchy);
+            this.selectCompany(company.id);
+            this.setError(this.errorMessage(err, 'No fue posible eliminar la empresa.'));
+          },
+        });
       },
     });
   }
@@ -1989,7 +2067,7 @@ export class AdministrationComponent implements OnInit {
         this.setSuccess(res.message || 'Subempresa creada.');
         this.selectedSubCompanyId.set(res.data.id);
         this.subCompanyEditMode.set(false);
-        this.loadDashboard();
+        this.loadDashboard(false);
       },
       error: (err: unknown) => {
         this.busyAction.set('');
@@ -2014,28 +2092,35 @@ export class AdministrationComponent implements OnInit {
       this.setError('Selecciona una empresa padre.');
       return;
     }
-    if (!this.confirmAdminAction('Confirmar actualizacion de subempresa.')) return;
-
-    this.busyAction.set('subcompany-update');
-    this.api
-      .updateSubCompany(subCompany.empresa_id, subCompany.id, {
-        empresa_id: form.empresa_id,
-        nombre: form.nombre,
-        rut: form.rut,
-      })
-      .subscribe({
-        next: (res) => {
-          this.busyAction.set('');
-          this.selectedSubCompanyId.set(res.data.id);
-          this.subCompanyEditMode.set(false);
-          this.setSuccess(res.message || 'Subempresa actualizada.');
-          this.loadDashboard();
-        },
-        error: (err: unknown) => {
-          this.busyAction.set('');
-          this.setError(this.errorMessage(err, 'No fue posible actualizar la subempresa.'));
-        },
-      });
+    this.confirmAdminAction({
+      title: 'Actualizar subempresa',
+      message: 'Se guardaran los cambios de la subempresa seleccionada.',
+      confirmText: 'Actualizar',
+      tone: 'primary',
+      icon: 'save',
+      onConfirm: () => {
+        this.busyAction.set('subcompany-update');
+        this.api
+          .updateSubCompany(subCompany.empresa_id, subCompany.id, {
+            empresa_id: form.empresa_id,
+            nombre: form.nombre,
+            rut: form.rut,
+          })
+          .subscribe({
+            next: (res) => {
+              this.busyAction.set('');
+              this.selectedSubCompanyId.set(res.data.id);
+              this.subCompanyEditMode.set(false);
+              this.setSuccess(res.message || 'Subempresa actualizada.');
+              this.loadDashboard(false);
+            },
+            error: (err: unknown) => {
+              this.busyAction.set('');
+              this.setError(this.errorMessage(err, 'No fue posible actualizar la subempresa.'));
+            },
+          });
+      },
+    });
   }
 
   deleteSelectedSubCompany(): void {
@@ -2044,26 +2129,42 @@ export class AdministrationComponent implements OnInit {
       this.setError('Selecciona una subempresa.');
       return;
     }
-    if (
-      !this.confirmAdminAction(
-        `Eliminar ${subCompany.nombre}? Tambien se eliminaran sus sitios asociados.`,
-      )
-    ) {
-      return;
-    }
-
-    this.busyAction.set('subcompany-delete');
-    this.api.deleteSubCompany(subCompany.empresa_id, subCompany.id).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
+    this.confirmAdminAction({
+      title: 'Eliminar subempresa',
+      message: `Se eliminara ${subCompany.nombre} junto a sus sitios asociados.`,
+      confirmText: 'Eliminar',
+      tone: 'danger',
+      icon: 'warning',
+      onConfirm: () => {
+        const previousHierarchy = this.hierarchy();
+        this.setHierarchy(
+          previousHierarchy.map((company) =>
+            company.id === subCompany.empresa_id
+              ? {
+                  ...company,
+                  subCompanies: company.subCompanies.filter((item) => item.id !== subCompany.id),
+                }
+              : company,
+          ),
+        );
         this.selectedSubCompanyId.set('');
         this.subCompanyEditMode.set(false);
-        this.setSuccess(res.message || 'Subempresa eliminada.');
-        this.loadDashboard();
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible eliminar la subempresa.'));
+        this.clampAllPages();
+
+        this.busyAction.set('subcompany-delete');
+        this.api.deleteSubCompany(subCompany.empresa_id, subCompany.id).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.setSuccess(res.message || 'Subempresa eliminada.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setHierarchy(previousHierarchy);
+            this.selectSubCompany(subCompany.id);
+            this.setError(this.errorMessage(err, 'No fue posible eliminar la subempresa.'));
+          },
+        });
       },
     });
   }
@@ -2128,7 +2229,7 @@ export class AdministrationComponent implements OnInit {
           this.setSuccess(res.message || 'Sitio creado.');
           this.selectedSiteId.set(res.data.id);
           this.siteEditMode.set(false);
-          this.loadDashboard();
+          this.loadDashboard(false);
         },
         error: (err: unknown) => {
           this.busyAction.set('');
@@ -2154,31 +2255,38 @@ export class AdministrationComponent implements OnInit {
       this.setError('Selecciona empresa y subempresa.');
       return;
     }
-    if (!this.confirmAdminAction('Confirmar actualizacion de sitio.')) return;
-
-    this.busyAction.set('site-update');
-    this.api
-      .updateSite(siteId, {
-        empresa_id: form.empresa_id,
-        sub_empresa_id: form.sub_empresa_id,
-        descripcion: form.descripcion,
-        id_serial: form.id_serial,
-        ubicacion: form.ubicacion || null,
-        tipo_sitio: form.tipo_sitio,
-        activo: form.activo,
-      })
-      .subscribe({
-        next: (res) => {
-          this.busyAction.set('');
-          this.siteEditMode.set(false);
-          this.setSuccess(res.message || 'Sitio actualizado.');
-          this.loadDashboard();
-        },
-        error: (err: unknown) => {
-          this.busyAction.set('');
-          this.setError(this.errorMessage(err, 'No fue posible actualizar el sitio.'));
-        },
-      });
+    this.confirmAdminAction({
+      title: 'Actualizar sitio',
+      message: 'Se guardaran los cambios del sitio seleccionado.',
+      confirmText: 'Actualizar',
+      tone: 'primary',
+      icon: 'save',
+      onConfirm: () => {
+        this.busyAction.set('site-update');
+        this.api
+          .updateSite(siteId, {
+            empresa_id: form.empresa_id,
+            sub_empresa_id: form.sub_empresa_id,
+            descripcion: form.descripcion,
+            id_serial: form.id_serial,
+            ubicacion: form.ubicacion || null,
+            tipo_sitio: form.tipo_sitio,
+            activo: form.activo,
+          })
+          .subscribe({
+            next: (res) => {
+              this.busyAction.set('');
+              this.siteEditMode.set(false);
+              this.setSuccess(res.message || 'Sitio actualizado.');
+              this.loadDashboard(false);
+            },
+            error: (err: unknown) => {
+              this.busyAction.set('');
+              this.setError(this.errorMessage(err, 'No fue posible actualizar el sitio.'));
+            },
+          });
+      },
+    });
   }
 
   enableSiteEdit(): void {
@@ -2198,22 +2306,51 @@ export class AdministrationComponent implements OnInit {
       this.setError('Selecciona un sitio.');
       return;
     }
-    if (!this.confirmAdminAction(`Eliminar ${site.descripcion}? Esta accion no se puede deshacer.`)) {
-      return;
-    }
-
-    this.busyAction.set('site-delete');
-    this.api.deleteSite(site.id).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
+    this.confirmAdminAction({
+      title: 'Eliminar sitio',
+      message: `Se eliminara ${site.descripcion}. Esta accion no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      tone: 'danger',
+      icon: 'warning',
+      onConfirm: () => {
+        const previousHierarchy = this.hierarchy();
+        this.setHierarchy(
+          previousHierarchy.map((company) => ({
+            ...company,
+            subCompanies: company.subCompanies.map((subCompany) =>
+              subCompany.id === site.sub_empresa_id
+                ? {
+                    ...subCompany,
+                    sites: subCompany.sites.filter((item) => item.id !== site.id),
+                  }
+                : subCompany,
+            ),
+          })),
+        );
         this.selectedSiteId.set('');
         this.siteEditMode.set(false);
-        this.setSuccess(res.message || 'Sitio eliminado.');
-        this.loadDashboard();
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible eliminar el sitio.'));
+        this.siteVariables.set({
+          site: this.emptySite(),
+          pozo_config: null,
+          variables: [],
+          mappings: [],
+        });
+        this.clampAllPages();
+
+        this.busyAction.set('site-delete');
+        this.api.deleteSite(site.id).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.setSuccess(res.message || 'Sitio eliminado.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setHierarchy(previousHierarchy);
+            this.selectSite(site.id);
+            this.setError(this.errorMessage(err, 'No fue posible eliminar el sitio.'));
+          },
+        });
       },
     });
   }
@@ -2293,7 +2430,7 @@ export class AdministrationComponent implements OnInit {
       next: (res) => {
         this.busyAction.set('');
         this.setSuccess(res.message || 'Equipo asignado.');
-        this.loadDashboard();
+        this.loadDashboard(false);
       },
       error: (err: unknown) => {
         this.busyAction.set('');
@@ -2505,6 +2642,11 @@ export class AdministrationComponent implements OnInit {
     this.devicePage.set(this.clampPage(this.devicePage(), this.filteredDevices().length));
   }
 
+  private setHierarchy(hierarchy: CompanyNode[]): void {
+    this.hierarchy.set(hierarchy);
+    this.companyService.hierarchy.set(hierarchy);
+  }
+
   private seedSelections(): void {
     const firstCompany = this.hierarchy()[0];
     const currentCompanyExists = this.hierarchy().some(
@@ -2557,8 +2699,11 @@ export class AdministrationComponent implements OnInit {
     this.status.set({ type: 'error', message });
   }
 
-  private confirmAdminAction(message: string): boolean {
-    return window.confirm(message);
+  private confirmAdminAction(dialog: Omit<ConfirmDialog, 'cancelText'> & { cancelText?: string }): void {
+    this.confirmDialog.set({
+      cancelText: 'Cancelar',
+      ...dialog,
+    });
   }
 
   private matchesSearch(query: string, values: Array<string | number | null | undefined>): boolean {

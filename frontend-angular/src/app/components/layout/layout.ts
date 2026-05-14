@@ -1,6 +1,6 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet } from '@angular/router';
+import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './header/header';
 import { SidebarComponent } from './sidebar/sidebar';
 
@@ -158,8 +158,7 @@ import { SidebarComponent } from './sidebar/sidebar';
     </div>
   `,
 })
-export class LayoutComponent implements OnInit {
-  private router = inject(Router);
+export class LayoutComponent {
   chatOpen = signal(false);
   chatDocked = signal(false);
   bubbleHidden = signal(false);
@@ -170,18 +169,6 @@ export class LayoutComponent implements OnInit {
     } else {
       this.chatOpen.set(!this.chatOpen());
       this.chatDocked.set(false);
-    }
-  }
-
-  ngOnInit(): void {
-    const navigation = performance.getEntriesByType('navigation')[0] as
-      | PerformanceNavigationTiming
-      | undefined;
-
-    if (navigation?.type === 'reload' && this.router.url !== '/dashboard') {
-      queueMicrotask(() => {
-        this.router.navigate(['/dashboard'], { replaceUrl: true });
-      });
     }
   }
 }
