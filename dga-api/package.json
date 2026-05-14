@@ -9,7 +9,9 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "lint:fix": "eslint src --fix",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "Emeltec",
@@ -44,6 +46,7 @@
     "pino-pretty": "^11.3.0",
     "tsx": "^4.19.2",
     "typescript": "^5.9.2",
-    "typescript-eslint": "^8.18.0"
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^4.1.6"
   }
 }
