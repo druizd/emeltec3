@@ -1,4 +1,3 @@
-
 /**
  * Crea y exporta un pool compartido de PostgreSQL/TimescaleDB.
  * Toda consulta del proyecto pasa por esta unica conexion administrada.

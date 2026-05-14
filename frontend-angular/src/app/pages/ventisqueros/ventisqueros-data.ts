@@ -27,23 +27,140 @@ export interface Sensor extends SensorBase {
 // TAP 1 = concentrador maestro (sin sensores propios). TAP 2/3/4 = 4/4/5 sensores.
 export const SENSORS_BASE: SensorBase[] = [
   // TAP 2 — línea matanza / proceso refrigerado primario
-  { id: 'STH-01', tap: 'TAP 2', area: 'Matanza / Eviscerado', cx: 466.66, cy: 633.27, r: 95, baseT: -5, baseH: 74 },
-  { id: 'STH-02', tap: 'TAP 2', area: 'Calibrado', cx: 363.38, cy: 597.36, r: 85, baseT: -8, baseH: 78 },
-  { id: 'STH-03', tap: 'TAP 2', area: 'Calibrado', cx: 363.38, cy: 502.15, r: 78, baseT: -10, baseH: 79 },
-  { id: 'STH-04', tap: 'TAP 2', area: 'Empaque Primario', cx: 447.96, cy: 451.87, r: 90, baseT: -28, baseH: 78 },
+  {
+    id: 'STH-01',
+    tap: 'TAP 2',
+    area: 'Matanza / Eviscerado',
+    cx: 466.66,
+    cy: 633.27,
+    r: 95,
+    baseT: -5,
+    baseH: 74,
+  },
+  {
+    id: 'STH-02',
+    tap: 'TAP 2',
+    area: 'Calibrado',
+    cx: 363.38,
+    cy: 597.36,
+    r: 85,
+    baseT: -8,
+    baseH: 78,
+  },
+  {
+    id: 'STH-03',
+    tap: 'TAP 2',
+    area: 'Calibrado',
+    cx: 363.38,
+    cy: 502.15,
+    r: 78,
+    baseT: -10,
+    baseH: 79,
+  },
+  {
+    id: 'STH-04',
+    tap: 'TAP 2',
+    area: 'Empaque Primario',
+    cx: 447.96,
+    cy: 451.87,
+    r: 90,
+    baseT: -28,
+    baseH: 78,
+  },
 
   // TAP 3 — frigorífico primario + filete + tránsito
-  { id: 'STH-05', tap: 'TAP 3', area: 'Antecámara Primaria', cx: 477.2, cy: 456.34, r: 55, baseT: -22, baseH: 86 },
-  { id: 'STH-06', tap: 'TAP 3', area: 'Frigorífico Primario', cx: 484.49, cy: 419.26, r: 70, baseT: -34, baseH: 88 },
-  { id: 'STH-07', tap: 'TAP 3', area: 'Filete', cx: 369.55, cy: 312.89, r: 110, baseT: -15, baseH: 80 },
-  { id: 'STH-08', tap: 'TAP 3', area: 'Producto en Tránsito', cx: 432.34, cy: 261.13, r: 80, baseT: -18, baseH: 77 },
+  {
+    id: 'STH-05',
+    tap: 'TAP 3',
+    area: 'Antecámara Primaria',
+    cx: 477.2,
+    cy: 456.34,
+    r: 55,
+    baseT: -22,
+    baseH: 86,
+  },
+  {
+    id: 'STH-06',
+    tap: 'TAP 3',
+    area: 'Frigorífico Primario',
+    cx: 484.49,
+    cy: 419.26,
+    r: 70,
+    baseT: -34,
+    baseH: 88,
+  },
+  {
+    id: 'STH-07',
+    tap: 'TAP 3',
+    area: 'Filete',
+    cx: 369.55,
+    cy: 312.89,
+    r: 110,
+    baseT: -15,
+    baseH: 80,
+  },
+  {
+    id: 'STH-08',
+    tap: 'TAP 3',
+    area: 'Producto en Tránsito',
+    cx: 432.34,
+    cy: 261.13,
+    r: 80,
+    baseT: -18,
+    baseH: 77,
+  },
 
   // TAP 4 — línea secundaria + congelado profundo
-  { id: 'STH-09', tap: 'TAP 4', area: 'Empaque Secundario', cx: 418.74, cy: 142.51, r: 95, baseT: -26, baseH: 70 },
-  { id: 'STH-10', tap: 'TAP 4', area: 'Sala de Porciones', cx: 476.26, cy: 198.83, r: 75, baseT: -20, baseH: 73 },
-  { id: 'STH-11', tap: 'TAP 4', area: 'Empaque Secundario', cx: 523.79, cy: 166.83, r: 60, baseT: -25, baseH: 71 },
-  { id: 'STH-12', tap: 'TAP 4', area: 'Antecámara Secundaria', cx: 580.23, cy: 167.87, r: 70, baseT: -30, baseH: 84 },
-  { id: 'STH-13', tap: 'TAP 4', area: 'Cámara Secundaria', cx: 682.66, cy: 199.72, r: 130, baseT: -38, baseH: 93 },
+  {
+    id: 'STH-09',
+    tap: 'TAP 4',
+    area: 'Empaque Secundario',
+    cx: 418.74,
+    cy: 142.51,
+    r: 95,
+    baseT: -26,
+    baseH: 70,
+  },
+  {
+    id: 'STH-10',
+    tap: 'TAP 4',
+    area: 'Sala de Porciones',
+    cx: 476.26,
+    cy: 198.83,
+    r: 75,
+    baseT: -20,
+    baseH: 73,
+  },
+  {
+    id: 'STH-11',
+    tap: 'TAP 4',
+    area: 'Empaque Secundario',
+    cx: 523.79,
+    cy: 166.83,
+    r: 60,
+    baseT: -25,
+    baseH: 71,
+  },
+  {
+    id: 'STH-12',
+    tap: 'TAP 4',
+    area: 'Antecámara Secundaria',
+    cx: 580.23,
+    cy: 167.87,
+    r: 70,
+    baseT: -30,
+    baseH: 84,
+  },
+  {
+    id: 'STH-13',
+    tap: 'TAP 4',
+    area: 'Cámara Secundaria',
+    cx: 682.66,
+    cy: 199.72,
+    r: 130,
+    baseT: -38,
+    baseH: 93,
+  },
 ];
 
 export const TAPS: TapKey[] = ['TAP 1', 'TAP 2', 'TAP 3', 'TAP 4'];
@@ -59,14 +176,14 @@ export const TAP_COLORS: Record<TapKey, string> = {
 // Escala invertida: -40°C es la temperatura objetivo (verde/teal "safe"),
 // más caliente = peor. Cold-storage / cámaras frigoríficas Ventisqueros.
 const TEMP_STOPS: Array<[number, [number, number, number]]> = [
-  [-40, [13, 175, 189]],   // #0DAFBD teal — objetivo
-  [-30, [16, 185, 129]],   // #10B981 verde
-  [-20, [132, 204, 22]],   // #84CC16 lima
-  [-10, [234, 179, 8]],    // #EAB308 amarillo
-  [0,   [245, 158, 11]],   // #F59E0B ámbar
-  [10,  [249, 115, 22]],   // #F97316 naranja
-  [20,  [239, 68, 68]],    // #EF4444 rojo
-  [28,  [153, 27, 27]],    // #991B1B rojo profundo
+  [-40, [13, 175, 189]], // #0DAFBD teal — objetivo
+  [-30, [16, 185, 129]], // #10B981 verde
+  [-20, [132, 204, 22]], // #84CC16 lima
+  [-10, [234, 179, 8]], // #EAB308 amarillo
+  [0, [245, 158, 11]], // #F59E0B ámbar
+  [10, [249, 115, 22]], // #F97316 naranja
+  [20, [239, 68, 68]], // #EF4444 rojo
+  [28, [153, 27, 27]], // #991B1B rojo profundo
 ];
 
 const HUM_STOPS: Array<[number, [number, number, number]]> = [

@@ -600,13 +600,13 @@ exports.deleteCompany = async (req, res, next) => {
     }
 
     await client.query('BEGIN');
-    await client.query('DELETE FROM reg_map WHERE sitio_id IN (SELECT id FROM sitio WHERE empresa_id = $1)', [
-      companyId,
-    ]);
-    const { rows } = await client.query(
-      'DELETE FROM empresa WHERE id = $1 RETURNING id, nombre',
+    await client.query(
+      'DELETE FROM reg_map WHERE sitio_id IN (SELECT id FROM sitio WHERE empresa_id = $1)',
       [companyId],
     );
+    const { rows } = await client.query('DELETE FROM empresa WHERE id = $1 RETURNING id, nombre', [
+      companyId,
+    ]);
 
     if (!rows.length) {
       await client.query('ROLLBACK').catch(() => {});
@@ -1066,9 +1066,10 @@ exports.deleteSite = async (req, res, next) => {
 
     await client.query('BEGIN');
     await client.query('DELETE FROM reg_map WHERE sitio_id = $1', [siteId]);
-    const { rows } = await client.query('DELETE FROM sitio WHERE id = $1 RETURNING id, descripcion', [
-      siteId,
-    ]);
+    const { rows } = await client.query(
+      'DELETE FROM sitio WHERE id = $1 RETURNING id, descripcion',
+      [siteId],
+    );
     await refreshSubCompanySiteCount(client, site.sub_empresa_id);
     await refreshCompanySiteCount(client, site.empresa_id);
     await client.query('COMMIT');

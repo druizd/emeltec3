@@ -90,10 +90,7 @@ import {
                 class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
               >
                 <div class="flex items-center gap-2.5">
-                  <span
-                    class="h-2 w-2 rounded-full"
-                    [style.background]="tempColor(s.baseT)"
-                  ></span>
+                  <span class="h-2 w-2 rounded-full" [style.background]="tempColor(s.baseT)"></span>
                   <div class="text-left">
                     <div
                       class="font-mono text-[11px] font-semibold text-slate-600"

@@ -11,14 +11,7 @@ import {
   input,
   signal,
 } from '@angular/core';
-import {
-  MetricKey,
-  PLANO_H,
-  PLANO_W,
-  Sensor,
-  humColor,
-  tempColor,
-} from './ventisqueros-data';
+import { MetricKey, PLANO_H, PLANO_W, Sensor, humColor, tempColor } from './ventisqueros-data';
 
 interface LegendStop {
   color: string;
@@ -88,19 +81,60 @@ const ZOOM_STEP = 1.25;
 
         <g style="mix-blend-mode: multiply;">
           @for (s of visibleSensors(); track s.id) {
-            <circle [attr.cx]="s.cx" [attr.cy]="s.cy" [attr.r]="s.r" [attr.fill]="'url(#halo-' + s.id + ')'" />
+            <circle
+              [attr.cx]="s.cx"
+              [attr.cy]="s.cy"
+              [attr.r]="s.r"
+              [attr.fill]="'url(#halo-' + s.id + ')'"
+            />
           }
         </g>
 
         @for (s of visibleAlertedSensors(); track s.id) {
           <g>
-            <circle [attr.cx]="s.cx" [attr.cy]="s.cy" r="14" fill="none" stroke="#EF4444" stroke-width="0.8" opacity="0.9">
+            <circle
+              [attr.cx]="s.cx"
+              [attr.cy]="s.cy"
+              r="14"
+              fill="none"
+              stroke="#EF4444"
+              stroke-width="0.8"
+              opacity="0.9"
+            >
               <animate attributeName="r" from="10" to="42" dur="1.8s" repeatCount="indefinite" />
-              <animate attributeName="opacity" from="0.85" to="0" dur="1.8s" repeatCount="indefinite" />
+              <animate
+                attributeName="opacity"
+                from="0.85"
+                to="0"
+                dur="1.8s"
+                repeatCount="indefinite"
+              />
             </circle>
-            <circle [attr.cx]="s.cx" [attr.cy]="s.cy" r="20" fill="none" stroke="#EF4444" stroke-width="0.6" opacity="0.6">
-              <animate attributeName="r" from="14" to="55" dur="1.8s" begin="0.6s" repeatCount="indefinite" />
-              <animate attributeName="opacity" from="0.65" to="0" dur="1.8s" begin="0.6s" repeatCount="indefinite" />
+            <circle
+              [attr.cx]="s.cx"
+              [attr.cy]="s.cy"
+              r="20"
+              fill="none"
+              stroke="#EF4444"
+              stroke-width="0.6"
+              opacity="0.6"
+            >
+              <animate
+                attributeName="r"
+                from="14"
+                to="55"
+                dur="1.8s"
+                begin="0.6s"
+                repeatCount="indefinite"
+              />
+              <animate
+                attributeName="opacity"
+                from="0.65"
+                to="0"
+                dur="1.8s"
+                begin="0.6s"
+                repeatCount="indefinite"
+              />
             </circle>
           </g>
         }
@@ -142,8 +176,8 @@ const ZOOM_STEP = 1.25;
             (s.alerted
               ? 'rgba(239,68,68,0.55)'
               : isHighlighted(s)
-              ? 'rgba(13,175,189,0.5)'
-              : '#E2E8F0')
+                ? 'rgba(13,175,189,0.5)'
+                : '#E2E8F0')
           "
           [style.box-shadow]="
             isHighlighted(s)
@@ -293,13 +327,13 @@ const ZOOM_STEP = 1.25;
           </div>
         }
       </div>
-
     </div>
   `,
   styles: [
     `
       @keyframes vsAlertFrame {
-        0%, 100% {
+        0%,
+        100% {
           border-color: rgba(239, 68, 68, 0.95);
           box-shadow:
             0 0 0 2px rgba(239, 68, 68, 0.45),
@@ -380,7 +414,10 @@ export class VentisquerosFloorMapComponent {
   });
 
   readonly legendGradient = computed(
-    () => `linear-gradient(90deg, ${this.legendStops().map((s) => s.color).join(', ')})`,
+    () =>
+      `linear-gradient(90deg, ${this.legendStops()
+        .map((s) => s.color)
+        .join(', ')})`,
   );
 
   colorFor(s: Sensor): string {
