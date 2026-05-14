@@ -69,6 +69,17 @@ interface HistoricalRow {
   nivelFreatico: number | null;
 }
 
+interface RealtimeChartPoint {
+  timestampMs: number;
+  caudal: number;
+  x: number;
+  y: number;
+  xPct: number;
+  yPct: number;
+  dateLabel: string;
+  caudalLabel: string;
+}
+
 @Component({
   selector: 'app-water-detail-operacion',
   standalone: true,
@@ -438,8 +449,14 @@ interface HistoricalRow {
               >Últimos {{ realtimePoints().length }} registros</span
             >
           </div>
-          <div class="h-20 w-full">
-            <svg viewBox="0 0 1120 80" class="h-full w-full" preserveAspectRatio="none">
+          <div class="relative h-28 w-full">
+            <svg
+              viewBox="0 0 1120 80"
+              class="h-full w-full cursor-crosshair select-none"
+              preserveAspectRatio="none"
+              (click)="selectRealtimePoint($event)"
+              aria-label="Grafico de caudal en tiempo real"
+            >
               <defs>
                 <linearGradient id="rtFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.22" />
@@ -447,6 +464,17 @@ interface HistoricalRow {
                 </linearGradient>
               </defs>
               <polygon [attr.points]="chartFill(realtimePoints())" fill="url(#rtFill)" />
+              @if (selectedRealtimePoint(); as point) {
+                <line
+                  [attr.x1]="point.x"
+                  [attr.x2]="point.x"
+                  y1="6"
+                  y2="74"
+                  stroke="#CBD5E1"
+                  stroke-width="1.5"
+                  stroke-dasharray="5 5"
+                />
+              }
               <polyline
                 [attr.points]="chartPolyline(realtimePoints())"
                 fill="none"
@@ -455,7 +483,33 @@ interface HistoricalRow {
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
+              @if (selectedRealtimePoint(); as point) {
+                <circle
+                  [attr.cx]="point.x"
+                  [attr.cy]="point.y"
+                  r="5"
+                  fill="#ffffff"
+                  stroke="#0DAFBD"
+                  stroke-width="3"
+                />
+              }
             </svg>
+
+            @if (selectedRealtimePoint(); as point) {
+              <div
+                class="pointer-events-none absolute z-10 min-w-[190px] rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm shadow-xl ring-1 ring-slate-900/5"
+                [style.left.%]="tooltipLeftPercent(point)"
+                [style.top.%]="tooltipTopPercent(point)"
+                [style.transform]="tooltipTransform(point)"
+              >
+                <p class="text-sm font-black text-slate-600">{{ point.dateLabel }}</p>
+                <div class="mt-2 flex items-center gap-2 text-slate-600">
+                  <span class="h-2.5 w-2.5 rounded-full bg-[#0DAFBD]"></span>
+                  <span class="font-semibold">Caudal (L/s)</span>
+                  <span class="ml-auto font-black text-slate-800">{{ point.caudalLabel }}</span>
+                </div>
+              </div>
+            }
           </div>
           <div class="mt-1 flex justify-between font-mono text-[10px] text-slate-400">
             @for (label of realtimeChartLabels(); track $index) {
@@ -484,6 +538,8 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   private pollingSub?: Subscription;
   private readonly CHILE_TIME_ZONE = CHILE_TIME_ZONE;
   private readonly historyLimit = 2200;
+  private readonly chartWidth = 1120;
+  private readonly chartHeight = 74;
 
   readonly modo = signal<OperacionModo>('hoy');
   readonly turnosSettingsOpen = signal(false);
@@ -491,6 +547,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   readonly historyRows = signal<HistoricalRow[]>([]);
   readonly loading = signal(false);
   readonly loadError = signal('');
+  readonly selectedRealtimeTimestamp = signal<number | null>(null);
 
   readonly diaOffset = this.state.diaOffset;
   readonly numTurnos = this.state.numTurnos;
@@ -537,12 +594,49 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     this.historyRows()
       .filter((row) => row.timestampMs !== null && row.caudal !== null)
       .sort((a, b) => (a.timestampMs ?? 0) - (b.timestampMs ?? 0))
-      .slice(-20),
+      .slice(-60),
   );
 
   readonly realtimePoints = computed(() => {
     const points = this.realtimeChartRows().map((row) => row.caudal ?? 0);
     return points.length ? points : [0, 0];
+  });
+
+  readonly realtimeChartPoints = computed<RealtimeChartPoint[]>(() => {
+    const rows = this.realtimeChartRows();
+    if (!rows.length) return [];
+
+    const values = rows.map((row) => row.caudal ?? 0);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const step = rows.length > 1 ? this.chartWidth / (rows.length - 1) : 0;
+
+    return rows
+      .filter(
+        (row): row is HistoricalRow & { timestampMs: number; caudal: number } =>
+          row.timestampMs !== null && row.caudal !== null,
+      )
+      .map((row, index) => {
+        const x = rows.length > 1 ? index * step : this.chartWidth / 2;
+        const y = this.chartHeight - ((row.caudal - min) / range) * (this.chartHeight - 10);
+        return {
+          timestampMs: row.timestampMs,
+          caudal: row.caudal,
+          x,
+          y,
+          xPct: (x / this.chartWidth) * 100,
+          yPct: (y / 80) * 100,
+          dateLabel: this.formatChileChartDate(row.timestampMs),
+          caudalLabel: this.formatNumber(row.caudal, 1),
+        };
+      });
+  });
+
+  readonly selectedRealtimePoint = computed(() => {
+    const timestamp = this.selectedRealtimeTimestamp();
+    if (timestamp === null) return null;
+    return this.realtimeChartPoints().find((point) => point.timestampMs === timestamp) ?? null;
   });
 
   readonly realtimeChartLabels = computed(() => {
@@ -696,9 +790,42 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     this.state.updateTurnoConfig(index, field, value);
   }
 
+  selectRealtimePoint(event: MouseEvent): void {
+    const points = this.realtimeChartPoints();
+    const svg = event.currentTarget as SVGSVGElement | null;
+    const rect = svg?.getBoundingClientRect();
+    if (!points.length || !rect || rect.width === 0) return;
+
+    const clickX = ((event.clientX - rect.left) / rect.width) * this.chartWidth;
+    const closest = points.reduce((best, point) =>
+      Math.abs(point.x - clickX) < Math.abs(best.x - clickX) ? point : best,
+    );
+
+    this.selectedRealtimeTimestamp.set(closest.timestampMs);
+  }
+
+  tooltipLeftPercent(point: RealtimeChartPoint): number {
+    return Math.min(92, Math.max(8, point.xPct));
+  }
+
+  tooltipTopPercent(point: RealtimeChartPoint): number {
+    return point.yPct < 38 ? Math.min(90, point.yPct + 8) : Math.max(10, point.yPct - 8);
+  }
+
+  tooltipTransform(point: RealtimeChartPoint): string {
+    const x =
+      point.xPct > 78
+        ? 'translateX(-100%)'
+        : point.xPct < 22
+          ? 'translateX(0)'
+          : 'translateX(-50%)';
+    const y = point.yPct < 38 ? 'translateY(0)' : 'translateY(-100%)';
+    return `${x} ${y}`;
+  }
+
   chartPolyline(points: number[]): string {
-    const W = 1120,
-      H = 74;
+    const W = this.chartWidth,
+      H = this.chartHeight;
     const safePoints = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
     const min = Math.min(...safePoints),
       max = Math.max(...safePoints);
@@ -708,8 +835,8 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   }
 
   chartFill(points: number[]): string {
-    const W = 1120,
-      H = 74;
+    const W = this.chartWidth,
+      H = this.chartHeight;
     const safePoints = points.length > 1 ? points : [points[0] ?? 0, points[0] ?? 0];
     const min = Math.min(...safePoints),
       max = Math.max(...safePoints);
@@ -837,6 +964,22 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
       minute: '2-digit',
       hour12: false,
     });
+  }
+
+  private formatChileChartDate(timestampMs: number): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: this.CHILE_TIME_ZONE,
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date(timestampMs));
+    const part = (type: string) => parts.find((item) => item.type === type)?.value || '';
+    const month = part('month');
+    const monthLabel = month ? `${month.charAt(0).toUpperCase()}${month.slice(1)}` : '';
+    return `${Number(part('day'))} ${monthLabel} ${part('year')} ${part('hour')}:${part('minute')}`;
   }
 
   private chileDayKey(value: Date): string {
