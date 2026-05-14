@@ -2196,7 +2196,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
             </section>
           } @else if (activeDetailTab() === 'alertas') {
-            <app-water-detail-alertas />
+            <app-water-detail-alertas
+              [sitioId]="siteContext()?.site?.id || ''"
+              [empresaId]="siteContext()?.company?.id || ''"
+            />
           } @else if (activeDetailTab() === 'bitacora') {
             <app-water-detail-bitacora />
           } @else if (activeDetailTab() === 'analisis') {

@@ -338,3 +338,252 @@ ${securityNoteHtml('Esta es una notificación automática del sistema de monitor
     console.error('[emailService] Error enviando alerta a', emailDestino, ':', error.message);
   }
 };
+
+const TIER_META = {
+  t12: { color: '#dc2626', gradient: SEVERIDAD_GRADIENT.critica, label: '12 horas o más', short: '12h+', tone: 'crítico' },
+  t6: { color: '#ea580c', gradient: SEVERIDAD_GRADIENT.alta, label: 'Entre 6 y 12 horas', short: '6-12h', tone: 'alarma' },
+  t3: { color: '#d97706', gradient: SEVERIDAD_GRADIENT.media, label: 'Entre 3 y 6 horas', short: '3-6h', tone: 'atención' },
+};
+
+function formatLagMs(lagMs) {
+  if (lagMs === null || lagMs === undefined || lagMs > Number.MAX_SAFE_INTEGER / 2) {
+    return 'sin transmisiones registradas';
+  }
+  const totalMin = Math.floor(lagMs / 60000);
+  const days = Math.floor(totalMin / (60 * 24));
+  const hours = Math.floor((totalMin % (60 * 24)) / 60);
+  const mins = totalMin % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function formatChile(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('es-CL', {
+      timeZone: 'America/Santiago',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '—';
+  }
+}
+
+function renderIssuesGroup(items, tier) {
+  if (items.length === 0) return '';
+  const meta = TIER_META[tier];
+  const rows = items
+    .map(
+      (r) => `
+                <tr>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:#1E293B;font-weight:500;vertical-align:top;">
+                    <div style="font-weight:600;">${escapeHtml(r.descripcion)}</div>
+                    <div style="margin-top:2px;font-size:11px;color:#94A3B8;">${escapeHtml(r.empresa || '—')}</div>
+                  </td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:12px;color:#475569;vertical-align:top;white-space:nowrap;">${escapeHtml(formatChile(r.lastAt))}</td>
+                  <td style="padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;color:${meta.color};font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;font-weight:600;vertical-align:top;white-space:nowrap;text-align:right;">${escapeHtml(formatLagMs(r.lagMs))}</td>
+                </tr>`,
+    )
+    .join('');
+  return `              <p style="margin:18px 0 8px;">
+                <span style="display:inline-block;padding:4px 12px;background-color:${meta.color};color:#FFFFFF;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;border-radius:9999px;">&bull; ${escapeHtml(meta.short)} &middot; ${escapeHtml(meta.tone)}</span>
+                <span style="display:inline-block;margin-left:8px;font-size:11px;color:#94A3B8;letter-spacing:0.05em;">${items.length} ${items.length === 1 ? 'instalación' : 'instalaciones'} &middot; ${escapeHtml(meta.label)}</span>
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${meta.color};overflow:hidden;">
+                <tr>
+                  <td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Instalación</td>
+                  <td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Último dato</td>
+                  <td style="padding:9px 14px;background-color:#F8FAFC;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;text-align:right;">Sin reportar</td>
+                </tr>
+                ${rows}
+              </table>`;
+}
+
+function renderSection(title, eyebrow, items) {
+  const byTier = { t12: [], t6: [], t3: [] };
+  for (const it of items) {
+    if (byTier[it.tier]) byTier[it.tier].push(it);
+  }
+  const groups = ['t12', 't6', 't3'].map((t) => renderIssuesGroup(byTier[t], t)).join('');
+  const empty =
+    items.length === 0
+      ? `              <p style="margin:14px 0 0;padding:14px;background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;color:#16a34a;font-size:13px;">&#10003; Sin incidencias en esta sección.</p>`
+      : groups;
+  return `          <tr>
+            <td style="padding:24px 40px 0;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(eyebrow)}</p>
+              <h2 style="margin:0;font-size:18px;line-height:1.3;color:#1E293B;font-weight:600;">${escapeHtml(title)}</h2>
+${empty}
+            </td>
+          </tr>`;
+}
+
+function buildDigestHtml({ generatedAt, dataIssues, dgaIssues }) {
+  const total = dataIssues.length + dgaIssues.length;
+  const hasCritical = [...dataIssues, ...dgaIssues].some((r) => r.tier === 't12');
+  const accentColor = total === 0 ? '#22C55E' : hasCritical ? '#dc2626' : '#ea580c';
+  const accentGradient =
+    total === 0
+      ? 'linear-gradient(90deg,#22C55E 0%,#15803D 100%)'
+      : hasCritical
+        ? SEVERIDAD_GRADIENT.critica
+        : SEVERIDAD_GRADIENT.alta;
+  const generatedHuman = formatChile(generatedAt || new Date().toISOString());
+  const heroEyebrow = total === 0 ? 'Resumen de salud' : `${total} ${total === 1 ? 'incidencia detectada' : 'incidencias detectadas'}`;
+  const heroTitle = total === 0 ? 'Todo en orden' : 'Resumen de salud de la plataforma';
+  const heroSubtitle =
+    total === 0
+      ? 'Todas las instalaciones reportan dentro de los umbrales esperados.'
+      : 'Las siguientes instalaciones requieren tu atención.';
+
+  const okBanner =
+    total === 0
+      ? `          <tr>
+            <td style="padding:24px 40px 0;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F0FDF4;border:1px solid #BBF7D0;border-radius:10px;">
+                <tr>
+                  <td style="padding:18px 20px;text-align:center;">
+                    <p style="margin:0;font-size:14px;color:#16a34a;font-weight:600;">&#10003; No hay instalaciones con transmisión retrasada ni reportes DGA pendientes.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>`
+      : '';
+
+  const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">${escapeHtml(heroEyebrow)}</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${escapeHtml(heroTitle)}</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">${escapeHtml(heroSubtitle)}</p>
+              <p style="margin:8px 0 0;font-size:12px;color:#94A3B8;">Generado el ${escapeHtml(generatedHuman)}</p>
+            </td>
+          </tr>
+${okBanner}
+${renderSection('Transmisión de datos', 'Equipos y telemetría', dataIssues)}
+${renderSection('Reportes DGA', 'Cumplimiento regulatorio', dgaIssues)}
+${ctaButtonHtml(ACCESS_URL, 'Ir a la plataforma', accentColor)}
+${securityNoteHtml('Reporte automático del sistema de monitoreo Emeltec. Los siguientes resúmenes se envían a las 07:00 y 16:00 hora Santiago.')}`;
+
+  return renderShell({
+    title: 'Resumen de salud · Emeltec',
+    preheader:
+      total === 0
+        ? 'Todo en orden — sin instalaciones con retraso de transmisión ni DGA.'
+        : `${total} instalación(es) con incidencias · revisa el detalle.`,
+    accentColor,
+    accentGradient,
+    contentHtml,
+  });
+}
+
+function buildEventHtml({ eventDetail }) {
+  const r = eventDetail;
+  const meta = TIER_META[r.tier] || TIER_META.t3;
+  const kindLabel = r.kind === 'data' ? 'Sin transmisión de datos' : 'Reporte DGA atrasado';
+  const eyebrow = r.kind === 'data' ? 'Transmisión de datos' : 'Cumplimiento DGA';
+  const rows = [
+    ['Instalación', escapeHtml(r.descripcion)],
+    ['Empresa', escapeHtml(r.empresa || '—')],
+    ['Tiempo sin reportar', `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;color:${meta.color};font-weight:600;">${escapeHtml(formatLagMs(r.lagMs))}</span>`],
+    ['Último dato', escapeHtml(formatChile(r.lastAt))],
+  ];
+  if (r.kind === 'dga') {
+    rows.push(['Periodicidad', escapeHtml(r.periodicidad || '—')]);
+    rows.push(['Próximo esperado', escapeHtml(formatChile(r.expectedAt))]);
+  }
+
+  const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 10px;">
+                <span style="display:inline-block;padding:4px 12px;background-color:${meta.color};color:#FFFFFF;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;font-weight:700;border-radius:9999px;">&bull; ${escapeHtml(meta.short)} &middot; ${escapeHtml(meta.tone)}</span>
+                <span style="display:inline-block;margin-left:8px;font-size:11px;color:#94A3B8;letter-spacing:0.05em;">${escapeHtml(eyebrow)}</span>
+              </p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">${escapeHtml(kindLabel)}</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">La instalación <strong style="color:#1E293B;">${escapeHtml(r.descripcion)}</strong> cruzó el umbral de ${escapeHtml(meta.label.toLowerCase())} sin reportar.</p>
+            </td>
+          </tr>
+${infoTableHtml(rows, meta.color)}
+${ctaButtonHtml(ACCESS_URL, 'Ver en la plataforma', meta.color)}
+${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. Se enviará al subir de umbral (3h → 6h → 12h+).')}`;
+
+  return renderShell({
+    title: `${kindLabel} · Emeltec`,
+    preheader: `${r.descripcion} · ${formatLagMs(r.lagMs)} sin reportar.`,
+    accentColor: meta.color,
+    accentGradient: meta.gradient,
+    contentHtml,
+  });
+}
+
+// Internal — usados por scripts de preview/render. No estable.
+exports._renderHealthDigestHtml = (input) => buildDigestHtml(input);
+exports._renderHealthEventHtml = (input) => buildEventHtml(input);
+
+exports.sendHealthDigest = async ({ to, mode, generatedAt, dataIssues, dgaIssues, eventDetail }) => {
+  try {
+    let subject;
+    let html;
+    let text;
+
+    if (mode === 'event') {
+      if (!eventDetail) throw new Error('eventDetail requerido en mode=event');
+      const meta = TIER_META[eventDetail.tier] || TIER_META.t3;
+      const kindLabel = eventDetail.kind === 'data' ? 'Sin transmisión' : 'DGA atrasado';
+      subject = `[${meta.short}] ${kindLabel} · ${eventDetail.descripcion}`;
+      html = buildEventHtml({ eventDetail });
+      text = [
+        `${kindLabel} — ${eventDetail.descripcion}`,
+        `Empresa: ${eventDetail.empresa || '—'}`,
+        `Tiempo sin reportar: ${formatLagMs(eventDetail.lagMs)}`,
+        `Último dato: ${formatChile(eventDetail.lastAt)}`,
+        eventDetail.kind === 'dga'
+          ? `Periodicidad: ${eventDetail.periodicidad || '—'} · Próximo esperado: ${formatChile(eventDetail.expectedAt)}`
+          : '',
+        '',
+        `Plataforma: ${ACCESS_URL}`,
+      ]
+        .filter(Boolean)
+        .join('\n');
+    } else {
+      const data = dataIssues || [];
+      const dga = dgaIssues || [];
+      const total = data.length + dga.length;
+      subject =
+        total === 0
+          ? `Resumen Emeltec — Todo en orden`
+          : `Resumen Emeltec — ${total} ${total === 1 ? 'incidencia' : 'incidencias'}`;
+      html = buildDigestHtml({ generatedAt, dataIssues: data, dgaIssues: dga });
+      const textLines = [
+        `Resumen Emeltec — ${formatChile(generatedAt || new Date().toISOString())}`,
+        '',
+      ];
+      if (total === 0) {
+        textLines.push('Todo en orden. Sin incidencias.');
+      } else {
+        textLines.push(`Transmisión de datos: ${data.length} instalación(es)`);
+        for (const r of data) {
+          textLines.push(`  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`);
+        }
+        textLines.push('');
+        textLines.push(`Reportes DGA: ${dga.length} informante(s)`);
+        for (const r of dga) {
+          textLines.push(`  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`);
+        }
+      }
+      textLines.push('');
+      textLines.push(`Plataforma: ${ACCESS_URL}`);
+      text = textLines.join('\n');
+    }
+
+    await enviar({ to, subject, html, text });
+  } catch (error) {
+    console.error('[emailService] Error enviando health digest:', error.message);
+  }
+};
