@@ -22,6 +22,18 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'ventisqueros',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros').then((m) => m.VentisquerosComponent),
+      },
+      {
+        path: 'ventisqueros/tap/:tapId',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros-tap-detail').then(
+            (m) => m.VentisquerosTapDetailComponent,
+          ),
+      },
+      {
         path: 'companies',
         loadComponent: () =>
           import('./pages/companies/companies').then((m) => m.CompaniesComponent),

@@ -365,7 +365,24 @@ export class SidebarComponent implements OnInit {
     this.companyService.selectedSubCompanyId.set(subCompanyId);
     this.openModule.set(moduleKey);
     this.expandCompany(companyId);
+
+    const subLabel = this.findSubCompanyLabel(companyId, subCompanyId);
+    if (subLabel && this.normalizeSearch(subLabel) === 'ventisqueros') {
+      this.router.navigate(['/ventisqueros']);
+      return;
+    }
+
     this.router.navigate(['/companies']);
+  }
+
+  private findSubCompanyLabel(companyId: string, subCompanyId: string): string | null {
+    for (const mod of this.moduleTree()) {
+      const company = mod.companies.find((c) => c.id === companyId);
+      if (!company) continue;
+      const site = company.sites.find((s) => s.id === subCompanyId);
+      return site?.label ?? null;
+    }
+    return null;
   }
 
   onSearchInput(event: Event): void {

@@ -3,24 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "description": "Monorepo Emeltec Cloud — frontend Angular + APIs Node + pipeline Go",
-  "workspaces": [
-    "shared",
-    "frontend-angular",
-    "main-api",
-    "auth-api"
-  ],
   "scripts": {
-    "lint": "npm run lint --workspaces --if-present",
-    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "start": "concurrently -n frontend,auth,main -c cyan,yellow,magenta \"pnpm --filter frontend-angular start\" \"pnpm --filter auth-api start\" \"pnpm --filter main-api dev\"",
+    "start:frontend": "pnpm --filter frontend-angular start",
+    "start:auth": "pnpm --filter auth-api start",
+    "start:main": "pnpm --filter main-api dev",
+    "lint": "pnpm -r --if-present run lint",
+    "lint:fix": "pnpm -r --if-present run lint:fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm test --workspaces --if-present",
-    "build": "npm run build --workspaces --if-present"
+    "test": "pnpm -r --if-present run test",
+    "build": "pnpm -r --if-present run build"
   },
   "devDependencies": {
+    "concurrently": "^9.1.0",
     "prettier": "^3.8.1"
   },
   "engines": {
     "node": ">=24"
-  }
+  },
+  "packageManager": "pnpm@11.1.1"
 }
