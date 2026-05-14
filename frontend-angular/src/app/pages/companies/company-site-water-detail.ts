@@ -4060,6 +4060,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           this.siteContext.update((current) =>
             current ? { ...current, site: { ...current.site, pozo_config: pozoConfig } } : current,
           );
+          this.refreshDashboardSnapshot(siteId);
+          this.refreshHierarchySnapshot();
         },
         error: (err: unknown) => {
           this.settingsBusy.set('');
@@ -4250,6 +4252,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.resetVariableForm();
         this.loadSiteVariables(siteId);
         this.refreshDashboardSnapshot(siteId);
+        this.refreshHierarchySnapshot();
       },
       error: (err: unknown) => {
         this.settingsBusy.set('');
@@ -4291,6 +4294,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.setSettingsSuccess(res.message || 'Variable eliminada.');
         this.loadSiteVariables(siteId);
         this.refreshDashboardSnapshot(siteId);
+        this.refreshHierarchySnapshot();
       },
       error: (err: unknown) => {
         this.settingsBusy.set('');
@@ -4885,6 +4889,31 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.dashboardData.set(payload);
         this.dashboardLastLoadedAt.set(new Date());
         this.dashboardError.set('');
+      },
+      error: () => undefined,
+    });
+  }
+
+  private refreshHierarchySnapshot(): void {
+    const siteId = this.currentSiteId();
+    if (!siteId) return;
+
+    this.companyService.fetchHierarchy().subscribe({
+      next: (res: any) => {
+        if (!res.ok) return;
+        const match = this.findAccessibleSite(res.data, siteId);
+        if (!match) return;
+        this.companyService.selectedSubCompanyId.set(match.subCompany.id);
+        this.siteContext.update((current) =>
+          current
+            ? {
+                ...current,
+                company: match.company,
+                subCompany: match.subCompany,
+                site: { ...current.site, ...match.site },
+              }
+            : match,
+        );
       },
       error: () => undefined,
     });
