@@ -23,11 +23,11 @@ export function startScheduler(): void {
   }
 
   if (config.workers.submissionEnabled) {
-    const submission = cron.schedule('*/5 * * * *', () => {
+    const submission = cron.schedule(config.workers.submissionCron, () => {
       void runSubmissionTick();
     });
     tasks.push(submission);
-    logger.info('[scheduler] submission worker iniciado');
+    logger.info({ cron: config.workers.submissionCron }, '[scheduler] submission worker iniciado');
   }
 }
 

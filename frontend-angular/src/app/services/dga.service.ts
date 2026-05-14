@@ -47,6 +47,8 @@ export interface DgaApiReport {
   caudalInstantaneo: number | null;
   flujoAcumulado: number | null;
   nivelFreatico: number | null;
+  estatus: 'pendiente' | 'enviado' | 'rechazado';
+  comprobante: string | null;
 }
 
 @Injectable({ providedIn: 'root' })

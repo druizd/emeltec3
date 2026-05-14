@@ -43,8 +43,9 @@ const Schema = z.object({
   ENABLE_INGESTION_WORKER: BoolFlag.default('true'),
   ENABLE_SUBMISSION_WORKER: BoolFlag.default('false'),
   INGESTION_CRON: z.string().default('* * * * *'),
+  SUBMISSION_CRON: z.string().default('*/5 * * * *'),
 
-  DGA_API_URL: z.string().url().default('https://mia.dga.cl/api/recepcion'),
+  DGA_API_URL: z.string().url().default('https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas'),
   DGA_RUT_EMPRESA: z.string().min(1).default(''),
 });
 
@@ -98,6 +99,7 @@ export const config = {
     ingestionEnabled: env.ENABLE_INGESTION_WORKER,
     submissionEnabled: env.ENABLE_SUBMISSION_WORKER,
     ingestionCron: env.INGESTION_CRON,
+    submissionCron: env.SUBMISSION_CRON,
   },
   dga: {
     apiUrl: env.DGA_API_URL,
