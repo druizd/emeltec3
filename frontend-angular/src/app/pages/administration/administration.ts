@@ -382,7 +382,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         }
 
         @if (confirmDialog(); as dialog) {
-          <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
+          <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          >
             <section
               class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
               role="dialog"
@@ -402,7 +404,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>
-              <div class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
+              <div
+                class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end"
+              >
                 <button type="button" (click)="cancelConfirmDialog()" class="secondary-button">
                   {{ dialog.cancelText }}
                 </button>
@@ -2835,7 +2839,9 @@ export class AdministrationComponent implements OnInit {
     this.status.set({ type: 'error', message });
   }
 
-  private confirmAdminAction(dialog: Omit<ConfirmDialog, 'cancelText'> & { cancelText?: string }): void {
+  private confirmAdminAction(
+    dialog: Omit<ConfirmDialog, 'cancelText'> & { cancelText?: string },
+  ): void {
     this.confirmDialog.set({
       cancelText: 'Cancelar',
       ...dialog,
