@@ -2195,15 +2195,20 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
               </div>
             </section>
-          } @else if (activeDetailTab() === 'operacion') {
-            <app-water-detail-operacion />
           } @else if (activeDetailTab() === 'alertas') {
-            <app-water-detail-alertas />
+            <app-water-detail-alertas
+              [sitioId]="siteContext()?.site?.id || ''"
+              [empresaId]="siteContext()?.company?.id || ''"
+            />
           } @else if (activeDetailTab() === 'bitacora') {
             <app-water-detail-bitacora />
           } @else if (activeDetailTab() === 'analisis') {
             <app-water-detail-analisis />
           }
+
+          <div [class.hidden]="activeDetailTab() !== 'operacion'">
+            <app-water-detail-operacion />
+          </div>
         </div>
       } @else {
         <div
@@ -4070,6 +4075,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           this.siteContext.update((current) =>
             current ? { ...current, site: { ...current.site, pozo_config: pozoConfig } } : current,
           );
+          this.refreshDashboardSnapshot(siteId);
+          this.refreshHierarchySnapshot();
         },
         error: (err: unknown) => {
           this.settingsBusy.set('');
@@ -4259,6 +4266,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.setSettingsSuccess(res.message || 'Variable guardada.');
         this.resetVariableForm();
         this.loadSiteVariables(siteId);
+        this.refreshDashboardSnapshot(siteId);
+        this.refreshHierarchySnapshot();
       },
       error: (err: unknown) => {
         this.settingsBusy.set('');
@@ -4299,6 +4308,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.settingsBusy.set('');
         this.setSettingsSuccess(res.message || 'Variable eliminada.');
         this.loadSiteVariables(siteId);
+        this.refreshDashboardSnapshot(siteId);
+        this.refreshHierarchySnapshot();
       },
       error: (err: unknown) => {
         this.settingsBusy.set('');
@@ -4881,6 +4892,45 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       },
       error: (err: unknown) =>
         this.setSettingsError(this.errorMessage(err, 'No fue posible recargar variables.')),
+    });
+  }
+
+  private refreshDashboardSnapshot(siteId: string): void {
+    this.companyService.getSiteDashboardData(siteId).subscribe({
+      next: (res: any) => {
+        const payload = res?.ok === false ? null : res?.data || res || null;
+        if (!payload) return;
+        this.syncServerClock(payload.server_time);
+        this.dashboardData.set(payload);
+        this.dashboardLastLoadedAt.set(new Date());
+        this.dashboardError.set('');
+      },
+      error: () => undefined,
+    });
+  }
+
+  private refreshHierarchySnapshot(): void {
+    const siteId = this.currentSiteId();
+    if (!siteId) return;
+
+    this.companyService.fetchHierarchy().subscribe({
+      next: (res: any) => {
+        if (!res.ok) return;
+        const match = this.findAccessibleSite(res.data, siteId);
+        if (!match) return;
+        this.companyService.selectedSubCompanyId.set(match.subCompany.id);
+        this.siteContext.update((current) =>
+          current
+            ? {
+                ...current,
+                company: match.company,
+                subCompany: match.subCompany,
+                site: { ...current.site, ...match.site },
+              }
+            : match,
+        );
+      },
+      error: () => undefined,
     });
   }
 

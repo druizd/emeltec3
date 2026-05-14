@@ -61,6 +61,22 @@ export class AdministrationService {
     return this.http.post<ApiResponse<CompanyNode>>('/api/companies', payload);
   }
 
+  updateCompany(
+    companyId: string,
+    payload: Partial<CreateCompanyPayload>,
+  ): Observable<ApiResponse<CompanyNode>> {
+    return this.http.patch<ApiResponse<CompanyNode>>(
+      `/api/companies/${encodeURIComponent(companyId)}`,
+      payload,
+    );
+  }
+
+  deleteCompany(companyId: string): Observable<ApiResponse<unknown>> {
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/companies/${encodeURIComponent(companyId)}`,
+    );
+  }
+
   createSubCompany(
     companyId: string,
     payload: CreateSubCompanyPayload,
@@ -68,6 +84,23 @@ export class AdministrationService {
     return this.http.post<ApiResponse<SubCompanyNode>>(
       `/api/companies/${companyId}/sub-companies`,
       payload,
+    );
+  }
+
+  updateSubCompany(
+    companyId: string,
+    subCompanyId: string,
+    payload: Partial<CreateSubCompanyPayload> & { empresa_id?: string },
+  ): Observable<ApiResponse<SubCompanyNode>> {
+    return this.http.patch<ApiResponse<SubCompanyNode>>(
+      `/api/companies/${encodeURIComponent(companyId)}/sub-companies/${encodeURIComponent(subCompanyId)}`,
+      payload,
+    );
+  }
+
+  deleteSubCompany(companyId: string, subCompanyId: string): Observable<ApiResponse<unknown>> {
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/companies/${encodeURIComponent(companyId)}/sub-companies/${encodeURIComponent(subCompanyId)}`,
     );
   }
 
@@ -84,9 +117,18 @@ export class AdministrationService {
 
   updateSite(
     siteId: string,
-    payload: Partial<CreateSitePayload>,
+    payload: Partial<CreateSitePayload> & { empresa_id?: string; sub_empresa_id?: string },
   ): Observable<ApiResponse<SiteRecord>> {
-    return this.http.patch<ApiResponse<SiteRecord>>(`/api/companies/sites/${siteId}`, payload);
+    return this.http.patch<ApiResponse<SiteRecord>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}`,
+      payload,
+    );
+  }
+
+  deleteSite(siteId: string): Observable<ApiResponse<unknown>> {
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}`,
+    );
   }
 
   getSiteVariables(siteId: string): Observable<ApiResponse<SiteVariablesPayload>> {

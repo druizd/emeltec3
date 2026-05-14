@@ -18,6 +18,7 @@ const companyRoutes = require('./routes/companyRoutes');
 const alertaRoutes = require('./routes/alertaRoutes');
 const internalRoutes = require('./routes/internalRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
+const { auditMutations } = require('./services/auditLog');
 
 const app = express();
 
@@ -38,18 +39,47 @@ app.use(
   }),
 );
 
-// Limite global para evitar abuso simple de la API.
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 200,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { ok: false, message: 'Demasiadas solicitudes. Intenta en 15 minutos.' },
-});
+// Limite global opcional para evitar abuso simple de la API.
+// RATE_LIMIT_MAX=0 o RATE_LIMIT_WINDOW_MS=0 lo deshabilita.
+const rateLimitWindowMs = Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '3600000', 10);
+const rateLimitMax = Number.parseInt(process.env.RATE_LIMIT_MAX || '5000', 10);
 
-app.use('/api/', globalLimiter);
+if (rateLimitWindowMs > 0 && rateLimitMax > 0) {
+  const globalLimiter = rateLimit({
+    windowMs: rateLimitWindowMs,
+    max: rateLimitMax,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      ok: false,
+      message: 'Demasiadas solicitudes. Intenta nuevamente en unos momentos.',
+    },
+  });
+
+  app.use('/api/', globalLimiter);
+}
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
+// Bitácora automática Ley 21.663: registra mutaciones (POST/PUT/PATCH/DELETE)
+// en /api/users, /api/companies, /api/alertas tras ejecutarse el handler.
+// El resolver mapea cada path → action key (e.g. POST /api/users → 'usuario.create').
+const auditResolver = (req) => {
+  const path = req.originalUrl.split('?')[0];
+  let targetType = null;
+  if (path.startsWith('/api/users')) targetType = 'usuario';
+  else if (path.startsWith('/api/companies')) targetType = 'empresa';
+  else if (path.startsWith('/api/alertas')) targetType = 'alerta';
+  const verb =
+    { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' }[req.method] || 'mutate';
+  // El id aparece como último segmento numérico/alfanumérico tras la base de recursos.
+  const targetId = (req.params && (req.params.id || req.params.sitioId)) || null;
+  return {
+    action: targetType ? `${targetType}.${verb}` : `${req.method.toLowerCase()}.unknown`,
+    targetType,
+    targetId,
+  };
+};
 
 // Rutas funcionales del backend.
 app.use('/api/health', healthRoutes);
@@ -58,9 +88,9 @@ app.use('/api/data', dataRoutes);
 app.use('/api', catalogRoutes);
 app.use('/api/metrics', metricsRoutes);
 app.use('/api/internal', internalRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/companies', companyRoutes);
-app.use('/api/alertas', alertaRoutes);
+app.use('/api/users', auditMutations(auditResolver), userRoutes);
+app.use('/api/companies', auditMutations(auditResolver), companyRoutes);
+app.use('/api/alertas', auditMutations(auditResolver), alertaRoutes);
 
 // /api/v2/* — router TS compilado. Endpoints nuevos con envelopes estándar,
 // caché Redis online, Prometheus metrics, healthcheck liveness/readiness.

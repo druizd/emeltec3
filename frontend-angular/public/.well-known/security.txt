@@ -1,0 +1,6 @@
+Contact: mailto:druiz@emeltec.cl
+Expires: 2027-05-14T00:00:00Z
+Preferred-Languages: es, en
+Canonical: https://cloud.emeltec.cl/.well-known/security.txt
+Policy: https://cloud.emeltec.cl/terminos
+Acknowledgments: https://cloud.emeltec.cl/seguridad/agradecimientos

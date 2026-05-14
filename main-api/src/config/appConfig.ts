@@ -37,14 +37,21 @@ const Schema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce
     .number()
     .int()
-    .positive()
-    .default(15 * 60 * 1000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(200),
+    .nonnegative()
+    .default(60 * 60 * 1000),
+  RATE_LIMIT_MAX: z.coerce.number().int().nonnegative().default(5000),
 
   ENABLE_ALERTS_WORKER: z
     .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
     .default('true')
     .transform((v) => v === 'true' || v === '1'),
+
+  ENABLE_HEALTH_DIGEST_WORKER: z
+    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
+  MONITOR_PRIMARY_EMAIL: z.string().email().optional(),
 
   DGA_ENCRYPTION_KEY: z
     .string()
@@ -111,6 +118,10 @@ export const config = {
   },
   workers: {
     alerts: env.ENABLE_ALERTS_WORKER,
+    healthDigest: env.ENABLE_HEALTH_DIGEST_WORKER,
+  },
+  monitor: {
+    primaryEmail: env.MONITOR_PRIMARY_EMAIL,
   },
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,

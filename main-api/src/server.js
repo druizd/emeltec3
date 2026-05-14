@@ -44,6 +44,24 @@ const httpServer = app.listen(config.port, () => {
       console.warn('[main-api] No se pudo iniciar DGA worker:', err.message);
     }
   }
+
+  // Health digest worker TS (monitor de transmisión + DGA, event + resumen 07/16).
+  try {
+    const healthWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'healthDigest',
+      'worker',
+    );
+    const { startHealthDigestWorker } = require(healthWorkerPath);
+    startHealthDigestWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar health digest worker:', err.message);
+    }
+  }
 });
 
 // Inicia el servidor gRPC en paralelo para clientes internos o servicio a servicio.
@@ -66,6 +84,21 @@ function shutdown(signal) {
     const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
     const { stopDgaWorker } = require(dgaWorkerPath);
     stopDgaWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const healthWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'healthDigest',
+      'worker',
+    );
+    const { stopHealthDigestWorker } = require(healthWorkerPath);
+    stopHealthDigestWorker();
   } catch (_err) {
     // worker no estaba activo
   }

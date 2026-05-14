@@ -47,7 +47,14 @@ interface Alerta {
   sitio_id: string;
   creado_por: string;
   variable_key: string;
-  condicion: 'mayor_que' | 'menor_que' | 'igual_a' | 'fuera_rango' | 'sin_datos' | string;
+  condicion:
+    | 'mayor_que'
+    | 'menor_que'
+    | 'igual_a'
+    | 'fuera_rango'
+    | 'sin_datos'
+    | 'dga_atrasado'
+    | string;
   umbral_bajo: number;
   umbral_alto: number;
   severidad: string;
@@ -107,9 +114,44 @@ function formatCondicion(alerta: Alerta): string {
       return `debe estar fuera del rango ${alerta.umbral_bajo} - ${alerta.umbral_alto}`;
     case 'sin_datos':
       return `sin datos durante ${alerta.cooldown_minutos} minutos`;
+    case 'dga_atrasado':
+      return 'reporte DGA atrasado más de 24h (escala a 48h y 72h)';
     default:
       return alerta.condicion;
   }
+}
+
+const SEV_RANK: Record<string, number> = { baja: 1, media: 2, alta: 3, critica: 4 };
+
+const DGA_TIER_H = { media: 24, alta: 48, critica: 72 } as const;
+
+function periodMsForDga(p: string): number {
+  switch (p) {
+    case 'hora':
+      return 3_600_000;
+    case 'dia':
+      return 86_400_000;
+    case 'semana':
+      return 7 * 86_400_000;
+    case 'mes':
+      return 30 * 86_400_000;
+    default:
+      return 86_400_000;
+  }
+}
+
+function severidadParaLagDgaH(lagHours: number): 'media' | 'alta' | 'critica' | null {
+  if (lagHours >= DGA_TIER_H.critica) return 'critica';
+  if (lagHours >= DGA_TIER_H.alta) return 'alta';
+  if (lagHours >= DGA_TIER_H.media) return 'media';
+  return null;
+}
+
+function formatLagHorasMinutos(lagMs: number): string {
+  const totalMin = Math.max(0, Math.floor(lagMs / 60_000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h ${m}m`;
 }
 
 function buildMensaje(alerta: Alerta, valor: number | null): string {
@@ -151,8 +193,113 @@ async function notificarUsuarios(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Promise<void> {
+  // Lookup informante DGA del sitio.
+  const u = await client.query(
+    `SELECT id_dgauser, periodicidad, last_run_at,
+            to_char(fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
+            to_char(hora_inicio,  'HH24:MI:SS') AS hora_inicio
+       FROM dga_user
+      WHERE site_id = $1 AND activo = TRUE
+      ORDER BY created_at ASC
+      LIMIT 1`,
+    [alerta.sitio_id],
+  );
+  const dgaUser = u.rows[0] as
+    | {
+        id_dgauser: number;
+        periodicidad: string;
+        last_run_at: string | null;
+        fecha_inicio: string;
+        hora_inicio: string;
+      }
+    | undefined;
+  if (!dgaUser) return; // sitio sin DGA configurado
+
+  const stepMs = periodMsForDga(dgaUser.periodicidad);
+  const baseMs = dgaUser.last_run_at
+    ? new Date(dgaUser.last_run_at).getTime()
+    : new Date(
+        `${dgaUser.fecha_inicio}T${dgaUser.hora_inicio.length === 5 ? `${dgaUser.hora_inicio}:00` : dgaUser.hora_inicio}-04:00`,
+      ).getTime();
+  const expectedNextMs = baseMs + stepMs;
+  const lagMs = Math.max(0, Date.now() - expectedNextMs);
+  const lagH = lagMs / 3_600_000;
+  const tierSev = severidadParaLagDgaH(lagH);
+
+  // Última severidad notificada para esta alerta.
+  const last = await client.query(
+    `SELECT severidad FROM alertas_eventos
+      WHERE alerta_id = $1
+      ORDER BY triggered_at DESC LIMIT 1`,
+    [alerta.id],
+  );
+  const lastSev = (last.rows[0]?.severidad as string | undefined) ?? null;
+  const lastRank = lastSev ? (SEV_RANK[lastSev] ?? 0) : 0;
+
+  if (tierSev === null) {
+    // Recovered: si último era >= media, marca recovery silencioso.
+    if (lastRank >= (SEV_RANK.media ?? 2)) {
+      await client.query(
+        `INSERT INTO alertas_eventos
+           (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
+            valor_detectado, valor_texto, mensaje, severidad, notificado, resuelta)
+         VALUES ($1,$2,$3,$4,$5,NULL,NULL,$6,'baja',TRUE,TRUE)`,
+        [
+          alerta.id,
+          alerta.empresa_id,
+          alerta.sub_empresa_id ?? null,
+          alerta.sitio_id,
+          alerta.variable_key,
+          `Reporte DGA al día en ${alerta.sitio_desc ?? alerta.sitio_id}.`,
+        ],
+      );
+    }
+    return;
+  }
+
+  const curRank = SEV_RANK[tierSev] ?? 0;
+  if (curRank <= lastRank) return; // ya notificada esta o mayor
+
+  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  const lagTexto = formatLagHorasMinutos(lagMs);
+  const mensaje = `[${tierSev.toUpperCase()}] Reporte DGA atrasado en ${sitio}. Sin reportar hace ${lagTexto}.`;
+  const ctx = {
+    ...alerta,
+    severidad: tierSev,
+    valor_detectado: lagTexto,
+    condicion_texto: `reporte DGA atrasado más de ${DGA_TIER_H[tierSev]}h`,
+  };
+  const ins = (await client.query(
+    `INSERT INTO alertas_eventos
+       (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
+        valor_detectado, valor_texto, mensaje, severidad)
+     VALUES ($1,$2,$3,$4,$5,NULL,$6,$7,$8)
+     RETURNING id`,
+    [
+      alerta.id,
+      alerta.empresa_id,
+      alerta.sub_empresa_id ?? null,
+      alerta.sitio_id,
+      alerta.variable_key,
+      lagTexto,
+      mensaje,
+      tierSev,
+    ],
+  )) as { rows: Array<{ id: string }> };
+  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
+    logger.error({ err: (err as Error).message }, 'alerts: notificacion DGA falló'),
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
+
+  if (alerta.condicion === 'dga_atrasado') {
+    await evaluarAlertaDgaAtrasado(client, alerta);
+    return;
+  }
 
   const cool = await client.query(
     `SELECT triggered_at FROM alertas_eventos

@@ -10,6 +10,14 @@ export const routes: Routes = [
     canActivate: [publicGuard],
   },
   {
+    path: 'privacidad',
+    loadComponent: () => import('./pages/legal/privacy').then((m) => m.PrivacyComponent),
+  },
+  {
+    path: 'terminos',
+    loadComponent: () => import('./pages/legal/terms').then((m) => m.TermsComponent),
+  },
+  {
     path: '',
     component: LayoutComponent,
     canActivate: [authGuard],
@@ -19,6 +27,18 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/companies/company-site-water-detail').then(
             (m) => m.CompanySiteWaterDetailComponent,
+          ),
+      },
+      {
+        path: 'ventisqueros',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros').then((m) => m.VentisquerosComponent),
+      },
+      {
+        path: 'ventisqueros/tap/:tapId',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros-tap-detail').then(
+            (m) => m.VentisquerosTapDetailComponent,
           ),
       },
       {

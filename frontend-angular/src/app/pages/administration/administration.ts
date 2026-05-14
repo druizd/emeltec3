@@ -30,6 +30,16 @@ interface AdminStatus {
   message: string;
 }
 
+interface ConfirmDialog {
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  tone: 'danger' | 'primary';
+  icon: string;
+  onConfirm: () => void;
+}
+
 interface SubCompanyOption extends SubCompanyNode {
   companyName: string;
 }
@@ -79,6 +89,8 @@ interface VariableForm {
   offset: string;
   sandboxRaw: string;
 }
+
+const ADMIN_PAGE_SIZE = 10;
 
 const DEFAULT_VARIABLE_FORM: VariableForm = {
   mapId: '',
@@ -299,33 +311,63 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <h1 class="mt-1 text-2xl font-black text-slate-900">Administracion</h1>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                Empresas
-              </p>
-              <p class="text-lg font-black text-slate-900">{{ hierarchy().length }}</p>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(3,12rem)_3.75rem]">
+            <div
+              class="flex min-h-[3.8rem] items-center gap-3 rounded-xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-white px-3 py-2 shadow-sm"
+            >
+              <span
+                class="material-symbols-outlined grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[20px] leading-none text-cyan-700 shadow-[inset_0_0_0_1px_rgba(8,145,178,0.16)]"
+                >domain</span
+              >
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  Empresas
+                </p>
+                <p class="mt-0.5 text-xl font-black leading-none text-slate-900">
+                  {{ hierarchy().length }}
+                </p>
+              </div>
             </div>
-            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                Sitios
-              </p>
-              <p class="text-lg font-black text-slate-900">{{ allSites().length }}</p>
+            <div
+              class="flex min-h-[3.8rem] items-center gap-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white px-3 py-2 shadow-sm"
+            >
+              <span
+                class="material-symbols-outlined grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[20px] leading-none text-blue-700 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.16)]"
+                >location_on</span
+              >
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  Sitios
+                </p>
+                <p class="mt-0.5 text-xl font-black leading-none text-slate-900">
+                  {{ allSites().length }}
+                </p>
+              </div>
             </div>
-            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                Seriales
-              </p>
-              <p class="text-lg font-black text-slate-900">{{ detectedDevices().length }}</p>
+            <div
+              class="flex min-h-[3.8rem] items-center gap-3 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm"
+            >
+              <span
+                class="material-symbols-outlined grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[20px] leading-none text-violet-700 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.16)]"
+                >memory</span
+              >
+              <div>
+                <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+                  Equipos
+                </p>
+                <p class="mt-0.5 text-xl font-black leading-none text-slate-900">
+                  {{ detectedDevices().length }}
+                </p>
+              </div>
             </div>
             <button
               type="button"
               (click)="loadDashboard()"
               [disabled]="loading()"
-              class="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              class="inline-flex min-h-[3.8rem] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-cyan-50 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Actualizar"
             >
-              <span class="material-symbols-outlined text-[19px]" aria-hidden="true">refresh</span>
+              <span class="material-symbols-outlined text-[22px]" aria-hidden="true">refresh</span>
             </button>
           </div>
         </header>
@@ -339,21 +381,63 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
           </div>
         }
 
-        <div class="grid gap-5 xl:grid-cols-[270px_1fr]">
-          <aside class="h-fit rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <nav class="flex flex-col gap-1">
-              @for (item of sectionItems; track item.id) {
+        @if (confirmDialog(); as dialog) {
+          <div
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          >
+            <section
+              class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+              role="dialog"
+              aria-modal="true"
+            >
+              <div class="flex gap-4 border-b border-slate-100 px-5 py-5">
+                <span
+                  [class]="
+                    dialog.tone === 'danger'
+                      ? 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-50 text-[24px] text-red-600'
+                      : 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-50 text-[24px] text-cyan-700'
+                  "
+                  >{{ dialog.icon }}</span
+                >
+                <div class="min-w-0">
+                  <h3 class="text-lg font-black text-slate-900">{{ dialog.title }}</h3>
+                  <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
+                </div>
+              </div>
+              <div
+                class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end"
+              >
+                <button type="button" (click)="cancelConfirmDialog()" class="secondary-button">
+                  {{ dialog.cancelText }}
+                </button>
                 <button
                   type="button"
-                  (click)="setSection(item.id)"
-                  [class]="sectionButtonClass(item.id)"
+                  (click)="confirmDialogAction()"
+                  [class]="dialog.tone === 'danger' ? 'danger-button' : 'primary-button'"
                 >
-                  <span class="material-symbols-outlined text-[20px]">{{ item.icon }}</span>
-                  <span>{{ item.label }}</span>
+                  <span class="material-symbols-outlined text-[18px]">{{
+                    dialog.tone === 'danger' ? 'delete' : 'check'
+                  }}</span>
+                  {{ dialog.confirmText }}
                 </button>
-              }
-            </nav>
-          </aside>
+              </div>
+            </section>
+          </div>
+        }
+
+        <section class="admin-shell">
+          <nav class="section-tabs" aria-label="Secciones de administracion">
+            @for (item of sectionItems; track item.id) {
+              <button
+                type="button"
+                (click)="setSection(item.id)"
+                [class]="sectionButtonClass(item.id)"
+              >
+                <span class="material-symbols-outlined text-[21px]">{{ item.icon }}</span>
+                <span>{{ item.label }}</span>
+              </button>
+            }
+          </nav>
 
           <main class="min-w-0">
             @if (loading()) {
@@ -372,12 +456,40 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <h2 class="text-lg font-black text-slate-900">Empresas padre</h2>
                   </div>
 
-                  <div class="grid gap-6 p-6 lg:grid-cols-[420px_1fr]">
-                    <form (submit)="createCompany($event)" class="space-y-4">
+                  <div class="space-y-5 p-6">
+                    <form
+                      (submit)="submitCompany($event)"
+                      class="editor-panel grid gap-4 lg:grid-cols-3"
+                    >
+                      <div class="flex items-start justify-between gap-3 lg:col-span-3">
+                        <div>
+                          <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
+                            {{ selectedCompanyId() ? 'Empresa seleccionada' : 'Nueva empresa' }}
+                          </p>
+                          <p class="mt-1 text-sm text-slate-500">
+                            {{
+                              selectedCompanyId()
+                                ? 'Presiona editar datos para habilitar cambios.'
+                                : 'Completa los datos para crear una empresa.'
+                            }}
+                          </p>
+                        </div>
+                        @if (selectedCompanyId()) {
+                          <button
+                            type="button"
+                            (click)="startCreateCompany()"
+                            class="secondary-button"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            Nueva
+                          </button>
+                        }
+                      </div>
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
                         <input
                           required
+                          [disabled]="companyFormDisabled()"
                           name="company-name"
                           [ngModel]="companyForm().nombre"
                           (ngModelChange)="updateCompanyForm('nombre', $event)"
@@ -389,6 +501,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
                         <input
                           required
+                          [disabled]="companyFormDisabled()"
                           name="company-rut"
                           [ngModel]="companyForm().rut"
                           (ngModelChange)="updateCompanyForm('rut', $event)"
@@ -400,6 +513,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
                         <select
                           name="company-type"
+                          [disabled]="companyFormDisabled()"
                           [ngModel]="companyForm().tipo_empresa"
                           (ngModelChange)="updateCompanyForm('tipo_empresa', $event)"
                           class="field-control"
@@ -410,48 +524,155 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           <option value="Cliente">Cliente</option>
                         </select>
                       </div>
-                      <button
-                        type="submit"
-                        [disabled]="busyAction() === 'company'"
-                        class="primary-button"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">domain_add</span>
-                        {{ busyAction() === 'company' ? 'Guardando' : 'Crear empresa' }}
-                      </button>
+                      <div class="flex flex-wrap gap-2 lg:col-span-3">
+                        @if (!selectedCompanyId()) {
+                          <button
+                            type="submit"
+                            [disabled]="busyAction() === 'company'"
+                            class="primary-button"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">domain_add</span>
+                            {{ busyAction() === 'company' ? 'Guardando' : 'Crear empresa' }}
+                          </button>
+                        } @else if (!companyEditMode()) {
+                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <button
+                              type="button"
+                              (click)="enableCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">edit</span>
+                              Editar datos
+                            </button>
+                            <button
+                              type="button"
+                              (click)="deleteSelectedCompany()"
+                              [disabled]="busyAction() === 'company-delete'"
+                              class="danger-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <button
+                              type="submit"
+                              [disabled]="busyAction() === 'company-update'"
+                              class="primary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">save</span>
+                              {{
+                                busyAction() === 'company-update' ? 'Actualizando' : 'Actualizar'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        }
+                      </div>
                     </form>
 
-                    <div class="overflow-hidden rounded-lg border border-slate-200">
-                      <table class="w-full text-left text-sm">
-                        <thead
-                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
-                        >
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (company of hierarchy(); track company.id) {
-                            <tr class="bg-white">
-                              <td class="px-4 py-3 font-bold text-slate-800">
-                                {{ company.nombre }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
-                              <td class="px-4 py-3">
-                                <span
-                                  class="rounded-md bg-cyan-50 px-2 py-1 text-xs font-bold text-cyan-700"
-                                  >{{ company.tipo_empresa }}</span
-                                >
-                              </td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600">
-                                {{ countCompanySites(company) }}
-                              </td>
+                    <div class="table-card">
+                      <div class="table-toolbar">
+                        <div>
+                          <p class="text-sm font-black text-slate-800">Empresas registradas</p>
+                          <p class="text-xs font-bold text-slate-400">
+                            {{ filteredCompanies().length }} de {{ hierarchy().length }} visibles
+                          </p>
+                        </div>
+                        <label class="search-control">
+                          <span class="material-symbols-outlined text-[18px]">search</span>
+                          <input
+                            type="search"
+                            [ngModel]="companySearch()"
+                            (ngModelChange)="updateCompanySearch($event)"
+                            [ngModelOptions]="{ standalone: true }"
+                            placeholder="Buscar empresa, RUT o tipo"
+                          />
+                        </label>
+                      </div>
+
+                      <div class="overflow-x-auto">
+                        <table class="min-w-[680px] w-full text-left text-sm">
+                          <thead class="table-head">
+                            <tr>
+                              <th class="px-4 py-3">Nombre</th>
+                              <th class="px-4 py-3">RUT</th>
+                              <th class="px-4 py-3">Tipo</th>
+                              <th class="px-4 py-3 text-right">Sitios</th>
                             </tr>
-                          }
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            @for (company of paginatedCompanies(); track company.id) {
+                              <tr
+                                (click)="selectCompany(company.id)"
+                                [class]="rowClass(selectedCompanyId() === company.id)"
+                              >
+                                <td class="px-4 py-3 font-bold text-slate-800">
+                                  {{ company.nombre }}
+                                </td>
+                                <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
+                                <td class="px-4 py-3">
+                                  <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
+                                    company.tipo_empresa
+                                  }}</span>
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                  {{ countCompanySites(company) }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
+                        <p class="text-xs font-bold text-slate-400">
+                          Mostrando
+                          {{ paginationStart(filteredCompanies().length, companyPage()) }}-{{
+                            paginationEnd(filteredCompanies().length, companyPage())
+                          }}
+                          de {{ filteredCompanies().length }}
+                        </p>
+                        @if (totalPages(filteredCompanies().length) > 1) {
+                          <div class="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              (click)="setPage('empresas', companyPage() - 1)"
+                              [disabled]="companyPage() === 1"
+                              class="pagination-button"
+                            >
+                              Anterior
+                            </button>
+                            @for (
+                              page of paginationPages(filteredCompanies().length, companyPage());
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('empresas', page)"
+                                [class]="paginationButtonClass(companyPage() === page)"
+                              >
+                                {{ page }}
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              (click)="setPage('empresas', companyPage() + 1)"
+                              [disabled]="companyPage() >= totalPages(filteredCompanies().length)"
+                              class="pagination-button"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        }
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -463,14 +684,46 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <h2 class="text-lg font-black text-slate-900">Subempresas</h2>
                   </div>
 
-                  <div class="grid gap-6 p-6 lg:grid-cols-[420px_1fr]">
-                    <form (submit)="createSubCompany($event)" class="space-y-4">
+                  <div class="space-y-5 p-6">
+                    <form
+                      (submit)="submitSubCompany($event)"
+                      class="editor-panel grid gap-4 lg:grid-cols-3"
+                    >
+                      <div class="flex items-start justify-between gap-3 lg:col-span-3">
+                        <div>
+                          <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
+                            {{
+                              selectedSubCompanyId()
+                                ? 'Subempresa seleccionada'
+                                : 'Nueva subempresa'
+                            }}
+                          </p>
+                          <p class="mt-1 text-sm text-slate-500">
+                            {{
+                              selectedSubCompanyId()
+                                ? 'Presiona editar datos para habilitar cambios.'
+                                : 'Completa los datos para crear una subempresa.'
+                            }}
+                          </p>
+                        </div>
+                        @if (selectedSubCompanyId()) {
+                          <button
+                            type="button"
+                            (click)="startCreateSubCompany()"
+                            class="secondary-button"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            Nueva
+                          </button>
+                        }
+                      </div>
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500"
                           >Empresa padre</label
                         >
                         <select
                           required
+                          [disabled]="subCompanyFormDisabled()"
                           name="sub-company-parent"
                           [ngModel]="subCompanyForm().empresa_id"
                           (ngModelChange)="updateSubCompanyForm('empresa_id', $event)"
@@ -486,6 +739,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
                         <input
                           required
+                          [disabled]="subCompanyFormDisabled()"
                           name="sub-company-name"
                           [ngModel]="subCompanyForm().nombre"
                           (ngModelChange)="updateSubCompanyForm('nombre', $event)"
@@ -497,6 +751,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
                         <input
                           required
+                          [disabled]="subCompanyFormDisabled()"
                           name="sub-company-rut"
                           [ngModel]="subCompanyForm().rut"
                           (ngModelChange)="updateSubCompanyForm('rut', $event)"
@@ -504,41 +759,155 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           placeholder="76000000-0"
                         />
                       </div>
-                      <button
-                        type="submit"
-                        [disabled]="busyAction() === 'subcompany'"
-                        class="primary-button"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">add_business</span>
-                        {{ busyAction() === 'subcompany' ? 'Guardando' : 'Crear subempresa' }}
-                      </button>
+                      <div class="flex flex-wrap gap-2 lg:col-span-3">
+                        @if (!selectedSubCompanyId()) {
+                          <button
+                            type="submit"
+                            [disabled]="busyAction() === 'subcompany'"
+                            class="primary-button"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">add_business</span>
+                            {{ busyAction() === 'subcompany' ? 'Guardando' : 'Crear subempresa' }}
+                          </button>
+                        } @else if (!subCompanyEditMode()) {
+                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <button
+                              type="button"
+                              (click)="enableSubCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">edit</span>
+                              Editar datos
+                            </button>
+                            <button
+                              type="button"
+                              (click)="deleteSelectedSubCompany()"
+                              [disabled]="busyAction() === 'subcompany-delete'"
+                              class="danger-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <button
+                              type="submit"
+                              [disabled]="busyAction() === 'subcompany-update'"
+                              class="primary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">save</span>
+                              {{
+                                busyAction() === 'subcompany-update' ? 'Actualizando' : 'Actualizar'
+                              }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelSubCompanyEdit()"
+                              class="secondary-button"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        }
+                      </div>
                     </form>
 
-                    <div class="overflow-hidden rounded-lg border border-slate-200">
-                      <table class="w-full text-left text-sm">
-                        <thead
-                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
-                        >
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">Empresa</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (sub of allSubCompanies(); track sub.id) {
-                            <tr class="bg-white">
-                              <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
-                              <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
-                              <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600">
-                                {{ sub.sites.length }}
-                              </td>
+                    <div class="table-card">
+                      <div class="table-toolbar">
+                        <div>
+                          <p class="text-sm font-black text-slate-800">Subempresas registradas</p>
+                          <p class="text-xs font-bold text-slate-400">
+                            {{ filteredSubCompanies().length }} de
+                            {{ allSubCompanies().length }} visibles
+                          </p>
+                        </div>
+                        <label class="search-control">
+                          <span class="material-symbols-outlined text-[18px]">search</span>
+                          <input
+                            type="search"
+                            [ngModel]="subCompanySearch()"
+                            (ngModelChange)="updateSubCompanySearch($event)"
+                            [ngModelOptions]="{ standalone: true }"
+                            placeholder="Buscar subempresa, empresa o RUT"
+                          />
+                        </label>
+                      </div>
+
+                      <div class="overflow-x-auto">
+                        <table class="min-w-[760px] w-full text-left text-sm">
+                          <thead class="table-head">
+                            <tr>
+                              <th class="px-4 py-3">Nombre</th>
+                              <th class="px-4 py-3">Empresa</th>
+                              <th class="px-4 py-3">RUT</th>
+                              <th class="px-4 py-3 text-right">Sitios</th>
                             </tr>
-                          }
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            @for (sub of paginatedSubCompanies(); track sub.id) {
+                              <tr
+                                (click)="selectSubCompany(sub.id)"
+                                [class]="rowClass(selectedSubCompanyId() === sub.id)"
+                              >
+                                <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
+                                <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
+                                <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                  {{ sub.sites.length }}
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
+                        <p class="text-xs font-bold text-slate-400">
+                          Mostrando
+                          {{ paginationStart(filteredSubCompanies().length, subCompanyPage()) }}-{{
+                            paginationEnd(filteredSubCompanies().length, subCompanyPage())
+                          }}
+                          de {{ filteredSubCompanies().length }}
+                        </p>
+                        @if (totalPages(filteredSubCompanies().length) > 1) {
+                          <div class="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              (click)="setPage('subempresas', subCompanyPage() - 1)"
+                              [disabled]="subCompanyPage() === 1"
+                              class="pagination-button"
+                            >
+                              Anterior
+                            </button>
+                            @for (
+                              page of paginationPages(
+                                filteredSubCompanies().length,
+                                subCompanyPage()
+                              );
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('subempresas', page)"
+                                [class]="paginationButtonClass(subCompanyPage() === page)"
+                              >
+                                {{ page }}
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              (click)="setPage('subempresas', subCompanyPage() + 1)"
+                              [disabled]="
+                                subCompanyPage() >= totalPages(filteredSubCompanies().length)
+                              "
+                              class="pagination-button"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        }
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -550,14 +919,42 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <h2 class="text-lg font-black text-slate-900">Sitios</h2>
                   </div>
 
-                  <div class="grid gap-6 p-6 lg:grid-cols-[420px_1fr]">
-                    <form (submit)="createSite($event)" class="space-y-4">
+                  <div class="space-y-5 p-6">
+                    <form
+                      (submit)="submitSite($event)"
+                      class="editor-panel grid gap-4 lg:grid-cols-4"
+                    >
+                      <div class="flex items-start justify-between gap-3 lg:col-span-4">
+                        <div>
+                          <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
+                            {{ selectedSiteId() ? 'Sitio seleccionado' : 'Nuevo sitio' }}
+                          </p>
+                          <p class="mt-1 text-sm text-slate-500">
+                            {{
+                              selectedSiteId()
+                                ? 'Selecciona editar datos para modificar este sitio.'
+                                : 'Completa los datos para crear un sitio.'
+                            }}
+                          </p>
+                        </div>
+                        @if (selectedSiteId()) {
+                          <button
+                            type="button"
+                            (click)="startCreateSite()"
+                            class="secondary-button"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">add</span>
+                            Nuevo
+                          </button>
+                        }
+                      </div>
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500"
                           >Empresa padre</label
                         >
                         <select
                           required
+                          [disabled]="siteFormDisabled()"
                           name="site-company"
                           [ngModel]="siteForm().empresa_id"
                           (ngModelChange)="selectCompanyForSite($event)"
@@ -575,6 +972,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         >
                         <select
                           required
+                          [disabled]="siteFormDisabled()"
                           name="site-subcompany"
                           [ngModel]="siteForm().sub_empresa_id"
                           (ngModelChange)="updateSiteForm('sub_empresa_id', $event)"
@@ -592,6 +990,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         >
                         <select
                           name="site-type"
+                          [disabled]="siteFormDisabled()"
                           [ngModel]="siteForm().tipo_sitio"
                           (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
                           class="field-control"
@@ -605,6 +1004,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <label class="mb-1 block text-xs font-bold text-slate-500">Estado</label>
                         <select
                           name="site-active"
+                          [disabled]="siteFormDisabled()"
                           [ngModel]="siteForm().activo ? 'true' : 'false'"
                           (ngModelChange)="updateSiteActive($event)"
                           class="field-control"
@@ -619,6 +1019,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         >
                         <input
                           required
+                          [disabled]="siteFormDisabled()"
                           name="site-description"
                           [ngModel]="siteForm().descripcion"
                           (ngModelChange)="updateSiteForm('descripcion', $event)"
@@ -632,6 +1033,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         >
                         <input
                           required
+                          [disabled]="siteFormDisabled()"
                           name="site-serial"
                           [ngModel]="siteForm().id_serial"
                           (ngModelChange)="updateSiteForm('id_serial', $event)"
@@ -643,57 +1045,113 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <label class="mb-1 block text-xs font-bold text-slate-500">Ubicacion</label>
                         <input
                           name="site-location"
+                          [disabled]="siteFormDisabled()"
                           [ngModel]="siteForm().ubicacion"
                           (ngModelChange)="updateSiteForm('ubicacion', $event)"
                           class="field-control"
                           placeholder="Ciudad, faena o coordenadas"
                         />
                       </div>
-                      <button
-                        type="submit"
-                        [disabled]="busyAction() === 'site'"
-                        class="primary-button"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">add_location_alt</span>
-                        {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
-                      </button>
-                      @if (selectedSiteId()) {
-                        <button
-                          type="button"
-                          (click)="saveSelectedSite()"
-                          [disabled]="busyAction() === 'site-update'"
-                          class="secondary-button w-full"
+                      <div class="lg:col-span-4 flex flex-wrap gap-2">
+                        @if (!selectedSiteId()) {
+                          <button
+                            type="submit"
+                            [disabled]="busyAction() === 'site'"
+                            class="primary-button"
+                          >
+                            <span class="material-symbols-outlined text-[18px]"
+                              >add_location_alt</span
+                            >
+                            {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
+                          </button>
+                        } @else if (!siteEditMode()) {
+                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <button
+                              type="button"
+                              (click)="enableSiteEdit()"
+                              class="secondary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">edit</span>
+                              Editar datos
+                            </button>
+                            <button
+                              type="button"
+                              (click)="deleteSelectedSite()"
+                              [disabled]="busyAction() === 'site-delete'"
+                              class="danger-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="grid gap-2 sm:grid-cols-2">
+                            <button
+                              type="submit"
+                              [disabled]="busyAction() === 'site-update'"
+                              class="primary-button"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">save</span>
+                              {{ busyAction() === 'site-update' ? 'Actualizando' : 'Actualizar' }}
+                            </button>
+                            <button
+                              type="button"
+                              (click)="cancelSiteEdit()"
+                              class="secondary-button"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        }
+                      </div>
+                      @if (selectedSiteId() && !siteEditMode()) {
+                        <div
+                          class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 lg:col-span-4"
                         >
-                          <span class="material-symbols-outlined text-[18px]">save</span>
                           {{
-                            busyAction() === 'site-update'
-                              ? 'Actualizando'
-                              : 'Actualizar seleccionado'
+                            selectedSite()?.ubicacion
+                              ? 'Ubicacion: ' + selectedSite()?.ubicacion
+                              : 'Sin ubicacion registrada'
                           }}
-                        </button>
+                        </div>
                       }
                     </form>
 
-                    <div class="space-y-4">
-                      <div class="overflow-hidden rounded-lg border border-slate-200">
-                        <table class="w-full text-left text-sm">
-                          <thead
-                            class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
-                          >
+                    <div class="table-card">
+                      <div class="table-toolbar">
+                        <div>
+                          <p class="text-sm font-black text-slate-800">Sitios registrados</p>
+                          <p class="text-xs font-bold text-slate-400">
+                            {{ filteredSites().length }} de {{ allSites().length }} visibles
+                          </p>
+                        </div>
+                        <label class="search-control">
+                          <span class="material-symbols-outlined text-[18px]">search</span>
+                          <input
+                            type="search"
+                            [ngModel]="siteSearch()"
+                            (ngModelChange)="updateSiteSearch($event)"
+                            [ngModelOptions]="{ standalone: true }"
+                            placeholder="Buscar sitio, serial, empresa o estado"
+                          />
+                        </label>
+                      </div>
+
+                      <div class="overflow-x-auto">
+                        <table class="min-w-[680px] w-full text-left text-sm">
+                          <thead class="table-head">
                             <tr>
                               <th class="px-4 py-3">Sitio</th>
                               <th class="px-4 py-3">Tipo</th>
                               <th class="px-4 py-3">Serial</th>
                               <th class="px-4 py-3">Subempresa</th>
-                              <th class="px-4 py-3 text-right">Accion</th>
+                              <th class="px-4 py-3">Estado</th>
                             </tr>
                           </thead>
                           <tbody class="divide-y divide-slate-100">
-                            @for (site of allSites(); track site.id) {
+                            @for (site of paginatedSites(); track site.id) {
                               <tr
-                                [class]="
-                                  selectedSiteId() === site.id ? 'bg-cyan-50/70' : 'bg-white'
-                                "
+                                (click)="selectSite(site.id)"
+                                [class]="rowClass(selectedSiteId() === site.id)"
                               >
                                 <td class="px-4 py-3 font-bold text-slate-800">
                                   {{ site.descripcion }}
@@ -708,37 +1166,62 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 </td>
                                 <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
                                 <td class="px-4 py-3">
-                                  <div class="flex justify-end gap-2">
-                                    <button
-                                      type="button"
-                                      (click)="selectSite(site.id)"
-                                      class="icon-button"
-                                      aria-label="Seleccionar sitio"
-                                    >
-                                      <span
-                                        class="material-symbols-outlined text-[18px]"
-                                        aria-hidden="true"
-                                        >check_circle</span
-                                      >
-                                    </button>
-                                    <button
-                                      type="button"
-                                      (click)="openSite(site)"
-                                      class="icon-button"
-                                      aria-label="Abrir sitio"
-                                    >
-                                      <span
-                                        class="material-symbols-outlined text-[18px]"
-                                        aria-hidden="true"
-                                        >monitoring</span
-                                      >
-                                    </button>
-                                  </div>
+                                  <span
+                                    [class]="
+                                      site.activo
+                                        ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
+                                        : 'rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500'
+                                    "
+                                  >
+                                    {{ site.activo ? 'Activo' : 'Inactivo' }}
+                                  </span>
                                 </td>
                               </tr>
                             }
                           </tbody>
                         </table>
+                      </div>
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
+                        <p class="text-xs font-bold text-slate-400">
+                          Mostrando {{ paginationStart(filteredSites().length, sitePage()) }}-{{
+                            paginationEnd(filteredSites().length, sitePage())
+                          }}
+                          de {{ filteredSites().length }}
+                        </p>
+                        @if (totalPages(filteredSites().length) > 1) {
+                          <div class="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              (click)="setPage('sitios', sitePage() - 1)"
+                              [disabled]="sitePage() === 1"
+                              class="pagination-button"
+                            >
+                              Anterior
+                            </button>
+                            @for (
+                              page of paginationPages(filteredSites().length, sitePage());
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('sitios', page)"
+                                [class]="paginationButtonClass(sitePage() === page)"
+                              >
+                                {{ page }}
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              (click)="setPage('sitios', sitePage() + 1)"
+                              [disabled]="sitePage() >= totalPages(filteredSites().length)"
+                              class="pagination-button"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        }
                       </div>
                     </div>
                   </div>
@@ -751,150 +1234,295 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <h2 class="text-lg font-black text-slate-900">Equipos detectados</h2>
                   </div>
 
-                  <div class="p-6">
-                    <div class="mb-4 grid gap-3 md:grid-cols-[1fr_280px]">
-                      <select
-                        name="device-target-site"
-                        [ngModel]="selectedSiteId()"
-                        (ngModelChange)="selectSite($event)"
-                        class="field-control"
-                      >
-                        <option value="">Selecciona sitio</option>
-                        @for (site of allSites(); track site.id) {
-                          <option [value]="site.id">
-                            {{ site.descripcion }} - {{ site.id_serial }}
-                          </option>
-                        }
-                      </select>
-                      <button type="button" (click)="loadDashboard()" class="secondary-button">
-                        <span class="material-symbols-outlined text-[18px]">sync</span>
-                        Actualizar
-                      </button>
-                    </div>
+                  <div class="space-y-5 p-6">
+                    <div class="table-card">
+                      <div class="table-toolbar">
+                        <div>
+                          <p class="text-sm font-black text-slate-800">Equipos detectados</p>
+                          <p class="text-xs font-bold text-slate-400">
+                            {{ filteredDevices().length }} de
+                            {{ detectedDevices().length }} visibles
+                          </p>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                          <label class="search-control">
+                            <span class="material-symbols-outlined text-[18px]">search</span>
+                            <input
+                              type="search"
+                              [ngModel]="deviceSearch()"
+                              (ngModelChange)="updateDeviceSearch($event)"
+                              [ngModelOptions]="{ standalone: true }"
+                              placeholder="Buscar serial, sitio o empresa"
+                            />
+                          </label>
+                          <button type="button" (click)="loadDashboard()" class="secondary-button">
+                            <span class="material-symbols-outlined text-[18px]">sync</span>
+                            Actualizar
+                          </button>
+                        </div>
+                      </div>
 
-                    <div class="overflow-hidden rounded-lg border border-slate-200">
-                      <table class="w-full text-left text-sm">
-                        <thead
-                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
-                        >
-                          <tr>
-                            <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Ultimo registro</th>
-                            <th class="px-4 py-3 text-right">Registros</th>
-                            <th class="px-4 py-3">Sitio</th>
-                            <th class="px-4 py-3 text-right">Accion</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (device of detectedDevices(); track device.id_serial) {
-                            <tr class="bg-white">
-                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
-                                {{ device.id_serial }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500">{{ device.ultimo_registro }}</td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-700">
-                                {{ device.total_registros }}
-                              </td>
-                              <td class="px-4 py-3">
-                                <span
-                                  [class]="
-                                    device.sitio_id
-                                      ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
-                                      : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'
-                                  "
-                                >
-                                  {{ device.sitio_descripcion || 'Sin asignar' }}
-                                </span>
-                              </td>
-                              <td class="px-4 py-3">
-                                <div class="flex justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    (click)="useDeviceInSiteForm(device)"
-                                    class="icon-button"
-                                    aria-label="Usar serial del dispositivo"
-                                  >
-                                    <span
-                                      class="material-symbols-outlined text-[18px]"
-                                      aria-hidden="true"
-                                      >input</span
-                                    >
-                                  </button>
-                                  <button
-                                    type="button"
-                                    (click)="assignDeviceToSelectedSite(device)"
-                                    [disabled]="
-                                      !selectedSiteId() || busyAction() === 'assign-device'
-                                    "
-                                    class="icon-button disabled:cursor-not-allowed disabled:opacity-40"
-                                    aria-label="Asignar dispositivo al sitio"
-                                    [attr.aria-disabled]="
-                                      !selectedSiteId() || busyAction() === 'assign-device'
-                                    "
-                                  >
-                                    <span
-                                      class="material-symbols-outlined text-[18px]"
-                                      aria-hidden="true"
-                                      >link</span
-                                    >
-                                  </button>
-                                </div>
-                              </td>
+                      <div class="overflow-x-auto">
+                        <table class="min-w-[760px] w-full text-left text-sm">
+                          <thead class="table-head">
+                            <tr>
+                              <th class="px-4 py-3">Serial</th>
+                              <th class="px-4 py-3">Ultimo registro</th>
+                              <th class="px-4 py-3 text-right">Cantidad de datos</th>
+                              <th class="px-4 py-3">Sitio</th>
                             </tr>
-                          }
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody class="divide-y divide-slate-100">
+                            @for (device of paginatedDevices(); track device.id_serial) {
+                              <tr class="bg-white transition-colors hover:bg-slate-50">
+                                <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
+                                  {{ device.id_serial }}
+                                </td>
+                                <td class="px-4 py-3 text-slate-500">
+                                  {{ deviceLastSeenLabel(device) }}
+                                </td>
+                                <td class="px-4 py-3 text-right font-bold text-slate-700">
+                                  {{ deviceDataCountLabel(device) }}
+                                </td>
+                                <td class="px-4 py-3">
+                                  <span
+                                    [class]="
+                                      device.sitio_id
+                                        ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
+                                        : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'
+                                    "
+                                  >
+                                    {{ device.sitio_descripcion || 'Sin asignar' }}
+                                  </span>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                      <div
+                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
+                      >
+                        <p class="text-xs font-bold text-slate-400">
+                          Mostrando {{ paginationStart(filteredDevices().length, devicePage()) }}-{{
+                            paginationEnd(filteredDevices().length, devicePage())
+                          }}
+                          de {{ filteredDevices().length }}
+                        </p>
+                        @if (totalPages(filteredDevices().length) > 1) {
+                          <div class="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              (click)="setPage('equipos', devicePage() - 1)"
+                              [disabled]="devicePage() === 1"
+                              class="pagination-button"
+                            >
+                              Anterior
+                            </button>
+                            @for (
+                              page of paginationPages(filteredDevices().length, devicePage());
+                              track page
+                            ) {
+                              <button
+                                type="button"
+                                (click)="setPage('equipos', page)"
+                                [class]="paginationButtonClass(devicePage() === page)"
+                              >
+                                {{ page }}
+                              </button>
+                            }
+                            <button
+                              type="button"
+                              (click)="setPage('equipos', devicePage() + 1)"
+                              [disabled]="devicePage() >= totalPages(filteredDevices().length)"
+                              class="pagination-button"
+                            >
+                              Siguiente
+                            </button>
+                          </div>
+                        }
+                      </div>
                     </div>
                   </div>
                 </section>
               }
             }
           </main>
-        </div>
+        </section>
       </div>
     </div>
   `,
   styles: [
     `
+      .admin-shell {
+        overflow: hidden;
+        border-radius: 0.9rem;
+        border: 1px solid rgb(226 232 240);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95)), white;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+      }
+
+      .section-tabs {
+        display: flex;
+        gap: 0.55rem;
+        overflow-x: auto;
+        border-bottom: 1px solid rgb(226 232 240);
+        background:
+          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.86)), white;
+        padding: 0.9rem 1rem 0;
+      }
+
+      .section-tab-button {
+        position: relative;
+        min-height: 3.35rem;
+        border: 1px solid transparent;
+        border-bottom: 0;
+        border-radius: 0.9rem 0.9rem 0 0;
+        color: rgb(100 116 139);
+      }
+
+      .section-tab-button:hover {
+        border-color: rgb(207 250 254);
+        background: rgb(240 253 250);
+      }
+
+      .section-tab-active {
+        border-color: rgb(186 230 253);
+        background: linear-gradient(180deg, rgb(236 254 255), white);
+        color: rgb(8 145 178);
+        box-shadow: inset 0 -3px 0 rgb(8 145 178);
+      }
+
       .field-control {
         width: 100%;
-        border-radius: 0.5rem;
+        border-radius: 0.7rem;
         border: 1px solid rgb(203 213 225);
-        background: rgb(248 250 252);
+        background: rgba(248, 250, 252, 0.82);
         padding: 0.625rem 0.75rem;
         font-size: 0.875rem;
         color: rgb(15 23 42);
         outline: none;
-        transition:
-          border-color 160ms ease,
-          background-color 160ms ease,
-          box-shadow 160ms ease;
       }
 
       .field-control:focus {
         border-color: rgb(6 182 212);
         background: white;
-        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.14);
+        box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.12);
+      }
+
+      .field-control:disabled {
+        border-color: rgb(226 232 240);
+        background: rgb(241 245 249);
+        color: rgb(51 65 85);
+      }
+
+      .editor-panel {
+        border-radius: 0.9rem;
+        border: 1px solid rgb(207 250 254);
+        background:
+          radial-gradient(circle at top left, rgba(6, 182, 212, 0.12), transparent 34rem),
+          linear-gradient(180deg, rgba(236, 254, 255, 0.72), rgba(255, 255, 255, 0.96)), white;
+        padding: 1.25rem;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.055);
+      }
+
+      .table-card {
+        min-width: 0;
+        overflow: hidden;
+        border-radius: 0.9rem;
+        border: 1px solid rgb(226 232 240);
+        background: white;
+        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.052);
+      }
+
+      .table-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-bottom: 1px solid rgb(226 232 240);
+        padding: 1rem 1.25rem;
+      }
+
+      .search-control {
+        display: flex;
+        min-height: 2.5rem;
+        width: min(100%, 25rem);
+        align-items: center;
+        gap: 0.5rem;
+        border-radius: 0.65rem;
+        border: 1px solid rgb(203 213 225);
+        background: rgba(248, 250, 252, 0.9);
+        padding: 0 0.75rem;
+        color: rgb(100 116 139);
+      }
+
+      .search-control:focus-within {
+        border-color: rgb(6 182 212);
+        background: white;
+        box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.12);
+      }
+
+      .search-control input {
+        min-width: 0;
+        flex: 1;
+        border: 0;
+        background: transparent;
+        font-size: 0.875rem;
+        color: rgb(15 23 42);
+        outline: none;
+      }
+
+      .table-head {
+        background: rgb(241 245 249);
+        font-size: 0.75rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: rgb(100 116 139);
+      }
+
+      .pagination-button {
+        display: inline-flex;
+        min-height: 2.25rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.65rem;
+        border: 1px solid rgb(226 232 240);
+        background: white;
+        padding: 0 0.8rem;
+        font-size: 0.75rem;
+        font-weight: 900;
+        color: rgb(71 85 105);
+        transition: all 160ms ease;
+      }
+
+      .pagination-button:hover:not(:disabled) {
+        border-color: rgb(165 243 252);
+        color: rgb(8 145 178);
+      }
+
+      .pagination-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.45;
       }
 
       .primary-button,
       .secondary-button,
-      .icon-button {
+      .danger-button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 0.45rem;
-        transition:
-          background-color 160ms ease,
-          color 160ms ease,
-          border-color 160ms ease,
-          transform 160ms ease;
+        transition: all 160ms ease;
       }
 
       .primary-button {
         min-height: 2.5rem;
-        width: 100%;
-        border-radius: 0.5rem;
+        min-width: 11rem;
+        border-radius: 0.7rem;
+        border: 1px solid rgb(8 145 178);
         background: rgb(8 145 178);
         padding: 0.625rem 1rem;
         font-size: 0.875rem;
@@ -903,7 +1531,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       }
 
       .primary-button:hover:not(:disabled) {
+        border-color: rgb(14 116 144);
         background: rgb(14 116 144);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(8, 145, 178, 0.18);
       }
 
       .primary-button:disabled {
@@ -913,9 +1544,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
       .secondary-button {
         min-height: 2.5rem;
-        border-radius: 0.5rem;
+        min-width: 8.5rem;
+        border-radius: 0.7rem;
         border: 1px solid rgb(203 213 225);
-        background: white;
+        background: rgba(255, 255, 255, 0.92);
         padding: 0.625rem 1rem;
         font-size: 0.875rem;
         font-weight: 800;
@@ -923,22 +1555,49 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       }
 
       .secondary-button:hover {
-        background: rgb(248 250 252);
+        border-color: rgb(125 211 252);
+        background: rgb(240 249 255);
+        color: rgb(3 105 161);
+        transform: translateY(-1px);
       }
 
-      .icon-button {
-        height: 2rem;
-        width: 2rem;
-        border-radius: 0.5rem;
-        border: 1px solid rgb(226 232 240);
-        background: white;
-        color: rgb(71 85 105);
+      .danger-button {
+        min-height: 2.5rem;
+        border-radius: 0.7rem;
+        border: 1px solid rgb(254 202 202);
+        background: rgb(254 242 242);
+        padding: 0.625rem 0.8rem;
+        font-size: 0.875rem;
+        font-weight: 800;
+        color: rgb(185 28 28);
       }
 
-      .icon-button:hover:not(:disabled) {
-        border-color: rgb(165 243 252);
-        background: rgb(236 254 255);
-        color: rgb(8 145 178);
+      .danger-button:hover:not(:disabled) {
+        border-color: rgb(252 165 165);
+        background: rgb(254 226 226);
+        transform: translateY(-1px);
+      }
+
+      .danger-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      @media (max-width: 760px) {
+        .table-toolbar {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .search-control {
+          width: 100%;
+        }
+
+        .primary-button,
+        .secondary-button,
+        .danger-button {
+          width: 100%;
+        }
       }
     `,
   ],
@@ -959,12 +1618,24 @@ export class AdministrationComponent implements OnInit {
   loading = signal(false);
   busyAction = signal('');
   status = signal<AdminStatus>({ type: '', message: '' });
+  confirmDialog = signal<ConfirmDialog | null>(null);
 
   hierarchy = signal<CompanyNode[]>([]);
   detectedDevices = signal<DetectedDevice[]>([]);
   selectedCompanyId = signal('');
   selectedSubCompanyId = signal('');
   selectedSiteId = signal('');
+  companyEditMode = signal(false);
+  subCompanyEditMode = signal(false);
+  siteEditMode = signal(false);
+  companySearch = signal('');
+  subCompanySearch = signal('');
+  siteSearch = signal('');
+  deviceSearch = signal('');
+  companyPage = signal(1);
+  subCompanyPage = signal(1);
+  sitePage = signal(1);
+  devicePage = signal(1);
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
     site: this.emptySite(),
@@ -1012,6 +1683,86 @@ export class AdministrationComponent implements OnInit {
     ),
   );
 
+  filteredCompanies = computed<CompanyNode[]>(() =>
+    this.hierarchy().filter((company) =>
+      this.matchesSearch(this.companySearch(), [
+        company.nombre,
+        company.rut,
+        company.tipo_empresa,
+        String(this.countCompanySites(company)),
+      ]),
+    ),
+  );
+
+  filteredSubCompanies = computed<SubCompanyOption[]>(() =>
+    this.allSubCompanies().filter((subCompany) =>
+      this.matchesSearch(this.subCompanySearch(), [
+        subCompany.nombre,
+        subCompany.rut,
+        subCompany.companyName,
+        String(subCompany.sites.length),
+      ]),
+    ),
+  );
+
+  filteredSites = computed<SiteOption[]>(() =>
+    this.allSites().filter((site) =>
+      this.matchesSearch(this.siteSearch(), [
+        site.descripcion,
+        site.id_serial,
+        site.tipo_sitio,
+        this.siteTypeLabel(site.tipo_sitio),
+        site.companyName,
+        site.subCompanyName,
+        site.ubicacion || '',
+        site.activo ? 'activo' : 'inactivo',
+      ]),
+    ),
+  );
+
+  filteredDevices = computed<DetectedDevice[]>(() =>
+    this.detectedDevices().filter((device) =>
+      this.matchesSearch(this.deviceSearch(), [
+        device.id_serial,
+        device.ultimo_registro,
+        device.ultimo_registro_local || '',
+        String(this.deviceDataCount(device)),
+        String(device.total_registros),
+        device.sitio_descripcion || '',
+        device.empresa_nombre || '',
+        device.sub_empresa_nombre || '',
+      ]),
+    ),
+  );
+
+  paginatedCompanies = computed<CompanyNode[]>(() =>
+    this.paginate(this.filteredCompanies(), this.companyPage()),
+  );
+
+  paginatedSubCompanies = computed<SubCompanyOption[]>(() =>
+    this.paginate(this.filteredSubCompanies(), this.subCompanyPage()),
+  );
+
+  paginatedSites = computed<SiteOption[]>(() =>
+    this.paginate(this.filteredSites(), this.sitePage()),
+  );
+
+  paginatedDevices = computed<DetectedDevice[]>(() =>
+    this.paginate(this.filteredDevices(), this.devicePage()),
+  );
+
+  selectedCompany = computed<CompanyNode | undefined>(() =>
+    this.hierarchy().find((company) => company.id === this.selectedCompanyId()),
+  );
+
+  selectedSubCompany = computed<SubCompanyOption | undefined>(() =>
+    this.allSubCompanies().find((subCompany) => subCompany.id === this.selectedSubCompanyId()),
+  );
+
+  selectedSite = computed<SiteOption | undefined>(() =>
+    this.allSites().find((site) => site.id === this.selectedSiteId()),
+  );
+
   subCompaniesForSiteForm = computed<SubCompanyOption[]>(() =>
     this.allSubCompanies().filter(
       (subCompany) => subCompany.empresa_id === this.siteForm().empresa_id,
@@ -1043,21 +1794,23 @@ export class AdministrationComponent implements OnInit {
     this.activeSection.set(section);
   }
 
-  loadDashboard(): void {
-    this.loading.set(true);
-    this.status.set({ type: '', message: '' });
+  loadDashboard(showLoader = true): void {
+    if (showLoader) {
+      this.loading.set(true);
+      this.status.set({ type: '', message: '' });
+    }
 
     forkJoin({
       hierarchy: this.api.getHierarchy(),
-      devices: this.api.getDetectedDevices(200),
+      devices: this.api.getDetectedDevices(500),
       catalog: this.api.getSiteTypeCatalog(),
     }).subscribe({
       next: ({ hierarchy, devices, catalog }) => {
-        this.hierarchy.set(hierarchy.ok ? hierarchy.data : []);
+        this.setHierarchy(hierarchy.ok ? hierarchy.data : []);
         this.detectedDevices.set(devices.ok ? devices.data : []);
         this.siteTypeCatalog.set(catalog.ok ? catalog.data : DEFAULT_SITE_TYPE_CATALOG);
         this.seedSelections();
-        this.companyService.fetchHierarchy().subscribe();
+        this.clampAllPages();
         this.loading.set(false);
       },
       error: (err: unknown) => {
@@ -1081,6 +1834,87 @@ export class AdministrationComponent implements OnInit {
 
   updateSiteActive(value: string): void {
     this.siteForm.update((form) => ({ ...form, activo: value === 'true' }));
+  }
+
+  updateCompanySearch(value: string): void {
+    this.companySearch.set(value);
+    this.companyPage.set(1);
+  }
+
+  updateSubCompanySearch(value: string): void {
+    this.subCompanySearch.set(value);
+    this.subCompanyPage.set(1);
+  }
+
+  updateSiteSearch(value: string): void {
+    this.siteSearch.set(value);
+    this.sitePage.set(1);
+  }
+
+  updateDeviceSearch(value: string): void {
+    this.deviceSearch.set(value);
+    this.devicePage.set(1);
+  }
+
+  setPage(section: SectionId, page: number): void {
+    const totalItems = this.sectionTotal(section);
+    const nextPage = this.clampPage(page, totalItems);
+    if (section === 'empresas') this.companyPage.set(nextPage);
+    if (section === 'subempresas') this.subCompanyPage.set(nextPage);
+    if (section === 'sitios') this.sitePage.set(nextPage);
+    if (section === 'equipos') this.devicePage.set(nextPage);
+  }
+
+  cancelConfirmDialog(): void {
+    if (this.busyAction()) return;
+    this.confirmDialog.set(null);
+  }
+
+  confirmDialogAction(): void {
+    const dialog = this.confirmDialog();
+    if (!dialog) return;
+    this.confirmDialog.set(null);
+    dialog.onConfirm();
+  }
+
+  totalPages(totalItems: number): number {
+    return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
+  }
+
+  paginationPages(totalItems: number, currentPage: number): number[] {
+    const total = this.totalPages(totalItems);
+    const start = Math.max(1, Math.min(currentPage - 2, Math.max(1, total - 4)));
+    const end = Math.min(total, start + 4);
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }
+
+  paginationStart(totalItems: number, currentPage: number): number {
+    if (!totalItems) return 0;
+    return (this.clampPage(currentPage, totalItems) - 1) * ADMIN_PAGE_SIZE + 1;
+  }
+
+  paginationEnd(totalItems: number, currentPage: number): number {
+    return Math.min(totalItems, this.clampPage(currentPage, totalItems) * ADMIN_PAGE_SIZE);
+  }
+
+  paginationButtonClass(active: boolean): string {
+    const base =
+      'inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-xs font-black transition';
+    return active
+      ? `${base} border-cyan-300 bg-cyan-50 text-cyan-700`
+      : `${base} border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700`;
+  }
+
+  companyFormDisabled(): boolean {
+    return !!this.selectedCompanyId() && !this.companyEditMode();
+  }
+
+  subCompanyFormDisabled(): boolean {
+    return !!this.selectedSubCompanyId() && !this.subCompanyEditMode();
+  }
+
+  siteFormDisabled(): boolean {
+    return !!this.selectedSiteId() && !this.siteEditMode();
   }
 
   updateVariableForm(field: keyof VariableForm, value: string): void {
@@ -1190,6 +2024,43 @@ export class AdministrationComponent implements OnInit {
     return this.findTransformOption(normalized)?.label || normalized;
   }
 
+  submitCompany(event: Event): void {
+    if (this.selectedCompanyId()) {
+      this.saveSelectedCompany(event);
+      return;
+    }
+    this.createCompany(event);
+  }
+
+  startCreateCompany(): void {
+    this.selectedCompanyId.set('');
+    this.companyEditMode.set(false);
+    this.companyForm.set({ nombre: '', rut: '', tipo_empresa: 'Agua' });
+  }
+
+  selectCompany(companyId: string): void {
+    const company = this.hierarchy().find((item) => item.id === companyId);
+    if (!company) return;
+    this.selectedCompanyId.set(company.id);
+    this.companyEditMode.set(false);
+    this.companyForm.set({
+      nombre: company.nombre,
+      rut: company.rut,
+      tipo_empresa: company.tipo_empresa || 'Agua',
+    });
+  }
+
+  enableCompanyEdit(): void {
+    if (!this.selectedCompanyId()) return;
+    this.companyEditMode.set(true);
+  }
+
+  cancelCompanyEdit(): void {
+    const selected = this.selectedCompanyId();
+    this.companyEditMode.set(false);
+    if (selected) this.selectCompany(selected);
+  }
+
   createCompany(event: Event): void {
     event.preventDefault();
     this.busyAction.set('company');
@@ -1198,14 +2069,125 @@ export class AdministrationComponent implements OnInit {
       next: (res) => {
         this.busyAction.set('');
         this.setSuccess(res.message || 'Empresa creada.');
-        this.companyForm.set({ nombre: '', rut: '', tipo_empresa: 'Agua' });
-        this.loadDashboard();
+        this.selectedCompanyId.set(res.data.id);
+        this.companyEditMode.set(false);
+        this.loadDashboard(false);
       },
       error: (err: unknown) => {
         this.busyAction.set('');
         this.setError(this.errorMessage(err, 'No fue posible crear la empresa.'));
       },
     });
+  }
+
+  saveSelectedCompany(event?: Event): void {
+    event?.preventDefault();
+    const companyId = this.selectedCompanyId();
+    if (!companyId) {
+      this.setError('Selecciona una empresa.');
+      return;
+    }
+    if (!this.companyEditMode()) {
+      this.enableCompanyEdit();
+      return;
+    }
+    this.confirmAdminAction({
+      title: 'Actualizar empresa',
+      message: 'Se guardaran los cambios de la empresa seleccionada.',
+      confirmText: 'Actualizar',
+      tone: 'primary',
+      icon: 'save',
+      onConfirm: () => {
+        this.busyAction.set('company-update');
+        this.api.updateCompany(companyId, this.companyForm()).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.companyEditMode.set(false);
+            this.setSuccess(res.message || 'Empresa actualizada.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setError(this.errorMessage(err, 'No fue posible actualizar la empresa.'));
+          },
+        });
+      },
+    });
+  }
+
+  deleteSelectedCompany(): void {
+    const company = this.selectedCompany();
+    if (!company) {
+      this.setError('Selecciona una empresa.');
+      return;
+    }
+    this.confirmAdminAction({
+      title: 'Eliminar empresa',
+      message: `Se eliminara ${company.nombre} junto a sus subempresas y sitios asociados.`,
+      confirmText: 'Eliminar',
+      tone: 'danger',
+      icon: 'warning',
+      onConfirm: () => {
+        const previousHierarchy = this.hierarchy();
+        this.setHierarchy(previousHierarchy.filter((item) => item.id !== company.id));
+        this.selectedCompanyId.set('');
+        this.companyEditMode.set(false);
+        this.clampAllPages();
+
+        this.busyAction.set('company-delete');
+        this.api.deleteCompany(company.id).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.setSuccess(res.message || 'Empresa eliminada.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setHierarchy(previousHierarchy);
+            this.selectCompany(company.id);
+            this.setError(this.errorMessage(err, 'No fue posible eliminar la empresa.'));
+          },
+        });
+      },
+    });
+  }
+
+  submitSubCompany(event: Event): void {
+    if (this.selectedSubCompanyId()) {
+      this.saveSelectedSubCompany(event);
+      return;
+    }
+    this.createSubCompany(event);
+  }
+
+  startCreateSubCompany(): void {
+    const companyId = this.selectedCompanyId() || this.hierarchy()[0]?.id || '';
+    this.selectedSubCompanyId.set('');
+    this.subCompanyEditMode.set(false);
+    this.subCompanyForm.set({ empresa_id: companyId, nombre: '', rut: '' });
+  }
+
+  selectSubCompany(subCompanyId: string): void {
+    const subCompany = this.allSubCompanies().find((item) => item.id === subCompanyId);
+    if (!subCompany) return;
+    this.selectedSubCompanyId.set(subCompany.id);
+    this.subCompanyEditMode.set(false);
+    this.subCompanyForm.set({
+      empresa_id: subCompany.empresa_id,
+      nombre: subCompany.nombre,
+      rut: subCompany.rut,
+    });
+  }
+
+  enableSubCompanyEdit(): void {
+    if (!this.selectedSubCompanyId()) return;
+    this.subCompanyEditMode.set(true);
+  }
+
+  cancelSubCompanyEdit(): void {
+    const selected = this.selectedSubCompanyId();
+    this.subCompanyEditMode.set(false);
+    if (selected) this.selectSubCompany(selected);
   }
 
   createSubCompany(event: Event): void {
@@ -1221,13 +2203,144 @@ export class AdministrationComponent implements OnInit {
       next: (res) => {
         this.busyAction.set('');
         this.setSuccess(res.message || 'Subempresa creada.');
-        this.subCompanyForm.update((current) => ({ ...current, nombre: '', rut: '' }));
-        this.loadDashboard();
+        this.selectedSubCompanyId.set(res.data.id);
+        this.subCompanyEditMode.set(false);
+        this.loadDashboard(false);
       },
       error: (err: unknown) => {
         this.busyAction.set('');
         this.setError(this.errorMessage(err, 'No fue posible crear la subempresa.'));
       },
+    });
+  }
+
+  saveSelectedSubCompany(event?: Event): void {
+    event?.preventDefault();
+    const subCompany = this.selectedSubCompany();
+    const form = this.subCompanyForm();
+    if (!subCompany) {
+      this.setError('Selecciona una subempresa.');
+      return;
+    }
+    if (!this.subCompanyEditMode()) {
+      this.enableSubCompanyEdit();
+      return;
+    }
+    if (!form.empresa_id) {
+      this.setError('Selecciona una empresa padre.');
+      return;
+    }
+    this.confirmAdminAction({
+      title: 'Actualizar subempresa',
+      message: 'Se guardaran los cambios de la subempresa seleccionada.',
+      confirmText: 'Actualizar',
+      tone: 'primary',
+      icon: 'save',
+      onConfirm: () => {
+        this.busyAction.set('subcompany-update');
+        this.api
+          .updateSubCompany(subCompany.empresa_id, subCompany.id, {
+            empresa_id: form.empresa_id,
+            nombre: form.nombre,
+            rut: form.rut,
+          })
+          .subscribe({
+            next: (res) => {
+              this.busyAction.set('');
+              this.selectedSubCompanyId.set(res.data.id);
+              this.subCompanyEditMode.set(false);
+              this.setSuccess(res.message || 'Subempresa actualizada.');
+              this.loadDashboard(false);
+            },
+            error: (err: unknown) => {
+              this.busyAction.set('');
+              this.setError(this.errorMessage(err, 'No fue posible actualizar la subempresa.'));
+            },
+          });
+      },
+    });
+  }
+
+  deleteSelectedSubCompany(): void {
+    const subCompany = this.selectedSubCompany();
+    if (!subCompany) {
+      this.setError('Selecciona una subempresa.');
+      return;
+    }
+    this.confirmAdminAction({
+      title: 'Eliminar subempresa',
+      message: `Se eliminara ${subCompany.nombre} junto a sus sitios asociados.`,
+      confirmText: 'Eliminar',
+      tone: 'danger',
+      icon: 'warning',
+      onConfirm: () => {
+        const previousHierarchy = this.hierarchy();
+        this.setHierarchy(
+          previousHierarchy.map((company) =>
+            company.id === subCompany.empresa_id
+              ? {
+                  ...company,
+                  subCompanies: company.subCompanies.filter((item) => item.id !== subCompany.id),
+                }
+              : company,
+          ),
+        );
+        this.selectedSubCompanyId.set('');
+        this.subCompanyEditMode.set(false);
+        this.clampAllPages();
+
+        this.busyAction.set('subcompany-delete');
+        this.api.deleteSubCompany(subCompany.empresa_id, subCompany.id).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.setSuccess(res.message || 'Subempresa eliminada.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setHierarchy(previousHierarchy);
+            this.selectSubCompany(subCompany.id);
+            this.setError(this.errorMessage(err, 'No fue posible eliminar la subempresa.'));
+          },
+        });
+      },
+    });
+  }
+
+  submitSite(event: Event): void {
+    if (this.selectedSiteId()) {
+      this.saveSelectedSite(event);
+      return;
+    }
+    this.createSite(event);
+  }
+
+  startCreateSite(): void {
+    const companyId = this.selectedCompanyId() || this.hierarchy()[0]?.id || '';
+    const firstSubCompany = this.allSubCompanies().find(
+      (subCompany) => subCompany.empresa_id === companyId,
+    );
+    this.selectedSiteId.set('');
+    this.siteEditMode.set(false);
+    this.siteVariables.set({
+      site: this.emptySite(),
+      pozo_config: null,
+      variables: [],
+      mappings: [],
+    });
+    this.siteForm.set({
+      empresa_id: companyId,
+      sub_empresa_id: firstSubCompany?.id || '',
+      descripcion: '',
+      id_serial: '',
+      ubicacion: '',
+      tipo_sitio: 'pozo',
+      activo: true,
+      profundidad_pozo_m: '',
+      profundidad_sensor_m: '',
+      nivel_estatico_manual_m: '',
+      obra_dga: '',
+      slug: '',
     });
   }
 
@@ -1253,17 +2366,8 @@ export class AdministrationComponent implements OnInit {
           this.busyAction.set('');
           this.setSuccess(res.message || 'Sitio creado.');
           this.selectedSiteId.set(res.data.id);
-          this.siteForm.update((current) => ({
-            ...current,
-            descripcion: '',
-            ubicacion: '',
-            profundidad_pozo_m: '',
-            profundidad_sensor_m: '',
-            nivel_estatico_manual_m: '',
-            obra_dga: '',
-            slug: '',
-          }));
-          this.loadDashboard();
+          this.siteEditMode.set(false);
+          this.loadDashboard(false);
         },
         error: (err: unknown) => {
           this.busyAction.set('');
@@ -1272,7 +2376,8 @@ export class AdministrationComponent implements OnInit {
       });
   }
 
-  saveSelectedSite(): void {
+  saveSelectedSite(event?: Event): void {
+    event?.preventDefault();
     const siteId = this.selectedSiteId();
     const form = this.siteForm();
 
@@ -1280,27 +2385,112 @@ export class AdministrationComponent implements OnInit {
       this.setError('Selecciona un sitio.');
       return;
     }
+    if (!this.siteEditMode()) {
+      this.enableSiteEdit();
+      return;
+    }
+    if (!form.empresa_id || !form.sub_empresa_id) {
+      this.setError('Selecciona empresa y subempresa.');
+      return;
+    }
+    this.confirmAdminAction({
+      title: 'Actualizar sitio',
+      message: 'Se guardaran los cambios del sitio seleccionado.',
+      confirmText: 'Actualizar',
+      tone: 'primary',
+      icon: 'save',
+      onConfirm: () => {
+        this.busyAction.set('site-update');
+        this.api
+          .updateSite(siteId, {
+            empresa_id: form.empresa_id,
+            sub_empresa_id: form.sub_empresa_id,
+            descripcion: form.descripcion,
+            id_serial: form.id_serial,
+            ubicacion: form.ubicacion || null,
+            tipo_sitio: form.tipo_sitio,
+            activo: form.activo,
+          })
+          .subscribe({
+            next: (res) => {
+              this.busyAction.set('');
+              this.siteEditMode.set(false);
+              this.setSuccess(res.message || 'Sitio actualizado.');
+              this.loadDashboard(false);
+            },
+            error: (err: unknown) => {
+              this.busyAction.set('');
+              this.setError(this.errorMessage(err, 'No fue posible actualizar el sitio.'));
+            },
+          });
+      },
+    });
+  }
 
-    this.busyAction.set('site-update');
-    this.api
-      .updateSite(siteId, {
-        descripcion: form.descripcion,
-        id_serial: form.id_serial,
-        ubicacion: form.ubicacion || null,
-        tipo_sitio: form.tipo_sitio,
-        activo: form.activo,
-      })
-      .subscribe({
-        next: (res) => {
-          this.busyAction.set('');
-          this.setSuccess(res.message || 'Sitio actualizado.');
-          this.loadDashboard();
-        },
-        error: (err: unknown) => {
-          this.busyAction.set('');
-          this.setError(this.errorMessage(err, 'No fue posible actualizar el sitio.'));
-        },
-      });
+  enableSiteEdit(): void {
+    if (!this.selectedSiteId()) return;
+    this.siteEditMode.set(true);
+  }
+
+  cancelSiteEdit(): void {
+    const selected = this.selectedSiteId();
+    this.siteEditMode.set(false);
+    if (selected) this.selectSite(selected);
+  }
+
+  deleteSelectedSite(): void {
+    const site = this.selectedSite();
+    if (!site) {
+      this.setError('Selecciona un sitio.');
+      return;
+    }
+    this.confirmAdminAction({
+      title: 'Eliminar sitio',
+      message: `Se eliminara ${site.descripcion}. Esta accion no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      tone: 'danger',
+      icon: 'warning',
+      onConfirm: () => {
+        const previousHierarchy = this.hierarchy();
+        this.setHierarchy(
+          previousHierarchy.map((company) => ({
+            ...company,
+            subCompanies: company.subCompanies.map((subCompany) =>
+              subCompany.id === site.sub_empresa_id
+                ? {
+                    ...subCompany,
+                    sites: subCompany.sites.filter((item) => item.id !== site.id),
+                  }
+                : subCompany,
+            ),
+          })),
+        );
+        this.selectedSiteId.set('');
+        this.siteEditMode.set(false);
+        this.siteVariables.set({
+          site: this.emptySite(),
+          pozo_config: null,
+          variables: [],
+          mappings: [],
+        });
+        this.clampAllPages();
+
+        this.busyAction.set('site-delete');
+        this.api.deleteSite(site.id).subscribe({
+          next: (res) => {
+            this.busyAction.set('');
+            this.setSuccess(res.message || 'Sitio eliminado.');
+            this.loadDashboard(false);
+          },
+          error: (err: unknown) => {
+            this.busyAction.set('');
+            this.setHierarchy(previousHierarchy);
+            this.selectSite(site.id);
+            this.setError(this.errorMessage(err, 'No fue posible eliminar el sitio.'));
+          },
+        });
+      },
+    });
   }
 
   selectCompanyForSite(companyId: string): void {
@@ -1316,6 +2506,7 @@ export class AdministrationComponent implements OnInit {
 
   selectSite(siteId: string): void {
     this.selectedSiteId.set(siteId);
+    this.siteEditMode.set(false);
     const site = this.allSites().find((item) => item.id === siteId);
     if (!site) {
       this.siteVariables.set({
@@ -1361,6 +2552,7 @@ export class AdministrationComponent implements OnInit {
 
   useDeviceInSiteForm(device: DetectedDevice): void {
     this.activeSection.set('sitios');
+    this.startCreateSite();
     this.siteForm.update((form) => ({ ...form, id_serial: device.id_serial }));
   }
 
@@ -1376,7 +2568,7 @@ export class AdministrationComponent implements OnInit {
       next: (res) => {
         this.busyAction.set('');
         this.setSuccess(res.message || 'Equipo asignado.');
-        this.loadDashboard();
+        this.loadDashboard(false);
       },
       error: (err: unknown) => {
         this.busyAction.set('');
@@ -1492,11 +2684,67 @@ export class AdministrationComponent implements OnInit {
     return `${base} bg-cyan-50 text-cyan-700`;
   }
 
+  companyTypeBadgeClass(type: string): string {
+    const base = 'rounded-md px-2 py-1 text-xs font-black';
+    const normalized = this.normalizeSearchText(type);
+    if (normalized.includes('electrico')) return `${base} bg-amber-50 text-amber-700`;
+    if (normalized.includes('industrial')) return `${base} bg-indigo-50 text-indigo-700`;
+    if (normalized.includes('riles')) return `${base} bg-emerald-50 text-emerald-700`;
+    if (normalized.includes('proceso')) return `${base} bg-violet-50 text-violet-700`;
+    if (normalized.includes('cliente')) return `${base} bg-slate-100 text-slate-600`;
+    return `${base} bg-cyan-50 text-cyan-700`;
+  }
+
+  deviceDataCount(device: DetectedDevice): number {
+    return Number(device.total_datos ?? 0);
+  }
+
+  deviceDataCountLabel(device: DetectedDevice): string {
+    if (device.total_datos === undefined || device.total_datos === null) return 'No disponible';
+    const count = this.deviceDataCount(device);
+    return `${count} ${count === 1 ? 'dato' : 'datos'}`;
+  }
+
+  deviceLastSeenLabel(device: DetectedDevice): string {
+    if (device.ultimo_registro_local)
+      return this.readableDeviceDateTime(device.ultimo_registro_local);
+
+    const date = new Date(device.ultimo_registro);
+    if (Number.isNaN(date.getTime())) return device.ultimo_registro || 'Sin registro';
+
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'Etc/GMT+4',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+      .format(date)
+      .replace(',', '');
+  }
+
+  private readableDeviceDateTime(value: string): string {
+    const cleaned = value.trim();
+    const isoLike = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)/);
+    if (isoLike) return `${isoLike[3]}-${isoLike[2]}-${isoLike[1]} ${isoLike[4]}`;
+    return cleaned.replace(',', '');
+  }
+
   sectionButtonClass(section: SectionId): string {
-    const base = 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold transition-all';
+    const base = `section-tab-button section-tab-${section} inline-flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-black transition-all`;
     return this.activeSection() === section
-      ? `${base} bg-cyan-50 text-cyan-800 ring-1 ring-cyan-100`
-      : `${base} text-slate-500 hover:bg-slate-50 hover:text-slate-800`;
+      ? `${base} section-tab-active`
+      : `${base} text-slate-500 hover:text-cyan-800`;
+  }
+
+  rowClass(selected: boolean): string {
+    const base = 'cursor-pointer transition-colors';
+    return selected
+      ? `${base} bg-cyan-50/80 shadow-[inset_3px_0_0_rgb(8_145_178)]`
+      : `${base} bg-white hover:bg-slate-50`;
   }
 
   statusClass(): string {
@@ -1504,6 +2752,39 @@ export class AdministrationComponent implements OnInit {
     return this.status().type === 'success'
       ? `${base} border-emerald-200 bg-emerald-50 text-emerald-700`
       : `${base} border-red-200 bg-red-50 text-red-700`;
+  }
+
+  private paginate<T>(items: T[], page: number): T[] {
+    const currentPage = this.clampPage(page, items.length);
+    const start = (currentPage - 1) * ADMIN_PAGE_SIZE;
+    return items.slice(start, start + ADMIN_PAGE_SIZE);
+  }
+
+  private clampPage(page: number, totalItems: number): number {
+    const total = this.totalPages(totalItems);
+    const normalized = Number.isFinite(page) ? Math.trunc(page) : 1;
+    return Math.min(Math.max(normalized, 1), total);
+  }
+
+  private sectionTotal(section: SectionId): number {
+    if (section === 'empresas') return this.filteredCompanies().length;
+    if (section === 'subempresas') return this.filteredSubCompanies().length;
+    if (section === 'sitios') return this.filteredSites().length;
+    return this.filteredDevices().length;
+  }
+
+  private clampAllPages(): void {
+    this.companyPage.set(this.clampPage(this.companyPage(), this.filteredCompanies().length));
+    this.subCompanyPage.set(
+      this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length),
+    );
+    this.sitePage.set(this.clampPage(this.sitePage(), this.filteredSites().length));
+    this.devicePage.set(this.clampPage(this.devicePage(), this.filteredDevices().length));
+  }
+
+  private setHierarchy(hierarchy: CompanyNode[]): void {
+    this.hierarchy.set(hierarchy);
+    this.companyService.hierarchy.set(hierarchy);
   }
 
   private seedSelections(): void {
@@ -1515,9 +2796,18 @@ export class AdministrationComponent implements OnInit {
     const firstSubCompany = this.allSubCompanies().find(
       (subCompany) => subCompany.empresa_id === companyId,
     );
+    const currentSubCompanyExists = this.allSubCompanies().some(
+      (subCompany) => subCompany.id === this.selectedSubCompanyId(),
+    );
+    const subCompanyId = currentSubCompanyExists
+      ? this.selectedSubCompanyId()
+      : firstSubCompany?.id || '';
     const currentSiteExists = this.allSites().some((site) => site.id === this.selectedSiteId());
 
     this.selectedCompanyId.set(companyId);
+    if (companyId) this.selectCompany(companyId);
+    this.selectedSubCompanyId.set(subCompanyId);
+    if (subCompanyId) this.selectSubCompany(subCompanyId);
     this.subCompanyForm.update((form) => ({ ...form, empresa_id: form.empresa_id || companyId }));
     this.siteForm.update((form) => ({
       ...form,
@@ -1547,6 +2837,25 @@ export class AdministrationComponent implements OnInit {
 
   private setError(message: string): void {
     this.status.set({ type: 'error', message });
+  }
+
+  private confirmAdminAction(
+    dialog: Omit<ConfirmDialog, 'cancelText'> & { cancelText?: string },
+  ): void {
+    this.confirmDialog.set({
+      cancelText: 'Cancelar',
+      ...dialog,
+    });
+  }
+
+  private matchesSearch(query: string, values: Array<string | number | null | undefined>): boolean {
+    const normalizedQuery = this.normalizeSearchText(query);
+    if (!normalizedQuery) return true;
+    const haystack = this.normalizeSearchText(...values.map((value) => String(value ?? '')));
+    return normalizedQuery
+      .split(' ')
+      .filter(Boolean)
+      .every((part) => haystack.includes(part));
   }
 
   private errorMessage(err: unknown, fallback: string): string {

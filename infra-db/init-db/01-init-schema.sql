@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS alertas (
     sub_empresa_id   VARCHAR(10)   REFERENCES sub_empresa(id) ON DELETE SET NULL,
     variable_key     VARCHAR(50)   NOT NULL,
     condicion        VARCHAR(20)   NOT NULL
-                     CHECK (condicion IN ('mayor_que','menor_que','igual_a','fuera_rango','sin_datos')),
+                     CHECK (condicion IN ('mayor_que','menor_que','igual_a','fuera_rango','sin_datos','dga_atrasado')),
     umbral_bajo      NUMERIC,
     umbral_alto      NUMERIC,
     severidad        VARCHAR(20)   NOT NULL DEFAULT 'media'
