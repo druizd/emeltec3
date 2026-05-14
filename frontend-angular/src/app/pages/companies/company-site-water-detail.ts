@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
+import { catchError, firstValueFrom, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
 import {
   AdministrationService,
   CreateVariableMapPayload,
@@ -23,6 +23,10 @@ import { WaterDetailOperacionComponent } from './components/water-detail-operaci
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
 import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
 import { WaterDetailAnalisisComponent } from './components/water-detail-analisis/water-detail-analisis';
+import { CHILE_TIME_ZONE } from '../../shared/timezone';
+import { DgaGenerarReporteModalComponent } from './components/dga-generar-reporte-modal/dga-generar-reporte-modal';
+import { DgaApiReport, DgaService, DgaUserPublic } from '../../services/dga.service';
+import { HttpClient } from '@angular/common/http';
 
 interface SiteContext {
   company: any;
@@ -436,6 +440,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     WaterDetailAlertasComponent,
     WaterDetailBitacoraComponent,
     WaterDetailAnalisisComponent,
+    DgaGenerarReporteModalComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -478,6 +483,16 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </span>
                   </span>
                 }
+
+                <button
+                  type="button"
+                  (click)="abrirDgaReporteModal()"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 h-8 text-[12px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
+                  aria-label="Generar reporte DGA"
+                >
+                  <span class="material-symbols-outlined text-[16px]">description</span>
+                  Generar Reporte
+                </button>
 
                 <button
                   type="button"
@@ -2701,9 +2716,71 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </label>
             </div>
 
+            <!-- Granularidad del CSV -->
+            <div class="mt-4 border-t border-slate-100 px-5 pt-4 pb-2">
+              <label class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                Granularidad de los datos en el CSV
+              </label>
+              <div class="mt-2 grid grid-cols-5 gap-2">
+                @for (opt of dgaReportBucketOptions; track opt.value) {
+                  <button
+                    type="button"
+                    (click)="dgaReportBucket.set(opt.value)"
+                    [class]="
+                      dgaReportBucket() === opt.value
+                        ? 'rounded-lg border border-violet-500 bg-violet-50 px-2 py-1.5 text-[11px] font-semibold text-violet-700'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-violet-200 hover:text-violet-700'
+                    "
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <p class="mt-1 text-[10px] text-slate-400">
+                1 fila por bucket. La medición es la más reciente dentro del bucket.
+              </p>
+            </div>
+
+            <!-- Informantes registrados (solo informativo) + error/status -->
+            <div class="border-t border-slate-100 px-5 py-3 space-y-2">
+              @if (dgaInformantes().length > 0) {
+                <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                  Informantes registrados para este sitio
+                </div>
+                <ul class="grid grid-cols-1 gap-1 text-[12px] sm:grid-cols-2">
+                  @for (inf of dgaInformantes(); track inf.id_dgauser) {
+                    <li
+                      class="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1"
+                    >
+                      <span class="material-symbols-outlined text-[14px] text-violet-600"
+                        >person</span
+                      >
+                      <span class="font-semibold text-slate-700">{{ inf.nombre_informante }}</span>
+                      <span class="font-mono text-slate-500">{{ inf.rut_informante }}</span>
+                      <span class="ml-auto text-[10px] font-semibold uppercase text-violet-700">{{
+                        inf.periodicidad
+                      }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <div class="text-[11px] text-slate-500 italic">
+                  No hay informantes registrados aún para este sitio.
+                </div>
+              }
+              @if (dgaReportError()) {
+                <div
+                  class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+                >
+                  <span class="material-symbols-outlined text-[16px]">error</span>
+                  <span>{{ dgaReportError() }}</span>
+                </div>
+              }
+            </div>
+
             <!-- Footer: rango + acción -->
             <div
-              class="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
+              class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
             >
               <div>
                 <p class="text-xs font-black text-slate-700">{{ dgaReportRangeLabel() }}</p>
@@ -2715,18 +2792,24 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="closeDgaReportModal()"
-                  class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50"
+                  [disabled]="dgaReportDownloading()"
+                  class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   (click)="generateDgaReport()"
-                  [disabled]="!dgaReportDateFrom() || !dgaReportDateTo()"
+                  [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
                   class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <span class="material-symbols-outlined text-[16px]">description</span>
-                  Generar reporte
+                  @if (dgaReportDownloading()) {
+                    <span class="material-symbols-outlined animate-spin text-[16px]">sync</span>
+                    Descargando
+                  } @else {
+                    <span class="material-symbols-outlined text-[16px]">download</span>
+                    Descargar CSV DGA
+                  }
                 </button>
               </div>
             </div>
@@ -2843,6 +2926,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
           </section>
         </div>
       }
+
+      <app-dga-generar-reporte-modal
+        [open]="dgaReporteModalOpen()"
+        [siteId]="siteContext()?.site?.id ?? ''"
+        [siteName]="siteContext() ? getSiteName(siteContext()!) : ''"
+        (closed)="cerrarDgaReporteModal()"
+        (created)="onDgaInformanteCreado()"
+      ></app-dga-generar-reporte-modal>
     </div>
   `,
   styles: [
@@ -3013,6 +3104,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly companyService = inject(CompanyService);
   private readonly adminApi = inject(AdministrationService);
+  private readonly dgaService = inject(DgaService);
+  private readonly httpClient = inject(HttpClient);
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
@@ -3031,6 +3124,22 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   settingsPanelOpen = signal(false);
   settingsLoading = signal(false);
   settingsBusy = signal('');
+  dgaReporteModalOpen = signal(false);
+  dgaInformantes = signal<DgaUserPublic[]>([]);
+  dgaInformanteSeleccionado = signal<string | null>(null);
+  dgaReportDownloading = signal<boolean>(false);
+  dgaReportError = signal<string>('');
+  dgaReportBucket = signal<'minuto' | 'hora' | 'dia' | 'semana' | 'mes'>('hora');
+  readonly dgaReportBucketOptions: {
+    value: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes';
+    label: string;
+  }[] = [
+    { value: 'minuto', label: 'Cada minuto' },
+    { value: 'hora', label: 'Cada hora' },
+    { value: 'dia', label: 'Cada día' },
+    { value: 'semana', label: 'Cada semana' },
+    { value: 'mes', label: 'Cada mes' },
+  ];
   settingsStatus = signal<SettingsStatus>({ type: '', message: '' });
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
@@ -3075,7 +3184,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   readonly historyPageSize = 50;
   readonly historyRecordLimitOptions = [50, 100, 250, 500];
   readonly dgaRowsPerPageOptions = [10, 25, 50];
-  readonly dgaMockTotal = 744;
+  dgaReportRows = signal<DgaReportRow[]>([]);
+  dgaLoading = signal(false);
 
   wellNivelFreatico = computed(() => this.extractNivelFreatico(this.dashboardData()));
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
@@ -3168,7 +3278,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const parsed = this.parseUtcTimestamp(raw);
     if (!parsed) return '—';
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
@@ -3185,7 +3295,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const parsed = this.parseUtcTimestamp(raw);
     if (!parsed) return '';
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -3322,8 +3432,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaFilteredReports = computed(() => {
     const from = this.parseDateInputMs(this.dgaDateFrom(), 'start');
     const to = this.parseDateInputMs(this.dgaDateTo(), 'end');
-
-    return this.dgaReportRows.filter((row) => {
+    return this.dgaReportRows().filter((row) => {
       if (from !== null && row.timestampMs < from) return false;
       if (to !== null && row.timestampMs > to) return false;
       return true;
@@ -3341,10 +3450,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   );
   dgaRangeEnd = computed(() =>
     this.paginatedDgaReports().length
-      ? Math.min(this.dgaRangeStart() + this.paginatedDgaReports().length - 1, this.dgaMockTotal)
+      ? this.dgaRangeStart() + this.paginatedDgaReports().length - 1
       : 0,
   );
-  dgaDisplayedTotal = computed(() => (this.dgaFilteredReports().length ? this.dgaMockTotal : 0));
+  dgaDisplayedTotal = computed(() => this.dgaFilteredReports().length);
   dgaTotalRecordsLabel = computed(() => `${this.dgaDisplayedTotal()} registros en el periodo`);
   dgaSelectedRangeLabel = computed(
     () =>
@@ -3380,117 +3489,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { id: 'last30', label: 'Ultimos 30 dias' },
     { id: 'thisMonth', label: 'Este mes' },
     { id: 'previousMonth', label: 'Mes anterior' },
-  ];
-
-  readonly dgaReportRows: DgaReportRow[] = [
-    this.createDgaReportRow(
-      'dga-001',
-      '#601508',
-      '2026-04-06T20:10:00Z',
-      '06/04/2026 17:10',
-      54.2,
-      45.5,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-002',
-      '#601509',
-      '2026-04-06T21:10:00Z',
-      '06/04/2026 18:10',
-      54.1,
-      45.7,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-003',
-      '#601510',
-      '2026-04-06T22:10:00Z',
-      '06/04/2026 19:10',
-      53.9,
-      45.4,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-004',
-      '#601511',
-      '2026-04-06T23:10:00Z',
-      '06/04/2026 20:10',
-      37.2,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-005',
-      '#601512',
-      '2026-04-07T00:10:00Z',
-      '06/04/2026 21:10',
-      34.2,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-006',
-      '#601513',
-      '2026-04-07T01:10:00Z',
-      '06/04/2026 22:10',
-      32.9,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-007',
-      '#601514',
-      '2026-04-07T02:10:00Z',
-      '06/04/2026 23:10',
-      31.9,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-008',
-      '#601515',
-      '2026-04-07T03:10:00Z',
-      '07/04/2026 00:10',
-      31.2,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-009',
-      '#601516',
-      '2026-04-07T04:10:00Z',
-      '07/04/2026 01:10',
-      30.7,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-010',
-      '#601517',
-      '2026-04-07T05:10:00Z',
-      '07/04/2026 02:10',
-      30.2,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-011',
-      '#601518',
-      '2026-04-07T06:10:00Z',
-      '07/04/2026 03:10',
-      29.8,
-      0,
-      6043411,
-    ),
-    this.createDgaReportRow(
-      'dga-012',
-      '#601519',
-      '2026-04-07T07:10:00Z',
-      '07/04/2026 04:10',
-      29.4,
-      0,
-      6043411,
-    ),
   ];
 
   readonly quickActions = [
@@ -3825,7 +3823,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     }
 
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -3862,7 +3860,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const millisecond = boundary === 'start' ? 0 : 999;
     const utcGuess = Date.UTC(year, month - 1, day, hour, minute, second, millisecond);
     const chileParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -3885,6 +3883,54 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     );
 
     return utcGuess - (chileAsUtc - utcGuess);
+  }
+
+  private async loadDgaReports(): Promise<void> {
+    const siteId = this.currentSiteId();
+    if (!siteId) return;
+    this.dgaLoading.set(true);
+    try {
+      const from = this.dgaDateFrom() ? this.toChileStartIso(this.dgaDateFrom()) : undefined;
+      const to = this.dgaDateTo() ? this.toChileEndIso(this.dgaDateTo()) : undefined;
+      const result = await firstValueFrom(
+        this.dgaService.getReportsBySite(siteId, from, to, 1, 500),
+      );
+      this.dgaReportRows.set(result.items.map((r, i) => this.apiToDgaRow(r, i)));
+    } catch {
+      this.dgaReportRows.set([]);
+    } finally {
+      this.dgaLoading.set(false);
+    }
+  }
+
+  private toChileStartIso(dateStr: string): string {
+    return `${dateStr}T04:00:00.000Z`;
+  }
+
+  private toChileEndIso(dateStr: string): string {
+    const d = new Date(`${dateStr}T04:00:00.000Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    return new Date(d.getTime() - 1).toISOString();
+  }
+
+  private apiToDgaRow(r: DgaApiReport, idx: number): DgaReportRow {
+    const [dd, mm, yyyy] = r.fecha.split('-') as [string, string, string];
+    const timeParts = r.hora.split(':').map(Number) as [number, number, number];
+    const utcMs = Date.UTC(+yyyy, +mm - 1, +dd, timeParts[0] + 4, timeParts[1], timeParts[2]);
+    return {
+      id: `dga-${idx}`,
+      recordId: `${r.fecha}-${r.hora.replace(/:/g, '')}`,
+      fecha: `${r.fecha} ${r.hora}`,
+      dateIso: new Date(utcMs).toISOString(),
+      timestampMs: utcMs,
+      nivelFreatico: r.nivelFreatico ?? 0,
+      caudal: r.caudalInstantaneo ?? 0,
+      totalizador: r.flujoAcumulado ?? 0,
+      estado: 'Enviado',
+      enviadoDga: r.fecha,
+      respuesta: 'Medicion subterranea ingresada correctamente',
+      comprobante: '',
+    };
   }
 
   private createDgaReportRow(
@@ -3972,6 +4018,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   closeSettingsPanel(): void {
     this.settingsPanelOpen.set(false);
+  }
+
+  abrirDgaReporteModal(): void {
+    this.dgaReporteModalOpen.set(true);
+  }
+
+  cerrarDgaReporteModal(): void {
+    this.dgaReporteModalOpen.set(false);
+  }
+
+  onDgaInformanteCreado(): void {
+    this.cerrarDgaReporteModal();
   }
 
   reloadSettingsPanel(): void {
@@ -4268,6 +4326,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.historyPanelOpen.set(false);
     this.settingsPanelOpen.set(false);
     this.activeDetailTab.set(tab);
+    if (tab === 'dga') void this.loadDgaReports();
   }
 
   setOperationMode(mode: OperationMode): void {
@@ -4475,7 +4534,31 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   openDgaReportModal(): void {
     this.dgaReportSelectedMonths.set([]);
     this.applyDgaReportPreset('last30');
+    this.dgaReportError.set('');
+    this.dgaInformantes.set([]);
+    this.dgaInformanteSeleccionado.set(null);
     this.dgaReportModalOpen.set(true);
+
+    const siteId = this.siteContext()?.site?.id;
+    if (!siteId) {
+      this.dgaReportError.set('No se pudo determinar el sitio.');
+      return;
+    }
+    this.dgaService.listarPorSitio(siteId).subscribe({
+      next: (list) => {
+        this.dgaInformantes.set(list);
+        if (list.length === 0) {
+          this.dgaReportError.set(
+            'Aún no hay informantes registrados. Usá "Generar Reporte" para dar de alta uno.',
+          );
+        } else {
+          this.dgaInformanteSeleccionado.set(list[0].id_dgauser);
+        }
+      },
+      error: () => {
+        this.dgaReportError.set('No se pudo cargar la lista de informantes.');
+      },
+    });
   }
 
   closeDgaReportModal(): void {
@@ -4528,7 +4611,54 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   generateDgaReport(): void {
-    this.closeDgaReportModal();
+    const siteId = this.siteContext()?.site?.id;
+    const from = this.dgaReportDateFrom();
+    const to = this.dgaReportDateTo();
+    if (!siteId) {
+      this.dgaReportError.set('No se pudo determinar el sitio.');
+      return;
+    }
+    if (!from || !to) {
+      this.dgaReportError.set('Seleccioná un rango de fechas.');
+      return;
+    }
+
+    // Rango interpretado en hora Chile UTC-4. `hasta` exclusivo: día siguiente 00:00.
+    const desdeIso = `${from}T00:00:00-04:00`;
+    const hastaDate = new Date(`${to}T00:00:00-04:00`);
+    hastaDate.setUTCDate(hastaDate.getUTCDate() + 1);
+    const hastaIso = hastaDate.toISOString();
+
+    const url = this.dgaService.exportCsvUrlDirecto(
+      siteId,
+      desdeIso,
+      hastaIso,
+      this.dgaReportBucket(),
+    );
+    const filename = `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
+
+    this.dgaReportDownloading.set(true);
+    this.dgaReportError.set('');
+    this.httpClient.get(url, { responseType: 'blob' }).subscribe({
+      next: (blob: Blob) => {
+        this.dgaReportDownloading.set(false);
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = filename;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(objectUrl);
+        this.closeDgaReportModal();
+      },
+      error: (err) => {
+        this.dgaReportDownloading.set(false);
+        this.dgaReportError.set(
+          err?.error?.error?.message ?? err?.message ?? 'Error al descargar el reporte.',
+        );
+      },
+    });
   }
 
   setHistoryDateFrom(event: Event): void {
@@ -4565,6 +4695,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   applyDgaDateFilter(): void {
     this.dgaPage.set(1);
     this.closeDgaDateFilter();
+    void this.loadDgaReports();
   }
 
   clearDgaDateFilter(): void {
@@ -4630,12 +4761,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.dgaPage.set(1);
   }
 
-  dgaMonthHasData(monthIndex: number): boolean {
-    const year = new Date().getFullYear();
-    return this.dgaReportRows.some((row) => {
-      const d = new Date(row.dateIso);
-      return d.getFullYear() === year && d.getMonth() === monthIndex;
-    });
+  dgaMonthHasData(_monthIndex: number): boolean {
+    // Todos los meses seleccionables. El rango lo valida el backend al
+    // consultar `dato_dga`; si no hay data, el CSV queda con header solo.
+    return true;
   }
 
   setDgaRowsPerPage(event: Event): void {
@@ -5290,7 +5419,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private formatChileTimeShort(value: Date): string {
     return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
@@ -5300,7 +5429,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private formatChartTooltipDate(value: Date): string {
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       day: 'numeric',
       month: 'long',
       year: 'numeric',
@@ -5318,7 +5447,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private formatChileDateKey(value: Date): string {
     const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
+      timeZone: CHILE_TIME_ZONE,
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

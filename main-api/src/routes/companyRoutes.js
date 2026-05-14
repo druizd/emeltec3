@@ -8,13 +8,18 @@ router.use(protect);
 
 router.get('/', companyController.getAllCompanies);
 router.post('/', companyController.createCompany);
+router.patch('/:companyId', companyController.updateCompany);
+router.delete('/:companyId', companyController.deleteCompany);
 router.get('/tree', companyController.getHierarchyTree);
 router.get('/detected-devices', companyController.getDetectedDevices);
 router.get('/site-type-catalog', companyController.getSiteTypeCatalog);
 
 router.post('/:companyId/sub-companies', companyController.createSubCompany);
+router.patch('/:companyId/sub-companies/:subCompanyId', companyController.updateSubCompany);
+router.delete('/:companyId/sub-companies/:subCompanyId', companyController.deleteSubCompany);
 router.post('/:companyId/sub-companies/:subCompanyId/sites', companyController.createSite);
 router.patch('/sites/:siteId', companyController.updateSite);
+router.delete('/sites/:siteId', companyController.deleteSite);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
 router.get('/sites/:siteId/dashboard-history/export', companyController.exportSiteDashboardHistory);
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);

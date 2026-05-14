@@ -33,6 +33,17 @@ const httpServer = app.listen(config.port, () => {
       console.warn('[main-api] No se pudo iniciar metrics flusher:', err.message);
     }
   }
+
+  // DGA worker TS (snapshot periódico de mediciones procesadas → dato_dga).
+  try {
+    const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
+    const { startDgaWorker } = require(dgaWorkerPath);
+    startDgaWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar DGA worker:', err.message);
+    }
+  }
 });
 
 // Inicia el servidor gRPC en paralelo para clientes internos o servicio a servicio.
@@ -50,6 +61,14 @@ function shutdown(signal) {
   console.log(`[main-api] Cerrando servicios por ${signal}`);
 
   alertaService.stop();
+
+  try {
+    const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
+    const { stopDgaWorker } = require(dgaWorkerPath);
+    stopDgaWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
 
   httpServer.close(() => {
     console.log('[main-api] HTTP detenido');

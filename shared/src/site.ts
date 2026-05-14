@@ -34,7 +34,9 @@ export interface CreateSitePayload {
 export interface DetectedDevice {
   id_serial: string;
   total_registros: number;
+  total_datos?: number;
   ultimo_registro: string;
+  ultimo_registro_local?: string | null;
   sitio_id?: string | null;
   sitio_descripcion?: string | null;
   empresa_id?: string | null;

@@ -1,4 +1,6 @@
-const CHILE_TIME_ZONE = 'America/Santiago';
+// UTC-4 fijo Chile continental. POSIX invierte signo: 'Etc/GMT+4' === UTC-4.
+// Evita DST de 'America/Santiago' para reporte DGA y coherencia con BD.
+const CHILE_TIME_ZONE = 'Etc/GMT+4';
 
 function toDate(value) {
   if (value instanceof Date) return value;

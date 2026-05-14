@@ -3,6 +3,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
 import { CompanyService } from '../../../../services/company.service';
+import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 import { OperacionGraficosHistoricosComponent } from './operacion-graficos-historicos';
 import { OperacionResumenPeriodoComponent } from './operacion-resumen-periodo';
 import { WaterOperacionStateService } from './water-operacion-state';
@@ -481,7 +482,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly companyService = inject(CompanyService);
   private pollingSub?: Subscription;
-  private readonly CHILE_TIME_ZONE = 'America/Santiago';
+  private readonly CHILE_TIME_ZONE = CHILE_TIME_ZONE;
   private readonly historyLimit = 2200;
 
   readonly modo = signal<OperacionModo>('hoy');
