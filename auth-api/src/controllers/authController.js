@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -143,10 +144,12 @@ exports.requestCode = async (req, res, next) => {
     }
 
     const usr = result.rows[0];
+    // OTP via CSPRNG (crypto.randomInt) — Math.random no es criptográficamente
+    // seguro (estado xorshift128+ predecible tras pocas observaciones).
     const OTP_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     const otpCode = Array.from(
       { length: 6 },
-      () => OTP_CHARS[Math.floor(Math.random() * OTP_CHARS.length)],
+      () => OTP_CHARS[crypto.randomInt(0, OTP_CHARS.length)],
     ).join('');
     const otpHash = await bcrypt.hash(otpCode, 10);
     const expiresAt = new Date(Date.now() + minutes * 60 * 1000);
