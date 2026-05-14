@@ -45,7 +45,9 @@ export async function findBySite(q: ReportQuery): Promise<{ items: DgaReport[]; 
             d.obra,
             d.nivel_freatico,
             d.caudal_instantaneo,
-            d.flujo_acumulado
+            d.flujo_acumulado,
+            d.estatus,
+            d.comprobante
        FROM dato_dga d
        JOIN dga_user u USING (id_dgauser)
       WHERE ${where}
@@ -61,6 +63,8 @@ export async function findBySite(q: ReportQuery): Promise<{ items: DgaReport[]; 
     nivelFreatico: r.nivel_freatico == null ? null : Number(r.nivel_freatico),
     caudal: r.caudal_instantaneo == null ? null : Number(r.caudal_instantaneo),
     totalizado: r.flujo_acumulado == null ? null : Number(r.flujo_acumulado),
+    estatus: (r.estatus as 'pendiente' | 'enviado' | 'rechazado') ?? 'pendiente',
+    comprobante: (r.comprobante as string | null) ?? null,
   }));
 
   return { items, total };

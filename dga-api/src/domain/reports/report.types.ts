@@ -9,6 +9,8 @@ export interface DgaReport {
   nivelFreatico: number | null; // metros
   caudal: number | null; // L/s
   totalizado: number | null; // m³ acumulado
+  estatus?: 'pendiente' | 'enviado' | 'rechazado';
+  comprobante?: string | null;
 }
 
 // Variante para filas leídas de la DB; añade el instante en que se persistió.

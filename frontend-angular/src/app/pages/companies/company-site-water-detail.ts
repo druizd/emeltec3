@@ -3917,6 +3917,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const [dd, mm, yyyy] = r.fecha.split('-') as [string, string, string];
     const timeParts = r.hora.split(':').map(Number) as [number, number, number];
     const utcMs = Date.UTC(+yyyy, +mm - 1, +dd, timeParts[0] + 4, timeParts[1], timeParts[2]);
+    const estadoMap: Record<string, string> = {
+      enviado: 'Enviado',
+      pendiente: 'Pendiente',
+      rechazado: 'Rechazado',
+    };
     return {
       id: `dga-${idx}`,
       recordId: `${r.fecha}-${r.hora.replace(/:/g, '')}`,
@@ -3926,10 +3931,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       nivelFreatico: r.nivelFreatico ?? 0,
       caudal: r.caudalInstantaneo ?? 0,
       totalizador: r.flujoAcumulado ?? 0,
-      estado: 'Enviado',
-      enviadoDga: r.fecha,
-      respuesta: 'Medicion subterranea ingresada correctamente',
-      comprobante: '',
+      estado: estadoMap[r.estatus] ?? 'Pendiente',
+      enviadoDga: r.estatus === 'enviado' ? r.fecha : '',
+      respuesta:
+        r.estatus === 'enviado'
+          ? 'Medicion subterranea ingresada correctamente'
+          : r.estatus === 'rechazado'
+            ? 'Medicion rechazada por MIA-DGA'
+            : 'Pendiente de envío',
+      comprobante: r.comprobante ?? '',
     };
   }
 
