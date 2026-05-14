@@ -2195,8 +2195,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
               </div>
             </section>
-          } @else if (activeDetailTab() === 'operacion') {
-            <app-water-detail-operacion />
           } @else if (activeDetailTab() === 'alertas') {
             <app-water-detail-alertas />
           } @else if (activeDetailTab() === 'bitacora') {
@@ -2204,6 +2202,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
           } @else if (activeDetailTab() === 'analisis') {
             <app-water-detail-analisis />
           }
+
+          <div [class.hidden]="activeDetailTab() !== 'operacion'">
+            <app-water-detail-operacion />
+          </div>
         </div>
       } @else {
         <div
