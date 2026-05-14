@@ -78,10 +78,7 @@ describe('submitToDga', () => {
   });
 
   it('respuesta sin comprobante → comprobante undefined', async () => {
-    vi.stubGlobal(
-      'fetch',
-      makeFetch(200, { status: '00', message: 'OK', data: {} }),
-    );
+    vi.stubGlobal('fetch', makeFetch(200, { status: '00', message: 'OK', data: {} }));
 
     const result = await submitToDga(payload);
 

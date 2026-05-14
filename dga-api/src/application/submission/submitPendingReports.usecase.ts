@@ -46,7 +46,11 @@ export async function submitPendingReports(): Promise<void> {
       if (result.estatus === 'enviado') {
         enviados++;
         logger.info(
-          { sitioId: item.report.sitioId, ts: item.report.timestamp, comprobante: result.comprobante },
+          {
+            sitioId: item.report.sitioId,
+            ts: item.report.timestamp,
+            comprobante: result.comprobante,
+          },
           '[submission] reporte enviado OK',
         );
       } else {
