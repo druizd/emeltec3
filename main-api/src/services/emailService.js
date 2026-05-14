@@ -120,7 +120,7 @@ function infoTableHtml(rows, accentColor = '#0DAFBD') {
                 <tr>
                   <td style="padding:11px 16px;border-bottom:1px solid #E2E8F0;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:38%;vertical-align:top;">${escapeHtml(label)}</td>
                   <td style="padding:11px 16px;border-bottom:1px solid #E2E8F0;font-size:14px;color:#1E293B;font-weight:500;">${value}</td>
-                </tr>`
+                </tr>`,
     )
     .join('');
   return `          <tr>
@@ -238,7 +238,10 @@ exports.sendNewUserNotificationToAdmin = async (emailAdmin, nombreAdmin, datosUs
           </tr>
 ${infoTableHtml([
   ['Nombre', escapeHtml(nombre)],
-  ['Correo', `<a href="mailto:${escapeHtml(email)}" style="color:#0899A5;text-decoration:none;">${escapeHtml(email)}</a>`],
+  [
+    'Correo',
+    `<a href="mailto:${escapeHtml(email)}" style="color:#0899A5;text-decoration:none;">${escapeHtml(email)}</a>`,
+  ],
   ['Tipo de cuenta', escapeHtml(tipo)],
 ])}
 ${ctaButtonHtml(ACCESS_URL, 'Ver panel de usuarios')}
@@ -274,7 +277,9 @@ exports.sendAlertEmail = async (emailDestino, nombreCompleto, mensaje, regla) =>
   try {
     const nombre = (nombreCompleto || '').trim() || 'usuario';
     const accentColor = SEVERIDAD_COLOR[regla.severidad] || '#64748b';
-    const accentGradient = SEVERIDAD_GRADIENT[regla.severidad] || `linear-gradient(90deg,${accentColor} 0%,${accentColor} 100%)`;
+    const accentGradient =
+      SEVERIDAD_GRADIENT[regla.severidad] ||
+      `linear-gradient(90deg,${accentColor} 0%,${accentColor} 100%)`;
     const alias = regla.reg_alias || regla.variable_key || 'N/A';
     const sitio = regla.sitio_desc || regla.sitio_id || 'N/A';
     const severidad = labelSeveridad(regla.severidad);
@@ -298,10 +303,13 @@ ${infoTableHtml(
     ['Sitio', escapeHtml(sitio)],
     ['Equipo', escapeHtml(serial)],
     ['Variable', escapeHtml(alias)],
-    ['Valor detectado', `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;color:${accentColor};font-weight:600;">${escapeHtml(String(valorDetectado))}</span>`],
+    [
+      'Valor detectado',
+      `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;color:${accentColor};font-weight:600;">${escapeHtml(String(valorDetectado))}</span>`,
+    ],
     ['Regla', escapeHtml(condicion)],
   ],
-  accentColor
+  accentColor,
 )}
 ${ctaButtonHtml(ACCESS_URL, 'Ver en la plataforma', accentColor)}
 ${securityNoteHtml('Esta es una notificación automática del sistema de monitoreo Emeltec. Revisa la plataforma para tomar acción si corresponde.')}`;
@@ -340,9 +348,27 @@ ${securityNoteHtml('Esta es una notificación automática del sistema de monitor
 };
 
 const TIER_META = {
-  t12: { color: '#dc2626', gradient: SEVERIDAD_GRADIENT.critica, label: '12 horas o más', short: '12h+', tone: 'crítico' },
-  t6: { color: '#ea580c', gradient: SEVERIDAD_GRADIENT.alta, label: 'Entre 6 y 12 horas', short: '6-12h', tone: 'alarma' },
-  t3: { color: '#d97706', gradient: SEVERIDAD_GRADIENT.media, label: 'Entre 3 y 6 horas', short: '3-6h', tone: 'atención' },
+  t12: {
+    color: '#dc2626',
+    gradient: SEVERIDAD_GRADIENT.critica,
+    label: '12 horas o más',
+    short: '12h+',
+    tone: 'crítico',
+  },
+  t6: {
+    color: '#ea580c',
+    gradient: SEVERIDAD_GRADIENT.alta,
+    label: 'Entre 6 y 12 horas',
+    short: '6-12h',
+    tone: 'alarma',
+  },
+  t3: {
+    color: '#d97706',
+    gradient: SEVERIDAD_GRADIENT.media,
+    label: 'Entre 3 y 6 horas',
+    short: '3-6h',
+    tone: 'atención',
+  },
 };
 
 function formatLagMs(lagMs) {
@@ -435,7 +461,10 @@ function buildDigestHtml({ generatedAt, dataIssues, dgaIssues }) {
         ? SEVERIDAD_GRADIENT.critica
         : SEVERIDAD_GRADIENT.alta;
   const generatedHuman = formatChile(generatedAt || new Date().toISOString());
-  const heroEyebrow = total === 0 ? 'Resumen de salud' : `${total} ${total === 1 ? 'incidencia detectada' : 'incidencias detectadas'}`;
+  const heroEyebrow =
+    total === 0
+      ? 'Resumen de salud'
+      : `${total} ${total === 1 ? 'incidencia detectada' : 'incidencias detectadas'}`;
   const heroTitle = total === 0 ? 'Todo en orden' : 'Resumen de salud de la plataforma';
   const heroSubtitle =
     total === 0
@@ -491,7 +520,10 @@ function buildEventHtml({ eventDetail }) {
   const rows = [
     ['Instalación', escapeHtml(r.descripcion)],
     ['Empresa', escapeHtml(r.empresa || '—')],
-    ['Tiempo sin reportar', `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;color:${meta.color};font-weight:600;">${escapeHtml(formatLagMs(r.lagMs))}</span>`],
+    [
+      'Tiempo sin reportar',
+      `<span style="font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;color:${meta.color};font-weight:600;">${escapeHtml(formatLagMs(r.lagMs))}</span>`,
+    ],
     ['Último dato', escapeHtml(formatChile(r.lastAt))],
   ];
   if (r.kind === 'dga') {
@@ -526,7 +558,14 @@ ${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. 
 exports._renderHealthDigestHtml = (input) => buildDigestHtml(input);
 exports._renderHealthEventHtml = (input) => buildEventHtml(input);
 
-exports.sendHealthDigest = async ({ to, mode, generatedAt, dataIssues, dgaIssues, eventDetail }) => {
+exports.sendHealthDigest = async ({
+  to,
+  mode,
+  generatedAt,
+  dataIssues,
+  dgaIssues,
+  eventDetail,
+}) => {
   try {
     let subject;
     let html;
@@ -569,12 +608,16 @@ exports.sendHealthDigest = async ({ to, mode, generatedAt, dataIssues, dgaIssues
       } else {
         textLines.push(`Transmisión de datos: ${data.length} instalación(es)`);
         for (const r of data) {
-          textLines.push(`  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`);
+          textLines.push(
+            `  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`,
+          );
         }
         textLines.push('');
         textLines.push(`Reportes DGA: ${dga.length} informante(s)`);
         for (const r of dga) {
-          textLines.push(`  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`);
+          textLines.push(
+            `  - [${TIER_META[r.tier]?.short}] ${r.descripcion} (${r.empresa || '—'}) — ${formatLagMs(r.lagMs)}`,
+          );
         }
       }
       textLines.push('');

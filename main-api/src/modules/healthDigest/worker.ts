@@ -20,7 +20,8 @@ export type Tier = 'ok' | 't3' | 't6' | 't12';
 
 const POLL_INTERVAL_MS = Number(process.env.HEALTH_DIGEST_POLL_MS ?? 60_000);
 const MONITOR_PRIMARY = process.env.MONITOR_PRIMARY_EMAIL || 'druiz@emeltec.cl';
-const WORKER_ENABLED = String(process.env.ENABLE_HEALTH_DIGEST_WORKER ?? 'false').toLowerCase() === 'true';
+const WORKER_ENABLED =
+  String(process.env.ENABLE_HEALTH_DIGEST_WORKER ?? 'false').toLowerCase() === 'true';
 const DIGEST_HOURS = [7, 16];
 
 const H_MS = 3_600_000;
@@ -138,7 +139,12 @@ async function detectAndEmitEvents(snap: { data: IssueRow[]; dga: IssueRow[] }):
     if (TIER_ORDER[row.tier] > TIER_ORDER[prev]) {
       tierState.set(key, row.tier);
       logger.info(
-        { kind: row.kind, site: row.descripcion, tier: row.tier, lagH: (row.lagMs / H_MS).toFixed(1) },
+        {
+          kind: row.kind,
+          site: row.descripcion,
+          tier: row.tier,
+          lagH: (row.lagMs / H_MS).toFixed(1),
+        },
         'healthDigest: escalación → email event',
       );
       void emailMod
@@ -171,10 +177,7 @@ function santiagoSlot(): { hour: number; minute: number; ymd: string } {
   };
 }
 
-async function maybeSendDigest(snap: {
-  data: IssueRow[];
-  dga: IssueRow[];
-}): Promise<void> {
+async function maybeSendDigest(snap: { data: IssueRow[]; dga: IssueRow[] }): Promise<void> {
   const { hour, minute, ymd } = santiagoSlot();
   if (minute !== 0 || !DIGEST_HOURS.includes(hour)) return;
   const slotKey = `${ymd}#${hour.toString().padStart(2, '0')}`;

@@ -84,7 +84,9 @@ interface ApiEnvelope<T> {
 export class AlertaService {
   private readonly http = inject(HttpClient);
 
-  listar(filters: { sitio_id?: string; empresa_id?: string; activa?: boolean } = {}): Observable<AlertaRow[]> {
+  listar(
+    filters: { sitio_id?: string; empresa_id?: string; activa?: boolean } = {},
+  ): Observable<AlertaRow[]> {
     const qs = new URLSearchParams();
     if (filters.sitio_id) qs.set('sitio_id', filters.sitio_id);
     if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);

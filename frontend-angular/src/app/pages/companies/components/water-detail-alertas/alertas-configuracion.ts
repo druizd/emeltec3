@@ -76,7 +76,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
       <!-- Header -->
       <div class="flex items-center justify-between gap-3">
         <p class="text-[11px] font-semibold text-slate-400">
-          {{ reglas().length }} {{ reglas().length === 1 ? 'regla configurada' : 'reglas configuradas' }}
+          {{ reglas().length }}
+          {{ reglas().length === 1 ? 'regla configurada' : 'reglas configuradas' }}
         </p>
         <button
           type="button"
@@ -104,7 +105,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-700">
             Nueva regla
           </p>
-          <ng-container *ngTemplateOutlet="reglaForm; context: { $implicit: nuevaRegla, isNew: true }"></ng-container>
+          <ng-container
+            *ngTemplateOutlet="reglaForm; context: { $implicit: nuevaRegla, isNew: true }"
+          ></ng-container>
           <div class="mt-4 flex justify-end gap-2">
             <button
               type="button"
@@ -247,7 +250,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
       <div class="space-y-4">
         <!-- Nombre -->
         <div>
-          <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
             >Nombre</label
           >
           <input
@@ -260,7 +264,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
         <!-- Descripción -->
         <div>
-          <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
             >Descripción (opcional)</label
           >
           <input
@@ -272,7 +277,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
         <!-- Condición -->
         <div>
-          <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
             >Condición</label
           >
           <select
@@ -351,7 +357,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
         <!-- Nota especial dga_atrasado -->
         @if (draft.condicion === 'dga_atrasado') {
-          <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800">
+          <div
+            class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800"
+          >
             <p class="mb-1 font-bold">Escalación automática</p>
             <p>
               El sistema notifica al cruzar 24h, 48h y 72h sin reporte DGA (severidades media → alta
@@ -388,7 +396,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
         <!-- Cooldown -->
         <div>
-          <label class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
             >Cooldown (minutos)</label
           >
           <input
@@ -554,7 +563,9 @@ export class AlertasConfiguracionComponent {
       condicion: draft.condicion,
       umbral_bajo: this.numOrNull(draft.umbral_bajo, draft.condicion),
       umbral_alto:
-        draft.condicion === 'fuera_rango' ? this.numOrNull(draft.umbral_alto, draft.condicion) : null,
+        draft.condicion === 'fuera_rango'
+          ? this.numOrNull(draft.umbral_alto, draft.condicion)
+          : null,
       severidad: draft.condicion === 'dga_atrasado' ? 'media' : draft.severidad,
       cooldown_minutos: Number(draft.cooldown_minutos),
       dias_activos: draft.dias_activos,
@@ -679,5 +690,4 @@ export class AlertasConfiguracionComponent {
         return r.condicion;
     }
   }
-
 }
