@@ -13,7 +13,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r --if-present run test",
-    "build": "pnpm -r --if-present run build"
+    "build": "pnpm -r --if-present run build",
+    "audit": "pnpm audit --prod --audit-level=high",
+    "sbom": "pnpm list --recursive --depth=Infinity --json > sbom.json && echo SBOM escrito en sbom.json"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

@@ -10,6 +10,14 @@ export const routes: Routes = [
     canActivate: [publicGuard],
   },
   {
+    path: 'privacidad',
+    loadComponent: () => import('./pages/legal/privacy').then((m) => m.PrivacyComponent),
+  },
+  {
+    path: 'terminos',
+    loadComponent: () => import('./pages/legal/terms').then((m) => m.TermsComponent),
+  },
+  {
     path: '',
     component: LayoutComponent,
     canActivate: [authGuard],

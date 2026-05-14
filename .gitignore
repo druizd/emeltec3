@@ -47,3 +47,9 @@ Thumbs.db
 
 # Local Claude/Codex settings
 .claude/
+
+# Security tooling output
+sbom.json
+trivy-report.json
+gitleaks-report.json
+
