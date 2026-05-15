@@ -12,3 +12,5 @@ package-lock.json
 *.min.css
 grpc-pipeline/**/*.go
 infra-db/init-db
+# Auto-generated por preview-gen-digest.js — no formatear manualmente.
+main-api/preview-email-digest-*.html
