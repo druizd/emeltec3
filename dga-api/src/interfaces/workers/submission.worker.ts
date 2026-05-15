@@ -1,8 +1,21 @@
-// Worker de sumisión (stub): tomará reportes pendientes y los enviará a MIA-DGA.
-// Cron separado del de ingestión para desacoplar generación local del envío externo.
-// Hoy es un no-op; se completará cuando esté definida la integración con DGA.
+import { submitPendingReports } from '../../application/submission/submitPendingReports.usecase';
 import { logger } from '../../shared/logger';
 
+let running = false;
+
 export async function runSubmissionTick(): Promise<void> {
-  logger.debug('[submission] tick — pendiente de implementar (cron 2)');
+  if (running) {
+    logger.warn('[submission] tick anterior aún en ejecución, se omite este');
+    return;
+  }
+  running = true;
+  const startedAt = Date.now();
+  try {
+    await submitPendingReports();
+    logger.debug({ ms: Date.now() - startedAt }, '[submission] tick completado');
+  } catch (err) {
+    logger.error({ err }, '[submission] tick falló');
+  } finally {
+    running = false;
+  }
 }

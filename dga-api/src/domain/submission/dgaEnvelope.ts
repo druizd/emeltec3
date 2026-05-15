@@ -14,7 +14,7 @@ export interface DgaSubmissionPayload {
 
 export interface DgaSubmissionResponse {
   url: string;
-  estatus: 'enviado' | 'pendiente' | 'rechazado';
+  estatus: 'enviado' | 'rechazado';
   comprobante?: string;
   raw: unknown;
 }
