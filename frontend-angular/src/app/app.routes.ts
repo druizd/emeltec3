@@ -30,6 +30,45 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:siteId/electric',
+        loadComponent: () =>
+          import('./pages/companies/company-site-electric-detail').then(
+            (m) => m.CompanySiteElectricDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/riles',
+        data: { siteType: 'riles' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-coming-soon-detail').then(
+            (m) => m.CompanySiteComingSoonDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/cold-room',
+        data: { siteType: 'camara_frio' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-coming-soon-detail').then(
+            (m) => m.CompanySiteComingSoonDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/process',
+        data: { siteType: 'proceso' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-coming-soon-detail').then(
+            (m) => m.CompanySiteComingSoonDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/generic',
+        data: { siteType: 'generico' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-coming-soon-detail').then(
+            (m) => m.CompanySiteComingSoonDetailComponent,
+          ),
+      },
+      {
         path: 'ventisqueros',
         loadComponent: () =>
           import('./pages/ventisqueros/ventisqueros').then((m) => m.VentisquerosComponent),

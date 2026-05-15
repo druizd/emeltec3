@@ -24,6 +24,7 @@ import { WaterDetailAlertasComponent } from './components/water-detail-alertas/w
 import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
 import { WaterDetailAnalisisComponent } from './components/water-detail-analisis/water-detail-analisis';
 import { CHILE_TIME_ZONE } from '../../shared/timezone';
+import { getSiteTypeUi, siteTypesForModule } from '../../shared/site-type-ui';
 import { DgaGenerarReporteModalComponent } from './components/dga-generar-reporte-modal/dga-generar-reporte-modal';
 import { DgaApiReport, DgaService, DgaUserPublic } from '../../services/dga.service';
 import { HttpClient } from '@angular/common/http';
@@ -3682,7 +3683,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           return;
         }
 
+        const moduleKey = getSiteTypeUi(match.site.tipo_sitio).moduleKey;
         this.companyService.selectedSubCompanyId.set(match.subCompany.id);
+        this.companyService.selectedSiteModuleKey.set(moduleKey);
+        this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(moduleKey));
         this.loadHydratedSite(match);
       },
       error: () => this.router.navigate(['/companies']),
@@ -4334,6 +4338,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   siteTypeLabel(type: string): string {
     if (type === 'electrico') return 'Electrico';
     if (type === 'riles') return 'Riles';
+    if (type === 'camara_frio') return 'Camara de frio';
     if (type === 'proceso') return 'Proceso';
     if (type === 'generico') return 'Generico';
     return 'Pozo';
@@ -4921,7 +4926,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         if (!res.ok) return;
         const match = this.findAccessibleSite(res.data, siteId);
         if (!match) return;
+        const moduleKey = getSiteTypeUi(match.site.tipo_sitio).moduleKey;
         this.companyService.selectedSubCompanyId.set(match.subCompany.id);
+        this.companyService.selectedSiteModuleKey.set(moduleKey);
+        this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(moduleKey));
         this.siteContext.update((current) =>
           current
             ? {

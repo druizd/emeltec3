@@ -21,6 +21,7 @@ import {
   VariableMapping,
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
+import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -2655,7 +2656,7 @@ export class AdministrationComponent implements OnInit {
   }
 
   openSite(site: SiteRecord): void {
-    this.router.navigate(['/companies', site.id, 'water']);
+    this.router.navigate(dashboardRouteForSite(site));
   }
 
   countCompanySites(company: CompanyNode): number {
@@ -2668,20 +2669,12 @@ export class AdministrationComponent implements OnInit {
   }
 
   siteTypeLabel(type: string): string {
-    if (type === 'electrico') return 'Electrico';
-    if (type === 'riles') return 'Riles';
-    if (type === 'proceso') return 'Proceso';
-    if (type === 'generico') return 'Generico';
-    return 'Pozo';
+    return getSiteTypeUi(type).label;
   }
 
   siteTypeBadgeClass(type: string): string {
     const base = 'rounded-md px-2 py-1 text-xs font-bold';
-    if (type === 'electrico') return `${base} bg-amber-50 text-amber-700`;
-    if (type === 'riles') return `${base} bg-emerald-50 text-emerald-700`;
-    if (type === 'proceso') return `${base} bg-indigo-50 text-indigo-700`;
-    if (type === 'generico') return `${base} bg-slate-100 text-slate-600`;
-    return `${base} bg-cyan-50 text-cyan-700`;
+    return `${base} ${getSiteTypeUi(type).badgeClass}`;
   }
 
   companyTypeBadgeClass(type: string): string {
