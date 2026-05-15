@@ -17,6 +17,35 @@ function tieneAccesoAAlerta(req, alerta) {
   return esSuperAdmin(req) || alerta.creado_por === req.user.id;
 }
 
+function deriveEstado(evento) {
+  if (evento.resuelta) return 'resuelta';
+  if (evento.asignado_a) return 'asignada';
+  if (evento.reconocida_at) return 'reconocida';
+  return 'activa';
+}
+
+async function loadEventoOr404(req, res) {
+  const { id } = req.params;
+  const { rows } = await pool.query(
+    'SELECT id, empresa_id, sub_empresa_id, resuelta, reconocida_at FROM alertas_eventos WHERE id = $1',
+    [id],
+  );
+  if (!rows.length) {
+    res.status(404).json({ ok: false, error: 'Evento no encontrado' });
+    return null;
+  }
+  const evento = rows[0];
+  if (req.user.tipo !== 'SuperAdmin' && evento.empresa_id !== req.user.empresa_id) {
+    res.status(403).json({ ok: false, error: 'Sin acceso a este evento' });
+    return null;
+  }
+  if (req.user.sub_empresa_id && evento.sub_empresa_id !== req.user.sub_empresa_id) {
+    res.status(403).json({ ok: false, error: 'Sin acceso a este evento' });
+    return null;
+  }
+  return evento;
+}
+
 exports.crearAlerta = async (req, res) => {
   const {
     nombre,
@@ -257,18 +286,34 @@ exports.listarEventos = async (req, res) => {
   const { rows } = await pool.query(
     `SELECT e.*,
             a.nombre AS alerta_nombre,
+            a.condicion,
             s.descripcion AS sitio_desc,
+            s.id_serial,
             emp.nombre AS empresa_nombre,
+            ua.nombre  AS asignado_nombre,
+            ua.apellido AS asignado_apellido,
+            ur.nombre  AS reconocido_nombre,
+            ur.apellido AS reconocido_apellido,
             FALSE AS leido
      FROM alertas_eventos e
      JOIN alertas a ON a.id = e.alerta_id
      LEFT JOIN sitio s ON s.id = e.sitio_id
      LEFT JOIN empresa emp ON emp.id = e.empresa_id
+     LEFT JOIN usuario ua ON ua.id = e.asignado_a
+     LEFT JOIN usuario ur ON ur.id = e.reconocida_por
      ${where}
      ORDER BY e.triggered_at DESC
      LIMIT $${limitPh} OFFSET $${offsetPh}`,
     mainParams,
   );
+
+  const enriched = rows.map((r) => ({
+    ...r,
+    estado: deriveEstado(r),
+    asignado_nombre_completo: r.asignado_nombre
+      ? `${r.asignado_nombre} ${r.asignado_apellido || ''}`.trim()
+      : null,
+  }));
 
   const { rows: countRows } = await pool.query(
     `SELECT COUNT(*) FROM alertas_eventos e ${where}`,
@@ -277,7 +322,7 @@ exports.listarEventos = async (req, res) => {
 
   res.json({
     ok: true,
-    data: rows,
+    data: enriched,
     total: parseInt(countRows[0].count),
     page: parseInt(page),
     limit: parseInt(limit),
@@ -353,22 +398,92 @@ exports.resolverEvento = async (req, res) => {
     [id],
   );
 
-  res.json({ ok: true, data: rows[0] });
+  res.json({ ok: true, data: { ...rows[0], estado: deriveEstado(rows[0]) } });
+};
+
+exports.reconocerEvento = async (req, res) => {
+  const evento = await loadEventoOr404(req, res);
+  if (!evento) return;
+  if (evento.resuelta) {
+    return res.status(400).json({ ok: false, error: 'El evento ya está resuelto' });
+  }
+  if (evento.reconocida_at) {
+    return res.status(400).json({ ok: false, error: 'El evento ya fue reconocido' });
+  }
+  const { rows } = await pool.query(
+    `UPDATE alertas_eventos
+        SET reconocida_at = NOW(), reconocida_por = $2
+      WHERE id = $1 RETURNING *`,
+    [req.params.id, req.user.id],
+  );
+  res.json({ ok: true, data: { ...rows[0], estado: deriveEstado(rows[0]) } });
+};
+
+exports.asignarEvento = async (req, res) => {
+  const evento = await loadEventoOr404(req, res);
+  if (!evento) return;
+  if (evento.resuelta) {
+    return res.status(400).json({ ok: false, error: 'El evento ya está resuelto' });
+  }
+  const { asignado_a } = req.body;
+  if (!asignado_a) {
+    return res.status(400).json({ ok: false, error: 'Falta asignado_a (id de usuario)' });
+  }
+  const { rows: usuarios } = await pool.query(
+    'SELECT id FROM usuario WHERE id = $1',
+    [asignado_a],
+  );
+  if (!usuarios.length) {
+    return res.status(400).json({ ok: false, error: 'Usuario asignado no existe' });
+  }
+  const { rows } = await pool.query(
+    `UPDATE alertas_eventos
+        SET asignado_a = $2,
+            asignado_at = NOW(),
+            reconocida_at = COALESCE(reconocida_at, NOW()),
+            reconocida_por = COALESCE(reconocida_por, $3)
+      WHERE id = $1 RETURNING *`,
+    [req.params.id, asignado_a, req.user.id],
+  );
+  res.json({ ok: true, data: { ...rows[0], estado: deriveEstado(rows[0]) } });
+};
+
+exports.vincularIncidencia = async (req, res) => {
+  const evento = await loadEventoOr404(req, res);
+  if (!evento) return;
+  const { incidencia_id } = req.body;
+  if (!incidencia_id || !String(incidencia_id).trim()) {
+    return res.status(400).json({ ok: false, error: 'Falta incidencia_id' });
+  }
+  const { rows } = await pool.query(
+    `UPDATE alertas_eventos SET incidencia_id = $2 WHERE id = $1 RETURNING *`,
+    [req.params.id, String(incidencia_id).trim()],
+  );
+  res.json({ ok: true, data: { ...rows[0], estado: deriveEstado(rows[0]) } });
 };
 
 exports.resumen = async (req, res) => {
   const esSuperAdmin = req.user.tipo === 'SuperAdmin';
+  const { sitio_id, empresa_id } = req.query;
   const params = [];
   const conditions = [];
 
   if (!esSuperAdmin) {
     params.push(req.user.empresa_id);
     conditions.push(`empresa_id = $${params.length}`);
+  } else if (empresa_id) {
+    params.push(empresa_id);
+    conditions.push(`empresa_id = $${params.length}`);
   }
 
   if (req.user.sub_empresa_id) {
     params.push(req.user.sub_empresa_id);
     conditions.push(`sub_empresa_id = $${params.length}`);
+  }
+
+  if (sitio_id) {
+    params.push(sitio_id);
+    conditions.push(`sitio_id = $${params.length}`);
   }
 
   const where = conditions.length ? `AND ${conditions.join(' AND ')}` : '';

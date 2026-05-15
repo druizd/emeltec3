@@ -80,6 +80,65 @@ interface ApiEnvelope<T> {
   error?: string;
 }
 
+interface PaginatedEnvelope<T> extends ApiEnvelope<T> {
+  total?: number;
+  page?: number;
+  limit?: number;
+}
+
+export type EventoEstado = 'activa' | 'reconocida' | 'asignada' | 'resuelta';
+
+export interface EventoRow {
+  id: number;
+  alerta_id: number;
+  empresa_id: string;
+  sub_empresa_id: string | null;
+  sitio_id: string;
+  variable_key: string;
+  valor_detectado: number | null;
+  valor_texto: string | null;
+  mensaje: string;
+  severidad: AlertaSeveridad;
+  notificado: boolean;
+  resuelta: boolean;
+  reconocida_at: string | null;
+  reconocida_por: string | null;
+  asignado_a: string | null;
+  asignado_at: string | null;
+  incidencia_id: string | null;
+  triggered_at: string;
+  resuelta_at: string | null;
+  estado: EventoEstado;
+  alerta_nombre?: string;
+  condicion?: AlertaCondicion;
+  sitio_desc?: string;
+  id_serial?: string;
+  empresa_nombre?: string;
+  asignado_nombre_completo?: string | null;
+  reconocido_nombre?: string | null;
+  reconocido_apellido?: string | null;
+}
+
+export interface EventosResumen {
+  activas: number;
+  criticas: number;
+  altas: number;
+  medias: number;
+  bajas: number;
+  no_leidas: number;
+}
+
+export interface EventoListFilters {
+  empresa_id?: string;
+  sitio_id?: string;
+  severidad?: AlertaSeveridad;
+  resuelta?: boolean;
+  desde?: string;
+  hasta?: string;
+  page?: number;
+  limit?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AlertaService {
   private readonly http = inject(HttpClient);
@@ -109,6 +168,62 @@ export class AlertaService {
 
   eliminar(id: number): Observable<void> {
     return this.http.delete<ApiEnvelope<unknown>>(`/api/alertas/${id}`).pipe(map(() => undefined));
+  }
+
+  listarEventos(filters: EventoListFilters = {}): Observable<EventoRow[]> {
+    const qs = new URLSearchParams();
+    if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
+    if (filters.sitio_id) qs.set('sitio_id', filters.sitio_id);
+    if (filters.severidad) qs.set('severidad', filters.severidad);
+    if (filters.resuelta !== undefined) qs.set('resuelta', String(filters.resuelta));
+    if (filters.desde) qs.set('desde', filters.desde);
+    if (filters.hasta) qs.set('hasta', filters.hasta);
+    if (filters.page) qs.set('page', String(filters.page));
+    if (filters.limit) qs.set('limit', String(filters.limit));
+    const url = `/api/eventos${qs.toString() ? `?${qs}` : ''}`;
+    return this.http
+      .get<PaginatedEnvelope<EventoRow[]>>(url)
+      .pipe(map((r) => (r.ok ? r.data : [])));
+  }
+
+  reconocerEvento(id: number): Observable<EventoRow> {
+    return this.http
+      .put<ApiEnvelope<EventoRow>>(`/api/eventos/${id}/reconocer`, {})
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  asignarEvento(id: number, asignadoA: string): Observable<EventoRow> {
+    return this.http
+      .put<ApiEnvelope<EventoRow>>(`/api/eventos/${id}/asignar`, { asignado_a: asignadoA })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  resolverEvento(id: number): Observable<EventoRow> {
+    return this.http
+      .put<ApiEnvelope<EventoRow>>(`/api/eventos/${id}/resolver`, {})
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  vincularIncidencia(id: number, incidenciaId: string): Observable<EventoRow> {
+    return this.http
+      .put<ApiEnvelope<EventoRow>>(`/api/eventos/${id}/incidencia`, {
+        incidencia_id: incidenciaId,
+      })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  resumen(filters: { empresa_id?: string; sitio_id?: string } = {}): Observable<EventosResumen> {
+    const qs = new URLSearchParams();
+    if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
+    if (filters.sitio_id) qs.set('sitio_id', filters.sitio_id);
+    const url = `/api/resumen${qs.toString() ? `?${qs}` : ''}`;
+    return this.http.get<ApiEnvelope<EventosResumen>>(url).pipe(
+      map((r) =>
+        r.ok
+          ? r.data
+          : { activas: 0, criticas: 0, altas: 0, medias: 0, bajas: 0, no_leidas: 0 },
+      ),
+    );
   }
 }
 

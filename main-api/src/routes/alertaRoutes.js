@@ -14,6 +14,9 @@ router.delete('/alertas/:id', protect, c.eliminarAlerta);
 router.get('/eventos', protect, c.listarEventos);
 router.get('/eventos/:id', protect, c.obtenerEvento);
 router.put('/eventos/:id/leer', protect, c.marcarLeido);
+router.put('/eventos/:id/reconocer', protect, c.reconocerEvento);
+router.put('/eventos/:id/asignar', protect, c.asignarEvento);
+router.put('/eventos/:id/incidencia', protect, c.vincularIncidencia);
 router.put('/eventos/:id/resolver', protect, authorizeRoles(...adminRoles), c.resolverEvento);
 
 router.get('/resumen', protect, c.resumen);
