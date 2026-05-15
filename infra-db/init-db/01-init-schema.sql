@@ -130,6 +130,29 @@ CREATE TABLE IF NOT EXISTS alertas_eventos (
     resuelta_at      TIMESTAMPTZ
 );
 
+CREATE TABLE IF NOT EXISTS incidencias (
+    id                BIGSERIAL    PRIMARY KEY,
+    sitio_id          VARCHAR(10)  NOT NULL REFERENCES sitio(id) ON DELETE CASCADE,
+    empresa_id        VARCHAR(10)  NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
+    sub_empresa_id    VARCHAR(10)  REFERENCES sub_empresa(id) ON DELETE SET NULL,
+    titulo            VARCHAR(200) NOT NULL,
+    descripcion       TEXT,
+    origen            VARCHAR(20)  NOT NULL DEFAULT 'remota'
+                       CHECK (origen IN ('terreno','remota')),
+    categoria         VARCHAR(20)  NOT NULL DEFAULT 'otro'
+                       CHECK (categoria IN ('sensor','comunicacion','mecanico','electrico','otro')),
+    gravedad          VARCHAR(20)  NOT NULL DEFAULT 'media'
+                       CHECK (gravedad IN ('leve','media','critica')),
+    estado            VARCHAR(20)  NOT NULL DEFAULT 'abierta'
+                       CHECK (estado IN ('abierta','en_progreso','resuelta','cerrada')),
+    tecnico_id        VARCHAR(10)  REFERENCES usuario(id) ON DELETE SET NULL,
+    alerta_evento_id  INTEGER      REFERENCES alertas_eventos(id) ON DELETE SET NULL,
+    creado_por        VARCHAR(10)  REFERENCES usuario(id) ON DELETE SET NULL,
+    created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    cerrado_at        TIMESTAMPTZ
+);
+
 -- -------------------------------------------
 -- Hypertable — series temporales
 -- Chunks: 1 día | ~80 equipos, hasta 1 dato/s
@@ -164,6 +187,10 @@ CREATE INDEX IF NOT EXISTS idx_alertas_sitio      ON alertas (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_emp  ON alertas_eventos (empresa_id, resuelta, triggered_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_alerta ON alertas_eventos (alerta_id, triggered_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_asignado ON alertas_eventos (asignado_a) WHERE asignado_a IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_incidencias_sitio   ON incidencias (sitio_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incidencias_empresa ON incidencias (empresa_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incidencias_estado  ON incidencias (estado, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_incidencias_alerta_evt ON incidencias (alerta_evento_id) WHERE alerta_evento_id IS NOT NULL;
 
 -- -------------------------------------------
 -- Compresión automática (después de 7 días)

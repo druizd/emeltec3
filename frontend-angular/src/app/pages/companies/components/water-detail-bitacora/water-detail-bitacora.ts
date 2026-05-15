@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../services/auth.service';
 import { BitacoraAuditLogComponent } from './bitacora-trazabilidad';
@@ -109,15 +109,18 @@ interface BitacoraTabItem {
       } @else if (activeSection() === 'equipamiento') {
         <app-bitacora-equipamiento />
       } @else if (activeSection() === 'incidencias') {
-        <app-bitacora-incidencias />
+        <app-bitacora-incidencias [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'trazabilidad') {
-        <app-bitacora-trazabilidad />
+        <app-bitacora-trazabilidad [sitioId]="sitioId()" [empresaId]="empresaId()" />
       }
     </section>
   `,
 })
 export class WaterDetailBitacoraComponent {
   private auth = inject(AuthService);
+
+  readonly sitioId = input<string>('');
+  readonly empresaId = input<string>('');
 
   readonly isInternal = computed(() => this.auth.isSuperAdmin() || this.auth.isAdmin());
 

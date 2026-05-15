@@ -16,6 +16,8 @@ const metricsRoutes = require('./routes/metricsRoutes');
 const userRoutes = require('./routes/userRoutes');
 const companyRoutes = require('./routes/companyRoutes');
 const alertaRoutes = require('./routes/alertaRoutes');
+const incidenciaRoutes = require('./routes/incidenciaRoutes');
+const auditLogRoutes = require('./routes/auditLogRoutes');
 const internalRoutes = require('./routes/internalRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 const { auditMutations } = require('./services/auditLog');
@@ -69,8 +71,9 @@ const auditResolver = (req) => {
   let targetType = null;
   if (path.startsWith('/api/users')) targetType = 'usuario';
   else if (path.startsWith('/api/companies')) targetType = 'empresa';
-  else if (path.startsWith('/api/alertas') || path.startsWith('/api/eventos'))
-    targetType = 'alerta';
+  else if (path.startsWith('/api/eventos')) targetType = 'evento';
+  else if (path.startsWith('/api/alertas')) targetType = 'alerta';
+  else if (path.startsWith('/api/incidencias')) targetType = 'incidencia';
   const verb =
     { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' }[req.method] || 'mutate';
   // El id aparece como último segmento numérico/alfanumérico tras la base de recursos.
@@ -96,6 +99,9 @@ app.use('/api/companies', auditMutations(auditResolver), companyRoutes);
 app.use('/api/alertas', auditMutations(auditResolver));
 app.use('/api/eventos', auditMutations(auditResolver));
 app.use('/api', alertaRoutes);
+
+app.use('/api/incidencias', auditMutations(auditResolver), incidenciaRoutes);
+app.use('/api/audit-log', auditLogRoutes);
 
 // /api/v2/* — router TS compilado. Endpoints nuevos con envelopes estándar,
 // caché Redis online, Prometheus metrics, healthcheck liveness/readiness.
