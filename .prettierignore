@@ -8,6 +8,8 @@ coverage
 **/coverage
 package-lock.json
 **/package-lock.json
+pnpm-lock.yaml
+**/pnpm-lock.yaml
 *.min.js
 *.min.css
 grpc-pipeline/**/*.go

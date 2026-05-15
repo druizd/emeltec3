@@ -61,12 +61,10 @@ function isConfigured() {
 
 function ensureConfigured(res) {
   if (containerClient) return true;
-  res
-    .status(503)
-    .json({
-      ok: false,
-      error: 'Azure Blob Storage no configurado (falta AZURE_STORAGE_CONNECTION_STRING)',
-    });
+  res.status(503).json({
+    ok: false,
+    error: 'Azure Blob Storage no configurado (falta AZURE_STORAGE_CONNECTION_STRING)',
+  });
   return false;
 }
 
