@@ -45,11 +45,11 @@ read_env_value() {
   if [ ! -f .env ]; then
     return 0
   fi
-  grep -E "^${key}=" .env | tail -n 1 | cut -d= -f2- | tr -d '\r'
+  { grep -E "^${key}=" .env || true; } | tail -n 1 | cut -d= -f2- | tr -d '\r'
 }
 
-MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value DB_USER)}"
-MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-$(read_env_value DB_NAME)}"
+MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value POSTGRES_USER)}"
+MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-$(read_env_value POSTGRES_DB)}"
 MIGRATION_DB_USER="${MIGRATION_DB_USER:-postgres}"
 MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-telemetry_platform}"
 
