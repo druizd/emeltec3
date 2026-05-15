@@ -486,16 +486,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
                 <button
                   type="button"
-                  (click)="abrirDgaReporteModal()"
-                  class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 h-8 text-[12px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
-                  aria-label="Generar reporte DGA"
-                >
-                  <span class="material-symbols-outlined text-[16px]">description</span>
-                  Generar Reporte
-                </button>
-
-                <button
-                  type="button"
                   (click)="openSettingsPanel()"
                   class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
                   aria-label="Configuracion del sitio"
@@ -655,6 +645,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         [class.animate-spin]="settingsLoading()"
                         >refresh</span
                       >
+                    </button>
+                    <button
+                      type="button"
+                      (click)="abrirDgaReporteModal()"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 h-8 text-[12px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
+                      aria-label="Configurar reporte DGA"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">description</span>
+                      Configurar reporte DGA
                     </button>
                   </div>
                 </div>
