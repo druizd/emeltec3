@@ -24,7 +24,17 @@ fi
 echo "Fetching latest code from origin/$BRANCH..."
 git fetch origin "$BRANCH"
 git checkout "$BRANCH"
-git pull --ff-only origin "$BRANCH"
+
+# El target de deploy es un mirror de origin/$BRANCH. Cualquier mod local en
+# archivos trackeados (típicamente main-api/.env, que se sube al repo en modo
+# dev compartido) bloquearía `git pull --ff-only`. Las descartamos para que el
+# pipeline sea idempotente.
+if ! git diff --quiet || ! git diff --cached --quiet; then
+  echo "Discarding local modifications to tracked files (deploy target mirrors repo)."
+  git reset --hard HEAD
+fi
+
+git reset --hard "origin/$BRANCH"
 
 echo "Validating Docker Compose configuration..."
 docker compose -f "$COMPOSE_FILE" config >/dev/null

@@ -1,16 +1,28 @@
 const { Resend } = require('resend');
+const fs = require('fs');
+const path = require('path');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_ADDRESS = process.env.RESEND_FROM || 'Emeltec - Panel Industrial <noreply@emeltec.cl>';
 const ACCESS_URL = process.env.FRONTEND_URL || 'https://cloud.emeltec.cl/login';
 
-function resolveLogoUrl() {
-  if (process.env.EMAIL_LOGO_URL) return process.env.EMAIL_LOGO_URL;
-  try {
-    return new URL('/images/emeltec-logo.png', ACCESS_URL).toString();
-  } catch {
-    return 'https://cloud.emeltec.cl/images/emeltec-logo.png';
-  }
+const LOGO_CID = 'emeltec-logo';
+const LOGO_PATH = path.join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  'frontend-angular',
+  'public',
+  'images',
+  'emeltec-logo.png',
+);
+
+let logoBuffer = null;
+try {
+  logoBuffer = fs.readFileSync(LOGO_PATH);
+} catch (err) {
+  console.warn('[emailService] Logo no encontrado en', LOGO_PATH, '-', err.message);
 }
 
 function resolveAccessHost() {
@@ -21,7 +33,6 @@ function resolveAccessHost() {
   }
 }
 
-const LOGO_URL = resolveLogoUrl();
 const ACCESS_HOST = resolveAccessHost();
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
@@ -76,11 +87,11 @@ function renderShell({ title, preheader, accentColor, accentGradient, contentHtm
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06);">
           <tr>
             <td style="background-color:#FFFFFF;padding:34px 32px 26px;text-align:center;border-bottom:1px solid #E2E8F0;">
-              <img src="${LOGO_URL}" alt="Emeltec" width="260" height="74" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:74px;width:260px;max-width:260px;">
+              <img src="cid:${LOGO_CID}" alt="Emeltec" width="260" height="74" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:74px;width:260px;max-width:260px;">
             </td>
           </tr>
           <tr>
-            <td style="padding:0;line-height:0;font-size:0;height:4px;background:${accentBg};background-image:${accentBgImage};">&nbsp;</td>
+            <td style="padding:0;line-height:0;font-size:0;height:3px;background:${accentBg};background-image:${accentBgImage};">&nbsp;</td>
           </tr>
 ${contentHtml}
           <tr>
@@ -155,13 +166,26 @@ async function enviar({ to, subject, html, text }) {
     return { id: 'dev-mode' };
   }
 
-  const { data, error } = await resend.emails.send({
+  const attachments = [];
+  if (logoBuffer && html && html.includes(`cid:${LOGO_CID}`)) {
+    attachments.push({
+      filename: 'emeltec-logo.png',
+      content: logoBuffer,
+      contentType: 'image/png',
+      inlineContentId: LOGO_CID,
+    });
+  }
+
+  const payload = {
     from: FROM_ADDRESS,
     to: [to],
     subject,
     html,
     text,
-  });
+  };
+  if (attachments.length) payload.attachments = attachments;
+
+  const { data, error } = await resend.emails.send(payload);
 
   if (error) throw new Error(`Resend error: ${error.message}`);
   console.log(`[emailService] Correo enviado a ${to} - id: ${data.id}`);
