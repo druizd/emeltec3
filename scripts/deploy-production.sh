@@ -47,7 +47,21 @@ MIGRATION_DB_USER="${MIGRATION_DB_USER:-postgres}"
 MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-telemetry_platform}"
 
 echo "Starting database service before migrations..."
-docker compose -f "$COMPOSE_FILE" up -d timescaledb
+docker compose -f "$COMPOSE_FILE" up -d --wait timescaledb
+
+echo "Waiting for database to accept connections..."
+for i in $(seq 1 30); do
+  if docker compose -f "$COMPOSE_FILE" exec -T timescaledb \
+       pg_isready -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" >/dev/null 2>&1; then
+    echo "Database ready."
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo "ERROR: timescaledb did not become ready in time."
+    exit 1
+  fi
+  sleep 2
+done
 
 if [ -d infra-db/migrations ]; then
   echo "Applying database migrations..."
