@@ -11,35 +11,6 @@ const DEFAULT_INTERVAL_MS = 5_000;
 let timer: NodeJS.Timeout | null = null;
 let flushing = false;
 
-async function ensureTables(): Promise<void> {
-  await query(
-    `
-    CREATE TABLE IF NOT EXISTS public.api_metrics (
-      id SERIAL PRIMARY KEY,
-      endpoint VARCHAR(200) NOT NULL,
-      domain_slug VARCHAR(50),
-      serial_id VARCHAR(100),
-      request_count BIGINT DEFAULT 0,
-      bytes_sent BIGINT DEFAULT 0,
-      updated_at TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE (endpoint, domain_slug, serial_id)
-    );
-    CREATE TABLE IF NOT EXISTS public.api_variable_metrics (
-      id SERIAL PRIMARY KEY,
-      nombre_dato VARCHAR(150) NOT NULL,
-      serial_id VARCHAR(100),
-      request_count BIGINT DEFAULT 0,
-      bytes_sent BIGINT DEFAULT 0,
-      duration_ms_total BIGINT DEFAULT 0,
-      updated_at TIMESTAMPTZ DEFAULT NOW(),
-      UNIQUE (nombre_dato, serial_id)
-    );
-    `,
-    [],
-    { label: 'metrics__ensure_tables' },
-  );
-}
-
 async function flushEndpoints(): Promise<number> {
   const items = drainEndpoints();
   if (items.length === 0) return 0;
@@ -97,11 +68,6 @@ export async function flushOnce(): Promise<void> {
 
 export async function startMetricsFlusher(intervalMs = DEFAULT_INTERVAL_MS): Promise<void> {
   if (timer) return;
-  try {
-    await ensureTables();
-  } catch (err) {
-    logger.error({ err: (err as Error).message }, 'No se pudieron crear tablas de métricas');
-  }
   timer = setInterval(() => {
     void flushOnce();
   }, intervalMs);
