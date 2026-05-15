@@ -21,7 +21,7 @@ jobs:
     environment: production
 
     env:
-      APP_DIR: ${{ vars.APP_DIR || '/opt/emeltec/emeltec3' }}
+      APP_DIR: ${{ vars.APP_DIR || '/home/azureuser/Emeltec3' }}
       BRANCH: main
       COMPOSE_PROJECT_NAME: emeltec-platform
 
