@@ -215,14 +215,24 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'm',
         description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.',
       },
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
+      {
+        id: 'caudal',
+        label: 'Caudal',
+        unitHint: 'L/s',
+        description: 'Flujo instantaneo.',
+      },
       {
         id: 'totalizador',
         label: 'Totalizador',
         unitHint: 'm3',
         description: 'Volumen acumulado.',
       },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar.',
+      },
     ],
     transforms: [
       {
@@ -263,14 +273,24 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'kWh',
         description: 'Energia acumulada o consumida.',
       },
-      { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
+      {
+        id: 'estado',
+        label: 'Estado',
+        unitHint: '',
+        description: 'Estado operativo.',
+      },
       {
         id: 'temperatura',
         label: 'Temperatura',
         unitHint: 'C',
         description: 'Temperatura asociada.',
       },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar.',
+      },
     ],
     transforms: [
       {
@@ -305,15 +325,30 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     id: 'riles',
     label: 'Riles',
     roles: [
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
+      {
+        id: 'caudal',
+        label: 'Caudal',
+        unitHint: 'L/s',
+        description: 'Flujo instantaneo.',
+      },
       {
         id: 'totalizador',
         label: 'Totalizador',
         unitHint: 'm3',
         description: 'Volumen acumulado.',
       },
-      { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+      {
+        id: 'presion',
+        label: 'Presion',
+        unitHint: 'bar',
+        description: 'Presion de proceso.',
+      },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar.',
+      },
     ],
     transforms: [
       {
@@ -348,15 +383,30 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     id: 'proceso',
     label: 'Proceso',
     roles: [
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      {
+        id: 'caudal',
+        label: 'Caudal',
+        unitHint: 'L/s',
+        description: 'Flujo instantaneo.',
+      },
+      {
+        id: 'presion',
+        label: 'Presion',
+        unitHint: 'bar',
+        description: 'Presion de proceso.',
+      },
       {
         id: 'temperatura',
         label: 'Temperatura',
         unitHint: 'C',
         description: 'Temperatura de proceso.',
       },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar.',
+      },
     ],
     transforms: [
       {
@@ -629,7 +679,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </span>
                     <div class="min-w-0">
                       <p class="truncate text-[11px] font-bold text-slate-400">
-                        Configuracion del sitio / {{ siteTypeLabel(settingsSiteType()) }}
+                        Configuracion del sitio /
+                        {{ siteTypeLabel(settingsSiteType()) }}
                       </p>
                       <h2 class="truncate text-xl font-black leading-none text-slate-800">
                         {{ getSiteName(context) }}
@@ -790,7 +841,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               class="field-control bg-white"
                             >
                               @for (transform of variableTransformOptions(); track transform.id) {
-                                <option [value]="transform.id">{{ transform.label }}</option>
+                                <option [value]="transform.id">
+                                  {{ transform.label }}
+                                </option>
                               }
                             </select>
                             @if (selectedVariableTransform()?.description) {
@@ -850,7 +903,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 <div
                                   class="rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800"
                                 >
-                                  Formula: {{ variableForm().d1 || 'primer registro' }} *
+                                  Formula:
+                                  {{ variableForm().d1 || 'primer registro' }} *
                                   {{ variableForm().d2 || 'segundo registro' }}
                                 </div>
                               }
@@ -2039,8 +2093,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <span [class]="'material-symbols-outlined text-[20px] ' + action.color">{{
                           action.icon
                         }}</span>
-                        <p class="mt-0.5 text-sm font-black text-slate-800">{{ action.title }}</p>
-                        <p class="text-xs font-medium text-slate-400">{{ action.subtitle }}</p>
+                        <p class="mt-0.5 text-sm font-black text-slate-800">
+                          {{ action.title }}
+                        </p>
+                        <p class="text-xs font-medium text-slate-400">
+                          {{ action.subtitle }}
+                        </p>
                       </button>
                     }
                   </div>
@@ -2409,7 +2467,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <div>
                   <h2 class="text-lg font-black text-slate-800">Exportar Datos</h2>
                   @if (siteContext(); as ctx) {
-                    <p class="text-xs font-semibold text-slate-400">{{ getSiteName(ctx) }}</p>
+                    <p class="text-xs font-semibold text-slate-400">
+                      {{ getSiteName(ctx) }}
+                    </p>
                   }
                 </div>
               </div>
@@ -2572,7 +2632,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4"
             >
               @if (downloadError()) {
-                <p class="basis-full text-xs font-semibold text-rose-500">{{ downloadError() }}</p>
+                <p class="basis-full text-xs font-semibold text-rose-500">
+                  {{ downloadError() }}
+                </p>
               }
               <p
                 class="text-xs font-semibold"
@@ -2792,7 +2854,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
             >
               <div>
-                <p class="text-xs font-black text-slate-700">{{ dgaReportRangeLabel() }}</p>
+                <p class="text-xs font-black text-slate-700">
+                  {{ dgaReportRangeLabel() }}
+                </p>
                 <p class="text-[10px] font-semibold text-slate-400">
                   {{ dgaReportDaysCount() > 0 ? dgaReportDaysCount() + ' días' : '—' }}
                 </p>
@@ -2857,7 +2921,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
                       Registro {{ report.recordId }}
                     </p>
-                    <p class="text-lg font-black text-slate-800">{{ report.fecha }}</p>
+                    <p class="text-lg font-black text-slate-800">
+                      {{ report.fecha }}
+                    </p>
                   </div>
                 </div>
 
@@ -2906,7 +2972,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
                         Envio a DGA
                       </p>
-                      <p class="text-sm font-black text-slate-800">{{ report.enviadoDga }}</p>
+                      <p class="text-sm font-black text-slate-800">
+                        {{ report.enviadoDga }}
+                      </p>
                     </div>
                   </div>
 
@@ -2923,7 +2991,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     Respuesta del software de DGA
                   </p>
                   <p class="mt-4 text-sm font-black text-slate-700">Respuesta</p>
-                  <p class="mt-1 text-sm text-slate-600">{{ report.respuesta }}</p>
+                  <p class="mt-1 text-sm text-slate-600">
+                    {{ report.respuesta }}
+                  </p>
                   <p class="mt-4 text-sm font-black text-slate-700">N&deg; Comprobante</p>
                   <p class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-cyan-600">
                     {{ report.comprobante }}
@@ -3157,7 +3227,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     variables: [],
     mappings: [],
   });
-  pozoConfigForm = signal<PozoConfigForm>({ profundidad_pozo_m: '', profundidad_sensor_m: '' });
+  pozoConfigForm = signal<PozoConfigForm>({
+    profundidad_pozo_m: '',
+    profundidad_sensor_m: '',
+  });
   variableForm = signal<VariableForm>({ ...DEFAULT_VARIABLE_FORM });
   operationMode = signal<OperationMode>('realtime');
   historyLoading = signal(true);
@@ -3394,10 +3467,26 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const consumoHoy = this.calculateTodayConsumption();
 
     return [
-      { label: 'Caudal Actual', value: this.formatRealtimeNumber(caudal, 2), unit: 'L/s' },
-      { label: 'Totalizador', value: this.formatRealtimeNumber(totalizador, 0), unit: 'm³' },
-      { label: 'Nivel de Agua', value: this.formatRealtimeNumber(nivel, 2), unit: 'm' },
-      { label: 'Consumo Hoy', value: this.formatRealtimeNumber(consumoHoy, 1), unit: 'm³' },
+      {
+        label: 'Caudal Actual',
+        value: this.formatRealtimeNumber(caudal, 2),
+        unit: 'L/s',
+      },
+      {
+        label: 'Totalizador',
+        value: this.formatRealtimeNumber(totalizador, 0),
+        unit: 'm³',
+      },
+      {
+        label: 'Nivel de Agua',
+        value: this.formatRealtimeNumber(nivel, 2),
+        unit: 'm',
+      },
+      {
+        label: 'Consumo Hoy',
+        value: this.formatRealtimeNumber(consumoHoy, 1),
+        unit: 'm³',
+      },
     ];
   });
   latestRealtimeTimestampLabel = computed(() => {
@@ -4077,10 +4166,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           this.setSettingsSuccess(res.message || 'Configuracion del pozo guardada.');
           const pozoConfig =
             (res.data as SiteRecord & { pozo_config?: PozoConfig | null })?.pozo_config || null;
-          this.siteVariables.update((current) => ({ ...current, pozo_config: pozoConfig }));
+          this.siteVariables.update((current) => ({
+            ...current,
+            pozo_config: pozoConfig,
+          }));
           this.patchPozoConfigForm(pozoConfig);
           this.siteContext.update((current) =>
-            current ? { ...current, site: { ...current.site, pozo_config: pozoConfig } } : current,
+            current
+              ? {
+                  ...current,
+                  site: { ...current.site, pozo_config: pozoConfig },
+                }
+              : current,
           );
           this.refreshDashboardSnapshot(siteId);
           this.refreshHierarchySnapshot();
@@ -5366,7 +5463,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       .slice(-60);
 
     if (!rows.length) {
-      return { points: [], polyline: '', yTicks: [], xTicks: [], tooltip: null };
+      return {
+        points: [],
+        polyline: '',
+        yTicks: [],
+        xTicks: [],
+        tooltip: null,
+      };
     }
 
     const values = rows.map((row) => row.caudalValue ?? 0);
@@ -5458,7 +5561,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (!ticks.length) {
       return [
         { x: chartLeft, label: this.formatChileTimeShort(new Date(minTime)) },
-        { x: chartRight - 30, label: this.formatChileTimeShort(new Date(maxTime)) },
+        {
+          x: chartRight - 30,
+          label: this.formatChileTimeShort(new Date(maxTime)),
+        },
       ];
     }
 
