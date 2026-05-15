@@ -59,7 +59,7 @@ services:
     ports:
       - '${MAIN_API_HOST_PORT:-3000}:3000'
     env_file:
-      - ./main-api/.env
+      - ./.env
     environment:
       <<: *db-env
       NODE_ENV: production
@@ -70,7 +70,22 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck: *healthcheck-main-api
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: emeltec-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   dga-api:
@@ -79,7 +94,7 @@ services:
     ports:
       - '${DGA_API_HOST_PORT:-3002}:3002'
     env_file:
-      - ./dga-api/.env
+      - ./.env
     environment:
       <<: *db-env
       NODE_ENV: production
@@ -106,7 +121,7 @@ services:
     ports:
       - '${AUTH_API_HOST_PORT:-3001}:3001'
     env_file:
-      - ./auth-api/.env
+      - ./.env
     environment:
       <<: *db-env
       NODE_ENV: production
@@ -165,3 +180,4 @@ services:
 
 volumes:
   timescale_data:
+  redis_data:

@@ -15,9 +15,9 @@ if [ ! -d .git ]; then
   exit 1
 fi
 
-if [ ! -f main-api/.env ]; then
-  echo "ERROR: main-api/.env does not exist on the VM."
-  echo "Create it from main-api/.env.example and fill the production values."
+if [ ! -f .env ]; then
+  echo "ERROR: .env does not exist on the VM."
+  echo "Create it at the repo root with all required production values."
   exit 1
 fi
 
@@ -35,10 +35,10 @@ docker compose -f "$COMPOSE_FILE" config >/dev/null
 
 read_env_value() {
   local key="$1"
-  if [ ! -f main-api/.env ]; then
+  if [ ! -f .env ]; then
     return 0
   fi
-  grep -E "^${key}=" main-api/.env | tail -n 1 | cut -d= -f2- | tr -d '\r'
+  grep -E "^${key}=" .env | tail -n 1 | cut -d= -f2- | tr -d '\r'
 }
 
 MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value DB_USER)}"
@@ -47,7 +47,21 @@ MIGRATION_DB_USER="${MIGRATION_DB_USER:-postgres}"
 MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-telemetry_platform}"
 
 echo "Starting database service before migrations..."
-docker compose -f "$COMPOSE_FILE" up -d timescaledb
+docker compose -f "$COMPOSE_FILE" up -d --wait timescaledb
+
+echo "Waiting for database to accept connections..."
+for i in $(seq 1 30); do
+  if docker compose -f "$COMPOSE_FILE" exec -T timescaledb \
+       pg_isready -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" >/dev/null 2>&1; then
+    echo "Database ready."
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    echo "ERROR: timescaledb did not become ready in time."
+    exit 1
+  fi
+  sleep 2
+done
 
 if [ -d infra-db/migrations ]; then
   echo "Applying database migrations..."
