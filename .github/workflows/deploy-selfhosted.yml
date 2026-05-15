@@ -1,0 +1,33 @@
+name: Deploy self-hosted
+
+# Auto-deploy en push a main usando el runner self-hosted en la VM Azure.
+# El runner ejecuta scripts/deploy-production.sh directamente sobre el dir
+# productivo (sin SSH). El script preserva los .env del VM, aplica migraciones
+# SQL y rebuilda los servicios docker compose.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: production-selfhosted
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux]
+    environment: production
+
+    env:
+      APP_DIR: ${{ vars.APP_DIR || '/opt/emeltec/emeltec-platform' }}
+      BRANCH: main
+      COMPOSE_PROJECT_NAME: emeltec-platform
+
+    steps:
+      - name: Checkout workflow code
+        uses: actions/checkout@v5
+
+      - name: Run deploy script
+        run: bash scripts/deploy-production.sh
