@@ -20,6 +20,7 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.31.0",
     "@grpc/grpc-js": "^1.14.3",
     "@grpc/proto-loader": "^0.8.0",
     "bcrypt": "^6.0.0",
@@ -31,6 +32,7 @@
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
+    "multer": "^2.1.1",
     "pg": "^8.20.0",
     "pino": "^9.5.0",
     "pino-http": "^10.3.0",

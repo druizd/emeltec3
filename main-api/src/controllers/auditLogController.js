@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-const TARGET_TYPES = ['usuario', 'empresa', 'alerta', 'evento', 'incidencia', 'sitio'];
+const TARGET_TYPES = ['usuario', 'empresa', 'alerta', 'evento', 'incidencia', 'documento', 'sitio'];
 
 /**
  * GET /api/audit-log
@@ -74,6 +74,7 @@ exports.listarAuditLog = async (req, res) => {
       OR (al.target_type = 'alerta' AND a_rule.sitio_id = $${pSitio})
       OR (al.target_type = 'evento' AND a_evt.sitio_id = $${pSitio})
       OR (al.target_type = 'incidencia' AND inc.sitio_id = $${pSitio})
+      OR (al.target_type = 'documento' AND doc.sitio_id = $${pSitio})
     )`);
   }
 
@@ -89,6 +90,7 @@ exports.listarAuditLog = async (req, res) => {
     LEFT JOIN alertas a_rule    ON al.target_type = 'alerta'    AND a_rule.id::text = al.target_id
     LEFT JOIN alertas_eventos a_evt ON al.target_type = 'evento' AND a_evt.id::text = al.target_id
     LEFT JOIN incidencias inc   ON al.target_type = 'incidencia' AND inc.id::text  = al.target_id
+    LEFT JOIN documentos doc    ON al.target_type = 'documento'  AND doc.id::text  = al.target_id
   `;
 
   const { rows } = await pool.query(
@@ -99,6 +101,7 @@ exports.listarAuditLog = async (req, res) => {
               a_rule.sitio_id,
               a_evt.sitio_id,
               inc.sitio_id,
+              doc.sitio_id,
               CASE WHEN al.target_type = 'sitio' THEN al.target_id END
             ) AS resolved_sitio_id
        FROM audit_log al
