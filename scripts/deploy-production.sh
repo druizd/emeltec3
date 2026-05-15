@@ -15,9 +15,9 @@ if [ ! -d .git ]; then
   exit 1
 fi
 
-if [ ! -f main-api/.env ]; then
-  echo "ERROR: main-api/.env does not exist on the VM."
-  echo "Create it from main-api/.env.example and fill the production values."
+if [ ! -f .env ]; then
+  echo "ERROR: .env does not exist on the VM."
+  echo "Create it at the repo root with all required production values."
   exit 1
 fi
 
@@ -35,10 +35,10 @@ docker compose -f "$COMPOSE_FILE" config >/dev/null
 
 read_env_value() {
   local key="$1"
-  if [ ! -f main-api/.env ]; then
+  if [ ! -f .env ]; then
     return 0
   fi
-  grep -E "^${key}=" main-api/.env | tail -n 1 | cut -d= -f2- | tr -d '\r'
+  grep -E "^${key}=" .env | tail -n 1 | cut -d= -f2- | tr -d '\r'
 }
 
 MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value DB_USER)}"

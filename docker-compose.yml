@@ -59,7 +59,7 @@ services:
     ports:
       - '${MAIN_API_HOST_PORT:-3000}:3000'
     env_file:
-      - ./main-api/.env
+      - ./.env
     environment:
       <<: *db-env
       NODE_ENV: production
@@ -79,7 +79,7 @@ services:
     ports:
       - '${DGA_API_HOST_PORT:-3002}:3002'
     env_file:
-      - ./dga-api/.env
+      - ./.env
     environment:
       <<: *db-env
       NODE_ENV: production
@@ -106,7 +106,7 @@ services:
     ports:
       - '${AUTH_API_HOST_PORT:-3001}:3001'
     env_file:
-      - ./auth-api/.env
+      - ./.env
     environment:
       <<: *db-env
       NODE_ENV: production
