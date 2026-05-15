@@ -121,6 +121,11 @@ CREATE TABLE IF NOT EXISTS alertas_eventos (
                      CHECK (severidad IN ('baja','media','alta','critica')),
     notificado       BOOLEAN       NOT NULL DEFAULT FALSE,
     resuelta         BOOLEAN       NOT NULL DEFAULT FALSE,
+    reconocida_at    TIMESTAMPTZ,
+    reconocida_por   VARCHAR(10)   REFERENCES usuario(id) ON DELETE SET NULL,
+    asignado_a       VARCHAR(10)   REFERENCES usuario(id) ON DELETE SET NULL,
+    asignado_at      TIMESTAMPTZ,
+    incidencia_id    VARCHAR(50),
     triggered_at     TIMESTAMPTZ   DEFAULT NOW(),
     resuelta_at      TIMESTAMPTZ
 );
@@ -158,6 +163,7 @@ CREATE INDEX IF NOT EXISTS idx_alertas_empresa    ON alertas (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_sitio      ON alertas (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_emp  ON alertas_eventos (empresa_id, resuelta, triggered_at DESC);
 CREATE INDEX IF NOT EXISTS idx_alertas_eventos_alerta ON alertas_eventos (alerta_id, triggered_at DESC);
+CREATE INDEX IF NOT EXISTS idx_alertas_eventos_asignado ON alertas_eventos (asignado_a) WHERE asignado_a IS NOT NULL;
 
 -- -------------------------------------------
 -- Compresión automática (después de 7 días)

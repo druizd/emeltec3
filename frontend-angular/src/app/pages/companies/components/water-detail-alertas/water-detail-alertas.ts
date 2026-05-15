@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AlertaService } from '../../../../services/alerta.service';
 import { AlertasBandejaComponent } from './alertas-bandeja';
 import { AlertasConfiguracionComponent } from './alertas-configuracion';
 import { AlertasHistoricoComponent } from './alertas-historico';
@@ -16,6 +17,7 @@ interface AlertasTabItem {
 @Component({
   selector: 'app-water-detail-alertas',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -42,12 +44,14 @@ interface AlertasTabItem {
             </div>
           </div>
           <!-- Badge activas -->
-          <span
-            class="hidden shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600 sm:inline-flex"
-          >
-            <span class="h-2 w-2 animate-pulse rounded-full bg-rose-500"></span>
-            3 alertas activas
-          </span>
+          @if (activasCount() > 0) {
+            <span
+              class="hidden shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600 sm:inline-flex"
+            >
+              <span class="h-2 w-2 animate-pulse rounded-full bg-rose-500"></span>
+              {{ activasCount() }} {{ activasCount() === 1 ? 'alerta activa' : 'alertas activas' }}
+            </span>
+          }
         </div>
       </header>
 
@@ -76,25 +80,43 @@ interface AlertasTabItem {
 
       <!-- Section content -->
       @if (activeSection() === 'bandeja') {
-        <app-alertas-bandeja />
+        <app-alertas-bandeja [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'configuracion') {
         <app-alertas-configuracion [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'historico') {
-        <app-alertas-historico />
+        <app-alertas-historico [sitioId]="sitioId()" />
       }
     </section>
   `,
 })
 export class WaterDetailAlertasComponent {
+  private readonly alertaService = inject(AlertaService);
+
   readonly sitioId = input<string>('');
   readonly empresaId = input<string>('');
   readonly activeSection = signal<AlertasSection>('bandeja');
+  readonly activasCount = signal(0);
 
   readonly tabs: AlertasTabItem[] = [
     { key: 'bandeja', label: 'Bandeja activa', icon: 'inbox' },
     { key: 'configuracion', label: 'Configuración', icon: 'tune' },
     { key: 'historico', label: 'Histórico', icon: 'history' },
   ];
+
+  constructor() {
+    effect(() => {
+      const sid = this.sitioId();
+      if (sid) this.cargarResumen();
+    });
+  }
+
+  private cargarResumen(): void {
+    const sid = this.sitioId();
+    if (!sid) return;
+    this.alertaService.resumen({ sitio_id: sid }).subscribe({
+      next: (r) => this.activasCount.set(Number(r.activas) || 0),
+    });
+  }
 
   tabClass(key: AlertasSection): string {
     const active = this.activeSection() === key;

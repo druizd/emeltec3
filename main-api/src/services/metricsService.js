@@ -4,67 +4,6 @@
  */
 const pool = require('../config/db');
 
-let endpointMetricsTableEnsured = false;
-let variableMetricsTableEnsured = false;
-
-async function ensureEndpointMetricsTable() {
-  if (endpointMetricsTableEnsured) {
-    return true;
-  }
-
-  try {
-    await pool.query(
-      `
-      CREATE TABLE IF NOT EXISTS public.api_metrics (
-        id SERIAL PRIMARY KEY,
-        endpoint VARCHAR(200) NOT NULL,
-        domain_slug VARCHAR(50),
-        serial_id VARCHAR(100),
-        request_count BIGINT DEFAULT 0,
-        bytes_sent BIGINT DEFAULT 0,
-        updated_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE (endpoint, domain_slug, serial_id)
-      )
-      `,
-    );
-
-    endpointMetricsTableEnsured = true;
-    return true;
-  } catch (err) {
-    console.error('[metrics] Error al preparar api_metrics:', err.message);
-    return false;
-  }
-}
-
-async function ensureVariableMetricsTable() {
-  if (variableMetricsTableEnsured) {
-    return true;
-  }
-
-  try {
-    await pool.query(
-      `
-      CREATE TABLE IF NOT EXISTS public.api_variable_metrics (
-        id SERIAL PRIMARY KEY,
-        nombre_dato VARCHAR(150) NOT NULL,
-        serial_id VARCHAR(100),
-        request_count BIGINT DEFAULT 0,
-        bytes_sent BIGINT DEFAULT 0,
-        duration_ms_total BIGINT DEFAULT 0,
-        updated_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE (nombre_dato, serial_id)
-      )
-      `,
-    );
-
-    variableMetricsTableEnsured = true;
-    return true;
-  } catch (err) {
-    console.error('[metrics] Error al preparar api_variable_metrics:', err.message);
-    return false;
-  }
-}
-
 function normalizeMetricValue(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed) || parsed < 0) {
@@ -76,10 +15,6 @@ function normalizeMetricValue(value) {
 
 async function trackRequest(endpoint, domainSlug, serialId, bytesSent) {
   try {
-    if (!(await ensureEndpointMetricsTable())) {
-      return;
-    }
-
     await pool.query(
       `INSERT INTO api_metrics (
          endpoint,
@@ -104,14 +39,6 @@ async function trackRequest(endpoint, domainSlug, serialId, bytesSent) {
 
 async function getRequestMetrics(endpoint, domainSlug, serialId) {
   try {
-    if (!(await ensureEndpointMetricsTable())) {
-      return {
-        request_count_total: 0,
-        bytes_sent_total: 0,
-        updated_at: null,
-      };
-    }
-
     const { rows } = await pool.query(
       `SELECT
          request_count,
@@ -152,10 +79,6 @@ async function getRequestMetrics(endpoint, domainSlug, serialId) {
 async function registerVariableMetric(nombreDato, serialId, bytesSent, durationMs = 0) {
   try {
     if (!nombreDato) {
-      return;
-    }
-
-    if (!(await ensureVariableMetricsTable())) {
       return;
     }
 
@@ -202,10 +125,6 @@ async function registerVariableMetrics(entries = []) {
 
 async function getVariableMetrics({ serialId = null, keys = [] } = {}) {
   try {
-    if (!(await ensureVariableMetricsTable())) {
-      return [];
-    }
-
     const params = [];
     let where = 'WHERE 1=1';
 

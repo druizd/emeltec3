@@ -13,10 +13,16 @@ const logoAbs = path.resolve(
   'images',
   'emeltec-logo.png',
 );
-process.env.EMAIL_LOGO_URL = `file:///${logoAbs.replace(/\\/g, '/')}`;
+const LOGO_FILE_URL = `file:///${logoAbs.replace(/\\/g, '/')}`;
 process.env.FRONTEND_URL = 'https://cloud.emeltec.cl/login';
 
 const { _renderHealthDigestHtml, _renderHealthEventHtml } = require('./src/services/emailService');
+
+// Reemplaza el `cid:emeltec-logo` (que Resend resuelve via attachment inline)
+// por una URL file:// para que los previews carguen el PNG real en el navegador.
+function rewriteCid(html) {
+  return html.replace(/cid:emeltec-logo/g, LOGO_FILE_URL);
+}
 
 const sampleData = [
   {
@@ -83,19 +89,21 @@ const now = new Date().toISOString();
 // 1. Digest con incidencias
 fs.writeFileSync(
   path.join(__dirname, 'preview-email-digest-issues.html'),
-  _renderHealthDigestHtml({ generatedAt: now, dataIssues: sampleData, dgaIssues: sampleDga }),
+  rewriteCid(
+    _renderHealthDigestHtml({ generatedAt: now, dataIssues: sampleData, dgaIssues: sampleDga }),
+  ),
 );
 
 // 2. Digest todo en orden
 fs.writeFileSync(
   path.join(__dirname, 'preview-email-digest-ok.html'),
-  _renderHealthDigestHtml({ generatedAt: now, dataIssues: [], dgaIssues: [] }),
+  rewriteCid(_renderHealthDigestHtml({ generatedAt: now, dataIssues: [], dgaIssues: [] })),
 );
 
 // 3. Event single
 fs.writeFileSync(
   path.join(__dirname, 'preview-email-digest-event.html'),
-  _renderHealthEventHtml({ eventDetail: sampleData[1] }),
+  rewriteCid(_renderHealthEventHtml({ eventDetail: sampleData[1] })),
 );
 
 console.log('Previews generados:');

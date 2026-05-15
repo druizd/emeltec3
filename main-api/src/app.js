@@ -69,7 +69,8 @@ const auditResolver = (req) => {
   let targetType = null;
   if (path.startsWith('/api/users')) targetType = 'usuario';
   else if (path.startsWith('/api/companies')) targetType = 'empresa';
-  else if (path.startsWith('/api/alertas')) targetType = 'alerta';
+  else if (path.startsWith('/api/alertas') || path.startsWith('/api/eventos'))
+    targetType = 'alerta';
   const verb =
     { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' }[req.method] || 'mutate';
   // El id aparece como último segmento numérico/alfanumérico tras la base de recursos.
@@ -90,7 +91,11 @@ app.use('/api/metrics', metricsRoutes);
 app.use('/api/internal', internalRoutes);
 app.use('/api/users', auditMutations(auditResolver), userRoutes);
 app.use('/api/companies', auditMutations(auditResolver), companyRoutes);
-app.use('/api/alertas', auditMutations(auditResolver), alertaRoutes);
+// alertaRoutes maneja /alertas, /eventos y /resumen. Audit acotado a las
+// rutas alertas/eventos para no auditar otras rutas /api/*.
+app.use('/api/alertas', auditMutations(auditResolver));
+app.use('/api/eventos', auditMutations(auditResolver));
+app.use('/api', alertaRoutes);
 
 // /api/v2/* — router TS compilado. Endpoints nuevos con envelopes estándar,
 // caché Redis online, Prometheus metrics, healthcheck liveness/readiness.
