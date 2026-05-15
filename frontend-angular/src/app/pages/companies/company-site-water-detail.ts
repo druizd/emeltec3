@@ -2201,7 +2201,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               [empresaId]="siteContext()?.company?.id || ''"
             />
           } @else if (activeDetailTab() === 'bitacora') {
-            <app-water-detail-bitacora />
+            <app-water-detail-bitacora
+              [sitioId]="siteContext()?.site?.id || ''"
+              [empresaId]="siteContext()?.company?.id || ''"
+            />
           } @else if (activeDetailTab() === 'analisis') {
             <app-water-detail-analisis />
           }

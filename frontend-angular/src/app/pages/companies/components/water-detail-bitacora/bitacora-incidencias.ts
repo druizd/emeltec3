@@ -1,32 +1,77 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import type { User } from '@emeltec/shared';
+import {
+  CATEGORIA_LABELS,
+  CreateIncidenciaPayload,
+  ESTADO_LABELS,
+  GRAVEDAD_LABELS,
+  IncidenciaCategoria,
+  IncidenciaEstado,
+  IncidenciaGravedad,
+  IncidenciaOrigen,
+  IncidenciaRow,
+  IncidenciaService,
+  ORIGEN_LABELS,
+} from '../../../../services/incidencia.service';
+import { UserService } from '../../../../services/user.service';
 
-type IncidenciaOrigen = 'terreno' | 'remota';
-type IncidenciaCategoria = 'sensor' | 'comunicacion' | 'mecanico' | 'electrico' | 'otro';
-type IncidenciaGravedad = 'leve' | 'media' | 'critica';
-type IncidenciaEstado = 'abierta' | 'en_progreso' | 'resuelta' | 'cerrada';
-
-interface Incidencia {
-  id: string;
+interface DraftIncidencia {
   titulo: string;
+  descripcion: string;
   origen: IncidenciaOrigen;
   categoria: IncidenciaCategoria;
   gravedad: IncidenciaGravedad;
   estado: IncidenciaEstado;
-  fecha: string;
-  tecnico: string;
-  descripcion: string;
-  adjuntos: number;
-  alertaVinculada?: string;
+  tecnico_id: string | null;
+  alerta_evento_id: number | null;
+}
+
+const ORIGENES: IncidenciaOrigen[] = ['terreno', 'remota'];
+const CATEGORIAS: IncidenciaCategoria[] = [
+  'sensor',
+  'comunicacion',
+  'mecanico',
+  'electrico',
+  'otro',
+];
+const GRAVEDADES: IncidenciaGravedad[] = ['leve', 'media', 'critica'];
+const ESTADOS: IncidenciaEstado[] = ['abierta', 'en_progreso', 'resuelta', 'cerrada'];
+
+function emptyDraft(): DraftIncidencia {
+  return {
+    titulo: '',
+    descripcion: '',
+    origen: 'remota',
+    categoria: 'otro',
+    gravedad: 'media',
+    estado: 'abierta',
+    tecnico_id: null,
+    alerta_evento_id: null,
+  };
 }
 
 @Component({
   selector: 'app-bitacora-incidencias',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-3">
-      <!-- Filtros -->
+      @if (errorMsg()) {
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+      }
+
+      <!-- Filtros + Nueva -->
       <header class="flex flex-wrap items-center gap-2">
         <div class="flex flex-wrap gap-1.5">
           @for (f of filtrosOrigen; track f.key) {
@@ -52,12 +97,57 @@ interface Incidencia {
             </button>
           }
         </div>
-        <span class="ml-auto text-[11px] font-semibold text-slate-400"
-          >{{ incidenciasFiltradas().length }} incidencias</span
+        <span class="ml-auto text-[11px] font-semibold text-slate-400">
+          {{ incidenciasFiltradas().length }} incidencias
+        </span>
+        <button
+          type="button"
+          (click)="toggleNueva()"
+          class="inline-flex items-center gap-1 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[12px] font-bold text-cyan-700 hover:bg-cyan-100"
         >
+          <span class="material-symbols-outlined text-[14px]">{{
+            mostrandoNueva() ? 'close' : 'add'
+          }}</span>
+          {{ mostrandoNueva() ? 'Cancelar' : 'Nueva' }}
+        </button>
       </header>
 
-      <!-- Timeline -->
+      @if (mostrandoNueva()) {
+        <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
+          <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-700">
+            Nueva incidencia
+          </p>
+          <ng-container
+            *ngTemplateOutlet="formTemplate; context: { $implicit: nuevaDraft, isNew: true }"
+          ></ng-container>
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              (click)="toggleNueva()"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              [disabled]="saving() || !puedeGuardar(nuevaDraft)"
+              (click)="guardarNueva()"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+            >
+              <span class="material-symbols-outlined text-[16px]">check</span>
+              Crear
+            </button>
+          </div>
+        </article>
+      }
+
+      @if (loading()) {
+        <p class="rounded-xl bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
+          Cargando incidencias…
+        </p>
+      }
+
+      <!-- Lista -->
       <div class="space-y-2">
         @for (inc of incidenciasFiltradas(); track inc.id) {
           <article
@@ -65,7 +155,6 @@ interface Incidencia {
             [class]="tarjetaClass(inc)"
           >
             <div class="flex items-start gap-3 p-4">
-              <!-- Icono origen -->
               <span
                 [class]="origenIconClass(inc.origen)"
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
@@ -76,11 +165,12 @@ interface Incidencia {
               </span>
 
               <div class="min-w-0 flex-1">
-                <!-- Fila superior -->
                 <div class="flex flex-wrap items-start justify-between gap-2">
                   <div class="min-w-0">
-                    <p class="font-black text-slate-800">{{ inc.titulo }}</p>
-                    <div class="mt-1 flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <span class="font-mono text-[11px] font-bold text-slate-400">{{
+                        inc.codigo
+                      }}</span>
                       <span
                         [class]="gravedadClass(inc.gravedad)"
                         class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
@@ -96,17 +186,18 @@ interface Incidencia {
                       >
                         {{ categoriaLabel(inc.categoria) }}
                       </span>
-                      @if (inc.alertaVinculada) {
+                      @if (inc.alerta_evento_id) {
                         <span
                           class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
                         >
                           <span class="material-symbols-outlined text-[12px]"
                             >notifications_active</span
                           >
-                          Alerta vinculada
+                          Alerta #{{ inc.alerta_evento_id }}
                         </span>
                       }
                     </div>
+                    <p class="mt-1 font-black text-slate-800">{{ inc.titulo }}</p>
                   </div>
                   <span
                     [class]="estadoClass(inc.estado)"
@@ -120,48 +211,255 @@ interface Incidencia {
                   </span>
                 </div>
 
-                <!-- Descripción -->
-                <p class="mt-2 text-[12px] leading-relaxed text-slate-500">{{ inc.descripcion }}</p>
+                @if (inc.descripcion) {
+                  <p class="mt-2 text-[12px] leading-relaxed text-slate-500">
+                    {{ inc.descripcion }}
+                  </p>
+                }
 
-                <!-- Pie de tarjeta -->
                 <div
                   class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400"
                 >
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                    {{ inc.fecha }}
+                    {{ formatFecha(inc.created_at) }}
                   </span>
-                  <span class="flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[14px]">person</span>
-                    {{ inc.tecnico }}
-                  </span>
-                  @if (inc.adjuntos > 0) {
+                  @if (inc.tecnico_nombre_completo) {
                     <span class="flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[14px]">attach_file</span>
-                      {{ inc.adjuntos }} adjunto{{ inc.adjuntos > 1 ? 's' : '' }}
+                      <span class="material-symbols-outlined text-[14px]">person</span>
+                      {{ inc.tecnico_nombre_completo }}
+                    </span>
+                  }
+                  @if (inc.cerrado_at) {
+                    <span class="flex items-center gap-1 text-emerald-600">
+                      <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                      Cerrada {{ formatFecha(inc.cerrado_at) }}
                     </span>
                   }
                 </div>
+
+                @if (expandedId() === inc.id && drafts()[inc.id]) {
+                  <div class="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                    <ng-container
+                      *ngTemplateOutlet="
+                        formTemplate;
+                        context: { $implicit: drafts()[inc.id]!, isNew: false }
+                      "
+                    ></ng-container>
+                    <div class="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        (click)="cancelarEdicion(inc)"
+                        class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        [disabled]="saving() || !puedeGuardar(drafts()[inc.id]!)"
+                        (click)="guardarEdicion(inc)"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">check</span>
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      (click)="expandir(inc)"
+                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">edit</span>
+                      Editar
+                    </button>
+                    @if (inc.estado !== 'cerrada') {
+                      <button
+                        type="button"
+                        [disabled]="saving()"
+                        (click)="cerrar(inc)"
+                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        Cerrar
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      (click)="eliminar(inc)"
+                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">delete</span>
+                      Eliminar
+                    </button>
+                  </div>
+                }
               </div>
             </div>
           </article>
         } @empty {
-          <div
-            class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
-          >
-            <span class="material-symbols-outlined text-4xl text-slate-300">checklist</span>
-            <p class="mt-2 text-sm font-semibold text-slate-400">
-              Sin incidencias con estos filtros
-            </p>
-          </div>
+          @if (!loading()) {
+            <div
+              class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
+            >
+              <span class="material-symbols-outlined text-4xl text-slate-300">checklist</span>
+              <p class="mt-2 text-sm font-semibold text-slate-400">
+                Sin incidencias con estos filtros
+              </p>
+            </div>
+          }
         }
       </div>
     </div>
+
+    <!-- Form template reusable -->
+    <ng-template #formTemplate let-draft let-isNew="isNew">
+      <div class="space-y-3">
+        <div>
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            >Título</label
+          >
+          <input
+            type="text"
+            [(ngModel)]="draft.titulo"
+            placeholder="Ej. Tablero eléctrico con sobrecalentamiento"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            >Descripción</label
+          >
+          <textarea
+            rows="3"
+            [(ngModel)]="draft.descripcion"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+          ></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div>
+            <label
+              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Origen</label
+            >
+            <select
+              [(ngModel)]="draft.origen"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+            >
+              @for (o of origenes; track o) {
+                <option [value]="o">{{ origenLabel(o) }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label
+              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Categoría</label
+            >
+            <select
+              [(ngModel)]="draft.categoria"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+            >
+              @for (c of categorias; track c) {
+                <option [value]="c">{{ categoriaLabel(c) }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label
+              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Gravedad</label
+            >
+            <select
+              [(ngModel)]="draft.gravedad"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+            >
+              @for (g of gravedades; track g) {
+                <option [value]="g">{{ gravedadLabel(g) }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label
+              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Estado</label
+            >
+            <select
+              [(ngModel)]="draft.estado"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+            >
+              @for (e of estados; track e) {
+                <option [value]="e">{{ estadoLabel(e) }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label
+            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            >Técnico asignado</label
+          >
+          <select
+            [(ngModel)]="draft.tecnico_id"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+          >
+            <option [ngValue]="null">Sin asignar</option>
+            @for (u of usuariosEmpresa(); track u.id) {
+              <option [ngValue]="u.id">{{ u.nombre }} {{ u.apellido }}</option>
+            }
+          </select>
+        </div>
+
+        @if (isNew) {
+          <div>
+            <label
+              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              >Evento de alerta vinculado (ID, opcional)</label
+            >
+            <input
+              type="number"
+              [(ngModel)]="draft.alerta_evento_id"
+              placeholder="Ej. 123"
+              class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700"
+            />
+          </div>
+        }
+      </div>
+    </ng-template>
   `,
 })
 export class BitacoraIncidenciasComponent {
+  private readonly incidenciaService = inject(IncidenciaService);
+  private readonly userService = inject(UserService);
+
+  readonly sitioId = input<string>('');
+  readonly empresaId = input<string>('');
+
+  readonly origenes = ORIGENES;
+  readonly categorias = CATEGORIAS;
+  readonly gravedades = GRAVEDADES;
+  readonly estados = ESTADOS;
+
   readonly filtroOrigen = signal<IncidenciaOrigen | 'todos'>('todos');
   readonly filtroEstado = signal<IncidenciaEstado | 'todos'>('todos');
+
+  readonly incidencias = signal<IncidenciaRow[]>([]);
+  readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly errorMsg = signal<string | null>(null);
+  readonly mostrandoNueva = signal(false);
+  readonly expandedId = signal<number | null>(null);
+  readonly drafts = signal<Record<number, DraftIncidencia>>({});
+  readonly usuariosEmpresa = signal<User[]>([]);
+
+  nuevaDraft: DraftIncidencia = emptyDraft();
 
   readonly filtrosOrigen: { key: IncidenciaOrigen | 'todos'; label: string; icon: string }[] = [
     { key: 'todos', label: 'Todos', icon: 'list' },
@@ -177,127 +475,222 @@ export class BitacoraIncidenciasComponent {
     { key: 'cerrada', label: 'Cerrada' },
   ];
 
-  readonly incidencias: Incidencia[] = [
-    {
-      id: '1',
-      titulo: 'Sensor de nivel sin lectura — posible obstrucción',
-      origen: 'remota',
-      categoria: 'sensor',
-      gravedad: 'critica',
-      estado: 'cerrada',
-      fecha: '28/04/2026 09:15',
-      tecnico: 'L. Pérez',
-      descripcion:
-        'El sensor VEGAPULS dejó de enviar lecturas. Se revisó conexión Modbus y se encontró cable dañado por humedad. Reemplazado en terreno.',
-      adjuntos: 3,
-      alertaVinculada: 'ALT-0041',
-    },
-    {
-      id: '2',
-      titulo: 'Bomba sumergible con caudal reducido',
-      origen: 'terreno',
-      categoria: 'mecanico',
-      gravedad: 'media',
-      estado: 'resuelta',
-      fecha: '15/04/2026 14:30',
-      tecnico: 'L. Pérez',
-      descripcion:
-        'Caudal bajó 30% en 2 semanas. Inspección reveló filtro obstruido con sedimentos. Se limpió y se calibró caudalímetro.',
-      adjuntos: 5,
-    },
-    {
-      id: '3',
-      titulo: 'Falla en comunicación GPRS',
-      origen: 'remota',
-      categoria: 'comunicacion',
-      gravedad: 'leve',
-      estado: 'cerrada',
-      fecha: '02/04/2026 11:00',
-      tecnico: 'M. Torres',
-      descripcion:
-        'El dispositivo dejó de reportar por 3 horas. Reinicio remoto del módem resolvió el problema. Sin pérdida de datos.',
-      adjuntos: 0,
-    },
-    {
-      id: '4',
-      titulo: 'Tablero eléctrico con sobrecalentamiento',
-      origen: 'terreno',
-      categoria: 'electrico',
-      gravedad: 'media',
-      estado: 'en_progreso',
-      fecha: '06/05/2026 10:00',
-      tecnico: 'L. Pérez',
-      descripcion:
-        'El operador reportó temperatura alta en tablero. Técnico revisó ventilación y conexiones. Pendiente reemplazo de disipador térmico.',
-      adjuntos: 2,
-    },
-    {
-      id: '5',
-      titulo: 'Revisión preventiva mensual',
-      origen: 'terreno',
-      categoria: 'otro',
-      gravedad: 'leve',
-      estado: 'cerrada',
-      fecha: '01/05/2026 09:00',
-      tecnico: 'M. Torres',
-      descripcion:
-        'Inspección rutinaria mensual. Todos los componentes en estado normal. Limpieza general del sitio y revisión de sellados.',
-      adjuntos: 1,
-    },
-  ];
+  constructor() {
+    effect(() => {
+      const sid = this.sitioId();
+      if (sid) this.recargar();
+    });
+    effect(() => {
+      const eid = this.empresaId();
+      if (eid) this.cargarUsuarios(eid);
+    });
+  }
+
+  private recargar(): void {
+    const sid = this.sitioId();
+    if (!sid) return;
+    this.loading.set(true);
+    this.errorMsg.set(null);
+    this.incidenciaService.listar({ sitio_id: sid, limit: 200 }).subscribe({
+      next: (rows) => {
+        this.incidencias.set(rows);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.errorMsg.set(err?.error?.error || 'Error cargando incidencias');
+        this.loading.set(false);
+      },
+    });
+  }
+
+  private cargarUsuarios(empresaId: string): void {
+    this.userService.getUsers({ empresa_id: empresaId }).subscribe({
+      next: (res) => {
+        if (res.ok) this.usuariosEmpresa.set(res.data);
+      },
+    });
+  }
 
   readonly incidenciasFiltradas = computed(() => {
-    let lista = this.incidencias;
-    const origen = this.filtroOrigen();
-    const estado = this.filtroEstado();
-    if (origen !== 'todos') lista = lista.filter((i) => i.origen === origen);
-    if (estado !== 'todos') lista = lista.filter((i) => i.estado === estado);
-    return lista;
+    const fo = this.filtroOrigen();
+    const fe = this.filtroEstado();
+    return this.incidencias().filter((i) => {
+      if (fo !== 'todos' && i.origen !== fo) return false;
+      if (fe !== 'todos' && i.estado !== fe) return false;
+      return true;
+    });
   });
 
-  origenIcon(origen: IncidenciaOrigen): string {
-    return origen === 'terreno' ? 'construction' : 'wifi';
+  toggleNueva(): void {
+    if (this.mostrandoNueva()) {
+      this.mostrandoNueva.set(false);
+      this.nuevaDraft = emptyDraft();
+    } else {
+      this.nuevaDraft = emptyDraft();
+      this.mostrandoNueva.set(true);
+    }
   }
 
-  origenIconClass(origen: IncidenciaOrigen): string {
-    return origen === 'terreno' ? 'bg-orange-50 text-orange-600' : 'bg-blue-50 text-blue-600';
+  expandir(inc: IncidenciaRow): void {
+    if (this.expandedId() === inc.id) {
+      this.expandedId.set(null);
+      return;
+    }
+    this.drafts.update((d) => ({
+      ...d,
+      [inc.id]: {
+        titulo: inc.titulo,
+        descripcion: inc.descripcion ?? '',
+        origen: inc.origen,
+        categoria: inc.categoria,
+        gravedad: inc.gravedad,
+        estado: inc.estado,
+        tecnico_id: inc.tecnico_id,
+        alerta_evento_id: inc.alerta_evento_id,
+      },
+    }));
+    this.expandedId.set(inc.id);
   }
 
-  gravedadLabel(g: IncidenciaGravedad): string {
-    return g === 'critica' ? 'Crítica' : g === 'media' ? 'Media' : 'Leve';
+  cancelarEdicion(inc: IncidenciaRow): void {
+    this.expandedId.set(null);
+    this.drafts.update((d) => {
+      const next = { ...d };
+      delete next[inc.id];
+      return next;
+    });
   }
 
-  gravedadClass(g: IncidenciaGravedad): string {
-    return g === 'critica'
-      ? 'bg-rose-50 text-rose-600'
-      : g === 'media'
-        ? 'bg-amber-50 text-amber-600'
-        : 'bg-slate-100 text-slate-500';
+  puedeGuardar(d: DraftIncidencia): boolean {
+    return !!d.titulo.trim();
   }
 
-  gravedadDotClass(g: IncidenciaGravedad): string {
-    return g === 'critica' ? 'bg-rose-500' : g === 'media' ? 'bg-amber-500' : 'bg-slate-400';
+  guardarNueva(): void {
+    const sid = this.sitioId();
+    const eid = this.empresaId();
+    if (!sid || !eid) {
+      this.errorMsg.set('Falta sitio o empresa');
+      return;
+    }
+    const payload: CreateIncidenciaPayload = {
+      sitio_id: sid,
+      empresa_id: eid,
+      titulo: this.nuevaDraft.titulo.trim(),
+      descripcion: this.nuevaDraft.descripcion.trim() || null,
+      origen: this.nuevaDraft.origen,
+      categoria: this.nuevaDraft.categoria,
+      gravedad: this.nuevaDraft.gravedad,
+      estado: this.nuevaDraft.estado,
+      tecnico_id: this.nuevaDraft.tecnico_id || null,
+      alerta_evento_id: this.nuevaDraft.alerta_evento_id || null,
+    };
+    this.saving.set(true);
+    this.errorMsg.set(null);
+    this.incidenciaService.crear(payload).subscribe({
+      next: (row) => {
+        this.incidencias.update((rs) => [row, ...rs]);
+        this.mostrandoNueva.set(false);
+        this.nuevaDraft = emptyDraft();
+        this.saving.set(false);
+      },
+      error: (err) => {
+        this.errorMsg.set(err?.error?.error || 'No se pudo crear la incidencia');
+        this.saving.set(false);
+      },
+    });
+  }
+
+  guardarEdicion(inc: IncidenciaRow): void {
+    const draft = this.drafts()[inc.id];
+    if (!draft) return;
+    this.saving.set(true);
+    this.errorMsg.set(null);
+    this.incidenciaService
+      .actualizar(inc.id, {
+        titulo: draft.titulo.trim(),
+        descripcion: draft.descripcion.trim() || null,
+        origen: draft.origen,
+        categoria: draft.categoria,
+        gravedad: draft.gravedad,
+        estado: draft.estado,
+        tecnico_id: draft.tecnico_id || null,
+      })
+      .subscribe({
+        next: (updated) => {
+          this.incidencias.update((rs) => rs.map((r) => (r.id === inc.id ? updated : r)));
+          this.cancelarEdicion(inc);
+          this.saving.set(false);
+        },
+        error: (err) => {
+          this.errorMsg.set(err?.error?.error || 'No se pudo actualizar');
+          this.saving.set(false);
+        },
+      });
+  }
+
+  cerrar(inc: IncidenciaRow): void {
+    this.saving.set(true);
+    this.incidenciaService.actualizar(inc.id, { estado: 'cerrada' }).subscribe({
+      next: (updated) => {
+        this.incidencias.update((rs) => rs.map((r) => (r.id === inc.id ? updated : r)));
+        this.saving.set(false);
+      },
+      error: (err) => {
+        this.errorMsg.set(err?.error?.error || 'No se pudo cerrar');
+        this.saving.set(false);
+      },
+    });
+  }
+
+  eliminar(inc: IncidenciaRow): void {
+    if (!confirm(`¿Eliminar incidencia "${inc.titulo}"? No se puede deshacer.`)) return;
+    this.incidenciaService.eliminar(inc.id).subscribe({
+      next: () => this.incidencias.update((rs) => rs.filter((r) => r.id !== inc.id)),
+      error: (err) => this.errorMsg.set(err?.error?.error || 'No se pudo eliminar'),
+    });
+  }
+
+  origenIcon(o: IncidenciaOrigen): string {
+    return o === 'terreno' ? 'construction' : 'wifi';
+  }
+
+  origenIconClass(o: IncidenciaOrigen): string {
+    return o === 'terreno' ? 'bg-orange-50 text-orange-600' : 'bg-cyan-50 text-cyan-600';
+  }
+
+  origenLabel(o: IncidenciaOrigen): string {
+    return ORIGEN_LABELS[o];
   }
 
   categoriaLabel(c: IncidenciaCategoria): string {
-    const map: Record<IncidenciaCategoria, string> = {
-      sensor: 'Sensor',
-      comunicacion: 'Comunicación',
-      mecanico: 'Mecánico',
-      electrico: 'Eléctrico',
-      otro: 'Otro',
-    };
-    return map[c];
+    return CATEGORIA_LABELS[c];
+  }
+
+  gravedadLabel(g: IncidenciaGravedad): string {
+    return GRAVEDAD_LABELS[g];
   }
 
   estadoLabel(e: IncidenciaEstado): string {
-    const map: Record<IncidenciaEstado, string> = {
-      abierta: 'Abierta',
-      en_progreso: 'En progreso',
-      resuelta: 'Resuelta',
-      cerrada: 'Cerrada',
-    };
-    return map[e];
+    return ESTADO_LABELS[e];
+  }
+
+  tarjetaClass(inc: IncidenciaRow): string {
+    if (inc.estado === 'cerrada') return 'border-slate-100 opacity-70';
+    if (inc.gravedad === 'critica') return 'border-rose-200';
+    if (inc.gravedad === 'media') return 'border-amber-200';
+    return 'border-slate-200';
+  }
+
+  gravedadClass(g: IncidenciaGravedad): string {
+    if (g === 'critica') return 'bg-rose-50 text-rose-600';
+    if (g === 'media') return 'bg-amber-50 text-amber-600';
+    return 'bg-emerald-50 text-emerald-600';
+  }
+
+  gravedadDotClass(g: IncidenciaGravedad): string {
+    if (g === 'critica') return 'bg-rose-500';
+    if (g === 'media') return 'bg-amber-500';
+    return 'bg-emerald-500';
   }
 
   estadoClass(e: IncidenciaEstado): string {
@@ -320,16 +713,10 @@ export class BitacoraIncidenciasComponent {
     return map[e];
   }
 
-  tarjetaClass(inc: Incidencia): string {
-    if (inc.estado === 'abierta') return 'border-rose-200 shadow-rose-50';
-    if (inc.estado === 'en_progreso') return 'border-amber-200 shadow-amber-50';
-    return 'border-slate-200';
-  }
-
   filtroOrigenClass(key: IncidenciaOrigen | 'todos'): string {
     const active = this.filtroOrigen() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold transition-all',
       active
         ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
@@ -339,10 +726,17 @@ export class BitacoraIncidenciasComponent {
   filtroEstadoClass(key: IncidenciaEstado | 'todos'): string {
     const active = this.filtroEstado() === key;
     return [
-      'rounded-xl px-2.5 py-1.5 text-[12px] font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
+  }
+
+  formatFecha(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 }

@@ -1,26 +1,64 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import {
+  DocumentoRow,
+  DocumentoService,
+  DocumentoTipo,
+  TIPO_LABELS,
+  formatBytes,
+} from '../../../../services/documento.service';
 
-type DocTipo = 'ficha_tecnica' | 'datasheet' | 'certificado' | 'manual' | 'plano';
+type TipoFiltro = DocumentoTipo | 'todos';
 
-interface Documento {
-  id: string;
-  nombre: string;
-  tipo: DocTipo;
+interface DraftUpload {
+  titulo: string;
+  tipo: DocumentoTipo;
+  descripcion: string;
   version: string;
-  fechaVigencia: string | null;
-  fechaCarga: string;
-  cargadoPor: string;
-  tamano: string;
-  historialVersiones: number;
+  fecha_vigencia: string;
 }
+
+function emptyDraft(): DraftUpload {
+  return {
+    titulo: '',
+    tipo: 'otro',
+    descripcion: '',
+    version: '1.0',
+    fecha_vigencia: '',
+  };
+}
+
+const TIPOS: DocumentoTipo[] = [
+  'ficha_tecnica',
+  'datasheet',
+  'certificado',
+  'manual',
+  'plano',
+  'otro',
+];
 
 @Component({
   selector: 'app-bitacora-documentos',
   standalone: true,
-  imports: [CommonModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-3">
+      @if (errorMsg()) {
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+      }
+
       <header class="flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">
           @for (tipo of tiposFiltro; track tipo.key) {
@@ -41,12 +79,125 @@ interface Documento {
         </div>
         <button
           type="button"
+          (click)="toggleSubida()"
           class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-bold text-cyan-700 transition-colors hover:bg-cyan-100"
         >
-          <span class="material-symbols-outlined text-[16px]">upload_file</span>
-          Subir documento
+          <span class="material-symbols-outlined text-[16px]">{{
+            mostrandoSubida() ? 'close' : 'upload_file'
+          }}</span>
+          {{ mostrandoSubida() ? 'Cancelar' : 'Subir documento' }}
         </button>
       </header>
+
+      @if (mostrandoSubida()) {
+        <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
+          <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-700">
+            Nuevo documento
+          </p>
+          <div class="space-y-3">
+            <div>
+              <label
+                class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >Archivo (máx 25 MB)</label
+              >
+              <input
+                #fileInput
+                type="file"
+                (change)="onFileChange($event)"
+                class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              />
+              @if (archivoSeleccionado()) {
+                <p class="mt-1 text-[11px] text-slate-500">
+                  {{ archivoSeleccionado()!.name }} ({{ formatBytes(archivoSeleccionado()!.size) }})
+                </p>
+              }
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label
+                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  >Título</label
+                >
+                <input
+                  type="text"
+                  [(ngModel)]="draft.titulo"
+                  placeholder="Ej. Cert. calibración caudalímetro"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </div>
+              <div>
+                <label
+                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  >Tipo</label
+                >
+                <select
+                  [(ngModel)]="draft.tipo"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+                >
+                  @for (t of tipos; track t) {
+                    <option [value]="t">{{ tipoLabel(t) }}</option>
+                  }
+                </select>
+              </div>
+              <div>
+                <label
+                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  >Versión</label
+                >
+                <input
+                  type="text"
+                  [(ngModel)]="draft.version"
+                  placeholder="1.0"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700"
+                />
+              </div>
+              <div>
+                <label
+                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  >Vigente hasta (opcional)</label
+                >
+                <input
+                  type="date"
+                  [(ngModel)]="draft.fecha_vigencia"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label
+                class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >Descripción (opcional)</label
+              >
+              <textarea
+                rows="2"
+                [(ngModel)]="draft.descripcion"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+              ></textarea>
+            </div>
+
+            <div class="flex justify-end gap-2">
+              <button
+                type="button"
+                (click)="toggleSubida()"
+                class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                [disabled]="uploading() || !puedeSubir()"
+                (click)="subir()"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+                {{ uploading() ? 'Subiendo…' : 'Subir' }}
+              </button>
+            </div>
+          </div>
+        </article>
+      }
 
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
@@ -71,11 +222,6 @@ interface Documento {
                 <th
                   class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
                 >
-                  Estado
-                </th>
-                <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
                   Cargado
                 </th>
                 <th
@@ -86,102 +232,85 @@ interface Documento {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              @for (doc of documentosFiltrados(); track doc.id) {
-                <tr class="group hover:bg-slate-50/60">
-                  <td class="px-4 py-3">
-                    <div class="flex items-center gap-2">
-                      <span
-                        [class]="tipoIconClass(doc.tipo)"
-                        class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[16px]"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">{{
-                          tipoIcon(doc.tipo)
-                        }}</span>
-                      </span>
-                      <div class="min-w-0">
-                        <p class="truncate font-semibold text-slate-800">{{ doc.nombre }}</p>
-                        <p class="text-[11px] text-slate-400">{{ doc.tamano }}</p>
+              @if (loading()) {
+                <tr>
+                  <td colspan="5" class="px-4 py-10 text-center text-[12px] text-slate-400">
+                    Cargando documentos…
+                  </td>
+                </tr>
+              } @else {
+                @for (doc of documentosFiltrados(); track doc.id) {
+                  <tr class="group hover:bg-slate-50/60">
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-2">
+                        <span
+                          [class]="tipoIconClass(doc.tipo)"
+                          class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">{{
+                            tipoIcon(doc.tipo)
+                          }}</span>
+                        </span>
+                        <div class="min-w-0">
+                          <p class="truncate font-semibold text-slate-800">{{ doc.titulo }}</p>
+                          <p class="truncate text-[11px] text-slate-400">
+                            {{ doc.nombre_original }} · {{ formatBytes(doc.size_bytes) }}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <span
-                      [class]="tipoLabelClass(doc.tipo)"
-                      class="rounded-full px-2 py-0.5 text-[11px] font-bold"
-                    >
-                      {{ tipoLabel(doc.tipo) }}
-                    </span>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div>
-                      <span class="font-mono text-slate-700">v{{ doc.version }}</span>
-                      @if (doc.historialVersiones > 1) {
-                        <p class="text-[11px] text-slate-400">
-                          {{ doc.historialVersiones }} versiones
+                    </td>
+                    <td class="px-4 py-3">
+                      <span
+                        [class]="tipoLabelClass(doc.tipo)"
+                        class="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                      >
+                        {{ tipoLabel(doc.tipo) }}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 font-mono text-[12px] text-slate-700">
+                      v{{ doc.version || '—' }}
+                    </td>
+                    <td class="px-4 py-3 text-[11px] text-slate-500">
+                      <p>{{ formatFecha(doc.created_at) }}</p>
+                      @if (doc.uploader_nombre_completo) {
+                        <p class="text-[10px] text-slate-400">
+                          por {{ doc.uploader_nombre_completo }}
                         </p>
                       }
-                    </div>
-                  </td>
-                  <td class="px-4 py-3">
-                    @if (esVigente(doc)) {
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600"
-                      >
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Vigente
-                      </span>
-                    } @else {
-                      <div>
-                        <span
-                          class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-500"
+                    </td>
+                    <td class="px-4 py-3">
+                      <div class="flex items-center gap-1">
+                        <button
+                          type="button"
+                          (click)="descargar(doc)"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-cyan-50 hover:text-cyan-700"
+                          [attr.aria-label]="'Descargar ' + doc.titulo"
                         >
-                          <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>No vigente
-                        </span>
-                        @if (doc.fechaVigencia) {
-                          <p class="mt-0.5 text-[10px] text-slate-400">
-                            Venció {{ doc.fechaVigencia }}
-                          </p>
-                        }
+                          <span class="material-symbols-outlined text-[18px]">download</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="eliminar(doc)"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          [attr.aria-label]="'Eliminar ' + doc.titulo"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
                       </div>
-                    }
-                  </td>
-                  <td class="px-4 py-3">
-                    <div>
-                      <p class="font-mono text-[12px] text-slate-600">{{ doc.fechaCarga }}</p>
-                      <p class="text-[11px] text-slate-400">{{ doc.cargadoPor }}</p>
-                    </div>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div
-                      class="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100"
-                    >
-                      <button
-                        type="button"
-                        class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-cyan-700"
-                        aria-label="Descargar"
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="px-4 py-10 text-center">
+                      <span class="material-symbols-outlined text-3xl text-slate-300"
+                        >folder_open</span
                       >
-                        <span class="material-symbols-outlined text-[16px]">download</span>
-                      </button>
-                      <button
-                        type="button"
-                        class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                        aria-label="Ver versiones"
-                      >
-                        <span class="material-symbols-outlined text-[16px]">history</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="6" class="px-4 py-12 text-center">
-                    <span class="material-symbols-outlined text-4xl text-slate-300"
-                      >folder_open</span
-                    >
-                    <p class="mt-2 text-sm font-semibold text-slate-400">
-                      No hay documentos en esta categoría
-                    </p>
-                  </td>
-                </tr>
+                      <p class="mt-2 text-sm font-semibold text-slate-400">
+                        Sin documentos con estos filtros
+                      </p>
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -191,161 +320,206 @@ interface Documento {
   `,
 })
 export class BitacoraDocumentosComponent {
-  readonly filtroActivo = signal<DocTipo | 'todos'>('todos');
+  private readonly documentoService = inject(DocumentoService);
 
-  readonly tiposFiltro: { key: DocTipo | 'todos'; label: string }[] = [
+  readonly sitioId = input<string>('');
+  readonly empresaId = input<string>('');
+
+  readonly tipos = TIPOS;
+
+  readonly documentos = signal<DocumentoRow[]>([]);
+  readonly loading = signal(false);
+  readonly uploading = signal(false);
+  readonly errorMsg = signal<string | null>(null);
+  readonly filtroActivo = signal<TipoFiltro>('todos');
+  readonly mostrandoSubida = signal(false);
+  readonly archivoSeleccionado = signal<File | null>(null);
+
+  draft: DraftUpload = emptyDraft();
+
+  readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
+
+  readonly tiposFiltro: { key: TipoFiltro; label: string }[] = [
     { key: 'todos', label: 'Todos' },
-    { key: 'ficha_tecnica', label: 'Fichas técnicas' },
-    { key: 'datasheet', label: 'Datasheets' },
+    { key: 'ficha_tecnica', label: 'Ficha técnica' },
+    { key: 'datasheet', label: 'Datasheet' },
     { key: 'certificado', label: 'Certificados' },
     { key: 'manual', label: 'Manuales' },
     { key: 'plano', label: 'Planos' },
+    { key: 'otro', label: 'Otros' },
   ];
 
-  readonly documentos: Documento[] = [
-    {
-      id: '1',
-      nombre: 'Ficha técnica bomba sumergible Grundfos SP17-10',
-      tipo: 'ficha_tecnica',
-      version: '2.1',
-      fechaVigencia: null,
-      fechaCarga: '12/03/2025',
-      cargadoPor: 'L. Pérez',
-      tamano: '2.4 MB',
-      historialVersiones: 3,
-    },
-    {
-      id: '2',
-      nombre: 'Datasheet sensor de nivel VEGAPULS 64',
-      tipo: 'datasheet',
-      version: '1.0',
-      fechaVigencia: null,
-      fechaCarga: '05/01/2025',
-      cargadoPor: 'M. Torres',
-      tamano: '1.1 MB',
-      historialVersiones: 1,
-    },
-    {
-      id: '3',
-      nombre: 'Certificado de calibración caudalímetro — 2024',
-      tipo: 'certificado',
-      version: '1.0',
-      fechaVigencia: '31/12/2024',
-      fechaCarga: '10/01/2024',
-      cargadoPor: 'L. Pérez',
-      tamano: '0.8 MB',
-      historialVersiones: 2,
-    },
-    {
-      id: '4',
-      nombre: 'Certificado de calibración caudalímetro — 2025',
-      tipo: 'certificado',
-      version: '1.0',
-      fechaVigencia: '31/12/2025',
-      fechaCarga: '08/01/2025',
-      cargadoPor: 'L. Pérez',
-      tamano: '0.8 MB',
-      historialVersiones: 1,
-    },
-    {
-      id: '5',
-      nombre: 'Manual de operación PLCcio XG5000',
-      tipo: 'manual',
-      version: '3.0',
-      fechaVigencia: null,
-      fechaCarga: '22/08/2024',
-      cargadoPor: 'M. Torres',
-      tamano: '5.2 MB',
-      historialVersiones: 1,
-    },
-    {
-      id: '6',
-      nombre: 'Plano de instalación eléctrica tablero pozo',
-      tipo: 'plano',
-      version: '1.2',
-      fechaVigencia: null,
-      fechaCarga: '14/06/2024',
-      cargadoPor: 'L. Pérez',
-      tamano: '3.7 MB',
-      historialVersiones: 2,
-    },
-  ];
+  constructor() {
+    effect(() => {
+      const sid = this.sitioId();
+      if (sid) this.recargar();
+    });
+  }
+
+  private recargar(): void {
+    const sid = this.sitioId();
+    if (!sid) return;
+    this.loading.set(true);
+    this.errorMsg.set(null);
+    this.documentoService.listar({ sitio_id: sid, limit: 200 }).subscribe({
+      next: (rows) => {
+        this.documentos.set(rows);
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.errorMsg.set(err?.error?.error || 'Error cargando documentos');
+        this.loading.set(false);
+      },
+    });
+  }
 
   readonly documentosFiltrados = computed(() => {
     const f = this.filtroActivo();
-    return f === 'todos' ? this.documentos : this.documentos.filter((d) => d.tipo === f);
+    return f === 'todos' ? this.documentos() : this.documentos().filter((d) => d.tipo === f);
   });
 
-  contarPorTipo(tipo: DocTipo | 'todos'): number {
-    return tipo === 'todos'
-      ? this.documentos.length
-      : this.documentos.filter((d) => d.tipo === tipo).length;
+  contarPorTipo(key: TipoFiltro): number {
+    return key === 'todos'
+      ? this.documentos().length
+      : this.documentos().filter((d) => d.tipo === key).length;
   }
 
-  esVigente(doc: Documento): boolean {
-    if (!doc.fechaVigencia) return true;
-    const partes = doc.fechaVigencia.split('/');
-    const fecha = new Date(+partes[2], +partes[1] - 1, +partes[0]);
-    return fecha >= new Date();
+  toggleSubida(): void {
+    if (this.mostrandoSubida()) {
+      this.mostrandoSubida.set(false);
+      this.draft = emptyDraft();
+      this.archivoSeleccionado.set(null);
+      const input = this.fileInput()?.nativeElement;
+      if (input) input.value = '';
+    } else {
+      this.draft = emptyDraft();
+      this.mostrandoSubida.set(true);
+    }
   }
 
-  tipoIcon(tipo: DocTipo): string {
-    const map: Record<DocTipo, string> = {
+  onFileChange(ev: Event): void {
+    const input = ev.target as HTMLInputElement;
+    const f = input.files?.[0];
+    if (!f) {
+      this.archivoSeleccionado.set(null);
+      return;
+    }
+    this.archivoSeleccionado.set(f);
+    if (!this.draft.titulo) {
+      this.draft.titulo = f.name.replace(/\.[^.]+$/, '');
+    }
+  }
+
+  puedeSubir(): boolean {
+    return !!(
+      this.archivoSeleccionado() &&
+      this.draft.titulo.trim() &&
+      this.sitioId() &&
+      this.empresaId()
+    );
+  }
+
+  subir(): void {
+    const file = this.archivoSeleccionado();
+    if (!file) return;
+    this.uploading.set(true);
+    this.errorMsg.set(null);
+    this.documentoService
+      .subir({
+        file,
+        sitio_id: this.sitioId(),
+        empresa_id: this.empresaId(),
+        titulo: this.draft.titulo.trim(),
+        tipo: this.draft.tipo,
+        descripcion: this.draft.descripcion.trim() || null,
+        version: this.draft.version.trim() || '1.0',
+        fecha_vigencia: this.draft.fecha_vigencia || null,
+      })
+      .subscribe({
+        next: (row) => {
+          this.documentos.update((ds) => [row, ...ds]);
+          this.toggleSubida();
+          this.uploading.set(false);
+        },
+        error: (err) => {
+          this.errorMsg.set(err?.error?.error || 'Error subiendo documento');
+          this.uploading.set(false);
+        },
+      });
+  }
+
+  descargar(doc: DocumentoRow): void {
+    this.documentoService.descargar(doc.id).subscribe({
+      next: (r) => {
+        window.open(r.url, '_blank', 'noopener');
+      },
+      error: (err) => this.errorMsg.set(err?.error?.error || 'Error generando descarga'),
+    });
+  }
+
+  eliminar(doc: DocumentoRow): void {
+    if (!confirm(`¿Eliminar "${doc.titulo}"? El archivo y su metadata se borran.`)) return;
+    this.documentoService.eliminar(doc.id).subscribe({
+      next: () => this.documentos.update((ds) => ds.filter((d) => d.id !== doc.id)),
+      error: (err) => this.errorMsg.set(err?.error?.error || 'Error eliminando'),
+    });
+  }
+
+  tipoLabel(t: DocumentoTipo): string {
+    return TIPO_LABELS[t];
+  }
+
+  tipoIcon(t: DocumentoTipo): string {
+    const map: Record<DocumentoTipo, string> = {
       ficha_tecnica: 'description',
-      datasheet: 'quick_reference',
+      datasheet: 'table_chart',
       certificado: 'verified',
       manual: 'menu_book',
       plano: 'architecture',
+      otro: 'draft',
     };
-    return map[tipo];
+    return map[t];
   }
 
-  tipoIconClass(tipo: DocTipo): string {
-    const map: Record<DocTipo, string> = {
-      ficha_tecnica: 'bg-cyan-50 text-cyan-600',
-      datasheet: 'bg-violet-50 text-violet-600',
-      certificado: 'bg-emerald-50 text-emerald-600',
-      manual: 'bg-amber-50 text-amber-600',
-      plano: 'bg-slate-100 text-slate-600',
-    };
-    return map[tipo];
-  }
-
-  tipoLabel(tipo: DocTipo): string {
-    const map: Record<DocTipo, string> = {
-      ficha_tecnica: 'Ficha técnica',
-      datasheet: 'Datasheet',
-      certificado: 'Certificado',
-      manual: 'Manual',
-      plano: 'Plano',
-    };
-    return map[tipo];
-  }
-
-  tipoLabelClass(tipo: DocTipo): string {
-    const map: Record<DocTipo, string> = {
+  tipoIconClass(t: DocumentoTipo): string {
+    const map: Record<DocumentoTipo, string> = {
       ficha_tecnica: 'bg-cyan-50 text-cyan-700',
-      datasheet: 'bg-violet-50 text-violet-700',
-      certificado: 'bg-emerald-50 text-emerald-700',
-      manual: 'bg-amber-50 text-amber-700',
-      plano: 'bg-slate-100 text-slate-600',
+      datasheet: 'bg-emerald-50 text-emerald-700',
+      certificado: 'bg-amber-50 text-amber-700',
+      manual: 'bg-violet-50 text-violet-700',
+      plano: 'bg-blue-50 text-blue-700',
+      otro: 'bg-slate-100 text-slate-600',
     };
-    return map[tipo];
+    return map[t];
   }
 
-  filtroClass(key: DocTipo | 'todos'): string {
+  tipoLabelClass(t: DocumentoTipo): string {
+    return this.tipoIconClass(t);
+  }
+
+  filtroClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
     return [
-      'inline-flex items-center rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
       active
         ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }
 
-  filtroBadgeClass(key: DocTipo | 'todos'): string {
-    return this.filtroActivo() === key
-      ? 'bg-cyan-100 text-cyan-700'
-      : 'bg-slate-100 text-slate-500';
+  filtroBadgeClass(key: TipoFiltro): string {
+    const active = this.filtroActivo() === key;
+    return active ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500';
+  }
+
+  formatBytes(b: number): string {
+    return formatBytes(b);
+  }
+
+  formatFecha(iso: string): string {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 }
