@@ -170,7 +170,10 @@ export function siteTypesForModule(moduleKey: string): string[] {
   return [...(getModuleByKey(moduleKey)?.siteTypes || ['generico'])];
 }
 
-export function siteTypeMatchesModule(value: string | null | undefined, moduleKey: string): boolean {
+export function siteTypeMatchesModule(
+  value: string | null | undefined,
+  moduleKey: string,
+): boolean {
   const type = normalizeSiteType(value);
   const module = getModuleByKey(moduleKey);
 

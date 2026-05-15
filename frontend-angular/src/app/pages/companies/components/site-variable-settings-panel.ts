@@ -1,6 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, Input, OnChanges, SimpleChanges, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  Input,
+  OnChanges,
+  SimpleChanges,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import {
@@ -360,7 +368,9 @@ function emptyVariables(): SiteVariablesPayload {
             }
 
             <div class="rounded-lg border border-slate-200 bg-white p-3">
-              <label class="mb-1 block text-xs font-bold text-slate-500">Valor crudo de prueba</label>
+              <label class="mb-1 block text-xs font-bold text-slate-500"
+                >Valor crudo de prueba</label
+              >
               <input
                 name="variable-sandbox-raw"
                 [ngModel]="variableForm().sandboxRaw"
@@ -394,7 +404,9 @@ function emptyVariables(): SiteVariablesPayload {
           </form>
 
           <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+            <div
+              class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
+            >
               <div>
                 <h3 class="text-sm font-black text-slate-900">Datos detectados del equipo</h3>
                 <p class="text-xs font-semibold text-slate-400">
@@ -408,7 +420,9 @@ function emptyVariables(): SiteVariablesPayload {
 
             <div class="overflow-x-auto">
               <table class="w-full min-w-[700px] text-left text-sm">
-                <thead class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500">
+                <thead
+                  class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                >
                   <tr>
                     <th class="px-4 py-3">Dato</th>
                     <th class="px-4 py-3">Valor</th>
@@ -440,14 +454,18 @@ function emptyVariables(): SiteVariablesPayload {
                             </div>
                             <button
                               type="button"
-                              (click)="$event.stopPropagation(); deleteVariableMap(variable.mapping)"
+                              (click)="
+                                $event.stopPropagation(); deleteVariableMap(variable.mapping)
+                              "
                               class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
                               aria-label="Eliminar alias"
                             >
                               <span class="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                           } @else {
-                            <span class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">
+                            <span
+                              class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500"
+                            >
                               Sin alias
                             </span>
                           }
@@ -456,7 +474,10 @@ function emptyVariables(): SiteVariablesPayload {
                     </tr>
                   } @empty {
                     <tr class="bg-white">
-                      <td colspan="3" class="px-4 py-8 text-center text-sm font-semibold text-slate-400">
+                      <td
+                        colspan="3"
+                        class="px-4 py-8 text-center text-sm font-semibold text-slate-400"
+                      >
                         Aun no hay variables detectadas para el serial de este sitio.
                       </td>
                     </tr>
@@ -700,7 +721,10 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
   displayTransform(transformId: string | null | undefined): string {
     const normalized = this.normalizeTransform(transformId);
-    return this.variableTransformOptions().find((transform) => transform.id === normalized)?.label || normalized;
+    return (
+      this.variableTransformOptions().find((transform) => transform.id === normalized)?.label ||
+      normalized
+    );
   }
 
   statusClass(): string {

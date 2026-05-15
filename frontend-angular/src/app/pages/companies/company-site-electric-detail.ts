@@ -80,7 +80,9 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   </span>
                 </span>
 
-                <label class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
+                <label
+                  class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"
+                >
                   <span class="text-slate-500">Desde</span>
                   <input
                     type="date"
@@ -89,7 +91,9 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                     class="bg-transparent font-black text-slate-700 outline-none"
                   />
                 </label>
-                <label class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
+                <label
+                  class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"
+                >
                   <span class="text-slate-500">Hasta</span>
                   <input
                     type="date"
@@ -222,7 +226,9 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                             />
                           }
                         </svg>
-                        <div class="pointer-events-none absolute bottom-1 left-14 right-8 flex justify-between text-[11px] font-semibold text-slate-400">
+                        <div
+                          class="pointer-events-none absolute bottom-1 left-14 right-8 flex justify-between text-[11px] font-semibold text-slate-400"
+                        >
                           <span>17</span>
                           <span>21</span>
                           <span>25</span>
@@ -234,10 +240,15 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                         </div>
                       </div>
 
-                      <div class="mt-4 flex flex-wrap justify-center gap-5 text-xs font-semibold text-slate-500">
+                      <div
+                        class="mt-4 flex flex-wrap justify-center gap-5 text-xs font-semibold text-slate-500"
+                      >
                         @for (serie of chart.legend; track serie.label) {
                           <span class="inline-flex items-center gap-1.5">
-                            <span class="h-2 w-2 rounded-full" [style.background]="serie.color"></span>
+                            <span
+                              class="h-2 w-2 rounded-full"
+                              [style.background]="serie.color"
+                            ></span>
                             {{ serie.label }}
                           </span>
                         }
@@ -343,8 +354,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         {
           label: 'Energia Activa',
           color: '#3b63d9',
-          points:
-            '50,82 130,82 210,81 290,82 370,81 450,80 530,81 610,80 690,79 770,78 860,77',
+          points: '50,82 130,82 210,81 290,82 370,81 450,80 530,81 610,80 690,79 770,78 860,77',
         },
         {
           label: 'Energia Reactiva',
@@ -362,20 +372,17 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         {
           label: 'Factor Potencia A',
           color: '#4f7cf3',
-          points:
-            '50,75 130,76 210,76 290,75 370,150 450,152 530,68 610,82 690,120 770,78 860,92',
+          points: '50,75 130,76 210,76 290,75 370,150 450,152 530,68 610,82 690,120 770,78 860,92',
         },
         {
           label: 'Factor Potencia B',
           color: '#86c76f',
-          points:
-            '50,72 130,72 210,73 290,72 370,142 450,146 530,70 610,86 690,116 770,76 860,88',
+          points: '50,72 130,72 210,73 290,72 370,142 450,146 530,70 610,86 690,116 770,76 860,88',
         },
         {
           label: 'Factor Potencia C',
           color: '#f5bd32',
-          points:
-            '50,70 130,71 210,72 290,70 370,132 450,136 530,66 610,92 690,104 770,75 860,84',
+          points: '50,70 130,71 210,72 290,70 370,132 450,136 530,66 610,92 690,104 770,75 860,84',
         },
         {
           label: 'Factor Potencia Total',
@@ -420,7 +427,8 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         {
           label: 'Voltaje B',
           color: '#86c76f',
-          points: '50,104 130,98 210,101 290,95 370,102 450,96 530,105 610,99 690,96 770,101 860,98',
+          points:
+            '50,104 130,98 210,101 290,95 370,102 450,96 530,105 610,99 690,96 770,101 860,98',
         },
         {
           label: 'Voltaje C',
@@ -558,7 +566,9 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   }
 
   kpiLabelClass(tone: ElectricKpi['tone']): string {
-    return tone === 'primary' ? 'text-xs font-black text-orange-50' : 'text-xs font-black text-slate-400';
+    return tone === 'primary'
+      ? 'text-xs font-black text-orange-50'
+      : 'text-xs font-black text-slate-400';
   }
 
   kpiHelperClass(tone: ElectricKpi['tone']): string {

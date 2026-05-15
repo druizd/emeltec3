@@ -21,7 +21,9 @@ interface SiteContext {
       @if (siteContext(); as context) {
         <div class="mx-auto max-w-[1360px] space-y-4">
           <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div class="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+            <div
+              class="flex flex-col gap-3 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+            >
               <div class="flex min-w-0 items-center gap-3">
                 <a
                   routerLink="/companies"
@@ -68,14 +70,18 @@ interface SiteContext {
             <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
               <div class="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_360px]">
                 <div>
-                  <div class="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center">
+                  <div
+                    class="grid min-h-[420px] place-items-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-center"
+                  >
                     <div class="max-w-lg px-6">
                       <span
                         class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl"
                         [style.background]="accentSoft()"
                         [style.color]="accentColor()"
                       >
-                        <span class="material-symbols-outlined text-[34px]">{{ typeUi().icon }}</span>
+                        <span class="material-symbols-outlined text-[34px]">{{
+                          typeUi().icon
+                        }}</span>
                       </span>
                       <h2 class="mt-5 text-2xl font-black text-slate-900">
                         Dashboard {{ typeUi().label }} proximamente
@@ -92,8 +98,13 @@ interface SiteContext {
                 <aside class="space-y-3">
                   @for (item of skeletonCards; track item.label) {
                     <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                      <p class="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400">
-                        <span class="material-symbols-outlined text-[16px]" [style.color]="accentColor()">
+                      <p
+                        class="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400"
+                      >
+                        <span
+                          class="material-symbols-outlined text-[16px]"
+                          [style.color]="accentColor()"
+                        >
                           {{ item.icon }}
                         </span>
                         {{ item.label }}
@@ -109,7 +120,10 @@ interface SiteContext {
         </div>
       } @else {
         <div class="grid min-h-[420px] place-items-center">
-          <span class="material-symbols-outlined animate-spin text-[34px]" [style.color]="accentColor()">
+          <span
+            class="material-symbols-outlined animate-spin text-[34px]"
+            [style.color]="accentColor()"
+          >
             progress_activity
           </span>
         </div>

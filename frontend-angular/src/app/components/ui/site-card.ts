@@ -94,9 +94,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             <span class="material-symbols-outlined text-[14px] text-emerald-500">{{
               getSiteIcon()
             }}</span>
-            <span class="text-[11px] font-medium text-slate-500">{{
-              getSiteTypeLabel()
-            }}</span>
+            <span class="text-[11px] font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
           </div>
           <div class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
