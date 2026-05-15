@@ -10,6 +10,16 @@ import type {
   SiteDashboardHistoryEntry,
 } from '@emeltec/shared';
 
+export interface ContadorMensualPoint {
+  mes: string;
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+  proyeccion?: number | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -57,6 +67,19 @@ export class CompanyService {
   ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
     return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
       `/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`,
+    );
+  }
+
+  getSiteMonthlyCounters(
+    siteId: string,
+    options: { rol?: string; meses?: number } = {},
+  ): Observable<ApiResponse<ContadorMensualPoint[]>> {
+    const params = new URLSearchParams();
+    if (options.rol) params.set('rol', options.rol);
+    if (options.meses) params.set('meses', String(options.meses));
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ContadorMensualPoint[]>>(
+      `/api/companies/sites/${siteId}/contadores-mensuales?${params.toString()}`,
     );
   }
 

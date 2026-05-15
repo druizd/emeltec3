@@ -1,7 +1,19 @@
 const express = require('express');
+const path = require('path');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
 const { protect } = require('../middlewares/authMiddleware');
+
+// Lazy require del controller TS compilado de contadores (puede no estar
+// disponible en dev sin build). Se monta solo si carga.
+let contadoresController = null;
+try {
+  contadoresController = require(path.join(__dirname, '..', '..', 'dist', 'modules', 'contadores', 'controller'));
+} catch (err) {
+  if (err && err.code !== 'MODULE_NOT_FOUND') {
+    console.warn('[companyRoutes] No se pudo cargar contadores controller:', err.message);
+  }
+}
 
 // Todas las rutas de companies requieren autenticación
 router.use(protect);
@@ -21,6 +33,9 @@ router.post('/:companyId/sub-companies/:subCompanyId/sites', companyController.c
 router.patch('/sites/:siteId', companyController.updateSite);
 router.delete('/sites/:siteId', companyController.deleteSite);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
+if (contadoresController) {
+  router.get('/sites/:siteId/contadores-mensuales', contadoresController.getMonthlySeriesHandler);
+}
 router.get('/sites/:siteId/dashboard-history/export', companyController.exportSiteDashboardHistory);
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);
 router.get('/sites/:siteId/variables', companyController.getSiteVariables);

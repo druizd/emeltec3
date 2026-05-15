@@ -17,7 +17,7 @@ import {
   SiteVariablesPayload,
   VariableMapping,
 } from '../../services/administration.service';
-import { CompanyService } from '../../services/company.service';
+import { CompanyService, ContadorMensualPoint } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
 import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
@@ -68,6 +68,7 @@ interface HistoricalTelemetryRow {
 interface MonthlyFlowPoint {
   label: string;
   value: number;
+  proyeccion?: number | null;
 }
 
 interface RealtimeMetric {
@@ -1959,7 +1960,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <h2 class="truncate text-xl font-black leading-none text-slate-800">
                           Flujo Mensual
                         </h2>
-                        <p class="mt-1 text-sm font-bold text-slate-400">Volumen acumulado en m³</p>
+                        <p class="mt-1 text-sm font-bold text-slate-400">
+                          Volumen acumulado en {{ monthlyFlowUnit() }}
+                        </p>
                       </div>
                     </div>
 
@@ -1982,7 +1985,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div
                       class="grid h-[250px] grid-rows-5 text-right text-xs font-semibold text-slate-400"
                     >
-                      @for (tick of monthlyFlowTicks; track tick) {
+                      @for (tick of monthlyFlowTicks(); track $index) {
                         <span>{{ tick }}</span>
                       }
                     </div>
@@ -1998,15 +2001,41 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <div
                         class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                       >
-                        @for (month of monthlyFlowMonths; track month.label) {
+                        @for (month of monthlyFlowMonths(); track $index) {
                           <div class="flex h-full min-w-0 flex-1 flex-col justify-end">
                             <div
-                              class="mx-auto w-full max-w-[28px] rounded-t bg-[#5874c8] shadow-sm transition-opacity hover:opacity-85"
-                              [style.height.%]="getMonthlyFlowHeight(month.value)"
-                              [title]="
-                                month.label + ': ' + formatMonthlyFlowValue(month.value) + ' m³'
+                              class="mx-auto flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t"
+                              [style.height.%]="
+                                month.proyeccion && month.proyeccion > month.value
+                                  ? getMonthlyFlowHeight(month.proyeccion)
+                                  : getMonthlyFlowHeight(month.value)
                               "
-                            ></div>
+                              [title]="
+                                month.label +
+                                ': ' +
+                                formatMonthlyFlowValue(month.value) +
+                                ' ' +
+                                monthlyFlowUnit() +
+                                (month.proyeccion
+                                  ? ' (proyección ' +
+                                    formatMonthlyFlowValue(month.proyeccion) +
+                                    ' ' +
+                                    monthlyFlowUnit() +
+                                    ')'
+                                  : '')
+                              "
+                            >
+                              @if (month.proyeccion && month.proyeccion > month.value) {
+                                <div
+                                  class="w-full bg-[#5874c8]/30"
+                                  [style.height.%]="getMonthlyFlowProjectionExtra(month)"
+                                ></div>
+                              }
+                              <div
+                                class="w-full bg-[#5874c8] shadow-sm transition-opacity hover:opacity-85"
+                                [style.flex]="'1 1 auto'"
+                              ></div>
+                            </div>
                           </div>
                         }
                       </div>
@@ -2014,12 +2043,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
 
                   <div
-                    class="ml-[66px] mt-2 flex justify-between gap-2 text-[11px] font-bold text-slate-400"
+                    class="ml-[66px] mt-3 flex h-12 justify-between gap-2 text-[11px] font-bold text-slate-400"
                   >
-                    @for (month of monthlyFlowMonths; track month.label) {
+                    @for (month of monthlyFlowMonths(); track $index) {
                       <span
-                        class="block min-w-0 flex-1 origin-top-left truncate text-center"
-                        style="transform: rotate(-35deg);"
+                        class="block min-w-0 flex-1 origin-top-center whitespace-nowrap text-center"
+                        style="transform: rotate(-45deg) translateY(6px); transform-origin: center top;"
                         >{{ month.label }}</span
                       >
                     }
@@ -3473,21 +3502,82 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   );
   dgaSelectedDaysLabel = computed(() => `${this.countDgaSelectedDays()} dias`);
 
-  readonly monthlyFlowTicks = ['120,000', '90,000', '60,000', '30,000', '0'];
+  monthlyCountersData = signal<ContadorMensualPoint[]>([]);
+  monthlyCountersLoading = signal(false);
+  private monthlyCountersSub: Subscription | null = null;
 
-  readonly monthlyFlowMonths: MonthlyFlowPoint[] = [
-    { label: "Jun '25", value: 76000 },
-    { label: "Jul '25", value: 45000 },
-    { label: "Ago '25", value: 60000 },
-    { label: "Sep '25", value: 81000 },
-    { label: "Oct '25", value: 90000 },
-    { label: "Nov '25", value: 80000 },
-    { label: "Dic '25", value: 110000 },
-    { label: "Ene '26", value: 86000 },
-    { label: "Feb '26", value: 48000 },
-    { label: "Mar '26", value: 73000 },
-    { label: "Abr '26", value: 12000 },
-    { label: "May '26", value: 0 },
+  private readonly monthShortNames = [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ];
+
+  monthlyFlowMonths = computed<MonthlyFlowPoint[]>(() => {
+    const points = this.monthlyCountersData();
+    if (points.length === 0) return this.monthlyFlowFallback;
+    return points.map((p) => {
+      const date = new Date(`${p.mes}T00:00:00-04:00`);
+      const mes = this.monthShortNames[date.getUTCMonth()] ?? '';
+      const yr = String(date.getUTCFullYear()).slice(2);
+      return {
+        label: `${mes} '${yr}`,
+        value: p.delta ?? 0,
+        proyeccion: p.proyeccion ?? null,
+      };
+    });
+  });
+
+  monthlyFlowMax = computed<number>(() => {
+    const months = this.monthlyFlowMonths();
+    let max = 0;
+    for (const m of months) {
+      if (m.value > max) max = m.value;
+      if (m.proyeccion && m.proyeccion > max) max = m.proyeccion;
+    }
+    // Redondea hacia arriba al multiplo "lindo" para tener ticks legibles.
+    if (max <= 0) return 100;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
+    const norm = max / magnitude;
+    let nice;
+    if (norm <= 1) nice = 1;
+    else if (norm <= 2) nice = 2;
+    else if (norm <= 5) nice = 5;
+    else nice = 10;
+    return nice * magnitude;
+  });
+
+  monthlyFlowTicks = computed<string[]>(() => {
+    const max = this.monthlyFlowMax();
+    const fmt = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
+    return [1, 0.75, 0.5, 0.25, 0].map((f) => fmt.format(Math.round(max * f)));
+  });
+
+  monthlyFlowUnit = computed<string>(
+    () => this.monthlyCountersData()[0]?.unidad ?? 'm³',
+  );
+
+  private readonly monthlyFlowFallback: MonthlyFlowPoint[] = [
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
   ];
 
   readonly dgaDatePresets = [
@@ -3667,6 +3757,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
     this.startDashboardPolling(siteId);
     this.startHistoryPolling(siteId);
+    this.startMonthlyCountersPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
       next: (res: any) => {
@@ -3693,6 +3784,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.clockSub?.unsubscribe();
     this.dashboardPollingSub?.unsubscribe();
     this.historyPollingSub?.unsubscribe();
+    this.monthlyCountersSub?.unsubscribe();
   }
 
   getSiteName(context: SiteContext): string {
@@ -3717,9 +3809,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return '#DC2626';
   }
 
-  getMonthlyFlowHeight(value: number): number {
-    const max = 120000;
+  getMonthlyFlowHeight(value: number | null | undefined): number {
+    if (value === null || value === undefined) return 0;
+    const max = this.monthlyFlowMax();
+    if (max <= 0) return 0;
     return Math.max(0, Math.min(100, (value / max) * 100));
+  }
+
+  getMonthlyFlowProjectionExtra(month: MonthlyFlowPoint): number {
+    if (!month.proyeccion || month.proyeccion <= month.value) return 0;
+    return this.getMonthlyFlowHeight(month.proyeccion) - this.getMonthlyFlowHeight(month.value);
   }
 
   formatMonthlyFlowValue(value: number): string {
@@ -4467,7 +4566,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const year = new Date().getFullYear();
     const shortMonth = this.downloadMonthShort[monthIndex];
     const shortYear = String(year).slice(2);
-    const match = this.monthlyFlowMonths.find((m) =>
+    const match = this.monthlyFlowMonths().find((m) =>
       m.label.startsWith(`${shortMonth} '${shortYear}`),
     );
     return match ? match.value > 0 : false;
@@ -5184,6 +5283,26 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.dashboardLastLoadedAt.set(new Date());
         this.dashboardError.set(payload ? '' : 'No fue posible cargar datos del pozo.');
         this.dashboardLoading.set(false);
+      });
+  }
+
+  private startMonthlyCountersPolling(siteId: string): void {
+    this.monthlyCountersLoading.set(true);
+    this.monthlyCountersSub?.unsubscribe();
+
+    // 1 fetch al cargar + refresh cada 10 min (el worker corre c/1h, no hace falta mas).
+    this.monthlyCountersSub = timer(0, 10 * 60_000)
+      .pipe(
+        switchMap(() =>
+          this.companyService
+            .getSiteMonthlyCounters(siteId, { rol: 'totalizador', meses: 12 })
+            .pipe(catchError(() => of(null))),
+        ),
+      )
+      .subscribe((res) => {
+        this.monthlyCountersLoading.set(false);
+        if (!res || !res.ok) return;
+        this.monthlyCountersData.set(res.data ?? []);
       });
   }
 
