@@ -2,7 +2,14 @@
  * Tipos centrales del módulo sites.
  */
 
-export type SiteType = 'pozo' | 'electrico' | 'proceso' | 'riles' | 'generico' | 'maleta';
+export type SiteType =
+  | 'pozo'
+  | 'electrico'
+  | 'proceso'
+  | 'riles'
+  | 'camara_frio'
+  | 'generico'
+  | 'maleta';
 
 export interface Site {
   id: string;

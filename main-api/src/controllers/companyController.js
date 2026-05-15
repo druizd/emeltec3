@@ -73,8 +73,20 @@ function normalizeId(value) {
 }
 
 function normalizeSiteType(value) {
-  const normalized = cleanString(value).toLowerCase();
+  const normalized = cleanString(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
   if (!normalized) return 'pozo';
+  if (normalized.includes('camara') || normalized.includes('frio') || normalized.includes('cold')) {
+    return 'camara_frio';
+  }
+  if (normalized.includes('pozo') || normalized.includes('agua')) return 'pozo';
+  if (normalized.includes('elect')) return 'electrico';
+  if (normalized.includes('ril')) return 'riles';
+  if (normalized.includes('proceso') || normalized.includes('variable')) return 'proceso';
   return SITE_TYPES.has(normalized) ? normalized : null;
 }
 
@@ -848,7 +860,10 @@ exports.createSite = async (req, res, next) => {
     }
 
     if (!tipoSitio) {
-      return badRequest(res, 'tipo_sitio debe ser pozo, electrico, riles, proceso o generico.');
+      return badRequest(
+        res,
+        'tipo_sitio debe ser pozo, electrico, riles, camara_frio, proceso o generico.',
+      );
     }
 
     const subCompany = await getSubCompanyById(subEmpresaId);
@@ -964,7 +979,10 @@ exports.updateSite = async (req, res, next) => {
     }
 
     if (tipoSitio === null) {
-      return badRequest(res, 'tipo_sitio debe ser pozo, electrico, riles, proceso o generico.');
+      return badRequest(
+        res,
+        'tipo_sitio debe ser pozo, electrico, riles, camara_frio, proceso o generico.',
+      );
     }
 
     if (tipoSitio) {

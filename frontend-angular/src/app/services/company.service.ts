@@ -17,6 +17,8 @@ export class CompanyService {
   companies = signal<Company[]>([]);
   hierarchy = signal<CompanyNode[]>([]);
   selectedSubCompanyId = signal<string | null>(null);
+  selectedSiteModuleKey = signal<string | null>(null);
+  selectedSiteTypeFilter = signal<string[] | null>(null);
   loading = signal(false);
 
   fetchCompanies(): Observable<ApiResponse<Company[]>> {

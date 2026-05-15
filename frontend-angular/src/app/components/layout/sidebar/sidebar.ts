@@ -3,11 +3,20 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { CompanyService } from '../../../services/company.service';
-import type { CompanyNode, SubCompanyNode } from '@emeltec/shared';
+import {
+  SITE_MODULES,
+  normalizeSiteType,
+  siteTypeMatchesModule,
+  siteTypesForModule,
+} from '../../../shared/site-type-ui';
+import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 interface SiteItem {
   id: string;
   label: string;
+  siteCount: number;
+  siteTypes: string[];
+  searchText: string;
 }
 
 interface CompanyItem {
@@ -23,51 +32,11 @@ interface ModuleDef {
   color: string;
   bg: string;
   border: string;
+  siteTypes: readonly string[];
   companies: CompanyItem[];
 }
 
-const MODULES = [
-  {
-    key: 'Agua',
-    label: 'Consumo de Agua',
-    icon: 'water_drop',
-    color: '#0dafbd',
-    bg: 'rgba(13,175,189,0.10)',
-    border: 'rgba(13,175,189,0.25)',
-  },
-  {
-    key: 'Riles',
-    label: 'Generacion de Riles',
-    icon: 'waves',
-    color: '#22c55e',
-    bg: 'rgba(34,197,94,0.08)',
-    border: 'rgba(34,197,94,0.20)',
-  },
-  {
-    key: 'Proceso',
-    label: 'Variables de Proceso',
-    icon: 'memory',
-    color: '#6366f1',
-    bg: 'rgba(99,102,241,0.08)',
-    border: 'rgba(99,102,241,0.20)',
-  },
-  {
-    key: 'Electrico',
-    label: 'Consumo Electrico',
-    icon: 'bolt',
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.08)',
-    border: 'rgba(245,158,11,0.20)',
-  },
-  {
-    key: '_other',
-    label: 'Maletas Piloto',
-    icon: 'rocket_launch',
-    color: '#f97316',
-    bg: 'rgba(249,115,22,0.08)',
-    border: 'rgba(249,115,22,0.20)',
-  },
-];
+const MODULES = SITE_MODULES;
 
 @Component({
   selector: 'app-sidebar',
@@ -289,7 +258,6 @@ export class SidebarComponent implements OnInit {
 
     const modules = MODULES.map((def) => {
       const companies = tree
-        .filter((company) => this.matchesModule(company.tipo_empresa, def.key))
         .map((company) => this.toCompanyItem(def, company, tokens))
         .filter((company): company is CompanyItem => Boolean(company));
 
@@ -363,11 +331,13 @@ export class SidebarComponent implements OnInit {
   selectSubCompany(event: Event, moduleKey: string, companyId: string, subCompanyId: string): void {
     event.stopPropagation();
     this.companyService.selectedSubCompanyId.set(subCompanyId);
+    this.companyService.selectedSiteModuleKey.set(moduleKey);
+    this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(moduleKey));
     this.openModule.set(moduleKey);
     this.expandCompany(companyId);
 
     const subLabel = this.findSubCompanyLabel(companyId, subCompanyId);
-    if (subLabel && this.normalizeSearch(subLabel) === 'ventisqueros') {
+    if (moduleKey === '_other' && subLabel && this.normalizeSearch(subLabel) === 'ventisqueros') {
       this.router.navigate(['/ventisqueros']);
       return;
     }
@@ -406,22 +376,6 @@ export class SidebarComponent implements OnInit {
     return `${first}${last}`.trim().toUpperCase() || user.nombre.substring(0, 2).toUpperCase();
   }
 
-  private matchesModule(type: string, key: string): boolean {
-    const normalized = (type || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase();
-
-    if (key === 'Agua') return normalized.includes('agua');
-    if (key === 'Riles') return normalized.includes('ril');
-    if (key === 'Proceso') return normalized.includes('proceso') || normalized.includes('variable');
-    if (key === 'Electrico') return normalized.includes('elect');
-
-    return !['agua', 'ril', 'proceso', 'variable', 'elect'].some((value) =>
-      normalized.includes(value),
-    );
-  }
-
   private initializeSelection(): void {
     if (this.openActivePath()) {
       return;
@@ -438,6 +392,8 @@ export class SidebarComponent implements OnInit {
 
     if (firstSubCompany) {
       this.companyService.selectedSubCompanyId.set(firstSubCompany.id);
+      this.companyService.selectedSiteModuleKey.set(firstModule.key);
+      this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(firstModule.key));
       this.expandCompany(firstModule.companies[0].id);
     }
   }
@@ -447,10 +403,13 @@ export class SidebarComponent implements OnInit {
     company: CompanyNode,
     tokens: string[],
   ): CompanyItem | null {
-    const sites: SiteItem[] = (company.subCompanies || []).map((sub: SubCompanyNode) => ({
-      id: sub.id,
-      label: sub.nombre || sub.id,
-    }));
+    const sites: SiteItem[] = (company.subCompanies || [])
+      .map((sub: SubCompanyNode) => this.toSubCompanyItem(def.key, sub))
+      .filter((site): site is SiteItem => Boolean(site));
+
+    if (!sites.length) {
+      return null;
+    }
 
     const item: CompanyItem = {
       id: company.id,
@@ -465,7 +424,9 @@ export class SidebarComponent implements OnInit {
     const companyTarget = this.normalizeSearch(`${def.label} ${def.key} ${item.name}`);
     const companyMatches = this.matchesTokens(companyTarget, tokens);
     const filteredSites = sites.filter((site) => {
-      const target = this.normalizeSearch(`${def.label} ${def.key} ${item.name} ${site.label}`);
+      const target = this.normalizeSearch(
+        `${def.label} ${def.key} ${item.name} ${site.label} ${site.searchText}`,
+      );
       return this.matchesTokens(target, tokens);
     });
 
@@ -478,6 +439,26 @@ export class SidebarComponent implements OnInit {
     }
 
     return null;
+  }
+
+  private toSubCompanyItem(moduleKey: string, subCompany: SubCompanyNode): SiteItem | null {
+    const matchingSites = (subCompany.sites || []).filter((site: SiteRecord) =>
+      siteTypeMatchesModule(site.tipo_sitio, moduleKey),
+    );
+
+    if (!matchingSites.length) {
+      return null;
+    }
+
+    return {
+      id: subCompany.id,
+      label: subCompany.nombre || subCompany.id,
+      siteCount: matchingSites.length,
+      siteTypes: [...new Set(matchingSites.map((site) => normalizeSiteType(site.tipo_sitio)))],
+      searchText: matchingSites
+        .map((site) => `${site.descripcion || ''} ${site.id_serial || ''} ${site.ubicacion || ''}`)
+        .join(' '),
+    };
   }
 
   private syncOpenStateWithSearch(): void {
@@ -512,6 +493,8 @@ export class SidebarComponent implements OnInit {
 
       if (company) {
         this.openModule.set(module.key);
+        this.companyService.selectedSiteModuleKey.set(module.key);
+        this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(module.key));
         this.expandCompany(company.id);
         return true;
       }

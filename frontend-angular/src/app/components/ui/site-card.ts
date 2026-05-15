@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import type { SiteRecord } from '@emeltec/shared';
+import { getSiteTypeUi } from '../../shared/site-type-ui';
 
 @Component({
   selector: 'app-site-card',
@@ -19,7 +20,7 @@ import type { SiteRecord } from '@emeltec/shared';
             <div
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-600"
             >
-              <span class="material-symbols-outlined text-[18px]">sensors</span>
+              <span class="material-symbols-outlined text-[18px]">{{ getSiteIcon() }}</span>
             </div>
 
             <div class="min-w-0">
@@ -41,7 +42,10 @@ import type { SiteRecord } from '@emeltec/shared';
           </div>
 
           <div class="flex shrink-0 items-center gap-3 text-[11px]">
-            <span class="text-slate-400">{{ getDepthLabel() }}</span>
+            <span [class]="getTypeBadgeClass()">{{ getSiteTypeLabel() }}</span>
+            @if (getSiteTypeId() === 'pozo') {
+              <span class="text-slate-400">{{ getDepthLabel() }}</span>
+            }
             <span [class]="'inline-flex items-center gap-1 font-semibold ' + getStatusClass()">
               <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
               {{ getStatusLabel() }}
@@ -64,7 +68,7 @@ import type { SiteRecord } from '@emeltec/shared';
                     ? 'text-primary-container'
                     : 'text-slate-500 group-hover:text-primary-container')
                 "
-                >location_on</span
+                >{{ getSiteIcon() }}</span
               >
             </div>
             <div>
@@ -87,8 +91,10 @@ import type { SiteRecord } from '@emeltec/shared';
 
         <div class="flex items-center justify-between border-t border-slate-100 pt-3">
           <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[14px] text-emerald-500">sensors</span>
-            <span class="text-[11px] font-medium text-slate-500">Transmision Activa</span>
+            <span class="material-symbols-outlined text-[14px] text-emerald-500">{{
+              getSiteIcon()
+            }}</span>
+            <span class="text-[11px] font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
           </div>
           <div class="flex items-center gap-1.5">
             <span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
@@ -150,6 +156,22 @@ export class SiteCardComponent {
     }
 
     return 'Prof. --';
+  }
+
+  getSiteTypeId(): string {
+    return getSiteTypeUi(this.site?.tipo_sitio).id;
+  }
+
+  getSiteTypeLabel(): string {
+    return getSiteTypeUi(this.site?.tipo_sitio).label;
+  }
+
+  getSiteIcon(): string {
+    return getSiteTypeUi(this.site?.tipo_sitio).icon;
+  }
+
+  getTypeBadgeClass(): string {
+    return `rounded-md px-2 py-1 text-xs font-bold ${getSiteTypeUi(this.site?.tipo_sitio).badgeClass}`;
   }
 
   getStatusLabel(): string {
