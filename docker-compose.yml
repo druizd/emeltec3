@@ -70,7 +70,22 @@ services:
     depends_on:
       timescaledb:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck: *healthcheck-main-api
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: emeltec-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
 
   dga-api:
@@ -165,3 +180,4 @@ services:
 
 volumes:
   timescale_data:
+  redis_data:
