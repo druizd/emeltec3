@@ -221,6 +221,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'm3',
         description: 'Volumen acumulado.',
       },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -269,6 +270,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'C',
         description: 'Temperatura asociada.',
       },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -312,6 +314,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Volumen acumulado.',
       },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -355,6 +358,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'C',
         description: 'Temperatura de proceso.',
       },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -635,6 +639,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </span>
                     <button
                       type="button"
+                      (click)="abrirDgaReporteModal()"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 h-8 text-[12px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
+                      aria-label="Configurar reporte DGA"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">description</span>
+                      Configurar reporte DGA
+                    </button>
+                    <button
+                      type="button"
                       (click)="reloadSettingsPanel()"
                       [disabled]="settingsLoading()"
                       class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -645,15 +658,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         [class.animate-spin]="settingsLoading()"
                         >refresh</span
                       >
-                    </button>
-                    <button
-                      type="button"
-                      (click)="abrirDgaReporteModal()"
-                      class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 h-8 text-[12px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
-                      aria-label="Configurar reporte DGA"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">description</span>
-                      Configurar reporte DGA
                     </button>
                   </div>
                 </div>
@@ -1899,27 +1903,30 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             {{ formatMeters(wellSensorDepth()) }} m
                           </p>
                         </div>
-                        <div
-                          style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:8px 10px"
-                        >
-                          <p
-                            style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px"
-                          >
-                            % Señal
-                          </p>
-                          <p
-                            style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1"
-                          >
-                            87<span style="font-size:11px;color:#64748B">%</span>
-                          </p>
+                        @if (wellSignalPercent() !== null) {
                           <div
-                            style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
+                            style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:8px 10px"
                           >
+                            <p
+                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px"
+                            >
+                              % Señal
+                            </p>
+                            <p
+                              style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1"
+                            >
+                              {{ wellSignalPercent() }}<span style="font-size:11px;color:#64748B">%</span>
+                            </p>
                             <div
-                              style="width:87%;height:100%;background:linear-gradient(90deg,#0284C7,#22C55E);border-radius:999px"
-                            ></div>
+                              style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
+                            >
+                              <div
+                                [style.width.%]="wellSignalPercent()"
+                                style="height:100%;background:linear-gradient(90deg,#0284C7,#22C55E);border-radius:999px"
+                              ></div>
+                            </div>
                           </div>
-                        </div>
+                        }
                         <div
                           style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
                         >
@@ -3197,6 +3204,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   wellNivelFreatico = computed(() => this.extractNivelFreatico(this.dashboardData()));
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
   wellSensorDepth = computed(() => this.extractPozoNumber('profundidad_sensor_m'));
+  wellSignalPercent = computed<number | null>(() => {
+    const raw = this.findDashboardNumber('señal');
+    if (raw === null) return null;
+    return Math.round(this.clamp(raw, 0, 100));
+  });
   wellFillPercentage = computed(() => {
     const totalDepth = this.wellTotalDepth();
     const nivelFreatico = this.wellNivelFreatico();
@@ -5032,6 +5044,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       return 'energia';
     if (text.includes('temperatura') && availableRoles.has('temperatura')) return 'temperatura';
     if (text.includes('presion') && availableRoles.has('presion')) return 'presion';
+    if (
+      (text.includes('senal') ||
+        text.includes('signal') ||
+        text.includes('rssi') ||
+        text.includes('csq')) &&
+      availableRoles.has('señal')
+    )
+      return 'señal';
 
     return 'generico';
   }

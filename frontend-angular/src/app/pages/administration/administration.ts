@@ -124,6 +124,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'm3',
         description: 'Volumen acumulado.',
       },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -165,6 +166,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         unitHint: 'C',
         description: 'Temperatura asociada.',
       },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -201,6 +203,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Volumen acumulado.',
       },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -237,6 +240,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Temperatura de proceso.',
       },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
       { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
     ],
     transforms: [
@@ -2926,6 +2930,14 @@ export class AdministrationComponent implements OnInit {
     ) {
       return availableRoles.has('totalizador') ? 'totalizador' : 'generico';
     }
+    if (
+      (text.includes('senal') ||
+        text.includes('signal') ||
+        text.includes('rssi') ||
+        text.includes('csq')) &&
+      availableRoles.has('señal')
+    )
+      return 'señal';
 
     return 'generico';
   }
