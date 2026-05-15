@@ -36,6 +36,8 @@ function toResponseItem(r: DgaReport) {
     caudalInstantaneo: r.caudal,
     flujoAcumulado: r.totalizado,
     nivelFreatico: r.nivelFreatico,
+    estatus: r.estatus ?? 'pendiente',
+    comprobante: r.comprobante ?? null,
   };
 }
 

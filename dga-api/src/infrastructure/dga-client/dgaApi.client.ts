@@ -7,6 +7,12 @@ import { ExternalServiceError } from '../../shared/errors';
 import { config } from '../../shared/env';
 import { logger } from '../../shared/logger';
 
+interface MiaDgaResponseBody {
+  status: string;
+  message?: string;
+  data?: { numeroComprobante?: string };
+}
+
 export async function submitToDga(payload: DgaSubmissionPayload): Promise<DgaSubmissionResponse> {
   const { headers, body } = buildDgaPayload(payload);
 
@@ -24,7 +30,7 @@ export async function submitToDga(payload: DgaSubmissionPayload): Promise<DgaSub
   const raw: unknown = await response.json().catch(() => null);
 
   logger.debug(
-    { status: response.status, sitioId: payload.report.sitioId },
+    { httpStatus: response.status, sitioId: payload.report.sitioId, raw },
     '[dga-client] respuesta MIA-DGA',
   );
 
@@ -36,11 +42,23 @@ export async function submitToDga(payload: DgaSubmissionPayload): Promise<DgaSub
     );
   }
 
-  const comprobante = typeof raw === 'object' && raw !== null ? JSON.stringify(raw) : undefined;
+  const parsed = raw as MiaDgaResponseBody | null;
+  const dgaStatus = parsed?.status ?? '';
+  const comprobante = parsed?.data?.numeroComprobante;
+
+  // status '00' = ingresada correctamente según spec DGA enero 2025
+  const estatus: DgaSubmissionResponse['estatus'] = dgaStatus === '00' ? 'enviado' : 'rechazado';
+
+  if (estatus === 'rechazado') {
+    logger.warn(
+      { dgaStatus, message: parsed?.message, sitioId: payload.report.sitioId },
+      '[dga-client] MIA-DGA rechazó la medición',
+    );
+  }
 
   return {
     url,
-    estatus: 'enviado',
+    estatus,
     ...(comprobante !== undefined && { comprobante }),
     raw,
   };
