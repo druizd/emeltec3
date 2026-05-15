@@ -31,18 +31,25 @@ git pull --ff-only origin "$BRANCH"
 git stash pop --quiet || true
 
 echo "Validating Docker Compose configuration..."
-docker compose -f "$COMPOSE_FILE" config >/dev/null
+if ! docker compose -f "$COMPOSE_FILE" config >/tmp/compose-config.out 2>/tmp/compose-config.err; then
+  echo "ERROR: docker compose config failed."
+  echo "--- stderr ---"
+  cat /tmp/compose-config.err
+  echo "--- stdout (first 80 lines) ---"
+  head -80 /tmp/compose-config.out
+  exit 1
+fi
 
 read_env_value() {
   local key="$1"
   if [ ! -f .env ]; then
     return 0
   fi
-  grep -E "^${key}=" .env | tail -n 1 | cut -d= -f2- | tr -d '\r'
+  { grep -E "^${key}=" .env || true; } | tail -n 1 | cut -d= -f2- | tr -d '\r'
 }
 
-MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value DB_USER)}"
-MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-$(read_env_value DB_NAME)}"
+MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value POSTGRES_USER)}"
+MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-$(read_env_value POSTGRES_DB)}"
 MIGRATION_DB_USER="${MIGRATION_DB_USER:-postgres}"
 MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-telemetry_platform}"
 

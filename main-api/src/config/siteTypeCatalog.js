@@ -51,6 +51,12 @@ const SITE_TYPE_CATALOG = {
         description: 'Volumen acumulado o caudal totalizado.',
       },
       {
+        id: 'señal',
+        label: 'Señal',
+        unitHint: '%',
+        description: 'Intensidad de señal del equipo de telemetría.',
+      },
+      {
         id: 'generico',
         label: 'Generico',
         unitHint: '',
@@ -164,6 +170,12 @@ const SITE_TYPE_CATALOG = {
         description: 'Temperatura asociada al tablero o equipo.',
       },
       {
+        id: 'señal',
+        label: 'Señal',
+        unitHint: '%',
+        description: 'Intensidad de señal del equipo de telemetría.',
+      },
+      {
         id: 'generico',
         label: 'Generico',
         unitHint: '',
@@ -231,6 +243,12 @@ const SITE_TYPE_CATALOG = {
       { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
       { id: 'alarma', label: 'Alarma', unitHint: '', description: 'Estado de alarma.' },
       {
+        id: 'señal',
+        label: 'Señal',
+        unitHint: '%',
+        description: 'Intensidad de señal del equipo de telemetría.',
+      },
+      {
         id: 'generico',
         label: 'Generico',
         unitHint: '',
@@ -251,6 +269,12 @@ const SITE_TYPE_CATALOG = {
         description: 'Temperatura de proceso.',
       },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
+      {
+        id: 'señal',
+        label: 'Señal',
+        unitHint: '%',
+        description: 'Intensidad de señal del equipo de telemetría.',
+      },
       {
         id: 'generico',
         label: 'Generico',
