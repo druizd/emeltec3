@@ -429,10 +429,7 @@ exports.asignarEvento = async (req, res) => {
   if (!asignado_a) {
     return res.status(400).json({ ok: false, error: 'Falta asignado_a (id de usuario)' });
   }
-  const { rows: usuarios } = await pool.query(
-    'SELECT id FROM usuario WHERE id = $1',
-    [asignado_a],
-  );
+  const { rows: usuarios } = await pool.query('SELECT id FROM usuario WHERE id = $1', [asignado_a]);
   if (!usuarios.length) {
     return res.status(400).json({ ok: false, error: 'Usuario asignado no existe' });
   }

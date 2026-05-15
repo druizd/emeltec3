@@ -69,7 +69,8 @@ const auditResolver = (req) => {
   let targetType = null;
   if (path.startsWith('/api/users')) targetType = 'usuario';
   else if (path.startsWith('/api/companies')) targetType = 'empresa';
-  else if (path.startsWith('/api/alertas') || path.startsWith('/api/eventos')) targetType = 'alerta';
+  else if (path.startsWith('/api/alertas') || path.startsWith('/api/eventos'))
+    targetType = 'alerta';
   const verb =
     { POST: 'create', PUT: 'update', PATCH: 'update', DELETE: 'delete' }[req.method] || 'mutate';
   // El id aparece como último segmento numérico/alfanumérico tras la base de recursos.

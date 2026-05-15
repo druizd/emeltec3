@@ -217,13 +217,13 @@ export class AlertaService {
     if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
     if (filters.sitio_id) qs.set('sitio_id', filters.sitio_id);
     const url = `/api/resumen${qs.toString() ? `?${qs}` : ''}`;
-    return this.http.get<ApiEnvelope<EventosResumen>>(url).pipe(
-      map((r) =>
-        r.ok
-          ? r.data
-          : { activas: 0, criticas: 0, altas: 0, medias: 0, bajas: 0, no_leidas: 0 },
-      ),
-    );
+    return this.http
+      .get<ApiEnvelope<EventosResumen>>(url)
+      .pipe(
+        map((r) =>
+          r.ok ? r.data : { activas: 0, criticas: 0, altas: 0, medias: 0, bajas: 0, no_leidas: 0 },
+        ),
+      );
   }
 }
 

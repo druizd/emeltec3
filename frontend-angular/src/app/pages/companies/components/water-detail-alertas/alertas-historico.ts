@@ -1,5 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { AlertaService, AlertaSeveridad, EventoRow } from '../../../../services/alerta.service';
 
 type HistoricoFiltro = 'todos' | AlertaSeveridad;
@@ -32,25 +40,39 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
           <table class="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Código
                 </th>
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Variable
                 </th>
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Severidad
                 </th>
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Inicio
                 </th>
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Duración
                 </th>
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Resolvió
                 </th>
-                <th class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
                   Incidencia
                 </th>
               </tr>
@@ -237,7 +259,16 @@ export class AlertasHistoricoComponent {
   exportarCsv(): void {
     const rows = this.historialFiltrado();
     if (!rows.length) return;
-    const header = ['Codigo', 'Variable', 'Severidad', 'Inicio', 'Cierre', 'Duracion', 'Resolvio', 'Incidencia'];
+    const header = [
+      'Codigo',
+      'Variable',
+      'Severidad',
+      'Inicio',
+      'Cierre',
+      'Duracion',
+      'Resolvio',
+      'Incidencia',
+    ];
     const lines = rows.map((ev) =>
       [
         this.codigoEvento(ev),

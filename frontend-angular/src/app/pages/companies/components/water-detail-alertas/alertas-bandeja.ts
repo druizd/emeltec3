@@ -1,5 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { User } from '@emeltec/shared';
 import {
@@ -214,7 +222,9 @@ type FiltroEstado = EventoEstado | 'todos';
               class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
             >
               <span class="material-symbols-outlined text-4xl text-slate-300">inbox</span>
-              <p class="mt-2 text-sm font-semibold text-slate-400">Bandeja vacía con estos filtros</p>
+              <p class="mt-2 text-sm font-semibold text-slate-400">
+                Bandeja vacía con estos filtros
+              </p>
             </div>
           }
         }
@@ -293,7 +303,9 @@ export class AlertasBandejaComponent {
     const activas = all.filter((e) => e.estado === 'activa').length;
     const criticas = all.filter((e) => e.severidad === 'critica' && e.estado !== 'resuelta').length;
     const asignadas = all.filter((e) => e.estado === 'asignada').length;
-    const resueltasHoy = all.filter((e) => e.estado === 'resuelta' && esDeHoy(e.resuelta_at)).length;
+    const resueltasHoy = all.filter(
+      (e) => e.estado === 'resuelta' && esDeHoy(e.resuelta_at),
+    ).length;
     return [
       {
         label: 'Activas',
@@ -359,7 +371,8 @@ export class AlertasBandejaComponent {
   }
 
   resolver(ev: EventoRow): void {
-    if (!confirm(`¿Marcar como resuelta la alerta "${ev.alerta_nombre || ev.variable_key}"?`)) return;
+    if (!confirm(`¿Marcar como resuelta la alerta "${ev.alerta_nombre || ev.variable_key}"?`))
+      return;
     this.actuando.set(true);
     this.alertaService.resolverEvento(ev.id).subscribe({
       next: (updated) => this.aplicarUpdate(updated),
@@ -384,7 +397,9 @@ export class AlertasBandejaComponent {
   }
 
   private aplicarUpdate(updated: EventoRow): void {
-    this.eventos.update((list) => list.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)));
+    this.eventos.update((list) =>
+      list.map((e) => (e.id === updated.id ? { ...e, ...updated } : e)),
+    );
   }
 
   codigoEvento(ev: EventoRow): string {
@@ -445,7 +460,12 @@ export class AlertasBandejaComponent {
   }
 
   estadoLabel(e: EventoEstado): string {
-    return { activa: 'Activa', reconocida: 'Reconocida', asignada: 'Asignada', resuelta: 'Resuelta' }[e];
+    return {
+      activa: 'Activa',
+      reconocida: 'Reconocida',
+      asignada: 'Asignada',
+      resuelta: 'Resuelta',
+    }[e];
   }
 
   estadoBadgeClass(e: EventoEstado): string {
