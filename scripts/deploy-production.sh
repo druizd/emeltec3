@@ -31,7 +31,14 @@ git pull --ff-only origin "$BRANCH"
 git stash pop --quiet || true
 
 echo "Validating Docker Compose configuration..."
-docker compose -f "$COMPOSE_FILE" config >/dev/null
+if ! docker compose -f "$COMPOSE_FILE" config >/tmp/compose-config.out 2>/tmp/compose-config.err; then
+  echo "ERROR: docker compose config failed."
+  echo "--- stderr ---"
+  cat /tmp/compose-config.err
+  echo "--- stdout (first 80 lines) ---"
+  head -80 /tmp/compose-config.out
+  exit 1
+fi
 
 read_env_value() {
   local key="$1"
