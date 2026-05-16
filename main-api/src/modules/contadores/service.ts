@@ -23,7 +23,12 @@ import {
   type CounterVariable,
   upsertContadorMensual,
 } from './repo';
-import type { ContadorDiarioPoint, ContadorMensualPoint, MonthDeltaResult } from './types';
+import type {
+  ContadorDiarioPoint,
+  ContadorJornadaPoint,
+  ContadorMensualPoint,
+  MonthDeltaResult,
+} from './types';
 
 const LAZY_REFRESH_STALE_MS = 60 * 60 * 1000;
 
@@ -365,6 +370,211 @@ export async function getDailySeries(opts: {
 function emptyDailySeries(dias: number): ContadorDiarioPoint[] {
   return lastNDays(dias).map((dayStart) => ({
     dia: getDayRangeChile(dayStart).diaIso,
+    delta: null,
+    unidad: null,
+    muestras: 0,
+    ultimo_dato: null,
+    resets_detectados: 0,
+  }));
+}
+
+function parseHHMMToMinutes(hhmm: string): number {
+  const parts = hhmm.split(':').map(Number);
+  const h = parts[0] ?? NaN;
+  const m = parts[1] ?? NaN;
+  if (Number.isNaN(h) || Number.isNaN(m)) throw new Error(`hora invalida: ${hhmm}`);
+  return h * 60 + m;
+}
+
+/**
+ * Computa deltas por jornada (ventana inicio→fin configurable, posiblemente
+ * cruzando medianoche) para una variable contador, sobre los `dias` ultimos
+ * dias Chile.
+ *
+ * Single query cubriendo todo el rango global, despues bucket por jornada
+ * usando shift-by-startMin (un row pertenece a jornada i si su tiempo desplazado
+ * por -startMin cae en el dia chile de days[i]).
+ */
+export async function computeJornadasForVariable(opts: {
+  idSerial: string;
+  mapping: RegMap;
+  pozoConfig: PozoConfig | null;
+  days: Date[];
+  inicio: string; // 'HH:MM'
+  fin: string; // 'HH:MM'
+}): Promise<Map<string, MonthDeltaResult>> {
+  const { idSerial, mapping, pozoConfig, days, inicio, fin } = opts;
+  const startMin = parseHHMMToMinutes(inicio);
+  const finMin = parseHHMMToMinutes(fin);
+
+  // Largo de jornada: same-day, cross-midnight, o exact-24h cuando inicio==fin.
+  const DAY_MS = 24 * 60 * 60_000;
+  const startMs = startMin * 60_000;
+  const finMs = finMin * 60_000;
+  const jornadaLenMs =
+    finMin > startMin ? finMs - startMs : finMin < startMin ? DAY_MS - startMs + finMs : DAY_MS;
+  const crossesMidnight = finMin <= startMin;
+
+  if (days.length === 0) return new Map();
+  const firstDay = days[0]!;
+  const lastDay = days[days.length - 1]!;
+  const queryStart = new Date(firstDay.getTime() + startMs);
+  const queryEnd = crossesMidnight
+    ? new Date(lastDay.getTime() + DAY_MS + finMs)
+    : new Date(lastDay.getTime() + finMs);
+
+  const result = await query<{ time: string; data: Record<string, unknown> }>(
+    `
+    SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
+    FROM equipo
+    WHERE id_serial = $1
+      AND time >= $2::timestamptz
+      AND time <  $3::timestamptz
+    GROUP BY 1
+    ORDER BY 1 ASC
+    `,
+    [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
+    { label: 'contadores__jornada_rows' },
+  );
+
+  const dayIndex = new Map<string, number>();
+  days.forEach((d, i) => dayIndex.set(getDayRangeChile(d).diaIso, i));
+
+  interface DayAccum {
+    valorInicio: number | null;
+    prev: number | null;
+    segmentBase: number | null;
+    suma: number;
+    resets: number;
+    muestras: number;
+    valorFin: number | null;
+    ultimoDato: string | null;
+  }
+  const accs: (DayAccum | null)[] = days.map(() => null);
+
+  for (const row of result.rows) {
+    let v: number | null = null;
+    try {
+      const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
+      v = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
+      if (!Number.isFinite(v)) v = null;
+    } catch {
+      v = null;
+    }
+    if (v === null) continue;
+
+    const rowMs = new Date(row.time).getTime();
+    // Shift por -startMin para que cada jornada comience al inicio de su dia
+    // Chile virtual. Despues verificamos que el elapsed sea < jornadaLenMs.
+    const shiftedDayKey = chileDayKey(new Date(rowMs - startMs));
+    const idx = dayIndex.get(shiftedDayKey);
+    if (idx === undefined) continue;
+    const jStart = days[idx]!.getTime() + startMs;
+    const elapsed = rowMs - jStart;
+    if (elapsed < 0 || elapsed >= jornadaLenMs) continue;
+
+    let acc = accs[idx];
+    if (!acc) {
+      acc = {
+        valorInicio: null,
+        prev: null,
+        segmentBase: null,
+        suma: 0,
+        resets: 0,
+        muestras: 0,
+        valorFin: null,
+        ultimoDato: null,
+      };
+      accs[idx] = acc;
+    }
+    acc.muestras++;
+    acc.ultimoDato = row.time;
+    if (acc.valorInicio === null) acc.valorInicio = v;
+    if (acc.segmentBase === null) acc.segmentBase = v;
+    if (acc.prev !== null && v < acc.prev) {
+      acc.suma += acc.prev - acc.segmentBase;
+      acc.segmentBase = v;
+      acc.resets++;
+    }
+    acc.prev = v;
+    acc.valorFin = v;
+  }
+
+  const out = new Map<string, MonthDeltaResult>();
+  for (let i = 0; i < days.length; i++) {
+    const acc = accs[i];
+    if (!acc) continue;
+    if (acc.segmentBase !== null && acc.valorFin !== null) {
+      acc.suma += acc.valorFin - acc.segmentBase;
+    }
+    out.set(getDayRangeChile(days[i]!).diaIso, {
+      valor_inicio: acc.valorInicio,
+      valor_fin: acc.valorFin,
+      delta: acc.muestras === 0 ? null : Math.max(0, acc.suma),
+      muestras: acc.muestras,
+      resets_detectados: acc.resets,
+      ultimo_dato: acc.ultimoDato,
+    });
+  }
+  return out;
+}
+
+/**
+ * Devuelve la serie por jornada lista para el chart: ultimos `dias` puntos,
+ * cada uno con el delta de la jornada [inicio, fin) (cruzando medianoche si
+ * fin <= inicio).
+ */
+export async function getJornadaSeries(opts: {
+  sitioId: string;
+  rol: string;
+  dias: number;
+  inicio: string;
+  fin: string;
+}): Promise<ContadorJornadaPoint[]> {
+  const { sitioId, rol, dias, inicio, fin } = opts;
+
+  const counters = await listCounterVariablesForSite(sitioId);
+  const counter = counters.find((c) => c.rol === rol && c.id_serial);
+  if (!counter || !counter.id_serial) return emptyJornadaSeries(dias, inicio, fin);
+
+  const mappings = await getMappingsBySiteId(sitioId);
+  const mapping = mappings.find((m) => m.id === counter.variable_id);
+  if (!mapping) return emptyJornadaSeries(dias, inicio, fin);
+
+  const site = await getSiteById(sitioId);
+  const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+
+  const days = lastNDays(dias);
+  const deltasByDay = await computeJornadasForVariable({
+    idSerial: counter.id_serial,
+    mapping,
+    pozoConfig,
+    days,
+    inicio,
+    fin,
+  });
+
+  return days.map((dayStart) => {
+    const diaIso = getDayRangeChile(dayStart).diaIso;
+    const r = deltasByDay.get(diaIso);
+    return {
+      dia: diaIso,
+      inicio,
+      fin,
+      delta: r?.delta ?? null,
+      unidad: counter.unidad,
+      muestras: r?.muestras ?? 0,
+      ultimo_dato: r?.ultimo_dato ?? null,
+      resets_detectados: r?.resets_detectados ?? 0,
+    };
+  });
+}
+
+function emptyJornadaSeries(dias: number, inicio: string, fin: string): ContadorJornadaPoint[] {
+  return lastNDays(dias).map((dayStart) => ({
+    dia: getDayRangeChile(dayStart).diaIso,
+    inicio,
+    fin,
     delta: null,
     unidad: null,
     muestras: 0,

@@ -48,3 +48,14 @@ export interface ContadorDiarioPoint {
   ultimo_dato: string | null;
   resets_detectados: number;
 }
+
+export interface ContadorJornadaPoint {
+  dia: string; // 'YYYY-MM-DD' Chile (dia en que arranca la jornada)
+  inicio: string; // 'HH:MM'
+  fin: string; // 'HH:MM'
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}

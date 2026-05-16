@@ -29,6 +29,17 @@ export interface ContadorDiarioPoint {
   resets_detectados: number;
 }
 
+export interface ContadorJornadaPoint {
+  dia: string;
+  inicio: string;
+  fin: string;
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -104,6 +115,21 @@ export class CompanyService {
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
       `/api/companies/sites/${siteId}/contadores-diarios?${params.toString()}`,
+    );
+  }
+
+  getSiteJornadaCounters(
+    siteId: string,
+    options: { rol?: string; dias?: number; inicio?: string; fin?: string } = {},
+  ): Observable<ApiResponse<ContadorJornadaPoint[]>> {
+    const params = new URLSearchParams();
+    if (options.rol) params.set('rol', options.rol);
+    if (options.dias) params.set('dias', String(options.dias));
+    if (options.inicio) params.set('inicio', options.inicio);
+    if (options.fin) params.set('fin', options.fin);
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ContadorJornadaPoint[]>>(
+      `/api/companies/sites/${siteId}/contadores-jornadas?${params.toString()}`,
     );
   }
 
