@@ -27,6 +27,16 @@ import type { ContadorMensualPoint, MonthDeltaResult } from './types';
 
 const LAZY_REFRESH_STALE_MS = 60 * 60 * 1000;
 
+/**
+ * Normaliza el campo `mes` a 'YYYY-MM-DD'. node-pg parsea columnas DATE como
+ * Date object — `String(date).slice(0,10)` da el dia local de la TZ del proceso
+ * ("Thu Apr 30" cuando deberia ser "2026-05-01"), por eso convertimos via UTC.
+ */
+function mesToIsoDay(mes: unknown): string {
+  if (mes instanceof Date) return mes.toISOString().slice(0, 10);
+  return String(mes).slice(0, 10);
+}
+
 export const CHILE_TZ = 'America/Santiago';
 
 /**
@@ -270,7 +280,7 @@ export async function getMonthlySeries(opts: {
 
   const indexByMonth = (input: typeof rows) => {
     const map = new Map<string, (typeof rows)[number]>();
-    for (const r of input) map.set(String(r.mes).slice(0, 10), r);
+    for (const r of input) map.set(mesToIsoDay(r.mes), r);
     return map;
   };
   let byMonth = indexByMonth(rows);
