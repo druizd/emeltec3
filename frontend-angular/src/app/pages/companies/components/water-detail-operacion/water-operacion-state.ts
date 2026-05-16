@@ -71,8 +71,8 @@ export class WaterOperacionStateService {
   readonly diaOffset = signal(0);
 
   readonly preset = signal<OperacionPreset>('30d');
-  readonly fechaDesde = signal('2026-04-10');
-  readonly fechaHasta = signal('2026-05-10');
+  readonly fechaDesde = signal(this.isoTodayMinus(30));
+  readonly fechaHasta = signal(this.isoTodayMinus(0));
 
   // Telemetria historica compartida entre las pestañas de Operacion (Hoy /
   // Graficos historicos). El parent fetches; los hijos consumen.
@@ -123,11 +123,13 @@ export class WaterOperacionStateService {
       });
 
     this.dailyCountersLoading.set(true);
+    // 90 dias: cubre el chart de 30 dias + el preset 90d del Resumen por
+    // Periodo. Sub-componentes filtran client-side al rango que necesitan.
     this.dailySub = timer(0, 10 * 60_000)
       .pipe(
         switchMap(() =>
           this.companyService
-            .getSiteDailyCounters(siteId, { rol: 'totalizador', dias: 30 })
+            .getSiteDailyCounters(siteId, { rol: 'totalizador', dias: 90 })
             .pipe(catchError(() => of(null))),
         ),
       )
@@ -243,12 +245,15 @@ export class WaterOperacionStateService {
 
   setPreset(p: OperacionPreset): void {
     this.preset.set(p);
-    const hasta = new Date(2026, 4, 10);
     const dias = p === '7d' ? 7 : p === '30d' ? 30 : 90;
-    const desde = new Date(hasta);
-    desde.setDate(desde.getDate() - dias);
-    this.fechaDesde.set(desde.toISOString().slice(0, 10));
-    this.fechaHasta.set(hasta.toISOString().slice(0, 10));
+    this.fechaDesde.set(this.isoTodayMinus(dias));
+    this.fechaHasta.set(this.isoTodayMinus(0));
+  }
+
+  private isoTodayMinus(daysAgo: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    return d.toISOString().slice(0, 10);
   }
 
   onFechaChange(campo: 'desde' | 'hasta', val: string): void {

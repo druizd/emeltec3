@@ -1009,10 +1009,120 @@ export class OperacionResumenPeriodoComponent {
     ],
   };
 
+  // ── KPIs reales (4 wireados) + 2 mock ─────────────────────
+
+  /**
+   * Filtra daily counters al rango [fechaDesde, fechaHasta] inclusivo (DB
+   * guarda dia como YYYY-MM-DD asi que comparacion lexicografica funciona).
+   */
+  private readonly dailyInRange = computed(() => {
+    const desde = this.fechaDesde();
+    const hasta = this.fechaHasta();
+    return this.state
+      .dailyCountersData()
+      .filter((p) => p.dia >= desde && p.dia <= hasta);
+  });
+
+  private readonly historyInRange = computed(() => {
+    const desdeMs = new Date(`${this.fechaDesde()}T00:00:00-04:00`).getTime();
+    const hastaMs = new Date(`${this.fechaHasta()}T23:59:59-04:00`).getTime();
+    return this.state.historyRows().filter(
+      (r) => r.timestampMs !== null && r.timestampMs >= desdeMs && r.timestampMs <= hastaMs,
+    );
+  });
+
+  private readonly diasEsperados = computed(() => {
+    const map: Record<Preset, number> = { '7d': 7, '30d': 30, '90d': 90 };
+    return map[this.preset()];
+  });
+
+  private readonly computedKpis = computed<KpiPeriodo[]>(() => {
+    const daily = this.dailyInRange();
+    const hist = this.historyInRange();
+    const diasEsperados = this.diasEsperados();
+    const periodoLabel = this.periodoLabel();
+
+    const flujoTotal = daily.reduce((acc, p) => acc + (p.delta ?? 0), 0);
+    const diasOperacion = daily.filter((p) => (p.delta ?? 0) > 0).length;
+    const diasSinOp = Math.max(0, diasEsperados - diasOperacion);
+    const unidad = daily[0]?.unidad ?? 'm³';
+
+    const caudales = hist.map((r) => r.caudal).filter((v): v is number => v !== null);
+    const caudalProm = caudales.length
+      ? caudales.reduce((a, b) => a + b, 0) / caudales.length
+      : null;
+
+    const nivelesFreaticos = hist
+      .map((r) => r.nivelFreatico ?? r.nivel)
+      .filter((v): v is number => v !== null);
+    const nivelProm = nivelesFreaticos.length
+      ? nivelesFreaticos.reduce((a, b) => a + b, 0) / nivelesFreaticos.length
+      : null;
+
+    const mockAlertas = this.mockKpis[this.preset()][4];
+    const mockUptime = this.mockKpis[this.preset()][5];
+
+    return [
+      {
+        label: 'Flujo acumulado',
+        valor: `${this.fmtThousands(flujoTotal)} ${unidad}`,
+        subtext: periodoLabel,
+        icon: 'water_drop',
+        tono: 'ok',
+      },
+      {
+        label: 'Caudal promedio',
+        valor: caudalProm !== null ? `${this.fmt(caudalProm, 1)} L/s` : '— L/s',
+        subtext: caudales.length ? `${caudales.length} mediciones` : 'Sin datos',
+        icon: 'speed',
+        tono: caudalProm !== null ? 'ok' : 'neutral',
+      },
+      {
+        label: 'Nivel freático prom.',
+        valor: nivelProm !== null ? `${this.fmt(nivelProm, 1)} m` : '— m',
+        subtext: nivelesFreaticos.length ? `${nivelesFreaticos.length} mediciones` : 'Sin datos',
+        icon: 'vertical_align_bottom',
+        tono: 'neutral',
+      },
+      {
+        label: 'Días con operación',
+        valor: `${diasOperacion} / ${diasEsperados}`,
+        subtext: diasSinOp ? `${diasSinOp} días sin bomba` : 'Sin paradas',
+        icon: 'event_available',
+        tono: diasSinOp > diasEsperados / 3 ? 'warn' : 'neutral',
+      },
+      mockAlertas ?? {
+        label: 'Alertas en período',
+        valor: '—',
+        subtext: 'Sin datos',
+        icon: 'notifications',
+        tono: 'neutral',
+      },
+      mockUptime ?? {
+        label: 'Uptime comunicación',
+        valor: '—',
+        subtext: 'Sin datos',
+        icon: 'wifi',
+        tono: 'neutral',
+      },
+    ];
+  });
+
+  private fmt(v: number, decimals: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(v);
+  }
+
+  private fmtThousands(v: number): string {
+    return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(Math.round(v));
+  }
+
   readonly data = computed(() => {
     const alertas = this.mockAlertas[this.preset()];
     return {
-      kpis: this.mockKpis[this.preset()],
+      kpis: this.computedKpis(),
       tabla: this.tablaComun,
       alertas,
       alertasResumen: {

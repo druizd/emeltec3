@@ -940,8 +940,12 @@ export class OperacionGraficosHistoricosComponent {
     }).format(value);
   }
 
+  // Slice ultimos 30 dias para el chart (el state guarda 90 para cubrir el
+  // preset 90d del Resumen por Periodo).
+  private readonly diarioPoints = computed(() => this.dailyCountersData().slice(-30));
+
   readonly diario = computed<BarChart>(() => {
-    const points = this.dailyCountersData();
+    const points = this.diarioPoints();
     if (points.length === 0) return { bars: [], yTicks: [], xLabels: [] };
     const vals = points.map((p) => p.delta ?? 0);
     const labels = points.map((p) => {
@@ -950,14 +954,14 @@ export class OperacionGraficosHistoricosComponent {
     });
     return this.buildBars(vals, labels, '#0DAFBD', 5);
   });
-  readonly diarioUnit = computed(() => this.dailyCountersData()[0]?.unidad ?? 'm³');
+  readonly diarioUnit = computed(() => this.diarioPoints()[0]?.unidad ?? 'm³');
   readonly diarioLoading = computed(
-    () => this.dailyCountersLoading() && this.dailyCountersData().length === 0,
+    () => this.dailyCountersLoading() && this.diarioPoints().length === 0,
   );
   readonly diarioEmpty = computed(
     () =>
       !this.dailyCountersLoading() &&
-      this.dailyCountersData().every((p) => (p.delta ?? 0) === 0),
+      this.diarioPoints().every((p) => (p.delta ?? 0) === 0),
   );
 
   readonly diarioHoverIndex = signal<number | null>(null);
@@ -965,7 +969,7 @@ export class OperacionGraficosHistoricosComponent {
   readonly diarioTooltip = computed(() => {
     const idx = this.diarioHoverIndex();
     if (idx === null) return null;
-    const point = this.dailyCountersData()[idx];
+    const point = this.diarioPoints()[idx];
     const bar = this.diario().bars[idx];
     if (!point || !bar) return null;
     const value = point.delta != null ? this.formatVolume(point.delta) : '—';
@@ -1115,7 +1119,7 @@ export class OperacionGraficosHistoricosComponent {
   }
 
   downloadDiarioXlsx(): void {
-    const points = this.dailyCountersData();
+    const points = this.diarioPoints();
     if (points.length === 0) return;
     const unit = this.diarioUnit();
     const rows = points.map((p) => ({
