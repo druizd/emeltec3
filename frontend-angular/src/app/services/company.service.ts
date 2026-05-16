@@ -20,6 +20,15 @@ export interface ContadorMensualPoint {
   proyeccion?: number | null;
 }
 
+export interface ContadorDiarioPoint {
+  dia: string;
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -82,6 +91,19 @@ export class CompanyService {
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<ContadorMensualPoint[]>>(
       `/api/companies/sites/${siteId}/contadores-mensuales?${params.toString()}`,
+    );
+  }
+
+  getSiteDailyCounters(
+    siteId: string,
+    options: { rol?: string; dias?: number } = {},
+  ): Observable<ApiResponse<ContadorDiarioPoint[]>> {
+    const params = new URLSearchParams();
+    if (options.rol) params.set('rol', options.rol);
+    if (options.dias) params.set('dias', String(options.dias));
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
+      `/api/companies/sites/${siteId}/contadores-diarios?${params.toString()}`,
     );
   }
 

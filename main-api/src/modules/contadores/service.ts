@@ -23,7 +23,7 @@ import {
   type CounterVariable,
   upsertContadorMensual,
 } from './repo';
-import type { ContadorMensualPoint, MonthDeltaResult } from './types';
+import type { ContadorDiarioPoint, ContadorMensualPoint, MonthDeltaResult } from './types';
 
 const LAZY_REFRESH_STALE_MS = 60 * 60 * 1000;
 
@@ -63,6 +63,48 @@ export function getMonthRangeChile(ref: Date): { start: Date; end: Date; mesIso:
   const end = new Date(`${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00-04:00`);
   const mesIso = `${year}-${String(month).padStart(2, '0')}-01`;
   return { start, end, mesIso };
+}
+
+/**
+ * Devuelve `[start, end)` del dia que contiene a `ref` en zona Chile, como
+ * Date UTC. start = 00:00 del dia; end = 00:00 del dia siguiente. diaIso
+ * = 'YYYY-MM-DD' en zona Chile.
+ */
+export function getDayRangeChile(ref: Date): { start: Date; end: Date; diaIso: string } {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: CHILE_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+  const parts = fmt.formatToParts(ref);
+  const year = Number(parts.find((p) => p.type === 'year')?.value);
+  const month = Number(parts.find((p) => p.type === 'month')?.value);
+  const day = Number(parts.find((p) => p.type === 'day')?.value);
+  const diaIso = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const start = new Date(`${diaIso}T00:00:00-04:00`);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+  return { start, end, diaIso };
+}
+
+/**
+ * Devuelve `chileDayKey('YYYY-MM-DD')` para un timestamp arbitrario.
+ */
+export function chileDayKey(ref: Date): string {
+  return getDayRangeChile(ref).diaIso;
+}
+
+/**
+ * Lista los inicios de dia (Chile) de los ultimos `n` dias inclusive hoy,
+ * del mas antiguo al mas reciente.
+ */
+export function lastNDays(n: number, ref: Date = new Date()): Date[] {
+  const result: Date[] = [];
+  const today = getDayRangeChile(ref).start;
+  for (let i = n - 1; i >= 0; i--) {
+    result.push(new Date(today.getTime() - i * 24 * 60 * 60 * 1000));
+  }
+  return result;
 }
 
 /**
@@ -163,6 +205,172 @@ export async function computeMonthDeltaForVariable(opts: {
     resets_detectados: resets,
     ultimo_dato: ultimoDato,
   };
+}
+
+/**
+ * Computa deltas diarios para una variable contador en el rango [start, end).
+ * Single query + bucket por dia Chile + algoritmo segmento/reset por dia.
+ *
+ * Returns map dia_iso -> { delta, muestras, ultimo_dato, resets }
+ */
+export async function computeDailyDeltasForVariable(opts: {
+  idSerial: string;
+  mapping: RegMap;
+  pozoConfig: PozoConfig | null;
+  start: Date;
+  end: Date;
+}): Promise<Map<string, MonthDeltaResult>> {
+  const { idSerial, mapping, pozoConfig, start, end } = opts;
+
+  const result = await query<{ time: string; data: Record<string, unknown> }>(
+    `
+    SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
+    FROM equipo
+    WHERE id_serial = $1
+      AND time >= $2::timestamptz
+      AND time <  $3::timestamptz
+    GROUP BY 1
+    ORDER BY 1 ASC
+    `,
+    [idSerial, start.toISOString(), end.toISOString()],
+    { label: 'contadores__day_rows' },
+  );
+
+  // Bucket por dia Chile. Cada dia corre su propio algoritmo de segmentos.
+  interface DayAccum {
+    valorInicio: number | null;
+    prev: number | null;
+    segmentBase: number | null;
+    suma: number;
+    resets: number;
+    muestras: number;
+    valorFin: number | null;
+    ultimoDato: string | null;
+  }
+  const byDay = new Map<string, DayAccum>();
+
+  for (const row of result.rows) {
+    let v: number | null = null;
+    try {
+      const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
+      v = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
+      if (!Number.isFinite(v)) v = null;
+    } catch {
+      v = null;
+    }
+    if (v === null) continue;
+
+    const dayKey = chileDayKey(new Date(row.time));
+    let acc = byDay.get(dayKey);
+    if (!acc) {
+      acc = {
+        valorInicio: null,
+        prev: null,
+        segmentBase: null,
+        suma: 0,
+        resets: 0,
+        muestras: 0,
+        valorFin: null,
+        ultimoDato: null,
+      };
+      byDay.set(dayKey, acc);
+    }
+
+    acc.muestras++;
+    acc.ultimoDato = row.time;
+    if (acc.valorInicio === null) acc.valorInicio = v;
+    if (acc.segmentBase === null) acc.segmentBase = v;
+    if (acc.prev !== null && v < acc.prev) {
+      acc.suma += acc.prev - acc.segmentBase;
+      acc.segmentBase = v;
+      acc.resets++;
+    }
+    acc.prev = v;
+    acc.valorFin = v;
+  }
+
+  const out = new Map<string, MonthDeltaResult>();
+  for (const [day, acc] of byDay.entries()) {
+    if (acc.segmentBase !== null && acc.valorFin !== null) {
+      acc.suma += acc.valorFin - acc.segmentBase;
+    }
+    out.set(day, {
+      valor_inicio: acc.valorInicio,
+      valor_fin: acc.valorFin,
+      delta: acc.muestras === 0 ? null : Math.max(0, acc.suma),
+      muestras: acc.muestras,
+      resets_detectados: acc.resets,
+      ultimo_dato: acc.ultimoDato,
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Devuelve la serie diaria lista para el chart: ultimos `dias` puntos.
+ *
+ * Computa on-demand desde el hypertable `equipo` (no hay tabla materializada
+ * diaria). Costo: ~1s por 30 dias con un sitio que sampla a 1/min.
+ *
+ * Solo procesa la primera variable contador del sitio con `rol` match.
+ */
+export async function getDailySeries(opts: {
+  sitioId: string;
+  rol: string;
+  dias: number;
+}): Promise<ContadorDiarioPoint[]> {
+  const { sitioId, rol, dias } = opts;
+
+  const counters = await listCounterVariablesForSite(sitioId);
+  const counter = counters.find((c) => c.rol === rol && c.id_serial);
+  if (!counter || !counter.id_serial) return emptyDailySeries(dias);
+
+  const mappings = await getMappingsBySiteId(sitioId);
+  const mapping = mappings.find((m) => m.id === counter.variable_id);
+  if (!mapping) return emptyDailySeries(dias);
+
+  const site = await getSiteById(sitioId);
+  const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+
+  const days = lastNDays(dias);
+  if (days.length === 0) return [];
+  const firstDay = days[0]!;
+  const lastDay = days[days.length - 1]!;
+  const start = getDayRangeChile(firstDay).start;
+  const end = getDayRangeChile(lastDay).end;
+
+  const deltasByDay = await computeDailyDeltasForVariable({
+    idSerial: counter.id_serial,
+    mapping,
+    pozoConfig,
+    start,
+    end,
+  });
+
+  return days.map((dayStart) => {
+    const diaIso = getDayRangeChile(dayStart).diaIso;
+    const r = deltasByDay.get(diaIso);
+    return {
+      dia: diaIso,
+      delta: r?.delta ?? null,
+      unidad: counter.unidad,
+      muestras: r?.muestras ?? 0,
+      ultimo_dato: r?.ultimo_dato ?? null,
+      resets_detectados: r?.resets_detectados ?? 0,
+    };
+  });
+}
+
+function emptyDailySeries(dias: number): ContadorDiarioPoint[] {
+  return lastNDays(dias).map((dayStart) => ({
+    dia: getDayRangeChile(dayStart).diaIso,
+    delta: null,
+    unidad: null,
+    muestras: 0,
+    ultimo_dato: null,
+    resets_detectados: 0,
+  }));
 }
 
 /**

@@ -3,7 +3,11 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { ActivatedRoute } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import * as XLSX from 'xlsx';
-import { CompanyService, type ContadorMensualPoint } from '../../../../services/company.service';
+import {
+  CompanyService,
+  type ContadorDiarioPoint,
+  type ContadorMensualPoint,
+} from '../../../../services/company.service';
 import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
 
 interface LineChart {
@@ -457,57 +461,87 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div>
             <h3 class="text-sm font-black text-slate-800">Flujo Diario</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">
-              Últimos 30 días · m³/día · días sin operación en gris
+              Últimos 30 días · {{ diarioUnit() }}/día · días sin operación en gris
             </p>
           </div>
           <button
             type="button"
-            aria-label="Descargar Flujo Diario en CSV"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            (click)="downloadDiarioXlsx()"
+            [disabled]="diarioLoading() || diarioEmpty()"
+            aria-label="Descargar Flujo Diario en Excel"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
-            >.CSV
+            >.XLSX
           </button>
         </div>
         <div class="h-44 w-full">
-          <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
-            @for (t of diario.yTicks; track t.y) {
-              <line
-                x1="55"
-                [attr.y1]="t.y"
-                x2="1090"
-                [attr.y2]="t.y"
-                stroke="#f1f5f9"
-                stroke-width="1"
-              />
-              <text
-                x="50"
-                [attr.y]="t.y + 4"
-                font-size="11"
-                fill="#94a3b8"
-                text-anchor="end"
-                font-family="monospace"
+          @if (diarioLoading()) {
+            <div class="flex h-full items-center justify-center text-[11px] text-slate-400">
+              <span class="material-symbols-outlined mr-1.5 animate-spin text-[16px]"
+                >progress_activity</span
               >
-                {{ t.label }}
-              </text>
-            }
-            @for (l of diario.xLabels; track l.x) {
-              <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
-                {{ l.label }}
-              </text>
-            }
-            @for (b of diario.bars; track b.x) {
-              <rect
-                [attr.x]="b.x"
-                [attr.y]="b.y"
-                [attr.width]="b.w"
-                [attr.height]="b.h"
-                [attr.fill]="b.fill"
-                rx="2"
-                opacity="0.85"
-              />
-            }
-          </svg>
+              Cargando flujo diario...
+            </div>
+          } @else if (diarioEmpty()) {
+            <div class="flex h-full items-center justify-center text-[11px] text-slate-400">
+              Sin datos de totalizador para este sitio en los últimos 30 días.
+            </div>
+          } @else {
+            <div class="relative h-full w-full">
+              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+                @for (t of diario().yTicks; track t.y) {
+                  <line
+                    x1="55"
+                    [attr.y1]="t.y"
+                    x2="1090"
+                    [attr.y2]="t.y"
+                    stroke="#f1f5f9"
+                    stroke-width="1"
+                  />
+                  <text
+                    x="50"
+                    [attr.y]="t.y + 4"
+                    font-size="11"
+                    fill="#94a3b8"
+                    text-anchor="end"
+                    font-family="monospace"
+                  >
+                    {{ t.label }}
+                  </text>
+                }
+                @for (l of diario().xLabels; track l.x) {
+                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
+                    {{ l.label }}
+                  </text>
+                }
+                @for (b of diario().bars; track b.x; let i = $index) {
+                  <rect
+                    [attr.x]="b.x"
+                    [attr.y]="b.y"
+                    [attr.width]="b.w"
+                    [attr.height]="b.h"
+                    [attr.fill]="b.fill"
+                    rx="2"
+                    [attr.opacity]="diarioHoverIndex() === i ? 1 : 0.85"
+                    (mouseenter)="diarioHoverIndex.set(i)"
+                    (mouseleave)="diarioHoverIndex.set(null)"
+                    class="cursor-pointer transition-opacity"
+                  />
+                }
+              </svg>
+              @if (diarioTooltip(); as tip) {
+                <div
+                  class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
+                  [style.left.%]="tip.leftPct"
+                  [style.top.%]="tip.topPct"
+                >
+                  <div class="font-bold">{{ tip.label }}</div>
+                  <div class="font-mono">{{ tip.value }} {{ tip.unit }}</div>
+                </div>
+              }
+            </div>
+          }
         </div>
       </section>
 
@@ -659,6 +693,9 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
 
   readonly monthlyCountersData = signal<ContadorMensualPoint[]>([]);
   readonly monthlyCountersLoading = signal(false);
+  readonly dailyCountersData = signal<ContadorDiarioPoint[]>([]);
+  readonly dailyCountersLoading = signal(false);
+  private dailyCountersSub: Subscription | null = null;
   readonly monthShortNames = [
     'Ene',
     'Feb',
@@ -727,11 +764,6 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
   readonly DH = 170;
 
   // ── Raw mock data (TODO: wire al backend) ────────────────
-
-  private readonly diarioRaw = [
-    172, 168, 175, 0, 163, 171, 174, 169, 177, 165, 0, 178, 172, 166, 175, 168, 0, 171, 174, 165,
-    172, 169, 0, 179, 171, 168, 175, 172, 0, 169,
-  ];
 
   private readonly turno7Raw = [
     158, 162, 168, 0, 155, 165, 167, 162, 171, 158, 0, 172, 165, 159, 168, 161, 0, 164, 168, 158,
@@ -889,7 +921,55 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     }).format(value);
   }
 
-  readonly diario: BarChart;
+  readonly diario = computed<BarChart>(() => {
+    const points = this.dailyCountersData();
+    if (points.length === 0) return { bars: [], yTicks: [], xLabels: [] };
+    const vals = points.map((p) => p.delta ?? 0);
+    const labels = points.map((p) => {
+      const [, m, d] = p.dia.split('-');
+      return `${Number(d)}/${Number(m)}`;
+    });
+    return this.buildBars(vals, labels, '#0DAFBD', 5);
+  });
+  readonly diarioUnit = computed(() => this.dailyCountersData()[0]?.unidad ?? 'm³');
+  readonly diarioLoading = computed(
+    () => this.dailyCountersLoading() && this.dailyCountersData().length === 0,
+  );
+  readonly diarioEmpty = computed(
+    () =>
+      !this.dailyCountersLoading() &&
+      this.dailyCountersData().every((p) => (p.delta ?? 0) === 0),
+  );
+
+  readonly diarioHoverIndex = signal<number | null>(null);
+
+  readonly diarioTooltip = computed(() => {
+    const idx = this.diarioHoverIndex();
+    if (idx === null) return null;
+    const point = this.dailyCountersData()[idx];
+    const bar = this.diario().bars[idx];
+    if (!point || !bar) return null;
+    const value = point.delta != null ? this.formatVolume(point.delta) : '—';
+    const leftPct = ((bar.x + bar.w / 2) / 1100) * 100;
+    const topPct = (bar.y / 220) * 100;
+    return {
+      label: this.formatDiaLargo(point.dia),
+      value,
+      unit: this.diarioUnit(),
+      leftPct,
+      topPct,
+    };
+  });
+
+  private formatDiaLargo(dia: string): string {
+    if (!dia) return '';
+    const [y, m, d] = dia.split('-').map(Number);
+    if (!y || !m || !d) return dia;
+    const date = new Date(`${dia}T00:00:00-04:00`);
+    const monthName = this.monthShortNames[date.getUTCMonth()] ?? '';
+    return `${d} ${monthName} '${String(y).slice(2)}`;
+  }
+
   readonly turno7: BarChart;
 
   constructor() {
@@ -899,7 +979,6 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
       d.setDate(d.getDate() + i);
       return `${d.getDate()}/${d.getMonth() + 1}`;
     });
-    this.diario = this.buildBars(this.diarioRaw, day30, '#0DAFBD', 5);
     this.turno7 = this.buildBars(this.turno7Raw, day30, '#7C3AED', 5);
   }
 
@@ -907,10 +986,12 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     const siteId = this.resolveSiteId();
     if (!siteId) return;
     this.startMonthlyCountersPolling(siteId);
+    this.startDailyCountersPolling(siteId);
   }
 
   ngOnDestroy(): void {
     this.monthlyCountersSub?.unsubscribe();
+    this.dailyCountersSub?.unsubscribe();
   }
 
   private resolveSiteId(): string {
@@ -980,6 +1061,24 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
   }
 
+  downloadDiarioXlsx(): void {
+    const points = this.dailyCountersData();
+    if (points.length === 0) return;
+    const unit = this.diarioUnit();
+    const rows = points.map((p) => ({
+      Día: this.formatDiaLargo(p.dia),
+      [`Volumen (${unit})`]: p.delta != null ? Number(p.delta.toFixed(3)) : null,
+      'Cantidad de registros': p.muestras,
+    }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 22 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, 'Flujo Diario');
+    const siteId = this.resolveSiteId();
+    const fileName = `flujo-diario-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
+
   downloadMensualXlsx(): void {
     const points = this.monthlyCountersData();
     if (points.length === 0) return;
@@ -1038,6 +1137,26 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
         this.monthlyCountersLoading.set(false);
         if (!res || !res.ok) return;
         this.monthlyCountersData.set(res.data ?? []);
+      });
+  }
+
+  private startDailyCountersPolling(siteId: string): void {
+    this.dailyCountersLoading.set(true);
+    this.dailyCountersSub?.unsubscribe();
+    // Refresca cada 10 min: el cambio significativo intra-dia se ve en el
+    // grafico real-time, asi que aqui basta una cadencia baja.
+    this.dailyCountersSub = timer(0, 10 * 60_000)
+      .pipe(
+        switchMap(() =>
+          this.companyService
+            .getSiteDailyCounters(siteId, { rol: 'totalizador', dias: 30 })
+            .pipe(catchError(() => of(null))),
+        ),
+      )
+      .subscribe((res) => {
+        this.dailyCountersLoading.set(false);
+        if (!res || !res.ok) return;
+        this.dailyCountersData.set(res.data ?? []);
       });
   }
 

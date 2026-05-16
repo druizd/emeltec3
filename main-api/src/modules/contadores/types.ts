@@ -39,3 +39,12 @@ export interface ContadorMensualPoint {
   resets_detectados: number;
   proyeccion?: number | null;
 }
+
+export interface ContadorDiarioPoint {
+  dia: string; // 'YYYY-MM-DD' en zona Chile
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}

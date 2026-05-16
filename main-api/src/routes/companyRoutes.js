@@ -37,6 +37,7 @@ router.delete('/sites/:siteId', companyController.deleteSite);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
 if (contadoresController) {
   router.get('/sites/:siteId/contadores-mensuales', contadoresController.getMonthlySeriesHandler);
+  router.get('/sites/:siteId/contadores-diarios', contadoresController.getDailySeriesHandler);
 }
 router.get('/sites/:siteId/dashboard-history/export', companyController.exportSiteDashboardHistory);
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);
