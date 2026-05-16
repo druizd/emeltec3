@@ -1428,11 +1428,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             </section>
 
             <section
-              class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-start"
+              class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
             >
-              <div class="space-y-3">
+              <div class="flex flex-col gap-3 xl:h-full">
                 <article
-                  class="rounded-xl border border-cyan-200 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
+                  class="flex flex-1 flex-col rounded-xl border border-cyan-200 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
                   <p class="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                     Diagrama del pozo
@@ -2027,7 +2027,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </article>
               </div>
 
-              <div class="space-y-3">
+              <div class="flex flex-col gap-3 xl:h-full">
                 <article
                   class="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
@@ -2125,19 +2125,20 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
 
                   <div
-                    class="ml-[66px] mt-3 flex h-12 justify-between gap-2 text-[11px] font-bold text-slate-400"
+                    class="ml-[66px] mt-2 flex h-10 justify-between gap-2 px-2 text-[11px] font-bold text-slate-400"
                   >
                     @for (month of monthlyFlowMonths(); track $index) {
-                      <span
-                        class="block min-w-0 flex-1 origin-top-center whitespace-nowrap text-center"
-                        style="transform: rotate(-45deg) translateY(6px); transform-origin: center top;"
-                        >{{ month.label }}</span
-                      >
+                      <div class="relative h-full min-w-0 flex-1">
+                        <span
+                          class="absolute right-1/2 top-1 origin-top-right -rotate-45 whitespace-nowrap"
+                          >{{ month.label }}</span
+                        >
+                      </div>
                     }
                   </div>
                 </article>
 
-                <article class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                   <p class="mb-2 text-sm font-black text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
@@ -3679,8 +3680,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   monthlyFlowTicks = computed<string[]>(() => {
     const max = this.monthlyFlowMax();
-    const fmt = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
-    return [1, 0.75, 0.5, 0.25, 0].map((f) => fmt.format(Math.round(max * f)));
+    const fmt = new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
+    return [1, 0.75, 0.5, 0.25, 0].map((f) => fmt.format(max * f));
   });
 
   monthlyFlowUnit = computed<string>(() => this.monthlyCountersData()[0]?.unidad ?? 'm³');
@@ -3945,7 +3949,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   formatMonthlyFlowValue(value: number): string {
-    return new Intl.NumberFormat('es-CL').format(value);
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(value);
   }
 
   formatMeters(value: number | null): string {
