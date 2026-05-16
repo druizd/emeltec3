@@ -5,14 +5,27 @@
  * sumando segmentos cuando detecta resets (overflow uint32, reemplazo sensor).
  *
  * Las llamadas a este modulo son intensivas: las hace el worker cada hora y el
- * script de backfill al arranque. NO se debe invocar por request HTTP — el
- * endpoint lee la tabla materializada `site_contador_mensual`.
+ * script de backfill al arranque. El endpoint HTTP lee la tabla materializada
+ * `site_contador_mensual`, pero refresca lazy el mes actual si la fila esta
+ * stale (>1h) o ausente — para que el grafico muestre datos sin esperar al
+ * proximo ciclo del worker.
  */
+import { logger } from '../../config/logger';
 import { query } from '../../config/dbHelpers';
 import { applyMappingTransform } from '../sites/transforms';
+import { getPozoConfigBySiteId } from '../sites/repo';
 import type { PozoConfig, RegMap } from '../sites/types';
-import { listContadoresBySiteAndRol, type CounterVariable, upsertContadorMensual } from './repo';
+import {
+  getMappingsBySiteId,
+  getSiteById,
+  listContadoresBySiteAndRol,
+  listCounterVariablesForSite,
+  type CounterVariable,
+  upsertContadorMensual,
+} from './repo';
 import type { ContadorMensualPoint, MonthDeltaResult } from './types';
+
+const LAZY_REFRESH_STALE_MS = 60 * 60 * 1000;
 
 export const CHILE_TZ = 'America/Santiago';
 
@@ -207,8 +220,45 @@ function projectCurrentMonth(point: {
 }
 
 /**
+ * Recomputa el mes actual para todas las variables contador del sitio que
+ * matcheen `rol`. Reusa la misma logica que el worker, limitada a 1 mes para
+ * costo acotado (~150ms por variable).
+ *
+ * No lanza: cualquier fallo se logea y se devuelve 0. Caller debe poder
+ * tolerar que el refresh haya fallado y caer a la fila vieja (si existe).
+ */
+async function refreshCurrentMonthForSite(sitioId: string, rol: string): Promise<number> {
+  const counters = await listCounterVariablesForSite(sitioId);
+  const targets = counters.filter((c) => c.rol === rol && c.id_serial);
+  if (targets.length === 0) return 0;
+
+  const mappings = await getMappingsBySiteId(sitioId);
+  const site = await getSiteById(sitioId);
+  const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+  const meses = lastNMonths(1);
+
+  let upserts = 0;
+  for (const counter of targets) {
+    try {
+      const mapping = mappings.find((m) => m.id === counter.variable_id);
+      if (!mapping) continue;
+      upserts += await recomputeMonthsForVariable({ counter, mapping, pozoConfig, meses });
+    } catch (err) {
+      logger.warn(
+        { sitio_id: sitioId, variable_id: counter.variable_id, err: (err as Error).message },
+        'contadores lazy refresh: fallo en variable',
+      );
+    }
+  }
+  return upserts;
+}
+
+/**
  * Devuelve la serie mensual lista para el chart: ultimos `meses` puntos, con
  * proyeccion calculada para el mes actual (campo `proyeccion`).
+ *
+ * Si la fila del mes actual falta o esta stale (>1h), recomputa lazy antes de
+ * devolver — asi el grafico refleja datos recientes sin esperar al worker.
  */
 export async function getMonthlySeries(opts: {
   sitioId: string;
@@ -216,11 +266,36 @@ export async function getMonthlySeries(opts: {
   meses: number;
 }): Promise<ContadorMensualPoint[]> {
   const { sitioId, rol, meses } = opts;
-  const rows = await listContadoresBySiteAndRol(sitioId, rol, meses);
+  let rows = await listContadoresBySiteAndRol(sitioId, rol, meses);
 
-  // Indexamos por mes para rellenar huecos con null.
-  const byMonth = new Map<string, (typeof rows)[number]>();
-  for (const r of rows) byMonth.set(String(r.mes).slice(0, 10), r);
+  const indexByMonth = (input: typeof rows) => {
+    const map = new Map<string, (typeof rows)[number]>();
+    for (const r of input) map.set(String(r.mes).slice(0, 10), r);
+    return map;
+  };
+  let byMonth = indexByMonth(rows);
+
+  const { mesIso: mesActual } = getMonthRangeChile(new Date());
+  const existing = byMonth.get(mesActual);
+  const stale =
+    !existing ||
+    !existing.actualizado_at ||
+    Date.now() - new Date(existing.actualizado_at).getTime() > LAZY_REFRESH_STALE_MS;
+
+  if (stale) {
+    try {
+      const upserts = await refreshCurrentMonthForSite(sitioId, rol);
+      if (upserts > 0) {
+        rows = await listContadoresBySiteAndRol(sitioId, rol, meses);
+        byMonth = indexByMonth(rows);
+      }
+    } catch (err) {
+      logger.warn(
+        { sitio_id: sitioId, rol, err: (err as Error).message },
+        'contadores lazy refresh: fallo global, sirvo datos viejos',
+      );
+    }
+  }
 
   const ordered = lastNMonths(meses);
   return ordered.map((monthStart) => {
