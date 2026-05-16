@@ -62,6 +62,24 @@ const httpServer = app.listen(config.port, () => {
       console.warn('[main-api] No se pudo iniciar health digest worker:', err.message);
     }
   }
+
+  // Contadores worker TS (agrega mensualmente totalizador/energia/volumen).
+  try {
+    const contadoresWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'contadores',
+      'worker',
+    );
+    const { startContadoresWorker } = require(contadoresWorkerPath);
+    startContadoresWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar contadores worker:', err.message);
+    }
+  }
 });
 
 // Inicia el servidor gRPC en paralelo para clientes internos o servicio a servicio.
@@ -99,6 +117,21 @@ function shutdown(signal) {
     );
     const { stopHealthDigestWorker } = require(healthWorkerPath);
     stopHealthDigestWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const contadoresWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'contadores',
+      'worker',
+    );
+    const { stopContadoresWorker } = require(contadoresWorkerPath);
+    stopContadoresWorker();
   } catch (_err) {
     // worker no estaba activo
   }
