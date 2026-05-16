@@ -611,6 +611,9 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   // Eventos reales del periodo (mapeados a AlertaPeriodo para el render existente).
   private readonly eventosReales = signal<EventoRow[]>([]);
   readonly eventosLoading = signal(false);
+  // toObservable solo se permite en contexto de inyeccion → captura en field init.
+  private readonly fechaDesde$ = toObservable(this.fechaDesde);
+  private readonly fechaHasta$ = toObservable(this.fechaHasta);
 
   readonly presets: { key: Preset; label: string }[] = [
     { key: '7d', label: '7 días' },
@@ -1203,10 +1206,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   ngOnInit(): void {
     const siteId = this.resolveSiteId();
     if (!siteId) return;
-    combineLatest([
-      toObservable(this.fechaDesde),
-      toObservable(this.fechaHasta),
-    ])
+    combineLatest([this.fechaDesde$, this.fechaHasta$])
       .pipe(
         debounceTime(300),
         switchMap(([desde, hasta]) => {
