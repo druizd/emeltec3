@@ -1,5 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { ActivatedRoute } from '@angular/router';
+import { catchError, combineLatest, debounceTime, of, switchMap } from 'rxjs';
+import { AlertaService, type EventoRow } from '../../../../services/alerta.service';
 import {
   WaterOperacionStateService,
   type OperacionPreset as Preset,
@@ -591,8 +595,11 @@ interface IncidenciaPeriodo {
     </div>
   `,
 })
-export class OperacionResumenPeriodoComponent {
+export class OperacionResumenPeriodoComponent implements OnInit {
   private readonly state = inject(WaterOperacionStateService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly alertaService = inject(AlertaService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly preset = this.state.preset;
   readonly fechaDesde = this.state.fechaDesde;
@@ -600,6 +607,10 @@ export class OperacionResumenPeriodoComponent {
   readonly numTurnos = this.state.numTurnos;
   readonly turnosConfig = this.state.turnosConfig;
   readonly resumenSettingsOpen = signal(false);
+
+  // Eventos reales del periodo (mapeados a AlertaPeriodo para el render existente).
+  private readonly eventosReales = signal<EventoRow[]>([]);
+  readonly eventosLoading = signal(false);
 
   readonly presets: { key: Preset; label: string }[] = [
     { key: '7d', label: '7 días' },
@@ -1119,8 +1130,41 @@ export class OperacionResumenPeriodoComponent {
     return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(Math.round(v));
   }
 
+  /** Map backend severidad (baja|media|alta|critica) → display severidad. */
+  private mapSeveridad(s: string): 'critica' | 'advertencia' | 'info' {
+    if (s === 'critica') return 'critica';
+    if (s === 'alta' || s === 'media') return 'advertencia';
+    return 'info';
+  }
+
+  private readonly alertasReales = computed<AlertaPeriodo[]>(() =>
+    this.eventosReales().map((e) => ({
+      id: e.id,
+      fechaHora: this.formatChileDateTime(e.triggered_at),
+      titulo: e.alerta_nombre || e.mensaje || `Evento ${e.id}`,
+      severidad: this.mapSeveridad(e.severidad),
+      estado: e.resuelta ? 'resuelta' : 'activa',
+    })),
+  );
+
+  private formatChileDateTime(iso: string): string {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`;
+  }
+
   readonly data = computed(() => {
-    const alertas = this.mockAlertas[this.preset()];
+    const alertas = this.alertasReales();
     return {
       kpis: this.computedKpis(),
       tabla: this.tablaComun,
@@ -1154,6 +1198,47 @@ export class OperacionResumenPeriodoComponent {
 
   onFechaChange(campo: 'desde' | 'hasta', val: string): void {
     this.state.onFechaChange(campo, val);
+  }
+
+  ngOnInit(): void {
+    const siteId = this.resolveSiteId();
+    if (!siteId) return;
+    combineLatest([
+      toObservable(this.fechaDesde),
+      toObservable(this.fechaHasta),
+    ])
+      .pipe(
+        debounceTime(300),
+        switchMap(([desde, hasta]) => {
+          this.eventosLoading.set(true);
+          // backend espera ISO timestamptz: pasar inicio y fin de dia Chile.
+          const desdeIso = `${desde}T00:00:00-04:00`;
+          const hastaIso = `${hasta}T23:59:59-04:00`;
+          return this.alertaService
+            .listarEventos({
+              sitio_id: siteId,
+              desde: desdeIso,
+              hasta: hastaIso,
+              limit: 500,
+            })
+            .pipe(catchError(() => of([] as EventoRow[])));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((rows) => {
+        this.eventosLoading.set(false);
+        this.eventosReales.set(rows);
+      });
+  }
+
+  private resolveSiteId(): string {
+    let current: ActivatedRoute | null = this.route;
+    while (current) {
+      const siteId = current.snapshot.paramMap.get('siteId');
+      if (siteId) return siteId;
+      current = current.parent;
+    }
+    return '';
   }
 
   private buildBars(vals: number[], labels: string[], xStep: number): BarChart {

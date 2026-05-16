@@ -14,6 +14,8 @@ import {
   SEVERIDAD_LABELS,
   UpdateAlertaPayload,
 } from '../../../../services/alerta.service';
+import { AdministrationService } from '../../../../services/administration.service';
+import type { VariableMapping } from '@emeltec/shared';
 
 interface DraftAlerta {
   nombre: string;
@@ -296,14 +298,39 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <div>
             <label
               class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
-              >Variable (key)</label
+              >Variable</label
             >
-            <input
-              type="text"
-              [(ngModel)]="draft.variable_key"
-              placeholder="Ej: caudal, nivel_freatico"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
-            />
+            @if (variables().length > 0) {
+              <select
+                [(ngModel)]="draft.variable_key"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+              >
+                <option value="" disabled>Selecciona una variable…</option>
+                @for (v of variables(); track v.id) {
+                  <option [value]="v.d1">
+                    {{ v.alias }} ({{ v.d1 }}){{ v.unidad ? ' · ' + v.unidad : '' }}
+                  </option>
+                }
+              </select>
+              @if (
+                draft.variable_key &&
+                !isVariableRegistrada(draft.variable_key)
+              ) {
+                <p class="mt-1 text-[11px] text-amber-600">
+                  ⚠ "{{ draft.variable_key }}" no esta en las variables registradas del sitio.
+                </p>
+              }
+            } @else {
+              <input
+                type="text"
+                [(ngModel)]="draft.variable_key"
+                placeholder="Ej: caudal, nivel_freatico"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+              />
+              <p class="mt-1 text-[11px] text-slate-400">
+                Sin variables registradas en el sitio; ingresa la clave manualmente.
+              </p>
+            }
           </div>
         }
 
@@ -438,6 +465,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 })
 export class AlertasConfiguracionComponent {
   private readonly alertaService = inject(AlertaService);
+  private readonly adminService = inject(AdministrationService);
 
   readonly sitioId = input<string>('');
   readonly empresaId = input<string>('');
@@ -454,12 +482,33 @@ export class AlertasConfiguracionComponent {
   readonly mostrandoNuevo = signal(false);
   readonly drafts = signal<Record<number, DraftAlerta>>({});
 
+  // Variables registradas del sitio (reg_map). El worker compara
+  // data[variable_key] del payload crudo, asi que el value usado es `d1`.
+  readonly variables = signal<VariableMapping[]>([]);
+
   nuevaRegla: DraftAlerta = emptyDraft();
 
   constructor() {
     effect(() => {
       const sid = this.sitioId();
-      if (sid) this.recargar();
+      if (sid) {
+        this.recargar();
+        this.cargarVariables();
+      }
+    });
+  }
+
+  private cargarVariables(): void {
+    const sid = this.sitioId();
+    if (!sid) return;
+    this.adminService.getSiteVariables(sid).subscribe({
+      next: (res) => {
+        if (res.ok) this.variables.set(res.data.mappings ?? []);
+      },
+      error: () => {
+        // No bloqueante: el input cae a texto libre.
+        this.variables.set([]);
+      },
     });
   }
 
@@ -514,6 +563,10 @@ export class AlertasConfiguracionComponent {
     const idx = draft.dias_activos.indexOf(dia);
     if (idx >= 0) draft.dias_activos.splice(idx, 1);
     else draft.dias_activos.push(dia);
+  }
+
+  isVariableRegistrada(key: string): boolean {
+    return this.variables().some((v) => v.d1 === key);
   }
 
   puedeGuardar(d: DraftAlerta): boolean {
