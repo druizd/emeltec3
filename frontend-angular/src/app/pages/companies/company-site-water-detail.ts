@@ -3669,15 +3669,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       if (m.value > max) max = m.value;
       if (m.proyeccion && m.proyeccion > max) max = m.proyeccion;
     }
-    // Redondea hacia arriba al multiplo "lindo" para tener ticks legibles.
     if (max <= 0) return 100;
-    const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
-    const norm = max / magnitude;
-    let nice;
-    if (norm <= 1) nice = 1;
-    else if (norm <= 2) nice = 2;
-    else if (norm <= 5) nice = 5;
-    else nice = 10;
+    // Pad 5% para no dejar la barra pegada al borde.
+    const padded = max * 1.05;
+    // Escalera "lindos" mas densa que {1,2,5,10}: evita saltos como 201→500
+    // (antes), ahora 201→250. Cubre el caso del usuario donde el eje quedaba
+    // 2-3x mas grande que la barra real.
+    const ladder = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+    const magnitude = Math.pow(10, Math.floor(Math.log10(padded)));
+    const norm = padded / magnitude;
+    const nice = ladder.find((n) => norm <= n) ?? 10;
     return nice * magnitude;
   });
 
