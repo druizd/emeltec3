@@ -124,11 +124,17 @@ interface IncidenciaPeriodo {
       <!-- Resumen operacional por turno -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div
-          class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
+          class="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
-          <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Resumen operacional por turno
-          </h3>
+          <div class="min-w-0">
+            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Resumen operacional por turno
+            </h3>
+            <p class="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-slate-400">
+              <span class="material-symbols-outlined text-[12px]">link</span>
+              Turnos vinculados con "Hoy en tiempo real" — los cambios se guardan por sitio
+            </p>
+          </div>
           <button
             type="button"
             (click)="resumenSettingsOpen.update((v) => !v)"
