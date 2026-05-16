@@ -8,7 +8,9 @@ const { protect } = require('../middlewares/authMiddleware');
 // disponible en dev sin build). Se monta solo si carga.
 let contadoresController = null;
 try {
-  contadoresController = require(path.join(__dirname, '..', '..', 'dist', 'modules', 'contadores', 'controller'));
+  contadoresController = require(
+    path.join(__dirname, '..', '..', 'dist', 'modules', 'contadores', 'controller'),
+  );
 } catch (err) {
   if (err && err.code !== 'MODULE_NOT_FOUND') {
     console.warn('[companyRoutes] No se pudo cargar contadores controller:', err.message);

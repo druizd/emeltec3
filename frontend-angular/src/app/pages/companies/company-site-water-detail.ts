@@ -3561,9 +3561,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return [1, 0.75, 0.5, 0.25, 0].map((f) => fmt.format(Math.round(max * f)));
   });
 
-  monthlyFlowUnit = computed<string>(
-    () => this.monthlyCountersData()[0]?.unidad ?? 'm³',
-  );
+  monthlyFlowUnit = computed<string>(() => this.monthlyCountersData()[0]?.unidad ?? 'm³');
 
   private readonly monthlyFlowFallback: MonthlyFlowPoint[] = [
     { label: '—', value: 0 },

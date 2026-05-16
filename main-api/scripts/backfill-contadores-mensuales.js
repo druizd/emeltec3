@@ -215,9 +215,7 @@ async function main() {
       const n = await recomputeMonthsForVariable({ counter, mapping, pozoConfig, meses });
       upserts += n;
       processed++;
-      console.log(
-        `[backfill] ${counter.sitio_id} ${counter.alias} (${counter.rol}) -> ${n} meses`,
-      );
+      console.log(`[backfill] ${counter.sitio_id} ${counter.alias} (${counter.rol}) -> ${n} meses`);
     } catch (err) {
       console.error(
         `[backfill] ERROR sitio=${counter.sitio_id} variable=${counter.variable_id}:`,

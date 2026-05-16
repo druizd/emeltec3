@@ -11,11 +11,7 @@
 import { query } from '../../config/dbHelpers';
 import { applyMappingTransform } from '../sites/transforms';
 import type { PozoConfig, RegMap } from '../sites/types';
-import {
-  listContadoresBySiteAndRol,
-  type CounterVariable,
-  upsertContadorMensual,
-} from './repo';
+import { listContadoresBySiteAndRol, type CounterVariable, upsertContadorMensual } from './repo';
 import type { ContadorMensualPoint, MonthDeltaResult } from './types';
 
 export const CHILE_TZ = 'America/Santiago';
@@ -41,9 +37,7 @@ export function getMonthRangeChile(ref: Date): { start: Date; end: Date; mesIso:
   const start = new Date(`${year}-${String(month).padStart(2, '0')}-01T00:00:00-04:00`);
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
-  const end = new Date(
-    `${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00-04:00`,
-  );
+  const end = new Date(`${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00-04:00`);
   const mesIso = `${year}-${String(month).padStart(2, '0')}-01`;
   return { start, end, mesIso };
 }
