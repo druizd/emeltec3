@@ -747,6 +747,8 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
       return;
     }
 
+    this.state.startCountersPolling(siteId);
+
     this.loading.set(true);
     this.pollingSub = timer(0, 60000)
       .pipe(
@@ -776,6 +778,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pollingSub?.unsubscribe();
+    this.state.stopCountersPolling();
   }
 
   updateTurnoConfig(index: number, field: 'nombre' | 'inicio' | 'fin', value: string): void {

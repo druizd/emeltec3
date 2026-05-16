@@ -1,15 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, combineLatest, debounceTime, of, Subscription, switchMap, timer } from 'rxjs';
 import * as XLSX from 'xlsx';
-import {
-  CompanyService,
-  type ContadorDiarioPoint,
-  type ContadorJornadaPoint,
-  type ContadorMensualPoint,
-} from '../../../../services/company.service';
 import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
 
 interface LineChart {
@@ -714,28 +706,22 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
     </div>
   `,
 })
-export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
+export class OperacionGraficosHistoricosComponent {
   private readonly state = inject(WaterOperacionStateService);
   private readonly route = inject(ActivatedRoute);
-  private readonly companyService = inject(CompanyService);
-  private monthlyCountersSub: Subscription | null = null;
 
   readonly jornadaInicio = this.state.jornadaInicio;
   readonly jornadaFin = this.state.jornadaFin;
   readonly jornadaSettingsOpen = signal(false);
 
-  readonly monthlyCountersData = signal<ContadorMensualPoint[]>([]);
-  readonly monthlyCountersLoading = signal(false);
-  readonly dailyCountersData = signal<ContadorDiarioPoint[]>([]);
-  readonly dailyCountersLoading = signal(false);
-  private dailyCountersSub: Subscription | null = null;
-  readonly jornadaCountersData = signal<ContadorJornadaPoint[]>([]);
-  readonly jornadaCountersLoading = signal(false);
-  private jornadaCountersSub: Subscription | null = null;
-  // Observables capturados en el contexto de inyeccion (campo); usados despues
-  // en startJornadaCountersPolling para re-fetch cuando cambien.
-  private readonly jornadaInicio$ = toObservable(this.state.jornadaInicio);
-  private readonly jornadaFin$ = toObservable(this.state.jornadaFin);
+  // Estos signals viven en el state (los pollea el parent), asi que al cambiar
+  // de pestaña no se re-fetchea.
+  readonly monthlyCountersData = this.state.monthlyCountersData;
+  readonly monthlyCountersLoading = this.state.monthlyCountersLoading;
+  readonly dailyCountersData = this.state.dailyCountersData;
+  readonly dailyCountersLoading = this.state.dailyCountersLoading;
+  readonly jornadaCountersData = this.state.jornadaCountersData;
+  readonly jornadaCountersLoading = this.state.jornadaCountersLoading;
   readonly monthShortNames = [
     'Ene',
     'Feb',
@@ -1042,20 +1028,6 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     };
   });
 
-  ngOnInit(): void {
-    const siteId = this.resolveSiteId();
-    if (!siteId) return;
-    this.startMonthlyCountersPolling(siteId);
-    this.startDailyCountersPolling(siteId);
-    this.startJornadaCountersPolling(siteId);
-  }
-
-  ngOnDestroy(): void {
-    this.monthlyCountersSub?.unsubscribe();
-    this.dailyCountersSub?.unsubscribe();
-    this.jornadaCountersSub?.unsubscribe();
-  }
-
   private resolveSiteId(): string {
     let current: ActivatedRoute | null = this.route;
     while (current) {
@@ -1201,68 +1173,6 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     const name = this.monthLongNames[date.getUTCMonth()] ?? '';
     const yr = String(date.getUTCFullYear()).slice(2);
     return `${name} '${yr}`;
-  }
-
-  private startMonthlyCountersPolling(siteId: string): void {
-    this.monthlyCountersLoading.set(true);
-    this.monthlyCountersSub?.unsubscribe();
-    this.monthlyCountersSub = timer(0, 10 * 60_000)
-      .pipe(
-        switchMap(() =>
-          this.companyService
-            .getSiteMonthlyCounters(siteId, { rol: 'totalizador', meses: 12 })
-            .pipe(catchError(() => of(null))),
-        ),
-      )
-      .subscribe((res) => {
-        this.monthlyCountersLoading.set(false);
-        if (!res || !res.ok) return;
-        this.monthlyCountersData.set(res.data ?? []);
-      });
-  }
-
-  private startJornadaCountersPolling(siteId: string): void {
-    this.jornadaCountersLoading.set(true);
-    this.jornadaCountersSub?.unsubscribe();
-    // Refetch al cambiar inicio/fin (con debounce) + cada 10 min como heartbeat.
-    this.jornadaCountersSub = combineLatest([
-      timer(0, 10 * 60_000),
-      this.jornadaInicio$,
-      this.jornadaFin$,
-    ])
-      .pipe(
-        debounceTime(300),
-        switchMap(([, inicio, fin]) =>
-          this.companyService
-            .getSiteJornadaCounters(siteId, { rol: 'totalizador', dias: 30, inicio, fin })
-            .pipe(catchError(() => of(null))),
-        ),
-      )
-      .subscribe((res) => {
-        this.jornadaCountersLoading.set(false);
-        if (!res || !res.ok) return;
-        this.jornadaCountersData.set(res.data ?? []);
-      });
-  }
-
-  private startDailyCountersPolling(siteId: string): void {
-    this.dailyCountersLoading.set(true);
-    this.dailyCountersSub?.unsubscribe();
-    // Refresca cada 10 min: el cambio significativo intra-dia se ve en el
-    // grafico real-time, asi que aqui basta una cadencia baja.
-    this.dailyCountersSub = timer(0, 10 * 60_000)
-      .pipe(
-        switchMap(() =>
-          this.companyService
-            .getSiteDailyCounters(siteId, { rol: 'totalizador', dias: 30 })
-            .pipe(catchError(() => of(null))),
-        ),
-      )
-      .subscribe((res) => {
-        this.dailyCountersLoading.set(false);
-        if (!res || !res.ok) return;
-        this.dailyCountersData.set(res.data ?? []);
-      });
   }
 
   // ── Date range actions ────────────────────────────────────
