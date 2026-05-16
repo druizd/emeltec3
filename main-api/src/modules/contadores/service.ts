@@ -53,8 +53,8 @@ export function lastNMonths(n: number, ref: Date = new Date()): Date[] {
   const baseMonth = current.getUTCMonth(); // 0-indexed
   for (let i = n - 1; i >= 0; i--) {
     const m = baseMonth - i;
-    const date = new Date(Date.UTC(baseYear, m, 1));
-    // Re-aplicamos getMonthRangeChile para obtener el inicio correcto en Chile.
+    // Mediodia UTC para que la fecha caiga en el dia 1 del mes en Chile (UTC-4/-3).
+    const date = new Date(Date.UTC(baseYear, m, 1, 12));
     result.push(getMonthRangeChile(date).start);
   }
   return result;
