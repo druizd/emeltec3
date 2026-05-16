@@ -756,14 +756,13 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     if (points.length === 0) return;
     const unit = this.mensualUnit();
     const rows = points.map((p) => ({
-      Mes: this.formatMesIsoToYm(p.mes),
+      Mes: this.formatMesLargo(p.mes),
       [`Volumen (${unit})`]: p.delta != null ? Number(p.delta.toFixed(3)) : null,
       'Cantidad de registros': p.muestras,
-      'Última lectura': this.formatTimestampShort(p.ultimo_dato),
     }));
     const sheet = XLSX.utils.json_to_sheet(rows);
     // Anchos de columna razonables.
-    sheet['!cols'] = [{ wch: 10 }, { wch: 14 }, { wch: 22 }, { wch: 18 }];
+    sheet['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, sheet, 'Flujo Mensual');
     const siteId = this.resolveSiteId();
@@ -771,25 +770,28 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     XLSX.writeFile(wb, fileName);
   }
 
-  private formatMesIsoToYm(mes: string): string {
-    return mes ? mes.slice(0, 7) : '';
-  }
+  private readonly monthLongNames = [
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
+  ];
 
-  private formatTimestampShort(ts: string | null): string {
-    if (!ts) return '';
-    const d = new Date(ts);
-    if (isNaN(d.getTime())) return '';
-    const parts = new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'America/Santiago',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(d);
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
-    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+  private formatMesLargo(mes: string): string {
+    if (!mes) return '';
+    const date = new Date(`${mes}T00:00:00-04:00`);
+    if (isNaN(date.getTime())) return mes;
+    const name = this.monthLongNames[date.getUTCMonth()] ?? '';
+    const yr = String(date.getUTCFullYear()).slice(2);
+    return `${name} '${yr}`;
   }
 
   private startMonthlyCountersPolling(siteId: string): void {
