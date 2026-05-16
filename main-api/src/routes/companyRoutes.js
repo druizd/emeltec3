@@ -17,6 +17,20 @@ try {
   }
 }
 
+let siteOperacionConfigController = null;
+try {
+  siteOperacionConfigController = require(
+    path.join(__dirname, '..', '..', 'dist', 'modules', 'siteOperacionConfig', 'controller'),
+  );
+} catch (err) {
+  if (err && err.code !== 'MODULE_NOT_FOUND') {
+    console.warn(
+      '[companyRoutes] No se pudo cargar siteOperacionConfig controller:',
+      err.message,
+    );
+  }
+}
+
 // Todas las rutas de companies requieren autenticación
 router.use(protect);
 
@@ -39,6 +53,16 @@ if (contadoresController) {
   router.get('/sites/:siteId/contadores-mensuales', contadoresController.getMonthlySeriesHandler);
   router.get('/sites/:siteId/contadores-diarios', contadoresController.getDailySeriesHandler);
   router.get('/sites/:siteId/contadores-jornadas', contadoresController.getJornadaSeriesHandler);
+}
+if (siteOperacionConfigController) {
+  router.get(
+    '/sites/:siteId/operacion-config',
+    siteOperacionConfigController.getSiteOperacionConfigHandler,
+  );
+  router.put(
+    '/sites/:siteId/operacion-config',
+    siteOperacionConfigController.updateSiteOperacionConfigHandler,
+  );
 }
 router.get('/sites/:siteId/dashboard-history/export', companyController.exportSiteDashboardHistory);
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);

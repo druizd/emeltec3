@@ -40,6 +40,21 @@ export interface ContadorJornadaPoint {
   resets_detectados: number;
 }
 
+export interface SiteOperacionTurno {
+  nombre: string;
+  inicio: string;
+  fin: string;
+}
+
+export interface SiteOperacionConfig {
+  sitio_id: string;
+  num_turnos: 2 | 3;
+  turnos: SiteOperacionTurno[];
+  jornada_inicio: string;
+  jornada_fin: string;
+  updated_at: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -130,6 +145,27 @@ export class CompanyService {
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<ContadorJornadaPoint[]>>(
       `/api/companies/sites/${siteId}/contadores-jornadas?${params.toString()}`,
+    );
+  }
+
+  getSiteOperacionConfig(siteId: string): Observable<ApiResponse<SiteOperacionConfig>> {
+    return this.http.get<ApiResponse<SiteOperacionConfig>>(
+      `/api/companies/sites/${siteId}/operacion-config?t=${Date.now()}`,
+    );
+  }
+
+  updateSiteOperacionConfig(
+    siteId: string,
+    config: {
+      num_turnos: 2 | 3;
+      turnos: SiteOperacionTurno[];
+      jornada_inicio: string;
+      jornada_fin: string;
+    },
+  ): Observable<ApiResponse<SiteOperacionConfig>> {
+    return this.http.put<ApiResponse<SiteOperacionConfig>>(
+      `/api/companies/sites/${siteId}/operacion-config`,
+      config,
     );
   }
 

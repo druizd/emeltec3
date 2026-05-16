@@ -1,11 +1,12 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { toObservable } from '@angular/core/rxjs-interop';
+import { DestroyRef, Injectable, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import {
+  Subject,
+  Subscription,
   catchError,
   combineLatest,
   debounceTime,
   of,
-  Subscription,
   switchMap,
   timer,
 } from 'rxjs';
@@ -14,6 +15,7 @@ import {
   type ContadorDiarioPoint,
   type ContadorJornadaPoint,
   type ContadorMensualPoint,
+  type SiteOperacionTurno,
 } from '../../../../services/company.service';
 
 export interface TurnoConfig {
@@ -35,6 +37,7 @@ export interface HistoricalRow {
 @Injectable()
 export class WaterOperacionStateService {
   private readonly companyService = inject(CompanyService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly numTurnos = signal<2 | 3>(3);
   readonly turnosConfig = signal<TurnoConfig[]>([
@@ -45,6 +48,25 @@ export class WaterOperacionStateService {
 
   readonly jornadaInicio = signal('07:00');
   readonly jornadaFin = signal('07:00');
+
+  // Flag para no salvar durante el load inicial: cuando el GET completa,
+  // setea los signals → effect() veria un cambio y haria PUT redundante.
+  private configHydrated = false;
+  // Trigger de PUT: cada cambio en los signals empuja al subject; con debounce
+  // hacemos un solo PUT por rafaga.
+  private readonly configSaveTrigger$ = new Subject<void>();
+
+  // Effect en constructor (inject context): cada cambio en los 4 signals
+  // dispara el subject si ya hidratamos. El subject (debounced) hace el PUT.
+  private readonly configSaveEffect = effect(() => {
+    // Tocar signals para registrar dependencia.
+    void this.numTurnos();
+    void this.turnosConfig();
+    void this.jornadaInicio();
+    void this.jornadaFin();
+    if (!this.configHydrated || !this.activeSiteId) return;
+    this.configSaveTrigger$.next();
+  });
 
   readonly diaOffset = signal(0);
 
@@ -70,6 +92,7 @@ export class WaterOperacionStateService {
   private monthlySub: Subscription | null = null;
   private dailySub: Subscription | null = null;
   private jornadaSub: Subscription | null = null;
+  private configSaveSub: Subscription | null = null;
   private activeSiteId: string | null = null;
 
   // toObservable solo se permite en contexto de inyeccion — captura en field init.
@@ -80,6 +103,9 @@ export class WaterOperacionStateService {
     if (!siteId || this.activeSiteId === siteId) return;
     this.stopCountersPolling();
     this.activeSiteId = siteId;
+
+    this.hydrateOperacionConfig(siteId);
+    this.startConfigSaveLoop(siteId);
 
     this.monthlyCountersLoading.set(true);
     this.monthlySub = timer(0, 10 * 60_000)
@@ -140,6 +166,71 @@ export class WaterOperacionStateService {
     this.dailySub = null;
     this.jornadaSub = null;
     this.activeSiteId = null;
+    this.configHydrated = false;
+  }
+
+  /**
+   * Carga config persistida del sitio. Si no existe fila, el backend devuelve
+   * defaults; los aplicamos igual para mantener un comportamiento consistente.
+   */
+  private hydrateOperacionConfig(siteId: string): void {
+    this.configHydrated = false;
+    this.companyService
+      .getSiteOperacionConfig(siteId)
+      .pipe(
+        catchError(() => of(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => {
+        if (res && res.ok && res.data) {
+          const cfg = res.data;
+          this.numTurnos.set(cfg.num_turnos === 2 ? 2 : 3);
+          // Aseguramos 3 entradas: si la DB trae menos, completar con defaults.
+          const turnosDb = cfg.turnos ?? [];
+          const filled: TurnoConfig[] = [0, 1, 2].map(
+            (i) =>
+              turnosDb[i] ?? {
+                nombre: `Turno ${i + 1}`,
+                inicio: ['07:00', '15:00', '23:00'][i]!,
+                fin: ['14:59', '22:59', '06:59'][i]!,
+              },
+          );
+          this.turnosConfig.set(filled);
+          this.jornadaInicio.set(cfg.jornada_inicio);
+          this.jornadaFin.set(cfg.jornada_fin);
+        }
+        this.configHydrated = true;
+      });
+  }
+
+  /**
+   * Subscribe al subject de save (creado en field init). Cuando dispare, hace
+   * PUT debounced al sitio activo. Solo se monta una vez por instancia del
+   * service (parent componente).
+   */
+  private startConfigSaveLoop(siteId: string): void {
+    if (this.configSaveSub) return;
+    this.configSaveSub = this.configSaveTrigger$
+      .pipe(
+        debounceTime(500),
+        switchMap(() => {
+          const activeId = this.activeSiteId;
+          if (!activeId) return of(null);
+          const turnos: SiteOperacionTurno[] = this.turnosConfig().slice(0, 3);
+          return this.companyService
+            .updateSiteOperacionConfig(activeId, {
+              num_turnos: this.numTurnos(),
+              turnos,
+              jornada_inicio: this.jornadaInicio(),
+              jornada_fin: this.jornadaFin(),
+            })
+            .pipe(catchError(() => of(null)));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+    // siteId esta capturado por activeSiteId al startCountersPolling.
+    void siteId;
   }
 
   updateTurnoConfig(index: number, field: keyof TurnoConfig, value: string): void {
