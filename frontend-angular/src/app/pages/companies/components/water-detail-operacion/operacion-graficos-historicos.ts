@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import * as XLSX from 'xlsx';
 import { CompanyService, type ContadorMensualPoint } from '../../../../services/company.service';
-import { WaterOperacionStateService } from './water-operacion-state';
+import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
 
 interface LineChart {
   polyline: string;
@@ -143,16 +143,32 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               </div>
               <button
                 type="button"
-                aria-label="Descargar Nivel Freático en CSV"
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                (click)="downloadNivelXlsx()"
+                [disabled]="nivelEmpty()"
+                aria-label="Descargar Nivel Freático en Excel"
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                   >download</span
-                >.CSV
+                >.XLSX
               </button>
             </div>
-            <div class="h-44 w-full">
-              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+            <div class="relative h-44 w-full">
+              @if (nivelEmpty()) {
+                <div
+                  class="flex h-full items-center justify-center text-[11px] text-slate-400"
+                >
+                  Sin datos de nivel freático en el rango seleccionado.
+                </div>
+              } @else {
+              <svg
+                viewBox="0 0 1100 220"
+                class="h-full w-full cursor-crosshair"
+                preserveAspectRatio="none"
+                #nivelSvg
+                (mousemove)="onLineHover('nivel', $event, nivelSvg)"
+                (mouseleave)="clearLineHover('nivel')"
+              >
                 <defs>
                   <linearGradient id="nfGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.25" />
@@ -193,7 +209,37 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
+                @if (nivelHover(); as h) {
+                  <line
+                    [attr.x1]="h.x"
+                    [attr.x2]="h.x"
+                    [attr.y1]="DY"
+                    [attr.y2]="DY + DH"
+                    stroke="#CBD5E1"
+                    stroke-width="1"
+                    stroke-dasharray="4 4"
+                  />
+                  <circle
+                    [attr.cx]="h.x"
+                    [attr.cy]="h.y"
+                    r="4.5"
+                    fill="#ffffff"
+                    stroke="#0DAFBD"
+                    stroke-width="2.5"
+                  />
+                }
               </svg>
+              @if (nivelHover(); as h) {
+                <div
+                  class="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
+                  [style.left.%]="h.leftPct"
+                  [style.top]="'4px'"
+                >
+                  <div class="font-bold">{{ h.label }}</div>
+                  <div class="font-mono">{{ h.value }} {{ h.unit }}</div>
+                </div>
+              }
+              }
             </div>
           </div>
 
@@ -206,16 +252,32 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               </div>
               <button
                 type="button"
-                aria-label="Descargar Caudal Instantáneo en CSV"
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                (click)="downloadCaudalXlsx()"
+                [disabled]="caudalEmpty()"
+                aria-label="Descargar Caudal Instantáneo en Excel"
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                   >download</span
-                >.CSV
+                >.XLSX
               </button>
             </div>
-            <div class="h-44 w-full">
-              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+            <div class="relative h-44 w-full">
+              @if (caudalEmpty()) {
+                <div
+                  class="flex h-full items-center justify-center text-[11px] text-slate-400"
+                >
+                  Sin datos de caudal en el rango seleccionado.
+                </div>
+              } @else {
+              <svg
+                viewBox="0 0 1100 220"
+                class="h-full w-full cursor-crosshair"
+                preserveAspectRatio="none"
+                #caudalSvg
+                (mousemove)="onLineHover('caudal', $event, caudalSvg)"
+                (mouseleave)="clearLineHover('caudal')"
+              >
                 <defs>
                   <linearGradient id="cqGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2" />
@@ -256,7 +318,37 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
+                @if (caudalHover(); as h) {
+                  <line
+                    [attr.x1]="h.x"
+                    [attr.x2]="h.x"
+                    [attr.y1]="DY"
+                    [attr.y2]="DY + DH"
+                    stroke="#CBD5E1"
+                    stroke-width="1"
+                    stroke-dasharray="4 4"
+                  />
+                  <circle
+                    [attr.cx]="h.x"
+                    [attr.cy]="h.y"
+                    r="4.5"
+                    fill="#ffffff"
+                    stroke="#4F46E5"
+                    stroke-width="2.5"
+                  />
+                }
               </svg>
+              @if (caudalHover(); as h) {
+                <div
+                  class="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
+                  [style.left.%]="h.leftPct"
+                  [style.top]="'4px'"
+                >
+                  <div class="font-bold">{{ h.label }}</div>
+                  <div class="font-mono">{{ h.value }} {{ h.unit }}</div>
+                </div>
+              }
+              }
             </div>
           </div>
         </div>
@@ -584,7 +676,7 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
 
   // ── Date range ────────────────────────────────────────────
 
-  private readonly NOW = new Date(2026, 4, 12, 12, 35);
+  private readonly NOW = new Date();
 
   readonly PRESETS: { key: ChartPreset; label: string }[] = [
     { key: '6h', label: 'Últimas 6h' },
@@ -594,11 +686,11 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     { key: '7d', label: 'Últimos 7 días' },
   ];
 
-  readonly chartPreset = signal<ChartPreset>('24h');
+  readonly chartPreset = signal<ChartPreset>('6h');
   readonly chartRangeOpen = signal(false);
-  readonly chartStart = signal<Date>(new Date(this.NOW.getTime() - 24 * 3_600_000));
+  readonly chartStart = signal<Date>(new Date(this.NOW.getTime() - 6 * 3_600_000));
   readonly chartEnd = signal<Date>(new Date(this.NOW));
-  readonly editStart = signal(this.toDatetimeLocal(new Date(this.NOW.getTime() - 24 * 3_600_000)));
+  readonly editStart = signal(this.toDatetimeLocal(new Date(this.NOW.getTime() - 6 * 3_600_000)));
   readonly editEnd = signal(this.toDatetimeLocal(this.NOW));
 
   readonly chartRangeLabel = computed(
@@ -629,22 +721,12 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
 
   // ── SVG drawing area (viewBox: 0 0 1100 220) ─────────────
 
-  private readonly DX = 55;
-  private readonly DY = 15;
-  private readonly DW = 1035;
-  private readonly DH = 170;
+  readonly DX = 55;
+  readonly DY = 15;
+  readonly DW = 1035;
+  readonly DH = 170;
 
-  // ── Raw mock data (24 hourly points, cycled for longer ranges) ────────────
-
-  private readonly nivelRaw = [
-    32.4, 32.3, 32.2, 32.1, 32.0, 32.1, 32.3, 32.5, 32.6, 32.7, 32.6, 32.5, 32.4, 32.3, 32.2, 32.1,
-    32.0, 32.1, 32.2, 32.4, 32.5, 32.6, 32.5, 32.4,
-  ];
-
-  private readonly caudalRaw = [
-    0, 0, 0, 0, 0, 0, 3.1, 3.2, 3.0, 3.1, 3.2, 3.1, 0, 0, 3.0, 3.2, 3.1, 3.0, 3.2, 3.1, 3.0, 0, 0,
-    0,
-  ];
+  // ── Raw mock data (TODO: wire al backend) ────────────────
 
   private readonly diarioRaw = [
     172, 168, 175, 0, 163, 171, 174, 169, 177, 165, 0, 178, 172, 166, 175, 168, 0, 171, 174, 165,
@@ -656,14 +738,104 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
     165, 162, 0, 172, 164, 161, 168, 165, 0, 162,
   ];
 
-  // ── Reactive line charts ──────────────────────────────────
+  // ── Reactive line charts (real data via state) ────────────
 
-  readonly nivel24 = computed(() =>
-    this.buildLineForRange(this.nivelRaw, this.chartStart(), this.chartEnd()),
+  private readonly historyRows = this.state.historyRows;
+
+  private rowsInRange(field: 'caudal' | 'nivelFreatico'): { t: number; v: number }[] {
+    const start = this.chartStart().getTime();
+    const end = this.chartEnd().getTime();
+    return this.historyRows()
+      .filter(
+        (r): r is HistoricalRow & { timestampMs: number } =>
+          r.timestampMs !== null &&
+          r.timestampMs >= start &&
+          r.timestampMs <= end &&
+          r[field] !== null,
+      )
+      .map((r) => ({ t: r.timestampMs, v: r[field] as number }))
+      .sort((a, b) => a.t - b.t);
+  }
+
+  readonly nivel24 = computed(() => this.buildLineByTime(this.rowsInRange('nivelFreatico'), 'm'));
+  readonly caudal24 = computed(() => this.buildLineByTime(this.rowsInRange('caudal'), 'L/s'));
+
+  readonly nivelEmpty = computed(() => this.rowsInRange('nivelFreatico').length === 0);
+  readonly caudalEmpty = computed(() => this.rowsInRange('caudal').length === 0);
+
+  // ── Hover state para tooltips de linea ────────────────────
+
+  readonly nivelHoverIdx = signal<number | null>(null);
+  readonly caudalHoverIdx = signal<number | null>(null);
+
+  readonly nivelHover = computed(() =>
+    this.computeLineHover(this.rowsInRange('nivelFreatico'), this.nivelHoverIdx(), 'm', 2),
   );
-  readonly caudal24 = computed(() =>
-    this.buildLineForRange(this.caudalRaw, this.chartStart(), this.chartEnd()),
+  readonly caudalHover = computed(() =>
+    this.computeLineHover(this.rowsInRange('caudal'), this.caudalHoverIdx(), 'L/s', 2),
   );
+
+  onLineHover(chart: 'nivel' | 'caudal', event: MouseEvent, svg: Element): void {
+    const pts =
+      chart === 'nivel' ? this.rowsInRange('nivelFreatico') : this.rowsInRange('caudal');
+    if (pts.length === 0) {
+      this.clearLineHover(chart);
+      return;
+    }
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const vbX = ((event.clientX - rect.left) / rect.width) * 1100;
+    const start = this.chartStart().getTime();
+    const span = Math.max(1, this.chartEnd().getTime() - start);
+    let nearest = 0;
+    let nearestDist = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const x = this.DX + ((pts[i].t - start) / span) * this.DW;
+      const d = Math.abs(x - vbX);
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = i;
+      }
+    }
+    if (chart === 'nivel') this.nivelHoverIdx.set(nearest);
+    else this.caudalHoverIdx.set(nearest);
+  }
+
+  clearLineHover(chart: 'nivel' | 'caudal'): void {
+    if (chart === 'nivel') this.nivelHoverIdx.set(null);
+    else this.caudalHoverIdx.set(null);
+  }
+
+  private computeLineHover(
+    pts: { t: number; v: number }[],
+    idx: number | null,
+    unit: string,
+    decimals: number,
+  ) {
+    if (idx === null) return null;
+    const p = pts[idx];
+    if (!p) return null;
+    const start = this.chartStart().getTime();
+    const span = Math.max(1, this.chartEnd().getTime() - start);
+    const values = pts.map((q) => q.v);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const x = this.DX + ((p.t - start) / span) * this.DW;
+    const y = this.DY + this.DH - ((p.v - min) / range) * this.DH;
+    return {
+      x,
+      y,
+      leftPct: (x / 1100) * 100,
+      topPct: (y / 220) * 100,
+      label: this.formatChileShort(p.t),
+      value: new Intl.NumberFormat('es-CL', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      }).format(p.v),
+      unit,
+    };
+  }
 
   // ── Bar charts ────────────────────────────────────────────
 
@@ -749,6 +921,63 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
       current = current.parent;
     }
     return '';
+  }
+
+  downloadNivelXlsx(): void {
+    this.downloadTimeseriesXlsx({
+      pts: this.rowsInRange('nivelFreatico'),
+      sheetName: 'Nivel Freatico',
+      valueHeader: 'Nivel (m)',
+      decimals: 2,
+      filePrefix: 'nivel-freatico',
+    });
+  }
+
+  downloadCaudalXlsx(): void {
+    this.downloadTimeseriesXlsx({
+      pts: this.rowsInRange('caudal'),
+      sheetName: 'Caudal',
+      valueHeader: 'Caudal (L/s)',
+      decimals: 2,
+      filePrefix: 'caudal',
+    });
+  }
+
+  private downloadTimeseriesXlsx(opts: {
+    pts: { t: number; v: number }[];
+    sheetName: string;
+    valueHeader: string;
+    decimals: number;
+    filePrefix: string;
+  }): void {
+    const { pts, sheetName, valueHeader, decimals, filePrefix } = opts;
+    if (pts.length === 0) return;
+    const factor = 10 ** decimals;
+    const rows = pts.map((p) => ({
+      'Fecha y hora': this.formatChileShort(p.t),
+      [valueHeader]: Math.round(p.v * factor) / factor,
+    }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    sheet['!cols'] = [{ wch: 18 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, sheetName);
+    const siteId = this.resolveSiteId();
+    const fileName = `${filePrefix}-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
+
+  private formatChileShort(timestampMs: number): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date(timestampMs));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
   }
 
   downloadMensualXlsx(): void {
@@ -856,37 +1085,35 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
 
   // ── Chart builders ────────────────────────────────────────
 
-  private buildLineForRange(rawData: number[], start: Date, end: Date): LineChart {
-    const hours = Math.max(2, Math.round((end.getTime() - start.getTime()) / 3_600_000));
-    const pts = Array.from({ length: hours }, (_, i) => rawData[i % rawData.length]);
+  /**
+   * Construye LineChart desde tuplas (timestamp, valor) reales. X se mapea
+   * proporcional al timestamp dentro de [chartStart, chartEnd], no por indice,
+   * para que series con sampling irregular o gaps se vean correctamente.
+   */
+  private buildLineByTime(pts: { t: number; v: number }[], _unit: string): LineChart {
+    if (pts.length === 0) {
+      return { polyline: '', fill: '', yTicks: [], xLabels: [] };
+    }
 
-    const showDate = hours > 48;
-    const xStep = Math.max(1, Math.round(hours / 6));
+    const start = this.chartStart().getTime();
+    const end = this.chartEnd().getTime();
+    const tSpan = Math.max(1, end - start);
 
-    const labels = pts.map((_, i) => {
-      const d = new Date(start.getTime() + i * 3_600_000);
-      return showDate
-        ? `${d.getDate()}/${d.getMonth() + 1}`
-        : `${String(d.getHours()).padStart(2, '0')}:00`;
-    });
-
-    return this.buildLine(pts, labels, xStep);
-  }
-
-  private buildLine(pts: number[], labels: string[], xStep: number): LineChart {
-    const min = Math.min(...pts);
-    const max = Math.max(...pts);
+    const values = pts.map((p) => p.v);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
     const range = max - min || 1;
-    const step = this.DW / Math.max(pts.length - 1, 1);
 
-    const coords = pts.map((v, i) => {
-      const x = this.DX + i * step;
-      const y = this.DY + this.DH - ((v - min) / range) * this.DH;
+    const coords = pts.map((p) => {
+      const x = this.DX + ((p.t - start) / tSpan) * this.DW;
+      const y = this.DY + this.DH - ((p.v - min) / range) * this.DH;
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     });
 
     const polyline = coords.join(' ');
-    const fill = `${this.DX},${this.DY + this.DH} ${polyline} ${this.DX + this.DW},${this.DY + this.DH}`;
+    const firstX = this.DX + ((pts[0].t - start) / tSpan) * this.DW;
+    const lastX = this.DX + ((pts[pts.length - 1].t - start) / tSpan) * this.DW;
+    const fill = `${firstX.toFixed(1)},${this.DY + this.DH} ${polyline} ${lastX.toFixed(1)},${this.DY + this.DH}`;
 
     const nTicks = 5;
     const yTicks = Array.from({ length: nTicks }, (_, i) => ({
@@ -894,9 +1121,18 @@ export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
       label: (min + (range * i) / (nTicks - 1)).toFixed(1),
     }));
 
+    // X labels: 6 marcas equidistantes en tiempo, formato segun span.
+    const showDate = tSpan > 48 * 3_600_000;
     const xLabels: { x: number; label: string }[] = [];
-    for (let i = 0; i < pts.length; i += xStep) {
-      xLabels.push({ x: Math.round(this.DX + i * step), label: labels[i] ?? '' });
+    const N = 6;
+    for (let i = 0; i <= N; i++) {
+      const t = start + (i / N) * tSpan;
+      const x = this.DX + (i / N) * this.DW;
+      const d = new Date(t);
+      const label = showDate
+        ? `${d.getDate()}/${d.getMonth() + 1}`
+        : `${String(d.getHours()).padStart(2, '0')}:00`;
+      xLabels.push({ x: Math.round(x), label });
     }
 
     return { polyline, fill, yTicks, xLabels };

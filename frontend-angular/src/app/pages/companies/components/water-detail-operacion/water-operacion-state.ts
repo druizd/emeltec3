@@ -8,6 +8,14 @@ export interface TurnoConfig {
 
 export type OperacionPreset = '7d' | '30d' | '90d';
 
+export interface HistoricalRow {
+  timestampMs: number | null;
+  caudal: number | null;
+  nivel: number | null;
+  totalizador: number | null;
+  nivelFreatico: number | null;
+}
+
 @Injectable()
 export class WaterOperacionStateService {
   readonly numTurnos = signal<2 | 3>(3);
@@ -25,6 +33,11 @@ export class WaterOperacionStateService {
   readonly preset = signal<OperacionPreset>('30d');
   readonly fechaDesde = signal('2026-04-10');
   readonly fechaHasta = signal('2026-05-10');
+
+  // Telemetria historica compartida entre las pestañas de Operacion (Hoy /
+  // Graficos historicos). El parent fetches; los hijos consumen.
+  readonly historyRows = signal<HistoricalRow[]>([]);
+  readonly historyLoading = signal(false);
 
   updateTurnoConfig(index: number, field: keyof TurnoConfig, value: string): void {
     this.turnosConfig.update((prev) => {

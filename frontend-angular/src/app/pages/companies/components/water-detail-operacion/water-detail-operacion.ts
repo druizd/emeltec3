@@ -6,7 +6,7 @@ import { CompanyService } from '../../../../services/company.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 import { OperacionGraficosHistoricosComponent } from './operacion-graficos-historicos';
 import { OperacionResumenPeriodoComponent } from './operacion-resumen-periodo';
-import { WaterOperacionStateService } from './water-operacion-state';
+import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
 
 type OperacionModo = 'hoy' | 'historico' | 'resumen';
 
@@ -59,14 +59,6 @@ interface HistoricalApiRow {
   nivel?: HistoricalValue | null;
   totalizador?: HistoricalValue | null;
   nivel_freatico?: HistoricalValue | null;
-}
-
-interface HistoricalRow {
-  timestampMs: number | null;
-  caudal: number | null;
-  nivel: number | null;
-  totalizador: number | null;
-  nivelFreatico: number | null;
 }
 
 interface RealtimeChartPoint {
@@ -544,7 +536,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   readonly modo = signal<OperacionModo>('hoy');
   readonly turnosSettingsOpen = signal(false);
   readonly dashboardData = signal<DashboardData | null>(null);
-  readonly historyRows = signal<HistoricalRow[]>([]);
+  readonly historyRows = this.state.historyRows;
   readonly loading = signal(false);
   readonly loadError = signal('');
   readonly selectedRealtimeTimestamp = signal<number | null>(null);
