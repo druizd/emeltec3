@@ -22,14 +22,15 @@
     "lucide-angular": "^1.0.0",
     "ng2-charts": "^10.0.0",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@angular/build": "^21.2.10",
     "@angular/cli": "^21.2.10",
     "@angular/compiler-cli": "^21.2.12",
-    "@tailwindcss/postcss": "^4.1.12",
     "@eslint/js": "^9.18.0",
+    "@tailwindcss/postcss": "^4.1.12",
     "angular-eslint": "^21.0.0",
     "eslint": "^9.18.0",
     "postcss": "^8.5.3",

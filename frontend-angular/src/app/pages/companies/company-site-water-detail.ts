@@ -2084,27 +2084,30 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                       >
                         @for (month of monthlyFlowMonths(); track $index) {
-                          <div class="flex h-full min-w-0 flex-1 flex-col justify-end">
+                          <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+                            <div
+                              class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-[11px] font-semibold text-white shadow-lg group-hover:block"
+                            >
+                              <div class="font-bold">{{ month.label }}</div>
+                              <div class="font-mono">
+                                {{ formatMonthlyFlowValue(month.value) }} {{ monthlyFlowUnit() }}
+                              </div>
+                              @if (month.proyeccion) {
+                                <div class="font-mono text-slate-300">
+                                  proy. {{ formatMonthlyFlowValue(month.proyeccion) }}
+                                  {{ monthlyFlowUnit() }}
+                                </div>
+                              }
+                              <div
+                                class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-800"
+                              ></div>
+                            </div>
                             <div
                               class="mx-auto flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t"
                               [style.height.%]="
                                 month.proyeccion && month.proyeccion > month.value
                                   ? getMonthlyFlowHeight(month.proyeccion)
                                   : getMonthlyFlowHeight(month.value)
-                              "
-                              [title]="
-                                month.label +
-                                ': ' +
-                                formatMonthlyFlowValue(month.value) +
-                                ' ' +
-                                monthlyFlowUnit() +
-                                (month.proyeccion
-                                  ? ' (proyección ' +
-                                    formatMonthlyFlowValue(month.proyeccion) +
-                                    ' ' +
-                                    monthlyFlowUnit() +
-                                    ')'
-                                  : '')
                               "
                             >
                               @if (month.proyeccion && month.proyeccion > month.value) {
@@ -2114,7 +2117,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 ></div>
                               }
                               <div
-                                class="w-full bg-[#5874c8] shadow-sm transition-opacity hover:opacity-85"
+                                class="w-full bg-[#5874c8] shadow-sm transition-opacity group-hover:opacity-85"
                                 [style.flex]="'1 1 auto'"
                               ></div>
                             </div>

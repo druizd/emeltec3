@@ -1,5 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
+import * as XLSX from 'xlsx';
+import { CompanyService, type ContadorMensualPoint } from '../../../../services/company.service';
 import { WaterOperacionStateService } from './water-operacion-state';
 
 interface LineChart {
@@ -263,63 +267,95 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-sm font-black text-slate-800">Flujo Mensual</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">Últimos 12 meses · m³ totales por mes</p>
+            <p class="mt-0.5 text-[11px] text-slate-400">
+              Últimos 12 meses · {{ mensualUnit() }} totales por mes
+            </p>
           </div>
           <button
             type="button"
-            aria-label="Descargar Flujo Mensual en CSV"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            (click)="downloadMensualXlsx()"
+            [disabled]="mensualLoading() || mensualEmpty()"
+            aria-label="Descargar Flujo Mensual en Excel"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
-            >.CSV
+            >.XLSX
           </button>
         </div>
         <div class="h-44 w-full">
-          <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
-            @for (t of mensual.yTicks; track t.y) {
-              <line
-                x1="55"
-                [attr.y1]="t.y"
-                x2="1090"
-                [attr.y2]="t.y"
-                stroke="#f1f5f9"
-                stroke-width="1"
-              />
-              <text
-                x="50"
-                [attr.y]="t.y + 4"
-                font-size="11"
-                fill="#94a3b8"
-                text-anchor="end"
-                font-family="monospace"
+          @if (mensualLoading()) {
+            <div class="flex h-full items-center justify-center text-[11px] text-slate-400">
+              <span class="material-symbols-outlined mr-1.5 animate-spin text-[16px]"
+                >progress_activity</span
               >
-                {{ t.label }}
-              </text>
-            }
-            @for (l of mensual.xLabels; track l.x) {
-              <text
-                [attr.x]="l.x"
-                y="212"
-                font-size="11"
-                fill="#64748b"
-                text-anchor="middle"
-                font-weight="600"
-              >
-                {{ l.label }}
-              </text>
-            }
-            @for (b of mensual.bars; track b.x) {
-              <rect
-                [attr.x]="b.x"
-                [attr.y]="b.y"
-                [attr.width]="b.w"
-                [attr.height]="b.h"
-                [attr.fill]="b.fill"
-                rx="4"
-                opacity="0.85"
-              />
-            }
-          </svg>
+              Cargando flujo mensual...
+            </div>
+          } @else if (mensualEmpty()) {
+            <div class="flex h-full items-center justify-center text-[11px] text-slate-400">
+              Sin datos de totalizador para este sitio en los últimos 12 meses.
+            </div>
+          } @else {
+            <div class="relative h-full w-full">
+              <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+                @for (t of mensual().yTicks; track t.y) {
+                  <line
+                    x1="55"
+                    [attr.y1]="t.y"
+                    x2="1090"
+                    [attr.y2]="t.y"
+                    stroke="#f1f5f9"
+                    stroke-width="1"
+                  />
+                  <text
+                    x="50"
+                    [attr.y]="t.y + 4"
+                    font-size="11"
+                    fill="#94a3b8"
+                    text-anchor="end"
+                    font-family="monospace"
+                  >
+                    {{ t.label }}
+                  </text>
+                }
+                @for (l of mensual().xLabels; track l.x) {
+                  <text
+                    [attr.x]="l.x"
+                    y="212"
+                    font-size="11"
+                    fill="#64748b"
+                    text-anchor="middle"
+                    font-weight="600"
+                  >
+                    {{ l.label }}
+                  </text>
+                }
+                @for (b of mensual().bars; track b.x; let i = $index) {
+                  <rect
+                    [attr.x]="b.x"
+                    [attr.y]="b.y"
+                    [attr.width]="b.w"
+                    [attr.height]="b.h"
+                    [attr.fill]="b.fill"
+                    rx="4"
+                    [attr.opacity]="mensualHoverIndex() === i ? 1 : 0.85"
+                    (mouseenter)="mensualHoverIndex.set(i)"
+                    (mouseleave)="mensualHoverIndex.set(null)"
+                    class="cursor-pointer transition-opacity"
+                  />
+                }
+              </svg>
+              @if (mensualTooltip(); as tip) {
+                <div
+                  class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
+                  [style.left.%]="tip.leftPct"
+                  [style.top.%]="tip.topPct"
+                >
+                  <div class="font-bold">{{ tip.label }}</div>
+                  <div class="font-mono">{{ tip.value }} {{ tip.unit }}</div>
+                </div>
+              }
+            </div>
+          }
         </div>
       </section>
 
@@ -519,12 +555,32 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
     </div>
   `,
 })
-export class OperacionGraficosHistoricosComponent {
+export class OperacionGraficosHistoricosComponent implements OnInit, OnDestroy {
   private readonly state = inject(WaterOperacionStateService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly companyService = inject(CompanyService);
+  private monthlyCountersSub: Subscription | null = null;
 
   readonly jornadaInicio = this.state.jornadaInicio;
   readonly jornadaFin = this.state.jornadaFin;
   readonly jornadaSettingsOpen = signal(false);
+
+  readonly monthlyCountersData = signal<ContadorMensualPoint[]>([]);
+  readonly monthlyCountersLoading = signal(false);
+  readonly monthShortNames = [
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
+  ];
 
   // ── Date range ────────────────────────────────────────────
 
@@ -590,24 +646,6 @@ export class OperacionGraficosHistoricosComponent {
     0,
   ];
 
-  private readonly mensualRaw = [
-    4821, 5102, 4953, 5231, 4987, 5340, 5108, 4876, 5012, 5230, 5089, 4920,
-  ];
-  private readonly mensualLabels = [
-    'Jun',
-    'Jul',
-    'Ago',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dic',
-    'Ene',
-    'Feb',
-    'Mar',
-    'Abr',
-    'May',
-  ];
-
   private readonly diarioRaw = [
     172, 168, 175, 0, 163, 171, 174, 169, 177, 165, 0, 178, 172, 166, 175, 168, 0, 171, 174, 165,
     172, 169, 0, 179, 171, 168, 175, 172, 0, 169,
@@ -627,9 +665,58 @@ export class OperacionGraficosHistoricosComponent {
     this.buildLineForRange(this.caudalRaw, this.chartStart(), this.chartEnd()),
   );
 
-  // ── Static bar charts ─────────────────────────────────────
+  // ── Bar charts ────────────────────────────────────────────
 
-  readonly mensual: BarChart;
+  readonly mensual = computed<BarChart>(() => {
+    const points = this.monthlyCountersData();
+    if (points.length === 0) return { bars: [], yTicks: [], xLabels: [] };
+    const vals = points.map((p) => p.delta ?? 0);
+    const labels = points.map((p) => {
+      const date = new Date(`${p.mes}T00:00:00-04:00`);
+      return this.monthShortNames[date.getUTCMonth()] ?? '';
+    });
+    return this.buildBars(vals, labels, '#0DAFBD', 1);
+  });
+  readonly mensualUnit = computed(() => this.monthlyCountersData()[0]?.unidad ?? 'm³');
+  readonly mensualLoading = computed(
+    () => this.monthlyCountersLoading() && this.monthlyCountersData().length === 0,
+  );
+  readonly mensualEmpty = computed(
+    () =>
+      !this.monthlyCountersLoading() &&
+      this.monthlyCountersData().every((p) => (p.delta ?? 0) === 0),
+  );
+
+  readonly mensualHoverIndex = signal<number | null>(null);
+
+  readonly mensualTooltip = computed(() => {
+    const idx = this.mensualHoverIndex();
+    if (idx === null) return null;
+    const point = this.monthlyCountersData()[idx];
+    const bar = this.mensual().bars[idx];
+    if (!point || !bar) return null;
+    const date = new Date(`${point.mes}T00:00:00-04:00`);
+    const monthName = this.monthShortNames[date.getUTCMonth()] ?? '';
+    const yr = date.getUTCFullYear();
+    const value = point.delta != null ? this.formatVolume(point.delta) : '—';
+    const leftPct = ((bar.x + bar.w / 2) / 1100) * 100;
+    const topPct = (bar.y / 220) * 100;
+    return {
+      label: `${monthName} ${yr}`,
+      value,
+      unit: this.mensualUnit(),
+      leftPct,
+      topPct,
+    };
+  });
+
+  private formatVolume(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(value);
+  }
+
   readonly diario: BarChart;
   readonly turno7: BarChart;
 
@@ -640,9 +727,87 @@ export class OperacionGraficosHistoricosComponent {
       d.setDate(d.getDate() + i);
       return `${d.getDate()}/${d.getMonth() + 1}`;
     });
-    this.mensual = this.buildBars(this.mensualRaw, this.mensualLabels, '#0DAFBD', 1);
     this.diario = this.buildBars(this.diarioRaw, day30, '#0DAFBD', 5);
     this.turno7 = this.buildBars(this.turno7Raw, day30, '#7C3AED', 5);
+  }
+
+  ngOnInit(): void {
+    const siteId = this.resolveSiteId();
+    if (!siteId) return;
+    this.startMonthlyCountersPolling(siteId);
+  }
+
+  ngOnDestroy(): void {
+    this.monthlyCountersSub?.unsubscribe();
+  }
+
+  private resolveSiteId(): string {
+    let current: ActivatedRoute | null = this.route;
+    while (current) {
+      const siteId = current.snapshot.paramMap.get('siteId');
+      if (siteId) return siteId;
+      current = current.parent;
+    }
+    return '';
+  }
+
+  downloadMensualXlsx(): void {
+    const points = this.monthlyCountersData();
+    if (points.length === 0) return;
+    const unit = this.mensualUnit();
+    const rows = points.map((p) => ({
+      Mes: this.formatMesIsoToYm(p.mes),
+      [`Volumen (${unit})`]: p.delta != null ? Number(p.delta.toFixed(3)) : null,
+      'Cantidad de registros': p.muestras,
+      'Última lectura': this.formatTimestampShort(p.ultimo_dato),
+    }));
+    const sheet = XLSX.utils.json_to_sheet(rows);
+    // Anchos de columna razonables.
+    sheet['!cols'] = [{ wch: 10 }, { wch: 14 }, { wch: 22 }, { wch: 18 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, sheet, 'Flujo Mensual');
+    const siteId = this.resolveSiteId();
+    const fileName = `flujo-mensual-${siteId || 'sitio'}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
+
+  private formatMesIsoToYm(mes: string): string {
+    return mes ? mes.slice(0, 7) : '';
+  }
+
+  private formatTimestampShort(ts: string | null): string {
+    if (!ts) return '';
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
+  }
+
+  private startMonthlyCountersPolling(siteId: string): void {
+    this.monthlyCountersLoading.set(true);
+    this.monthlyCountersSub?.unsubscribe();
+    this.monthlyCountersSub = timer(0, 10 * 60_000)
+      .pipe(
+        switchMap(() =>
+          this.companyService
+            .getSiteMonthlyCounters(siteId, { rol: 'totalizador', meses: 12 })
+            .pipe(catchError(() => of(null))),
+        ),
+      )
+      .subscribe((res) => {
+        this.monthlyCountersLoading.set(false);
+        if (!res || !res.ok) return;
+        this.monthlyCountersData.set(res.data ?? []);
+      });
   }
 
   // ── Date range actions ────────────────────────────────────
