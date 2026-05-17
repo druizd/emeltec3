@@ -1,4 +1,4 @@
-﻿import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -98,7 +98,7 @@ const TIPOS: DocumentoTipo[] = [
             <div>
               <label
                 class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >Archivo (mÃ¡x 25 MB)</label
+                >Archivo (máx 25 MB)</label
               >
               <input
                 #fileInput
@@ -117,12 +117,12 @@ const TIPOS: DocumentoTipo[] = [
               <div>
                 <label
                   class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
-                  >TÃ­tulo</label
+                  >Título</label
                 >
                 <input
                   type="text"
                   [(ngModel)]="draft.titulo"
-                  placeholder="Ej. Cert. calibraciÃ³n caudalÃ­metro"
+                  placeholder="Ej. Cert. calibración caudalímetro"
                   class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
                 />
               </div>
@@ -143,7 +143,7 @@ const TIPOS: DocumentoTipo[] = [
               <div>
                 <label
                   class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
-                  >VersiÃ³n</label
+                  >Versión</label
                 >
                 <input
                   type="text"
@@ -169,7 +169,7 @@ const TIPOS: DocumentoTipo[] = [
             <div>
               <label
                 class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >DescripciÃ³n (opcional)</label
+                >Descripción (opcional)</label
               >
               <textarea
                 rows="2"
@@ -193,7 +193,7 @@ const TIPOS: DocumentoTipo[] = [
                 class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
-                {{ uploading() ? 'Subiendoâ€¦' : 'Subir' }}
+                {{ uploading() ? 'Subiendo…' : 'Subir' }}
               </button>
             </div>
           </div>
@@ -218,7 +218,7 @@ const TIPOS: DocumentoTipo[] = [
                 <th
                   class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
                 >
-                  VersiÃ³n
+                  Versión
                 </th>
                 <th
                   class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
@@ -236,7 +236,7 @@ const TIPOS: DocumentoTipo[] = [
               @if (loading()) {
                 <tr>
                   <td colspan="5" class="px-4 py-10 text-center text-[12px] text-slate-400">
-                    Cargando documentosâ€¦
+                    Cargando documentos…
                   </td>
                 </tr>
               } @else {
@@ -255,7 +255,7 @@ const TIPOS: DocumentoTipo[] = [
                         <div class="min-w-0">
                           <p class="truncate font-semibold text-slate-800">{{ doc.titulo }}</p>
                           <p class="truncate text-[11px] text-slate-400">
-                            {{ doc.nombre_original }} Â· {{ formatBytes(doc.size_bytes) }}
+                            {{ doc.nombre_original }} · {{ formatBytes(doc.size_bytes) }}
                           </p>
                         </div>
                       </div>
@@ -269,7 +269,7 @@ const TIPOS: DocumentoTipo[] = [
                       </span>
                     </td>
                     <td class="px-4 py-3 font-mono text-[12px] text-slate-700">
-                      v{{ doc.version || 'â€”' }}
+                      v{{ doc.version || '—' }}
                     </td>
                     <td class="px-4 py-3 text-[11px] text-slate-500">
                       <p>{{ formatFecha(doc.created_at) }}</p>
@@ -342,7 +342,7 @@ export class BitacoraDocumentosComponent {
 
   readonly tiposFiltro: { key: TipoFiltro; label: string }[] = [
     { key: 'todos', label: 'Todos' },
-    { key: 'ficha_tecnica', label: 'Ficha tÃ©cnica' },
+    { key: 'ficha_tecnica', label: 'Ficha técnica' },
     { key: 'datasheet', label: 'Datasheet' },
     { key: 'certificado', label: 'Certificados' },
     { key: 'manual', label: 'Manuales' },
@@ -459,7 +459,7 @@ export class BitacoraDocumentosComponent {
   }
 
   eliminar(doc: DocumentoRow): void {
-    if (!confirm(`Â¿Eliminar "${doc.titulo}"? El archivo y su metadata se borran.`)) return;
+    if (!confirm(`¿Eliminar "${doc.titulo}"? El archivo y su metadata se borran.`)) return;
     this.documentoService.eliminar(doc.id).subscribe({
       next: () => this.documentos.update((ds) => ds.filter((d) => d.id !== doc.id)),
       error: (err) => this.errorMsg.set(err?.error?.error || 'Error eliminando'),

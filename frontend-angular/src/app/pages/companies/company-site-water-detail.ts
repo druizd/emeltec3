@@ -1,4 +1,4 @@
-﻿import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -229,10 +229,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Volumen acumulado.',
       },
       {
-        id: 'seÃƒÂ±al',
-        label: 'SeÃƒÂ±al',
+        id: 'seÃ±al',
+        label: 'SeÃ±al',
         unitHint: '%',
-        description: 'Intensidad de seÃƒÂ±al.',
+        description: 'Intensidad de seÃ±al.',
       },
       {
         id: 'generico',
@@ -293,10 +293,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Temperatura asociada.',
       },
       {
-        id: 'seÃƒÂ±al',
-        label: 'SeÃƒÂ±al',
+        id: 'seÃ±al',
+        label: 'SeÃ±al',
         unitHint: '%',
-        description: 'Intensidad de seÃƒÂ±al.',
+        description: 'Intensidad de seÃ±al.',
       },
       {
         id: 'generico',
@@ -357,10 +357,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Presion de proceso.',
       },
       {
-        id: 'seÃƒÂ±al',
-        label: 'SeÃƒÂ±al',
+        id: 'seÃ±al',
+        label: 'SeÃ±al',
         unitHint: '%',
-        description: 'Intensidad de seÃƒÂ±al.',
+        description: 'Intensidad de seÃ±al.',
       },
       {
         id: 'generico',
@@ -421,10 +421,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         description: 'Temperatura de proceso.',
       },
       {
-        id: 'seÃƒÂ±al',
-        label: 'SeÃƒÂ±al',
+        id: 'seÃ±al',
+        label: 'SeÃ±al',
         unitHint: '%',
-        description: 'Intensidad de seÃƒÂ±al.',
+        description: 'Intensidad de seÃ±al.',
       },
       {
         id: 'generico',
@@ -574,7 +574,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div
               class="flex items-center gap-5 px-3"
               role="tablist"
-              aria-label="PestaÃ±as de detalle del sitio"
+              aria-label="Pestañas de detalle del sitio"
             >
               <button
                 type="button"
@@ -604,7 +604,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >monitoring</span
                 >
-                OperaciÃ³n
+                Operación
                 @if (activeDetailTab() === 'operacion') {
                   <span
                     class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
@@ -642,7 +642,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >menu_book</span
                 >
-                BitÃ¡cora
+                Bitácora
                 @if (activeDetailTab() === 'bitacora') {
                   <span
                     class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
@@ -661,7 +661,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >insights</span
                 >
-                AnÃ¡lisis
+                Análisis
                 @if (activeDetailTab() === 'analisis') {
                   <span
                     class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
@@ -1384,9 +1384,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               class="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-emerald-700"
             >
               <span class="material-symbols-outlined text-[16px]">verified</span>
-              <span class="text-[11px] font-bold">Ãšltimo reporte DGA aceptado</span>
-              <span class="text-[11px] text-emerald-500">Â·</span>
-              <span class="font-mono text-[11px] font-bold">07/04/2026 06:00 â€“ 07:00</span>
+              <span class="text-[11px] font-bold">Último reporte DGA aceptado</span>
+              <span class="text-[11px] text-emerald-500">·</span>
+              <span class="font-mono text-[11px] font-bold">07/04/2026 06:00 – 07:00</span>
             </div>
             <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
               <article
@@ -1403,7 +1403,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
               >
                 <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Ãšltimo envÃ­o
+                  Último envío
                 </p>
                 <p class="mt-1 text-lg font-black leading-none text-slate-800">26 abr 2026</p>
                 <p class="mt-1 text-xs font-semibold text-slate-500">21:00</p>
@@ -1595,7 +1595,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             />
                           }
 
-                          <!-- Well casing â€” empty air gap -->
+                          <!-- Well casing — empty air gap -->
                           <rect
                             [attr.x]="svgWellL + 4"
                             [attr.y]="svgWellTop"
@@ -1812,7 +1812,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             </text>
                           }
 
-                          <!-- RIGHT BRACKET: Superficie â†’ Nivel FreÃ¡tico (dynamic) -->
+                          <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
                           <!-- Superficie circle (at ground level) -->
                           <circle
                             [attr.cx]="svgAnnotX"
@@ -1833,7 +1833,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             Superficie
                           </text>
 
-                          <!-- Vertical dashed line: Superficie â†’ Nivel FreÃ¡tico -->
+                          <!-- Vertical dashed line: Superficie → Nivel Freático -->
                           <line
                             [attr.x1]="svgAnnotX"
                             [attr.y1]="svgWellTop + 3"
@@ -1844,7 +1844,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             stroke-dasharray="4 3"
                           />
 
-                          <!-- Nivel FreÃ¡tico circle + horizontal line into well -->
+                          <!-- Nivel Freático circle + horizontal line into well -->
                           <circle
                             [attr.cx]="svgAnnotX"
                             [attr.cy]="svgWaterY"
@@ -1860,7 +1860,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             stroke-width="1.5"
                             stroke-dasharray="4 2"
                           />
-                          <!-- Nivel FreÃ¡tico label: centered above the horizontal dashed line -->
+                          <!-- Nivel Freático label: centered above the horizontal dashed line -->
                           <text
                             [attr.x]="(svgAnnotX + svgWellR - 5) / 2"
                             [attr.y]="svgWaterY - 7"
@@ -1870,7 +1870,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             font-weight="700"
                             text-anchor="middle"
                           >
-                            Nv. FreÃ¡tico
+                            Nv. Freático
                           </text>
 
                           <!-- Left depth arrow -->
@@ -1921,7 +1921,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           <p
                             style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
                           >
-                            Nv. FreÃ¡tico
+                            Nv. Freático
                           </p>
                           <p
                             style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0DAFBD;line-height:1"
@@ -1988,7 +1988,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             <p
                               style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px"
                             >
-                              % SeÃ±al
+                              % Señal
                             </p>
                             <p
                               style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1"
@@ -2012,7 +2012,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           <p
                             style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
                           >
-                            Ãšltimo dato recibido
+                            Último dato recibido
                           </p>
                           <p
                             style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#1E293B;line-height:1"
@@ -2053,7 +2053,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div class="flex items-center gap-3 text-xs font-bold text-slate-400">
                       <span class="inline-flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[16px]">info</span>
-                        Ãšltimos 12 meses
+                        Últimos 12 meses
                       </span>
                       <button
                         type="button"
@@ -2144,7 +2144,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </article>
 
                 <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <p class="mb-2 text-sm font-black text-slate-700">Acciones RÃ¡pidas</p>
+                  <p class="mb-2 text-sm font-black text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
                       <button
@@ -2201,9 +2201,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       @for (
                         h of [
                           'Fecha',
-                          'Nv. FreÃ¡tico [m]',
+                          'Nv. Freático [m]',
                           'Caudal [l/s]',
-                          'Totalizador [mÂ³]',
+                          'Totalizador [m³]',
                           'Estado',
                         ];
                         track h
@@ -2359,7 +2359,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
                 <div>
-                  <h2 class="text-lg font-black text-slate-800">Filtrar por PerÃ­odo</h2>
+                  <h2 class="text-lg font-black text-slate-800">Filtrar por Período</h2>
                   <p class="text-xs font-semibold text-slate-400">Registros DGA</p>
                 </div>
               </div>
@@ -2377,7 +2377,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <!-- Left: presets + months -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
                 <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                  PerÃ­odos rÃ¡pidos
+                  Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
                   @for (preset of downloadPresets; track preset.id) {
@@ -2441,7 +2441,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span
                     class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500"
                   >
-                    {{ dgaModalDaysCount() > 0 ? dgaModalDaysCount() + ' dÃ­as' : 'â€”' }}
+                    {{ dgaModalDaysCount() > 0 ? dgaModalDaysCount() + ' días' : '—' }}
                   </span>
                 </div>
 
@@ -2488,7 +2488,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 "
                 class="text-slate-500 transition-colors hover:text-slate-800"
               >
-                Limpiar selecciÃ³n
+                Limpiar selección
               </button>
               <div class="flex items-center gap-3">
                 <button
@@ -2551,7 +2551,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <!-- Left panel: presets + month selector -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
                 <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                  PerÃ­odos rÃ¡pidos
+                  Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
                   @for (preset of downloadPresets; track preset.id) {
@@ -2616,7 +2616,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span
                     class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-500"
                   >
-                    {{ downloadDaysCount() > 0 ? downloadDaysCount() + ' dÃ­as' : 'â€”' }}
+                    {{ downloadDaysCount() > 0 ? downloadDaysCount() + ' días' : '—' }}
                   </span>
                 </div>
 
@@ -2712,7 +2712,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     : downloadSelectedTypes().length +
                       ' variable' +
                       (downloadSelectedTypes().length > 1 ? 's' : '') +
-                      ' Â· ' +
+                      ' · ' +
                       downloadFormat().toUpperCase()
                 }}
               </p>
@@ -2764,7 +2764,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <div>
                   <h2 class="text-base font-black text-slate-800">Reporte DGA</h2>
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                    Formato oficial Â· perÃ­odo a exportar
+                    Formato oficial · período a exportar
                   </p>
                 </div>
               </div>
@@ -2777,10 +2777,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </button>
             </div>
 
-            <!-- Presets rÃ¡pidos -->
+            <!-- Presets rápidos -->
             <div class="px-5 pt-4">
               <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
-                PerÃ­odo rÃ¡pido
+                Período rápido
               </p>
               <div class="grid grid-cols-3 gap-1.5">
                 @for (preset of downloadPresets; track preset.id) {
@@ -2876,7 +2876,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 }
               </div>
               <p class="mt-1 text-[10px] text-slate-400">
-                1 fila por bucket. La mediciÃ³n es la mÃ¡s reciente dentro del bucket.
+                1 fila por bucket. La medición es la más reciente dentro del bucket.
               </p>
             </div>
 
@@ -2890,12 +2890,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
             }
             <p class="px-5 py-2 text-[11px] text-slate-500 italic">
-              Para configurar informantes, transport y caudal mÃ¡x del pozo, usÃ¡ el botÃ³n
+              Para configurar informantes, transport y caudal máx del pozo, usá el botón
               <span class="font-semibold text-cyan-700">Configurar reporte DGA</span> del
               panel de Settings del pozo.
             </p>
 
-            <!-- Footer: rango + acciÃ³n -->
+            <!-- Footer: rango + acción -->
             <div
               class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
             >
@@ -2904,7 +2904,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   {{ dgaReportRangeLabel() }}
                 </p>
                 <p class="text-[10px] font-semibold text-slate-400">
-                  {{ dgaReportDaysCount() > 0 ? dgaReportDaysCount() + ' dÃ­as' : 'â€”' }}
+                  {{ dgaReportDaysCount() > 0 ? dgaReportDaysCount() + ' días' : '—' }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
@@ -3259,7 +3259,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }[] = [
     { value: 'minuto', label: 'Cada minuto' },
     { value: 'hora', label: 'Cada hora' },
-    { value: 'dia', label: 'Cada dÃ­a' },
+    { value: 'dia', label: 'Cada día' },
     { value: 'semana', label: 'Cada semana' },
     { value: 'mes', label: 'Cada mes' },
   ];
@@ -3317,7 +3317,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
   wellSensorDepth = computed(() => this.extractPozoNumber('profundidad_sensor_m'));
   wellSignalPercent = computed<number | null>(() => {
-    const raw = this.findDashboardNumber('seÃ±al');
+    const raw = this.findDashboardNumber('señal');
     if (raw === null) return null;
     return Math.round(this.clamp(raw, 0, 100));
   });
@@ -3334,7 +3334,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
 
-  // SVG Well Diagram â€” dimensions & layout
+  // SVG Well Diagram — dimensions & layout
   readonly svgW = 300;
   readonly svgH = 476;
   readonly svgWellL = 80;
@@ -3342,12 +3342,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   readonly svgWellTop = 40;
   readonly svgWellBot = 464;
   readonly svgWellH = 424;
-  readonly svgAnnotX = 272; // x del bracket derecho Superficieâ†’Nivel FreÃ¡tico
+  readonly svgAnnotX = 272; // x del bracket derecho Superficie→Nivel Freático
   readonly svgGrassX = [
     6, 14, 22, 30, 42, 52, 176, 186, 198, 210, 222, 234, 246, 258, 270, 282, 292,
   ];
 
-  // nivelFreatico = profundidad desde superficie â†’ waterY = top + (nivel/totalDepth)*H
+  // nivelFreatico = profundidad desde superficie → waterY = top + (nivel/totalDepth)*H
   get svgWaterY(): number {
     const d = this.wellTotalDepth() ?? 18;
     const f = this.wellNivelFreatico() ?? 0;
@@ -3405,9 +3405,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.dashboardData()?.ultima_lectura?.time ||
         '',
     ).trim();
-    if (!raw) return 'â€”';
+    if (!raw) return '—';
     const parsed = this.parseUtcTimestamp(raw);
-    if (!parsed) return 'â€”';
+    if (!parsed) return '—';
     return new Intl.DateTimeFormat('es-CL', {
       timeZone: CHILE_TIME_ZONE,
       hour: '2-digit',
@@ -3436,8 +3436,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const from = this.downloadDateFrom();
     const to = this.downloadDateTo();
     if (!from && !to) return 'Sin rango seleccionado';
-    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : 'â€”');
-    return `${fmt(from)} â€” ${fmt(to)}`;
+    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : '—');
+    return `${fmt(from)} — ${fmt(to)}`;
   });
   downloadDaysCount = computed(() => {
     const f = this.downloadDateFrom();
@@ -3455,8 +3455,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const from = this.dgaDateFrom();
     const to = this.dgaDateTo();
     if (!from && !to) return 'Sin rango seleccionado';
-    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : 'â€”');
-    return `${fmt(from)} â€” ${fmt(to)}`;
+    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : '—');
+    return `${fmt(from)} — ${fmt(to)}`;
   });
   dgaReportDaysCount = computed(() => {
     const f = this.dgaReportDateFrom();
@@ -3467,9 +3467,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaReportRangeLabel = computed(() => {
     const from = this.dgaReportDateFrom();
     const to = this.dgaReportDateTo();
-    if (!from && !to) return 'Selecciona un perÃ­odo';
-    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : 'â€”');
-    return `${fmt(from)} â€” ${fmt(to)}`;
+    if (!from && !to) return 'Selecciona un período';
+    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : '—');
+    return `${fmt(from)} — ${fmt(to)}`;
   });
   historySourceRows = computed(() => {
     if (this.historyRows().length) return this.historyRows();
@@ -3524,7 +3524,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       {
         label: 'Totalizador',
         value: this.formatRealtimeNumber(totalizador, 0),
-        unit: 'mÂ³',
+        unit: 'm³',
       },
       {
         label: 'Nivel de Agua',
@@ -3534,7 +3534,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       {
         label: 'Consumo Hoy',
         value: this.formatRealtimeNumber(consumoHoy, 1),
-        unit: 'mÂ³',
+        unit: 'm³',
       },
     ];
   });
@@ -3656,8 +3656,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (max <= 0) return 100;
     // Pad 5% para no dejar la barra pegada al borde.
     const padded = max * 1.05;
-    // Escalera "lindos" mas densa que {1,2,5,10}: evita saltos como 201â†’500
-    // (antes), ahora 201â†’250. Cubre el caso del usuario donde el eje quedaba
+    // Escalera "lindos" mas densa que {1,2,5,10}: evita saltos como 201→500
+    // (antes), ahora 201→250. Cubre el caso del usuario donde el eje quedaba
     // 2-3x mas grande que la barra real.
     const ladder = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
     const magnitude = Math.pow(10, Math.floor(Math.log10(padded)));
@@ -3675,21 +3675,21 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return [1, 0.75, 0.5, 0.25, 0].map((f) => fmt.format(max * f));
   });
 
-  monthlyFlowUnit = computed<string>(() => this.monthlyCountersData()[0]?.unidad ?? 'mÂ³');
+  monthlyFlowUnit = computed<string>(() => this.monthlyCountersData()[0]?.unidad ?? 'm³');
 
   private readonly monthlyFlowFallback: MonthlyFlowPoint[] = [
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
-    { label: 'â€”', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
+    { label: '—', value: 0 },
   ];
 
   readonly dgaDatePresets = [
@@ -3732,11 +3732,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   ];
 
   readonly downloadPresets = [
-    { id: 'last7', label: 'Ãšltimos 7 dÃ­as' },
-    { id: 'last30', label: 'Ãšltimos 30 dÃ­as' },
-    { id: 'last90', label: 'Ãšltimos 90 dÃ­as' },
-    { id: 'thisYear', label: 'Este aÃ±o' },
-    { id: 'lastYear', label: 'AÃ±o pasado' },
+    { id: 'last7', label: 'Últimos 7 días' },
+    { id: 'last30', label: 'Últimos 30 días' },
+    { id: 'last90', label: 'Últimos 90 días' },
+    { id: 'thisYear', label: 'Este año' },
+    { id: 'lastYear', label: 'Año pasado' },
   ];
 
   readonly downloadMonthNames = [
@@ -3771,8 +3771,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   readonly downloadDataTypeOptions = [
     { id: 'caudal', label: 'Caudal', unit: 'L/s' },
     { id: 'nivel', label: 'Nivel', unit: 'm' },
-    { id: 'totalizador', label: 'Totalizador', unit: 'mÂ³' },
-    { id: 'nivel_freatico', label: 'Nivel FreÃ¡tico', unit: 'm' },
+    { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
+    { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
   ];
 
   readonly historyMockRows: HistoricalTelemetryRow[] = [
@@ -4119,12 +4119,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (!siteId) return;
     this.dgaLoading.set(true);
     try {
-      // Rango default = Ãºltimos 30 dÃ­as si no se seleccionÃ³ nada.
+      // Rango default = últimos 30 días si no se seleccionó nada.
       const from = this.dgaDateFrom()
         ? this.toChileStartIso(this.dgaDateFrom())
         : new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
       const to = this.dgaDateTo() ? this.toChileEndIso(this.dgaDateTo()) : new Date().toISOString();
-      // Lee de dato_dga (pipeline nuevo) â€” trae estatus real + comprobante SNIA.
+      // Lee de dato_dga (pipeline nuevo) — trae estatus real + comprobante SNIA.
       const rows = await firstValueFrom(
         this.dgaService.consultarDatoBySite(siteId, from, to),
       );
@@ -4138,8 +4138,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   /**
    * Mapea una fila de dato_dga al modelo de la tabla "Detalle de Registros".
-   * Convierte el estatus tÃ©cnico del pipeline a la etiqueta humana que
-   * muestra el badge: vacioâ†’Pendiente, requires_reviewâ†’Revisar, etc.
+   * Convierte el estatus técnico del pipeline a la etiqueta humana que
+   * muestra el badge: vacio→Pendiente, requires_review→Revisar, etc.
    */
   private datoDgaToRow(r: DatoDgaRow, idx: number): DgaReportRow {
     const estadoMap: Record<DatoDgaRow['estatus'], string> = {
@@ -4152,13 +4152,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       fallido: 'Fallido',
     };
     const respuestaMap: Record<DatoDgaRow['estatus'], string> = {
-      vacio: 'Slot pre-seedeado, aÃºn sin telemetrÃ­a rellenada',
-      pendiente: 'Pendiente de envÃ­o a SNIA',
-      requires_review: 'AnomalÃ­as detectadas â€” esperando decisiÃ³n admin',
-      enviando: 'EnvÃ­o a SNIA en curso',
-      enviado: 'MediciÃ³n subterrÃ¡nea ingresada correctamente',
-      rechazado: 'Rechazado por MIA-DGA â€” reintentarÃ¡ en 24h',
-      fallido: 'Reintentos agotados â€” requiere intervenciÃ³n manual',
+      vacio: 'Slot pre-seedeado, aún sin telemetría rellenada',
+      pendiente: 'Pendiente de envío a SNIA',
+      requires_review: 'Anomalías detectadas — esperando decisión admin',
+      enviando: 'Envío a SNIA en curso',
+      enviado: 'Medición subterránea ingresada correctamente',
+      rechazado: 'Rechazado por MIA-DGA — reintentará en 24h',
+      fallido: 'Reintentos agotados — requiere intervención manual',
     };
     return {
       id: `dga-${idx}-${r.ts}`,
@@ -4283,8 +4283,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   onDgaConfigChanged(): void {
-    // El modal hace el persist; acÃ¡ refrescamos solo lo que el water-detail muestra
-    // (Detalle de Registros usa dato_dga; si cambiÃ³ obra_dga puede afectar lookups
+    // El modal hace el persist; acá refrescamos solo lo que el water-detail muestra
+    // (Detalle de Registros usa dato_dga; si cambió obra_dga puede afectar lookups
     // posteriores). Recargamos al cerrar.
   }
 
@@ -4867,11 +4867,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       return;
     }
     if (!from || !to) {
-      this.dgaReportError.set('SeleccionÃ¡ un rango de fechas.');
+      this.dgaReportError.set('Seleccioná un rango de fechas.');
       return;
     }
 
-    // Rango interpretado en hora Chile UTC-4. `hasta` exclusivo: dÃ­a siguiente 00:00.
+    // Rango interpretado en hora Chile UTC-4. `hasta` exclusivo: día siguiente 00:00.
     const desdeIso = `${from}T00:00:00-04:00`;
     const hastaDate = new Date(`${to}T00:00:00-04:00`);
     hastaDate.setUTCDate(hastaDate.getUTCDate() + 1);
@@ -5265,9 +5265,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         text.includes('signal') ||
         text.includes('rssi') ||
         text.includes('csq')) &&
-      availableRoles.has('seÃ±al')
+      availableRoles.has('señal')
     )
-      return 'seÃ±al';
+      return 'señal';
 
     return 'generico';
   }
