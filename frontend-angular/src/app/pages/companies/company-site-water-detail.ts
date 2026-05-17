@@ -541,7 +541,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
                 <div class="min-w-0">
                   <h1 class="truncate text-xl font-black leading-tight text-slate-800">
-                    {{ getSiteName(context) }}
+                    {{ getSiteHeaderLabel(context) }}
                   </h1>
                   <p class="truncate text-[11px] font-semibold text-slate-400">
                     {{ context.subCompany.nombre }}
@@ -3904,6 +3904,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   getSiteName(context: SiteContext): string {
     return context.site?.descripcion || context.subCompany?.nombre || 'Instalacion de agua';
+  }
+
+  /** Header largo: "Nombre · OB-XXXX-XXX" si el sitio tiene obra_dga. */
+  getSiteHeaderLabel(context: SiteContext): string {
+    const name = this.getSiteName(context);
+    const obra = context.site?.pozo_config?.obra_dga?.trim();
+    return obra ? `${name} · ${obra}` : name;
   }
 
   getDgaStatusBg(estado: string): string {

@@ -14,6 +14,8 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 interface SiteItem {
   id: string;
   label: string;
+  /** Código DGA (OB-XXXX-XXX) del primer pozo con obra_dga cargado, si existe. */
+  obraDga: string | null;
   siteCount: number;
   siteTypes: string[];
   searchText: string;
@@ -202,7 +204,14 @@ const MODULES = SITE_MODULES;
                             class="absolute left-[-10px] top-1/2 block h-px w-2"
                             [style.background]="activeSiteId() === site.id ? '#0dafbd' : '#e2e8f0'"
                           ></span>
-                          <span class="block truncate">{{ site.label }}</span>
+                          <span class="block truncate">
+                            {{ site.label }}
+                            @if (site.obraDga) {
+                              <span class="ml-1 font-mono text-[9.5px] font-normal text-[#94a3b8]"
+                                >· {{ site.obraDga }}</span
+                              >
+                            }
+                          </span>
                         </button>
                       }
                     </div>
@@ -475,13 +484,24 @@ export class SidebarComponent implements OnInit {
       return null;
     }
 
+    // Si hay 1 sitio con obra_dga cargado, lo mostramos al lado del label.
+    // Si hay varios, no mostramos código (ambiguo).
+    const obrasDga = matchingSites
+      .map((s) => s.pozo_config?.obra_dga?.trim())
+      .filter((v): v is string => !!v);
+    const obraDga = obrasDga.length === 1 ? obrasDga[0]! : null;
+
     return {
       id: subCompany.id,
       label: subCompany.nombre || subCompany.id,
+      obraDga,
       siteCount: matchingSites.length,
       siteTypes: [...new Set(matchingSites.map((site) => normalizeSiteType(site.tipo_sitio)))],
       searchText: matchingSites
-        .map((site) => `${site.descripcion || ''} ${site.id_serial || ''} ${site.ubicacion || ''}`)
+        .map(
+          (site) =>
+            `${site.descripcion || ''} ${site.id_serial || ''} ${site.ubicacion || ''} ${site.pozo_config?.obra_dga || ''}`,
+        )
         .join(' '),
     };
   }
