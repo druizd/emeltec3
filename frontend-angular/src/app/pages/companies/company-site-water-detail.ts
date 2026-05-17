@@ -1455,11 +1455,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     >
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
-                    <span
-                      class="inline-flex items-center gap-1 text-[11px] text-emerald-700 opacity-70 group-hover:opacity-100"
-                    >
-                      <span class="material-symbols-outlined text-[14px]">open_in_new</span>
-                    </span>
                   </a>
                 } @else {
                   <article
