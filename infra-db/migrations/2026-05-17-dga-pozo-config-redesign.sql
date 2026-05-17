@@ -177,15 +177,20 @@ END $$;
 
 ALTER TABLE dato_dga ADD COLUMN IF NOT EXISTS site_id VARCHAR(10);
 
--- Backfill desde dga_user (solo si existe; si ya se corrió, site_id ya está poblado)
+-- Backfill desde dga_user (solo si la col d.id_dgauser todavia existe;
+-- si ya se corrió este migration en deploy anterior, id_dgauser fue
+-- dropeada y site_id ya está poblado). EXISTS dga_user no basta porque
+-- 2026-05-12 recrea dga_user vacía cada deploy.
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'dga_user') THEN
-    UPDATE dato_dga d
-       SET site_id = u.site_id
-      FROM dga_user u
-     WHERE d.id_dgauser = u.id_dgauser
-       AND d.site_id IS NULL;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'dga_user')
+     AND EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_name = 'dato_dga' AND column_name = 'id_dgauser') THEN
+    EXECUTE 'UPDATE dato_dga d
+                SET site_id = u.site_id
+               FROM dga_user u
+              WHERE d.id_dgauser = u.id_dgauser
+                AND d.site_id IS NULL';
   END IF;
 END $$;
 
@@ -235,12 +240,14 @@ ALTER TABLE dga_send_audit ADD COLUMN IF NOT EXISTS site_id VARCHAR(10);
 
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'dga_user') THEN
-    UPDATE dga_send_audit a
-       SET site_id = u.site_id
-      FROM dga_user u
-     WHERE a.id_dgauser = u.id_dgauser
-       AND a.site_id IS NULL;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'dga_user')
+     AND EXISTS (SELECT 1 FROM information_schema.columns
+                  WHERE table_name = 'dga_send_audit' AND column_name = 'id_dgauser') THEN
+    EXECUTE 'UPDATE dga_send_audit a
+                SET site_id = u.site_id
+               FROM dga_user u
+              WHERE a.id_dgauser = u.id_dgauser
+                AND a.site_id IS NULL';
   END IF;
 END $$;
 
