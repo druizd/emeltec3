@@ -7,6 +7,8 @@ export interface SiteRecord {
   ubicacion?: string | null;
   tipo_sitio: string;
   activo: boolean;
+  /** Populated por companies/tree (attachPozoConfigsToSites). Opcional en otros contextos. */
+  pozo_config?: PozoConfig | null;
   created_at?: string;
   updated_at?: string;
 }
