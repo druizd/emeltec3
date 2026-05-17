@@ -276,40 +276,54 @@ async function attachPozoConfigsToSites(sites) {
   }));
 }
 
-function parsePozoConfig(rawConfig = {}) {
+async function upsertPozoConfig(client, siteId, rawConfig = {}) {
   const source = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
 
-  return {
-    profundidad_pozo_m: parseOptionalNumber(source.profundidad_pozo_m),
-    profundidad_sensor_m: parseOptionalNumber(source.profundidad_sensor_m),
-    nivel_estatico_manual_m: parseOptionalNumber(source.nivel_estatico_manual_m),
-    obra_dga: nullableString(source.obra_dga),
-    slug: nullableString(source.slug),
-  };
-}
+  // PATCH parcial: solo actualiza los campos presentes en el body. Si el
+  // caller manda solo { obra_dga: 'OB-...' }, no debe nullear las
+  // profundidades o el slug. Detectamos presencia con Object.hasOwn().
+  //
+  // Insertion (cuando no existe row): los campos no presentes quedan NULL
+  // (es lo esperado, no había data previa).
+  // Update (cuando existe row): los campos no presentes se preservan via
+  // COALESCE con el valor anterior (EXCLUDED para insert vs pozo_config.*
+  // para update).
+  const hasProfPozo = Object.prototype.hasOwnProperty.call(source, 'profundidad_pozo_m');
+  const hasProfSensor = Object.prototype.hasOwnProperty.call(source, 'profundidad_sensor_m');
+  const hasNivelEstatico = Object.prototype.hasOwnProperty.call(source, 'nivel_estatico_manual_m');
+  const hasObraDga = Object.prototype.hasOwnProperty.call(source, 'obra_dga');
+  const hasSlug = Object.prototype.hasOwnProperty.call(source, 'slug');
 
-async function upsertPozoConfig(client, siteId, rawConfig = {}) {
-  const config = parsePozoConfig(rawConfig);
+  const profPozo = hasProfPozo ? parseOptionalNumber(source.profundidad_pozo_m) : null;
+  const profSensor = hasProfSensor ? parseOptionalNumber(source.profundidad_sensor_m) : null;
+  const nivelEstatico = hasNivelEstatico ? parseOptionalNumber(source.nivel_estatico_manual_m) : null;
+  const obraDga = hasObraDga ? nullableString(source.obra_dga) : null;
+  const slug = hasSlug ? nullableString(source.slug) : null;
 
   const { rows } = await client.query(
     `INSERT INTO pozo_config
        (sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug)
      VALUES ($1, $2, $3, $4, $5, $6)
      ON CONFLICT (sitio_id) DO UPDATE SET
-       profundidad_pozo_m = EXCLUDED.profundidad_pozo_m,
-       profundidad_sensor_m = EXCLUDED.profundidad_sensor_m,
-       nivel_estatico_manual_m = EXCLUDED.nivel_estatico_manual_m,
-       obra_dga = EXCLUDED.obra_dga,
-       slug = EXCLUDED.slug,
-       updated_at = NOW()
+       profundidad_pozo_m      = CASE WHEN $7  THEN EXCLUDED.profundidad_pozo_m      ELSE pozo_config.profundidad_pozo_m      END,
+       profundidad_sensor_m    = CASE WHEN $8  THEN EXCLUDED.profundidad_sensor_m    ELSE pozo_config.profundidad_sensor_m    END,
+       nivel_estatico_manual_m = CASE WHEN $9  THEN EXCLUDED.nivel_estatico_manual_m ELSE pozo_config.nivel_estatico_manual_m END,
+       obra_dga                = CASE WHEN $10 THEN EXCLUDED.obra_dga                ELSE pozo_config.obra_dga                END,
+       slug                    = CASE WHEN $11 THEN EXCLUDED.slug                    ELSE pozo_config.slug                    END,
+       updated_at              = NOW()
      RETURNING ${POZO_CONFIG_COLUMNS}`,
     [
       siteId,
-      config.profundidad_pozo_m,
-      config.profundidad_sensor_m,
-      config.nivel_estatico_manual_m,
-      config.obra_dga,
-      config.slug,
+      profPozo,
+      profSensor,
+      nivelEstatico,
+      obraDga,
+      slug,
+      hasProfPozo,
+      hasProfSensor,
+      hasNivelEstatico,
+      hasObraDga,
+      hasSlug,
     ],
   );
 
