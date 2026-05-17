@@ -3,7 +3,13 @@
  * según el scope del usuario. Hot-path en login y panel principal.
  */
 import { scopeByTenant, type AuthUser } from '../../shared/permissions';
-import { attachPozoConfigsToSites, listCompanies, listSites, listSubCompanies } from './repo';
+import {
+  attachLastSeenToSites,
+  attachPozoConfigsToSites,
+  listCompanies,
+  listSites,
+  listSubCompanies,
+} from './repo';
 import type { HierarchyNode, HierarchySite, SubCompany } from './types';
 
 export async function getHierarchyTreeForUser(user: AuthUser): Promise<HierarchyNode[]> {
@@ -22,7 +28,8 @@ export async function getHierarchyTreeForUser(user: AuthUser): Promise<Hierarchy
     listSites(scope.empresaIds, scope.subEmpresaIds),
   ]);
 
-  const sites = await attachPozoConfigsToSites(sitesRaw);
+  const sitesWithPozo = await attachPozoConfigsToSites(sitesRaw);
+  const sites = await attachLastSeenToSites(sitesWithPozo);
   const sitesBySub = groupBy(sites, (s) => s.sub_empresa_id ?? '__none__');
   const subsByCompany = groupBy(subCompanies, (sc) => sc.empresa_id);
 

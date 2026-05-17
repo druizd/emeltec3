@@ -9,6 +9,8 @@ export interface SiteRecord {
   activo: boolean;
   /** Populated por companies/tree (attachPozoConfigsToSites). Opcional en otros contextos. */
   pozo_config?: PozoConfig | null;
+  /** Populated por companies/tree (attachLastSeenToSites) — MAX(equipo.time) por id_serial. */
+  last_seen_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

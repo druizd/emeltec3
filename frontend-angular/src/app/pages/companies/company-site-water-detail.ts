@@ -1432,65 +1432,90 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <p class="mt-1 text-xs font-semibold text-emerald-500">en rango filtrado</p>
               </article>
 
-              <!-- Último envío: ABSOLUTE, no afectado por filtro -->
-              <article
-                class="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm"
-                title="Último envío exitoso a SNIA (independiente del filtro de fechas)"
-              >
-                <div class="flex items-center gap-1.5">
-                  <span
-                    class="material-symbols-outlined text-[14px] text-emerald-600"
-                    >verified</span
+              <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
+              @if (dgaUltimoEnvio()?.comprobante; as comp) {
+                @if (comprobanteUrl(comp); as url) {
+                  <a
+                    [href]="url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    [title]="'Abrir comprobante en SNIA · ' + comp"
+                    class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
                   >
-                  <p
-                    class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700"
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[14px] text-emerald-600"
+                        >verified</span
+                      >
+                      <p class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                        Último envío aceptado
+                      </p>
+                    </div>
+                    <p
+                      class="text-center font-mono text-[20px] font-black leading-tight text-slate-800"
+                    >
+                      {{ dgaUltimoEnvioFecha() }}
+                    </p>
+                    <span
+                      class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 opacity-80 group-hover:opacity-100"
+                    >
+                      <span class="material-symbols-outlined text-[12px]">receipt_long</span>
+                      Comprobante SNIA
+                      <span class="material-symbols-outlined text-[11px]">open_in_new</span>
+                    </span>
+                  </a>
+                } @else {
+                  <article
+                    class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm"
+                    [title]="'Cargá número de obra para habilitar link SNIA · ' + comp"
                   >
+                    <div class="flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[14px] text-emerald-600"
+                        >verified</span
+                      >
+                      <p class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                        Último envío aceptado
+                      </p>
+                    </div>
+                    <p class="text-center font-mono text-[20px] font-black leading-tight text-slate-800">
+                      {{ dgaUltimoEnvioFecha() }}
+                    </p>
+                    <span class="truncate font-mono text-[10px] text-slate-500">{{ comp }}</span>
+                  </article>
+                }
+              } @else {
+                <article
+                  class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
+                >
+                  <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
                     Último envío aceptado
                   </p>
-                </div>
-                <p
-                  class="font-mono text-[14px] font-black leading-tight text-slate-800"
-                >
-                  {{ dgaUltimoEnvioFecha() }}
-                </p>
-                @if (dgaUltimoEnvio()?.comprobante; as comp) {
-                  @if (comprobanteUrl(comp); as url) {
-                    <a
-                      [href]="url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      class="group inline-flex items-center gap-1 truncate text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
-                      [title]="'Abrir comprobante en SNIA: ' + comp"
-                    >
-                      <span class="material-symbols-outlined text-[12px]">receipt_long</span>
-                      <span class="truncate font-mono">{{ comp }}</span>
-                      <span
-                        class="material-symbols-outlined text-[11px] opacity-60 group-hover:opacity-100"
-                        >open_in_new</span
-                      >
-                    </a>
-                  } @else {
-                    <span
-                      class="inline-flex items-center gap-1 truncate font-mono text-[10px] text-slate-500"
-                      [title]="'Cargá número de obra para link SNIA · ' + comp"
-                    >
-                      <span class="material-symbols-outlined text-[12px]">receipt_long</span>
-                      {{ comp }}
-                    </span>
-                  }
-                } @else {
+                  <p class="text-[20px] font-black text-slate-400">—</p>
                   <span class="text-[11px] italic text-slate-400">sin envíos aún</span>
-                }
-              </article>
+                </article>
+              }
 
-              <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos) -->
+              <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
               <article
-                class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
+                [class]="
+                  'rounded-xl border px-4 py-3 text-center shadow-sm ' +
+                  dgaTasaExitoColors().border +
+                  ' ' +
+                  dgaTasaExitoColors().bg
+                "
               >
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                <p
+                  [class]="
+                    'text-[10px] font-black uppercase tracking-[0.2em] ' +
+                    dgaTasaExitoColors().text
+                  "
+                >
                   Tasa de éxito
                 </p>
-                <p class="mt-1 text-3xl font-black leading-none text-slate-800">
+                <p
+                  [class]="
+                    'mt-1 text-3xl font-black leading-none ' + dgaTasaExitoColors().text
+                  "
+                >
                   {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                 </p>
                 <p class="mt-1 text-[11px] font-semibold text-slate-400">en rango filtrado</p>
@@ -3469,6 +3494,27 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (denom === 0) return null;
     return Math.round((enviados / denom) * 1000) / 10; // 1 decimal
   });
+  /**
+   * Color de la tasa de éxito según %. Escala verde→naranja→rojo.
+   * - 100% verde fuerte
+   * - 90-99% emerald
+   * - 75-89% lime
+   * - 60-74% amber
+   * - 40-59% orange
+   * - <40% red
+   * - null (sin denominador) → slate.
+   */
+  dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
+    const t = this.dgaTasaExito();
+    if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
+    if (t >= 100) return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
+    if (t >= 90) return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+    if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
+    if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
+    if (t >= 40) return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
+    return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
+  });
+
   /** Formato corto fecha+hora del último envío (Chile UTC-4). */
   dgaUltimoEnvioFecha = computed<string>(() => {
     const u = this.dgaUltimoEnvio();

@@ -15,37 +15,34 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
       [class]="getCardClass()"
     >
       @if (variant === 'superadmin') {
-        <div class="flex items-start justify-between gap-3">
-          <div class="flex min-w-0 items-start gap-3">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex min-w-0 items-start gap-2">
             <div
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-600"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-100 bg-cyan-50 text-cyan-600"
             >
-              <span class="material-symbols-outlined text-[18px]">{{ getSiteIcon() }}</span>
+              <span class="material-symbols-outlined text-[16px]">{{ getSiteIcon() }}</span>
             </div>
 
             <div class="min-w-0">
-              <h3 class="truncate text-[15px] font-bold text-slate-800">{{ getSiteTitle() }}</h3>
-              <p class="truncate text-xs text-slate-400">{{ getSiteSecondary() }}</p>
+              <h3 class="truncate text-[13px] font-bold text-slate-800">{{ getSiteTitle() }}</h3>
+              <p class="truncate text-[10px] text-slate-400">{{ getSiteSecondary() }}</p>
             </div>
           </div>
 
           <span
-            class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-cyan-500"
+            class="material-symbols-outlined text-[14px] text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-cyan-500"
           >
             chevron_right
           </span>
         </div>
 
-        <div class="mt-4 flex items-end justify-between gap-3 border-t border-slate-100 pt-3">
+        <div class="mt-2 flex items-end justify-between gap-2 border-t border-slate-100 pt-2">
           <div class="min-w-0">
-            <p class="truncate text-[12px] text-slate-500">{{ getContextLine() }}</p>
+            <p class="truncate text-[10px] text-slate-500">{{ getContextLine() }}</p>
           </div>
 
-          <div class="flex shrink-0 items-center gap-3 text-[11px]">
+          <div class="flex shrink-0 items-center gap-2 text-[10px]">
             <span [class]="getTypeBadgeClass()">{{ getSiteTypeLabel() }}</span>
-            @if (getSiteTypeId() === 'pozo') {
-              <span class="text-slate-400">{{ getDepthLabel() }}</span>
-            }
             <span [class]="'inline-flex items-center gap-1 font-semibold ' + getStatusClass()">
               <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
               {{ getStatusLabel() }}
@@ -53,17 +50,17 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
           </div>
         </div>
       } @else {
-        <div class="mb-4 flex items-start justify-between">
-          <div class="flex items-center gap-3">
+        <div class="mb-3 flex items-start justify-between">
+          <div class="flex items-center gap-2.5">
             <div
               [class]="
-                'flex h-10 w-10 items-center justify-center rounded-lg transition-colors ' +
+                'flex h-9 w-9 items-center justify-center rounded-lg transition-colors ' +
                 (selected ? 'bg-blue-50' : 'bg-slate-100 group-hover:bg-blue-50')
               "
             >
               <span
                 [class]="
-                  'material-symbols-outlined transition-colors ' +
+                  'material-symbols-outlined text-[18px] transition-colors ' +
                   (selected
                     ? 'text-primary-container'
                     : 'text-slate-500 group-hover:text-primary-container')
@@ -71,16 +68,16 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
                 >{{ getSiteIcon() }}</span
               >
             </div>
-            <div>
-              <h3 class="max-w-[150px] truncate text-sm font-bold text-primary">
+            <div class="min-w-0">
+              <h3 class="max-w-[180px] truncate text-[13px] font-bold text-primary">
                 {{ getSiteTitle() }}
               </h3>
-              <p class="mt-0.5 text-xs text-slate-500">{{ getSiteSecondary() }}</p>
+              <p class="mt-0.5 truncate text-[11px] text-slate-500">{{ getSiteSecondary() }}</p>
             </div>
           </div>
           <span
             [class]="
-              'material-symbols-outlined transition-all ' +
+              'material-symbols-outlined text-[16px] transition-all ' +
               (selected
                 ? 'translate-x-1 text-primary-container'
                 : 'text-slate-300 group-hover:translate-x-1 group-hover:text-primary-container')
@@ -89,16 +86,18 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
           >
         </div>
 
-        <div class="flex items-center justify-between border-t border-slate-100 pt-3">
+        <div class="flex items-center justify-between border-t border-slate-100 pt-2">
           <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[14px] text-emerald-500">{{
+            <span class="material-symbols-outlined text-[12px] text-slate-400">{{
               getSiteIcon()
             }}</span>
-            <span class="text-[11px] font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
+            <span class="text-[10px] font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
           </div>
           <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[14px] text-slate-400">schedule</span>
-            <span class="text-[11px] text-slate-400">Hace 5 min</span>
+            <span [class]="'h-1.5 w-1.5 rounded-full ' + getStatusDotClass()"></span>
+            <span [class]="'text-[10px] font-semibold ' + getStatusClass()">{{
+              getStatusLabel()
+            }}</span>
           </div>
         </div>
       }
@@ -113,26 +112,41 @@ export class SiteCardComponent {
 
   @Output() siteSelected = new EventEmitter<SiteRecord>();
 
+  /** Padding/border más compactos para que la tarjeta sea más chica. */
   getCardClass(): string {
     if (this.variant === 'superadmin') {
       return [
-        'group w-full cursor-pointer rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200',
+        'group w-full cursor-pointer rounded-xl border bg-white px-3 py-3 text-left transition-all duration-200',
         this.selected
-          ? 'border-cyan-200 shadow-[0_10px_28px_rgba(8,145,178,0.16)]'
-          : 'border-slate-200/90 shadow-[0_6px_18px_rgba(15,23,42,0.05)] hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_12px_28px_rgba(8,145,178,0.12)]',
+          ? 'border-cyan-200 shadow-[0_6px_18px_rgba(8,145,178,0.14)]'
+          : 'border-slate-200/90 shadow-[0_3px_10px_rgba(15,23,42,0.04)] hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_8px_20px_rgba(8,145,178,0.1)]',
       ].join(' ');
     }
 
     return [
-      'group w-full cursor-pointer rounded-xl border bg-white p-5 text-left transition-all duration-200',
+      'group w-full cursor-pointer rounded-xl border bg-white p-3 text-left transition-all duration-200',
       this.selected
-        ? 'border-primary-container ring-2 ring-primary-container/15 shadow-lg shadow-blue-900/10'
-        : 'border-slate-200 hover:border-slate-300 hover:shadow-lg',
+        ? 'border-primary-container ring-2 ring-primary-container/15 shadow-md shadow-blue-900/10'
+        : 'border-slate-200 hover:border-slate-300 hover:shadow-md',
     ].join(' ');
   }
 
+  /**
+   * Título del card: descripción del sitio + " · OB-XXXX-XXX" si es pozo
+   * y tiene obra_dga cargada. Si no, solo descripción.
+   */
   getSiteTitle(): string {
-    return this.pickFirst(['descripcion', 'nombre', 'name', 'codigo']) ?? 'Instalacion';
+    const base = this.pickFirst(['descripcion', 'nombre', 'name', 'codigo']) ?? 'Instalacion';
+    const obra = this.getObraDga();
+    return obra ? `${base} · ${obra}` : base;
+  }
+
+  /** obra_dga del pozo si está cargada, sino null. */
+  private getObraDga(): string | null {
+    const raw = this.site?.pozo_config?.obra_dga;
+    if (typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    return trimmed || null;
   }
 
   getSiteSecondary(): string {
@@ -149,15 +163,6 @@ export class SiteCardComponent {
     );
   }
 
-  getDepthLabel(): string {
-    const depth = this.pickFirst(['profundidad', 'prof', 'depth', 'prof_metros']);
-    if (depth !== null && depth !== undefined && `${depth}`.trim() !== '') {
-      return `Prof. ${depth}m`;
-    }
-
-    return 'Prof. --';
-  }
-
   getSiteTypeId(): string {
     return getSiteTypeUi(this.site?.tipo_sitio).id;
   }
@@ -171,50 +176,72 @@ export class SiteCardComponent {
   }
 
   getTypeBadgeClass(): string {
-    return `rounded-md px-2 py-1 text-xs font-bold ${getSiteTypeUi(this.site?.tipo_sitio).badgeClass}`;
+    return `rounded-md px-1.5 py-0.5 text-[10px] font-bold ${getSiteTypeUi(this.site?.tipo_sitio).badgeClass}`;
   }
 
+  /**
+   * Estado conectado a la última lectura. Requiere que backend pueble
+   * `site.last_seen_at` (timestamp ISO) — sin este campo, fallback a
+   * los flags status/transmision_activa pre-existentes.
+   *
+   * Etiquetas:
+   *   - "En vivo"   → última lectura < 1h    (verde)
+   *   - "Con datos" → < 24h                  (cyan)
+   *   - "Sin datos" → ≥ 24h o sin timestamp  (gris)
+   */
   getStatusLabel(): string {
+    const ageMin = this.lastSeenAgeMinutes();
+    if (ageMin !== null) {
+      if (ageMin < 60) return 'En vivo';
+      if (ageMin < 24 * 60) return 'Con datos';
+      return 'Sin datos';
+    }
+
+    // Fallback a flags legacy si backend no manda last_seen_at todavía.
     const rawStatus = this.pickFirst(['status', 'estado', 'data_status', 'estado_datos']);
     if (typeof rawStatus === 'string') {
       const normalized = rawStatus.toLowerCase();
-      if (normalized.includes('vivo') || normalized.includes('activo')) {
-        return 'En vivo';
-      }
-      if (normalized.includes('sin')) {
-        return 'Sin datos';
-      }
-      if (normalized.includes('con')) {
-        return 'Con datos';
-      }
+      if (normalized.includes('vivo') || normalized.includes('activo')) return 'En vivo';
+      if (normalized.includes('sin')) return 'Sin datos';
+      if (normalized.includes('con')) return 'Con datos';
       return rawStatus;
     }
-
     const hasData = this.pickFirst(['hasData', 'has_data', 'tiene_datos', 'dataAvailable']);
-    if (typeof hasData === 'boolean') {
-      return hasData ? 'Con datos' : 'Sin datos';
-    }
-
+    if (typeof hasData === 'boolean') return hasData ? 'Con datos' : 'Sin datos';
     const live = this.pickFirst(['transmision_activa', 'is_live', 'online']);
-    if (typeof live === 'boolean') {
-      return live ? 'En vivo' : 'Sin datos';
-    }
-
+    if (typeof live === 'boolean') return live ? 'En vivo' : 'Sin datos';
     return 'Sin datos';
   }
 
   getStatusClass(): string {
     const status = this.getStatusLabel().toLowerCase();
-
-    if (status.includes('vivo')) {
-      return 'text-emerald-500';
-    }
-
-    if (status.includes('con')) {
-      return 'text-cyan-600';
-    }
-
+    if (status.includes('vivo')) return 'text-emerald-500';
+    if (status.includes('con')) return 'text-cyan-600';
     return 'text-slate-400';
+  }
+
+  getStatusDotClass(): string {
+    const status = this.getStatusLabel().toLowerCase();
+    if (status.includes('vivo')) return 'bg-emerald-500';
+    if (status.includes('con')) return 'bg-cyan-500';
+    return 'bg-slate-300';
+  }
+
+  /**
+   * Minutos transcurridos desde la última lectura, o null si el backend
+   * no manda timestamp. Probamos varios nombres de campo por compat.
+   */
+  private lastSeenAgeMinutes(): number | null {
+    const raw = this.pickFirst([
+      'last_seen_at',
+      'ultima_lectura_at',
+      'last_telemetry_at',
+      'ultimaLecturaAt',
+    ]);
+    if (!raw) return null;
+    const t = new Date(raw).getTime();
+    if (!Number.isFinite(t)) return null;
+    return Math.max(0, Math.round((Date.now() - t) / 60_000));
   }
 
   private pickFirst(keys: string[]): string | null {
@@ -225,7 +252,6 @@ export class SiteCardComponent {
         return `${value}`;
       }
     }
-
     return null;
   }
 }

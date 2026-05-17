@@ -205,12 +205,6 @@ const MODULES = SITE_MODULES;
                             [style.background]="activeSiteId() === site.id ? '#0dafbd' : '#e2e8f0'"
                           ></span>
                           <span class="block min-w-0 truncate">{{ site.label }}</span>
-                          @if (site.obraDga) {
-                            <span
-                              class="block truncate pl-2 font-mono text-[9px] font-normal leading-tight text-[#94a3b8]"
-                              >{{ site.obraDga }}</span
-                            >
-                          }
                         </button>
                       }
                     </div>

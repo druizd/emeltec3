@@ -99,3 +99,35 @@ export async function attachPozoConfigsToSites<T extends { id: string }>(
   const map = new Map(r.rows.map((row) => [row.sitio_id, row]));
   return sites.map((s) => ({ ...s, pozo_config: map.get(s.id) ?? null }));
 }
+
+/**
+ * Anexa `last_seen_at` = MAX(equipo.time) por id_serial del sitio. Usado
+ * por las tarjetas de la página "Instalaciones" para colorear el estado
+ * según frescura del dato (En vivo <1h / Con datos <24h / Sin datos ≥24h).
+ *
+ * Aprovecha idx_equipo_serial_time (existe en init-db). Una sola query
+ * agrupada — eficiente incluso con N sitios.
+ */
+export async function attachLastSeenToSites<T extends { id_serial?: string | null }>(
+  sites: T[],
+): Promise<Array<T & { last_seen_at: string | null }>> {
+  if (sites.length === 0) return sites.map((s) => ({ ...s, last_seen_at: null }));
+  const serials = sites
+    .map((s) => s.id_serial)
+    .filter((v): v is string => typeof v === 'string' && v.length > 0);
+  if (serials.length === 0) return sites.map((s) => ({ ...s, last_seen_at: null }));
+
+  const r = await query<{ id_serial: string; last_seen: string }>(
+    `SELECT id_serial, MAX(time)::text AS last_seen
+       FROM equipo
+      WHERE id_serial = ANY($1::text[])
+      GROUP BY id_serial`,
+    [serials],
+    { name: 'companies__last_seen_per_serial' },
+  );
+  const map = new Map(r.rows.map((row) => [row.id_serial, row.last_seen]));
+  return sites.map((s) => ({
+    ...s,
+    last_seen_at: s.id_serial ? (map.get(s.id_serial) ?? null) : null,
+  }));
+}
