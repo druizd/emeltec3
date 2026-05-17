@@ -2188,12 +2188,29 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <button
                         type="button"
                         (click)="handleQuickAction(action)"
-                        class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-cyan-200 hover:bg-white hover:shadow-sm"
+                        [disabled]="quickActionDisabled(action)"
+                        [title]="quickActionTitle(action)"
+                        [class]="
+                          quickActionDisabled(action)
+                            ? 'rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-left opacity-50 cursor-not-allowed'
+                            : 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-cyan-200 hover:bg-white hover:shadow-sm'
+                        "
                       >
-                        <span [class]="'material-symbols-outlined text-[20px] ' + action.color">{{
-                          action.icon
-                        }}</span>
-                        <p class="mt-0.5 text-sm font-black text-slate-800">
+                        <span
+                          [class]="
+                            quickActionDisabled(action)
+                              ? 'material-symbols-outlined text-[20px] text-slate-400'
+                              : 'material-symbols-outlined text-[20px] ' + action.color
+                          "
+                          >{{ action.icon }}</span
+                        >
+                        <p
+                          [class]="
+                            quickActionDisabled(action)
+                              ? 'mt-0.5 text-sm font-black text-slate-500'
+                              : 'mt-0.5 text-sm font-black text-slate-800'
+                          "
+                        >
                           {{ action.title }}
                         </p>
                         <p class="text-xs font-medium text-slate-400">
@@ -3760,6 +3777,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       title: 'Ver en DGA',
       subtitle: 'Portal oficial',
       color: 'text-blue-600',
+      openDga: true,
     },
     {
       icon: 'description',
@@ -4693,6 +4711,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     openHistory?: boolean;
     openDownload?: boolean;
     openDgaReport?: boolean;
+    openDga?: boolean;
   }): void {
     if (action.openHistory) {
       this.openHistoryView();
@@ -4706,9 +4725,40 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       this.openDgaReportModal();
       return;
     }
+    if (action.openDga) {
+      const obra = this.currentSiteObraDga();
+      if (!obra) return; // disabled cuando no hay obra; el click no debería llegar igual
+      window.open(
+        `https://snia.mop.gob.cl/cExtracciones2/#/consultaQR/${encodeURIComponent(obra)}`,
+        '_blank',
+        'noopener,noreferrer',
+      );
+      return;
+    }
     if (action.tab) {
       this.setDetailTab(action.tab);
     }
+  }
+
+  /** obra_dga del sitio actual, o null si no está cargada. */
+  currentSiteObraDga(): string | null {
+    const raw = this.siteContext()?.site?.pozo_config?.obra_dga;
+    if (typeof raw !== 'string') return null;
+    const trimmed = raw.trim();
+    return trimmed || null;
+  }
+
+  /** true si la acción debe mostrarse deshabilitada (gris + sin click). */
+  quickActionDisabled(action: { openDga?: boolean }): boolean {
+    return action.openDga === true && !this.currentSiteObraDga();
+  }
+
+  /** Tooltip para el botón. Solo informa cuando está deshabilitado. */
+  quickActionTitle(action: { openDga?: boolean }): string {
+    if (action.openDga && !this.currentSiteObraDga()) {
+      return 'Sin número de obra asignado';
+    }
+    return '';
   }
 
   openHistoryView(): void {
