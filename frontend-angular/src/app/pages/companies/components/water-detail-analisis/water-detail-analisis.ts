@@ -3,18 +3,11 @@ import { Component, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AnalisisSaludComponent } from './analisis-salud';
 import { AnalisisCalendarioComponent } from './analisis-calendario';
-import { AnalisisReportesComponent } from './analisis-reportes';
 import { AnalisisMetricasComponent } from './analisis-metricas';
 import { AnalisisSugerenciasComponent } from './analisis-sugerencias';
 import { AnalisisPredictivoComponent } from './analisis-predictivo';
 
-type AnalisisSection =
-  | 'salud'
-  | 'calendario'
-  | 'reportes'
-  | 'metricas'
-  | 'sugerencias'
-  | 'predictivo';
+type AnalisisSection = 'salud' | 'calendario' | 'metricas' | 'sugerencias' | 'predictivo';
 
 interface AnalisisTabItem {
   key: AnalisisSection;
@@ -30,7 +23,6 @@ interface AnalisisTabItem {
     FormsModule,
     AnalisisSaludComponent,
     AnalisisCalendarioComponent,
-    AnalisisReportesComponent,
     AnalisisMetricasComponent,
     AnalisisSugerenciasComponent,
     AnalisisPredictivoComponent,
@@ -51,7 +43,7 @@ interface AnalisisTabItem {
                 Análisis
               </p>
               <h2 class="truncate text-lg font-black leading-tight text-slate-800">
-                Salud, calendario, reportes y métricas
+                Salud, calendario y métricas
               </h2>
             </div>
           </div>
@@ -92,8 +84,6 @@ interface AnalisisTabItem {
         <app-analisis-salud [sitioId]="sitioId()" />
       } @else if (activeSection() === 'calendario') {
         <app-analisis-calendario />
-      } @else if (activeSection() === 'reportes') {
-        <app-analisis-reportes [sitioId]="sitioId()" />
       } @else if (activeSection() === 'metricas') {
         <app-analisis-metricas [sitioId]="sitioId()" />
       } @else if (activeSection() === 'sugerencias') {
@@ -111,7 +101,6 @@ export class WaterDetailAnalisisComponent {
   readonly tabs: AnalisisTabItem[] = [
     { key: 'salud', label: 'Salud del sistema', icon: 'monitor_heart' },
     { key: 'calendario', label: 'Calendario', icon: 'calendar_month' },
-    { key: 'reportes', label: 'Reportes', icon: 'download' },
     { key: 'metricas', label: 'Métricas', icon: 'leaderboard' },
     { key: 'sugerencias', label: 'Sugerencias', icon: 'lightbulb' },
     { key: 'predictivo', label: 'Predictivo', icon: 'auto_awesome' },

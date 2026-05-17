@@ -44,17 +44,6 @@ export interface MetricasData {
   variables: MetricaVariable[];
 }
 
-export interface ReporteReciente {
-  ts: string;
-  fecha: string;
-  hora: string;
-  estatus: string;
-  comprobante: string | null;
-  caudal_instantaneo: string | null;
-  flujo_acumulado: string | null;
-  nivel_freatico: string | null;
-}
-
 @Injectable({ providedIn: 'root' })
 export class AnalisisService {
   private readonly http = inject(HttpClient);
@@ -89,13 +78,4 @@ export class AnalisisService {
       );
   }
 
-  getReportesRecientes(siteId: string, limit = 50): Observable<ReporteReciente[]> {
-    const params = new HttpParams().set('limit', limit);
-    return this.http
-      .get<ApiResponse<ReporteReciente[]>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/analisis/reportes`,
-        { params },
-      )
-      .pipe(map((r) => (r.ok ? r.data : [])));
-  }
 }

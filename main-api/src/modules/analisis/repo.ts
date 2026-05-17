@@ -1,6 +1,6 @@
 /**
- * Repositorio Análisis: salud + métricas del sitio. Lee `equipo`,
- * `reg_map`, `dato_dga` para producir KPIs agregados.
+ * Repositorio Análisis: salud + métricas del sitio. Lee `equipo` y
+ * `reg_map` para producir KPIs agregados.
  */
 import { query } from '../../config/dbHelpers';
 
@@ -236,37 +236,3 @@ export async function getMetricas(
   };
 }
 
-// ============================================================================
-// Reportes (lista de envíos DGA recientes para descarga rápida)
-// ============================================================================
-
-export interface ReporteRecienteRow {
-  ts: string;
-  fecha: string;
-  hora: string;
-  estatus: string;
-  comprobante: string | null;
-  caudal_instantaneo: string | null;
-  flujo_acumulado: string | null;
-  nivel_freatico: string | null;
-}
-
-export async function getReportesRecientes(
-  siteId: string,
-  limit: number,
-): Promise<ReporteRecienteRow[]> {
-  const r = await query<ReporteRecienteRow>(
-    `SELECT ts,
-            to_char(fecha, 'YYYY-MM-DD') AS fecha,
-            to_char(hora,  'HH24:MI:SS') AS hora,
-            estatus, comprobante,
-            caudal_instantaneo, flujo_acumulado, nivel_freatico
-       FROM dato_dga
-      WHERE site_id = $1
-      ORDER BY ts DESC
-      LIMIT $2`,
-    [siteId, Math.min(limit, 200)],
-    { name: 'analisis__reportes_recientes' },
-  );
-  return r.rows;
-}

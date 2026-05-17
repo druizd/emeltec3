@@ -6,15 +6,11 @@ import { z } from 'zod';
 import { ok } from '../../shared/httpEnvelope';
 import { ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
-import { getMetricas, getReportesRecientes, getSalud } from './repo';
+import { getMetricas, getSalud } from './repo';
 
 const MetricasParams = z.object({
   desde: z.string().datetime({ offset: true }),
   hasta: z.string().datetime({ offset: true }),
-});
-
-const ReportesParams = z.object({
-  limit: z.coerce.number().int().positive().max(200).default(50),
 });
 
 export async function getSaludHandler(
@@ -53,22 +49,3 @@ export async function getMetricasHandler(
   }
 }
 
-export async function getReportesHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const startedAt = nowHrtime();
-  try {
-    const siteId = String(req.params.siteId ?? '').trim();
-    if (!siteId) throw new ValidationError('siteId requerido');
-    const parsed = ReportesParams.safeParse(req.query);
-    if (!parsed.success) {
-      throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
-    }
-    const rows = await getReportesRecientes(siteId, parsed.data.limit);
-    res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
-  } catch (err) {
-    next(err);
-  }
-}
