@@ -25,6 +25,9 @@ COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/grpc ./dist/grpc
+# Servicios CJS legacy (emailService.js) que no están compilados en dist/
+# pero el código TS los carga via require dinámico (ver dga/notifier.ts).
+COPY --from=build /app/src/services ./src/services
 COPY migrations ./migrations
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
