@@ -392,7 +392,7 @@ interface PeriodicidadOption {
       <!-- ====== Modal 2FA inline ====== -->
       @if (twoFactorPrompt()) {
         <div
-          class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-[2px]"
+          class="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur-md"
         >
           <section class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-5 py-3">
