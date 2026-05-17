@@ -54,13 +54,13 @@ interface PeriodicidadOption {
   template: `
     @if (open) {
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
         role="dialog"
         aria-modal="true"
         (click)="onBackdrop($event)"
       >
         <div
-          class="relative mx-4 max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+          class="relative mx-4 max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
           (click)="$event.stopPropagation()"
         >
           <!-- Header -->
@@ -188,6 +188,7 @@ interface PeriodicidadOption {
                   Fecha inicio
                   <input
                     type="date"
+                    min="2020-01-01"
                     [value]="pozo()?.dga_fecha_inicio ?? ''"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_fecha_inicio', $any($event.target).value || null)"

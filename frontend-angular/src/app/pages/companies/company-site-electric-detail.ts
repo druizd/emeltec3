@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -86,6 +86,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   <span class="text-slate-500">Desde</span>
                   <input
                     type="date"
+                    min="2020-01-01"
                     [ngModel]="dateFrom()"
                     (ngModelChange)="dateFrom.set($event)"
                     class="bg-transparent font-black text-slate-700 outline-none"
@@ -97,6 +98,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   <span class="text-slate-500">Hasta</span>
                   <input
                     type="date"
+                    min="2020-01-01"
                     [ngModel]="dateTo()"
                     (ngModelChange)="dateTo.set($event)"
                     class="bg-transparent font-black text-slate-700 outline-none"

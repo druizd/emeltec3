@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+﻿import { CommonModule } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
@@ -53,11 +53,11 @@ interface IncidenciaPeriodo {
   imports: [CommonModule],
   template: `
     <div class="space-y-3">
-      <!-- Selector de período -->
+      <!-- Selector de perÃ­odo -->
       <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
           <!-- Presets -->
-          <div class="flex items-center gap-1" role="group" aria-label="Presets de período">
+          <div class="flex items-center gap-1" role="group" aria-label="Presets de perÃ­odo">
             @for (p of presets; track p.key) {
               <button
                 type="button"
@@ -75,6 +75,7 @@ interface IncidenciaPeriodo {
             <span class="font-semibold" id="label-desde">Desde</span>
             <input
               type="date"
+              min="2020-01-01"
               [value]="fechaDesde()"
               (change)="onFechaChange('desde', $any($event.target).value)"
               aria-labelledby="label-desde"
@@ -83,6 +84,7 @@ interface IncidenciaPeriodo {
             <span class="font-semibold" id="label-hasta">Hasta</span>
             <input
               type="date"
+              min="2020-01-01"
               [value]="fechaHasta()"
               (change)="onFechaChange('hasta', $any($event.target).value)"
               aria-labelledby="label-hasta"
@@ -101,7 +103,7 @@ interface IncidenciaPeriodo {
         </div>
       </section>
 
-      <!-- KPIs del período -->
+      <!-- KPIs del perÃ­odo -->
       <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
         @for (k of data().kpis; track k.label) {
           <article
@@ -136,7 +138,7 @@ interface IncidenciaPeriodo {
             </h3>
             <p class="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-slate-400">
               <span class="material-symbols-outlined text-[12px]">link</span>
-              Turnos vinculados con "Hoy en tiempo real" — los cambios se guardan por sitio
+              Turnos vinculados con "Hoy en tiempo real" â€” los cambios se guardan por sitio
             </p>
           </div>
           <button
@@ -261,7 +263,7 @@ interface IncidenciaPeriodo {
               @if (t.flujo > 0) {
                 <p class="mt-3 font-mono text-2xl font-black" [class]="turnoResumenValue(i)">
                   {{ t.flujo.toLocaleString('es-CL')
-                  }}<span class="ml-1 text-sm font-bold opacity-60">m³</span>
+                  }}<span class="ml-1 text-sm font-bold opacity-60">mÂ³</span>
                 </p>
                 <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/10">
                   <div
@@ -271,11 +273,11 @@ interface IncidenciaPeriodo {
                   ></div>
                 </div>
                 <p class="mt-1 text-right font-mono text-[11px]" [class]="turnoResumenSub(i)">
-                  {{ t.pct }}% del período
+                  {{ t.pct }}% del perÃ­odo
                 </p>
               } @else {
                 <p class="mt-3 text-sm font-bold opacity-40" [class]="turnoResumenLabel(i)">
-                  Sin operación
+                  Sin operaciÃ³n
                 </p>
               }
             </div>
@@ -283,12 +285,12 @@ interface IncidenciaPeriodo {
         </div>
       </section>
 
-      <!-- Gráfico de flujo del período -->
+      <!-- GrÃ¡fico de flujo del perÃ­odo -->
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-black text-slate-800">Flujo diario en el período</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">m³/día · días sin operación en gris</p>
+            <h3 class="text-sm font-black text-slate-800">Flujo diario en el perÃ­odo</h3>
+            <p class="mt-0.5 text-[11px] text-slate-400">mÂ³/dÃ­a Â· dÃ­as sin operaciÃ³n en gris</p>
           </div>
           <span class="rounded-full bg-cyan-50 px-2.5 py-1 text-[11px] font-bold text-cyan-700">{{
             periodoLabel()
@@ -342,7 +344,7 @@ interface IncidenciaPeriodo {
           class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
           <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Resumen diario — últimos 7 días del período
+            Resumen diario â€” Ãºltimos 7 dÃ­as del perÃ­odo
           </h3>
           <button
             type="button"
@@ -365,7 +367,7 @@ interface IncidenciaPeriodo {
                 <th
                   class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right"
                 >
-                  Flujo (m³)
+                  Flujo (mÂ³)
                 </th>
                 <th
                   class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right"
@@ -394,14 +396,14 @@ interface IncidenciaPeriodo {
                     @if (fila.flujo > 0) {
                       {{ fila.flujo }}
                     } @else {
-                      <span class="text-slate-300">—</span>
+                      <span class="text-slate-300">â€”</span>
                     }
                   </td>
                   <td class="px-4 py-2.5 text-right font-mono text-[12px] text-slate-700">
                     @if (fila.caudalProm > 0) {
                       {{ fila.caudalProm }} L/s
                     } @else {
-                      <span class="text-slate-300">—</span>
+                      <span class="text-slate-300">â€”</span>
                     }
                   </td>
                   <td class="px-4 py-2.5 text-right font-mono text-[12px] text-slate-700">
@@ -415,7 +417,7 @@ interface IncidenciaPeriodo {
                         {{ fila.alertas }}
                       </span>
                     } @else {
-                      <span class="font-mono text-[12px] text-slate-300">—</span>
+                      <span class="font-mono text-[12px] text-slate-300">â€”</span>
                     }
                   </td>
                 </tr>
@@ -425,18 +427,18 @@ interface IncidenciaPeriodo {
         </div>
         <div class="border-t border-slate-100 px-4 py-2.5">
           <p class="text-[11px] text-slate-400">
-            Los datos son provisorios hasta confirmar sincronización con DGA.
+            Los datos son provisorios hasta confirmar sincronizaciÃ³n con DGA.
           </p>
         </div>
       </section>
 
-      <!-- Alertas en el período -->
+      <!-- Alertas en el perÃ­odo -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div
           class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
           <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Alertas en el período
+            Alertas en el perÃ­odo
           </h3>
           <!-- Resumen por severidad -->
           <div class="flex items-center gap-2">
@@ -444,7 +446,7 @@ interface IncidenciaPeriodo {
               class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-black text-rose-700 ring-1 ring-rose-200"
             >
               <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-              {{ data().alertasResumen.criticas }} crítica{{
+              {{ data().alertasResumen.criticas }} crÃ­tica{{
                 data().alertasResumen.criticas !== 1 ? 's' : ''
               }}
             </span>
@@ -471,7 +473,7 @@ interface IncidenciaPeriodo {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">check_circle</span>
             <p class="text-[13px] font-bold text-slate-400">
-              Sin alertas en el período seleccionado
+              Sin alertas en el perÃ­odo seleccionado
             </p>
           </div>
         } @else {
@@ -505,13 +507,13 @@ interface IncidenciaPeriodo {
         }
       </section>
 
-      <!-- Incidencias en el período -->
+      <!-- Incidencias en el perÃ­odo -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div
           class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
           <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Incidencias en el período
+            Incidencias en el perÃ­odo
           </h3>
           <span class="font-mono text-[11px] text-slate-400"
             >{{ data().incidencias.length }} registro{{
@@ -524,7 +526,7 @@ interface IncidenciaPeriodo {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
             <p class="text-[13px] font-bold text-slate-400">
-              Sin incidencias registradas en el período
+              Sin incidencias registradas en el perÃ­odo
             </p>
           </div>
         } @else {
@@ -540,12 +542,12 @@ interface IncidenciaPeriodo {
                   <th
                     class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400"
                   >
-                    Descripción
+                    DescripciÃ³n
                   </th>
                   <th
                     class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400"
                   >
-                    Categoría
+                    CategorÃ­a
                   </th>
                   <th
                     class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400"
@@ -555,7 +557,7 @@ interface IncidenciaPeriodo {
                   <th
                     class="px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400"
                   >
-                    Técnico
+                    TÃ©cnico
                   </th>
                 </tr>
               </thead>
@@ -611,14 +613,14 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   // Eventos reales del periodo (mapeados a AlertaPeriodo para el render existente).
   private readonly eventosReales = signal<EventoRow[]>([]);
   readonly eventosLoading = signal(false);
-  // toObservable solo se permite en contexto de inyeccion → captura en field init.
+  // toObservable solo se permite en contexto de inyeccion â†’ captura en field init.
   private readonly fechaDesde$ = toObservable(this.fechaDesde);
   private readonly fechaHasta$ = toObservable(this.fechaHasta);
 
   readonly presets: { key: Preset; label: string }[] = [
-    { key: '7d', label: '7 días' },
-    { key: '30d', label: '30 días' },
-    { key: '90d', label: '90 días' },
+    { key: '7d', label: '7 dÃ­as' },
+    { key: '30d', label: '30 dÃ­as' },
+    { key: '90d', label: '90 dÃ­as' },
   ];
 
   private readonly mockTurnoFlujo: Record<Preset, (number | null)[]> = {
@@ -634,7 +636,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const flujos = this.mockTurnoFlujo[this.preset()];
     return cfg.map((c, i) => ({
       nombre: c.nombre,
-      horario: `${c.inicio} – ${c.fin}`,
+      horario: `${c.inicio} â€“ ${c.fin}`,
       flujo: flujos[i] ?? 0,
       pct: flujos[i] ? (this.mockTurnoPct[i] ?? 0) : 0,
     }));
@@ -686,41 +688,41 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     '7d': [
       {
         label: 'Flujo acumulado',
-        valor: '1,183 m³',
-        subtext: 'Últimos 7 días',
+        valor: '1,183 mÂ³',
+        subtext: 'Ãšltimos 7 dÃ­as',
         icon: 'water_drop',
         tono: 'ok',
       },
       {
         label: 'Caudal promedio',
         valor: '3.1 L/s',
-        subtext: 'Período activo',
+        subtext: 'PerÃ­odo activo',
         icon: 'speed',
         tono: 'ok',
       },
       {
-        label: 'Nivel freático prom.',
+        label: 'Nivel freÃ¡tico prom.',
         valor: '32.4 m',
         subtext: 'Profundidad media',
         icon: 'vertical_align_bottom',
         tono: 'neutral',
       },
       {
-        label: 'Días con operación',
+        label: 'DÃ­as con operaciÃ³n',
         valor: '5 / 7',
-        subtext: '2 días sin bomba',
+        subtext: '2 dÃ­as sin bomba',
         icon: 'event_available',
         tono: 'neutral',
       },
       {
-        label: 'Alertas en período',
+        label: 'Alertas en perÃ­odo',
         valor: '1',
-        subtext: '0 críticas',
+        subtext: '0 crÃ­ticas',
         icon: 'notifications',
         tono: 'ok',
       },
       {
-        label: 'Uptime comunicación',
+        label: 'Uptime comunicaciÃ³n',
         valor: '99.8%',
         subtext: '~29 min offline',
         icon: 'wifi',
@@ -730,41 +732,41 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     '30d': [
       {
         label: 'Flujo acumulado',
-        valor: '4,920 m³',
-        subtext: 'Últimos 30 días',
+        valor: '4,920 mÂ³',
+        subtext: 'Ãšltimos 30 dÃ­as',
         icon: 'water_drop',
         tono: 'ok',
       },
       {
         label: 'Caudal promedio',
         valor: '3.1 L/s',
-        subtext: 'Período activo',
+        subtext: 'PerÃ­odo activo',
         icon: 'speed',
         tono: 'ok',
       },
       {
-        label: 'Nivel freático prom.',
+        label: 'Nivel freÃ¡tico prom.',
         valor: '32.4 m',
         subtext: 'Profundidad media',
         icon: 'vertical_align_bottom',
         tono: 'neutral',
       },
       {
-        label: 'Días con operación',
+        label: 'DÃ­as con operaciÃ³n',
         valor: '22 / 30',
-        subtext: '8 días sin bomba',
+        subtext: '8 dÃ­as sin bomba',
         icon: 'event_available',
         tono: 'neutral',
       },
       {
-        label: 'Alertas en período',
+        label: 'Alertas en perÃ­odo',
         valor: '4',
-        subtext: '1 crítica',
+        subtext: '1 crÃ­tica',
         icon: 'notifications',
         tono: 'warn',
       },
       {
-        label: 'Uptime comunicación',
+        label: 'Uptime comunicaciÃ³n',
         valor: '99.1%',
         subtext: '~4 h 05 min offline',
         icon: 'wifi',
@@ -774,41 +776,41 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     '90d': [
       {
         label: 'Flujo acumulado',
-        valor: '14,921 m³',
-        subtext: 'Últimos 90 días',
+        valor: '14,921 mÂ³',
+        subtext: 'Ãšltimos 90 dÃ­as',
         icon: 'water_drop',
         tono: 'ok',
       },
       {
         label: 'Caudal promedio',
         valor: '3.0 L/s',
-        subtext: 'Período activo',
+        subtext: 'PerÃ­odo activo',
         icon: 'speed',
         tono: 'ok',
       },
       {
-        label: 'Nivel freático prom.',
+        label: 'Nivel freÃ¡tico prom.',
         valor: '32.5 m',
         subtext: 'Profundidad media',
         icon: 'vertical_align_bottom',
         tono: 'neutral',
       },
       {
-        label: 'Días con operación',
+        label: 'DÃ­as con operaciÃ³n',
         valor: '66 / 90',
-        subtext: '24 días sin bomba',
+        subtext: '24 dÃ­as sin bomba',
         icon: 'event_available',
         tono: 'neutral',
       },
       {
-        label: 'Alertas en período',
+        label: 'Alertas en perÃ­odo',
         valor: '8',
-        subtext: '2 críticas',
+        subtext: '2 crÃ­ticas',
         icon: 'notifications',
         tono: 'warn',
       },
       {
-        label: 'Uptime comunicación',
+        label: 'Uptime comunicaciÃ³n',
         valor: '98.7%',
         subtext: '~28 h offline',
         icon: 'wifi',
@@ -892,7 +894,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       {
         id: 1,
         fechaHora: '08/05/2026 14:22',
-        titulo: 'Caudal por debajo del umbral mínimo (2.5 L/s)',
+        titulo: 'Caudal por debajo del umbral mÃ­nimo (2.5 L/s)',
         severidad: 'advertencia',
         estado: 'resuelta',
       },
@@ -901,28 +903,28 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       {
         id: 1,
         fechaHora: '08/05/2026 14:22',
-        titulo: 'Caudal por debajo del umbral mínimo (2.5 L/s)',
+        titulo: 'Caudal por debajo del umbral mÃ­nimo (2.5 L/s)',
         severidad: 'advertencia',
         estado: 'resuelta',
       },
       {
         id: 2,
         fechaHora: '28/04/2026 03:47',
-        titulo: 'Pérdida de comunicación con sensor (>15 min)',
+        titulo: 'PÃ©rdida de comunicaciÃ³n con sensor (>15 min)',
         severidad: 'critica',
         estado: 'resuelta',
       },
       {
         id: 3,
         fechaHora: '21/04/2026 09:10',
-        titulo: 'Nivel freático superó límite de alerta (34 m)',
+        titulo: 'Nivel freÃ¡tico superÃ³ lÃ­mite de alerta (34 m)',
         severidad: 'advertencia',
         estado: 'resuelta',
       },
       {
         id: 4,
         fechaHora: '14/04/2026 16:55',
-        titulo: 'Sincronización DGA demorada >2 horas',
+        titulo: 'SincronizaciÃ³n DGA demorada >2 horas',
         severidad: 'info',
         estado: 'resuelta',
       },
@@ -931,28 +933,28 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       {
         id: 1,
         fechaHora: '08/05/2026 14:22',
-        titulo: 'Caudal por debajo del umbral mínimo (2.5 L/s)',
+        titulo: 'Caudal por debajo del umbral mÃ­nimo (2.5 L/s)',
         severidad: 'advertencia',
         estado: 'resuelta',
       },
       {
         id: 2,
         fechaHora: '28/04/2026 03:47',
-        titulo: 'Pérdida de comunicación con sensor (>15 min)',
+        titulo: 'PÃ©rdida de comunicaciÃ³n con sensor (>15 min)',
         severidad: 'critica',
         estado: 'resuelta',
       },
       {
         id: 3,
         fechaHora: '21/04/2026 09:10',
-        titulo: 'Nivel freático superó límite de alerta (34 m)',
+        titulo: 'Nivel freÃ¡tico superÃ³ lÃ­mite de alerta (34 m)',
         severidad: 'advertencia',
         estado: 'resuelta',
       },
       {
         id: 4,
         fechaHora: '14/04/2026 16:55',
-        titulo: 'Sincronización DGA demorada >2 horas',
+        titulo: 'SincronizaciÃ³n DGA demorada >2 horas',
         severidad: 'info',
         estado: 'resuelta',
       },
@@ -966,7 +968,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       {
         id: 6,
         fechaHora: '18/03/2026 07:15',
-        titulo: 'Variación brusca de nivel freático (+3.2 m)',
+        titulo: 'VariaciÃ³n brusca de nivel freÃ¡tico (+3.2 m)',
         severidad: 'advertencia',
         estado: 'resuelta',
       },
@@ -980,7 +982,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       {
         id: 8,
         fechaHora: '24/02/2026 13:08',
-        titulo: 'Sincronización DGA demorada >2 horas',
+        titulo: 'SincronizaciÃ³n DGA demorada >2 horas',
         severidad: 'info',
         estado: 'resuelta',
       },
@@ -992,38 +994,38 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     '30d': [
       {
         fecha: '28/04/2026',
-        descripcion: 'Restablecimiento de comunicación tras corte eléctrico en sala de equipos',
-        categoria: 'Comunicación',
+        descripcion: 'Restablecimiento de comunicaciÃ³n tras corte elÃ©ctrico en sala de equipos',
+        categoria: 'ComunicaciÃ³n',
         estado: 'resuelta',
-        tecnico: 'J. Pérez',
+        tecnico: 'J. PÃ©rez',
       },
     ],
     '90d': [
       {
         fecha: '28/04/2026',
-        descripcion: 'Restablecimiento de comunicación tras corte eléctrico en sala de equipos',
-        categoria: 'Comunicación',
+        descripcion: 'Restablecimiento de comunicaciÃ³n tras corte elÃ©ctrico en sala de equipos',
+        categoria: 'ComunicaciÃ³n',
         estado: 'resuelta',
-        tecnico: 'J. Pérez',
+        tecnico: 'J. PÃ©rez',
       },
       {
         fecha: '02/04/2026',
-        descripcion: 'Revisión y limpieza de sensor de caudal — lectura en cero por obstrucción',
+        descripcion: 'RevisiÃ³n y limpieza de sensor de caudal â€” lectura en cero por obstrucciÃ³n',
         categoria: 'Sensor',
         estado: 'resuelta',
-        tecnico: 'M. García',
+        tecnico: 'M. GarcÃ­a',
       },
       {
         fecha: '05/03/2026',
-        descripcion: 'Reemplazo de ventilador en gabinete — temperatura superó 60°C',
+        descripcion: 'Reemplazo de ventilador en gabinete â€” temperatura superÃ³ 60Â°C',
         categoria: 'Hardware',
         estado: 'resuelta',
-        tecnico: 'J. Pérez',
+        tecnico: 'J. PÃ©rez',
       },
     ],
   };
 
-  // ── KPIs reales (4 wireados) + 2 mock ─────────────────────
+  // â”€â”€ KPIs reales (4 wireados) + 2 mock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   /**
    * Filtra daily counters al rango [fechaDesde, fechaHasta] inclusivo (DB
@@ -1059,7 +1061,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const flujoTotal = daily.reduce((acc, p) => acc + (p.delta ?? 0), 0);
     const diasOperacion = daily.filter((p) => (p.delta ?? 0) > 0).length;
     const diasSinOp = Math.max(0, diasEsperados - diasOperacion);
-    const unidad = daily[0]?.unidad ?? 'm³';
+    const unidad = daily[0]?.unidad ?? 'mÂ³';
 
     const caudales = hist.map((r) => r.caudal).filter((v): v is number => v !== null);
     const caudalProm = caudales.length
@@ -1086,35 +1088,35 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       },
       {
         label: 'Caudal promedio',
-        valor: caudalProm !== null ? `${this.fmt(caudalProm, 1)} L/s` : '— L/s',
+        valor: caudalProm !== null ? `${this.fmt(caudalProm, 1)} L/s` : 'â€” L/s',
         subtext: caudales.length ? `${caudales.length} mediciones` : 'Sin datos',
         icon: 'speed',
         tono: caudalProm !== null ? 'ok' : 'neutral',
       },
       {
-        label: 'Nivel freático prom.',
-        valor: nivelProm !== null ? `${this.fmt(nivelProm, 1)} m` : '— m',
+        label: 'Nivel freÃ¡tico prom.',
+        valor: nivelProm !== null ? `${this.fmt(nivelProm, 1)} m` : 'â€” m',
         subtext: nivelesFreaticos.length ? `${nivelesFreaticos.length} mediciones` : 'Sin datos',
         icon: 'vertical_align_bottom',
         tono: 'neutral',
       },
       {
-        label: 'Días con operación',
+        label: 'DÃ­as con operaciÃ³n',
         valor: `${diasOperacion} / ${diasEsperados}`,
-        subtext: diasSinOp ? `${diasSinOp} días sin bomba` : 'Sin paradas',
+        subtext: diasSinOp ? `${diasSinOp} dÃ­as sin bomba` : 'Sin paradas',
         icon: 'event_available',
         tono: diasSinOp > diasEsperados / 3 ? 'warn' : 'neutral',
       },
       mockAlertas ?? {
-        label: 'Alertas en período',
-        valor: '—',
+        label: 'Alertas en perÃ­odo',
+        valor: 'â€”',
         subtext: 'Sin datos',
         icon: 'notifications',
         tono: 'neutral',
       },
       mockUptime ?? {
-        label: 'Uptime comunicación',
-        valor: '—',
+        label: 'Uptime comunicaciÃ³n',
+        valor: 'â€”',
         subtext: 'Sin datos',
         icon: 'wifi',
         tono: 'neutral',
@@ -1133,7 +1135,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(Math.round(v));
   }
 
-  /** Map backend severidad (baja|media|alta|critica) → display severidad. */
+  /** Map backend severidad (baja|media|alta|critica) â†’ display severidad. */
   private mapSeveridad(s: string): 'critica' | 'advertencia' | 'info' {
     if (s === 'critica') return 'critica';
     if (s === 'alta' || s === 'media') return 'advertencia';
@@ -1188,9 +1190,9 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
   readonly periodoLabel = computed(() => {
     const map: Record<Preset, string> = {
-      '7d': 'Últimos 7 días',
-      '30d': 'Últimos 30 días',
-      '90d': 'Últimos 90 días',
+      '7d': 'Ãšltimos 7 dÃ­as',
+      '30d': 'Ãšltimos 30 dÃ­as',
+      '90d': 'Ãšltimos 90 dÃ­as',
     };
     return map[this.preset()];
   });
