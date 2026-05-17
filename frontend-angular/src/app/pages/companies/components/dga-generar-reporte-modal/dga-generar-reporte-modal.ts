@@ -713,7 +713,17 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
     const clave = this.newInfClave();
     const referencia = this.newInfReferencia().trim() || null;
 
-    // Si pasa clave → 2FA. Si solo referencia → directo.
+    // Backend exige clave si el RUT es nuevo. Pre-validamos contra el pool
+    // local para dar feedback inmediato sin esperar el 409.
+    const rutExisteEnPool = this.informantes().some((i) => i.rut === rut);
+    if (!rutExisteEnPool && !clave) {
+      this.informanteError.set(
+        `RUT ${rut} no está en el pool. Ingresá la clave SNIA para crearlo.`,
+      );
+      return;
+    }
+
+    // Si pasa clave → 2FA. Si solo referencia (RUT ya existe) → directo.
     if (clave) {
       this.promptTwoFactor(
         `Rotar/establecer clave SNIA para ${rut} exige verificación 2FA.`,
@@ -742,9 +752,17 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
         },
         error: (err: HttpErrorResponse) => {
           this.informanteSaving.set(false);
-          this.informanteError.set(
-            'No se pudo guardar: ' + (err.error?.error?.message ?? err.message ?? ''),
-          );
+          // Extrae el message del envelope tipo {ok:false, error:{code,message}}
+          // o fallback al string genérico de Angular.
+          const apiMsg =
+            err.error?.error?.message ??
+            err.error?.message ??
+            (typeof err.error === 'string' ? err.error : null) ??
+            err.message ??
+            'Error desconocido';
+          const apiCode = err.error?.error?.code;
+          const detalle = apiCode ? ` [${apiCode}]` : '';
+          this.informanteError.set(`No se pudo guardar${detalle}: ${apiMsg}`);
           resolve();
         },
       });
