@@ -200,23 +200,24 @@ COMMENT ON COLUMN dato_dga.totalizator_raw_legacy IS
 -- 2.5 — Índices para queries de pipeline
 -- ----------------------------------------------------------------------------
 
--- Cola de envío: submission worker filtra slots listos para reintento.
+-- Cola de envío + cola de revisión.
+-- IMPORTANTE: los indices originales usaban id_dgauser, pero la migración
+-- 2026-05-17 dropea esa columna y recrea los indices con site_id. Si la
+-- columna ya no existe (re-aplicación post-2026-05-17), skip — la otra
+-- migración los maneja.
 DROP INDEX IF EXISTS idx_dato_dga_submission;
-CREATE INDEX IF NOT EXISTS idx_dato_dga_pending_retry
-  ON dato_dga (next_retry_at NULLS FIRST, id_dgauser)
-  WHERE estatus = 'pendiente';
-COMMENT ON INDEX idx_dato_dga_pending_retry IS
-  'Cola de envío: slots pendientes ordenados por próximo intento. '
-  'Submission worker hace SELECT ... WHERE estatus=pendiente AND '
-  '(next_retry_at IS NULL OR next_retry_at <= now()).';
-
--- Cola de revisión manual: UI lista slots requires_review por sitio.
-CREATE INDEX IF NOT EXISTS idx_dato_dga_review_queue
-  ON dato_dga (id_dgauser, ts DESC)
-  WHERE estatus = 'requires_review';
-COMMENT ON INDEX idx_dato_dga_review_queue IS
-  'Cola de revisión manual: slots con validation_warnings esperando '
-  'decisión admin. Usado por UI admin para listar pendientes por sitio.';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_name='dato_dga' AND column_name='id_dgauser') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_dato_dga_pending_retry
+               ON dato_dga (next_retry_at NULLS FIRST, id_dgauser)
+               WHERE estatus = ''pendiente''';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_dato_dga_review_queue
+               ON dato_dga (id_dgauser, ts DESC)
+               WHERE estatus = ''requires_review''';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- SECCIÓN 3 — dga_send_audit (NUEVA, append-only)
@@ -307,8 +308,16 @@ COMMENT ON COLUMN dga_send_audit.request_payload IS
   'una clave _headers para diagnóstico.';
 
 -- Índices del audit
-CREATE INDEX IF NOT EXISTS idx_audit_slot
-  ON dga_send_audit (id_dgauser, ts);
+-- IMPORTANTE: idx_audit_slot original usaba id_dgauser; 2026-05-17 lo
+-- recrea con site_id. Skip si la columna ya no existe.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+              WHERE table_name='dga_send_audit' AND column_name='id_dgauser') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_slot
+               ON dga_send_audit (id_dgauser, ts)';
+  END IF;
+END $$;
 COMMENT ON INDEX idx_audit_slot IS
   'Busca todos los intentos de un slot específico. Usado por '
   'reconciler y UI de diagnóstico de slot.';
