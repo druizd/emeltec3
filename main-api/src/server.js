@@ -45,6 +45,61 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // DGA pre-seed worker TS (crea slots 'vacio' del mes actual en dato_dga).
+  try {
+    const dgaPreseedPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'preseed',
+    );
+    const { startDgaPreseedWorker } = require(dgaPreseedPath);
+    startDgaPreseedWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar DGA preseed worker:', err.message);
+    }
+  }
+
+  // DGA submission worker TS (envía slots 'pendiente' a SNIA REST).
+  // Default OFF — requiere ENABLE_DGA_SUBMISSION_WORKER=true + DGA_RUT_EMPRESA.
+  try {
+    const dgaSubmissionPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'submission',
+    );
+    const { startDgaSubmissionWorker } = require(dgaSubmissionPath);
+    startDgaSubmissionWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar DGA submission worker:', err.message);
+    }
+  }
+
+  // DGA reconciler TS (red de seguridad: drift audit vs estado, slots atascados).
+  try {
+    const dgaReconcilerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'reconciler',
+    );
+    const { startDgaReconcilerWorker } = require(dgaReconcilerPath);
+    startDgaReconcilerWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar DGA reconciler:', err.message);
+    }
+  }
+
   // Health digest worker TS (monitor de transmisión + DGA, event + resumen 07/16).
   try {
     const healthWorkerPath = require('path').join(
@@ -102,6 +157,51 @@ function shutdown(signal) {
     const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
     const { stopDgaWorker } = require(dgaWorkerPath);
     stopDgaWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const dgaPreseedPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'preseed',
+    );
+    const { stopDgaPreseedWorker } = require(dgaPreseedPath);
+    stopDgaPreseedWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const dgaSubmissionPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'submission',
+    );
+    const { stopDgaSubmissionWorker } = require(dgaSubmissionPath);
+    stopDgaSubmissionWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const dgaReconcilerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'reconciler',
+    );
+    const { stopDgaReconcilerWorker } = require(dgaReconcilerPath);
+    stopDgaReconcilerWorker();
   } catch (_err) {
     // worker no estaba activo
   }

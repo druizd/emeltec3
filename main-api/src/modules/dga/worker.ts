@@ -1,41 +1,58 @@
 /**
- * Worker DGA.
+ * Worker fill DGA.
  *
- * Cada N segundos:
- *   1) Lista `dga_user` activos.
- *   2) Para cada informante, calcula el próximo bucket según `periodicidad`
- *      desde `last_run_at` (o `fecha_inicio + hora_inicio` si no corrió aún).
- *   3) Si el bucket ya está vencido (<= now), procesa: lee `equipo` por rango,
- *      reusa `applyMappingTransform` (transformaciones físicas existentes),
- *      extrae caudal_instantaneo / flujo_acumulado / nivel_freatico y los
- *      snapshotea a `dato_dga` (PRIMARY KEY (id_dgauser, ts) → idempotente).
- *   4) Marca `last_run_at` = ts del bucket procesado.
+ * Modelo: pull-based sobre slots pre-seedeados.
+ *   1. Pre-seed (preseed.ts) materializa slots del mes con estatus='vacio'.
+ *   2. Fill (este worker) escanea slots 'vacio' vencidos, lee telemetría
+ *      cercana, aplica transformaciones, valida y transiciona a 'pendiente'
+ *      o 'requires_review'.
+ *   3. Submission (worker separado) envía 'pendiente' a SNIA.
  *
- * Catch-up: si el informante estuvo inactivo, procesa hasta MAX_CATCHUP_BUCKETS
- * por ciclo para evitar bloquear el event loop.
+ * Diferencias con la versión anterior (pre-2026-05-16):
+ *   - No usa last_run_at como cursor — los slots son la verdad.
+ *   - No hace INSERT — solo UPDATE de slots ya creados por pre-seed.
+ *   - Aplica validación pre-envío (caudal_max_lps, sensor defectuoso, etc.).
+ *   - Respeta dga_user.activo y dga_user.transport para el gating.
  *
- * En cluster con réplicas, encender SOLO en una vía `ENABLE_DGA_WORKER=true`.
+ * Procesa informantes con activo=true. transport='off' también se procesa
+ * (rellena slots como en shadow) — el gate de envío vive en submission, no
+ * acá. Esto permite tener datos listos para comparar contra legacy antes
+ * de flipear a 'rest'.
+ *
+ * Catch-up: hasta MAX_SLOTS_PER_USER por ciclo para evitar bloquear el
+ * event loop si un informante tiene backlog masivo.
+ *
+ * En cluster con réplicas, encender SOLO en una vía ENABLE_DGA_WORKER=true.
  */
 import { logger } from '../../config/logger';
 import {
   findDgaUserById,
-  insertDatoDga,
+  findLastValidTotalizador,
   listActiveDgaUsers,
-  markDgaUserRun,
+  listVacioSlotsForUser,
+  transitionSlotToPendiente,
+  transitionSlotToRequiresReview,
   type DgaUserRow,
+  type VacioSlotRow,
 } from './repo';
-import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
-import { getDashboardHistoryRange } from '../sites/repo';
+import { validateSlot } from './validation';
+import { getDashboardHistoryRange, getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
-import type { HistoryEquipoRow, RegMap, PozoConfig, Site } from '../sites/types';
+import type { HistoryEquipoRow, PozoConfig, RegMap, Site } from '../sites/types';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_WORKER_POLL_MS ?? 60_000);
-const MAX_CATCHUP_BUCKETS = Number(process.env.DGA_WORKER_CATCHUP ?? 24);
+const MAX_SLOTS_PER_USER = Number(process.env.DGA_WORKER_MAX_SLOTS ?? 24);
 const WORKER_ENABLED = String(process.env.ENABLE_DGA_WORKER ?? 'true').toLowerCase() !== 'false';
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
-function periodicidadMs(periodicidad: DgaUserRow['periodicidad']): number {
+/**
+ * Ventana de telemetría a consultar para un slot, según periodicidad del
+ * informante. La lectura "representativa" del slot = la más reciente dentro
+ * de [ts - periodicidad, ts]. Para horaria = última hora; para diaria =
+ * últimas 24h; etc.
+ */
+function periodicidadWindowMs(periodicidad: DgaUserRow['periodicidad']): number {
   switch (periodicidad) {
     case 'hora':
       return 60 * 60 * 1000;
@@ -44,22 +61,10 @@ function periodicidadMs(periodicidad: DgaUserRow['periodicidad']): number {
     case 'semana':
       return 7 * 24 * 60 * 60 * 1000;
     case 'mes':
-      // Aproximación de 30 días. DGA acepta cadencia mensual aproximada.
       return 30 * 24 * 60 * 60 * 1000;
     default:
-      return 24 * 60 * 60 * 1000;
+      return 60 * 60 * 1000;
   }
-}
-
-/**
- * Construye el TIMESTAMPTZ UTC inicial del informante a partir de su
- * `fecha_inicio` + `hora_inicio`. Esos valores fueron capturados en hora local
- * Chile (UTC-4), por lo que sumamos +4 horas para obtener el instante UTC.
- */
-function combinarFechaHoraInicio(fechaIso: string, horaIso: string): Date {
-  const hhmmss = horaIso.length === 5 ? `${horaIso}:00` : horaIso;
-  // fechaIso = YYYY-MM-DD (zona Chile UTC-4) → instante UTC = local + 4h
-  return new Date(`${fechaIso}T${hhmmss}-04:00`);
 }
 
 function numericOrNull(value: unknown): number | null {
@@ -85,35 +90,40 @@ async function loadSiteBundle(siteId: string): Promise<SiteBundle | null> {
 }
 
 /**
- * Procesa un único bucket: lee equipo en el rango [bucketStart, bucketEnd),
- * agrega y snapshot a dato_dga. Devuelve true si se insertó algo.
+ * Procesa un slot: lee telemetría en la ventana previa al ts del slot,
+ * transforma, valida y actualiza el slot. Devuelve el nuevo estado.
+ *
+ * Si la telemetría no existe en la ventana, deja el slot en 'vacio'. El
+ * próximo ciclo lo reintentará. La alerta dga_atrasado (24/48/72h) se
+ * dispara por separado si lleva mucho tiempo sin rellenarse.
  */
-async function processBucket(
+async function fillSlot(
   user: DgaUserRow,
   bundle: SiteBundle,
-  bucketEnd: Date,
-  bucketStart: Date,
-): Promise<boolean> {
+  slot: VacioSlotRow,
+): Promise<'pendiente' | 'requires_review' | 'no_data' | 'skipped'> {
   const idSerial = bundle.site.id_serial;
   if (!idSerial) {
-    logger.warn(
-      { id_dgauser: user.id_dgauser, site_id: user.site_id },
-      'DGA worker: sitio sin id_serial — se omite',
-    );
-    return false;
+    logger.warn({ id_dgauser: user.id_dgauser, site_id: user.site_id }, 'DGA fill: sitio sin id_serial');
+    return 'skipped';
   }
+
+  const slotTs = new Date(slot.ts);
+  const windowMs = periodicidadWindowMs(user.periodicidad);
+  const windowStart = new Date(slotTs.getTime() - windowMs);
 
   const rawRows: HistoryEquipoRow[] = await getDashboardHistoryRange(
     idSerial,
-    bucketStart.toISOString(),
-    bucketEnd.toISOString(),
+    windowStart.toISOString(),
+    slotTs.toISOString(),
   );
-  // Tomamos la lectura más reciente del bucket (repo ordena DESC).
+  // repo ordena DESC → [0] es la lectura más reciente dentro de la ventana.
   const representative = rawRows[0];
   if (!representative) {
-    // Sin datos en el bucket: avanzamos last_run_at igual para no quedar en loop.
-    return false;
+    // Sin telemetría en la ventana: no actualizamos el slot, queda 'vacio'.
+    return 'no_data';
   }
+
   const processed = mapHistoricalDashboardRow({
     row: representative,
     site: bundle.site,
@@ -121,59 +131,99 @@ async function processBucket(
     pozoConfig: bundle.pozoConfig,
   });
 
-  const obra = bundle.pozoConfig?.obra_dga?.trim() || bundle.site.descripcion;
+  const caudal = numericOrNull(processed.caudal.valor);
+  // Para totalizador truncamos a entero (consistencia con formato SNIA y
+  // con la vista cliente, evita inconsistencias visuales). El valor decimal
+  // original solo se preserva si viene del importador legacy.
+  const totalizadorRaw = numericOrNull(processed.totalizador.valor);
+  const totalizador = totalizadorRaw == null ? null : Math.trunc(totalizadorRaw);
+  const nivelFreatico = numericOrNull(processed.nivel_freatico.valor);
 
-  await insertDatoDga({
+  // reg_map del totalizador trae flags como sensor_known_defective.
+  const totalizadorMap = bundle.mappings.find((m) => m.rol_dashboard === 'totalizador');
+  const totalizadorParams = (totalizadorMap?.parametros ?? {}) as Record<string, unknown>;
+
+  // Sugerencia de fallback solo si la necesitamos: totalizador inválido o sensor defectuoso.
+  let lastValidTotalizador: number | null = null;
+  if (
+    totalizador == null ||
+    totalizador === 0 ||
+    totalizadorParams.sensor_known_defective === true
+  ) {
+    lastValidTotalizador = await findLastValidTotalizador(Number(user.id_dgauser), slot.ts);
+  }
+
+  const validation = validateSlot(
+    { caudal, totalizador, nivelFreatico },
+    { user, totalizadorParams, lastValidTotalizador },
+  );
+
+  if (validation.ok) {
+    const updated = await transitionSlotToPendiente({
+      id_dgauser: Number(user.id_dgauser),
+      ts: slot.ts,
+      caudal_instantaneo: caudal,
+      flujo_acumulado: totalizador,
+      nivel_freatico: nivelFreatico,
+    });
+    return updated ? 'pendiente' : 'skipped';
+  }
+
+  const updated = await transitionSlotToRequiresReview({
     id_dgauser: Number(user.id_dgauser),
-    obra,
-    ts: bucketEnd.toISOString(),
-    caudal_instantaneo: numericOrNull(processed.caudal.valor),
-    flujo_acumulado: numericOrNull(processed.totalizador.valor),
-    nivel_freatico: numericOrNull(processed.nivel_freatico.valor),
+    ts: slot.ts,
+    caudal_instantaneo: caudal,
+    flujo_acumulado: totalizador,
+    nivel_freatico: nivelFreatico,
+    validation_warnings: validation.warnings,
+    fail_reason: validation.failReason ?? 'unknown',
   });
-  return true;
+  return updated ? 'requires_review' : 'skipped';
 }
 
 async function processInformante(user: DgaUserRow): Promise<void> {
-  const inicio = user.last_run_at
-    ? new Date(user.last_run_at)
-    : combinarFechaHoraInicio(user.fecha_inicio, user.hora_inicio);
-  if (Number.isNaN(inicio.getTime())) {
-    logger.warn({ id_dgauser: user.id_dgauser }, 'DGA worker: fecha_inicio inválida');
-    return;
-  }
-
-  const stepMs = periodicidadMs(user.periodicidad);
-  const now = Date.now();
-
-  if (inicio.getTime() > now) return; // todavía no arranca
-
   const bundle = await loadSiteBundle(user.site_id);
   if (!bundle) {
     logger.warn(
       { id_dgauser: user.id_dgauser, site_id: user.site_id },
-      'DGA worker: sitio no encontrado',
+      'DGA fill: sitio no encontrado',
     );
     return;
   }
 
-  let cursor = inicio.getTime() + stepMs;
-  let processed = 0;
-  while (cursor <= now && processed < MAX_CATCHUP_BUCKETS) {
-    const bucketEnd = new Date(cursor);
-    const bucketStart = new Date(cursor - stepMs);
+  const slots = await listVacioSlotsForUser(Number(user.id_dgauser), MAX_SLOTS_PER_USER);
+  if (slots.length === 0) return;
+
+  let pendiente = 0;
+  let requiresReview = 0;
+  let noData = 0;
+
+  for (const slot of slots) {
     try {
-      const inserted = await processBucket(user, bundle, bucketEnd, bucketStart);
-      await markDgaUserRun(Number(user.id_dgauser), bucketEnd.toISOString());
-      if (inserted) processed++;
+      const outcome = await fillSlot(user, bundle, slot);
+      if (outcome === 'pendiente') pendiente++;
+      else if (outcome === 'requires_review') requiresReview++;
+      else if (outcome === 'no_data') noData++;
     } catch (err) {
       logger.error(
-        { id_dgauser: user.id_dgauser, err: (err as Error).message },
-        'DGA worker: fallo al procesar bucket',
+        { id_dgauser: user.id_dgauser, ts: slot.ts, err: (err as Error).message },
+        'DGA fill: fallo en slot',
       );
-      return;
     }
-    cursor += stepMs;
+  }
+
+  if (pendiente > 0 || requiresReview > 0) {
+    logger.info(
+      {
+        id_dgauser: user.id_dgauser,
+        site_id: user.site_id,
+        pendiente,
+        requires_review: requiresReview,
+        no_data: noData,
+        slots_total: slots.length,
+      },
+      'DGA fill: informante procesado',
+    );
   }
 }
 
@@ -181,13 +231,13 @@ async function runCycle(): Promise<void> {
   try {
     const users = await listActiveDgaUsers();
     for (const user of users) {
-      // Refrescar last_run_at de la BD por si otro ciclo lo movió.
+      // Re-lee por si transport/activo cambió en mitad del ciclo.
       const fresh = await findDgaUserById(Number(user.id_dgauser));
       if (!fresh || !fresh.activo) continue;
       await processInformante(fresh);
     }
   } catch (err) {
-    logger.error({ err: (err as Error).message }, 'DGA worker: ciclo falló');
+    logger.error({ err: (err as Error).message }, 'DGA fill: ciclo falló');
   }
 }
 
@@ -197,7 +247,7 @@ export function startDgaWorker(): void {
     logger.info('DGA worker deshabilitado (ENABLE_DGA_WORKER=false)');
     return;
   }
-  logger.info({ intervalMs: POLL_INTERVAL_MS }, 'DGA worker iniciado');
+  logger.info({ intervalMs: POLL_INTERVAL_MS }, 'DGA fill worker iniciado');
   void runCycle();
   intervalHandle = setInterval(() => {
     void runCycle();
@@ -209,5 +259,5 @@ export function stopDgaWorker(): void {
   if (!intervalHandle) return;
   clearInterval(intervalHandle);
   intervalHandle = null;
-  logger.info('DGA worker detenido');
+  logger.info('DGA fill worker detenido');
 }

@@ -96,6 +96,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/administration/administration').then((m) => m.AdministrationComponent),
       },
+      {
+        path: 'dga-review',
+        canActivate: [roleGuard('SuperAdmin', 'Admin')],
+        loadComponent: () =>
+          import('./pages/dga-review/dga-review').then((m) => m.DgaReviewComponent),
+      },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
     ],
   },

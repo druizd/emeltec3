@@ -7,15 +7,27 @@ import { ok } from '../../shared/httpEnvelope';
 import { ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { z } from 'zod';
-import { CreateDgaUserPayload, QueryDatoDgaParams } from './schema';
 import {
+  CreateDgaUserPayload,
+  ListReviewQueueParams,
+  QueryDatoDgaParams,
+  ReviewSlotActionPayload,
+  UpdateDgaUserConfigPayload,
+} from './schema';
+import {
+  applyReviewDecision,
   createDgaUser,
   getDatoDga,
   getDatoDgaBySite,
   getDatoDgaDirectoFromEquipo,
   getDgaUsersBySite,
+  listReviewQueue,
+  patchDgaUserConfig,
   toCsv,
 } from './service';
+import { requestDgaCode } from './twofactor';
+import type { AuthUser } from '../../shared/permissions';
+import { UnauthorizedError } from '../../shared/errors';
 
 const ExportDirectoParams = z.object({
   site_id: z.string().trim().min(1).max(10),
@@ -37,6 +49,80 @@ export async function createDgaUserHandler(
     }
     const created = await createDgaUser(parsed.data);
     res.status(201).json(ok(created, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function patchDgaUserConfigHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const idDgaUser = Number(req.params.id);
+    if (!Number.isFinite(idDgaUser) || idDgaUser <= 0) {
+      throw new ValidationError('id inválido');
+    }
+    const parsed = UpdateDgaUserConfigPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const updated = await patchDgaUserConfig(idDgaUser, parsed.data);
+    res.json(ok(updated, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function request2faCodeHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const user = (req as Request & { user?: AuthUser }).user;
+    if (!user) throw new UnauthorizedError('No autenticado');
+    await requestDgaCode(user);
+    res.json(ok({ sent: true }, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function listReviewQueueHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const parsed = ListReviewQueueParams.safeParse(req.query);
+    if (!parsed.success) {
+      throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
+    }
+    const rows = await listReviewQueue(parsed.data);
+    res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function reviewSlotActionHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const parsed = ReviewSlotActionPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const result = await applyReviewDecision(parsed.data);
+    res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }

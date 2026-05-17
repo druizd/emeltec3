@@ -6,13 +6,18 @@
 import { ConflictError, NotFoundError } from '../../shared/errors';
 import { encryptClave } from './crypto';
 import {
+  acceptReviewSlotWithValues,
   findDgaUserById,
   insertDgaUser,
   listDgaUsersBySite,
+  listSlotsRequiresReview,
+  markReviewSlotFailedManual,
   queryDatoDga,
   queryDatoDgaBySite,
+  updateDgaUserConfig,
   type DatoDgaRow,
   type DgaUserRow,
+  type ReviewSlotRow,
 } from './repo';
 import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
@@ -40,6 +45,10 @@ export interface DgaUserPublic {
   hora_inicio: string;
   last_run_at: string | null;
   activo: boolean;
+  transport: 'off' | 'shadow' | 'rest';
+  caudal_max_lps: number | null;
+  caudal_tolerance_pct: number;
+  max_retry_attempts: number;
   created_at: string;
   updated_at: string;
 }
@@ -55,9 +64,31 @@ function toPublic(row: DgaUserRow): DgaUserPublic {
     hora_inicio: row.hora_inicio,
     last_run_at: row.last_run_at,
     activo: row.activo,
+    transport: row.transport,
+    caudal_max_lps: row.caudal_max_lps == null ? null : Number(row.caudal_max_lps),
+    caudal_tolerance_pct: Number(row.caudal_tolerance_pct),
+    max_retry_attempts: row.max_retry_attempts,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
+}
+
+/**
+ * Patch parcial de la config DGA. Aplica los cambios y devuelve la versión
+ * pública actualizada. Lanza NotFoundError si el informante no existe.
+ */
+export async function patchDgaUserConfig(
+  idDgaUser: number,
+  input: {
+    activo?: boolean | undefined;
+    transport?: 'off' | 'shadow' | 'rest' | undefined;
+    caudal_max_lps?: number | null | undefined;
+    caudal_tolerance_pct?: number | undefined;
+  },
+): Promise<DgaUserPublic> {
+  const row = await updateDgaUserConfig(idDgaUser, input);
+  if (!row) throw new NotFoundError('Informante DGA no encontrado');
+  return toPublic(row);
 }
 
 export async function createDgaUser(input: CreateDgaUserPayload): Promise<DgaUserPublic> {
@@ -86,6 +117,61 @@ export async function createDgaUser(input: CreateDgaUserPayload): Promise<DgaUse
     }
     throw err;
   }
+}
+
+/**
+ * Lista los slots del review queue. Si site_id se pasa, filtra por sitio.
+ */
+export async function listReviewQueue(input: {
+  site_id?: string | undefined;
+  limit?: number | undefined;
+}): Promise<ReviewSlotRow[]> {
+  return listSlotsRequiresReview(input);
+}
+
+/**
+ * Aplica decisión admin sobre un slot. Si action='accept', actualiza
+ * valores y promueve a pendiente. Si action='discard', marca fallido.
+ * En ambos casos agrega un warning sintético registrando la decisión.
+ */
+export async function applyReviewDecision(input: {
+  id_dgauser: number;
+  ts: string;
+  action: 'accept' | 'discard';
+  values?:
+    | {
+        caudal_instantaneo?: number | null | undefined;
+        flujo_acumulado?: number | null | undefined;
+        nivel_freatico?: number | null | undefined;
+      }
+    | undefined;
+  admin_note: string;
+}): Promise<{ ok: boolean }> {
+  if (input.action === 'discard') {
+    const ok = await markReviewSlotFailedManual({
+      id_dgauser: input.id_dgauser,
+      ts: input.ts,
+      admin_note: input.admin_note,
+    });
+    if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
+    return { ok: true };
+  }
+
+  // accept: requiere los valores finales explícitos.
+  if (!input.values) {
+    throw new NotFoundError('values requerido para action=accept');
+  }
+  const ok = await acceptReviewSlotWithValues({
+    id_dgauser: input.id_dgauser,
+    ts: input.ts,
+    caudal_instantaneo: input.values.caudal_instantaneo ?? null,
+    flujo_acumulado:
+      input.values.flujo_acumulado == null ? null : Math.trunc(input.values.flujo_acumulado),
+    nivel_freatico: input.values.nivel_freatico ?? null,
+    admin_note: input.admin_note,
+  });
+  if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
+  return { ok: true };
 }
 
 export async function getDgaUsersBySite(siteId: string): Promise<DgaUserPublic[]> {
@@ -196,6 +282,9 @@ export async function getDatoDgaDirectoFromEquipo(
         caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
         flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
         nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
+        // Filas sintetizadas desde equipo (sin pipeline DGA): no tienen estado real.
+        estatus: 'vacio',
+        comprobante: null,
       } satisfies DatoDgaRow;
     });
   return processed;

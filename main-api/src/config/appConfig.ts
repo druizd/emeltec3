@@ -58,6 +58,25 @@ const Schema = z.object({
     .min(32, 'DGA_ENCRYPTION_KEY debe tener al menos 32 caracteres (clave AES-256)')
     .optional(),
 
+  // Endpoint REST oficial SNIA aguas subterráneas (Res. Exenta 2.170/2025).
+  // Default = endpoint productivo. Override en .env solo para piloto/staging.
+  DGA_API_URL: z
+    .string()
+    .url()
+    .default('https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas'),
+
+  // RUT del Centro de Control (Emeltec) registrado ante DGA. Requerido para
+  // que el submission worker pueda enviar. Sin esto, el worker no arranca.
+  DGA_RUT_EMPRESA: z.string().min(1).optional(),
+
+  // Kill switch global del envío DGA. Default OFF — sin autorización de
+  // gerencia para migrar legacy → nuevo pipeline. Activar solo cuando se
+  // valide piloto + se apague legacy obra por obra.
+  ENABLE_DGA_SUBMISSION_WORKER: z
+    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 
@@ -125,6 +144,9 @@ export const config = {
   },
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,
+    apiUrl: env.DGA_API_URL,
+    rutEmpresa: env.DGA_RUT_EMPRESA,
+    submissionEnabled: env.ENABLE_DGA_SUBMISSION_WORKER,
   },
 } as const;
 

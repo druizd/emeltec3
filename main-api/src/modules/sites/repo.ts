@@ -36,6 +36,15 @@ export async function getMappingsBySiteId(siteId: string): Promise<RegMap[]> {
   return result.rows;
 }
 
+export async function listPozosActivos(): Promise<Site[]> {
+  const result = await query<Site>(
+    `SELECT ${SITE_COLUMNS} FROM sitio WHERE tipo_sitio = 'pozo' AND activo = TRUE ORDER BY id ASC`,
+    [],
+    { name: 'sites__list_pozos_activos' },
+  );
+  return result.rows;
+}
+
 export async function getLatestEquipoForSerial(serialId: string): Promise<LatestEquipoRow | null> {
   const result = await query<LatestEquipoRow>(
     `

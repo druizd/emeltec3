@@ -297,6 +297,21 @@ ${securityNoteHtml('Si esta cuenta no fue autorizada, revoca el acceso desde el 
   }
 };
 
+/**
+ * Envío crudo de email — usado por workers TS que necesitan notificar al admin
+ * sin la ceremonia del template de alertas (DGA reconciler, requires_review,
+ * etc.). El `text` se renderiza en el shell estándar con un divider.
+ *
+ * Devuelve la promesa del Resend (o {id:'dev-mode'} en dev sin API key).
+ */
+exports.sendAdminPlainEmail = async ({ to, subject, text, html }) => {
+  if (!to) {
+    console.warn('[emailService] sendAdminPlainEmail: "to" vacío, email omitido');
+    return null;
+  }
+  return enviar({ to, subject, text, html });
+};
+
 exports.sendAlertEmail = async (emailDestino, nombreCompleto, mensaje, regla) => {
   try {
     const nombre = (nombreCompleto || '').trim() || 'usuario';

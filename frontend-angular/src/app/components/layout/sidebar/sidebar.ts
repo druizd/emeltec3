@@ -222,6 +222,25 @@ const MODULES = SITE_MODULES;
         }
       </div>
 
+      <!-- Admin DGA Review (solo SuperAdmin / Admin) -->
+      @if (canSeeDgaReview()) {
+        <div class="shrink-0 border-t border-[#E2E8F0] p-1.5">
+          <button
+            type="button"
+            (click)="router.navigate(['/dga-review'])"
+            class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-[#64748b] transition-colors hover:bg-[#f0fdfa] hover:text-[#0899a5]"
+            [class.justify-center]="collapsed()"
+            [class.gap-1.5]="!collapsed()"
+            [title]="collapsed() ? 'Revisión DGA (admin)' : ''"
+          >
+            <span class="material-symbols-outlined text-[16px]">fact_check</span>
+            @if (!collapsed()) {
+              <span class="text-[12px] font-semibold">Revisión DGA</span>
+            }
+          </button>
+        </div>
+      }
+
       <!-- Logout -->
       <div class="shrink-0 border-t border-[#E2E8F0] p-1.5">
         <button
@@ -277,6 +296,12 @@ export class SidebarComponent implements OnInit {
       }
     }
     return total >= 15;
+  });
+
+  /** Visible solo para roles que pueden actuar sobre la cola de revisión DGA. */
+  canSeeDgaReview = computed(() => {
+    const tipo = this.auth.user()?.tipo;
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
   });
 
   hasSearchResults = computed(() => {
