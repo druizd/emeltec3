@@ -128,7 +128,7 @@ interface RowEdit {
                 <tr class="hover:bg-slate-50">
                   <td class="px-3 py-2 align-top">
                     <div class="font-semibold text-slate-700">{{ s.codigo_obra || s.obra }}</div>
-                    <div class="text-[10px] text-slate-500">{{ s.nombre_informante }}</div>
+                    <div class="text-[10px] text-slate-500">{{ s.referencia_informante || s.site_id }}</div>
                   </td>
                   <td class="px-3 py-2 align-top font-mono text-[11px] text-slate-600">
                     {{ s.ts }}
@@ -234,7 +234,7 @@ export class DgaReviewComponent {
   }
 
   slotKey(s: DgaReviewSlot): string {
-    return `${s.id_dgauser}::${s.ts}`;
+    return `${s.site_id}::${s.ts}`;
   }
 
   edit(s: DgaReviewSlot): RowEdit {
@@ -313,7 +313,7 @@ export class DgaReviewComponent {
       return;
     }
     const payload: DgaReviewActionPayload = {
-      id_dgauser: Number(s.id_dgauser),
+      site_id: s.site_id,
       ts: s.ts,
       action: 'accept',
       values: {
@@ -334,7 +334,7 @@ export class DgaReviewComponent {
       return;
     }
     const payload: DgaReviewActionPayload = {
-      id_dgauser: Number(s.id_dgauser),
+      site_id: s.site_id,
       ts: s.ts,
       action: 'discard',
       admin_note: e.note.trim(),

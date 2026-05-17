@@ -1,33 +1,48 @@
 /**
- * Controllers HTTP v2 del módulo DGA.
- * El insert de dato_dga lo realiza el worker (no expuesto manualmente).
+ * Controllers HTTP v2 — modelo redesign 2026-05-17.
+ *
+ * Endpoints:
+ *   - GET    /dga/informantes
+ *   - POST   /dga/informantes
+ *   - PATCH  /dga/informantes/:rut   (2FA si cambia clave)
+ *   - DELETE /dga/informantes/:rut   (2FA)
+ *   - GET    /dga/sites/:siteId/pozo-config
+ *   - PATCH  /dga/sites/:siteId/pozo-config  (2FA si dga_transport='rest')
+ *   - GET    /dga/sites/:siteId/live-preview
+ *   - GET    /dga/dato                       (query mediciones por sitio)
+ *   - GET    /dga/review-queue
+ *   - POST   /dga/review-queue/action        (2FA)
+ *   - GET    /dga/dato/export.csv
+ *   - GET    /dga/export-directo.csv
+ *   - POST   /dga/2fa/request
  */
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
-import { ValidationError } from '../../shared/errors';
+import { UnauthorizedError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { z } from 'zod';
 import {
-  CreateDgaUserPayload,
   ListReviewQueueParams,
+  PatchPozoDgaConfigPayload,
   QueryDatoDgaParams,
   ReviewSlotActionPayload,
-  UpdateDgaUserConfigPayload,
+  UpsertInformantePayload,
 } from './schema';
 import {
   applyReviewDecision,
-  createDgaUser,
-  getDatoDga,
+  deleteInformanteService,
   getDatoDgaBySite,
   getDatoDgaDirectoFromEquipo,
-  getDgaUsersBySite,
+  getDgaLivePreview,
+  getInformantes,
   listReviewQueue,
-  patchDgaUserConfig,
+  patchPozoDgaConfigService,
   toCsv,
+  upsertInformanteService,
 } from './service';
 import { requestDgaCode } from './twofactor';
 import type { AuthUser } from '../../shared/permissions';
-import { UnauthorizedError } from '../../shared/errors';
+import { getPozoDgaConfig } from './repo';
 
 const ExportDirectoParams = z.object({
   site_id: z.string().trim().min(1).max(10),
@@ -36,45 +51,9 @@ const ExportDirectoParams = z.object({
   bucket: z.enum(['minuto', 'hora', 'dia', 'semana', 'mes']).default('hora'),
 });
 
-export async function createDgaUserHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const startedAt = nowHrtime();
-  try {
-    const parsed = CreateDgaUserPayload.safeParse(req.body);
-    if (!parsed.success) {
-      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
-    }
-    const created = await createDgaUser(parsed.data);
-    res.status(201).json(ok(created, { durationMs: elapsedMs(startedAt) }));
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function patchDgaUserConfigHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const startedAt = nowHrtime();
-  try {
-    const idDgaUser = Number(req.params.id);
-    if (!Number.isFinite(idDgaUser) || idDgaUser <= 0) {
-      throw new ValidationError('id inválido');
-    }
-    const parsed = UpdateDgaUserConfigPayload.safeParse(req.body);
-    if (!parsed.success) {
-      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
-    }
-    const updated = await patchDgaUserConfig(idDgaUser, parsed.data);
-    res.json(ok(updated, { durationMs: elapsedMs(startedAt) }));
-  } catch (err) {
-    next(err);
-  }
-}
+// ============================================================================
+// 2FA
+// ============================================================================
 
 export async function request2faCodeHandler(
   req: Request,
@@ -91,6 +70,128 @@ export async function request2faCodeHandler(
     next(err);
   }
 }
+
+// ============================================================================
+// Informantes (pool global)
+// ============================================================================
+
+export async function listInformantesHandler(
+  _req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const rows = await getInformantes();
+    res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function upsertInformanteHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const body = { ...req.body };
+    if (req.params.rut) body.rut = req.params.rut;
+    const parsed = UpsertInformantePayload.safeParse(body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const result = await upsertInformanteService({
+      rut: parsed.data.rut,
+      ...(parsed.data.clave_informante !== undefined && {
+        clave_informante: parsed.data.clave_informante,
+      }),
+      ...(parsed.data.referencia !== undefined && { referencia: parsed.data.referencia }),
+    });
+    res.status(req.method === 'POST' ? 201 : 200).json(
+      ok(result, { durationMs: elapsedMs(startedAt) }),
+    );
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteInformanteHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const rut = String(req.params.rut ?? '').trim();
+    if (!rut) throw new ValidationError('rut requerido');
+    await deleteInformanteService(rut);
+    res.json(ok({ deleted: true }, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ============================================================================
+// Pozo DGA config (per pozo)
+// ============================================================================
+
+export async function getPozoDgaConfigHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const row = await getPozoDgaConfig(siteId);
+    res.json(ok(row, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function patchPozoDgaConfigHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const parsed = PatchPozoDgaConfigPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const result = await patchPozoDgaConfigService(siteId, parsed.data);
+    res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getDgaLivePreviewHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const preview = await getDgaLivePreview(siteId);
+    res.json(ok(preview, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ============================================================================
+// Review queue
+// ============================================================================
 
 export async function listReviewQueueHandler(
   req: Request,
@@ -128,28 +229,9 @@ export async function reviewSlotActionHandler(
   }
 }
 
-export async function listDgaUsersHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const startedAt = nowHrtime();
-  try {
-    const siteId = String(req.params.siteId ?? '').trim();
-    if (!siteId) throw new ValidationError('siteId requerido');
-    const rows = await getDgaUsersBySite(siteId);
-    res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
-  } catch (err) {
-    next(err);
-  }
-}
-
-async function fetchDatoRows(p: QueryDatoDgaParams) {
-  if (p.id_dgauser !== undefined) {
-    return getDatoDga(p.id_dgauser, p.desde, p.hasta);
-  }
-  return getDatoDgaBySite(p.site_id as string, p.desde, p.hasta);
-}
+// ============================================================================
+// Mediciones por sitio
+// ============================================================================
 
 export async function queryDatoDgaHandler(
   req: Request,
@@ -162,17 +244,13 @@ export async function queryDatoDgaHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
-    const rows = await fetchDatoRows(parsed.data);
+    const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
     res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
 }
 
-/**
- * Descarga manual: arma CSV DGA directo desde `equipo` aplicando las mismas
- * transformaciones del dashboard. No requiere informante registrado.
- */
 export async function exportDgaDirectoCsvHandler(
   req: Request,
   res: Response,
@@ -209,10 +287,9 @@ export async function exportDatoDgaCsvHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
-    const rows = await fetchDatoRows(parsed.data);
+    const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
     const csv = toCsv(rows);
-    const key = parsed.data.site_id ?? parsed.data.id_dgauser;
-    const filename = `dga_${key}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;
+    const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send('﻿' + csv);

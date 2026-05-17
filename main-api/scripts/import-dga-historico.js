@@ -215,49 +215,23 @@ async function main() {
     const parts = parseCsvLine(line);
     const codigoObra = parts[cols.codigo_obra];
 
-    // Resolver dga_user en la primera fila. Asumimos un CSV = una obra.
+    // Resolver sitio por codigo_obra (lookup pozo_config.obra_dga). Asumimos
+    // CSV = una obra → un sitio.
     if (!userResolved) {
-      const users = await dgaRepo.findDgaUsersByCodigoObra(codigoObra);
-      if (users.length === 0) {
+      const siteId = await dgaRepo.findSiteByCodigoObra(codigoObra);
+      if (!siteId) {
         console.error(
-          `ERROR: ningún dga_user encontrado para codigo_obra=${codigoObra}. ` +
-            `Verifica pozo_config.obra_dga + dga_user.site_id.`,
+          `ERROR: ningún sitio encontrado con pozo_config.obra_dga=${codigoObra}. ` +
+            `Verifica que el pozo exista y tenga el código de obra cargado.`,
         );
         process.exit(2);
       }
-      let chosen;
-      if (users.length === 1) {
-        chosen = users[0];
-      } else {
-        if (!args.user) {
-          console.error(
-            `ERROR: ${users.length} informantes encontrados para ${codigoObra}. ` +
-              `Especifica --user=<id_dgauser>. Opciones:`,
-          );
-          for (const u of users) {
-            console.error(`  --user=${u.id_dgauser}  (rut=${u.rut_informante}, site=${u.site_id})`);
-          }
-          process.exit(2);
-        }
-        chosen = users.find((u) => Number(u.id_dgauser) === args.user);
-        if (!chosen) {
-          console.error(`ERROR: --user=${args.user} no coincide con ningún informante de ${codigoObra}`);
-          process.exit(2);
-        }
-      }
-
-      const site = await siteRepo.getSiteById(chosen.site_id);
-      const pozoConfig = await siteRepo.getPozoConfigBySiteId(chosen.site_id);
+      const site = await siteRepo.getSiteById(siteId);
+      const pozoConfig = await siteRepo.getPozoConfigBySiteId(siteId);
       const obra = (pozoConfig && pozoConfig.obra_dga ? pozoConfig.obra_dga.trim() : '') ||
                    (site ? site.descripcion : codigoObra);
-      userResolved = {
-        id_dgauser: Number(chosen.id_dgauser),
-        site_id: chosen.site_id,
-        obra,
-      };
-      console.log(
-        `[import] dga_user resuelto: id=${userResolved.id_dgauser} site=${userResolved.site_id} rut=${chosen.rut_informante}`,
-      );
+      userResolved = { site_id: siteId, obra };
+      console.log(`[import] sitio resuelto: id=${siteId}`);
       console.log(`[import] obra (denormalizada): ${userResolved.obra}`);
       console.log('[import] procesando filas...');
     }
@@ -288,7 +262,7 @@ async function main() {
     if (!args.dryRun) {
       try {
         await dgaRepo.upsertDatoDgaFromLegacy({
-          id_dgauser: userResolved.id_dgauser,
+          site_id: userResolved.site_id,
           ts,
           obra: userResolved.obra,
           caudal_instantaneo: caudal,
@@ -302,7 +276,7 @@ async function main() {
         // Audit append-only por cada fila importada. Marcamos transport
         // como 'legacy-import' para distinguir de envíos reales nuevos.
         await dgaRepo.insertSendAudit({
-          id_dgauser: userResolved.id_dgauser,
+          site_id: userResolved.site_id,
           ts,
           attempt_n: 1,
           transport: 'legacy-import',
@@ -311,8 +285,8 @@ async function main() {
           dga_message: null,
           api_n_comprobante: comprobante,
           api_status_description: null,
-          request_payload: null, // no tenemos el payload original
-          raw_response: null, // tampoco la respuesta
+          request_payload: null,
+          raw_response: null,
           duration_ms: 0,
           sent_at: sentAt, // override con el real del CSV
         });

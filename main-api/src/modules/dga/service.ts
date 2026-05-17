@@ -1,28 +1,34 @@
 /**
- * Servicio DGA: alta de informante + lectura de mediciones procesadas.
- * El insert de dato_dga lo hace el worker (modules/dga/worker.ts), no
- * exponemos endpoint manual: el flujo es completamente automático.
+ * Servicio DGA (modelo redesign 2026-05-17):
+ *   - Informantes: pool global CRUD.
+ *   - Pozo DGA config: patch parcial con 2FA cuando transport='rest'.
+ *   - Review queue.
+ *   - Lectura mediciones por sitio.
+ *   - Descarga directa CSV desde equipo.
  */
 import { ConflictError, NotFoundError } from '../../shared/errors';
 import { encryptClave } from './crypto';
 import {
   acceptReviewSlotWithValues,
-  findDgaUserById,
-  insertDgaUser,
-  listDgaUsersBySite,
+  deleteInformante,
+  findInformanteByRut,
+  listInformantes,
   listSlotsRequiresReview,
   markReviewSlotFailedManual,
-  queryDatoDga,
+  patchPozoDgaConfig,
   queryDatoDgaBySite,
-  updateDgaUserConfig,
+  upsertInformante,
   type DatoDgaRow,
-  type DgaUserRow,
+  type DgaInformanteRow,
+  type DgaTransport,
+  type PozoDgaConfigRow,
   type ReviewSlotRow,
 } from './repo';
 import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
 import type { HistoryEquipoRow } from '../sites/types';
+import type { Periodicidad } from './schema';
 
 export type BucketGranularidad = 'minuto' | 'hora' | 'dia' | 'semana' | 'mes';
 
@@ -33,95 +39,140 @@ const BUCKET_TO_INTERVAL: Record<BucketGranularidad, string> = {
   semana: '1 week',
   mes: '1 month',
 };
-import type { CreateDgaUserPayload } from './schema';
 
-export interface DgaUserPublic {
-  id_dgauser: string;
-  site_id: string;
-  nombre_informante: string;
-  rut_informante: string;
-  periodicidad: string;
-  fecha_inicio: string;
-  hora_inicio: string;
-  last_run_at: string | null;
-  activo: boolean;
-  transport: 'off' | 'shadow' | 'rest';
-  caudal_max_lps: number | null;
-  caudal_tolerance_pct: number;
-  max_retry_attempts: number;
+// ============================================================================
+// Informantes
+// ============================================================================
+
+export interface InformantePublic {
+  rut: string;
+  referencia: string | null;
   created_at: string;
   updated_at: string;
 }
 
-function toPublic(row: DgaUserRow): DgaUserPublic {
+function toInformantePublic(row: DgaInformanteRow): InformantePublic {
   return {
-    id_dgauser: row.id_dgauser,
-    site_id: row.site_id,
-    nombre_informante: row.nombre_informante,
-    rut_informante: row.rut_informante,
-    periodicidad: row.periodicidad,
-    fecha_inicio: row.fecha_inicio,
-    hora_inicio: row.hora_inicio,
-    last_run_at: row.last_run_at,
-    activo: row.activo,
-    transport: row.transport,
-    caudal_max_lps: row.caudal_max_lps == null ? null : Number(row.caudal_max_lps),
-    caudal_tolerance_pct: Number(row.caudal_tolerance_pct),
-    max_retry_attempts: row.max_retry_attempts,
+    rut: row.rut,
+    referencia: row.referencia,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
 }
 
-/**
- * Patch parcial de la config DGA. Aplica los cambios y devuelve la versión
- * pública actualizada. Lanza NotFoundError si el informante no existe.
- */
-export async function patchDgaUserConfig(
-  idDgaUser: number,
-  input: {
-    activo?: boolean | undefined;
-    transport?: 'off' | 'shadow' | 'rest' | undefined;
-    caudal_max_lps?: number | null | undefined;
-    caudal_tolerance_pct?: number | undefined;
-  },
-): Promise<DgaUserPublic> {
-  const row = await updateDgaUserConfig(idDgaUser, input);
-  if (!row) throw new NotFoundError('Informante DGA no encontrado');
-  return toPublic(row);
+export async function getInformantes(): Promise<InformantePublic[]> {
+  const rows = await listInformantes();
+  return rows.map(toInformantePublic);
 }
 
-export async function createDgaUser(input: CreateDgaUserPayload): Promise<DgaUserPublic> {
-  const claveCifrada = encryptClave(input.clave_informante);
-  try {
-    const row = await insertDgaUser({
-      site_id: input.site_id,
-      nombre_informante: input.nombre_informante,
-      rut_informante: input.rut_informante,
-      clave_cifrada: claveCifrada,
-      periodicidad: input.periodicidad,
-      fecha_inicio: input.fecha_inicio,
-      hora_inicio: input.hora_inicio.length === 5 ? `${input.hora_inicio}:00` : input.hora_inicio,
+/**
+ * Crear o actualizar informante. Si solo se manda `clave_informante`,
+ * actualiza la clave (rotación). Si solo `referencia`, actualiza referencia.
+ * En `create` (rut nuevo), `clave_informante` es obligatorio.
+ */
+export async function upsertInformanteService(input: {
+  rut: string;
+  clave_informante?: string;
+  referencia?: string | null;
+}): Promise<InformantePublic> {
+  const existing = await findInformanteByRut(input.rut);
+
+  let claveCifrada: string;
+  if (input.clave_informante) {
+    claveCifrada = encryptClave(input.clave_informante);
+  } else if (existing) {
+    // Rotación parcial: solo referencia, preservar clave actual.
+    claveCifrada = existing.clave_informante;
+  } else {
+    throw new ConflictError('clave_informante requerido al crear nuevo RUT', {
+      code: 'DGA_CLAVE_REQUIRED',
     });
-    return toPublic(row);
-  } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      (err as { code: string }).code === '23505'
-    ) {
-      throw new ConflictError('Ya existe un informante para ese sitio y RUT', {
-        code: 'DGA_USER_DUPLICATE',
-      });
-    }
-    throw err;
   }
+
+  const row = await upsertInformante({
+    rut: input.rut,
+    clave_cifrada: claveCifrada,
+    referencia: input.referencia === undefined ? (existing?.referencia ?? null) : input.referencia,
+  });
+  return toInformantePublic(row);
 }
 
-/**
- * Lista los slots del review queue. Si site_id se pasa, filtra por sitio.
- */
+export async function deleteInformanteService(rut: string): Promise<void> {
+  const ok = await deleteInformante(rut);
+  if (!ok) throw new NotFoundError('Informante no encontrado');
+}
+
+// ============================================================================
+// Pozo DGA config
+// ============================================================================
+
+export interface PozoDgaConfigPublic {
+  sitio_id: string;
+  obra_dga: string | null;
+  dga_activo: boolean;
+  dga_transport: DgaTransport;
+  dga_caudal_max_lps: number | null;
+  dga_caudal_tolerance_pct: number;
+  dga_periodicidad: Periodicidad | null;
+  dga_fecha_inicio: string | null;
+  dga_hora_inicio: string | null;
+  dga_informante_rut: string | null;
+  dga_max_retry_attempts: number;
+  dga_auto_accept_fallback_hours: number | null;
+  dga_last_run_at: string | null;
+}
+
+function toPozoDgaPublic(row: PozoDgaConfigRow): PozoDgaConfigPublic {
+  return {
+    sitio_id: row.sitio_id,
+    obra_dga: row.obra_dga,
+    dga_activo: row.dga_activo,
+    dga_transport: row.dga_transport,
+    dga_caudal_max_lps:
+      row.dga_caudal_max_lps == null ? null : Number(row.dga_caudal_max_lps),
+    dga_caudal_tolerance_pct: Number(row.dga_caudal_tolerance_pct),
+    dga_periodicidad: row.dga_periodicidad,
+    dga_fecha_inicio: row.dga_fecha_inicio,
+    dga_hora_inicio: row.dga_hora_inicio,
+    dga_informante_rut: row.dga_informante_rut,
+    dga_max_retry_attempts: row.dga_max_retry_attempts,
+    dga_auto_accept_fallback_hours: row.dga_auto_accept_fallback_hours,
+    dga_last_run_at: row.dga_last_run_at,
+  };
+}
+
+export async function patchPozoDgaConfigService(
+  siteId: string,
+  input: {
+    dga_activo?: boolean | undefined;
+    dga_transport?: DgaTransport | undefined;
+    dga_caudal_max_lps?: number | null | undefined;
+    dga_caudal_tolerance_pct?: number | undefined;
+    dga_periodicidad?: Periodicidad | null | undefined;
+    dga_fecha_inicio?: string | null | undefined;
+    dga_hora_inicio?: string | null | undefined;
+    dga_informante_rut?: string | null | undefined;
+    dga_max_retry_attempts?: number | undefined;
+    dga_auto_accept_fallback_hours?: number | null | undefined;
+  },
+): Promise<PozoDgaConfigPublic> {
+  // hora_inicio puede venir HH:MM (sin segundos); normalizo.
+  if (input.dga_hora_inicio && input.dga_hora_inicio.length === 5) {
+    input.dga_hora_inicio = `${input.dga_hora_inicio}:00`;
+  }
+  const row = await patchPozoDgaConfig(siteId, input);
+  if (!row) {
+    throw new NotFoundError(
+      'pozo_config no existe para este sitio. Crear el pozo con su config básica primero.',
+    );
+  }
+  return toPozoDgaPublic(row);
+}
+
+// ============================================================================
+// Review queue
+// ============================================================================
+
 export async function listReviewQueue(input: {
   site_id?: string | undefined;
   limit?: number | undefined;
@@ -129,13 +180,8 @@ export async function listReviewQueue(input: {
   return listSlotsRequiresReview(input);
 }
 
-/**
- * Aplica decisión admin sobre un slot. Si action='accept', actualiza
- * valores y promueve a pendiente. Si action='discard', marca fallido.
- * En ambos casos agrega un warning sintético registrando la decisión.
- */
 export async function applyReviewDecision(input: {
-  id_dgauser: number;
+  site_id: string;
   ts: string;
   action: 'accept' | 'discard';
   values?:
@@ -149,7 +195,7 @@ export async function applyReviewDecision(input: {
 }): Promise<{ ok: boolean }> {
   if (input.action === 'discard') {
     const ok = await markReviewSlotFailedManual({
-      id_dgauser: input.id_dgauser,
+      site_id: input.site_id,
       ts: input.ts,
       admin_note: input.admin_note,
     });
@@ -157,12 +203,11 @@ export async function applyReviewDecision(input: {
     return { ok: true };
   }
 
-  // accept: requiere los valores finales explícitos.
   if (!input.values) {
     throw new NotFoundError('values requerido para action=accept');
   }
   const ok = await acceptReviewSlotWithValues({
-    id_dgauser: input.id_dgauser,
+    site_id: input.site_id,
     ts: input.ts,
     caudal_instantaneo: input.values.caudal_instantaneo ?? null,
     flujo_acumulado:
@@ -174,20 +219,9 @@ export async function applyReviewDecision(input: {
   return { ok: true };
 }
 
-export async function getDgaUsersBySite(siteId: string): Promise<DgaUserPublic[]> {
-  const rows = await listDgaUsersBySite(siteId);
-  return rows.map(toPublic);
-}
-
-export async function getDatoDga(
-  idDgaUser: number,
-  desde: string,
-  hasta: string,
-): Promise<DatoDgaRow[]> {
-  const user = await findDgaUserById(idDgaUser);
-  if (!user) throw new NotFoundError('Informante DGA no encontrado');
-  return queryDatoDga(idDgaUser, desde, hasta);
-}
+// ============================================================================
+// Lectura mediciones por sitio (Detalle de Registros)
+// ============================================================================
 
 export async function getDatoDgaBySite(
   siteId: string,
@@ -197,6 +231,10 @@ export async function getDatoDgaBySite(
   return queryDatoDgaBySite(siteId, desde, hasta);
 }
 
+// ============================================================================
+// Descarga directa CSV desde equipo (sin pasar por dato_dga)
+// ============================================================================
+
 function numericOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null;
   const n = typeof value === 'number' ? value : Number(value);
@@ -204,7 +242,6 @@ function numericOrNull(value: unknown): number | null {
 }
 
 function utcToChileFecha(iso: string): string {
-  // UTC → UTC-4 chileno (offset fijo, sin DST)
   const d = new Date(iso);
   d.setUTCHours(d.getUTCHours() - 4);
   return d.toISOString().slice(0, 10);
@@ -216,11 +253,6 @@ function utcToChileHora(iso: string): string {
   return d.toISOString().slice(11, 19);
 }
 
-/**
- * Genera filas DGA leyendo directo de `equipo` y aplicando las transformaciones
- * existentes del dashboard (caudal, totalizador, nivel_freatico). No depende de
- * `dato_dga` ni de informantes registrados. Ideal para descarga manual del dueño.
- */
 async function fetchEquipoBucketed(
   serialId: string,
   fromIso: string,
@@ -264,8 +296,7 @@ export async function getDatoDgaDirectoFromEquipo(
 
   const obra = pozoConfig?.obra_dga?.trim() || site.descripcion;
 
-  // Repo devuelve DESC; DGA exige cronológico ASC.
-  const processed = rawRows
+  return rawRows
     .slice()
     .reverse()
     .map((raw) => {
@@ -274,7 +305,7 @@ export async function getDatoDgaDirectoFromEquipo(
         mapped.timestamp ??
         (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
       return {
-        id_dgauser: '',
+        site_id: site.id,
         obra,
         ts,
         fecha: utcToChileFecha(ts),
@@ -287,13 +318,106 @@ export async function getDatoDgaDirectoFromEquipo(
         comprobante: null,
       } satisfies DatoDgaRow;
     });
-  return processed;
 }
 
 function stringifyNumeric(value: number | null): string | null {
   if (value === null) return null;
   return value.toString();
 }
+
+// ============================================================================
+// Live preview (Datos en vivo en modal DGA)
+// ============================================================================
+
+export interface DgaLivePreview {
+  /** Hora UTC del último dato disponible. null si pozo nunca reportó. */
+  ts: string | null;
+  /** Edad del dato en segundos. */
+  age_seconds: number | null;
+  /** Strings exactos que se enviarían a SNIA. null si no hay dato. */
+  fechaMedicion: string | null;
+  horaMedicion: string | null;
+  caudal: string | null;
+  totalizador: string | null;
+  nivelFreaticoDelPozo: string;
+}
+
+/**
+ * Construye una preview formateada como SNIA recibiría si reportáramos
+ * ahora con la última lectura del pozo. Sin enviar nada — solo mostrar.
+ */
+export async function getDgaLivePreview(siteId: string): Promise<DgaLivePreview> {
+  const site = await getSiteById(siteId);
+  if (!site) throw new NotFoundError('Sitio no encontrado');
+
+  if (!site.id_serial) {
+    return {
+      ts: null,
+      age_seconds: null,
+      fechaMedicion: null,
+      horaMedicion: null,
+      caudal: null,
+      totalizador: null,
+      nivelFreaticoDelPozo: '',
+    };
+  }
+
+  const [pozoConfig, mappings, latestRes] = await Promise.all([
+    getPozoConfigBySiteId(siteId),
+    getMappingsBySiteId(siteId),
+    dbQuery<HistoryEquipoRow>(
+      `SELECT time, received_at, id_serial, data
+         FROM equipo
+        WHERE id_serial = $1
+        ORDER BY time DESC
+        LIMIT 1`,
+      [site.id_serial],
+      { name: 'dga__latest_equipo' },
+    ),
+  ]);
+
+  const latest = latestRes.rows[0];
+  if (!latest) {
+    return {
+      ts: null,
+      age_seconds: null,
+      fechaMedicion: null,
+      horaMedicion: null,
+      caudal: null,
+      totalizador: null,
+      nivelFreaticoDelPozo: '',
+    };
+  }
+
+  const mapped = mapHistoricalDashboardRow({
+    row: latest,
+    site,
+    mappings,
+    pozoConfig,
+  });
+  const tsIso =
+    typeof latest.time === 'string' ? latest.time : new Date(latest.time).toISOString();
+  const ageSec = Math.max(0, Math.round((Date.now() - new Date(tsIso).getTime()) / 1000));
+
+  const caudal = numericOrNull(mapped.caudal.valor);
+  const totRaw = numericOrNull(mapped.totalizador.valor);
+  const totTrunc = totRaw == null ? null : Math.trunc(totRaw);
+  const nivel = numericOrNull(mapped.nivel_freatico.valor);
+
+  return {
+    ts: tsIso,
+    age_seconds: ageSec,
+    fechaMedicion: utcToChileFecha(tsIso),
+    horaMedicion: utcToChileHora(tsIso),
+    caudal: caudal == null ? null : caudal.toFixed(2),
+    totalizador: totTrunc == null ? null : String(totTrunc),
+    nivelFreaticoDelPozo: nivel == null ? '' : nivel.toFixed(2),
+  };
+}
+
+// ============================================================================
+// CSV writer (legacy descarga)
+// ============================================================================
 
 export function toCsv(rows: DatoDgaRow[]): string {
   const header = 'OBRA;FECHA;HORA;CAUDAL_INSTANTANEO;FLUJO_ACUMULADO;NIVEL_FREATICO';

@@ -19,21 +19,22 @@ import { loginHandler, requestCodeHandler } from '../../modules/auth/controller'
 import { httpMetricsMiddleware } from '../../middlewares/httpMetrics';
 import { liveness, prometheusMetrics, readiness } from '../../modules/health/controller';
 import {
-  createDgaUserHandler,
+  deleteInformanteHandler,
   exportDatoDgaCsvHandler,
   exportDgaDirectoCsvHandler,
-  listDgaUsersHandler,
+  getDgaLivePreviewHandler,
+  getPozoDgaConfigHandler,
+  listInformantesHandler,
   listReviewQueueHandler,
-  patchDgaUserConfigHandler,
+  patchPozoDgaConfigHandler,
   queryDatoDgaHandler,
   request2faCodeHandler,
   reviewSlotActionHandler,
+  upsertInformanteHandler,
 } from '../../modules/dga/controller';
 import { requireDgaTwoFactor } from '../../modules/dga/twofactor';
-import { authorizeRoles } from '../../middlewares/auth';
 
 // auditLog es CJS legacy: bitácora append-only para mutaciones (Ley 21.663 §32).
-// Aplicamos a los endpoints DGA que mutan estado o ejecutan acciones admin.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { auditMutations } = require('../../services/auditLog') as {
   auditMutations: (
@@ -47,36 +48,81 @@ const { auditMutations } = require('../../services/auditLog') as {
 
 const auditDgaMutations = auditMutations((req) => {
   const path = req.path;
-  // PATCH /dga/users/:id/config
-  if (req.method === 'PATCH' && /^\/dga\/users\/\d+\/config$/.test(path)) {
+  // PATCH /dga/sites/:siteId/pozo-config
+  const pozoMatch = /^\/dga\/sites\/([^/]+)\/pozo-config$/.exec(path);
+  if (req.method === 'PATCH' && pozoMatch) {
     return {
-      action: 'dga.user.config.patch',
-      targetType: 'dga_user',
-      targetId: String(req.params.id ?? ''),
+      action: 'dga.pozo_config.patch',
+      targetType: 'pozo_config',
+      targetId: pozoMatch[1] ?? '',
     };
   }
-  // POST /dga/users
-  if (req.method === 'POST' && path === '/dga/users') {
+  // POST /dga/informantes (create)
+  if (req.method === 'POST' && path === '/dga/informantes') {
     return {
-      action: 'dga.user.create',
-      targetType: 'dga_user',
-      targetId: String(req.body?.site_id ?? ''),
+      action: 'dga.informante.upsert',
+      targetType: 'dga_informante',
+      targetId: String(req.body?.rut ?? ''),
     };
   }
-  // POST /dga/2fa/request
+  // PATCH /dga/informantes/:rut
+  const infMatch = /^\/dga\/informantes\/([^/]+)$/.exec(path);
+  if (req.method === 'PATCH' && infMatch) {
+    return {
+      action: 'dga.informante.upsert',
+      targetType: 'dga_informante',
+      targetId: infMatch[1] ?? '',
+    };
+  }
+  if (req.method === 'DELETE' && infMatch) {
+    return {
+      action: 'dga.informante.delete',
+      targetType: 'dga_informante',
+      targetId: infMatch[1] ?? '',
+    };
+  }
   if (req.method === 'POST' && path === '/dga/2fa/request') {
     return { action: 'dga.2fa.request' };
   }
-  // POST /dga/review-queue/action
   if (req.method === 'POST' && path === '/dga/review-queue/action') {
     return {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
       targetType: 'dato_dga',
-      targetId: `${req.body?.id_dgauser ?? ''}::${req.body?.ts ?? ''}`,
+      targetId: `${req.body?.site_id ?? ''}::${req.body?.ts ?? ''}`,
     };
   }
   return { action: `dga.${req.method.toLowerCase()}.unknown` };
 });
+
+/**
+ * Middleware: exige 2FA solo si el body de PATCH pozo-config intenta cambiar
+ * dga_transport a 'rest'. Otros cambios (activo, caudal_max, etc.) no
+ * requieren 2FA — pasan derecho al handler.
+ */
+function require2faIfTransportRest(
+  req: import('express').Request,
+  res: import('express').Response,
+  next: import('express').NextFunction,
+): void {
+  if (req.body?.dga_transport === 'rest') {
+    return requireDgaTwoFactor(req, res, next);
+  }
+  next();
+}
+
+/**
+ * Middleware: 2FA siempre para rotación de clave de informante.
+ */
+function require2faIfPasswordChange(
+  req: import('express').Request,
+  res: import('express').Response,
+  next: import('express').NextFunction,
+): void {
+  if (typeof req.body?.clave_informante === 'string' && req.body.clave_informante.length > 0) {
+    return requireDgaTwoFactor(req, res, next);
+  }
+  next();
+}
 
 const router = Router();
 
@@ -86,14 +132,12 @@ router.get('/health/live', liveness);
 router.get('/health/ready', readiness);
 router.get('/metrics', prometheusMetrics);
 
-// Telemetría — abierto en v1 (paridad). Si se requiere auth se añade aquí.
 router.get('/telemetry', getHistoryHandler);
 router.get('/telemetry/latest', getLatestHandler);
 router.get('/telemetry/online', getOnlineHandler);
 router.get('/telemetry/preset', getPresetHandler);
 router.get('/telemetry/keys', getKeysHandler);
 
-// Sitios y companies — requieren JWT.
 router.get('/sites/:siteId/dashboard-data', protect, getDashboardDataHandler);
 router.get('/sites/:siteId/dashboard-history', protect, getDashboardHistoryHandler);
 router.get('/companies/tree', protect, getHierarchyTreeHandler);
@@ -101,42 +145,61 @@ router.get('/companies/tree', protect, getHierarchyTreeHandler);
 router.post('/auth/login', loginHandler);
 router.post('/auth/request-code', requestCodeHandler);
 
-// DGA — informantes + consulta de mediciones snapshot + descarga directa.
-router.post('/dga/users', protect, auditDgaMutations, createDgaUserHandler);
-router.patch(
-  '/dga/users/:id/config',
-  protect,
-  auditDgaMutations,
-  patchDgaUserConfigHandler,
-);
-router.get('/dga/users/:siteId', protect, listDgaUsersHandler);
-router.get('/dga/dato', protect, queryDatoDgaHandler);
+// =====================================================================
+// DGA — modelo redesign 2026-05-17.
+// =====================================================================
 
-// DGA admin: review queue + 2FA email-OTP.
-// Solo SuperAdmin/Admin pueden actuar; el código se manda al MONITOR_PRIMARY_EMAIL.
+// Informantes (pool global). Rotación de clave exige 2FA.
+router.get('/dga/informantes', protect, listInformantesHandler);
 router.post(
-  '/dga/2fa/request',
+  '/dga/informantes',
   protect,
-  authorizeRoles('SuperAdmin', 'Admin'),
+  require2faIfPasswordChange,
   auditDgaMutations,
-  request2faCodeHandler,
+  upsertInformanteHandler,
 );
-router.get(
-  '/dga/review-queue',
+router.patch(
+  '/dga/informantes/:rut',
   protect,
-  authorizeRoles('SuperAdmin', 'Admin'),
-  listReviewQueueHandler,
+  require2faIfPasswordChange,
+  auditDgaMutations,
+  upsertInformanteHandler,
 );
+router.delete(
+  '/dga/informantes/:rut',
+  protect,
+  requireDgaTwoFactor,
+  auditDgaMutations,
+  deleteInformanteHandler,
+);
+
+// Config DGA por pozo. Activar transport=rest exige 2FA.
+router.get('/dga/sites/:siteId/pozo-config', protect, getPozoDgaConfigHandler);
+router.patch(
+  '/dga/sites/:siteId/pozo-config',
+  protect,
+  require2faIfTransportRest,
+  auditDgaMutations,
+  patchPozoDgaConfigHandler,
+);
+router.get('/dga/sites/:siteId/live-preview', protect, getDgaLivePreviewHandler);
+
+// Mediciones (Detalle de Registros + CSV)
+router.get('/dga/dato', protect, queryDatoDgaHandler);
+router.get('/dga/dato/export.csv', protect, exportDatoDgaCsvHandler);
+router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
+
+// 2FA email-OTP — el código se manda al MONITOR_PRIMARY_EMAIL.
+router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
+
+// Review queue (acceso para Admin/SuperAdmin solo).
+router.get('/dga/review-queue', protect, listReviewQueueHandler);
 router.post(
   '/dga/review-queue/action',
   protect,
-  authorizeRoles('SuperAdmin', 'Admin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   reviewSlotActionHandler,
 );
-router.get('/dga/dato/export.csv', protect, exportDatoDgaCsvHandler);
-// Descarga manual directa desde `equipo` (sin requerir informante).
-router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
 
 export default router;

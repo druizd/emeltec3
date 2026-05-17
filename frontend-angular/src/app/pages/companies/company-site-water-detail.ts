@@ -26,12 +26,7 @@ import { WaterDetailAnalisisComponent } from './components/water-detail-analisis
 import { CHILE_TIME_ZONE } from '../../shared/timezone';
 import { getSiteTypeUi, siteTypesForModule } from '../../shared/site-type-ui';
 import { DgaGenerarReporteModalComponent } from './components/dga-generar-reporte-modal/dga-generar-reporte-modal';
-import {
-  DatoDgaRow,
-  DgaApiReport,
-  DgaService,
-  DgaUserPublic,
-} from '../../services/dga.service';
+import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { HttpClient } from '@angular/common/http';
 
 interface SiteContext {
@@ -2877,111 +2872,20 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </p>
             </div>
 
-            <!-- Informantes DGA: lista + edición inline de config (activo, transport, caudal max) -->
-            <div class="border-t border-slate-100 px-5 py-3 space-y-2">
-              @if (dgaInformantes().length > 0) {
-                <div class="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
-                  Informantes DGA
-                </div>
-                <ul class="grid grid-cols-1 gap-2 text-[12px]">
-                  @for (inf of dgaInformantes(); track inf.id_dgauser) {
-                    <li
-                      class="rounded border border-slate-200 bg-slate-50 px-3 py-2 space-y-2"
-                    >
-                      <!-- Encabezado -->
-                      <div class="flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[16px] text-violet-600"
-                          >person</span
-                        >
-                        <span class="font-semibold text-slate-700">{{
-                          inf.nombre_informante
-                        }}</span>
-                        <span class="font-mono text-slate-500">{{ inf.rut_informante }}</span>
-                        <span
-                          class="ml-auto text-[10px] font-semibold uppercase text-violet-700"
-                          >{{ inf.periodicidad }}</span
-                        >
-                      </div>
-
-                      <!-- Controles config -->
-                      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                        <!-- Activo -->
-                        <label class="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            [checked]="inf.activo"
-                            [disabled]="dgaInformanteSaving() === inf.id_dgauser"
-                            (change)="
-                              toggleInformanteActivo(inf, $any($event.target).checked)
-                            "
-                            class="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-300"
-                          />
-                          <span class="text-[11px] font-semibold text-slate-700">Activo</span>
-                        </label>
-
-                        <!-- Transport -->
-                        <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
-                          Modo envío
-                          <select
-                            [value]="inf.transport"
-                            [disabled]="dgaInformanteSaving() === inf.id_dgauser"
-                            (change)="
-                              changeInformanteTransport(inf, $any($event.target).value)
-                            "
-                            class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
-                          >
-                            <option value="off">Off (no envía)</option>
-                            <option value="shadow">Shadow (rellena sin enviar)</option>
-                            <option value="rest">REST (envía a SNIA)</option>
-                          </select>
-                        </label>
-
-                        <!-- Caudal max L/s -->
-                        <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
-                          Caudal máx [L/s]
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            [value]="inf.caudal_max_lps ?? ''"
-                            [disabled]="dgaInformanteSaving() === inf.id_dgauser"
-                            (change)="
-                              changeInformanteCaudalMax(inf, $any($event.target).value)
-                            "
-                            placeholder="sin cargar"
-                            class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono text-slate-700 outline-none focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
-                          />
-                        </label>
-                      </div>
-
-                      @if (dgaInformanteSaving() === inf.id_dgauser) {
-                        <div class="text-[10px] italic text-violet-600">Guardando…</div>
-                      }
-                    </li>
-                  }
-                </ul>
-                @if (dgaInformanteEditError()) {
-                  <div
-                    class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-800"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">warning</span>
-                    <span>{{ dgaInformanteEditError() }}</span>
-                  </div>
-                }
-              } @else {
-                <div class="text-[11px] text-slate-500 italic">
-                  No hay informantes registrados aún para este sitio.
-                </div>
-              }
-              @if (dgaReportError()) {
-                <div
-                  class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
-                >
-                  <span class="material-symbols-outlined text-[16px]">error</span>
-                  <span>{{ dgaReportError() }}</span>
-                </div>
-              }
-            </div>
+            <!-- Errores generales del modal de reporte -->
+            @if (dgaReportError()) {
+              <div
+                class="mx-5 mt-2 flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+              >
+                <span class="material-symbols-outlined text-[16px]">error</span>
+                <span>{{ dgaReportError() }}</span>
+              </div>
+            }
+            <p class="px-5 py-2 text-[11px] text-slate-500 italic">
+              Para configurar informantes, transport y caudal máx del pozo, usá el botón
+              <span class="font-semibold text-cyan-700">Configurar reporte DGA</span> del
+              panel de Settings del pozo.
+            </p>
 
             <!-- Footer: rango + acción -->
             <div
@@ -3019,53 +2923,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   }
                 </button>
               </div>
-            </div>
-          </section>
-        </div>
-      }
-
-      @if (dgaTransportConfirmRequest(); as confirm) {
-        <div
-          class="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-[2px]"
-        >
-          <section class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-5 py-3">
-              <span class="material-symbols-outlined text-[20px] text-amber-700">warning</span>
-              <h3 class="text-sm font-black uppercase tracking-wide text-amber-900">
-                Activar envío a SNIA
-              </h3>
-            </div>
-            <div class="space-y-3 px-5 py-4 text-[13px] text-slate-700">
-              <p>
-                Esto hará que mediciones de
-                <strong>{{ confirm.inf.nombre_informante }}</strong> se envíen a SNIA
-                en <strong>producción</strong>.
-              </p>
-              <p class="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[12px] text-amber-800">
-                Verifica que el sistema <strong>legacy esté apagado</strong> para
-                esta obra. Doble envío puede activar bloqueo del Centro de Control
-                (Res 2170 §6.3).
-              </p>
-              <p class="text-[12px] text-slate-500">
-                Modo anterior: <span class="font-mono">{{ confirm.prevTransport }}</span> →
-                nuevo: <span class="font-mono font-bold text-amber-700">rest</span>
-              </p>
-            </div>
-            <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
-              <button
-                type="button"
-                (click)="cancelTransportConfirm()"
-                class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="confirmTransportToRest()"
-                class="rounded-lg bg-amber-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-amber-700"
-              >
-                Confirmar
-              </button>
             </div>
           </section>
         </div>
@@ -3192,7 +3049,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         [siteId]="siteContext()?.site?.id ?? ''"
         [siteName]="siteContext() ? getSiteName(siteContext()!) : ''"
         (closed)="cerrarDgaReporteModal()"
-        (created)="onDgaInformanteCreado()"
+        (configChanged)="onDgaConfigChanged()"
       ></app-dga-generar-reporte-modal>
     </div>
   `,
@@ -3385,22 +3242,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   settingsLoading = signal(false);
   settingsBusy = signal('');
   dgaReporteModalOpen = signal(false);
-  dgaInformantes = signal<DgaUserPublic[]>([]);
-  dgaInformanteSeleccionado = signal<string | null>(null);
-  /** id_dgauser cuyo PATCH está en vuelo. Bloquea controles del row. */
-  dgaInformanteSaving = signal<string | null>(null);
-  /** Mensaje de error de la última edición (cargar caudal max, cambiar transport, etc.). */
-  dgaInformanteEditError = signal<string>('');
-  /**
-   * Pedido pendiente de confirmar transport→'rest'. Cuando no es null, la UI
-   * muestra el modal de confirmación. Reemplaza window.confirm() porque
-   * permite revertir el select del DOM si admin cancela.
-   */
-  dgaTransportConfirmRequest = signal<{
-    inf: DgaUserPublic;
-    nextTransport: 'rest';
-    prevTransport: 'off' | 'shadow' | 'rest';
-  } | null>(null);
   dgaReportDownloading = signal<boolean>(false);
   dgaReportError = signal<string>('');
   dgaReportBucket = signal<'minuto' | 'hora' | 'dia' | 'semana' | 'mes'>('hora');
@@ -4337,35 +4178,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return new Date(d.getTime() - 1).toISOString();
   }
 
-  private apiToDgaRow(r: DgaApiReport, idx: number): DgaReportRow {
-    const [dd, mm, yyyy] = r.fecha.split('-') as [string, string, string];
-    const timeParts = r.hora.split(':').map(Number) as [number, number, number];
-    const utcMs = Date.UTC(+yyyy, +mm - 1, +dd, timeParts[0] + 4, timeParts[1], timeParts[2]);
-    const estadoMap: Record<string, string> = {
-      enviado: 'Enviado',
-      pendiente: 'Pendiente',
-      rechazado: 'Rechazado',
-    };
-    return {
-      id: `dga-${idx}`,
-      recordId: `${r.fecha}-${r.hora.replace(/:/g, '')}`,
-      fecha: `${r.fecha} ${r.hora}`,
-      dateIso: new Date(utcMs).toISOString(),
-      timestampMs: utcMs,
-      nivelFreatico: r.nivelFreatico ?? 0,
-      caudal: r.caudalInstantaneo ?? 0,
-      totalizador: r.flujoAcumulado ?? 0,
-      estado: estadoMap[r.estatus] ?? 'Pendiente',
-      enviadoDga: r.estatus === 'enviado' ? r.fecha : '',
-      respuesta:
-        r.estatus === 'enviado'
-          ? 'Medicion subterranea ingresada correctamente'
-          : r.estatus === 'rechazado'
-            ? 'Medicion rechazada por MIA-DGA'
-            : 'Pendiente de envío',
-      comprobante: r.comprobante ?? '',
-    };
-  }
 
   private createDgaReportRow(
     id: string,
@@ -4462,8 +4274,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.dgaReporteModalOpen.set(false);
   }
 
-  onDgaInformanteCreado(): void {
-    this.cerrarDgaReporteModal();
+  onDgaConfigChanged(): void {
+    // El modal hace el persist; acá refrescamos solo lo que el water-detail muestra
+    // (Detalle de Registros usa dato_dga; si cambió obra_dga puede afectar lookups
+    // posteriores). Recargamos al cerrar.
   }
 
   reloadSettingsPanel(): void {
@@ -4984,155 +4798,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.dgaReportSelectedMonths.set([]);
     this.applyDgaReportPreset('last30');
     this.dgaReportError.set('');
-    this.dgaInformantes.set([]);
-    this.dgaInformanteSeleccionado.set(null);
-    this.dgaInformanteSaving.set(null);
-    this.dgaInformanteEditError.set('');
-    this.dgaTransportConfirmRequest.set(null);
     this.dgaReportModalOpen.set(true);
-
-    const siteId = this.siteContext()?.site?.id;
-    if (!siteId) {
-      this.dgaReportError.set('No se pudo determinar el sitio.');
-      return;
-    }
-    this.dgaService.listarPorSitio(siteId).subscribe({
-      next: (list) => {
-        this.dgaInformantes.set(list);
-        if (list.length === 0) {
-          this.dgaReportError.set(
-            'Aún no hay informantes registrados. Usá "Generar Reporte" para dar de alta uno.',
-          );
-        } else {
-          this.dgaInformanteSeleccionado.set(list[0].id_dgauser);
-        }
-      },
-      error: () => {
-        this.dgaReportError.set('No se pudo cargar la lista de informantes.');
-      },
-    });
   }
 
   closeDgaReportModal(): void {
     this.dgaReportModalOpen.set(false);
-  }
-
-  /**
-   * Aplica un patch parcial al informante (PATCH /api/v2/dga/users/:id/config),
-   * actualiza el row en memoria con la respuesta y limpia el error.
-   *
-   * Helper genérico usado por toggleInformanteActivo / changeInformanteTransport
-   * / changeInformanteCaudalMax. No expone refresco completo de la lista para
-   * preservar el orden y evitar parpadeo.
-   */
-  private patchInformante(
-    inf: DgaUserPublic,
-    payload: Partial<Pick<DgaUserPublic, 'activo' | 'transport' | 'caudal_max_lps'>>,
-    rollback: () => void,
-  ): void {
-    this.dgaInformanteSaving.set(inf.id_dgauser);
-    this.dgaInformanteEditError.set('');
-    this.dgaService.patchConfig(inf.id_dgauser, payload).subscribe({
-      next: (updated) => {
-        this.dgaInformantes.update((list) =>
-          list.map((i) => (i.id_dgauser === inf.id_dgauser ? updated : i)),
-        );
-        this.dgaInformanteSaving.set(null);
-      },
-      error: (err) => {
-        this.dgaInformanteSaving.set(null);
-        this.dgaInformanteEditError.set(
-          'No se pudo guardar el cambio. ' + (err?.error?.error?.message ?? err?.message ?? ''),
-        );
-        rollback();
-      },
-    });
-  }
-
-  toggleInformanteActivo(inf: DgaUserPublic, activo: boolean): void {
-    const previous = inf.activo;
-    this.patchInformante(inf, { activo }, () => {
-      // El select del DOM ya reflejó el cambio: revertimos el modelo y
-      // forzamos re-render para que el checkbox vuelva a la realidad.
-      this.dgaInformantes.update((list) =>
-        list.map((i) => (i.id_dgauser === inf.id_dgauser ? { ...i, activo: previous } : i)),
-      );
-    });
-  }
-
-  changeInformanteTransport(inf: DgaUserPublic, transport: 'off' | 'shadow' | 'rest'): void {
-    // Guarda contra envíos accidentales a SNIA: pasar a 'rest' requiere
-    // confirmación explícita. El legacy debe estar apagado para esta obra
-    // antes de habilitar 'rest' (riesgo §6.3 bloqueo del Centro de Control).
-    if (transport === 'rest' && inf.transport !== 'rest') {
-      this.dgaTransportConfirmRequest.set({
-        inf,
-        nextTransport: 'rest',
-        prevTransport: inf.transport,
-      });
-      return;
-    }
-
-    const previous = inf.transport;
-    this.patchInformante(inf, { transport }, () => {
-      this.dgaInformantes.update((list) =>
-        list.map((i) =>
-          i.id_dgauser === inf.id_dgauser ? { ...i, transport: previous } : i,
-        ),
-      );
-    });
-  }
-
-  confirmTransportToRest(): void {
-    const req = this.dgaTransportConfirmRequest();
-    if (!req) return;
-    this.dgaTransportConfirmRequest.set(null);
-    const previous = req.prevTransport;
-    this.patchInformante(req.inf, { transport: req.nextTransport }, () => {
-      this.dgaInformantes.update((list) =>
-        list.map((i) =>
-          i.id_dgauser === req.inf.id_dgauser ? { ...i, transport: previous } : i,
-        ),
-      );
-    });
-  }
-
-  cancelTransportConfirm(): void {
-    const req = this.dgaTransportConfirmRequest();
-    if (!req) return;
-    this.dgaTransportConfirmRequest.set(null);
-    // Revertir el select a su valor anterior (el ngModel del DOM ya mutó
-    // mentalmente al usuario; re-renderizamos para alinear).
-    this.dgaInformantes.update((list) =>
-      list.map((i) =>
-        i.id_dgauser === req.inf.id_dgauser ? { ...i, transport: req.prevTransport } : i,
-      ),
-    );
-  }
-
-  changeInformanteCaudalMax(inf: DgaUserPublic, raw: string): void {
-    // Parsing: vacío → null (limpia el valor, vuelve al fallback hardcode).
-    const trimmed = (raw ?? '').trim();
-    let caudal_max_lps: number | null;
-    if (trimmed === '') {
-      caudal_max_lps = null;
-    } else {
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        this.dgaInformanteEditError.set('Caudal máx inválido (debe ser número ≥ 0).');
-        return;
-      }
-      caudal_max_lps = n;
-    }
-
-    const previous = inf.caudal_max_lps;
-    this.patchInformante(inf, { caudal_max_lps }, () => {
-      this.dgaInformantes.update((list) =>
-        list.map((i) =>
-          i.id_dgauser === inf.id_dgauser ? { ...i, caudal_max_lps: previous } : i,
-        ),
-      );
-    });
   }
 
   applyDgaReportPreset(presetId: string): void {

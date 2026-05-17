@@ -1,39 +1,8 @@
 /**
- * Worker reconciler DGA.
+ * Worker reconciler DGA (modelo redesign 2026-05-17).
  *
- * Red de seguridad que corre cada 1h y corrige drift entre `dga_send_audit`
- * (append-only, fuente de verdad de qué se envió) y `dato_dga.estatus`
- * (estado actual del slot). Cubre fallos del submission worker como crashes
- * entre el INSERT audit y el UPDATE estatus.
- *
- * Casos cubiertos:
- *   (A) Slot atascado en 'enviando' >15 min → revertir a 'pendiente'.
- *       Causa: proceso murió entre lockSlotForSending y mark*. El audit ya
- *       puede o no estar; si está, el caso (B) lo arregla en este mismo ciclo.
- *
- *   (B) Audit con status='00' + comprobante, pero slot ≠ 'enviado' →
- *       setear 'enviado' + copiar comprobante. SNIA recibió la medición;
- *       solo nos faltó persistir el cambio de estado.
- *
- *   (C) Slot 'enviado' SIN ninguna fila audit → anomalía grave, solo alerta.
- *       Posibles causas: import legacy mal hecho, fix manual del admin sin
- *       audit. NO se mueve automáticamente (no sabemos qué es).
- *
- *   (D) ≥2 audits OK ('00') para el mismo slot → posible doble envío a SNIA.
- *       Riesgo §6.3 (bloqueo del Centro de Control). Solo alertar — no se
- *       puede deshacer; admin debe verificar en SNIA manualmente.
- *
- * No cubierto en este worker (por ahora):
- *   - GET SNIA por comprobante para verificar estado real. Útil pero opcional;
- *     SNIA puede revocar comprobantes en raros casos. Agregable luego.
- *   - Drift audit rechazo vs estado pendiente: no es drift real porque el
- *     próximo ciclo de submission lo intentará igual (idempotente por
- *     next_retry_at).
- *
- * Frecuencia: 1h por defecto. Más frecuente desperdicia ciclos; menos
- * frecuente deja drift visible al admin por demasiado tiempo.
- *
- * En cluster, encender SOLO en una réplica.
+ * Red de seguridad cada 1h. Compara dga_send_audit vs dato_dga.estatus y
+ * corrige drift; alerta admin en anomalías terminales (sin audit, doble OK).
  */
 import { logger } from '../../config/logger';
 import {
@@ -53,23 +22,18 @@ const WORKER_ENABLED =
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
-/**
- * Caso (A): slots atascados en 'enviando'. Los revierte a 'pendiente'.
- * Si el audit OK ya está registrado, el caso (B) en el mismo ciclo los
- * promueve a 'enviado'.
- */
 async function reconcileStuckEnviando(): Promise<number> {
   const stuck = await listStuckEnviando(STUCK_THRESHOLD_MINUTES);
   for (const slot of stuck) {
     try {
-      await unlockStuckEnviando(Number(slot.id_dgauser), slot.ts);
+      await unlockStuckEnviando(slot.site_id, slot.ts);
       logger.warn(
-        { id_dgauser: slot.id_dgauser, ts: slot.ts },
+        { site_id: slot.site_id, ts: slot.ts },
         'reconciler (A): slot atascado en enviando → revertido a pendiente',
       );
     } catch (err) {
       logger.error(
-        { id_dgauser: slot.id_dgauser, ts: slot.ts, err: (err as Error).message },
+        { site_id: slot.site_id, ts: slot.ts, err: (err as Error).message },
         'reconciler (A): fallo al revertir slot atascado',
       );
     }
@@ -77,21 +41,18 @@ async function reconcileStuckEnviando(): Promise<number> {
   return stuck.length;
 }
 
-/**
- * Caso (B): audit dice OK pero el slot no está en 'enviado'. Aplicar fix.
- */
 async function reconcileDriftEnviado(): Promise<number> {
   const drift = await listDriftAuditEnviadoVsEstado();
   for (const slot of drift) {
     try {
       await reconcileMarkEnviado({
-        id_dgauser: Number(slot.id_dgauser),
+        site_id: slot.site_id,
         ts: slot.ts,
         comprobante: slot.api_n_comprobante,
       });
       logger.warn(
         {
-          id_dgauser: slot.id_dgauser,
+          site_id: slot.site_id,
           ts: slot.ts,
           previous: slot.current_estatus,
           comprobante: slot.api_n_comprobante,
@@ -100,7 +61,7 @@ async function reconcileDriftEnviado(): Promise<number> {
       );
     } catch (err) {
       logger.error(
-        { id_dgauser: slot.id_dgauser, ts: slot.ts, err: (err as Error).message },
+        { site_id: slot.site_id, ts: slot.ts, err: (err as Error).message },
         'reconciler (B): fallo al fixear drift',
       );
     }
@@ -108,22 +69,20 @@ async function reconcileDriftEnviado(): Promise<number> {
   return drift.length;
 }
 
-/**
- * Caso (C): slots 'enviado' sin audit. Solo alerta; no se mueve nada.
- * Notifica al admin por email si hay 1+ hallazgos.
- */
 async function reportEnviadoSinAudit(): Promise<number> {
   const orphans = await listEnviadoSinAudit();
   for (const slot of orphans) {
     logger.error(
-      { id_dgauser: slot.id_dgauser, ts: slot.ts, comprobante: slot.comprobante },
+      { site_id: slot.site_id, ts: slot.ts, comprobante: slot.comprobante },
       'reconciler (C): slot enviado SIN audit — anomalía, revisar manualmente',
     );
   }
   if (orphans.length > 0) {
     const lines = orphans
       .slice(0, 50)
-      .map((o) => `- id_dgauser=${o.id_dgauser} ts=${o.ts} comprobante=${o.comprobante ?? '(null)'}`);
+      .map(
+        (o) => `- site=${o.site_id} ts=${o.ts} comprobante=${o.comprobante ?? '(null)'}`,
+      );
     await sendDgaAdminAlert({
       subject: `[DGA] ${orphans.length} slot(s) enviado(s) SIN audit`,
       body:
@@ -138,31 +97,25 @@ async function reportEnviadoSinAudit(): Promise<number> {
   return orphans.length;
 }
 
-/**
- * Caso (D): doble envío detectado. Solo alerta; no se puede deshacer.
- * Notifica al admin por email — caso de riesgo §6.3 (bloqueo del Centro
- * de Control si SNIA detecta el patrón).
- */
 async function reportDoubleSubmission(): Promise<number> {
   const doubles = await listDoubleSubmission();
   for (const slot of doubles) {
     logger.error(
-      { id_dgauser: slot.id_dgauser, ts: slot.ts, ok_count: slot.ok_count },
+      { site_id: slot.site_id, ts: slot.ts, ok_count: slot.ok_count },
       'reconciler (D): posible doble envío a SNIA — verificar en MIA-DGA',
     );
   }
   if (doubles.length > 0) {
     const lines = doubles
       .slice(0, 50)
-      .map((d) => `- id_dgauser=${d.id_dgauser} ts=${d.ts} envíos_OK=${d.ok_count}`);
+      .map((d) => `- site=${d.site_id} ts=${d.ts} envíos_OK=${d.ok_count}`);
     await sendDgaAdminAlert({
       subject: `[DGA] ${doubles.length} slot(s) con doble envío a SNIA`,
       body:
         `El reconciler detectó ${doubles.length} slot(s) con 2 o más audits OK ` +
-        `(status='00') a SNIA. Esto puede activar bloqueo del Centro de Control ` +
-        `según Res 2170 §6.3.\n\n` +
-        `Acción: verificar en MIA-DGA y, si es legítimo, ignorar. Si es bug, ` +
-        `revisar el lock del submission worker.\n\n` +
+        `(status='00') a SNIA. Puede activar bloqueo del Centro de Control ` +
+        `(Res 2170 §6.3).\n\n` +
+        `Acción: verificar en MIA-DGA. Si es bug, revisar lock del submission.\n\n` +
         `Primeros ${Math.min(doubles.length, 50)} casos:\n` +
         lines.join('\n'),
     });
@@ -202,8 +155,6 @@ export function startDgaReconcilerWorker(): void {
     return;
   }
   logger.info({ intervalMs: POLL_INTERVAL_MS }, 'DGA reconciler iniciado');
-  // Bootstrap inmediato: tras un reinicio del proceso, queremos recuperar
-  // cualquier drift acumulado sin esperar al primer tick (1h por default).
   void runReconcilerCycle();
   intervalHandle = setInterval(() => {
     void runReconcilerCycle();

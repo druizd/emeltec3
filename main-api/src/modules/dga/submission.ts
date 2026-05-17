@@ -1,27 +1,8 @@
 /**
- * Worker submission DGA.
+ * Worker submission DGA (modelo redesign 2026-05-17).
  *
- * Lee slots en estatus='pendiente' listos para envío (filtro por
- * dga_user.transport='rest', activo=true, next_retry_at vencido), los envía
- * a SNIA vía REST y registra audit por cada intento (éxito o falla).
- *
- * Política Res 2170 §6:
- *   §6.1 — Separación ≥5min entre acumulados del mismo informante. Se cumple
- *          tomando 1 slot por informante por ciclo (cycle=5min default).
- *   §6.2 — Tras rechazo, reenviar al día siguiente. Implementado via
- *          next_retry_at = now() + 24h en markSlotRechazado.
- *   §6.3 — No retransmitir mediciones ya recibidas. Se cumple porque
- *          UPDATE filtra por estatus='enviando' (lock pesimista).
- *   §7  — Bloqueos por tráfico anómalo. Se mitiga con cap de 50 envíos/ciclo
- *          y 1 por informante.
- *
- * Kill switch:
- *   - ENABLE_DGA_SUBMISSION_WORKER (env) controla arranque del worker.
- *     Default OFF — no se envía nada hasta autorización de gerencia.
- *   - dga_user.transport='off'|'shadow' excluye al informante del envío.
- *     Solo 'rest' es considerado.
- *
- * En cluster, encender SOLO en una réplica.
+ * Lee slots pendiente listos para envío + POST a SNIA + audit append-only.
+ * Filtra por pozo_config.dga_transport='rest' (única forma de enviar real).
  */
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
@@ -41,11 +22,6 @@ const MAX_PER_CYCLE = Number(process.env.DGA_SUBMISSION_MAX_PER_CYCLE ?? 50);
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
-/**
- * Convierte un TIMESTAMPTZ UTC al par (fechaMedicion, horaMedicion) en
- * hora local Chile (UTC-4 fijo, sin DST). Formato requerido por SNIA
- * según Res 2170 §4.
- */
 function tsToChileLocal(tsIso: string): { fechaMedicion: string; horaMedicion: string } {
   const t = new Date(tsIso).getTime() - 4 * 60 * 60 * 1000;
   const d = new Date(t);
@@ -67,32 +43,42 @@ function numericOrNull(v: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rechazado' | 'fallido' | 'skipped'> {
-  const idDgaUser = Number(slot.id_dgauser);
-
-  // Guard: codigo_obra obligatorio para SNIA. Si no está cargado, no podemos
-  // enviar. Se trata como rechazo aplicativo (no es un error de SNIA).
+async function processSlot(
+  slot: PendingSubmissionRow,
+): Promise<'enviado' | 'rechazado' | 'fallido' | 'skipped'> {
   if (!slot.codigo_obra) {
     logger.warn(
-      { id_dgauser: idDgaUser, ts: slot.ts },
-      'submission: pozo sin codigo_obra (obra_dga) cargado — slot no enviado',
+      { site_id: slot.site_id, ts: slot.ts },
+      'submission: pozo sin codigo_obra (obra_dga) — slot no enviado',
     );
-    const result = await markSlotRechazado({
-      id_dgauser: idDgaUser,
+    await markSlotRechazado({
+      site_id: slot.site_id,
       ts: slot.ts,
       fail_reason: 'pozo_sin_codigo_obra',
       max_retry_attempts: slot.max_retry_attempts,
     });
-    void result;
     return 'skipped';
   }
 
-  // Lock: solo uno gana si el slot está siendo procesado.
-  const locked = await lockSlotForSending(idDgaUser, slot.ts);
+  if (!slot.rut_informante || !slot.clave_informante) {
+    logger.warn(
+      { site_id: slot.site_id, ts: slot.ts },
+      'submission: pozo sin informante asociado — slot no enviado',
+    );
+    await markSlotRechazado({
+      site_id: slot.site_id,
+      ts: slot.ts,
+      fail_reason: 'pozo_sin_informante',
+      max_retry_attempts: slot.max_retry_attempts,
+    });
+    return 'skipped';
+  }
+
+  const locked = await lockSlotForSending(slot.site_id, slot.ts);
   if (!locked) {
     logger.debug(
-      { id_dgauser: idDgaUser, ts: slot.ts },
-      'submission: slot ya tomado por otro proceso (race) o cambió de estado',
+      { site_id: slot.site_id, ts: slot.ts },
+      'submission: slot cambió de estado antes del lock',
     );
     return 'skipped';
   }
@@ -100,23 +86,22 @@ async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rec
   const { fechaMedicion, horaMedicion } = tsToChileLocal(slot.ts);
   const attemptN = slot.attempts + 1;
 
-  // Descifra clave en memoria. Nunca persistir el plaintext.
   let password: string;
   try {
     password = decryptClave(slot.clave_informante);
   } catch (err) {
     logger.error(
-      { id_dgauser: idDgaUser, err: (err as Error).message },
-      'submission: clave_informante no se pudo descifrar — slot a rechazado',
+      { site_id: slot.site_id, err: (err as Error).message },
+      'submission: clave no se pudo descifrar',
     );
     await markSlotRechazado({
-      id_dgauser: idDgaUser,
+      site_id: slot.site_id,
       ts: slot.ts,
       fail_reason: 'clave_decrypt_error',
       max_retry_attempts: slot.max_retry_attempts,
     });
     await insertSendAudit({
-      id_dgauser: idDgaUser,
+      site_id: slot.site_id,
       ts: slot.ts,
       attempt_n: attemptN,
       transport: 'rest',
@@ -145,21 +130,19 @@ async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rec
       nivelFreatico: numericOrNull(slot.nivel_freatico),
     });
   } catch (err) {
-    // Error de configuración (rutEmpresa missing, payload inválido).
-    // Marca rechazo y registra audit para diagnóstico.
     const msg = (err as Error).message;
     logger.error(
-      { id_dgauser: idDgaUser, ts: slot.ts, err: msg },
+      { site_id: slot.site_id, ts: slot.ts, err: msg },
       'submission: error pre-envío',
     );
     await markSlotRechazado({
-      id_dgauser: idDgaUser,
+      site_id: slot.site_id,
       ts: slot.ts,
       fail_reason: `pre_send_error: ${msg}`,
       max_retry_attempts: slot.max_retry_attempts,
     });
     await insertSendAudit({
-      id_dgauser: idDgaUser,
+      site_id: slot.site_id,
       ts: slot.ts,
       attempt_n: attemptN,
       transport: 'rest',
@@ -175,11 +158,10 @@ async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rec
     return 'rechazado';
   }
 
-  // Audit append-only ANTES de mover estado: si el proceso muere entre
-  // audit y mark, el reconciler verá el comprobante en audit y arreglará
-  // el estatus. Si fuera al revés (mark sin audit) perderíamos la traza.
+  // Audit antes de mover estado: reconciler arregla drift si proceso muere
+  // entre audit y mark.
   await insertSendAudit({
-    id_dgauser: idDgaUser,
+    site_id: slot.site_id,
     ts: slot.ts,
     attempt_n: attemptN,
     transport: 'rest',
@@ -195,7 +177,7 @@ async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rec
 
   if (result.ok && result.numero_comprobante) {
     await markSlotEnviado({
-      id_dgauser: idDgaUser,
+      site_id: slot.site_id,
       ts: slot.ts,
       comprobante: result.numero_comprobante,
     });
@@ -207,7 +189,7 @@ async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rec
       ? `dga_status_${result.dga_status_code}`
       : (result.dga_message ?? 'unknown_failure');
   const { terminal } = await markSlotRechazado({
-    id_dgauser: idDgaUser,
+    site_id: slot.site_id,
     ts: slot.ts,
     fail_reason: failReason,
     max_retry_attempts: slot.max_retry_attempts,
@@ -216,13 +198,9 @@ async function processSlot(slot: PendingSubmissionRow): Promise<'enviado' | 'rec
 }
 
 export async function runSubmissionCycle(): Promise<void> {
-  if (!config.dga.submissionEnabled) {
-    return;
-  }
+  if (!config.dga.submissionEnabled) return;
   if (!config.dga.rutEmpresa) {
-    logger.warn(
-      'DGA submission: DGA_RUT_EMPRESA no configurado, ciclo omitido',
-    );
+    logger.warn('DGA submission: DGA_RUT_EMPRESA no configurado, ciclo omitido');
     return;
   }
 
@@ -250,7 +228,7 @@ export async function runSubmissionCycle(): Promise<void> {
       else skipped++;
     } catch (err) {
       logger.error(
-        { id_dgauser: slot.id_dgauser, ts: slot.ts, err: (err as Error).message },
+        { site_id: slot.site_id, ts: slot.ts, err: (err as Error).message },
         'DGA submission: fallo procesando slot',
       );
     }
@@ -269,8 +247,6 @@ export function startDgaSubmissionWorker(): void {
     return;
   }
   logger.info({ intervalMs: POLL_INTERVAL_MS }, 'DGA submission worker iniciado');
-  // Sin bootstrap inmediato: damos margen al fill worker para llenar cola
-  // tras un reinicio. El primer tick corre tras POLL_INTERVAL_MS.
   intervalHandle = setInterval(() => {
     void runSubmissionCycle();
   }, POLL_INTERVAL_MS);

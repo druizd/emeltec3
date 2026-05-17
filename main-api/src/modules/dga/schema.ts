@@ -1,46 +1,65 @@
 /**
- * Schemas Zod para módulo DGA.
+ * Schemas Zod para módulo DGA — modelo redesign 2026-05-17.
  */
 import { z } from 'zod';
 
 export const Periodicidad = z.enum(['hora', 'dia', 'semana', 'mes']);
 export type Periodicidad = z.infer<typeof Periodicidad>;
 
-export const CreateDgaUserPayload = z.object({
-  site_id: z.string().trim().min(1, 'site_id requerido').max(10),
-  nombre_informante: z.string().trim().min(1, 'nombre_informante requerido').max(150),
-  rut_informante: z.string().trim().min(1, 'rut_informante requerido').max(20),
-  clave_informante: z.string().min(1, 'clave_informante requerida').max(200),
-  periodicidad: Periodicidad,
-  fecha_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha_inicio debe ser YYYY-MM-DD'),
-  hora_inicio: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, 'hora_inicio debe ser HH:MM o HH:MM:SS'),
-});
-export type CreateDgaUserPayload = z.infer<typeof CreateDgaUserPayload>;
-
 export const DgaTransport = z.enum(['off', 'shadow', 'rest']);
 export type DgaTransport = z.infer<typeof DgaTransport>;
 
+// ============================================================================
+// Informantes (pool global)
+// ============================================================================
+
+export const UpsertInformantePayload = z.object({
+  rut: z.string().trim().min(1, 'rut requerido').max(20),
+  /** Opcional en update si solo se cambia referencia. Required en create. */
+  clave_informante: z.string().min(1).max(200).optional(),
+  referencia: z.string().trim().max(150).nullable().optional(),
+});
+export type UpsertInformantePayload = z.infer<typeof UpsertInformantePayload>;
+
+// ============================================================================
+// pozo_config DGA (config envío por pozo)
+// ============================================================================
+
 /**
- * Patch parcial de config DGA del informante. Todos opcionales — solo se
- * actualizan los presentes. `caudal_max_lps` admite null para limpiar el
- * valor cargado (vuelve al fallback hardcode 1000 L/s).
+ * Patch parcial de los campos DGA del pozo. Todos opcionales.
+ * `dga_transport='rest'` requiere 2FA en el endpoint (header X-DGA-2FA-Code).
  */
-export const UpdateDgaUserConfigPayload = z
+export const PatchPozoDgaConfigPayload = z
   .object({
-    activo: z.boolean().optional(),
-    transport: DgaTransport.optional(),
-    caudal_max_lps: z.number().nonnegative().nullable().optional(),
-    caudal_tolerance_pct: z.number().min(0).max(500).optional(),
+    dga_activo: z.boolean().optional(),
+    dga_transport: DgaTransport.optional(),
+    dga_caudal_max_lps: z.number().nonnegative().nullable().optional(),
+    dga_caudal_tolerance_pct: z.number().min(0).max(500).optional(),
+    dga_periodicidad: Periodicidad.nullable().optional(),
+    dga_fecha_inicio: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha_inicio debe ser YYYY-MM-DD')
+      .nullable()
+      .optional(),
+    dga_hora_inicio: z
+      .string()
+      .regex(/^\d{2}:\d{2}(:\d{2})?$/, 'hora_inicio debe ser HH:MM o HH:MM:SS')
+      .nullable()
+      .optional(),
+    dga_informante_rut: z.string().trim().max(20).nullable().optional(),
+    dga_max_retry_attempts: z.number().int().min(1).max(30).optional(),
+    dga_auto_accept_fallback_hours: z.number().int().min(0).max(720).nullable().optional(),
   })
   .refine(
     (v) =>
-      v.activo !== undefined ||
-      v.transport !== undefined ||
-      v.caudal_max_lps !== undefined ||
-      v.caudal_tolerance_pct !== undefined,
+      Object.values(v).some((x) => x !== undefined),
     { message: 'Debe especificarse al menos un campo a actualizar' },
   );
-export type UpdateDgaUserConfigPayload = z.infer<typeof UpdateDgaUserConfigPayload>;
+export type PatchPozoDgaConfigPayload = z.infer<typeof PatchPozoDgaConfigPayload>;
+
+// ============================================================================
+// Review queue
+// ============================================================================
 
 export const ListReviewQueueParams = z.object({
   site_id: z.string().trim().min(1).max(10).optional(),
@@ -48,13 +67,8 @@ export const ListReviewQueueParams = z.object({
 });
 export type ListReviewQueueParams = z.infer<typeof ListReviewQueueParams>;
 
-/**
- * Acción admin sobre un slot requires_review. Si action='accept', los
- * valores en `values` reemplazan los actuales y el slot pasa a pendiente.
- * Si action='discard', el slot pasa a 'fallido' (terminal).
- */
 export const ReviewSlotActionPayload = z.object({
-  id_dgauser: z.coerce.number().int().positive(),
+  site_id: z.string().trim().min(1).max(10),
   ts: z.string().datetime({ offset: true }),
   action: z.enum(['accept', 'discard']),
   values: z
@@ -68,15 +82,13 @@ export const ReviewSlotActionPayload = z.object({
 });
 export type ReviewSlotActionPayload = z.infer<typeof ReviewSlotActionPayload>;
 
-export const QueryDatoDgaParams = z
-  .object({
-    id_dgauser: z.coerce.number().int().positive().optional(),
-    site_id: z.string().trim().min(1).max(10).optional(),
-    desde: z.string().datetime({ offset: true }),
-    hasta: z.string().datetime({ offset: true }),
-  })
-  .refine((v) => v.id_dgauser !== undefined || v.site_id !== undefined, {
-    message: 'Debe especificarse id_dgauser o site_id',
-    path: ['site_id'],
-  });
+// ============================================================================
+// Lectura mediciones
+// ============================================================================
+
+export const QueryDatoDgaParams = z.object({
+  site_id: z.string().trim().min(1).max(10),
+  desde: z.string().datetime({ offset: true }),
+  hasta: z.string().datetime({ offset: true }),
+});
 export type QueryDatoDgaParams = z.infer<typeof QueryDatoDgaParams>;
