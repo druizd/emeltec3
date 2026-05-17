@@ -35,6 +35,7 @@ import {
   getDatoDgaDirectoFromEquipo,
   getDgaLivePreview,
   getInformantes,
+  getUltimoEnvio,
   listReviewQueue,
   patchPozoDgaConfigService,
   toCsv,
@@ -168,6 +169,22 @@ export async function patchPozoDgaConfigHandler(
     }
     const result = await patchPozoDgaConfigService(siteId, parsed.data);
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getUltimoEnvioHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const row = await getUltimoEnvio(siteId);
+    res.json(ok(row, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }

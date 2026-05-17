@@ -12,6 +12,7 @@ import {
   acceptReviewSlotWithValues,
   deleteInformante,
   findInformanteByRut,
+  getUltimoEnvioBySite,
   listInformantes,
   listSlotsRequiresReview,
   markReviewSlotFailedManual,
@@ -23,6 +24,7 @@ import {
   type DgaTransport,
   type PozoDgaConfigRow,
   type ReviewSlotRow,
+  type UltimoEnvioRow,
 } from './repo';
 import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
@@ -229,6 +231,14 @@ export async function getDatoDgaBySite(
   hasta: string,
 ): Promise<DatoDgaRow[]> {
   return queryDatoDgaBySite(siteId, desde, hasta);
+}
+
+/**
+ * Último envío exitoso a SNIA para el sitio. KPI independiente del filtro
+ * de fecha del UI — siempre absolute latest.
+ */
+export async function getUltimoEnvio(siteId: string): Promise<UltimoEnvioRow | null> {
+  return getUltimoEnvioBySite(siteId);
 }
 
 // ============================================================================

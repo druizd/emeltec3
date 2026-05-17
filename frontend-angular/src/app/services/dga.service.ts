@@ -217,6 +217,18 @@ export class DgaService {
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
+  /**
+   * Último envío exitoso a SNIA para el sitio. Independiente del filtro
+   * de fecha del UI. Devuelve null si nunca hubo envíos.
+   */
+  getUltimoEnvio(siteId: string): Observable<{ ts: string; comprobante: string | null } | null> {
+    return this.http
+      .get<ApiResponse<{ ts: string; comprobante: string | null } | null>>(
+        `/api/v2/dga/sites/${encodeURIComponent(siteId)}/ultimo-envio`,
+      )
+      .pipe(map((r) => (r.ok ? r.data : null)));
+  }
+
   // -------- Mediciones (Detalle de Registros) --------
 
   consultarDatoBySite(siteId: string, desdeIso: string, hastaIso: string): Observable<DatoDgaRow[]> {

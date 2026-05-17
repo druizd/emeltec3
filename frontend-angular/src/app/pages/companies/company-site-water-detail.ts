@@ -1418,52 +1418,67 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
-            <div
-              class="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-emerald-700"
-            >
-              <span class="material-symbols-outlined text-[16px]">verified</span>
-              <span class="text-[11px] font-bold">Último reporte DGA aceptado</span>
-              <span class="text-[11px] text-emerald-500">·</span>
-              <span class="font-mono text-[11px] font-bold">07/04/2026 06:00 – 07:00</span>
-            </div>
             <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+              <!-- Enviados: cuenta en rango filtrado -->
               <article
                 class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
               >
                 <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">
                   Enviados
                 </p>
-                <p class="mt-1 text-3xl font-black leading-none text-emerald-600">622</p>
-                <p class="mt-1 text-xs font-semibold text-emerald-500">registros exitosos</p>
+                <p class="mt-1 text-3xl font-black leading-none text-emerald-600">
+                  {{ dgaCountEnviados() }}
+                </p>
+                <p class="mt-1 text-xs font-semibold text-emerald-500">en rango filtrado</p>
               </article>
 
+              <!-- Último envío: ABSOLUTE, no afectado por filtro -->
+              <article
+                class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
+                title="Último envío exitoso a SNIA (independiente del filtro de fechas)"
+              >
+                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+                  Último envío DGA aceptado
+                </p>
+                <p class="mt-1 text-base font-black leading-tight text-slate-800">
+                  {{ dgaUltimoEnvioFecha() }}
+                </p>
+                @if (dgaUltimoEnvio()?.comprobante) {
+                  <p
+                    class="mt-1 truncate font-mono text-[10px] font-semibold text-slate-500"
+                    [title]="dgaUltimoEnvio()?.comprobante"
+                  >
+                    {{ dgaUltimoEnvio()?.comprobante }}
+                  </p>
+                } @else {
+                  <p class="mt-1 text-[11px] font-semibold text-slate-400">sin envíos aún</p>
+                }
+              </article>
+
+              <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos) -->
               <article
                 class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
               >
                 <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Último envío
+                  Tasa de éxito
                 </p>
-                <p class="mt-1 text-lg font-black leading-none text-slate-800">26 abr 2026</p>
-                <p class="mt-1 text-xs font-semibold text-slate-500">21:00</p>
+                <p class="mt-1 text-3xl font-black leading-none text-slate-800">
+                  {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
+                </p>
+                <p class="mt-1 text-[11px] font-semibold text-slate-400">en rango filtrado</p>
               </article>
 
-              <article
-                class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
-              >
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Tasa de exito
-                </p>
-                <p class="mt-1 text-3xl font-black leading-none text-slate-800">100%</p>
-              </article>
-
+              <!-- Rechazados: cuenta en rango -->
               <article
                 class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
               >
                 <p class="text-[10px] font-black uppercase tracking-[0.2em] text-rose-400">
                   Rechazados
                 </p>
-                <p class="mt-1 text-3xl font-black leading-none text-rose-500">0</p>
-                <p class="mt-1 text-xs font-semibold text-rose-400">por la DGA</p>
+                <p class="mt-1 text-3xl font-black leading-none text-rose-500">
+                  {{ dgaCountRechazados() }}
+                </p>
+                <p class="mt-1 text-xs font-semibold text-rose-400">incluye rechazados+fallidos</p>
               </article>
             </section>
 
@@ -3368,6 +3383,38 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   readonly dgaRowsPerPageOptions = [10, 25, 50];
   dgaReportRows = signal<DgaReportRow[]>([]);
   dgaLoading = signal(false);
+  /** Último envío SNIA (absoluto, NO afecta filtro de fecha del UI). */
+  dgaUltimoEnvio = signal<{ ts: string; comprobante: string | null } | null>(null);
+
+  /** Cuenta de slots enviados en el rango filtrado. */
+  dgaCountEnviados = computed(
+    () => this.dgaReportRows().filter((r) => r.estado === 'Enviado').length,
+  );
+  /** Cuenta de slots rechazados+fallidos en el rango. */
+  dgaCountRechazados = computed(
+    () =>
+      this.dgaReportRows().filter((r) => r.estado === 'Rechazado' || r.estado === 'Fallido').length,
+  );
+  /** Tasa de éxito = enviados / (enviados + rechazados + fallidos) × 100. Sin denominador → null. */
+  dgaTasaExito = computed<number | null>(() => {
+    const enviados = this.dgaCountEnviados();
+    const malos = this.dgaCountRechazados();
+    const denom = enviados + malos;
+    if (denom === 0) return null;
+    return Math.round((enviados / denom) * 1000) / 10; // 1 decimal
+  });
+  /** Formato corto fecha+hora del último envío (Chile UTC-4). */
+  dgaUltimoEnvioFecha = computed<string>(() => {
+    const u = this.dgaUltimoEnvio();
+    if (!u) return '—';
+    const d = new Date(new Date(u.ts).getTime() - 4 * 3600 * 1000);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const HH = String(d.getUTCHours()).padStart(2, '0');
+    const MM = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${HH}:${MM}`;
+  });
 
   wellNivelFreatico = computed(() => this.extractNivelFreatico(this.dashboardData()));
   wellTotalDepth = computed(() => this.extractPozoNumber('profundidad_pozo_m'));
@@ -3954,6 +4001,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         if (this.activeDetailTab() === 'dga') {
           void this.loadDgaReports();
         }
+        this.loadUltimoEnvio(siteId);
       },
       error: () => this.router.navigate(['/companies']),
     });
@@ -4354,9 +4402,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   onDgaConfigChanged(): void {
-    // El modal hace el persist; acá refrescamos solo lo que el water-detail muestra
-    // (Detalle de Registros usa dato_dga; si cambió obra_dga puede afectar lookups
-    // posteriores). Recargamos al cerrar.
+    // El modal hace el persist; refrescamos el "Último envío" por si el cambio
+    // de transport/activación afecta lo enviado.
+    const siteId = this.currentSiteId();
+    if (siteId) this.loadUltimoEnvio(siteId);
+  }
+
+  private loadUltimoEnvio(siteId: string): void {
+    this.dgaService.getUltimoEnvio(siteId).subscribe({
+      next: (row) => this.dgaUltimoEnvio.set(row),
+      error: () => this.dgaUltimoEnvio.set(null),
+    });
   }
 
   reloadSettingsPanel(): void {

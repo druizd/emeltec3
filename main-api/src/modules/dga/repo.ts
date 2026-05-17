@@ -804,6 +804,29 @@ export async function listDoubleSubmission(): Promise<DoubleSendRow[]> {
 // Lectura de mediciones por sitio (Detalle de Registros)
 // ============================================================================
 
+/**
+ * Última medición exitosamente enviada a SNIA para un sitio. Independiente
+ * del filtro de fecha del UI — siempre devuelve el MAX(ts) global.
+ * Devuelve null si nunca hubo envíos.
+ */
+export interface UltimoEnvioRow {
+  ts: string;
+  comprobante: string | null;
+}
+export async function getUltimoEnvioBySite(siteId: string): Promise<UltimoEnvioRow | null> {
+  const r = await query<UltimoEnvioRow>(
+    `SELECT ts, comprobante
+       FROM dato_dga
+      WHERE site_id = $1
+        AND estatus = 'enviado'
+      ORDER BY ts DESC
+      LIMIT 1`,
+    [siteId],
+    { name: 'dga__ultimo_envio_by_site' },
+  );
+  return r.rows[0] ?? null;
+}
+
 export async function queryDatoDgaBySite(
   siteId: string,
   desde: string,

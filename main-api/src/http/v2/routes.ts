@@ -24,6 +24,7 @@ import {
   exportDgaDirectoCsvHandler,
   getDgaLivePreviewHandler,
   getPozoDgaConfigHandler,
+  getUltimoEnvioHandler,
   listInformantesHandler,
   listReviewQueueHandler,
   patchPozoDgaConfigHandler,
@@ -183,6 +184,7 @@ router.patch(
   patchPozoDgaConfigHandler,
 );
 router.get('/dga/sites/:siteId/live-preview', protect, getDgaLivePreviewHandler);
+router.get('/dga/sites/:siteId/ultimo-envio', protect, getUltimoEnvioHandler);
 
 // Mediciones (Detalle de Registros + CSV)
 router.get('/dga/dato', protect, queryDatoDgaHandler);
