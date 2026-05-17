@@ -1,27 +1,14 @@
+/**
+ * Análisis — Salud del sistema (conectado a /api/v2/sites/:siteId/analisis/salud).
+ *
+ * Calcula heartbeat real, estado por sensor (verde <5min, amber <30min,
+ * rojo ≥30min) y gaps de telemetría >1h en últimos 30 días.
+ */
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { AnalisisService, type SaludData, type SensorEstado } from '../../../../services/analisis.service';
 
-interface SaludMetric {
-  label: string;
-  valor: string;
-  subtext: string;
-  tono: 'ok' | 'advertencia' | 'error';
-  icon: string;
-}
-
-interface GapItem {
-  desde: string;
-  hasta: string;
-  duracion: string;
-  causa: string;
-}
-
-interface SensorEstado {
-  nombre: string;
-  ultimaLectura: string;
-  valor: string;
-  estado: 'ok' | 'advertencia' | 'error';
-}
+type Tono = 'ok' | 'advertencia' | 'error';
 
 @Component({
   selector: 'app-analisis-salud',
@@ -29,224 +16,271 @@ interface SensorEstado {
   imports: [CommonModule],
   template: `
     <div class="space-y-3">
-      <!-- KPIs principales -->
       <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        @for (m of metricas; track m.label) {
-          <article class="rounded-2xl border bg-white p-4 shadow-sm" [class]="metricaBorde(m.tono)">
-            <div class="flex items-start justify-between gap-2">
-              <span
-                [class]="metricaIconClass(m.tono)"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-              >
-                <span class="material-symbols-outlined text-[20px]">{{ m.icon }}</span>
-              </span>
-              <span
-                [class]="tonoBadgeClass(m.tono)"
-                class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
-              >
-                {{ tonoLabel(m.tono) }}
-              </span>
-            </div>
-            <p
-              class="mt-3 text-[10px] font-black uppercase tracking-widest"
-              [class]="metricaLabelColor(m.tono)"
+        <article
+          class="rounded-2xl border bg-white p-4 shadow-sm"
+          [class]="metricaBorde(heartbeatTono())"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <span
+              [class]="metricaIconClass(heartbeatTono())"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
             >
-              {{ m.label }}
-            </p>
-            <p class="mt-0.5 text-2xl font-black text-slate-800">{{ m.valor }}</p>
-            <p class="text-[11px] text-slate-400">{{ m.subtext }}</p>
-          </article>
-        }
+              <span class="material-symbols-outlined text-[20px]">monitor_heart</span>
+            </span>
+            <span
+              [class]="tonoBadgeClass(heartbeatTono())"
+              class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
+            >
+              {{ tonoLabel(heartbeatTono()) }}
+            </span>
+          </div>
+          <p
+            class="mt-3 text-[10px] font-black uppercase tracking-widest"
+            [class]="metricaLabelColor(heartbeatTono())"
+          >
+            Último heartbeat
+          </p>
+          <p class="mt-0.5 text-2xl font-black text-slate-800">{{ heartbeatLabel() }}</p>
+          <p class="text-[11px] text-slate-400">{{ heartbeatFecha() }}</p>
+        </article>
+
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="flex items-start gap-2">
+            <span
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"
+            >
+              <span class="material-symbols-outlined text-[20px]">sensors</span>
+            </span>
+          </div>
+          <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Sensores OK
+          </p>
+          <p class="mt-0.5 text-2xl font-black text-slate-800">
+            {{ countSensores('ok') }} / {{ salud().sensores.length }}
+          </p>
+          <p class="text-[11px] text-slate-400">en última lectura</p>
+        </article>
+
+        <article class="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
+          <div class="flex items-start gap-2">
+            <span
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600"
+            >
+              <span class="material-symbols-outlined text-[20px]">warning</span>
+            </span>
+          </div>
+          <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-amber-500">
+            Sensores en alerta
+          </p>
+          <p class="mt-0.5 text-2xl font-black text-slate-800">
+            {{ countSensores('advertencia') + countSensores('error') }}
+          </p>
+          <p class="text-[11px] text-slate-400">advertencia + error</p>
+        </article>
+
+        <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="flex items-start gap-2">
+            <span
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-600"
+            >
+              <span class="material-symbols-outlined text-[20px]">data_loss_prevention</span>
+            </span>
+          </div>
+          <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            Gaps (30 días)
+          </p>
+          <p class="mt-0.5 text-2xl font-black text-slate-800">{{ salud().gaps.length }}</p>
+          <p class="text-[11px] text-slate-400">interrupciones ≥ 1 h</p>
+        </article>
       </div>
 
       <div class="grid gap-3 xl:grid-cols-2">
-        <!-- Estado de sensores -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3
-            class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-          >
+          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <span class="material-symbols-outlined text-[16px]">sensors</span>
             Estado de sensores
           </h3>
-          <div class="space-y-2">
-            @for (sensor of sensores; track sensor.nombre) {
-              <div
-                class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5"
-              >
-                <div class="flex items-center gap-2">
-                  <span
-                    [class]="sensorDot(sensor.estado)"
-                    class="h-2 w-2 shrink-0 rounded-full"
-                  ></span>
-                  <span class="font-semibold text-slate-800 text-sm">{{ sensor.nombre }}</span>
-                </div>
-                <div class="text-right">
-                  <p class="font-mono text-sm font-bold text-slate-700">{{ sensor.valor }}</p>
-                  <p class="text-[10px] text-slate-400">{{ sensor.ultimaLectura }}</p>
-                </div>
-              </div>
-            }
-          </div>
-        </section>
-
-        <!-- Gaps de datos -->
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3
-            class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-          >
-            <span class="material-symbols-outlined text-[16px]">data_loss_prevention</span>
-            Gaps de datos — últimos 30 días
-          </h3>
-          @if (gaps.length === 0) {
-            <div class="flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-3">
-              <span class="material-symbols-outlined text-[20px] text-emerald-600"
-                >check_circle</span
-              >
-              <p class="text-sm font-semibold text-emerald-700">
-                Sin gaps detectados. Datos completos.
-              </p>
-            </div>
+          @if (salud().sensores.length === 0) {
+            <p class="text-[12px] italic text-slate-400">Sin sensores configurados.</p>
           } @else {
             <div class="space-y-2">
-              @for (gap of gaps; track gap.desde) {
-                <div class="rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2.5">
-                  <div class="flex items-start justify-between gap-2">
-                    <div>
-                      <p class="font-mono text-[11px] font-bold text-amber-700">
-                        {{ gap.desde }} → {{ gap.hasta }}
-                      </p>
-                      <p class="text-[11px] text-amber-600">{{ gap.causa }}</p>
-                    </div>
+              @for (s of salud().sensores; track s.reg_map_id) {
+                <div
+                  class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5"
+                >
+                  <div class="flex items-center gap-2">
                     <span
-                      class="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-black text-amber-700"
-                      >{{ gap.duracion }}</span
-                    >
+                      [class]="'h-2 w-2 shrink-0 rounded-full ' + sensorDot(sensorTono(s))"
+                    ></span>
+                    <span class="text-sm font-semibold text-slate-800">{{ s.alias }}</span>
+                  </div>
+                  <div class="text-right">
+                    <p class="font-mono text-sm font-bold text-slate-700">
+                      {{ formatSensorValue(s) }}
+                    </p>
+                    <p class="text-[10px] text-slate-400">{{ edadLabel(s.edad_seg) }}</p>
                   </div>
                 </div>
               }
             </div>
           }
         </section>
-      </div>
 
-      <!-- Barra de calidad de datos visual -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Calidad de datos — últimos 30 días
+        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <span class="material-symbols-outlined text-[16px]">data_loss_prevention</span>
+            Gaps de datos — últimos 30 días
           </h3>
-          <span class="font-mono text-sm font-black text-slate-700">98.3%</span>
-        </div>
-        <div class="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-          <div
-            class="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-400"
-            style="width: 98.3%"
-          ></div>
-        </div>
-        <div class="mt-2 flex justify-between text-[10px] text-slate-400">
-          <span>8 829 registros válidos</span>
-          <span>152 inválidos o faltantes</span>
-        </div>
-      </section>
+          @if (salud().gaps.length === 0) {
+            <p class="text-[12px] italic text-emerald-600">
+              ✓ Sin interrupciones detectadas (≥ 1 h).
+            </p>
+          } @else {
+            <ul class="divide-y divide-slate-100">
+              @for (g of salud().gaps; track g.desde) {
+                <li class="flex items-center justify-between gap-3 py-2 text-[12px]">
+                  <span class="font-mono text-slate-600">
+                    {{ formatTs(g.desde) }} → {{ formatTs(g.hasta) }}
+                  </span>
+                  <span class="font-bold text-rose-600">{{ formatDuracion(g.duracion_min) }}</span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
     </div>
   `,
 })
-export class AnalisisSaludComponent {
-  readonly metricas: SaludMetric[] = [
-    {
-      label: 'Uptime comunicación',
-      valor: '99.1%',
-      subtext: 'Últimos 30 días',
-      tono: 'ok',
-      icon: 'wifi',
-    },
-    {
-      label: 'Calidad de datos',
-      valor: '98.3%',
-      subtext: '152 registros inválidos',
-      tono: 'ok',
-      icon: 'database',
-    },
-    {
-      label: 'Último heartbeat',
-      valor: 'Hace 4 min',
-      subtext: '06/05/2026 12:31',
-      tono: 'ok',
-      icon: 'monitor_heart',
-    },
-    {
-      label: 'Sensor en alerta',
-      valor: '1',
-      subtext: 'Tablero — temperatura',
-      tono: 'advertencia',
-      icon: 'sensors',
-    },
-  ];
+export class AnalisisSaludComponent implements OnInit {
+  private readonly api = inject(AnalisisService);
 
-  readonly sensores: SensorEstado[] = [
-    {
-      nombre: 'Sensor de nivel freático',
-      ultimaLectura: 'Hace 4 min',
-      valor: '32.4 m',
-      estado: 'ok',
-    },
-    { nombre: 'Caudalímetro', ultimaLectura: 'Hace 4 min', valor: '3.1 L/s', estado: 'ok' },
-    {
-      nombre: 'Temperatura tablero',
-      ultimaLectura: 'Hace 4 min',
-      valor: '67°C',
-      estado: 'advertencia',
-    },
-    { nombre: 'Presión bomba', ultimaLectura: 'Hace 4 min', valor: '4.2 bar', estado: 'ok' },
-    { nombre: 'UPS — batería', ultimaLectura: 'Hace 12 min', valor: '18%', estado: 'error' },
-  ];
+  readonly sitioId = input<string>('');
 
-  readonly gaps: GapItem[] = [
-    {
-      desde: '02/04 11:00',
-      hasta: '02/04 14:05',
-      duracion: '3 h 05 min',
-      causa: 'Corte de comunicación GPRS',
-    },
-  ];
+  readonly salud = signal<SaludData>({
+    ultimo_heartbeat: null,
+    edad_heartbeat_seg: null,
+    sensores: [],
+    gaps: [],
+  });
 
-  metricaBorde(t: string): string {
-    return t === 'error'
-      ? 'border-rose-200'
-      : t === 'advertencia'
-        ? 'border-amber-200'
-        : 'border-slate-200';
+  readonly heartbeatTono = computed<Tono>(() => {
+    const age = this.salud().edad_heartbeat_seg;
+    if (age === null) return 'error';
+    if (age < 5 * 60) return 'ok';
+    if (age < 30 * 60) return 'advertencia';
+    return 'error';
+  });
+
+  readonly heartbeatLabel = computed(() => {
+    const age = this.salud().edad_heartbeat_seg;
+    if (age === null) return 'Sin datos';
+    return 'Hace ' + this.formatEdadCorta(age);
+  });
+
+  readonly heartbeatFecha = computed(() => {
+    const ts = this.salud().ultimo_heartbeat;
+    if (!ts) return '';
+    return this.formatTs(ts);
+  });
+
+  ngOnInit(): void {
+    this.reload();
   }
 
-  metricaIconClass(t: string): string {
+  reload(): void {
+    if (!this.sitioId()) return;
+    this.api.getSalud(this.sitioId()).subscribe({
+      next: (s) => this.salud.set(s),
+      error: () =>
+        this.salud.set({
+          ultimo_heartbeat: null,
+          edad_heartbeat_seg: null,
+          sensores: [],
+          gaps: [],
+        }),
+    });
+  }
+
+  // ===== Helpers UI =====
+
+  countSensores(tono: Tono): number {
+    return this.salud().sensores.filter((s) => this.sensorTono(s) === tono).length;
+  }
+
+  sensorTono(s: SensorEstado): Tono {
+    const age = s.edad_seg;
+    if (s.raw_value === null || s.raw_value === undefined || age === null) return 'error';
+    if (age < 5 * 60) return 'ok';
+    if (age < 30 * 60) return 'advertencia';
+    return 'error';
+  }
+
+  formatSensorValue(s: SensorEstado): string {
+    if (s.raw_value === null || s.raw_value === undefined) return '—';
+    const n = Number(s.raw_value);
+    const valor = Number.isFinite(n) ? n.toFixed(2) : String(s.raw_value);
+    return s.unidad ? `${valor} ${s.unidad}` : valor;
+  }
+
+  edadLabel(segundos: number | null): string {
+    if (segundos === null) return 'sin datos';
+    return 'Hace ' + this.formatEdadCorta(segundos);
+  }
+
+  private formatEdadCorta(segundos: number): string {
+    if (segundos < 60) return `${segundos}s`;
+    const m = Math.round(segundos / 60);
+    if (m < 60) return `${m} min`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} h`;
+    const d = Math.round(h / 24);
+    return `${d} d`;
+  }
+
+  formatTs(iso: string): string {
+    const d = new Date(new Date(iso).getTime() - 4 * 3600 * 1000);
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const MM = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const HH = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${dd}/${MM} ${HH}:${mm}`;
+  }
+
+  formatDuracion(minutos: number): string {
+    if (minutos < 60) return `${minutos} min`;
+    const h = Math.floor(minutos / 60);
+    const m = minutos % 60;
+    return m > 0 ? `${h} h ${m} min` : `${h} h`;
+  }
+
+  // ===== Styling =====
+
+  metricaBorde(t: Tono): string {
+    return t === 'error' ? 'border-rose-200' : t === 'advertencia' ? 'border-amber-200' : 'border-slate-200';
+  }
+  metricaIconClass(t: Tono): string {
     return t === 'error'
       ? 'bg-rose-50 text-rose-500'
       : t === 'advertencia'
         ? 'bg-amber-50 text-amber-500'
         : 'bg-emerald-50 text-emerald-600';
   }
-
-  metricaLabelColor(t: string): string {
-    return t === 'error'
-      ? 'text-rose-400'
-      : t === 'advertencia'
-        ? 'text-amber-400'
-        : 'text-slate-400';
+  metricaLabelColor(t: Tono): string {
+    return t === 'error' ? 'text-rose-400' : t === 'advertencia' ? 'text-amber-400' : 'text-slate-400';
   }
-
-  tonoBadgeClass(t: string): string {
+  tonoBadgeClass(t: Tono): string {
     return t === 'error'
       ? 'bg-rose-50 text-rose-600'
       : t === 'advertencia'
         ? 'bg-amber-50 text-amber-600'
         : 'bg-emerald-50 text-emerald-600';
   }
-
-  tonoLabel(t: string): string {
+  tonoLabel(t: Tono): string {
     return t === 'error' ? 'Error' : t === 'advertencia' ? 'Atención' : 'OK';
   }
-
-  sensorDot(e: string): string {
+  sensorDot(e: Tono): string {
     return e === 'error' ? 'bg-rose-500' : e === 'advertencia' ? 'bg-amber-500' : 'bg-emerald-500';
   }
 }

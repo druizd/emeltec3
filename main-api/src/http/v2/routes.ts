@@ -198,6 +198,17 @@ import {
   patchFichaHandler,
 } from '../../modules/bitacoraSitio/controller';
 
+// Análisis del sitio (salud, métricas, reportes recientes).
+import {
+  getMetricasHandler,
+  getReportesHandler,
+  getSaludHandler,
+} from '../../modules/analisis/controller';
+
+router.get('/sites/:siteId/analisis/salud', protect, getSaludHandler);
+router.get('/sites/:siteId/analisis/metricas', protect, getMetricasHandler);
+router.get('/sites/:siteId/analisis/reportes', protect, getReportesHandler);
+
 router.get('/sites/:siteId/bitacora/ficha', protect, getFichaHandler);
 router.patch('/sites/:siteId/bitacora/ficha', protect, patchFichaHandler);
 router.get('/sites/:siteId/bitacora/equipos', protect, listEquiposHandler);

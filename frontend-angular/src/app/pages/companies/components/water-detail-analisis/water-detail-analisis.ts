@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AnalisisSaludComponent } from './analisis-salud';
 import { AnalisisCalendarioComponent } from './analisis-calendario';
@@ -89,13 +89,13 @@ interface AnalisisTabItem {
 
       <!-- Section content -->
       @if (activeSection() === 'salud') {
-        <app-analisis-salud />
+        <app-analisis-salud [sitioId]="sitioId()" />
       } @else if (activeSection() === 'calendario') {
         <app-analisis-calendario />
       } @else if (activeSection() === 'reportes') {
-        <app-analisis-reportes />
+        <app-analisis-reportes [sitioId]="sitioId()" />
       } @else if (activeSection() === 'metricas') {
-        <app-analisis-metricas />
+        <app-analisis-metricas [sitioId]="sitioId()" />
       } @else if (activeSection() === 'sugerencias') {
         <app-analisis-sugerencias />
       } @else if (activeSection() === 'predictivo') {
@@ -105,6 +105,7 @@ interface AnalisisTabItem {
   `,
 })
 export class WaterDetailAnalisisComponent {
+  readonly sitioId = input<string>('');
   readonly activeSection = signal<AnalisisSection>('salud');
 
   readonly tabs: AnalisisTabItem[] = [

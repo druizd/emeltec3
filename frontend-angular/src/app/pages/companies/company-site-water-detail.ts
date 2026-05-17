@@ -2462,7 +2462,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               [empresaId]="siteContext()?.company?.id || ''"
             />
           } @else if (activeDetailTab() === 'analisis') {
-            <app-water-detail-analisis />
+            <app-water-detail-analisis [sitioId]="siteContext()?.site?.id || ''" />
           }
 
           <div [class.hidden]="activeDetailTab() !== 'operacion'">

@@ -1,20 +1,16 @@
+/**
+ * Análisis — Reportes recientes del sitio.
+ *
+ * Lista los últimos N envíos DGA reales del sitio (estatus + comprobante)
+ * con enlace al portal SNIA. Para descarga masiva CSV usar "Generar
+ * Reporte DGA" en el header del water-detail.
+ */
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
-
-type ReporteTipo = 'todos' | 'dga' | 'operacional' | 'mantenciones' | 'incidencias';
-type ReporteEstado = 'liberado' | 'revisado' | 'borrador';
-
-interface Reporte {
-  id: string;
-  titulo: string;
-  tipo: ReporteTipo;
-  periodo: string;
-  fechaGeneracion: string;
-  generadoPor: string;
-  estado: ReporteEstado;
-  paginas: number;
-  tamanio: string;
-}
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import {
+  AnalisisService,
+  type ReporteReciente,
+} from '../../../../services/analisis.service';
 
 @Component({
   selector: 'app-analisis-reportes',
@@ -22,288 +18,170 @@ interface Reporte {
   imports: [CommonModule],
   template: `
     <div class="space-y-3">
-      <!-- Acciones rápidas -->
-      <div class="grid gap-2 sm:grid-cols-3">
-        @for (accion of accionesRapidas; track accion.titulo) {
-          <button
-            type="button"
-            class="group flex items-center gap-3 rounded-2xl border bg-white p-4 text-left shadow-sm transition-all hover:shadow-md"
-            [class]="accion.borderClass"
-          >
-            <span
-              [class]="accion.iconClass"
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-            >
-              <span class="material-symbols-outlined text-[22px]">{{ accion.icon }}</span>
-            </span>
-            <div class="min-w-0">
-              <p class="font-black text-slate-800 text-sm">{{ accion.titulo }}</p>
-              <p class="text-[11px] text-slate-400">{{ accion.subtitulo }}</p>
-            </div>
-            <span
-              class="material-symbols-outlined ml-auto text-[16px] text-slate-300 transition-transform group-hover:translate-x-0.5"
-              >chevron_right</span
-            >
-          </button>
-        }
-      </div>
-
-      <!-- Filtros -->
-      <header class="flex flex-wrap items-center gap-2">
-        @for (f of filtros; track f.key) {
-          <button type="button" (click)="filtroActivo.set(f.key)" [class]="filtroClass(f.key)">
-            {{ f.label }}
-          </button>
-        }
-        <span class="ml-auto text-[11px] font-semibold text-slate-400"
-          >{{ reportesFiltrados().length }} reportes</span
-        >
-      </header>
-
-      <!-- Lista de reportes -->
-      <section
-        class="rounded-2xl border border-slate-200 bg-white shadow-sm divide-y divide-slate-100"
+      <header
+        class="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
       >
-        @for (reporte of reportesFiltrados(); track reporte.id) {
-          <div class="flex items-center gap-4 px-4 py-3.5 hover:bg-slate-50/60 transition-colors">
-            <!-- Icono tipo -->
-            <span
-              [class]="tipoIconClass(reporte.tipo)"
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            >
-              <span class="material-symbols-outlined text-[18px]">{{
-                tipoIcon(reporte.tipo)
-              }}</span>
-            </span>
-
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap items-center gap-2">
-                <p class="font-black text-slate-800 text-sm truncate">{{ reporte.titulo }}</p>
-                <span
-                  [class]="estadoClass(reporte.estado)"
-                  class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide shrink-0"
-                >
-                  {{ estadoLabel(reporte.estado) }}
-                </span>
-              </div>
-              <div class="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
-                <span>{{ reporte.periodo }}</span>
-                <span>·</span>
-                <span>{{ reporte.paginas }} pág. · {{ reporte.tamanio }}</span>
-                <span>·</span>
-                <span>{{ reporte.generadoPor }}</span>
-              </div>
-            </div>
-
-            <div class="shrink-0 text-right">
-              <p class="font-mono text-[11px] text-slate-500">{{ reporte.fechaGeneracion }}</p>
-              <div class="mt-1.5 flex items-center justify-end gap-1">
-                <button
-                  type="button"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
-                  aria-label="Previsualizar reporte"
-                >
-                  <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
-                    >visibility</span
-                  >
-                </button>
-                <button
-                  type="button"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
-                  aria-label="Descargar PDF"
-                >
-                  <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
-                    >download</span
-                  >
-                </button>
-              </div>
-            </div>
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-violet-600">download</span>
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Reportes recientes
+            </p>
+            <p class="text-sm font-bold text-slate-700">{{ reportes().length }} envíos DGA</p>
           </div>
-        } @empty {
-          <div class="px-6 py-12 text-center">
-            <span class="material-symbols-outlined text-4xl text-slate-300">description</span>
-            <p class="mt-2 text-sm font-semibold text-slate-400">Sin reportes con estos filtros</p>
-          </div>
-        }
-      </section>
-
-      <!-- Footer -->
-      <div class="flex items-center justify-between px-1">
-        <p class="text-[11px] text-slate-400">
-          Los reportes PDF se generan automáticamente al cierre de cada período.
-        </p>
+        </div>
         <button
           type="button"
-          class="inline-flex items-center gap-1 text-[12px] font-bold text-cyan-700 hover:underline"
+          (click)="reload()"
+          class="rounded-lg border border-slate-300 px-3 py-1.5 text-[12px] font-bold text-slate-700 hover:bg-slate-50"
         >
-          <span class="material-symbols-outlined text-[14px]">history</span>
-          Ver todo el historial
+          Recargar
         </button>
-      </div>
+      </header>
+
+      <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-left text-sm">
+            <thead>
+              <tr class="border-b border-slate-100 bg-slate-50">
+                <th
+                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Fecha · Hora
+                </th>
+                <th
+                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Caudal
+                </th>
+                <th
+                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Totalizador
+                </th>
+                <th
+                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Nivel
+                </th>
+                <th
+                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Estado
+                </th>
+                <th
+                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                >
+                  Comprobante
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @if (loading()) {
+                <tr>
+                  <td colspan="6" class="px-3 py-6 text-center text-sm text-slate-400">
+                    Cargando…
+                  </td>
+                </tr>
+              } @else if (reportes().length === 0) {
+                <tr>
+                  <td colspan="6" class="px-3 py-6 text-center text-sm italic text-slate-400">
+                    Sin envíos registrados todavía.
+                  </td>
+                </tr>
+              } @else {
+                @for (r of reportes(); track r.ts) {
+                  <tr class="hover:bg-slate-50/60">
+                    <td class="px-3 py-2 font-mono text-[11px] text-slate-600">
+                      {{ r.fecha }} {{ r.hora }}
+                    </td>
+                    <td class="px-3 py-2 text-right font-mono text-[12px] text-slate-700">
+                      {{ r.caudal_instantaneo || '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-right font-mono text-[12px] text-slate-700">
+                      {{ r.flujo_acumulado || '—' }}
+                    </td>
+                    <td class="px-3 py-2 text-right font-mono text-[12px] text-slate-700">
+                      {{ r.nivel_freatico || '—' }}
+                    </td>
+                    <td class="px-3 py-2">
+                      <span
+                        [class]="
+                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ' +
+                          estadoClass(r.estatus)
+                        "
+                      >
+                        <span [class]="'h-1.5 w-1.5 rounded-full ' + estadoDot(r.estatus)"></span>
+                        {{ estadoLabel(r.estatus) }}
+                      </span>
+                    </td>
+                    <td class="px-3 py-2 font-mono text-[10px] text-slate-500">
+                      {{ r.comprobante ? (r.comprobante | slice: 0 : 14) + '…' : '—' }}
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <p class="text-[11px] italic text-slate-400">
+        Para descarga masiva CSV usá el botón
+        <span class="font-semibold text-violet-700">Generar Reporte DGA</span> del header del
+        pozo.
+      </p>
     </div>
   `,
 })
-export class AnalisisReportesComponent {
-  readonly filtroActivo = signal<ReporteTipo>('todos');
+export class AnalisisReportesComponent implements OnInit {
+  private readonly api = inject(AnalisisService);
 
-  readonly filtros: { key: ReporteTipo; label: string }[] = [
-    { key: 'todos', label: 'Todos' },
-    { key: 'dga', label: 'DGA' },
-    { key: 'operacional', label: 'Operacionales' },
-    { key: 'mantenciones', label: 'Mantenciones' },
-    { key: 'incidencias', label: 'Incidencias' },
-  ];
+  readonly sitioId = input<string>('');
 
-  readonly accionesRapidas = [
-    {
-      titulo: 'Reporte DGA mensual',
-      subtitulo: 'Mayo 2026 — pendiente',
-      icon: 'shield',
-      iconClass: 'bg-rose-50 text-rose-600',
-      borderClass: 'border-rose-100',
-    },
-    {
-      titulo: 'Reporte operacional',
-      subtitulo: 'Mayo 2026 — en curso',
-      icon: 'summarize',
-      iconClass: 'bg-cyan-50 text-cyan-600',
-      borderClass: 'border-cyan-100',
-    },
-    {
-      titulo: 'Reporte de mantenciones',
-      subtitulo: 'Abril 2026 — listo',
-      icon: 'build_circle',
-      iconClass: 'bg-amber-50 text-amber-600',
-      borderClass: 'border-amber-100',
-    },
-  ];
+  readonly reportes = signal<ReporteReciente[]>([]);
+  readonly loading = signal<boolean>(false);
 
-  readonly reportes: Reporte[] = [
-    {
-      id: '1',
-      titulo: 'Reporte DGA — Abril 2026',
-      tipo: 'dga',
-      periodo: 'Abr 2026',
-      fechaGeneracion: '01/05/2026',
-      generadoPor: 'Sistema (auto)',
-      estado: 'liberado',
-      paginas: 8,
-      tamanio: '1.2 MB',
-    },
-    {
-      id: '2',
-      titulo: 'Reporte operacional — Abril 2026',
-      tipo: 'operacional',
-      periodo: 'Abr 2026',
-      fechaGeneracion: '02/05/2026',
-      generadoPor: 'L. Pérez',
-      estado: 'liberado',
-      paginas: 12,
-      tamanio: '2.1 MB',
-    },
-    {
-      id: '3',
-      titulo: 'Informe de incidencias Q1',
-      tipo: 'incidencias',
-      periodo: 'Ene–Mar 2026',
-      fechaGeneracion: '05/04/2026',
-      generadoPor: 'L. Pérez',
-      estado: 'revisado',
-      paginas: 6,
-      tamanio: '0.8 MB',
-    },
-    {
-      id: '4',
-      titulo: 'Reporte mantenciones — Mar 2026',
-      tipo: 'mantenciones',
-      periodo: 'Mar 2026',
-      fechaGeneracion: '01/04/2026',
-      generadoPor: 'Sistema (auto)',
-      estado: 'liberado',
-      paginas: 4,
-      tamanio: '0.5 MB',
-    },
-    {
-      id: '5',
-      titulo: 'Reporte DGA — Mar 2026',
-      tipo: 'dga',
-      periodo: 'Mar 2026',
-      fechaGeneracion: '01/04/2026',
-      generadoPor: 'Sistema (auto)',
-      estado: 'liberado',
-      paginas: 8,
-      tamanio: '1.1 MB',
-    },
-    {
-      id: '6',
-      titulo: 'Reporte operacional — Mar 2026',
-      tipo: 'operacional',
-      periodo: 'Mar 2026',
-      fechaGeneracion: '03/04/2026',
-      generadoPor: 'M. Torres',
-      estado: 'liberado',
-      paginas: 11,
-      tamanio: '1.9 MB',
-    },
-    {
-      id: '7',
-      titulo: 'Borrador — Reporte DGA Mayo',
-      tipo: 'dga',
-      periodo: 'May 2026',
-      fechaGeneracion: '10/05/2026',
-      generadoPor: 'Sistema (auto)',
-      estado: 'borrador',
-      paginas: 8,
-      tamanio: '1.2 MB',
-    },
-  ];
+  ngOnInit(): void {
+    this.reload();
+  }
 
-  readonly reportesFiltrados = computed(() => {
-    const f = this.filtroActivo();
-    return f === 'todos' ? this.reportes : this.reportes.filter((r) => r.tipo === f);
-  });
+  reload(): void {
+    if (!this.sitioId()) return;
+    this.loading.set(true);
+    this.api.getReportesRecientes(this.sitioId(), 50).subscribe({
+      next: (rows) => {
+        this.reportes.set(rows);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+  }
 
-  tipoIcon(tipo: ReporteTipo): string {
-    const map: Record<ReporteTipo, string> = {
-      todos: 'description',
-      dga: 'shield',
-      operacional: 'summarize',
-      mantenciones: 'build_circle',
-      incidencias: 'report_problem',
+  estadoLabel(estatus: string): string {
+    const map: Record<string, string> = {
+      enviado: 'Enviado',
+      pendiente: 'Pendiente',
+      vacio: 'Vacío',
+      requires_review: 'Revisar',
+      enviando: 'Enviando',
+      rechazado: 'Rechazado',
+      fallido: 'Fallido',
     };
-    return map[tipo];
+    return map[estatus] ?? estatus;
   }
 
-  tipoIconClass(tipo: ReporteTipo): string {
-    const map: Record<ReporteTipo, string> = {
-      todos: 'bg-slate-100 text-slate-600',
-      dga: 'bg-rose-50 text-rose-600',
-      operacional: 'bg-cyan-50 text-cyan-600',
-      mantenciones: 'bg-amber-50 text-amber-600',
-      incidencias: 'bg-orange-50 text-orange-600',
-    };
-    return map[tipo];
+  estadoClass(estatus: string): string {
+    if (estatus === 'enviado') return 'bg-emerald-50 text-emerald-700';
+    if (estatus === 'rechazado' || estatus === 'fallido') return 'bg-rose-50 text-rose-700';
+    if (estatus === 'requires_review') return 'bg-amber-100 text-amber-800';
+    return 'bg-slate-100 text-slate-600';
   }
 
-  estadoLabel(e: ReporteEstado): string {
-    return e === 'liberado' ? 'Liberado' : e === 'revisado' ? 'Revisado' : 'Borrador';
-  }
-
-  estadoClass(e: ReporteEstado): string {
-    return e === 'liberado'
-      ? 'bg-emerald-50 text-emerald-700'
-      : e === 'revisado'
-        ? 'bg-cyan-50 text-cyan-700'
-        : 'bg-slate-100 text-slate-500';
-  }
-
-  filtroClass(key: ReporteTipo): string {
-    const active = this.filtroActivo() === key;
-    return [
-      'rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
-      active
-        ? 'bg-slate-800 text-white'
-        : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
-    ].join(' ');
+  estadoDot(estatus: string): string {
+    if (estatus === 'enviado') return 'bg-emerald-500';
+    if (estatus === 'rechazado' || estatus === 'fallido') return 'bg-rose-500';
+    if (estatus === 'requires_review') return 'bg-amber-500';
+    return 'bg-slate-400';
   }
 }
