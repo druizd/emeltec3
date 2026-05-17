@@ -117,7 +117,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
                     <td class="px-4 py-3">
                       @if (ev.incidencia_id) {
                         <span
-                          class="inline-flex items-center gap-1 rounded-full bg-cyan-50 px-2 py-0.5 text-[11px] font-bold text-cyan-700"
+                          class="inline-flex items-center gap-1 rounded-full bg-[rgba(13,175,189,0.08)] px-2 py-0.5 text-[11px] font-bold text-primary-container"
                         >
                           <span class="material-symbols-outlined text-[12px]">link</span>
                           {{ ev.incidencia_id }}
@@ -146,7 +146,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
           <button
             type="button"
             (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-[12px] font-bold text-cyan-700 hover:underline"
+            class="inline-flex items-center gap-1 text-[12px] font-bold text-primary-container hover:underline"
           >
             <span class="material-symbols-outlined text-[14px]">download</span>
             Exportar CSV
@@ -236,14 +236,14 @@ export class AlertasHistoricoComponent {
     if (s === 'critica') return 'bg-rose-50 text-rose-600';
     if (s === 'alta') return 'bg-orange-50 text-orange-600';
     if (s === 'media') return 'bg-amber-50 text-amber-600';
-    return 'bg-blue-50 text-blue-600';
+    return "bg-slate-100 text-slate-500";
   }
 
   severidadDotClass(s: AlertaSeveridad): string {
     if (s === 'critica') return 'bg-rose-500';
     if (s === 'alta') return 'bg-orange-500';
     if (s === 'media') return 'bg-amber-500';
-    return 'bg-blue-500';
+    return "bg-slate-400";
   }
 
   filtroClass(key: HistoricoFiltro): string {

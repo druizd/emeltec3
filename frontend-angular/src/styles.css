@@ -83,3 +83,18 @@
     animation: none !important;
   }
 }
+
+/* Baseline keyboard focus ring. Components may override with their own
+   focus-visible:ring-* utilities; this guarantees nothing is invisible to
+   keyboard users when the component author forgot to wire one. */
+@layer base {
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+}

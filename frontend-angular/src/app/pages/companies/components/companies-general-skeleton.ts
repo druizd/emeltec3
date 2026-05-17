@@ -48,7 +48,7 @@ import { Component } from '@angular/core';
 
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
             <div
-              class="rounded-3xl bg-gradient-to-br from-cyan-800 via-sky-800 to-sky-700 p-5 shadow-lg shadow-sky-900/20"
+              class="rounded-3xl bg-gradient-to-br from-[#04606a] via-[#0899a5] to-primary p-5 shadow-lg shadow-sky-900/20"
             >
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1 space-y-3">
@@ -93,7 +93,9 @@ import { Component } from '@angular/core';
                   <div class="skeleton h-8 w-16 rounded-full"></div>
                   <div class="skeleton h-3 w-24 rounded-full"></div>
                 </div>
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f8fafc]"
+                >
                   <div class="skeleton h-5 w-5 rounded-lg"></div>
                 </div>
               </div>
@@ -197,13 +199,13 @@ import { Component } from '@angular/core';
             <div class="absolute right-8 bottom-14 h-10 w-14 rounded-xl bg-slate-200/60"></div>
 
             <div
-              class="absolute left-[32%] top-[28%] h-6 w-6 rounded-full border-4 border-cyan-700 bg-white shadow-sm"
+              class="absolute left-[32%] top-[28%] h-6 w-6 rounded-full border-4 border-primary-container bg-white shadow-sm"
             ></div>
             <div
-              class="absolute left-[52%] top-[48%] h-6 w-6 rounded-full border-4 border-cyan-700 bg-white shadow-sm"
+              class="absolute left-[52%] top-[48%] h-6 w-6 rounded-full border-4 border-primary-container bg-white shadow-sm"
             ></div>
             <div
-              class="absolute left-[74%] top-[43%] h-6 w-6 rounded-full border-4 border-cyan-700 bg-white shadow-sm"
+              class="absolute left-[74%] top-[43%] h-6 w-6 rounded-full border-4 border-primary-container bg-white shadow-sm"
             ></div>
 
             <div
@@ -289,7 +291,7 @@ import { Component } from '@angular/core';
         </div>
 
         <div class="mt-5 flex justify-end">
-          <div class="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2">
+          <div class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-4 py-2">
             <div class="skeleton h-3 w-24 rounded-full"></div>
           </div>
         </div>

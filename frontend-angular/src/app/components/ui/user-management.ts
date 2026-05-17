@@ -27,8 +27,10 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
       @if (!readOnly) {
         <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
           <div class="flex items-center gap-3 mb-8">
-            <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-              <span class="material-symbols-outlined text-blue-600">person_add</span>
+            <div
+              class="w-10 h-10 bg-[rgba(13,175,189,0.10)] rounded-xl flex items-center justify-center"
+            >
+              <span class="material-symbols-outlined text-primary-container">person_add</span>
             </div>
             <div>
               <h2 class="text-lg font-bold text-slate-800">Invitar a un Nuevo Miembro</h2>
@@ -82,7 +84,9 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                   <div
                     class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
                   >
-                    <span class="material-symbols-outlined text-blue-500 text-sm">domain</span>
+                    <span class="material-symbols-outlined text-primary-container text-sm"
+                      >domain</span
+                    >
                     {{ companyName() }}
                   </div>
                 </div>
@@ -184,7 +188,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
               <button
                 type="submit"
                 [disabled]="loading()"
-                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-xl shadow-blue-900/20 hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center gap-2"
+                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-[0_6px_18px_rgba(13,175,189,0.25)] hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center gap-2"
               >
                 <span class="material-symbols-outlined text-lg">mail</span>
                 {{ loading() ? 'Enviando...' : 'Invitar y Enviar Correo' }}
@@ -207,7 +211,8 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
           <h3 class="text-xs font-semibold text-primary uppercase tracking-widest">
             {{ readOnly ? 'Equipo de ' + subName() : 'Usuarios en ' + subName() }}
           </h3>
-          <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-semibold"
+          <span
+            class="px-3 py-1 bg-[rgba(13,175,189,0.14)] text-primary-container rounded-full text-[10px] font-semibold"
             >{{ users().length }} Usuarios</span
           >
         </div>
@@ -403,7 +408,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       case 'SuperAdmin':
         return 'bg-purple-100 text-purple-700';
       case 'Admin':
-        return 'bg-blue-100 text-blue-700';
+        return 'bg-[rgba(13,175,189,0.14)] text-primary-container';
       case 'Gerente':
         return 'bg-emerald-100 text-emerald-700';
       case 'Cliente':

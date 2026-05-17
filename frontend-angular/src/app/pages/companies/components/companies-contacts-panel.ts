@@ -63,7 +63,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
               <div class="mb-4 flex items-start gap-3">
                 <div class="flex min-w-0 items-center gap-3">
                   <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-[11px] font-semibold text-white shadow-sm"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0dafbd] to-[#0899a5] text-[11px] font-semibold text-white shadow-sm"
                   >
                     {{ getContactInitials(contact) }}
                   </div>
@@ -72,7 +72,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                     <h4 class="truncate text-[14px] font-semibold text-slate-800">
                       {{ getContactName(contact) }}
                     </h4>
-                    <p class="truncate text-[11px] font-semibold text-cyan-700">
+                    <p class="truncate text-[11px] font-semibold text-primary-container">
                       {{ getContactRole(contact) }}
                     </p>
                   </div>
@@ -83,7 +83,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600"
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
                     >badge</span
                   >
                   <div class="min-w-0">
@@ -99,7 +99,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600"
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
                     >call</span
                   >
                   <div class="min-w-0">
@@ -115,7 +115,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-cyan-600"
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
                     >mail</span
                   >
                   <div class="min-w-0">

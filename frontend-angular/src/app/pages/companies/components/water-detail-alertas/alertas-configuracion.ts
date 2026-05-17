@@ -84,7 +84,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <button
           type="button"
           (click)="toggleNuevo()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-bold text-cyan-700 transition-colors hover:bg-cyan-100"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-[12px] font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             mostrandoNuevo() ? 'close' : 'add'
@@ -103,8 +103,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
       <!-- Formulario nueva regla -->
       @if (mostrandoNuevo()) {
-        <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cyan-700">
+        <article class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4">
+          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container">
             Nueva regla
           </p>
           <ng-container
@@ -122,7 +122,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaRegla)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear regla
@@ -142,7 +142,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               <button
                 type="button"
                 (click)="toggleActiva(regla)"
-                [class]="regla.activa ? 'bg-cyan-500' : 'bg-slate-300'"
+                [class]="regla.activa ? 'bg-[rgba(13,175,189,0.08)]0' : 'bg-slate-300'"
                 class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
                 [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
               >
@@ -229,7 +229,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   type="button"
                   [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
                   (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span class="material-symbols-outlined text-[16px]">check</span>
                   Guardar
@@ -260,7 +260,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             type="text"
             [(ngModel)]="draft.nombre"
             placeholder="Ej: Nivel freático crítico"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           />
         </div>
 
@@ -273,7 +273,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <input
             type="text"
             [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           />
         </div>
 
@@ -285,7 +285,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           >
           <select
             [(ngModel)]="draft.condicion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-cyan-400 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           >
             @for (c of condicionesDisponibles; track c) {
               <option [value]="c">{{ condicionLabel(c) }}</option>
@@ -303,7 +303,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             @if (variables().length > 0) {
               <select
                 [(ngModel)]="draft.variable_key"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
               >
                 <option value="" disabled>Selecciona una variable…</option>
                 @for (v of variables(); track v.id) {
@@ -325,7 +325,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="text"
                 [(ngModel)]="draft.variable_key"
                 placeholder="Ej: caudal, nivel_freatico"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
               />
               <p class="mt-1 text-[11px] text-slate-400">
                 Sin variables registradas en el sitio; ingresa la clave manualmente.
@@ -349,7 +349,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="number"
               step="any"
               [(ngModel)]="draft.umbral_bajo"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
             />
           </div>
         }
@@ -364,7 +364,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_bajo"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
               />
             </div>
             <div>
@@ -376,7 +376,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_alto"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
               />
             </div>
           </div>
@@ -432,7 +432,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             min="1"
             max="1440"
             [(ngModel)]="draft.cooldown_minutos"
-            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           />
           <span class="ml-2 text-[11px] text-slate-400">tiempo mínimo entre notificaciones</span>
         </div>
@@ -449,7 +449,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 (click)="toggleDia(draft, d)"
                 [class]="
                   draft.dias_activos.includes(d)
-                    ? 'bg-cyan-600 text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                 "
                 class="h-8 min-w-[2rem] rounded-lg px-2 text-[11px] font-semibold transition-colors"

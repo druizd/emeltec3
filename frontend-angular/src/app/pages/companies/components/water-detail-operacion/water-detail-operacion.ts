@@ -132,9 +132,9 @@ interface RealtimeChartPoint {
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p class="font-semibold text-sm">Datos en tiempo real</p>
-              <p class="mt-0.5 text-[11px] text-cyan-100">actualización cada minuto</p>
+              <p class="mt-0.5 text-[11px] text-[#bdefef]">actualización cada minuto</p>
             </div>
-            <span class="flex items-center gap-2 text-[11px] font-bold text-cyan-50">
+            <span class="flex items-center gap-2 text-[11px] font-bold text-[#e6fafb]">
               <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-300"></span>
               {{ latestTimestampLabel() }}
             </span>
@@ -142,7 +142,7 @@ interface RealtimeChartPoint {
           <div class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
             @for (m of metricas(); track m.label) {
               <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
-                <p class="text-[10px] font-bold uppercase tracking-widest text-cyan-100">
+                <p class="text-[10px] font-bold uppercase tracking-widest text-[#bdefef]">
                   {{ m.label }}
                 </p>
                 <p class="mt-1 text-2xl font-semibold leading-none">
@@ -169,7 +169,7 @@ interface RealtimeChartPoint {
                   class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                   [class]="
                     turnosSettingsOpen()
-                      ? 'bg-cyan-100 text-cyan-700'
+                      ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
                       : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                   "
                   aria-label="Configurar horarios de turno"
@@ -194,7 +194,7 @@ interface RealtimeChartPoint {
                   {{ fechaDiaReal() }}
                   @if (esHoy()) {
                     <span
-                      class="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-700"
+                      class="rounded-full bg-[rgba(13,175,189,0.14)] px-2 py-0.5 text-[10px] font-semibold text-primary-container"
                       >Hoy</span
                     >
                   }
@@ -226,7 +226,7 @@ interface RealtimeChartPoint {
             <!-- Panel de configuración de turnos -->
             @if (turnosSettingsOpen()) {
               <div
-                class="overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/60 p-4 shadow-sm"
+                class="overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4 shadow-sm"
               >
                 <div class="mb-3 flex items-center justify-between">
                   <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
@@ -243,7 +243,7 @@ interface RealtimeChartPoint {
                       class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
                       [class]="
                         numTurnos() === 2
-                          ? 'bg-cyan-600 text-white'
+                          ? 'bg-primary text-white'
                           : 'text-slate-500 hover:bg-slate-50'
                       "
                       [attr.aria-pressed]="numTurnos() === 2"
@@ -256,7 +256,7 @@ interface RealtimeChartPoint {
                       class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
                       [class]="
                         numTurnos() === 3
-                          ? 'bg-cyan-600 text-white'
+                          ? 'bg-primary text-white'
                           : 'text-slate-500 hover:bg-slate-50'
                       "
                       [attr.aria-pressed]="numTurnos() === 3"
@@ -287,26 +287,26 @@ interface RealtimeChartPoint {
                       type="text"
                       [value]="t.nombre"
                       (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                     <input
                       type="time"
                       [value]="t.inicio"
                       (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-[11px] text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-[11px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                     <input
                       type="time"
                       [value]="t.fin"
                       (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-[11px] text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-[11px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   }
                 </div>
                 <button
                   type="button"
                   (click)="turnosSettingsOpen.set(false)"
-                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700"
+                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5]"
                 >
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   Listo
@@ -328,7 +328,7 @@ interface RealtimeChartPoint {
                     </p>
                     <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100">
                       <div
-                        class="h-full w-full rounded-full bg-gradient-to-r from-cyan-500 to-emerald-500"
+                        class="h-full w-full rounded-full bg-gradient-to-r from-[#0dafbd] to-[#0899a5]"
                       ></div>
                     </div>
                   </div>
@@ -435,7 +435,7 @@ interface RealtimeChartPoint {
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between">
             <h3 class="text-sm font-semibold text-slate-800">
-              Caudal en <span class="text-cyan-600">Tiempo Real</span>
+              Caudal en <span class="text-primary-container">Tiempo Real</span>
             </h3>
             <span class="text-[11px] font-semibold text-slate-400"
               >Últimos {{ realtimePoints().length }} registros</span
@@ -650,7 +650,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     const rows = this.rowsForDay(this.selectedDayKey());
     return this.consumptionFromTotalizer(rows) ?? 0;
   });
-  private readonly barClasses = ['bg-cyan-500', 'bg-emerald-500', 'bg-slate-400'];
+  private readonly barClasses = ['bg-primary', 'bg-[#0899a5]', 'bg-slate-400'];
   private readonly HOY = new Date();
   private readonly mockConsumo: (number | null)[] = [14.2, 10.6, null];
   private readonly mockPct = [57, 43, 0];
@@ -858,7 +858,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return [
       'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
       active
-        ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
+        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',
     ].join(' ');
   }

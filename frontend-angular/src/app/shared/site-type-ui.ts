@@ -83,7 +83,7 @@ const SITE_TYPE_UI: Record<string, SiteTypeUi> = {
     icon: 'water_drop',
     moduleKey: 'Agua',
     routeSegment: 'water',
-    badgeClass: 'bg-cyan-50 text-cyan-700',
+    badgeClass: 'bg-[rgba(13,175,189,0.10)] text-primary-container',
   },
   electrico: {
     id: 'electrico',

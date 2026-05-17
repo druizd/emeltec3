@@ -80,11 +80,11 @@ interface Periodo {
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-cyan-100">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-[#bdefef]">
                 Flujo acumulado mensual
               </p>
               <p class="mt-2 font-mono text-3xl font-semibold leading-none text-white">14,921 m³</p>
-              <p class="mt-1 text-[11px] text-cyan-200">Acumulado en mayo 2026</p>
+              <p class="mt-1 text-[11px] text-[#7edde0]">Acumulado en mayo 2026</p>
             </div>
             <span
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15"
@@ -312,7 +312,7 @@ interface Periodo {
           <div class="mb-4 flex items-center justify-between gap-3">
             <h3 class="text-sm font-semibold text-slate-800">Resumen operacional</h3>
             <span
-              class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700"
+              class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-[11px] font-semibold text-on-surface-variant"
             >
               Mayo 2026
             </span>
@@ -831,7 +831,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   metricaOpIconClass(tono: MetricaOperacional['tono']): string {
     if (tono === 'warn') return 'bg-amber-50 text-amber-600';
-    if (tono === 'ok') return 'bg-cyan-50 text-cyan-600';
+    if (tono === 'ok') return 'bg-[rgba(13,175,189,0.10)] text-primary-container';
     return 'bg-slate-100 text-slate-500';
   }
 

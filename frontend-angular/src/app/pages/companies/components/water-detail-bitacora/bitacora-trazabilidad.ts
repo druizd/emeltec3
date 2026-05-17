@@ -138,7 +138,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
           <button
             type="button"
             (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-[12px] font-bold text-cyan-700 hover:underline"
+            class="inline-flex items-center gap-1 text-[12px] font-bold text-primary-container hover:underline"
           >
             <span class="material-symbols-outlined text-[14px]">download</span>
             Exportar CSV
@@ -241,7 +241,7 @@ export class BitacoraAuditLogComponent {
 
   accionClass(action: string): string {
     const { verbo } = describeAccion(action);
-    if (verbo === 'Creó') return 'bg-cyan-50 text-cyan-700';
+    if (verbo === 'Creó') return 'bg-[rgba(13,175,189,0.08)] text-primary-container';
     if (verbo === 'Modificó') return 'bg-amber-50 text-amber-700';
     if (verbo === 'Eliminó') return 'bg-rose-50 text-rose-700';
     return 'bg-slate-100 text-slate-600';
@@ -266,7 +266,7 @@ export class BitacoraAuditLogComponent {
     return [
       'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold transition-all',
       active
-        ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
+        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }

@@ -42,8 +42,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-[12px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
               [class]="
                 chartRangeOpen()
-                  ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700'
+                  ? 'border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] text-primary-container'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container'
               "
               aria-label="Selector de rango de tiempo"
               [attr.aria-expanded]="chartRangeOpen()"
@@ -78,7 +78,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                         class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                         [class]="
                           chartPreset() === p.key
-                            ? 'bg-cyan-600 text-white'
+                            ? 'bg-primary text-white'
                             : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                         "
                         [attr.aria-pressed]="chartPreset() === p.key"
@@ -101,7 +101,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                         type="datetime-local"
                         [value]="editStart()"
                         (change)="onEditStart($any($event.target).value)"
-                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-700 outline-none focus:border-cyan-400 focus:bg-white focus:ring-1 focus:ring-cyan-100"
+                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:bg-white focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                       />
                     </label>
                     <label class="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
@@ -110,7 +110,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                         type="datetime-local"
                         [value]="editEnd()"
                         (change)="onEditEnd($any($event.target).value)"
-                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-700 outline-none focus:border-cyan-400 focus:bg-white focus:ring-1 focus:ring-cyan-100"
+                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-[11px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:bg-white focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                       />
                     </label>
                   </div>
@@ -118,7 +118,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                     <button
                       type="button"
                       (click)="applyCustomRange()"
-                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-cyan-600 py-2 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700"
+                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5]"
                     >
                       <span class="material-symbols-outlined text-[14px]">check</span>
                       Aplicar rango
@@ -553,7 +553,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                 [class]="
                   jornadaSettingsOpen()
-                    ? 'bg-cyan-100 text-cyan-700'
+                    ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
                     : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                 "
                 aria-label="Configurar período de jornada"
@@ -581,7 +581,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 
         @if (jornadaSettingsOpen()) {
           <div
-            class="mx-5 mt-3 overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/60 p-4"
+            class="mx-5 mt-3 overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4"
           >
             <p class="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
               Período de jornada
@@ -593,7 +593,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   type="time"
                   [value]="jornadaInicio()"
                   (change)="jornadaInicio.set($any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-[12px] text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-[12px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                 />
               </label>
               <span class="text-slate-300">–</span>
@@ -603,7 +603,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   type="time"
                   [value]="jornadaFin()"
                   (change)="jornadaFin.set($any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-[12px] text-slate-700 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-100"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-[12px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                 />
               </label>
               <span class="text-[11px] text-slate-400"
@@ -613,7 +613,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <button
               type="button"
               (click)="jornadaSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-cyan-600 px-4 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-cyan-700"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5]"
             >
               <span class="material-symbols-outlined text-[14px]">check</span>
               Listo

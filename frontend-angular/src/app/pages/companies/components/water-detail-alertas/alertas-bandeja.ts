@@ -126,7 +126,7 @@ type FiltroEstado = EventoEstado | 'todos';
                       </span>
                     }
                     @if (ev.incidencia_id) {
-                      <span class="flex items-center gap-1 text-cyan-600">
+                      <span class="flex items-center gap-1 text-primary-container">
                         <span class="material-symbols-outlined text-[14px]">link</span>
                         {{ ev.incidencia_id }}
                       </span>
@@ -151,7 +151,7 @@ type FiltroEstado = EventoEstado | 'todos';
                         type="button"
                         (click)="confirmarAsignar(ev)"
                         [disabled]="!asignadoSeleccionado || actuando()"
-                        class="inline-flex items-center gap-1 rounded-lg bg-cyan-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
                       >
                         Confirmar
                       </button>
@@ -173,7 +173,7 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="reconocer(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[12px] font-bold text-cyan-700 hover:bg-cyan-100 disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-[12px] font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)] disabled:opacity-50"
                         >
                           <span class="material-symbols-outlined text-[14px]">visibility</span>
                           Reconocer
@@ -445,7 +445,7 @@ export class AlertasBandejaComponent {
     if (s === 'critica') return 'bg-rose-50 text-rose-500';
     if (s === 'alta') return 'bg-orange-50 text-orange-500';
     if (s === 'media') return 'bg-amber-50 text-amber-500';
-    return 'bg-blue-50 text-blue-500';
+    return "bg-slate-100 text-slate-500";
   }
 
   severidadLabel(s: AlertaSeveridad): string {
@@ -456,7 +456,7 @@ export class AlertasBandejaComponent {
     if (s === 'critica') return 'bg-rose-50 text-rose-600';
     if (s === 'alta') return 'bg-orange-50 text-orange-600';
     if (s === 'media') return 'bg-amber-50 text-amber-600';
-    return 'bg-blue-50 text-blue-600';
+    return "bg-slate-100 text-slate-500";
   }
 
   estadoLabel(e: EventoEstado): string {
@@ -472,7 +472,7 @@ export class AlertasBandejaComponent {
     const map: Record<EventoEstado, string> = {
       activa: 'bg-rose-50 text-rose-600',
       reconocida: 'bg-amber-50 text-amber-700',
-      asignada: 'bg-cyan-50 text-cyan-700',
+      asignada: 'bg-[rgba(13,175,189,0.08)] text-primary-container',
       resuelta: 'bg-slate-100 text-slate-500',
     };
     return map[e];
@@ -482,7 +482,7 @@ export class AlertasBandejaComponent {
     const map: Record<EventoEstado, string> = {
       activa: 'bg-rose-500',
       reconocida: 'bg-amber-500',
-      asignada: 'bg-cyan-500',
+      asignada: 'bg-[rgba(13,175,189,0.08)]0',
       resuelta: 'bg-slate-400',
     };
     return map[e];

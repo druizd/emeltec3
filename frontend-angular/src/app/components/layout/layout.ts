@@ -9,6 +9,14 @@ import { SidebarComponent } from './sidebar/sidebar';
   standalone: true,
   imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
   template: `
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:flex focus:items-center focus:gap-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white focus:shadow-[0_4px_12px_rgba(13,175,189,0.30)] focus:outline-none focus:ring-2 focus:ring-white"
+    >
+      <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+      Saltar al contenido
+    </a>
+
     <div
       class="flex h-dvh overflow-hidden bg-[#f0f2f5]"
       style="font-family: 'DM Sans', 'Josefin Sans', sans-serif;"
@@ -17,7 +25,11 @@ import { SidebarComponent } from './sidebar/sidebar';
 
       <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
         <app-header></app-header>
-        <main class="min-w-0 flex-1 overflow-y-auto bg-[#f0f2f5]">
+        <main
+          id="main-content"
+          tabindex="-1"
+          class="min-w-0 flex-1 overflow-y-auto bg-[#f0f2f5] focus:outline-none"
+        >
           <router-outlet></router-outlet>
         </main>
       </div>

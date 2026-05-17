@@ -23,6 +23,8 @@ export class LoginComponent {
   private auth = inject(AuthService);
   private router = inject(Router);
 
+  readonly currentYear = new Date().getFullYear();
+
   email = signal('');
   password = signal('');
   isCodeSent = signal(false);

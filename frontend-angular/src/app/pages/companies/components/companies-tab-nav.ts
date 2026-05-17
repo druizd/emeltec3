@@ -58,7 +58,7 @@ export class CompaniesTabNavComponent {
       return [
         'group relative inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]',
         isActive
-          ? 'bg-white text-cyan-700 shadow-[0_2px_8px_rgba(13,175,189,0.15)] ring-1 ring-[rgba(13,175,189,0.25)]'
+          ? 'bg-white text-primary-container shadow-[0_2px_8px_rgba(13,175,189,0.15)] ring-1 ring-[rgba(13,175,189,0.25)]'
           : 'text-slate-400 hover:bg-white hover:text-slate-700',
       ].join(' ');
     }

@@ -553,7 +553,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <div class="flex min-w-0 items-center gap-3">
                 <a
                   routerLink="/companies"
-                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-700 transition-colors hover:bg-cyan-100"
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
                   aria-label="Volver a instalaciones"
                 >
                   <span class="material-symbols-outlined text-[22px]">water_drop</span>
@@ -583,7 +583,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="openSettingsPanel()"
-                  class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
                   aria-label="Configuracion del sitio"
                 >
                   <span class="material-symbols-outlined text-[18px]">settings</span>
@@ -608,7 +608,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 DGA
                 @if (activeDetailTab() === 'dga') {
                   <span
-                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
+                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
                     aria-hidden="true"
                   ></span>
                 }
@@ -627,7 +627,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 Operación
                 @if (activeDetailTab() === 'operacion') {
                   <span
-                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
+                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
                     aria-hidden="true"
                   ></span>
                 }
@@ -646,7 +646,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 Alertas
                 @if (activeDetailTab() === 'alertas') {
                   <span
-                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
+                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
                     aria-hidden="true"
                   ></span>
                 }
@@ -665,7 +665,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 Bitácora
                 @if (activeDetailTab() === 'bitacora') {
                   <span
-                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
+                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
                     aria-hidden="true"
                   ></span>
                 }
@@ -692,7 +692,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </span>
                   @if (activeDetailTab() === 'analisis') {
                     <span
-                      class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
+                      class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
                       aria-hidden="true"
                     ></span>
                   }
@@ -717,7 +717,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[20px]">arrow_back</span>
                     </button>
                     <span
-                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700"
+                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
                     >
                       <span class="material-symbols-outlined text-[22px]">settings</span>
                     </span>
@@ -742,7 +742,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <button
                       type="button"
                       (click)="abrirDgaReporteModal()"
-                      class="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50 px-3 h-8 text-[12px] font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
+                      class="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 h-8 text-[12px] font-semibold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
                       aria-label="Configurar reporte DGA"
                     >
                       <span class="material-symbols-outlined text-[16px]">description</span>
@@ -777,7 +777,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (settingsLoading()) {
                 <div class="flex min-h-[360px] items-center justify-center bg-slate-50/60">
                   <div class="text-center">
-                    <span class="material-symbols-outlined animate-spin text-[34px] text-cyan-600"
+                    <span class="material-symbols-outlined animate-spin text-[34px] text-primary-container"
                       >progress_activity</span
                     >
                     <p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
@@ -789,16 +789,16 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
                   <div class="space-y-4">
                     @if (isSettingsPozo()) {
-                      <section class="rounded-xl border border-cyan-100 bg-cyan-50/60 p-4">
+                      <section class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4">
                         <div class="mb-4 flex items-start gap-3">
-                          <span class="material-symbols-outlined mt-0.5 text-[22px] text-cyan-700"
+                          <span class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
                             >water_drop</span
                           >
                           <div>
                             <h3 class="text-sm font-semibold text-slate-900">
                               Configuracion manual del pozo
                             </h3>
-                            <p class="text-xs font-semibold text-cyan-700">
+                            <p class="text-xs font-semibold text-primary-container">
                               Campos opcionales para proyectar el nivel freatico.
                             </p>
                           </div>
@@ -954,7 +954,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 </div>
                               } @else {
                                 <div
-                                  class="rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs font-semibold text-cyan-800"
+                                  class="rounded-md border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-xs font-semibold text-primary-container"
                                 >
                                   Formula:
                                   {{ variableForm().d1 || 'primer registro' }} *
@@ -1078,12 +1078,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </p>
                       }
 
-                      <div class="rounded-lg border border-cyan-100 bg-cyan-50/60 p-3">
+                      <div class="rounded-lg border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-3">
                         <div class="mb-3 flex items-center gap-2">
-                          <span class="material-symbols-outlined text-[18px] text-cyan-700"
+                          <span class="material-symbols-outlined text-[18px] text-primary-container"
                             >calculate</span
                           >
-                          <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">
+                          <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-container">
                             Calculadora de prueba (vista previa)
                           </h3>
                         </div>
@@ -1102,14 +1102,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </div>
 
                         <div
-                          class="mt-3 rounded-lg border border-cyan-100 bg-white px-3 py-2 shadow-sm"
+                          class="mt-3 rounded-lg border border-[rgba(13,175,189,0.15)] bg-white px-3 py-2 shadow-sm"
                         >
                           <p
                             class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
                           >
                             Resultado proyectado en grafico
                           </p>
-                          <p class="mt-1 text-xl font-semibold text-cyan-800">
+                          <p class="mt-1 text-xl font-semibold text-primary-container">
                             {{ previewResultText() }}
                           </p>
                         </div>
@@ -1178,7 +1178,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <tbody class="divide-y divide-slate-100">
                           @for (variable of siteVariables().variables; track variable.nombre_dato) {
                             <tr
-                              class="group cursor-pointer bg-white transition-colors hover:bg-cyan-50/50"
+                              class="group cursor-pointer bg-white transition-colors hover:bg-[rgba(13,175,189,0.08)]/50"
                               (click)="prepareVariableMap(variable)"
                               title="Seleccionar variable"
                             >
@@ -1259,7 +1259,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[20px]">arrow_back</span>
                     </button>
                     <span
-                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-50 text-cyan-700"
+                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
                     >
                       <span class="material-symbols-outlined text-[22px]">database</span>
                     </span>
@@ -1300,7 +1300,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       min="2020-01-01"
                       [value]="historyDateFrom()"
                       (input)="setHistoryDateFrom($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   </label>
                   <label class="grid gap-1">
@@ -1310,7 +1310,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       min="2020-01-01"
                       [value]="historyDateTo()"
                       (input)="setHistoryDateTo($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   </label>
                   <label class="grid gap-1">
@@ -1318,7 +1318,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <select
                       [value]="historyRecordLimit()"
                       (change)="setHistoryRecordLimit($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     >
                       @for (limit of historyRecordLimitOptions; track limit) {
                         <option [value]="limit">{{ limit }}</option>
@@ -1373,7 +1373,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       >
                         <td class="px-4 py-3">
                           <span class="inline-flex items-center gap-2">
-                            <span class="h-1.5 w-1.5 rounded-full bg-cyan-500"></span>
+                            <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0"></span>
                             {{ row.fecha }}
                           </span>
                         </td>
@@ -1543,7 +1543,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             >
               <div class="flex flex-col gap-3 xl:h-full">
                 <article
-                  class="flex flex-1 flex-col rounded-xl border border-cyan-200 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
+                  class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
                   <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Diagrama del pozo
@@ -1555,7 +1555,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     >
                       <div class="text-center">
                         <span
-                          class="material-symbols-outlined animate-spin text-[32px] text-cyan-600"
+                          class="material-symbols-outlined animate-spin text-[32px] text-primary-container"
                           >progress_activity</span
                         >
                         <p
@@ -2264,7 +2264,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         [class]="
                           quickActionDisabled(action)
                             ? 'rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                            : 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-cyan-200 hover:bg-white hover:shadow-sm'
+                            : 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-[rgba(13,175,189,0.30)] hover:bg-white hover:shadow-sm'
                         "
                       >
                         <span
@@ -2311,7 +2311,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <button
                     type="button"
                     (click)="openDgaDateFilter()"
-                    class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                    class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
                   >
                     <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                     {{ dgaSelectedRangeLabel() }}
@@ -2429,7 +2429,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <select
                     [value]="dgaRowsPerPage()"
                     (change)="setDgaRowsPerPage($event)"
-                    class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                   >
                     @for (size of dgaRowsPerPageOptions; track size) {
                       <option [value]="size">{{ size }}</option>
@@ -2499,7 +2499,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div class="flex items-center gap-3">
                 <span
-                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 text-cyan-600"
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
                 >
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
@@ -2531,12 +2531,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       (click)="applyDgaDatePreset(preset.id)"
                       [class]="
                         dgaSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-cyan-50 text-cyan-700 border border-cyan-200'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-[rgba(13,175,189,0.08)] text-primary-container border border-[rgba(13,175,189,0.25)]'
                           : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
-                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-500 flex-shrink-0"></span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2557,7 +2557,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         !dgaMonthHasData(i)
                           ? 'rounded-lg py-1.5 text-[11px] font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
                           : dgaSelectedMonths().includes(i)
-                            ? 'rounded-lg py-1.5 text-[11px] font-bold bg-cyan-600 text-white ring-2 ring-cyan-300'
+                            ? 'rounded-lg py-1.5 text-[11px] font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
                             : 'rounded-lg py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
                       "
                     >
@@ -2602,7 +2602,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         dgaSelectedPreset.set('custom');
                         dgaSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   </label>
                   <label class="grid gap-1.5 text-xs font-bold text-slate-600">
@@ -2616,7 +2616,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         dgaSelectedPreset.set('custom');
                         dgaSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   </label>
                 </div>
@@ -2646,7 +2646,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="applyDgaDateFilter()"
-                  class="rounded-lg bg-cyan-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-cyan-700"
+                  class="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--color-primary-container)]"
                 >
                   Aplicar filtro
                 </button>
@@ -2705,12 +2705,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       (click)="applyDownloadPreset(preset.id)"
                       [class]="
                         downloadSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-cyan-50 text-cyan-700 border border-cyan-200'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-[rgba(13,175,189,0.08)] text-primary-container border border-[rgba(13,175,189,0.25)]'
                           : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
                       @if (downloadSelectedPreset() === preset.id) {
-                        <span class="h-1.5 w-1.5 rounded-full bg-cyan-500 flex-shrink-0"></span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2731,7 +2731,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         !downloadMonthHasData(i)
                           ? 'rounded-lg py-1.5 text-[11px] font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
                           : downloadSelectedMonths().includes(i)
-                            ? 'rounded-lg py-1.5 text-[11px] font-bold bg-cyan-600 text-white ring-2 ring-cyan-300'
+                            ? 'rounded-lg py-1.5 text-[11px] font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
                             : 'rounded-lg py-1.5 text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
                       "
                     >
@@ -2778,7 +2778,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         downloadSelectedPreset.set('custom');
                         downloadSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   </label>
                   <label class="grid gap-1.5 text-xs font-bold text-slate-600">
@@ -2792,7 +2792,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         downloadSelectedPreset.set('custom');
                         downloadSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                     />
                   </label>
                 </div>
@@ -2808,7 +2808,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       (click)="toggleDownloadDataType(dtype.id)"
                       [class]="
                         isDownloadTypeSelected(dtype.id)
-                          ? 'rounded-lg border border-cyan-400 bg-cyan-50 px-3 py-2.5 text-center text-sm font-bold text-cyan-800 transition-all'
+                          ? 'rounded-lg border border-[rgba(13,175,189,0.55)] bg-[rgba(13,175,189,0.08)] px-3 py-2.5 text-center text-sm font-bold text-primary-container transition-all'
                           : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
                       "
                     >
@@ -3036,7 +3036,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             }
             <p class="px-5 py-2 text-[11px] text-slate-500 italic">
               Para configurar informantes, transport y caudal máx del pozo, usá el botón
-              <span class="font-semibold text-cyan-700">Configurar reporte DGA</span> del
+              <span class="font-semibold text-primary-container">Configurar reporte DGA</span> del
               panel de Settings del pozo.
             </p>
 
@@ -3104,7 +3104,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <div class="mx-auto max-w-[620px]">
                 <div class="mb-5 flex items-center gap-3">
                   <span
-                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-100 text-cyan-700"
+                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.14)] text-primary-container"
                   >
                     <span class="material-symbols-outlined text-[22px]">assignment</span>
                   </span>
@@ -3192,7 +3192,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         [href]="url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-cyan-600 hover:text-cyan-800 hover:underline"
+                        class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-primary-container hover:text-primary-container hover:underline"
                         [title]="'Abrir en portal SNIA: ' + url"
                       >
                         <span class="font-mono">{{ report.comprobante }}</span>
@@ -3926,7 +3926,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       icon: 'database',
       title: 'Datos Historicos',
       subtitle: 'Ver registros',
-      color: 'text-cyan-600',
+      color: 'text-primary-container',
       openHistory: true,
     },
     {
@@ -3940,7 +3940,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       icon: 'open_in_new',
       title: 'Ver en DGA',
       subtitle: 'Portal oficial',
-      color: 'text-blue-600',
+      color: 'text-primary-container',
       openDga: true,
     },
     {
@@ -4689,8 +4689,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const base =
       'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
-      ? `${base} border-cyan-300 bg-cyan-100 text-cyan-900`
-      : `${base} border-cyan-100 bg-white text-cyan-800 hover:border-cyan-200 hover:bg-cyan-50`;
+      ? `${base} border-[rgba(13,175,189,0.35)] bg-[rgba(13,175,189,0.14)] text-primary-container`
+      : `${base} border-[rgba(13,175,189,0.15)] bg-white text-primary-container hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)]`;
   }
 
   /**
@@ -5374,7 +5374,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const base =
       'relative inline-flex h-9 items-center gap-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
     return active
-      ? `${base} font-semibold text-cyan-700`
+      ? `${base} font-semibold text-primary-container`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;
   }
 
@@ -5382,7 +5382,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const active = this.operationMode() === mode;
     const base = 'inline-flex h-11 items-center gap-2 border-b-2 px-5 text-sm transition-colors';
     return active
-      ? `${base} border-cyan-500 bg-cyan-50 font-semibold text-cyan-700`
+      ? `${base} border-[rgba(13,175,189,0.55)] bg-[rgba(13,175,189,0.08)] font-semibold text-primary-container`
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;
   }
 

@@ -78,7 +78,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   </span>
                 </span>
                 <span
-                  class="inline-flex h-10 items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 text-blue-700"
+                  class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 text-on-surface-variant"
                 >
                   <span class="material-symbols-outlined text-[17px]">sensors</span>
                   <span class="grid leading-tight">

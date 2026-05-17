@@ -80,7 +80,7 @@ const TIPOS: DocumentoTipo[] = [
         <button
           type="button"
           (click)="toggleSubida()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-bold text-cyan-700 transition-colors hover:bg-cyan-100"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-[12px] font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             mostrandoSubida() ? 'close' : 'upload_file'
@@ -90,8 +90,8 @@ const TIPOS: DocumentoTipo[] = [
       </header>
 
       @if (mostrandoSubida()) {
-        <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cyan-700">
+        <article class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4">
+          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container">
             Nuevo documento
           </p>
           <div class="space-y-3">
@@ -190,7 +190,7 @@ const TIPOS: DocumentoTipo[] = [
                 type="button"
                 [disabled]="uploading() || !puedeSubir()"
                 (click)="subir()"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
                 {{ uploading() ? 'Subiendo…' : 'Subir' }}
@@ -284,7 +284,7 @@ const TIPOS: DocumentoTipo[] = [
                         <button
                           type="button"
                           (click)="descargar(doc)"
-                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-cyan-50 hover:text-cyan-700"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
                           [attr.aria-label]="'Descargar ' + doc.titulo"
                         >
                           <span class="material-symbols-outlined text-[18px]">download</span>
@@ -484,7 +484,7 @@ export class BitacoraDocumentosComponent {
 
   tipoIconClass(t: DocumentoTipo): string {
     const map: Record<DocumentoTipo, string> = {
-      ficha_tecnica: 'bg-cyan-50 text-cyan-700',
+      ficha_tecnica: 'bg-[rgba(13,175,189,0.08)] text-primary-container',
       datasheet: 'bg-emerald-50 text-emerald-700',
       certificado: 'bg-amber-50 text-amber-700',
       manual: 'bg-violet-50 text-violet-700',
@@ -503,14 +503,14 @@ export class BitacoraDocumentosComponent {
     return [
       'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
       active
-        ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
+        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }
 
   filtroBadgeClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
-    return active ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500';
+    return active ? 'bg-[rgba(13,175,189,0.14)] text-primary-container' : 'bg-slate-100 text-slate-500';
   }
 
   formatBytes(b: number): string {

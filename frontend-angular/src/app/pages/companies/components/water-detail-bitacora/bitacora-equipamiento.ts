@@ -25,7 +25,7 @@ import {
         <button
           type="button"
           (click)="openForm()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-[12px] font-bold text-cyan-700 transition-colors hover:bg-cyan-100"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-[12px] font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[16px]">add</span>
           Registrar equipo
@@ -167,7 +167,7 @@ import {
                 [ngModel]="form().nombre"
                 (ngModelChange)="updateForm('nombre', $event)"
                 placeholder="Ej. Caudalímetro principal"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
@@ -176,7 +176,7 @@ import {
                 type="text"
                 [ngModel]="form().fabricante"
                 (ngModelChange)="updateForm('fabricante', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
@@ -185,7 +185,7 @@ import {
                 type="text"
                 [ngModel]="form().modelo"
                 (ngModelChange)="updateForm('modelo', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
@@ -194,7 +194,7 @@ import {
                 type="text"
                 [ngModel]="form().serie"
                 (ngModelChange)="updateForm('serie', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
@@ -204,7 +204,7 @@ import {
                 min="2000-01-01"
                 [ngModel]="form().fecha_compra"
                 (ngModelChange)="updateForm('fecha_compra', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
@@ -214,7 +214,7 @@ import {
                 min="2000-01-01"
                 [ngModel]="form().garantia_hasta"
                 (ngModelChange)="updateForm('garantia_hasta', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
@@ -222,7 +222,7 @@ import {
               <select
                 [ngModel]="form().estado"
                 (ngModelChange)="updateForm('estado', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-cyan-300"
+                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               >
                 <option value="operativo">Operativo</option>
                 <option value="en_mantencion">En mantención</option>
@@ -235,7 +235,7 @@ import {
                 rows="3"
                 [ngModel]="form().notas"
                 (ngModelChange)="updateForm('notas', $event)"
-                class="rounded border border-slate-200 px-2 py-1.5 text-[13px] outline-none focus:border-cyan-300"
+                class="rounded border border-slate-200 px-2 py-1.5 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               ></textarea>
             </label>
           </div>
@@ -251,7 +251,7 @@ import {
               type="button"
               (click)="save()"
               [disabled]="!form().nombre || saving()"
-              class="rounded bg-cyan-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-cyan-700 disabled:opacity-40"
+              class="rounded bg-primary px-4 py-1.5 text-sm font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
             >
               {{ saving() ? 'Guardando…' : 'Guardar' }}
             </button>

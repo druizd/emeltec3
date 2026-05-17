@@ -37,7 +37,7 @@ import { Component } from '@angular/core';
         </div>
       </div>
 
-      <div class="h-1.5 rounded-full bg-cyan-600/80"></div>
+      <div class="h-1.5 rounded-full bg-primary/80"></div>
 
       <div class="rounded-[36px] border border-slate-200 bg-white p-6 shadow-sm">
         <div class="space-y-6">

@@ -66,7 +66,7 @@ interface PeriodicidadOption {
           <!-- Header -->
           <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <div class="flex items-center gap-3">
-              <span class="material-symbols-outlined text-[24px] text-cyan-600">description</span>
+              <span class="material-symbols-outlined text-[24px] text-primary-container">description</span>
               <div>
                 <h2 class="text-base font-semibold text-slate-800">Configurar reporte DGA</h2>
                 <p class="text-[12px] text-slate-500">
@@ -88,10 +88,10 @@ interface PeriodicidadOption {
           <div class="space-y-5 px-6 py-5">
             <!-- ====== Activación DGA (siempre visible) ====== -->
             <section
-              class="space-y-3 rounded-lg border border-cyan-200 bg-cyan-50/40 px-4 py-3"
+              class="space-y-3 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/40 px-4 py-3"
             >
               <div
-                class="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-cyan-700"
+                class="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-primary-container"
               >
                 <span class="material-symbols-outlined text-[14px]">tune</span>
                 Activación
@@ -106,11 +106,11 @@ interface PeriodicidadOption {
                     [checked]="pozo()?.dga_activo ?? false"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_activo', $any($event.target).checked)"
-                    class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-300"
+                    class="h-4 w-4 rounded border-slate-300 text-primary-container focus:ring-[rgba(13,175,189,0.45)]"
                   />
                   <span class="text-[12px] font-semibold text-slate-700">DGA activo</span>
                   @if (pozoSaving() === 'dga_activo') {
-                    <span class="text-[10px] italic text-cyan-600">Guardando…</span>
+                    <span class="text-[10px] italic text-primary-container">Guardando…</span>
                   }
                 </label>
 
@@ -121,7 +121,7 @@ interface PeriodicidadOption {
                     [value]="pozo()?.dga_transport ?? 'off'"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeTransport($any($event.target).value)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-cyan-300 focus:ring-2 focus:ring-cyan-100"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
                   >
                     <option value="off">Off (no envía)</option>
                     <option value="shadow">Shadow (rellena sin enviar)</option>
@@ -139,13 +139,13 @@ interface PeriodicidadOption {
                       (ngModelChange)="obraDga.set($event)"
                       placeholder="OB-XXXX-XXX"
                       [disabled]="obraDgaSaving()"
-                      class="flex-1 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono uppercase tracking-wider text-slate-700 outline-none focus:border-cyan-300"
+                      class="flex-1 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono uppercase tracking-wider text-slate-700 outline-none focus:border-[rgba(13,175,189,0.35)]"
                     />
                     <button
                       type="button"
                       (click)="saveObraDga()"
                       [disabled]="obraDgaSaving() || obraDga().trim() === obraDgaInitial()"
-                      class="rounded bg-cyan-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-cyan-700 disabled:opacity-40"
+                      class="rounded bg-primary px-2 py-1 text-[10px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
                     >
                       OK
                     </button>
@@ -163,7 +163,7 @@ interface PeriodicidadOption {
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeCaudalMax($any($event.target).value)"
                     placeholder="sin cargar (fallback 1000)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-cyan-300"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
                   />
                 </label>
 
@@ -174,7 +174,7 @@ interface PeriodicidadOption {
                     [value]="pozo()?.dga_periodicidad ?? ''"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_periodicidad', $any($event.target).value || null)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] outline-none focus:border-cyan-300"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] outline-none focus:border-[rgba(13,175,189,0.35)]"
                   >
                     <option value="">— elegir —</option>
                     @for (p of periodicidades; track p.value) {
@@ -192,7 +192,7 @@ interface PeriodicidadOption {
                     [value]="pozo()?.dga_fecha_inicio ?? ''"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_fecha_inicio', $any($event.target).value || null)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-cyan-300"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
                   />
                 </label>
 
@@ -205,7 +205,7 @@ interface PeriodicidadOption {
                     [value]="horaInicioForInput()"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_hora_inicio', $any($event.target).value || null)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-cyan-300"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
                   />
                 </label>
               </div>
@@ -339,7 +339,7 @@ interface PeriodicidadOption {
                       <div class="text-[10px] uppercase tracking-wider text-slate-400">
                         Caudal [L/s]
                       </div>
-                      <div class="font-mono text-[14px] font-bold text-cyan-700">
+                      <div class="font-mono text-[14px] font-bold text-primary-container">
                         {{ p.caudal ?? '—' }}
                       </div>
                     </div>
@@ -347,7 +347,7 @@ interface PeriodicidadOption {
                       <div class="text-[10px] uppercase tracking-wider text-slate-400">
                         Totalizador [m³]
                       </div>
-                      <div class="font-mono text-[14px] font-bold text-cyan-700">
+                      <div class="font-mono text-[14px] font-bold text-primary-container">
                         {{ p.totalizador ?? '—' }}
                       </div>
                     </div>
@@ -355,7 +355,7 @@ interface PeriodicidadOption {
                       <div class="text-[10px] uppercase tracking-wider text-slate-400">
                         Nivel Freático [m]
                       </div>
-                      <div class="font-mono text-[14px] font-bold text-cyan-700">
+                      <div class="font-mono text-[14px] font-bold text-primary-container">
                         {{ p.nivelFreaticoDelPozo || '(vacío)' }}
                       </div>
                     </div>

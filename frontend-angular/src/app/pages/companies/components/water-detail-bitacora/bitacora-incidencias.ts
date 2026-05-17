@@ -103,7 +103,7 @@ function emptyDraft(): DraftIncidencia {
         <button
           type="button"
           (click)="toggleNueva()"
-          class="inline-flex items-center gap-1 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[12px] font-bold text-cyan-700 hover:bg-cyan-100"
+          class="inline-flex items-center gap-1 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-[12px] font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[14px]">{{
             mostrandoNueva() ? 'close' : 'add'
@@ -113,8 +113,8 @@ function emptyDraft(): DraftIncidencia {
       </header>
 
       @if (mostrandoNueva()) {
-        <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cyan-700">
+        <article class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4">
+          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container">
             Nueva incidencia
           </p>
           <ng-container
@@ -132,7 +132,7 @@ function emptyDraft(): DraftIncidencia {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaDraft)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear
@@ -258,7 +258,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving() || !puedeGuardar(drafts()[inc.id]!)"
                         (click)="guardarEdicion(inc)"
-                        class="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 px-4 py-2 text-[12px] font-bold text-white hover:bg-cyan-700 disabled:opacity-50"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[16px]">check</span>
                         Guardar
@@ -326,7 +326,7 @@ function emptyDraft(): DraftIncidencia {
             type="text"
             [(ngModel)]="draft.titulo"
             placeholder="Ej. Tablero eléctrico con sobrecalentamiento"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           />
         </div>
 
@@ -338,7 +338,7 @@ function emptyDraft(): DraftIncidencia {
           <textarea
             rows="3"
             [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-cyan-400 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           ></textarea>
         </div>
 
@@ -655,7 +655,7 @@ export class BitacoraIncidenciasComponent {
   }
 
   origenIconClass(o: IncidenciaOrigen): string {
-    return o === 'terreno' ? 'bg-orange-50 text-orange-600' : 'bg-cyan-50 text-cyan-600';
+    return o === 'terreno' ? 'bg-orange-50 text-orange-600' : 'bg-[rgba(13,175,189,0.08)] text-primary-container';
   }
 
   origenLabel(o: IncidenciaOrigen): string {
@@ -697,7 +697,7 @@ export class BitacoraIncidenciasComponent {
     const map: Record<IncidenciaEstado, string> = {
       abierta: 'bg-rose-50 text-rose-600',
       en_progreso: 'bg-amber-50 text-amber-700',
-      resuelta: 'bg-cyan-50 text-cyan-700',
+      resuelta: 'bg-[rgba(13,175,189,0.08)] text-primary-container',
       cerrada: 'bg-slate-100 text-slate-500',
     };
     return map[e];
@@ -707,7 +707,7 @@ export class BitacoraIncidenciasComponent {
     const map: Record<IncidenciaEstado, string> = {
       abierta: 'bg-rose-500',
       en_progreso: 'bg-amber-500',
-      resuelta: 'bg-cyan-500',
+      resuelta: 'bg-[rgba(13,175,189,0.08)]0',
       cerrada: 'bg-slate-400',
     };
     return map[e];
@@ -718,7 +718,7 @@ export class BitacoraIncidenciasComponent {
     return [
       'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold transition-all',
       active
-        ? 'bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200'
+        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }
