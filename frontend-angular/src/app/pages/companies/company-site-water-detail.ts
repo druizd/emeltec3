@@ -196,6 +196,8 @@ interface VariableForm {
   rol_dashboard: string;
   transformacion: string;
   factor: string;
+  /** Divisor UI-only: se combina con factor al guardar (factor_efectivo = factor / divisor). */
+  divisor: string;
   offset: string;
   wordSwap: string;
   sandboxRaw: string;
@@ -216,6 +218,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   rol_dashboard: 'generico',
   transformacion: 'directo',
   factor: '1',
+  divisor: '1',
   offset: '0',
   wordSwap: 'false',
   sandboxRaw: '',
@@ -1014,7 +1017,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </div>
 
                       @if (isLinearTransform()) {
-                        <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-3 gap-3">
                           <div>
                             <label class="mb-1 block text-xs font-bold text-slate-500"
                               >Factor Multiplicador</label
@@ -1025,6 +1028,21 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               name="settings-variable-factor"
                               [ngModel]="variableForm().factor"
                               (ngModelChange)="updateVariableForm('factor', $event)"
+                              class="field-control"
+                              placeholder="1"
+                            />
+                          </div>
+                          <div>
+                            <label class="mb-1 block text-xs font-bold text-slate-500"
+                              >Divisor</label
+                            >
+                            <input
+                              type="number"
+                              step="any"
+                              min="0"
+                              name="settings-variable-divisor"
+                              [ngModel]="variableForm().divisor"
+                              (ngModelChange)="updateVariableForm('divisor', $event)"
                               class="field-control"
                               placeholder="1"
                             />
@@ -1044,6 +1062,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             />
                           </div>
                         </div>
+                        <p class="text-[10px] text-slate-400">
+                          Fórmula: <span class="font-mono">resultado = raw × factor / divisor + offset</span>.
+                          Usá divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
+                        </p>
                       }
 
                       <div class="rounded-lg border border-cyan-100 bg-cyan-50/60 p-3">
@@ -1058,14 +1080,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
                         <div>
                           <label class="mb-1 block text-xs font-bold text-slate-500"
-                            >Valor crudo entrante</label
+                            >Valor crudo entrante (en vivo desde el equipo)</label
                           >
                           <input
                             name="settings-variable-sandbox-raw"
-                            [ngModel]="variableForm().sandboxRaw"
-                            (ngModelChange)="updateVariableForm('sandboxRaw', $event)"
-                            class="field-control bg-white"
-                            placeholder="Ej: 14.7"
+                            [value]="liveRawValueForPreview()"
+                            readonly
+                            class="field-control bg-slate-50 cursor-not-allowed font-mono text-slate-700"
+                            placeholder="(se carga al elegir registro d1)"
                           />
                         </div>
 
@@ -4418,6 +4440,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       transformacion: normalizedTransform,
       wordSwap: normalizedTransform === 'uint32_registros' ? 'true' : form.wordSwap,
       factor: this.isLinearTransformValue(normalizedTransform) ? form.factor || '1' : '1',
+      divisor: this.isLinearTransformValue(normalizedTransform) ? form.divisor || '1' : '1',
       offset: this.isLinearTransformValue(normalizedTransform) ? form.offset || '0' : '0',
     }));
   }
@@ -4468,19 +4491,40 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       : `${base} border-cyan-100 bg-white text-cyan-800 hover:border-cyan-200 hover:bg-cyan-50`;
   }
 
+  /**
+   * Valor crudo en vivo del registro d1 elegido, para la "Calculadora de
+   * prueba". Antes el input era editable; ahora es read-only y refleja
+   * la última lectura real del equipo.
+   */
+  liveRawValueForPreview(): string {
+    const form = this.variableForm();
+    if (!form.d1) return '';
+    const v = this.valueForVariableKey(form.d1);
+    if (v === null || v === undefined) return '';
+    return typeof v === 'number' ? String(v) : String(v);
+  }
+
   previewResultText(): string {
     const form = this.variableForm();
-    const rawText = String(form.sandboxRaw ?? '').trim();
+    // Valor crudo: ahora SIEMPRE viene del último registro real del equipo
+    // (vista previa, no sandbox manual). Si no hay d1 elegido o sin data,
+    // mostramos hint para el admin.
+    const rawText = this.liveRawValueForPreview();
     const unit = form.unidad ? ` ${form.unidad}` : '';
 
-    if (!rawText && !this.requiresSecondRegister()) return 'Ingresa un valor crudo';
+    if (!rawText && !this.requiresSecondRegister()) {
+      return form.d1 ? 'Sin lectura reciente del equipo' : 'Selecciona registro d1';
+    }
 
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.toNumber(rawText);
       const factor = this.toNumber(form.factor) ?? 1;
+      const divisorRaw = this.toNumber(form.divisor) ?? 1;
+      // Guard contra divisor 0 o negativo.
+      const divisor = divisorRaw > 0 ? divisorRaw : 1;
       const offset = this.toNumber(form.offset) ?? 0;
       if (raw === null) return 'Valor crudo no numerico';
-      return `${this.formatPreviewNumber(raw * factor + offset)}${unit}`;
+      return `${this.formatPreviewNumber((raw * factor) / divisor + offset)}${unit}`;
     }
 
     if (form.transformacion === 'ieee754_32') {
@@ -4569,12 +4613,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       rol_dashboard: this.normalizeVariableRoleForForm(variable.mapping?.rol_dashboard),
       transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
       factor: this.configNumberToString(params?.factor) || '1',
+      // divisor es UI-only; BD solo persiste factor. Al cargar, default 1
+      // → admin puede re-split si quiere editar decimales con divisor.
+      divisor: '1',
       offset: this.configNumberToString(params?.offset) || '0',
       wordSwap: String(params?.word_swap ?? params?.wordSwap ?? false),
-      sandboxRaw:
-        variable.valor_dato === null || variable.valor_dato === undefined
-          ? ''
-          : String(variable.valor_dato),
+      // sandboxRaw ya no se usa para input — calculadora lee live de d1.
+      sandboxRaw: '',
     });
   }
 
@@ -5255,8 +5300,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     }
 
     if (this.transformUsesLinearParameters(form.transformacion)) {
+      // factor efectivo persistido = factor_ui / divisor_ui. La BD no conoce
+      // de "divisor" — el split UI solo facilita ingresar decimales sin
+      // pensar (ej. divisor=100 vs factor=0.01).
+      const factor = this.toNumber(form.factor) ?? 1;
+      const divisorRaw = this.toNumber(form.divisor) ?? 1;
+      const divisor = divisorRaw > 0 ? divisorRaw : 1;
       return {
-        factor: this.toNumber(form.factor) ?? 1,
+        factor: factor / divisor,
         offset: this.toNumber(form.offset) ?? 0,
       };
     }
