@@ -46,31 +46,71 @@
  *  (no implementado).
  *
  *
- *  USO
- *  ---
+ *  USO (LOCAL - desarrollo)
+ *  ------------------------
+ *      cd main-api
+ *      npm run build
  *      node scripts/import-dga-historico.js --csv=<path>
- *      node scripts/import-dga-historico.js --csv=ruta.csv --user=42
- *
- *  Si una obra tiene varios informantes (dga_user), el script aborta y pide
- *  --user=<id_dgauser> para elegir cuál usar.
+ *      node scripts/import-dga-historico.js --csv=ruta.csv --dry-run
  *
  *  Flags:
  *    --csv=<path>     Ruta al archivo CSV (obligatorio).
- *    --user=<n>       ID del dga_user a usar (override cuando hay varios
- *                     informantes por obra).
+ *    --user=<n>       (obsoleto, modelo nuevo busca site por codigoObra).
  *    --dry-run        Parsea y valida pero NO escribe a DB.
  *    --batch=<n>      Filas por log de progreso (default 500).
+ *
+ *
+ *  USO (PRODUCCIÓN — VM Azure)
+ *  ---------------------------
+ *  1. Desde tu máquina local, subir el CSV a la VM:
+ *
+ *       scp "C:\Users\raulp\Documents\emeltec3\historico_dga_OB-0601-292.csv" \
+ *           azureuser@104.46.7.78:~/historico_dga_OB-0601-292.csv
+ *
+ *  2. SSH a la VM:
+ *
+ *       ssh azureuser@104.46.7.78
+ *
+ *  3. Copiar el CSV dentro del container main-api:
+ *
+ *       docker cp ~/historico_dga_OB-0601-292.csv emeltec-api:/tmp/historico.csv
+ *
+ *  4. Ejecutar el importer dentro del container (tiene node + dist + DB):
+ *
+ *       docker compose -f ~/emeltec3/docker-compose.yml exec -T main-api \
+ *         node /app/scripts/import-dga-historico.js --csv=/tmp/historico.csv
+ *
+ *  5. Verificar resultado en BD:
+ *
+ *       docker compose -f ~/emeltec3/docker-compose.yml exec -T timescaledb \
+ *         psql -U postgres -d telemetry_platform -c \
+ *         "SELECT estatus, COUNT(*) FROM dato_dga WHERE site_id='S100' GROUP BY estatus;"
+ *
+ *     Esperado: enviado | 18589 (o tu count) + tal vez algunos vacio/pendiente
+ *     del preseed actual.
+ *
+ *  6. Limpiar CSV temporal del container:
+ *
+ *       docker compose -f ~/emeltec3/docker-compose.yml exec -T main-api \
+ *         rm /tmp/historico.csv
+ *
+ *  7. (Opcional) Borrar CSV de la VM si no lo necesitás:
+ *
+ *       rm ~/historico_dga_OB-0601-292.csv
  *
  *
  *  PREREQUISITOS
  *  -------------
  *      1. Migración aplicada:
- *           psql -f infra-db/migrations/2026-05-16-dga-pipeline-refactor.sql
- *      2. TypeScript compilado:
- *           npm run build
- *      3. dga_user del informante registrado en BD con su site_id apuntando
- *         al pozo_config.obra_dga correspondiente.
- *      4. .env del main-api con DB_HOST/DB_USER/DB_PASSWORD/DB_NAME válidos.
+ *           psql -f infra-db/migrations/2026-05-17-dga-pozo-config-redesign.sql
+ *      2. `pozo_config.obra_dga` cargado para el sitio destino (el script
+ *         lookups por codigoObra → sitio_id).
+ *      3. TypeScript compilado (`npm run build`) — el script require()
+ *         carga `/app/dist/modules/dga/repo.js`.
+ *      4. `.env` del main-api con DB credentials válidas en la VM.
+ *      5. Dockerfile incluye `COPY scripts ./scripts` en el runtime stage
+ *         (commit 2026-05-17). Si vieja imagen sin scripts: rebuild via
+ *         `docker compose up -d --build main-api`.
  *
  *
  *  SEGURIDAD

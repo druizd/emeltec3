@@ -28,6 +28,9 @@ COPY --from=build /app/src/grpc ./dist/grpc
 # Servicios CJS legacy (emailService.js) que no están compilados en dist/
 # pero el código TS los carga via require dinámico (ver dga/notifier.ts).
 COPY --from=build /app/src/services ./src/services
+# Scripts CJS operativos (import histórico DGA, backfill contadores, etc).
+# Se ejecutan via `docker compose exec main-api node /app/scripts/<X>.js`.
+COPY scripts ./scripts
 COPY migrations ./migrations
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
