@@ -15,37 +15,41 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
       [class]="getCardClass()"
     >
       @if (variant === 'superadmin') {
-        <div class="flex items-start justify-between gap-2">
-          <div class="flex min-w-0 items-start gap-2">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex min-w-0 items-center gap-2">
             <div
-              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-cyan-100 bg-cyan-50 text-cyan-600"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-cyan-100 bg-cyan-50 text-cyan-600"
             >
-              <span class="material-symbols-outlined text-[16px]">{{ getSiteIcon() }}</span>
+              <span class="material-symbols-outlined text-[14px]">{{ getSiteIcon() }}</span>
             </div>
 
             <div class="min-w-0">
-              <h3 class="truncate text-[13px] font-bold text-slate-800">{{ getSiteTitle() }}</h3>
-              <p class="truncate text-[10px] text-slate-400">{{ getSiteSecondary() }}</p>
+              <h3 class="truncate text-[12px] font-bold leading-tight text-slate-800">
+                {{ getSiteTitle() }}
+              </h3>
+              <p class="truncate text-[10px] leading-tight text-slate-400">
+                {{ getContextLine() }}
+              </p>
             </div>
           </div>
 
-          <span
-            class="material-symbols-outlined text-[14px] text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-cyan-500"
-          >
-            chevron_right
-          </span>
-        </div>
-
-        <div class="mt-2 flex items-end justify-between gap-2 border-t border-slate-100 pt-2">
-          <div class="min-w-0">
-            <p class="truncate text-[10px] text-slate-500">{{ getContextLine() }}</p>
-          </div>
-
-          <div class="flex shrink-0 items-center gap-2 text-[10px]">
-            <span [class]="getTypeBadgeClass()">{{ getSiteTypeLabel() }}</span>
-            <span [class]="'inline-flex items-center gap-1 font-semibold ' + getStatusClass()">
-              <span class="h-1.5 w-1.5 rounded-full bg-current"></span>
+          <div class="flex shrink-0 items-center gap-2">
+            <span
+              [class]="'inline-flex items-center gap-1 text-[10px] font-semibold ' + getStatusClass()"
+            >
+              <span
+                [class]="
+                  'h-1.5 w-1.5 rounded-full ' +
+                  getStatusDotClass() +
+                  (getStatusLabel() === 'En vivo' ? ' animate-pulse' : '')
+                "
+              ></span>
               {{ getStatusLabel() }}
+            </span>
+            <span
+              class="material-symbols-outlined text-[14px] text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-cyan-500"
+            >
+              chevron_right
             </span>
           </div>
         </div>
@@ -112,19 +116,19 @@ export class SiteCardComponent {
 
   @Output() siteSelected = new EventEmitter<SiteRecord>();
 
-  /** Padding/border más compactos para que la tarjeta sea más chica. */
+  /** Card compacto: una fila, 56px de alto. */
   getCardClass(): string {
     if (this.variant === 'superadmin') {
       return [
-        'group w-full cursor-pointer rounded-xl border bg-white px-3 py-3 text-left transition-all duration-200',
+        'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
         this.selected
-          ? 'border-cyan-200 shadow-[0_6px_18px_rgba(8,145,178,0.14)]'
-          : 'border-slate-200/90 shadow-[0_3px_10px_rgba(15,23,42,0.04)] hover:-translate-y-0.5 hover:border-cyan-200 hover:shadow-[0_8px_20px_rgba(8,145,178,0.1)]',
+          ? 'border-cyan-200 shadow-[0_4px_12px_rgba(8,145,178,0.14)]'
+          : 'border-slate-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.04)] hover:border-cyan-200 hover:shadow-[0_4px_10px_rgba(8,145,178,0.08)]',
       ].join(' ');
     }
 
     return [
-      'group w-full cursor-pointer rounded-xl border bg-white p-3 text-left transition-all duration-200',
+      'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
       this.selected
         ? 'border-primary-container ring-2 ring-primary-container/15 shadow-md shadow-blue-900/10'
         : 'border-slate-200 hover:border-slate-300 hover:shadow-md',

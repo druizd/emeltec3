@@ -1451,16 +1451,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </p>
                     </div>
                     <p
-                      class="text-center font-mono text-[20px] font-black leading-tight text-slate-800"
+                      class="text-center font-mono text-[22px] font-black leading-tight text-slate-800"
                     >
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
                     <span
-                      class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 opacity-80 group-hover:opacity-100"
+                      class="inline-flex items-center gap-1 text-[11px] text-emerald-700 opacity-70 group-hover:opacity-100"
                     >
-                      <span class="material-symbols-outlined text-[12px]">receipt_long</span>
-                      Comprobante SNIA
-                      <span class="material-symbols-outlined text-[11px]">open_in_new</span>
+                      <span class="material-symbols-outlined text-[14px]">open_in_new</span>
                     </span>
                   </a>
                 } @else {
