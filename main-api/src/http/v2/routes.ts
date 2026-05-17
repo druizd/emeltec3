@@ -186,6 +186,25 @@ router.patch(
 router.get('/dga/sites/:siteId/live-preview', protect, getDgaLivePreviewHandler);
 router.get('/dga/sites/:siteId/ultimo-envio', protect, getUltimoEnvioHandler);
 
+// =====================================================================
+// Bitácora del sitio: ficha + equipamiento.
+// =====================================================================
+import {
+  createEquipoHandler,
+  deleteEquipoHandler,
+  getFichaHandler,
+  listEquiposHandler,
+  patchEquipoHandler,
+  patchFichaHandler,
+} from '../../modules/bitacoraSitio/controller';
+
+router.get('/sites/:siteId/bitacora/ficha', protect, getFichaHandler);
+router.patch('/sites/:siteId/bitacora/ficha', protect, patchFichaHandler);
+router.get('/sites/:siteId/bitacora/equipos', protect, listEquiposHandler);
+router.post('/sites/:siteId/bitacora/equipos', protect, createEquipoHandler);
+router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
+router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
+
 // Mediciones (Detalle de Registros + CSV)
 router.get('/dga/dato', protect, queryDatoDgaHandler);
 router.get('/dga/dato/export.csv', protect, exportDatoDgaCsvHandler);

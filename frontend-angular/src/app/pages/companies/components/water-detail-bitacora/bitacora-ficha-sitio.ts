@@ -1,36 +1,30 @@
+/**
+ * Bitácora — Ficha del sitio.
+ * Conectado a /api/v2/sites/:siteId/bitacora/ficha.
+ *
+ * Vista admin: editable (contactos, acreditaciones, riesgos, pin crítico).
+ * Vista cliente: solo lectura.
+ */
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../services/auth.service';
-
-interface ContactoTecnico {
-  nombre: string;
-  rol: 'Responsable' | 'Operador';
-  telefono: string;
-  email: string;
-}
-
-interface Acreditacion {
-  persona: string;
-  tipo: string;
-  vigenciaHasta: string;
-  vencida: boolean;
-}
-
-interface RiesgoItem {
-  descripcion: string;
-  probabilidad: number;
-  impacto: number;
-  mitigacion: string;
-}
+import {
+  BitacoraSitioService,
+  type FichaAcreditacion,
+  type FichaContacto,
+  type FichaRiesgo,
+  type FichaSitio,
+} from '../../../../services/bitacora-sitio.service';
 
 @Component({
   selector: 'app-bitacora-ficha-sitio',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="space-y-3">
       <!-- Pin crítico -->
-      @if (pinCritico()) {
+      @if (isInternal() || ficha().pin_critico) {
         <div
           class="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3"
         >
@@ -39,368 +33,394 @@ interface RiesgoItem {
           >
           <div class="min-w-0 flex-1">
             <p class="text-[10px] font-black uppercase tracking-widest text-amber-600">Atención</p>
-            <p class="mt-0.5 text-sm font-semibold text-amber-800">{{ pinCritico() }}</p>
+            @if (isInternal()) {
+              <input
+                type="text"
+                [ngModel]="ficha().pin_critico"
+                (ngModelChange)="updatePin($event)"
+                placeholder="Mensaje crítico (ej. Acceso requiere permiso DGA)"
+                class="mt-0.5 w-full bg-transparent text-sm font-semibold text-amber-900 placeholder:text-amber-400 focus:outline-none"
+              />
+            } @else {
+              <p class="mt-0.5 text-sm font-semibold text-amber-900">{{ ficha().pin_critico }}</p>
+            }
           </div>
-          @if (isInternal()) {
-            <button
-              type="button"
-              class="shrink-0 text-amber-400 hover:text-amber-700"
-              aria-label="Editar pin crítico"
-            >
-              <span class="material-symbols-outlined text-[18px]">edit</span>
-            </button>
-          }
         </div>
       }
 
       <div class="grid gap-3 xl:grid-cols-2">
-        <!-- Operativo -->
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3
-            class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-          >
-            <span class="material-symbols-outlined text-[16px]">location_on</span>
-            Ubicación y accesos
-          </h3>
-          <dl class="space-y-3">
-            <div>
-              <dt class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Dirección
-              </dt>
-              <dd class="mt-0.5 text-sm font-semibold text-slate-700">{{ ficha.direccion }}</dd>
-            </div>
-            <div>
-              <dt class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Coordenadas
-              </dt>
-              <dd class="mt-0.5 font-mono text-sm text-slate-700">
-                {{ ficha.latitud }}, {{ ficha.longitud }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Acceso
-              </dt>
-              <dd class="mt-0.5 text-sm text-slate-700">{{ ficha.acceso }}</dd>
-            </div>
-            <div>
-              <dt class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                Horario disponible
-              </dt>
-              <dd class="mt-0.5 text-sm text-slate-700">{{ ficha.horario }}</dd>
-            </div>
-          </dl>
-        </section>
-
-        <!-- Contactos técnicos -->
-        <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3
-            class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-          >
-            <span class="material-symbols-outlined text-[16px]">contacts</span>
-            Contactos técnicos
-          </h3>
-          <div class="space-y-3">
-            @for (contacto of contactos; track contacto.email) {
-              <div
-                class="flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50/60 p-3"
+        <!-- Contactos -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Contactos técnicos
+            </h3>
+            @if (isInternal()) {
+              <button
+                type="button"
+                (click)="addContacto()"
+                class="rounded p-1 text-cyan-600 hover:bg-cyan-50"
               >
-                <span
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-cyan-100 text-[13px] font-black text-cyan-700"
-                >
-                  {{ iniciales(contacto.nombre) }}
-                </span>
-                <div class="min-w-0">
-                  <p class="text-sm font-black text-slate-800">{{ contacto.nombre }}</p>
-                  <p class="text-[11px] font-semibold text-slate-400">{{ contacto.rol }}</p>
-                  <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
-                    <span>{{ contacto.telefono }}</span>
-                    <span>{{ contacto.email }}</span>
-                  </div>
-                </div>
-              </div>
+                <span class="material-symbols-outlined text-[16px]">add</span>
+              </button>
             }
           </div>
+          @if (ficha().contactos.length === 0) {
+            <p class="text-[12px] italic text-slate-400">Sin contactos registrados.</p>
+          } @else {
+            <ul class="space-y-2">
+              @for (c of ficha().contactos; track $index) {
+                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2">
+                  @if (isInternal()) {
+                    <div class="grid grid-cols-2 gap-2 text-[12px]">
+                      <input
+                        type="text"
+                        [ngModel]="c.nombre"
+                        (ngModelChange)="updateContacto($index, 'nombre', $event)"
+                        placeholder="Nombre"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      />
+                      <select
+                        [ngModel]="c.rol"
+                        (ngModelChange)="updateContacto($index, 'rol', $event)"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      >
+                        <option value="Responsable">Responsable</option>
+                        <option value="Operador">Operador</option>
+                      </select>
+                      <input
+                        type="text"
+                        [ngModel]="c.telefono"
+                        (ngModelChange)="updateContacto($index, 'telefono', $event)"
+                        placeholder="Teléfono"
+                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-cyan-300"
+                      />
+                      <input
+                        type="email"
+                        [ngModel]="c.email"
+                        (ngModelChange)="updateContacto($index, 'email', $event)"
+                        placeholder="Email"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="removeContacto($index)"
+                      class="mt-1 text-[10px] font-semibold text-rose-500 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  } @else {
+                    <p class="text-[13px] font-semibold text-slate-700">{{ c.nombre }}</p>
+                    <p class="text-[11px] text-slate-500">
+                      {{ c.rol }} · {{ c.telefono || '—' }} · {{ c.email || '—' }}
+                    </p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <!-- Acreditaciones -->
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Acreditaciones
+            </h3>
+            @if (isInternal()) {
+              <button
+                type="button"
+                (click)="addAcreditacion()"
+                class="rounded p-1 text-cyan-600 hover:bg-cyan-50"
+              >
+                <span class="material-symbols-outlined text-[16px]">add</span>
+              </button>
+            }
+          </div>
+          @if (ficha().acreditaciones.length === 0) {
+            <p class="text-[12px] italic text-slate-400">Sin acreditaciones registradas.</p>
+          } @else {
+            <ul class="space-y-2">
+              @for (a of ficha().acreditaciones; track $index) {
+                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-[12px]">
+                  @if (isInternal()) {
+                    <div class="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        [ngModel]="a.persona"
+                        (ngModelChange)="updateAcreditacion($index, 'persona', $event)"
+                        placeholder="Persona"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      />
+                      <input
+                        type="text"
+                        [ngModel]="a.tipo"
+                        (ngModelChange)="updateAcreditacion($index, 'tipo', $event)"
+                        placeholder="Tipo (DGA, etc)"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      />
+                      <input
+                        type="date"
+                        min="2000-01-01"
+                        [ngModel]="a.vigencia_hasta"
+                        (ngModelChange)="updateAcreditacion($index, 'vigencia_hasta', $event)"
+                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-cyan-300"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="removeAcreditacion($index)"
+                      class="mt-1 text-[10px] font-semibold text-rose-500 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  } @else {
+                    <p class="font-semibold text-slate-700">
+                      {{ a.persona }} · {{ a.tipo }}
+                    </p>
+                    <p [class]="vigenciaClass(a.vigencia_hasta)">
+                      {{
+                        a.vigencia_hasta
+                          ? 'Vigente hasta ' + a.vigencia_hasta
+                          : 'Sin vigencia'
+                      }}
+                    </p>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <!-- Riesgos -->
+        <section
+          class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2"
+        >
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Riesgos identificados
+            </h3>
+            @if (isInternal()) {
+              <button
+                type="button"
+                (click)="addRiesgo()"
+                class="rounded p-1 text-cyan-600 hover:bg-cyan-50"
+              >
+                <span class="material-symbols-outlined text-[16px]">add</span>
+              </button>
+            }
+          </div>
+          @if (ficha().riesgos.length === 0) {
+            <p class="text-[12px] italic text-slate-400">Sin riesgos registrados.</p>
+          } @else {
+            <ul class="space-y-2">
+              @for (r of ficha().riesgos; track $index) {
+                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-[12px]">
+                  @if (isInternal()) {
+                    <div class="grid gap-2 md:grid-cols-[1fr_auto_auto_1fr]">
+                      <input
+                        type="text"
+                        [ngModel]="r.descripcion"
+                        (ngModelChange)="updateRiesgo($index, 'descripcion', $event)"
+                        placeholder="Descripción del riesgo"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        [ngModel]="r.probabilidad"
+                        (ngModelChange)="updateRiesgo($index, 'probabilidad', $event)"
+                        placeholder="Prob (1-5)"
+                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-cyan-300"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        [ngModel]="r.impacto"
+                        (ngModelChange)="updateRiesgo($index, 'impacto', $event)"
+                        placeholder="Imp (1-5)"
+                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-cyan-300"
+                      />
+                      <input
+                        type="text"
+                        [ngModel]="r.mitigacion"
+                        (ngModelChange)="updateRiesgo($index, 'mitigacion', $event)"
+                        placeholder="Mitigación"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-cyan-300"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      (click)="removeRiesgo($index)"
+                      class="mt-1 text-[10px] font-semibold text-rose-500 hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  } @else {
+                    <p class="font-semibold text-slate-700">{{ r.descripcion }}</p>
+                    <p class="text-slate-500">
+                      Prob: {{ r.probabilidad ?? '—' }} · Impacto:
+                      {{ r.impacto ?? '—' }} · Mitigación:
+                      {{ r.mitigacion || '—' }}
+                    </p>
+                  }
+                </li>
+              }
+            </ul>
+          }
         </section>
       </div>
 
-      <!-- Acreditaciones -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3
-          class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-        >
-          <span class="material-symbols-outlined text-[16px]">verified_user</span>
-          Personal acreditado para acceder
-        </h3>
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr class="border-b border-slate-100 bg-slate-50">
-                <th
-                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Persona
-                </th>
-                <th
-                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Acreditación
-                </th>
-                <th
-                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Válida hasta
-                </th>
-                <th
-                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Estado
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @for (acr of acreditaciones; track acr.persona + acr.tipo) {
-                <tr class="hover:bg-slate-50/60">
-                  <td class="px-3 py-2.5 font-semibold text-slate-800">{{ acr.persona }}</td>
-                  <td class="px-3 py-2.5 text-slate-600">{{ acr.tipo }}</td>
-                  <td class="px-3 py-2.5 font-mono text-slate-600">{{ acr.vigenciaHasta }}</td>
-                  <td class="px-3 py-2.5">
-                    @if (acr.vencida) {
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-bold text-rose-600"
-                      >
-                        <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Vencida
-                      </span>
-                    } @else {
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-600"
-                      >
-                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Vigente
-                      </span>
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Matriz de riesgo -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3
-          class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-        >
-          <span class="material-symbols-outlined text-[16px]">health_and_safety</span>
-          Matriz de riesgo del sitio
-        </h3>
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr class="border-b border-slate-100 bg-slate-50">
-                <th
-                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Riesgo
-                </th>
-                <th
-                  class="px-3 py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Prob.
-                </th>
-                <th
-                  class="px-3 py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Impacto
-                </th>
-                <th
-                  class="px-3 py-2 text-center text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Score
-                </th>
-                <th
-                  class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-                >
-                  Mitigación
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @for (riesgo of riesgos; track riesgo.descripcion) {
-                <tr class="hover:bg-slate-50/60">
-                  <td class="px-3 py-2.5 font-semibold text-slate-800">{{ riesgo.descripcion }}</td>
-                  <td class="px-3 py-2.5 text-center font-mono text-slate-600">
-                    {{ riesgo.probabilidad }}
-                  </td>
-                  <td class="px-3 py-2.5 text-center font-mono text-slate-600">
-                    {{ riesgo.impacto }}
-                  </td>
-                  <td class="px-3 py-2.5 text-center">
-                    <span
-                      [class]="scoreClass(riesgo.probabilidad * riesgo.impacto)"
-                      class="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-black"
-                    >
-                      {{ riesgo.probabilidad * riesgo.impacto }}
-                    </span>
-                  </td>
-                  <td class="px-3 py-2.5 text-[12px] text-slate-500">{{ riesgo.mitigacion }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        <p class="mt-3 text-[11px] text-slate-400">
-          Score 1–5: verde · 6–12: amarillo · 13–25: rojo
-        </p>
-      </section>
-
-      <!-- Vencimiento de contrato (visible para todos) -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3
-          class="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400"
-        >
-          <span class="material-symbols-outlined text-[16px]">contract</span>
-          Contrato
-        </h3>
-        <div class="flex items-center gap-4">
-          <div>
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Vencimiento
-            </p>
-            <p class="mt-0.5 text-xl font-black text-slate-800">{{ ficha.vencimientoContrato }}</p>
-          </div>
-          <span
-            [class]="contratoBadgeClass()"
-            class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold"
+      @if (isInternal()) {
+        <div class="flex items-center justify-end gap-2">
+          @if (saveMsg()) {
+            <span class="text-[11px] font-semibold text-emerald-600">{{ saveMsg() }}</span>
+          }
+          @if (error()) {
+            <span class="text-[11px] font-semibold text-rose-600">{{ error() }}</span>
+          }
+          <button
+            type="button"
+            (click)="save()"
+            [disabled]="saving() || !dirty()"
+            class="rounded-lg bg-cyan-600 px-4 py-2 text-[13px] font-bold text-white hover:bg-cyan-700 disabled:opacity-40"
           >
-            <span class="h-1.5 w-1.5 rounded-full" [class]="contratoDotClass()"></span>
-            {{ contratoLabel() }}
-          </span>
+            {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+          </button>
         </div>
-      </section>
+      }
     </div>
   `,
 })
-export class BitacoraFichaSitioComponent {
-  private auth = inject(AuthService);
+export class BitacoraFichaSitioComponent implements OnInit {
+  private readonly auth = inject(AuthService);
+  private readonly api = inject(BitacoraSitioService);
+
+  readonly sitioId = input<string>('');
 
   readonly isInternal = computed(() => this.auth.isSuperAdmin() || this.auth.isAdmin());
 
-  readonly pinCritico = signal(
-    'Acceso solo con llave del encargado Sr. Rojas. Llamar al +56 9 8123 4567 antes de visitar.',
-  );
+  readonly ficha = signal<FichaSitio>({
+    pin_critico: null,
+    contactos: [],
+    acreditaciones: [],
+    riesgos: [],
+  });
+  private original = JSON.stringify(this.ficha());
 
-  readonly ficha = {
-    direccion: 'Camino Los Álamos 1240, Sector Industrial, Colina, RM',
-    latitud: '-33.2041',
-    longitud: '-70.6693',
-    acceso: 'Portón azul lateral. Llave en administración de la planta.',
-    horario: 'Lunes a viernes 08:00–18:00. Fines de semana con coordinación previa.',
-    vencimientoContrato: '15/09/2026',
-  };
+  readonly saving = signal<boolean>(false);
+  readonly saveMsg = signal<string>('');
+  readonly error = signal<string>('');
+  readonly dirty = computed(() => JSON.stringify(this.ficha()) !== this.original);
 
-  readonly contactos: ContactoTecnico[] = [
-    {
-      nombre: 'Carlos Rojas Vega',
-      rol: 'Responsable',
-      telefono: '+56 9 8123 4567',
-      email: 'c.rojas@clienteejemplo.cl',
-    },
-    {
-      nombre: 'Ana Muñoz Soto',
-      rol: 'Operador',
-      telefono: '+56 9 7654 3210',
-      email: 'a.munoz@clienteejemplo.cl',
-    },
-  ];
-
-  readonly acreditaciones: Acreditacion[] = [
-    {
-      persona: 'Luis Pérez (Emeltec)',
-      tipo: 'Curso seguridad industrial',
-      vigenciaHasta: '30/06/2026',
-      vencida: false,
-    },
-    {
-      persona: 'María Torres (Emeltec)',
-      tipo: 'Curso seguridad industrial',
-      vigenciaHasta: '28/02/2025',
-      vencida: true,
-    },
-    {
-      persona: 'Carlos Rojas (Cliente)',
-      tipo: 'Inducción del sitio',
-      vigenciaHasta: '31/12/2026',
-      vencida: false,
-    },
-  ];
-
-  readonly riesgos: RiesgoItem[] = [
-    {
-      descripcion: 'Caída en zona húmeda',
-      probabilidad: 3,
-      impacto: 4,
-      mitigacion: 'Antideslizante + señalética. EPP obligatorio.',
-    },
-    {
-      descripcion: 'Corte eléctrico en tablero',
-      probabilidad: 2,
-      impacto: 5,
-      mitigacion: 'Lockout/tagout antes de intervenir.',
-    },
-    {
-      descripcion: 'Exposición a gases',
-      probabilidad: 1,
-      impacto: 3,
-      mitigacion: 'Medición previa con detector. Ventilación forzada.',
-    },
-    {
-      descripcion: 'Falla del sensor de nivel',
-      probabilidad: 4,
-      impacto: 3,
-      mitigacion: 'Revisión mensual. Sensor de respaldo instalado.',
-    },
-  ];
-
-  iniciales(nombre: string): string {
-    return nombre
-      .split(' ')
-      .slice(0, 2)
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase();
+  ngOnInit(): void {
+    this.reload();
   }
 
-  scoreClass(score: number): string {
-    if (score >= 13) return 'bg-rose-100 text-rose-700';
-    if (score >= 6) return 'bg-amber-100 text-amber-700';
-    return 'bg-emerald-100 text-emerald-700';
+  reload(): void {
+    if (!this.sitioId()) return;
+    this.error.set('');
+    this.api.getFicha(this.sitioId()).subscribe({
+      next: (f) => {
+        this.ficha.set(f);
+        this.original = JSON.stringify(f);
+      },
+      error: (err) =>
+        this.error.set('No se pudo cargar ficha: ' + (err?.error?.error?.message ?? err?.message ?? '')),
+    });
   }
 
-  private diasParaVencimiento(): number {
-    const partes = this.ficha.vencimientoContrato.split('/');
-    const fecha = new Date(+partes[2], +partes[1] - 1, +partes[0]);
-    return Math.ceil((fecha.getTime() - Date.now()) / 86400000);
+  save(): void {
+    if (!this.dirty() || this.saving()) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.saveMsg.set('');
+    this.api.patchFicha(this.sitioId(), this.ficha()).subscribe({
+      next: (f) => {
+        this.ficha.set(f);
+        this.original = JSON.stringify(f);
+        this.saving.set(false);
+        this.saveMsg.set('Guardado.');
+        setTimeout(() => this.saveMsg.set(''), 3000);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set('No se pudo guardar: ' + (err?.error?.error?.message ?? err?.message ?? ''));
+      },
+    });
   }
 
-  contratoLabel(): string {
-    const dias = this.diasParaVencimiento();
-    if (dias < 0) return 'Vencido';
-    if (dias <= 30) return `Vence en ${dias} días`;
-    return `Vigente (${dias} días)`;
+  // -------- Pin --------
+  updatePin(v: string): void {
+    this.ficha.update((f) => ({ ...f, pin_critico: v || null }));
   }
 
-  contratoBadgeClass(): string {
-    const dias = this.diasParaVencimiento();
-    if (dias < 0) return 'bg-rose-50 text-rose-700';
-    if (dias <= 30) return 'bg-amber-50 text-amber-700';
-    return 'bg-emerald-50 text-emerald-700';
+  // -------- Contactos --------
+  addContacto(): void {
+    const next: FichaContacto = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
+    this.ficha.update((f) => ({ ...f, contactos: [...f.contactos, next] }));
+  }
+  removeContacto(idx: number): void {
+    this.ficha.update((f) => ({
+      ...f,
+      contactos: f.contactos.filter((_, i) => i !== idx),
+    }));
+  }
+  updateContacto(idx: number, field: keyof FichaContacto, value: unknown): void {
+    this.ficha.update((f) => ({
+      ...f,
+      contactos: f.contactos.map((c, i) => (i === idx ? { ...c, [field]: value as never } : c)),
+    }));
   }
 
-  contratoDotClass(): string {
-    const dias = this.diasParaVencimiento();
-    if (dias < 0) return 'bg-rose-500';
-    if (dias <= 30) return 'bg-amber-500';
-    return 'bg-emerald-500';
+  // -------- Acreditaciones --------
+  addAcreditacion(): void {
+    const next: FichaAcreditacion = { persona: '', tipo: '', vigencia_hasta: null };
+    this.ficha.update((f) => ({ ...f, acreditaciones: [...f.acreditaciones, next] }));
+  }
+  removeAcreditacion(idx: number): void {
+    this.ficha.update((f) => ({
+      ...f,
+      acreditaciones: f.acreditaciones.filter((_, i) => i !== idx),
+    }));
+  }
+  updateAcreditacion(idx: number, field: keyof FichaAcreditacion, value: unknown): void {
+    this.ficha.update((f) => ({
+      ...f,
+      acreditaciones: f.acreditaciones.map((a, i) =>
+        i === idx ? { ...a, [field]: value as never } : a,
+      ),
+    }));
+  }
+
+  // -------- Riesgos --------
+  addRiesgo(): void {
+    const next: FichaRiesgo = { descripcion: '', probabilidad: null, impacto: null, mitigacion: '' };
+    this.ficha.update((f) => ({ ...f, riesgos: [...f.riesgos, next] }));
+  }
+  removeRiesgo(idx: number): void {
+    this.ficha.update((f) => ({
+      ...f,
+      riesgos: f.riesgos.filter((_, i) => i !== idx),
+    }));
+  }
+  updateRiesgo(idx: number, field: keyof FichaRiesgo, value: unknown): void {
+    this.ficha.update((f) => ({
+      ...f,
+      riesgos: f.riesgos.map((r, i) => (i === idx ? { ...r, [field]: value as never } : r)),
+    }));
+  }
+
+  vigenciaClass(fecha: string | null | undefined): string {
+    if (!fecha) return 'text-slate-400';
+    const t = new Date(fecha).getTime();
+    if (!Number.isFinite(t)) return 'text-slate-400';
+    const dias = Math.ceil((t - Date.now()) / 86400000);
+    if (dias < 0) return 'text-rose-500 font-semibold';
+    if (dias <= 30) return 'text-amber-600 font-semibold';
+    return 'text-emerald-600';
   }
 }
