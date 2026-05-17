@@ -3907,6 +3907,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         this.companyService.selectedSiteModuleKey.set(moduleKey);
         this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(moduleKey));
         this.loadHydratedSite(match);
+
+        // Tab DGA es default — carga inicial de "Detalle de Registros" sin
+        // requerir que admin re-clickee la tab. setDetailTab solo dispara
+        // loadDgaReports en cambio de tab, no en mount inicial.
+        if (this.activeDetailTab() === 'dga') {
+          void this.loadDgaReports();
+        }
       },
       error: () => this.router.navigate(['/companies']),
     });
@@ -4971,8 +4978,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   clearDgaDateFilter(): void {
-    this.dgaDateFrom.set('2026-04-06');
-    this.dgaDateTo.set('2026-04-07');
+    this.dgaDateFrom.set(chileMonthStart());
+    this.dgaDateTo.set(chileToday());
     this.dgaPage.set(1);
   }
 
