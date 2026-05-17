@@ -684,11 +684,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   >
                   Análisis
                   <span
-                    class="relative -mt-3 -ml-1 inline-flex items-center justify-center rounded-full bg-orange-500 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-white shadow-sm"
+                    class="relative -mt-3 -ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black leading-none text-white shadow-sm"
                     title="Solo SuperAdmin"
                     aria-label="Solo SuperAdmin"
                   >
-                    <span class="material-symbols-outlined text-[10px] leading-none">push_pin</span>
+                    !
                   </span>
                   @if (activeDetailTab() === 'analisis') {
                     <span
