@@ -48,6 +48,7 @@ router.delete('/:companyId/sub-companies/:subCompanyId', companyController.delet
 router.post('/:companyId/sub-companies/:subCompanyId/sites', companyController.createSite);
 router.patch('/sites/:siteId', companyController.updateSite);
 router.delete('/sites/:siteId', companyController.deleteSite);
+router.get('/sites/:siteId/pozo-config', companyController.getSitePozoConfig);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
 if (contadoresController) {
   router.get('/sites/:siteId/contadores-mensuales', contadoresController.getMonthlySeriesHandler);

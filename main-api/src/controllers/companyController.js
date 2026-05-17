@@ -1182,6 +1182,26 @@ exports.getSiteTypeCatalog = (_req, res) => {
 };
 
 /**
+ * GET /api/companies/sites/:siteId/pozo-config
+ * Devuelve la fila cruda de pozo_config para el sitio (o null). Usado por
+ * formularios admin que necesitan editar obra_dga, profundidades, etc.
+ */
+exports.getSitePozoConfig = async (req, res, next) => {
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+    if (!site) return notFound(res, 'Sitio no encontrado.');
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para consultar este sitio.');
+    }
+    const pozoConfig = await getPozoConfigBySiteId(siteId);
+    return res.json({ ok: true, data: pozoConfig });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * GET /api/companies/sites/:siteId/dashboard-data
  * Cruza sitio + pozo_config + reg_map + ultimo registro crudo de equipo.
  * Devuelve valores ya transformados para que el frontend no calcule.
