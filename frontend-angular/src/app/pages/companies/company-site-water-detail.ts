@@ -27,6 +27,7 @@ import { CHILE_TIME_ZONE } from '../../shared/timezone';
 import { getSiteTypeUi, siteTypesForModule } from '../../shared/site-type-ui';
 import { DgaGenerarReporteModalComponent } from './components/dga-generar-reporte-modal/dga-generar-reporte-modal';
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
+import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
 
 /**
@@ -669,25 +670,34 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   ></span>
                 }
               </button>
-              <button
-                type="button"
-                role="tab"
-                (click)="setDetailTab('analisis')"
-                [class]="getDetailTabClass('analisis')"
-                [attr.aria-selected]="activeDetailTab() === 'analisis'"
-                aria-controls="tabpanel-analisis"
-              >
-                <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
-                  >insights</span
+              @if (isSuperAdmin()) {
+                <button
+                  type="button"
+                  role="tab"
+                  (click)="setDetailTab('analisis')"
+                  [class]="getDetailTabClass('analisis')"
+                  [attr.aria-selected]="activeDetailTab() === 'analisis'"
+                  aria-controls="tabpanel-analisis"
                 >
-                Análisis
-                @if (activeDetailTab() === 'analisis') {
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >insights</span
+                  >
+                  Análisis
                   <span
-                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
-                    aria-hidden="true"
-                  ></span>
-                }
-              </button>
+                    class="relative -mt-3 -ml-1 inline-flex items-center justify-center rounded-full bg-orange-500 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider text-white shadow-sm"
+                    title="Solo SuperAdmin"
+                    aria-label="Solo SuperAdmin"
+                  >
+                    <span class="material-symbols-outlined text-[10px] leading-none">push_pin</span>
+                  </span>
+                  @if (activeDetailTab() === 'analisis') {
+                    <span
+                      class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-cyan-600"
+                      aria-hidden="true"
+                    ></span>
+                  }
+                </button>
+              }
             </div>
           </section>
 
@@ -2461,7 +2471,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               [sitioId]="siteContext()?.site?.id || ''"
               [empresaId]="siteContext()?.company?.id || ''"
             />
-          } @else if (activeDetailTab() === 'analisis') {
+          } @else if (activeDetailTab() === 'analisis' && isSuperAdmin()) {
             <app-water-detail-analisis [sitioId]="siteContext()?.site?.id || ''" />
           }
 
@@ -3385,6 +3395,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly adminApi = inject(AdministrationService);
   private readonly dgaService = inject(DgaService);
   private readonly httpClient = inject(HttpClient);
+  private readonly authService = inject(AuthService);
+  readonly isSuperAdmin = this.authService.isSuperAdmin;
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
@@ -4860,6 +4872,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   setDetailTab(tab: DetailTab): void {
+    if (tab === 'analisis' && !this.isSuperAdmin()) return;
     this.historyPanelOpen.set(false);
     this.settingsPanelOpen.set(false);
     this.activeDetailTab.set(tab);
