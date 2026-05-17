@@ -1434,24 +1434,52 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
               <!-- Último envío: ABSOLUTE, no afectado por filtro -->
               <article
-                class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
+                class="flex flex-col gap-1.5 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm"
                 title="Último envío exitoso a SNIA (independiente del filtro de fechas)"
               >
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                  Último envío DGA aceptado
-                </p>
-                <p class="mt-1 text-base font-black leading-tight text-slate-800">
+                <div class="flex items-center gap-1.5">
+                  <span
+                    class="material-symbols-outlined text-[14px] text-emerald-600"
+                    >verified</span
+                  >
+                  <p
+                    class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700"
+                  >
+                    Último envío aceptado
+                  </p>
+                </div>
+                <p
+                  class="font-mono text-[14px] font-black leading-tight text-slate-800"
+                >
                   {{ dgaUltimoEnvioFecha() }}
                 </p>
-                @if (dgaUltimoEnvio()?.comprobante) {
-                  <p
-                    class="mt-1 truncate font-mono text-[10px] font-semibold text-slate-500"
-                    [title]="dgaUltimoEnvio()?.comprobante"
-                  >
-                    {{ dgaUltimoEnvio()?.comprobante }}
-                  </p>
+                @if (dgaUltimoEnvio()?.comprobante; as comp) {
+                  @if (comprobanteUrl(comp); as url) {
+                    <a
+                      [href]="url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="group inline-flex items-center gap-1 truncate text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline"
+                      [title]="'Abrir comprobante en SNIA: ' + comp"
+                    >
+                      <span class="material-symbols-outlined text-[12px]">receipt_long</span>
+                      <span class="truncate font-mono">{{ comp }}</span>
+                      <span
+                        class="material-symbols-outlined text-[11px] opacity-60 group-hover:opacity-100"
+                        >open_in_new</span
+                      >
+                    </a>
+                  } @else {
+                    <span
+                      class="inline-flex items-center gap-1 truncate font-mono text-[10px] text-slate-500"
+                      [title]="'Cargá número de obra para link SNIA · ' + comp"
+                    >
+                      <span class="material-symbols-outlined text-[12px]">receipt_long</span>
+                      {{ comp }}
+                    </span>
+                  }
                 } @else {
-                  <p class="mt-1 text-[11px] font-semibold text-slate-400">sin envíos aún</p>
+                  <span class="text-[11px] italic text-slate-400">sin envíos aún</span>
                 }
               </article>
 
@@ -2315,21 +2343,40 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           {{ formatDgaInteger(report.totalizador) }}
                         </td>
                         <td class="px-4 py-3">
-                          <button
-                            type="button"
-                            (click)="openDgaReportDetail(report)"
-                            class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors"
-                            [style.background]="getDgaStatusBg(report.estado)"
-                            [style.border-color]="getDgaStatusBorder(report.estado)"
-                            [style.color]="getDgaStatusColor(report.estado)"
-                          >
-                            <span
-                              class="h-[5px] w-[5px] rounded-full"
-                              [style.background]="getDgaStatusColor(report.estado)"
-                            ></span>
-                            {{ report.estado }}
-                            <span class="material-symbols-outlined text-[13px]">chevron_right</span>
-                          </button>
+                          <div class="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              (click)="openDgaReportDetail(report)"
+                              class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors"
+                              [style.background]="getDgaStatusBg(report.estado)"
+                              [style.border-color]="getDgaStatusBorder(report.estado)"
+                              [style.color]="getDgaStatusColor(report.estado)"
+                            >
+                              <span
+                                class="h-[5px] w-[5px] rounded-full"
+                                [style.background]="getDgaStatusColor(report.estado)"
+                              ></span>
+                              {{ report.estado }}
+                              <span class="material-symbols-outlined text-[13px]">chevron_right</span>
+                            </button>
+                            @if (
+                              report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
+                              as snia
+                            ) {
+                              <a
+                                [href]="snia"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                (click)="$event.stopPropagation()"
+                                [title]="'Ver comprobante en SNIA: ' + report.comprobante"
+                                class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
+                              >
+                                <span class="material-symbols-outlined text-[14px]"
+                                  >receipt_long</span
+                                >
+                              </a>
+                            }
+                          </div>
                         </td>
                       </tr>
                     } @empty {
@@ -3111,10 +3158,29 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     {{ report.respuesta }}
                   </p>
                   <p class="mt-4 text-sm font-black text-slate-700">N&deg; Comprobante</p>
-                  <p class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-cyan-600">
-                    {{ report.comprobante }}
-                    <span class="material-symbols-outlined text-[16px]">open_in_new</span>
-                  </p>
+                  @if (report.comprobante) {
+                    @if (comprobanteUrl(report.comprobante); as url) {
+                      <a
+                        [href]="url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-cyan-600 hover:text-cyan-800 hover:underline"
+                        [title]="'Abrir en portal SNIA: ' + url"
+                      >
+                        <span class="font-mono">{{ report.comprobante }}</span>
+                        <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                      </a>
+                    } @else {
+                      <p
+                        class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-slate-600"
+                        [title]="'Cargá el número de obra del pozo para habilitar el link al portal SNIA'"
+                      >
+                        <span class="font-mono">{{ report.comprobante }}</span>
+                      </p>
+                    }
+                  } @else {
+                    <p class="mt-1 text-sm italic text-slate-400">sin comprobante</p>
+                  }
                 </div>
               </div>
             </div>
@@ -4413,6 +4479,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       next: (row) => this.dgaUltimoEnvio.set(row),
       error: () => this.dgaUltimoEnvio.set(null),
     });
+  }
+
+  /**
+   * URL al portal APIMee SNIA con el comprobante. Requiere obra_dga
+   * del sitio actual. Devuelve null si falta cualquiera de los 2.
+   */
+  comprobanteUrl(comprobante: string | null | undefined): string | null {
+    if (!comprobante) return null;
+    const obra = this.currentSiteObraDga();
+    if (!obra) return null;
+    return `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas?codigoObra=${encodeURIComponent(obra)}&numeroComprobante=${encodeURIComponent(comprobante)}`;
   }
 
   reloadSettingsPanel(): void {
