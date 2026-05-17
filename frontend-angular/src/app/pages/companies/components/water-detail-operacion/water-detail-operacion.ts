@@ -131,7 +131,7 @@ interface RealtimeChartPoint {
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <p class="font-black text-sm">Datos en tiempo real</p>
+              <p class="font-semibold text-sm">Datos en tiempo real</p>
               <p class="mt-0.5 text-[11px] text-cyan-100">actualización cada minuto</p>
             </div>
             <span class="flex items-center gap-2 text-[11px] font-bold text-cyan-50">
@@ -145,7 +145,7 @@ interface RealtimeChartPoint {
                 <p class="text-[10px] font-bold uppercase tracking-widest text-cyan-100">
                   {{ m.label }}
                 </p>
-                <p class="mt-1 text-2xl font-black leading-none">
+                <p class="mt-1 text-2xl font-semibold leading-none">
                   {{ m.valor
                   }}<span class="ml-1 text-sm font-bold text-white/70">{{ m.unidad }}</span>
                 </p>
@@ -160,7 +160,7 @@ interface RealtimeChartPoint {
           <div class="space-y-2">
             <div class="flex items-center justify-between gap-2">
               <div class="flex items-center gap-2">
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                   Acumulado por turno
                 </p>
                 <button
@@ -194,7 +194,7 @@ interface RealtimeChartPoint {
                   {{ fechaDiaReal() }}
                   @if (esHoy()) {
                     <span
-                      class="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-black text-cyan-700"
+                      class="rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-semibold text-cyan-700"
                       >Hoy</span
                     >
                   }
@@ -229,7 +229,7 @@ interface RealtimeChartPoint {
                 class="overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/60 p-4 shadow-sm"
               >
                 <div class="mb-3 flex items-center justify-between">
-                  <p class="text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
                     Configurar horarios
                   </p>
                   <div
@@ -270,15 +270,15 @@ interface RealtimeChartPoint {
                   style="grid-template-columns: 8px 1fr 82px 82px"
                 >
                   <span></span>
-                  <span class="text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                     >Nombre</span
                   >
                   <span
-                    class="text-center text-[10px] font-black uppercase tracking-widest text-slate-400"
+                    class="text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                     >Inicio</span
                   >
                   <span
-                    class="text-center text-[10px] font-black uppercase tracking-widest text-slate-400"
+                    class="text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                     >Fin</span
                   >
                   @for (t of turnosConfig().slice(0, numTurnos()); track t.nombre; let i = $index) {
@@ -318,11 +318,11 @@ interface RealtimeChartPoint {
               @for (turno of turnosReal(); track turno.nombre; let i = $index) {
                 @if (turno.esTotal) {
                   <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-[10px] text-slate-400">{{ turno.horario }}</p>
-                    <p class="mt-3 font-mono text-3xl font-black text-slate-800">
+                    <p class="mt-3 font-mono text-3xl font-semibold text-slate-800">
                       {{ formatTurnoConsumo(turno.consumo)
                       }}<span class="ml-1 text-sm font-bold text-slate-400">m³</span>
                     </p>
@@ -336,7 +336,7 @@ interface RealtimeChartPoint {
                   <div class="rounded-2xl p-4 shadow-sm" [class]="turnoGradiente(i)">
                     <div class="flex items-start justify-between gap-1">
                       <div>
-                        <p class="text-[10px] font-black uppercase tracking-widest text-white/80">
+                        <p class="text-[10px] font-semibold uppercase tracking-widest text-white/80">
                           {{ turno.nombre }}
                         </p>
                         <p class="mt-0.5 text-[10px] text-white/50">{{ turno.horario }}</p>
@@ -351,14 +351,14 @@ interface RealtimeChartPoint {
                         >
                       </button>
                     </div>
-                    <p class="mt-3 font-mono text-3xl font-black text-white">
+                    <p class="mt-3 font-mono text-3xl font-semibold text-white">
                       {{ formatTurnoConsumo(turno.consumo)
                       }}<span class="ml-1 text-base font-bold text-white/60">m³</span>
                     </p>
                   </div>
                 } @else {
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-60">
-                    <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-[10px] text-slate-400">{{ turno.horario }}</p>
@@ -373,7 +373,7 @@ interface RealtimeChartPoint {
           <section
             class="hidden xl:flex w-52 flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
-            <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Distribución
             </p>
             <div class="flex flex-1 flex-col justify-center gap-3">
@@ -402,7 +402,7 @@ interface RealtimeChartPoint {
         <!-- Distribución móvil (solo < xl) -->
         <section class="xl:hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Distribución de consumo por turno
             </h3>
             <span class="text-[11px] font-semibold text-slate-400">% del total diario</span>
@@ -434,7 +434,7 @@ interface RealtimeChartPoint {
         <!-- Sparkline caudal real-time -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-sm font-black text-slate-800">
+            <h3 class="text-sm font-semibold text-slate-800">
               Caudal en <span class="text-cyan-600">Tiempo Real</span>
             </h3>
             <span class="text-[11px] font-semibold text-slate-400"
@@ -494,11 +494,11 @@ interface RealtimeChartPoint {
                 [style.top.%]="tooltipTopPercent(point)"
                 [style.transform]="tooltipTransform(point)"
               >
-                <p class="text-sm font-black text-slate-600">{{ point.dateLabel }}</p>
+                <p class="text-sm font-semibold text-slate-600">{{ point.dateLabel }}</p>
                 <div class="mt-2 flex items-center gap-2 text-slate-600">
                   <span class="h-2.5 w-2.5 rounded-full bg-[#0DAFBD]"></span>
                   <span class="font-semibold">Caudal (L/s)</span>
-                  <span class="ml-auto font-black text-slate-800">{{ point.caudalLabel }}</span>
+                  <span class="ml-auto font-semibold text-slate-800">{{ point.caudalLabel }}</span>
                 </div>
               </div>
             }

@@ -51,22 +51,22 @@ import {
             <table class="w-full min-w-[860px] text-left text-sm">
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50">
-                  <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     Equipo
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     Fabricante / Modelo
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     N° Serie
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     Compra
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     Garantía
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                     Estado
                   </th>
                   <th class="px-3 py-2"></th>
@@ -148,7 +148,7 @@ import {
           (click)="$event.stopPropagation()"
         >
           <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-            <h3 class="text-sm font-black uppercase tracking-wide text-slate-700">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-700">
               {{ editingId() ? 'Editar equipo' : 'Registrar equipo' }}
             </h3>
             <button

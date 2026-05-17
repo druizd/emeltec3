@@ -312,12 +312,7 @@ interface MetricOption {
                       k.icon
                     }}</span>
                   </div>
-                  <div
-                    class="truncate"
-                    style="font-family: 'DM Sans'; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #94A3B8;"
-                  >
-                    {{ k.label }}
-                  </div>
+                  <div class="vs-kpi-label truncate">{{ k.label }}</div>
                 </div>
                 <div class="mt-[2px] flex items-baseline gap-1">
                   <span
@@ -398,11 +393,7 @@ interface MetricOption {
                     <div
                       style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px;"
                     >
-                      <div
-                        style="font-size: 9px; font-weight: 700; color: #94A3B8; letter-spacing: 0.1em; text-transform: uppercase;"
-                      >
-                        Temperatura
-                      </div>
+                      <div class="vs-stat-label">Temperatura</div>
                       <div class="mt-1 flex items-baseline gap-[3px]">
                         <span
                           style="font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; line-height: 1;"
@@ -466,11 +457,7 @@ interface MetricOption {
                     <div
                       style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px;"
                     >
-                      <div
-                        style="font-size: 9px; font-weight: 700; color: #94A3B8; letter-spacing: 0.1em; text-transform: uppercase;"
-                      >
-                        Humedad
-                      </div>
+                      <div class="vs-stat-label">Humedad</div>
                       <div class="mt-1 flex items-baseline gap-[3px]">
                         <span
                           style="font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; color: #1E293B; line-height: 1;"
@@ -561,14 +548,10 @@ interface MetricOption {
                               ></span>
                               <div class="min-w-0">
                                 <div class="flex items-center gap-1.5">
-                                  <span
-                                    style="font-family: 'JetBrains Mono'; font-size: 10.5px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 4px; padding: 1px 5px; color: #475569; font-weight: 600;"
-                                    >{{ s.id }}</span
-                                  >
+                                  <span class="vs-id-chip">{{ s.id }}</span>
                                   @if (s.alerted) {
                                     <span
-                                      class="inline-flex items-center gap-[3px]"
-                                      style="font-size: 9.5px; font-weight: 700; color: #B91C1C; background: rgba(239,68,68,0.10); border: 1px solid rgba(239,68,68,0.25); border-radius: 4px; padding: 1px 5px; letter-spacing: 0.04em;"
+                                      class="inline-flex items-center gap-[3px] rounded border border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.10)] px-[5px] py-px text-[9.5px] font-bold tracking-[0.04em] text-[#B91C1C]"
                                     >
                                       <span
                                         style="width: 5px; height: 5px; border-radius: 50%; background: #EF4444; animation: vsPulse 1.4s ease-out infinite;"
@@ -707,11 +690,8 @@ interface MetricOption {
                     <div class="flex flex-col" style="padding: 6px;">
                       @for (s of groupedSensors()[tap] || []; track s.id) {
                         <label
-                          class="flex cursor-pointer items-center gap-2"
-                          style="padding: 6px 8px; border-radius: 6px;"
+                          class="vs-row flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
                           [style.opacity]="isSensorHidden(s.id) ? 0.55 : 1"
-                          onmouseover="this.style.background='#F8FAFC'"
-                          onmouseout="this.style.background='transparent'"
                         >
                           <input
                             type="checkbox"
@@ -719,10 +699,7 @@ interface MetricOption {
                             (change)="toggleSensor(s.id)"
                             style="width: 14px; height: 14px; accent-color: #0DAFBD; cursor: pointer;"
                           />
-                          <span
-                            style="font-family: 'JetBrains Mono'; font-size: 10.5px; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 4px; padding: 1px 5px; color: #475569; font-weight: 600;"
-                            >{{ s.id }}</span
-                          >
+                          <span class="vs-id-chip">{{ s.id }}</span>
                           <span
                             class="flex-1 truncate"
                             style="font-family: 'DM Sans'; font-size: 12px; color: #1E293B;"
@@ -894,19 +871,13 @@ interface MetricOption {
         }
 
         @if (activeTab() === 'eventos') {
-          <div
-            class="flex items-center justify-center"
-            style="height: 320px; background: #FFFFFF; border: 1px dashed #E2E8F0; border-radius: 12px; color: #94A3B8; font-family: 'DM Sans'; font-size: 13px;"
-          >
+          <div class="vs-placeholder flex items-center justify-center">
             Eventos — vista por implementar
           </div>
         }
 
         @if (activeTab() === 'contacts') {
-          <div
-            class="flex items-center justify-center"
-            style="height: 320px; background: #FFFFFF; border: 1px dashed #E2E8F0; border-radius: 12px; color: #94A3B8; font-family: 'DM Sans'; font-size: 13px;"
-          >
+          <div class="vs-placeholder flex items-center justify-center">
             Contactos — vista por implementar
           </div>
         }
@@ -924,6 +895,50 @@ interface MetricOption {
           transform: scale(2.2);
           opacity: 0;
         }
+      }
+
+      /* Repeated chip/label patterns extracted for parity with Emeltec tokens. */
+      .vs-id-chip {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        padding: 1px 5px;
+        color: #475569;
+      }
+
+      .vs-kpi-label {
+        font-family: var(--font-body);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .vs-stat-label {
+        font-family: var(--font-body);
+        font-size: 9px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #94a3b8;
+      }
+
+      .vs-placeholder {
+        height: 320px;
+        background: #ffffff;
+        border: 1px dashed #e2e8f0;
+        border-radius: 12px;
+        color: #94a3b8;
+        font-family: var(--font-body);
+        font-size: 13px;
+      }
+
+      .vs-row:hover {
+        background: #f8fafc;
       }
     `,
   ],

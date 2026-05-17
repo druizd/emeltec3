@@ -32,7 +32,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
             </div>
             <div>
               <h2 class="text-lg font-bold text-slate-800">Invitar a un Nuevo Miembro</h2>
-              <p class="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">
+              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
                 Jerarquía Real: {{ companyName() }} / {{ subName() }}
               </p>
             </div>
@@ -57,14 +57,14 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
           <form (submit)="saveUser()" class="space-y-8">
             <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >1. Seleccione el Perfil de Acceso *</label
                 >
                 <select
                   required
                   [(ngModel)]="newUser.tipo"
                   name="tipo"
-                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm font-black text-primary"
+                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm font-semibold text-primary"
                 >
                   @if (auth.isAdmin() || auth.isSuperAdmin()) {
                     <option value="Admin">Administrador (Control Total {{ companyName() }})</option>
@@ -76,11 +76,11 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="space-y-1.5 opacity-80">
-                  <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                  <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                     >Empresa Asignada</label
                   >
                   <div
-                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-black text-slate-600 flex items-center gap-2 shadow-sm"
+                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
                   >
                     <span class="material-symbols-outlined text-blue-500 text-sm">domain</span>
                     {{ companyName() }}
@@ -88,11 +88,11 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 </div>
 
                 <div class="space-y-1.5" [class.opacity-40]="newUser.tipo === 'Admin'">
-                  <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                  <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                     >División Asignada</label
                   >
                   <div
-                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-black flex items-center gap-2 shadow-sm"
+                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
                     [class.text-slate-400]="newUser.tipo === 'Admin'"
                     [class.text-primary-container]="newUser.tipo !== 'Admin'"
                   >
@@ -106,7 +106,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
             <!-- DATOS PERSONALES -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >Nombre *</label
                 >
                 <input
@@ -118,7 +118,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 />
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >Apellido *</label
                 >
                 <input
@@ -130,7 +130,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 />
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >RUT del Usuario *</label
                 >
                 <input
@@ -142,7 +142,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 />
               </div>
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >Teléfono *</label
                 >
                 <input
@@ -154,7 +154,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 />
               </div>
               <div class="space-y-1.5 md:col-span-2">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >Correo Electrónico *</label
                 >
                 <input
@@ -167,7 +167,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 />
               </div>
               <div class="space-y-1.5 md:col-span-2">
-                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
                   >Cargo *</label
                 >
                 <input
@@ -184,7 +184,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
               <button
                 type="submit"
                 [disabled]="loading()"
-                class="px-8 py-4 bg-primary-container text-white font-black rounded-xl transition-all shadow-xl shadow-blue-900/20 hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center gap-2"
+                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-xl shadow-blue-900/20 hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center gap-2"
               >
                 <span class="material-symbols-outlined text-lg">mail</span>
                 {{ loading() ? 'Enviando...' : 'Invitar y Enviar Correo' }}
@@ -204,28 +204,28 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
         <div
           class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"
         >
-          <h3 class="text-xs font-black text-primary uppercase tracking-widest">
+          <h3 class="text-xs font-semibold text-primary uppercase tracking-widest">
             {{ readOnly ? 'Equipo de ' + subName() : 'Usuarios en ' + subName() }}
           </h3>
-          <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black"
+          <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-semibold"
             >{{ users().length }} Usuarios</span
           >
         </div>
         <table class="w-full text-left text-sm">
           <thead class="bg-slate-50/50 border-b border-slate-100">
             <tr>
-              <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">
+              <th class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
                 Nombre
               </th>
-              <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">
+              <th class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
                 Email
               </th>
-              <th class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px]">
+              <th class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
                 Rol
               </th>
               @if (!readOnly) {
                 <th
-                  class="px-8 py-4 font-black text-slate-400 uppercase tracking-widest text-[10px] text-right"
+                  class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px] text-right"
                 >
                   Acción
                 </th>
@@ -242,7 +242,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 <td class="px-8 py-4">
                   <span
                     [class]="
-                      'px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ' +
+                      'px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-tight ' +
                       getRoleBadge(user.tipo)
                     "
                   >

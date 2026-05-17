@@ -37,8 +37,8 @@ interface AlertasTabItem {
               <span class="material-symbols-outlined text-[22px]">notifications_active</span>
             </span>
             <div class="min-w-0">
-              <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Alertas</p>
-              <h2 class="truncate text-lg font-black leading-tight text-slate-800">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Alertas</p>
+              <h2 class="truncate text-lg font-semibold leading-tight text-slate-800">
                 Gestión de alertas del sitio
               </h2>
             </div>

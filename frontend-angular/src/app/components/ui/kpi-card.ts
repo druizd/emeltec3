@@ -1,38 +1,94 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
+export type KpiTone = 'primary' | 'success' | 'danger' | 'warning' | 'neutral';
+
 @Component({
   selector: 'app-kpi-card',
   standalone: true,
   imports: [CommonModule],
+  host: { class: 'block' },
   template: `
-    <div
-      class="bg-white border border-[#E2E8F0] rounded-xl p-6 shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md transition-shadow"
+    <article
+      class="group flex min-h-[104px] items-center justify-between gap-3 rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-px"
+      [class]="cardToneClass()"
     >
-      <div class="flex justify-between mb-4">
-        <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{
-          label
-        }}</span>
-        <div
-          class="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100"
+      <div class="min-w-0 flex-1">
+        <p
+          class="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-on-surface-muted"
+          style="font-family: var(--font-josefin);"
         >
+          {{ label }}
+        </p>
+        <p
+          class="mt-2 truncate text-[26px] font-semibold leading-none text-on-surface"
+          style="font-family: var(--font-mono); letter-spacing: -0.02em;"
+        >
+          {{ displayValue }}
+        </p>
+        @if (unit || helper) {
+          <p class="mt-1.5 truncate text-[11px] font-medium text-on-surface-variant">
+            {{ helper || unit }}
+          </p>
+        }
+      </div>
+
+      @if (icon || hasContent) {
+        <span
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors"
+          [class]="iconToneClass()"
+        >
+          @if (icon) {
+            <span class="material-symbols-outlined text-[20px]">{{ icon }}</span>
+          }
           <ng-content></ng-content>
-        </div>
-      </div>
-      <div class="flex items-baseline gap-2">
-        <span class="text-3xl font-black text-primary tracking-tighter">{{ value }}</span>
-        <span *ngIf="unit" class="text-xs font-bold text-slate-400">{{ unit }}</span>
-      </div>
-      <div class="flex items-center gap-1.5 mt-2">
-        <div class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{{ trend }}</p>
-      </div>
-    </div>
+        </span>
+      }
+    </article>
   `,
 })
 export class KpiCardComponent {
   @Input() label = '';
-  @Input() value: string | number = '';
+  @Input() value: string | number | null | undefined = undefined;
   @Input() unit = '';
-  @Input() trend = '';
+  @Input() helper = '';
+  @Input() icon = '';
+  @Input() tone: KpiTone = 'primary';
+  hasContent = false;
+
+  get displayValue(): string {
+    return this.value !== undefined && this.value !== null && this.value !== ''
+      ? String(this.value)
+      : '--';
+  }
+
+  cardToneClass(): string {
+    switch (this.tone) {
+      case 'primary':
+        return 'border-[rgba(13,175,189,0.25)] shadow-[0_1px_4px_rgba(13,175,189,0.08)] hover:shadow-[0_4px_16px_rgba(13,175,189,0.15)]';
+      case 'success':
+        return 'border-[rgba(34,197,94,0.20)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(34,197,94,0.12)]';
+      case 'danger':
+        return 'border-[rgba(248,113,113,0.25)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(248,113,113,0.12)]';
+      case 'warning':
+        return 'border-[rgba(251,191,36,0.25)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(251,191,36,0.12)]';
+      default:
+        return 'border-[#e2e8f0] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)]';
+    }
+  }
+
+  iconToneClass(): string {
+    switch (this.tone) {
+      case 'primary':
+        return 'border-[rgba(13,175,189,0.20)] bg-[rgba(13,175,189,0.08)] text-primary-container';
+      case 'success':
+        return 'border-[rgba(34,197,94,0.20)] bg-[rgba(34,197,94,0.08)] text-[#16a34a]';
+      case 'danger':
+        return 'border-[rgba(248,113,113,0.25)] bg-[rgba(248,113,113,0.08)] text-[#dc2626]';
+      case 'warning':
+        return 'border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.10)] text-[#d97706]';
+      default:
+        return 'border-[#e2e8f0] bg-[#f8fafc] text-on-surface-variant';
+    }
+  }
 }

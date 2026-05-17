@@ -27,7 +27,7 @@ import {
         <button
           type="button"
           routerLink="/ventisqueros"
-          class="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-slate-500 hover:text-cyan-600"
+          class="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-slate-500 transition-colors hover:text-primary-container"
         >
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
@@ -92,26 +92,17 @@ import {
                 <div class="flex items-center gap-2.5">
                   <span class="h-2 w-2 rounded-full" [style.background]="tempColor(s.baseT)"></span>
                   <div class="text-left">
-                    <div
-                      class="font-mono text-[11px] font-semibold text-slate-600"
-                      style="font-family: 'JetBrains Mono';"
-                    >
+                    <div class="font-mono text-[11px] font-semibold text-slate-600">
                       {{ s.id }}
                     </div>
                     <div class="text-[12px] text-slate-700">{{ s.area }}</div>
                   </div>
                 </div>
                 <div class="text-right">
-                  <div
-                    class="font-bold text-slate-800"
-                    style="font-family: 'JetBrains Mono'; font-size: 13px;"
-                  >
+                  <div class="font-mono text-[13px] font-bold text-slate-800">
                     {{ fmtTemp(s.baseT) }}
                   </div>
-                  <div
-                    class="text-slate-500"
-                    style="font-family: 'JetBrains Mono'; font-size: 10.5px;"
-                  >
+                  <div class="font-mono text-[10.5px] text-slate-500">
                     {{ fmtHum(s.baseH) }}
                   </div>
                 </div>

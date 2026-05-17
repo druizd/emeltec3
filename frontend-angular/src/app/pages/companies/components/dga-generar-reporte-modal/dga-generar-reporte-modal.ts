@@ -397,7 +397,7 @@ interface PeriodicidadOption {
           <section class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-5 py-3">
               <span class="material-symbols-outlined text-[20px] text-amber-700">verified_user</span>
-              <h3 class="text-sm font-black uppercase tracking-wide text-amber-900">
+              <h3 class="text-sm font-semibold uppercase tracking-wide text-amber-900">
                 Verificación 2FA
               </h3>
             </div>

@@ -10,7 +10,7 @@ import { SidebarComponent } from './sidebar/sidebar';
   imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
   template: `
     <div
-      class="flex h-screen overflow-hidden bg-[#f0f2f5]"
+      class="flex h-dvh overflow-hidden bg-[#f0f2f5]"
       style="font-family: 'DM Sans', 'Josefin Sans', sans-serif;"
     >
       <app-sidebar></app-sidebar>

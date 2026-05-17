@@ -32,7 +32,7 @@ import {
             >warning</span
           >
           <div class="min-w-0 flex-1">
-            <p class="text-[10px] font-black uppercase tracking-widest text-amber-600">Atención</p>
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-amber-600">Atención</p>
             @if (isInternal()) {
               <input
                 type="text"
@@ -52,7 +52,7 @@ import {
         <!-- Contactos -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Contactos técnicos
             </h3>
             @if (isInternal()) {
@@ -125,7 +125,7 @@ import {
         <!-- Acreditaciones -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Acreditaciones
             </h3>
             @if (isInternal()) {
@@ -198,7 +198,7 @@ import {
           class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2"
         >
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Riesgos identificados
             </h3>
             @if (isInternal()) {

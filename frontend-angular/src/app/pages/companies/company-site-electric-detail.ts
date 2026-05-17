@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 import { CompanyService } from '../../services/company.service';
+import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 
 interface SiteContext {
@@ -35,7 +36,13 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
 @Component({
   selector: 'app-company-site-electric-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, SiteVariableSettingsPanelComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterLink,
+    KpiCardComponent,
+    SiteVariableSettingsPanelComponent,
+  ],
   template: `
     <div class="min-h-full bg-[#f4f7fa] pb-8 text-slate-700">
       @if (siteContext(); as context) {
@@ -51,7 +58,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   <span class="material-symbols-outlined text-[24px]">bolt</span>
                 </a>
                 <div class="min-w-0">
-                  <h1 class="truncate text-xl font-black text-slate-900">
+                  <h1 class="truncate text-xl font-semibold text-slate-900">
                     {{ siteName(context) }}
                   </h1>
                   <p class="truncate text-sm font-semibold text-slate-500">
@@ -66,7 +73,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                 >
                   <span class="material-symbols-outlined text-[17px]">schedule</span>
                   <span class="grid leading-tight">
-                    <span class="text-[10px] font-black">Ultimo dato en dashboard</span>
+                    <span class="text-[10px] font-semibold">Ultimo dato en dashboard</span>
                     <span>{{ latestDashboardAge() }}</span>
                   </span>
                 </span>
@@ -75,7 +82,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                 >
                   <span class="material-symbols-outlined text-[17px]">sensors</span>
                   <span class="grid leading-tight">
-                    <span class="text-[10px] font-black">Ultimo dato desde el equipo</span>
+                    <span class="text-[10px] font-semibold">Ultimo dato desde el equipo</span>
                     <span>{{ latestDeviceLabel() }}</span>
                   </span>
                 </span>
@@ -89,7 +96,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                     min="2020-01-01"
                     [ngModel]="dateFrom()"
                     (ngModelChange)="dateFrom.set($event)"
-                    class="bg-transparent font-black text-slate-700 outline-none"
+                    class="bg-transparent font-semibold text-slate-700 outline-none"
                   />
                 </label>
                 <label
@@ -101,13 +108,13 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                     min="2020-01-01"
                     [ngModel]="dateTo()"
                     (ngModelChange)="dateTo.set($event)"
-                    class="bg-transparent font-black text-slate-700 outline-none"
+                    class="bg-transparent font-semibold text-slate-700 outline-none"
                   />
                 </label>
                 <button
                   type="button"
                   (click)="refreshDashboard()"
-                  class="inline-flex h-10 items-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-sm font-black text-cyan-700 transition-colors hover:bg-cyan-100"
+                  class="inline-flex h-10 items-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
                 >
                   Aplicar
                 </button>
@@ -160,31 +167,25 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
               <div class="space-y-6 bg-[#f8fafc] p-5">
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   @for (kpi of kpis; track kpi.label) {
-                    <article [class]="kpiCardClass(kpi.tone)">
-                      <div>
-                        <p [class]="kpiLabelClass(kpi.tone)">{{ kpi.label }}</p>
-                        <p class="mt-2 text-3xl font-black leading-none text-slate-900">
-                          {{ metricValue(kpi.role, kpi.fallback) }}
-                        </p>
-                        <p class="mt-1 text-xs font-black" [class]="kpiHelperClass(kpi.tone)">
-                          {{ kpi.helper || kpi.unit }}
-                        </p>
-                      </div>
-                      <span [class]="kpiIconClass(kpi.tone)">
-                        <span class="material-symbols-outlined text-[22px]">{{ kpi.icon }}</span>
-                      </span>
-                    </article>
+                    <app-kpi-card
+                      [label]="kpi.label"
+                      [value]="metricValue(kpi.role, kpi.fallback)"
+                      [unit]="kpi.unit"
+                      [helper]="kpi.helper || ''"
+                      [icon]="kpi.icon"
+                      [tone]="kpi.tone"
+                    />
                   }
                 </div>
 
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   @for (metric of secondaryMetrics; track metric.label) {
                     <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                      <p class="flex items-center gap-2 text-xs font-black text-slate-400">
+                      <p class="flex items-center gap-2 text-xs font-semibold text-slate-400">
                         <span class="h-2 w-2 rounded-full" [style.background]="metric.color"></span>
                         {{ metric.label }}
                       </p>
-                      <p class="mt-3 text-2xl font-black text-slate-900">
+                      <p class="mt-3 text-2xl font-semibold text-slate-900">
                         {{ metricValue(metric.role, metric.fallback) }}
                       </p>
                     </article>
@@ -199,7 +200,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                     >
                       <div class="mb-5 flex items-start justify-between gap-3">
                         <div>
-                          <h2 class="text-base font-black text-slate-800">{{ chart.title }}</h2>
+                          <h2 class="text-base font-semibold text-slate-800">{{ chart.title }}</h2>
                           <p class="mt-1 text-xs font-bold text-slate-400">{{ chart.subtitle }}</p>
                         </div>
                         @if (chart.note) {
@@ -267,7 +268,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   >
                     <span class="material-symbols-outlined text-[30px]">construction</span>
                   </span>
-                  <h2 class="mt-4 text-xl font-black text-slate-900">Proximamente</h2>
+                  <h2 class="mt-4 text-xl font-semibold text-slate-900">Proximamente</h2>
                   <p class="mt-2 text-sm font-semibold text-slate-500">
                     Esta seccion queda preparada para reportes y calculadoras electricas.
                   </p>
@@ -555,37 +556,10 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   tabClass(tab: ElectricTab): string {
     const active = this.activeTab() === tab;
     const base =
-      'relative inline-flex h-full items-center gap-2 border-b-2 text-sm font-black transition-colors';
+      'relative inline-flex h-full items-center gap-2 border-b-2 text-sm font-semibold transition-colors';
     return active
       ? `${base} border-orange-500 text-orange-600`
       : `${base} border-transparent text-slate-500 hover:text-slate-800`;
-  }
-
-  kpiCardClass(tone: ElectricKpi['tone']): string {
-    const base = 'flex min-h-[98px] items-center justify-between rounded-lg border p-4 shadow-sm';
-    if (tone === 'primary') return `${base} border-orange-200 bg-orange-500 text-white`;
-    return `${base} border-slate-200 bg-white`;
-  }
-
-  kpiLabelClass(tone: ElectricKpi['tone']): string {
-    return tone === 'primary'
-      ? 'text-xs font-black text-orange-50'
-      : 'text-xs font-black text-slate-400';
-  }
-
-  kpiHelperClass(tone: ElectricKpi['tone']): string {
-    if (tone === 'primary') return 'text-orange-50';
-    if (tone === 'danger') return 'text-red-500';
-    if (tone === 'success') return 'text-emerald-500';
-    return 'text-slate-400';
-  }
-
-  kpiIconClass(tone: ElectricKpi['tone']): string {
-    const base = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg';
-    if (tone === 'primary') return `${base} bg-white/20 text-white`;
-    if (tone === 'danger') return `${base} bg-red-100 text-red-500`;
-    if (tone === 'success') return `${base} bg-emerald-100 text-emerald-600`;
-    return `${base} bg-slate-100 text-slate-500`;
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {

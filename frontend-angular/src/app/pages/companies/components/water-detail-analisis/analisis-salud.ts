@@ -30,18 +30,18 @@ type Tono = 'ok' | 'advertencia' | 'error';
             </span>
             <span
               [class]="tonoBadgeClass(heartbeatTono())"
-              class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase"
+              class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase"
             >
               {{ tonoLabel(heartbeatTono()) }}
             </span>
           </div>
           <p
-            class="mt-3 text-[10px] font-black uppercase tracking-widest"
+            class="mt-3 text-[10px] font-semibold uppercase tracking-widest"
             [class]="metricaLabelColor(heartbeatTono())"
           >
             Último heartbeat
           </p>
-          <p class="mt-0.5 text-2xl font-black text-slate-800">{{ heartbeatLabel() }}</p>
+          <p class="mt-0.5 text-2xl font-semibold text-slate-800">{{ heartbeatLabel() }}</p>
           <p class="text-[11px] text-slate-400">{{ heartbeatFecha() }}</p>
         </article>
 
@@ -53,10 +53,10 @@ type Tono = 'ok' | 'advertencia' | 'error';
               <span class="material-symbols-outlined text-[20px]">sensors</span>
             </span>
           </div>
-          <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <p class="mt-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             Sensores OK
           </p>
-          <p class="mt-0.5 text-2xl font-black text-slate-800">
+          <p class="mt-0.5 text-2xl font-semibold text-slate-800">
             {{ countSensores('ok') }} / {{ salud().sensores.length }}
           </p>
           <p class="text-[11px] text-slate-400">en última lectura</p>
@@ -70,10 +70,10 @@ type Tono = 'ok' | 'advertencia' | 'error';
               <span class="material-symbols-outlined text-[20px]">warning</span>
             </span>
           </div>
-          <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-amber-500">
+          <p class="mt-3 text-[10px] font-semibold uppercase tracking-widest text-amber-500">
             Sensores en alerta
           </p>
-          <p class="mt-0.5 text-2xl font-black text-slate-800">
+          <p class="mt-0.5 text-2xl font-semibold text-slate-800">
             {{ countSensores('advertencia') + countSensores('error') }}
           </p>
           <p class="text-[11px] text-slate-400">advertencia + error</p>
@@ -87,17 +87,17 @@ type Tono = 'ok' | 'advertencia' | 'error';
               <span class="material-symbols-outlined text-[20px]">data_loss_prevention</span>
             </span>
           </div>
-          <p class="mt-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <p class="mt-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             Gaps (30 días)
           </p>
-          <p class="mt-0.5 text-2xl font-black text-slate-800">{{ salud().gaps.length }}</p>
+          <p class="mt-0.5 text-2xl font-semibold text-slate-800">{{ salud().gaps.length }}</p>
           <p class="text-[11px] text-slate-400">interrupciones ≥ 1 h</p>
         </article>
       </div>
 
       <div class="grid gap-3 xl:grid-cols-2">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             <span class="material-symbols-outlined text-[16px]">sensors</span>
             Estado de sensores
           </h3>
@@ -128,7 +128,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
         </section>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             <span class="material-symbols-outlined text-[16px]">data_loss_prevention</span>
             Gaps de datos — últimos 30 días
           </h3>

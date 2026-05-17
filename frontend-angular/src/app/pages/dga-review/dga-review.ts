@@ -34,7 +34,7 @@ interface RowEdit {
     <div class="mx-auto max-w-6xl p-6 space-y-4">
       <header class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-black text-slate-800">Cola de revisión DGA</h1>
+          <h1 class="text-2xl font-semibold text-slate-800">Cola de revisión DGA</h1>
           <p class="text-[12px] text-slate-500">
             Slots con anomalías detectadas en validación. Requieren decisión admin
             antes de enviar a SNIA.

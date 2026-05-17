@@ -35,10 +35,10 @@ interface SiteContext {
                   <span class="material-symbols-outlined text-[24px]">{{ typeUi().icon }}</span>
                 </a>
                 <div class="min-w-0">
-                  <p class="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                     {{ typeUi().label }}
                   </p>
-                  <h1 class="truncate text-xl font-black text-slate-900">
+                  <h1 class="truncate text-xl font-semibold text-slate-900">
                     {{ siteName(context) }}
                   </h1>
                   <p class="truncate text-sm font-semibold text-slate-500">
@@ -83,7 +83,7 @@ interface SiteContext {
                           typeUi().icon
                         }}</span>
                       </span>
-                      <h2 class="mt-5 text-2xl font-black text-slate-900">
+                      <h2 class="mt-5 text-2xl font-semibold text-slate-900">
                         Dashboard {{ typeUi().label }} proximamente
                       </h2>
                       <p class="mt-3 text-sm font-semibold leading-6 text-slate-500">
@@ -99,7 +99,7 @@ interface SiteContext {
                   @for (item of skeletonCards; track item.label) {
                     <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                       <p
-                        class="flex items-center gap-2 text-xs font-black uppercase tracking-[0.12em] text-slate-400"
+                        class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400"
                       >
                         <span
                           class="material-symbols-outlined text-[16px]"

@@ -20,9 +20,12 @@ Chart.register(...registerables);
 })
 export class ChartCardComponent implements OnChanges, AfterViewInit {
   @Input() title = '';
+  @Input() subtitle = '';
   @Input() data: Record<string, string | number | null | undefined>[] = [];
   @Input() dataKey = '';
-  @Input() color = '#6366f1';
+  @Input() color = '#0dafbd';
+  @Input() icon = 'show_chart';
+  @Input() height = '320px';
 
   @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
   private chart: Chart | null = null;
@@ -32,9 +35,17 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if ((changes['data'] || changes['dataKey']) && this.chartCanvas) {
+    if ((changes['data'] || changes['dataKey'] || changes['color']) && this.chartCanvas) {
       this.createChart();
     }
+  }
+
+  get iconBgColor(): string {
+    return this.hexToRgba(this.color, 0.08);
+  }
+
+  get iconBorderColor(): string {
+    return this.hexToRgba(this.color, 0.2);
   }
 
   private createChart(): void {
@@ -51,7 +62,7 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
       const t = d['time'];
       try {
         const date = new Date(t as string | number);
-        return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        return date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
       } catch {
         return t == null ? '' : String(t);
       }
@@ -62,10 +73,9 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
       return typeof v === 'number' ? v : v == null ? null : Number(v);
     });
 
-    // Create gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, this.hexToRgba(this.color, 0.8));
-    gradient.addColorStop(1, this.hexToRgba(this.color, 0.1));
+    gradient.addColorStop(0, this.hexToRgba(this.color, 0.35));
+    gradient.addColorStop(1, this.hexToRgba(this.color, 0));
 
     this.chart = new Chart(ctx, {
       type: 'line',
@@ -76,11 +86,11 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
             data: values,
             borderColor: this.color,
             backgroundColor: gradient,
-            borderWidth: 3,
+            borderWidth: 2.5,
             fill: true,
-            tension: 0.4,
+            tension: 0.35,
             pointRadius: 0,
-            pointHoverRadius: 6,
+            pointHoverRadius: 5,
             pointHoverBackgroundColor: this.color,
             pointHoverBorderColor: '#fff',
             pointHoverBorderWidth: 2,
@@ -93,27 +103,34 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
         plugins: {
           legend: { display: false },
           tooltip: {
-            backgroundColor: '#fff',
+            backgroundColor: '#ffffff',
             titleColor: '#1e293b',
             bodyColor: this.color,
-            borderColor: '#f1f5f9',
+            borderColor: '#e2e8f0',
             borderWidth: 1,
-            titleFont: { weight: 'bold', size: 13 },
-            bodyFont: { weight: 'bold', size: 14 },
-            padding: 12,
-            cornerRadius: 8,
+            titleFont: { family: 'DM Sans', weight: 600, size: 12 },
+            bodyFont: { family: 'JetBrains Mono', weight: 600, size: 13 },
+            padding: 10,
+            cornerRadius: 6,
             displayColors: false,
           },
         },
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#94a3b8', font: { size: 12 }, maxTicksLimit: 8 },
+            ticks: {
+              color: '#94a3b8',
+              font: { family: 'JetBrains Mono', size: 11 },
+              maxTicksLimit: 8,
+            },
             border: { display: false },
           },
           y: {
             grid: { color: '#f1f5f9' },
-            ticks: { color: '#94a3b8', font: { size: 12 } },
+            ticks: {
+              color: '#94a3b8',
+              font: { family: 'JetBrains Mono', size: 11 },
+            },
             border: { display: false },
           },
         },
@@ -122,9 +139,10 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
   }
 
   private hexToRgba(hex: string, alpha: number): string {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
+    const cleaned = hex.replace('#', '');
+    const r = parseInt(cleaned.slice(0, 2), 16);
+    const g = parseInt(cleaned.slice(2, 4), 16);
+    const b = parseInt(cleaned.slice(4, 6), 16);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 

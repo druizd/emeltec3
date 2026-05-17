@@ -36,7 +36,7 @@ function dateToUtcIsoEnd(date: string): string {
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-violet-600">leaderboard</span>
           <div>
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Rango</p>
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Rango</p>
             <p class="text-sm font-bold text-slate-700">{{ desde() }} → {{ hasta() }}</p>
           </div>
         </div>
@@ -73,10 +73,10 @@ function dateToUtcIsoEnd(date: string): string {
       </header>
 
       <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
           Total de lecturas en rango
         </p>
-        <p class="mt-1 text-3xl font-black text-slate-800">
+        <p class="mt-1 text-3xl font-semibold text-slate-800">
           {{ data().total_lecturas.toLocaleString('es-CL') }}
         </p>
         <p class="text-[11px] text-slate-400">
@@ -89,34 +89,34 @@ function dateToUtcIsoEnd(date: string): string {
           <table class="w-full min-w-[700px] text-left text-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
-                <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                   Variable
                 </th>
-                <th class="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                   Rol
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Lecturas
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Mín
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Prom
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Máx
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Último
                 </th>

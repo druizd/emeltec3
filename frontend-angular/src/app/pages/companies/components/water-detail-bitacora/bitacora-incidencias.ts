@@ -114,7 +114,7 @@ function emptyDraft(): DraftIncidencia {
 
       @if (mostrandoNueva()) {
         <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
-          <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-700">
+          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cyan-700">
             Nueva incidencia
           </p>
           <ng-container
@@ -173,7 +173,7 @@ function emptyDraft(): DraftIncidencia {
                       }}</span>
                       <span
                         [class]="gravedadClass(inc.gravedad)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
                       >
                         <span
                           [class]="gravedadDotClass(inc.gravedad)"
@@ -197,7 +197,7 @@ function emptyDraft(): DraftIncidencia {
                         </span>
                       }
                     </div>
-                    <p class="mt-1 font-black text-slate-800">{{ inc.titulo }}</p>
+                    <p class="mt-1 font-semibold text-slate-800">{{ inc.titulo }}</p>
                   </div>
                   <span
                     [class]="estadoClass(inc.estado)"
@@ -319,7 +319,7 @@ function emptyDraft(): DraftIncidencia {
       <div class="space-y-3">
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Título</label
           >
           <input
@@ -332,7 +332,7 @@ function emptyDraft(): DraftIncidencia {
 
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Descripción</label
           >
           <textarea
@@ -345,7 +345,7 @@ function emptyDraft(): DraftIncidencia {
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Origen</label
             >
             <select
@@ -359,7 +359,7 @@ function emptyDraft(): DraftIncidencia {
           </div>
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Categoría</label
             >
             <select
@@ -373,7 +373,7 @@ function emptyDraft(): DraftIncidencia {
           </div>
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Gravedad</label
             >
             <select
@@ -387,7 +387,7 @@ function emptyDraft(): DraftIncidencia {
           </div>
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Estado</label
             >
             <select
@@ -403,7 +403,7 @@ function emptyDraft(): DraftIncidencia {
 
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Técnico asignado</label
           >
           <select
@@ -420,7 +420,7 @@ function emptyDraft(): DraftIncidencia {
         @if (isNew) {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Evento de alerta vinculado (ID, opcional)</label
             >
             <input

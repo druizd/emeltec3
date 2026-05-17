@@ -64,7 +64,7 @@ export class CompaniesTabNavComponent {
     }
 
     return [
-      'flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-black transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]',
+      'flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]',
       isActive
         ? 'bg-white text-primary-container shadow-sm ring-1 ring-slate-200'
         : 'text-slate-400 hover:bg-slate-100',

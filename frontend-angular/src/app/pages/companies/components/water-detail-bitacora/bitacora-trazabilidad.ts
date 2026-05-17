@@ -46,27 +46,27 @@ type RecursoFiltro = AuditTargetType | 'todos';
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Fecha y hora
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Usuario
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Acción
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Recurso
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Detalle
                 </th>

@@ -560,7 +560,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </a>
 
                 <div class="min-w-0">
-                  <h1 class="truncate text-xl font-black leading-tight text-slate-800">
+                  <h1 class="truncate text-xl font-semibold leading-tight text-slate-800">
                     {{ getSiteHeaderLabel(context) }}
                   </h1>
                   <p class="truncate text-[11px] font-semibold text-slate-400">
@@ -574,8 +574,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span [class]="telemetryBadgeClass(badge.tone)">
                     <span [class]="telemetryBadgeIconClass(badge.tone)">{{ badge.icon }}</span>
                     <span class="grid leading-tight">
-                      <span class="text-[10px] font-black">{{ badge.title }}</span>
-                      <span class="text-xs font-black">{{ badge.value }}</span>
+                      <span class="text-[10px] font-semibold">{{ badge.title }}</span>
+                      <span class="text-xs font-semibold">{{ badge.value }}</span>
                     </span>
                   </span>
                 }
@@ -684,7 +684,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   >
                   Análisis
                   <span
-                    class="relative -mt-3 -ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-black leading-none text-white shadow-sm"
+                    class="relative -mt-3 -ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] font-semibold leading-none text-white shadow-sm"
                     title="Solo SuperAdmin"
                     aria-label="Solo SuperAdmin"
                   >
@@ -726,7 +726,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         Configuracion del sitio /
                         {{ siteTypeLabel(settingsSiteType()) }}
                       </p>
-                      <h2 class="truncate text-xl font-black leading-none text-slate-800">
+                      <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
                         {{ getSiteName(context) }}
                       </h2>
                     </div>
@@ -780,7 +780,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <span class="material-symbols-outlined animate-spin text-[34px] text-cyan-600"
                       >progress_activity</span
                     >
-                    <p class="mt-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+                    <p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Cargando configuracion
                     </p>
                   </div>
@@ -795,7 +795,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                             >water_drop</span
                           >
                           <div>
-                            <h3 class="text-sm font-black text-slate-900">
+                            <h3 class="text-sm font-semibold text-slate-900">
                               Configuracion manual del pozo
                             </h3>
                             <p class="text-xs font-semibold text-cyan-700">
@@ -852,7 +852,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       class="space-y-4 rounded-xl border border-slate-200 bg-white p-4"
                     >
                       <div>
-                        <p class="text-sm font-black text-slate-900">Variables del equipo</p>
+                        <p class="text-sm font-semibold text-slate-900">Variables del equipo</p>
                         <p class="mt-1 text-xs font-semibold text-slate-400">
                           Se guardan directamente en este sitio, sin seleccionar equipo.
                         </p>
@@ -1083,7 +1083,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           <span class="material-symbols-outlined text-[18px] text-cyan-700"
                             >calculate</span
                           >
-                          <h3 class="text-xs font-black uppercase tracking-[0.16em] text-cyan-800">
+                          <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-800">
                             Calculadora de prueba (vista previa)
                           </h3>
                         </div>
@@ -1105,11 +1105,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           class="mt-3 rounded-lg border border-cyan-100 bg-white px-3 py-2 shadow-sm"
                         >
                           <p
-                            class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"
+                            class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
                           >
                             Resultado proyectado en grafico
                           </p>
-                          <p class="mt-1 text-xl font-black text-cyan-800">
+                          <p class="mt-1 text-xl font-semibold text-cyan-800">
                             {{ previewResultText() }}
                           </p>
                         </div>
@@ -1158,7 +1158,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div
                       class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
                     >
-                      <h3 class="text-sm font-black text-slate-900">Datos detectados del equipo</h3>
+                      <h3 class="text-sm font-semibold text-slate-900">Datos detectados del equipo</h3>
                       <p class="text-xs font-semibold text-slate-400">
                         {{ siteVariables().variables.length }} variables
                       </p>
@@ -1167,7 +1167,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div class="overflow-x-auto">
                       <table class="w-full min-w-[700px] text-left text-sm">
                         <thead
-                          class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                          class="bg-slate-100 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
                         >
                           <tr>
                             <th class="px-4 py-3">Dato</th>
@@ -1267,7 +1267,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <p class="truncate text-[11px] font-bold text-slate-400">
                         Sitios / {{ context.subCompany.nombre }} / Datos Historicos
                       </p>
-                      <h2 class="truncate text-xl font-black leading-none text-slate-800">
+                      <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
                         {{ getSiteName(context) }}
                       </h2>
                     </div>
@@ -1328,7 +1328,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <button
                     type="button"
                     (click)="clearHistoryFilters()"
-                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[11px] font-black uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
                   >
                     Limpiar
                   </button>
@@ -1339,7 +1339,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3"
               >
                 <div>
-                  <h3 class="text-sm font-black text-slate-800">Datos Historicos</h3>
+                  <h3 class="text-sm font-semibold text-slate-800">Datos Historicos</h3>
                   <p class="mt-0.5 text-xs font-semibold text-slate-400">
                     @if (historyLoading()) {
                       Actualizando registros...
@@ -1358,7 +1358,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
-                    <tr class="text-[11px] font-black uppercase tracking-[0.16em] text-slate-400">
+                    <tr class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
                       <th class="px-4 py-3">NIVEL</th>
@@ -1433,10 +1433,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <article
                 class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
               >
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">
+                <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
                   Enviados
                 </p>
-                <p class="mt-1 text-3xl font-black leading-none text-emerald-600">
+                <p class="mt-1 text-3xl font-semibold leading-none text-emerald-600">
                   {{ dgaCountEnviados() }}
                 </p>
                 <p class="mt-1 text-xs font-semibold text-emerald-500">en rango filtrado</p>
@@ -1456,12 +1456,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                         Último envío aceptado
                       </p>
                     </div>
                     <p
-                      class="text-center font-mono text-[22px] font-black leading-tight text-slate-800"
+                      class="text-center font-mono text-[22px] font-semibold leading-tight text-slate-800"
                     >
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
@@ -1475,11 +1475,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p class="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                         Último envío aceptado
                       </p>
                     </div>
-                    <p class="text-center font-mono text-[20px] font-black leading-tight text-slate-800">
+                    <p class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800">
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
                     <span class="truncate font-mono text-[10px] text-slate-500">{{ comp }}</span>
@@ -1489,10 +1489,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <article
                   class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
                 >
-                  <p class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Último envío aceptado
                   </p>
-                  <p class="text-[20px] font-black text-slate-400">—</p>
+                  <p class="text-[20px] font-semibold text-slate-400">—</p>
                   <span class="text-[11px] italic text-slate-400">sin envíos aún</span>
                 </article>
               }
@@ -1508,7 +1508,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               >
                 <p
                   [class]="
-                    'text-[10px] font-black uppercase tracking-[0.2em] ' +
+                    'text-[10px] font-semibold uppercase tracking-[0.2em] ' +
                     dgaTasaExitoColors().text
                   "
                 >
@@ -1516,7 +1516,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </p>
                 <p
                   [class]="
-                    'mt-1 text-3xl font-black leading-none ' + dgaTasaExitoColors().text
+                    'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
                   "
                 >
                   {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
@@ -1528,10 +1528,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <article
                 class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
               >
-                <p class="text-[10px] font-black uppercase tracking-[0.2em] text-rose-400">
+                <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-400">
                   Rechazados
                 </p>
-                <p class="mt-1 text-3xl font-black leading-none text-rose-500">
+                <p class="mt-1 text-3xl font-semibold leading-none text-rose-500">
                   {{ dgaCountRechazados() }}
                 </p>
                 <p class="mt-1 text-xs font-semibold text-rose-400">incluye rechazados+fallidos</p>
@@ -1545,7 +1545,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <article
                   class="flex flex-1 flex-col rounded-xl border border-cyan-200 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
-                  <p class="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Diagrama del pozo
                   </p>
 
@@ -1559,7 +1559,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           >progress_activity</span
                         >
                         <p
-                          class="mt-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400"
+                          class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
                         >
                           Cargando datos del pozo
                         </p>
@@ -2150,7 +2150,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <span class="material-symbols-outlined text-[22px]">bar_chart</span>
                       </span>
                       <div class="min-w-0">
-                        <h2 class="truncate text-xl font-black leading-none text-slate-800">
+                        <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
                           Flujo Mensual
                         </h2>
                         <p class="mt-1 text-sm font-bold text-slate-400">
@@ -2253,7 +2253,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </article>
 
                 <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-                  <p class="mb-2 text-sm font-black text-slate-700">Acciones Rápidas</p>
+                  <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
                       <button
@@ -2278,8 +2278,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <p
                           [class]="
                             quickActionDisabled(action)
-                              ? 'mt-0.5 text-sm font-black text-slate-500'
-                              : 'mt-0.5 text-sm font-black text-slate-800'
+                              ? 'mt-0.5 text-sm font-semibold text-slate-500'
+                              : 'mt-0.5 text-sm font-semibold text-slate-800'
                           "
                         >
                           {{ action.title }}
@@ -2301,7 +2301,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
               >
                 <div>
-                  <h2 class="text-sm font-black text-slate-800">Detalle de Registros</h2>
+                  <h2 class="text-sm font-semibold text-slate-800">Detalle de Registros</h2>
                   <p class="mt-1 text-xs font-semibold text-slate-400">
                     Reportes completos enviados a la DGA
                   </p>
@@ -2504,7 +2504,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
                 <div>
-                  <h2 class="text-lg font-black text-slate-800">Filtrar por Período</h2>
+                  <h2 class="text-lg font-semibold text-slate-800">Filtrar por Período</h2>
                   <p class="text-xs font-semibold text-slate-400">Registros DGA</p>
                 </div>
               </div>
@@ -2521,7 +2521,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left: presets + months -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -2544,7 +2544,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <p
-                  class="mb-2 mt-5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"
+                  class="mb-2 mt-5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
                 >
                   Meses {{ 'de ' + (dgaDateFrom() || '2026').slice(0, 4) }}
                 </p>
@@ -2579,7 +2579,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                       Rango seleccionado
                     </p>
-                    <p class="mt-0.5 text-sm font-black text-slate-700">
+                    <p class="mt-0.5 text-sm font-semibold text-slate-700">
                       {{ dgaModalRangeLabel() }}
                     </p>
                   </div>
@@ -2646,7 +2646,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <button
                   type="button"
                   (click)="applyDgaDateFilter()"
-                  class="rounded-lg bg-cyan-600 px-4 py-2 font-black text-white transition-colors hover:bg-cyan-700"
+                  class="rounded-lg bg-cyan-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-cyan-700"
                 >
                   Aplicar filtro
                 </button>
@@ -2674,7 +2674,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span class="material-symbols-outlined text-[20px]">download</span>
                 </span>
                 <div>
-                  <h2 class="text-lg font-black text-slate-800">Exportar Datos</h2>
+                  <h2 class="text-lg font-semibold text-slate-800">Exportar Datos</h2>
                   @if (siteContext(); as ctx) {
                     <p class="text-xs font-semibold text-slate-400">
                       {{ getSiteName(ctx) }}
@@ -2695,7 +2695,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left panel: presets + month selector -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -2718,7 +2718,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <p
-                  class="mb-2 mt-5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400"
+                  class="mb-2 mt-5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
                 >
                   Meses {{ 'de ' + (downloadDateFrom() || '2026').slice(0, 4) }}
                 </p>
@@ -2754,7 +2754,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <p class="text-[10px] font-bold uppercase tracking-wide text-slate-400">
                       Rango seleccionado
                     </p>
-                    <p class="mt-0.5 text-sm font-black text-slate-700">
+                    <p class="mt-0.5 text-sm font-semibold text-slate-700">
                       {{ downloadRangeLabel() }}
                     </p>
                   </div>
@@ -2798,7 +2798,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <!-- Data types -->
-                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Datos a incluir
                 </p>
                 <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -2818,7 +2818,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <!-- Format -->
-                <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Formato de archivo
                 </p>
                 <div class="flex gap-2">
@@ -2878,7 +2878,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     !downloadDateFrom() ||
                     !downloadDateTo()
                   "
-                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-black text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span class="material-symbols-outlined text-[17px]">download</span>
                   {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
@@ -2907,7 +2907,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <span class="material-symbols-outlined text-[18px]">description</span>
                 </span>
                 <div>
-                  <h2 class="text-base font-black text-slate-800">Reporte DGA</h2>
+                  <h2 class="text-base font-semibold text-slate-800">Reporte DGA</h2>
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Formato oficial · período a exportar
                   </p>
@@ -2924,7 +2924,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
             <!-- Presets rápidos -->
             <div class="px-5 pt-4">
-              <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+              <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 Período rápido
               </p>
               <div class="grid grid-cols-3 gap-1.5">
@@ -2946,7 +2946,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
             <!-- Meses -->
             <div class="px-5 pt-4">
-              <p class="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+              <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                 Meses {{ 'de ' + (dgaReportDateFrom() || '2026').slice(0, 4) }}
               </p>
               <div class="grid grid-cols-6 gap-1.5">
@@ -3045,7 +3045,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
             >
               <div>
-                <p class="text-xs font-black text-slate-700">
+                <p class="text-xs font-semibold text-slate-700">
                   {{ dgaReportRangeLabel() }}
                 </p>
                 <p class="text-[10px] font-semibold text-slate-400">
@@ -3065,7 +3065,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   type="button"
                   (click)="generateDgaReport()"
                   [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
-                  class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-black text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   @if (dgaReportDownloading()) {
                     <span class="material-symbols-outlined animate-spin text-[16px]">sync</span>
@@ -3087,7 +3087,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         >
           <section class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-              <h2 class="text-xl font-black uppercase tracking-wide text-slate-800">
+              <h2 class="text-xl font-semibold uppercase tracking-wide text-slate-800">
                 Seguimiento de envio
               </h2>
               <button
@@ -3109,10 +3109,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <span class="material-symbols-outlined text-[22px]">assignment</span>
                   </span>
                   <div>
-                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                       Registro {{ report.recordId }}
                     </p>
-                    <p class="text-lg font-black text-slate-800">
+                    <p class="text-lg font-semibold text-slate-800">
                       {{ report.fecha }}
                     </p>
                   </div>
@@ -3122,10 +3122,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   class="grid overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm sm:grid-cols-3"
                 >
                   <div class="px-5 py-5 text-center">
-                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                       Nivel freatico
                     </p>
-                    <p class="mt-2 text-2xl font-black text-slate-800">
+                    <p class="mt-2 text-2xl font-semibold text-slate-800">
                       {{ formatDgaNumber(report.nivelFreatico) }}
                     </p>
                     <p class="mt-1 text-xs font-bold text-slate-400">m</p>
@@ -3133,19 +3133,19 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   <div
                     class="border-y border-slate-100 px-5 py-5 text-center sm:border-x sm:border-y-0"
                   >
-                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                       Caudal
                     </p>
-                    <p class="mt-2 text-2xl font-black text-slate-800">
+                    <p class="mt-2 text-2xl font-semibold text-slate-800">
                       {{ formatDgaNumber(report.caudal) }}
                     </p>
                     <p class="mt-1 text-xs font-bold text-slate-400">l/s</p>
                   </div>
                   <div class="px-5 py-5 text-center">
-                    <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                       Totalizado
                     </p>
-                    <p class="mt-2 text-2xl font-black text-slate-800">
+                    <p class="mt-2 text-2xl font-semibold text-slate-800">
                       {{ formatDgaInteger(report.totalizador) }}
                     </p>
                     <p class="mt-1 text-xs font-bold text-slate-400">m&sup3;</p>
@@ -3160,17 +3160,17 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[22px]">send</span>
                     </span>
                     <div>
-                      <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                      <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                         Envio a DGA
                       </p>
-                      <p class="text-sm font-black text-slate-800">
+                      <p class="text-sm font-semibold text-slate-800">
                         {{ report.enviadoDga }}
                       </p>
                     </div>
                   </div>
 
                   <span
-                    class="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700"
+                    class="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700"
                   >
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                     Completado
@@ -3178,14 +3178,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <div class="mt-5 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-                  <p class="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                  <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                     Respuesta del software de DGA
                   </p>
-                  <p class="mt-4 text-sm font-black text-slate-700">Respuesta</p>
+                  <p class="mt-4 text-sm font-semibold text-slate-700">Respuesta</p>
                   <p class="mt-1 text-sm text-slate-600">
                     {{ report.respuesta }}
                   </p>
-                  <p class="mt-4 text-sm font-black text-slate-700">N&deg; Comprobante</p>
+                  <p class="mt-4 text-sm font-semibold text-slate-700">N&deg; Comprobante</p>
                   @if (report.comprobante) {
                     @if (comprobanteUrl(report.comprobante); as url) {
                       <a
@@ -4687,7 +4687,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   calculatorButtonClass(transformId: string): string {
     const base =
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-black uppercase tracking-[0.1em] transition';
+      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
       ? `${base} border-cyan-300 bg-cyan-100 text-cyan-900`
       : `${base} border-cyan-100 bg-white text-cyan-800 hover:border-cyan-200 hover:bg-cyan-50`;
@@ -5374,7 +5374,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const base =
       'relative inline-flex h-9 items-center gap-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
     return active
-      ? `${base} font-black text-cyan-700`
+      ? `${base} font-semibold text-cyan-700`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;
   }
 
@@ -5382,7 +5382,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const active = this.operationMode() === mode;
     const base = 'inline-flex h-11 items-center gap-2 border-b-2 px-5 text-sm transition-colors';
     return active
-      ? `${base} border-cyan-500 bg-cyan-50 font-black text-cyan-700`
+      ? `${base} border-cyan-500 bg-cyan-50 font-semibold text-cyan-700`
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;
   }
 

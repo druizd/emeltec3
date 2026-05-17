@@ -1,8 +1,8 @@
-<main class="min-h-screen bg-[#eef4f7] text-slate-900">
-  <div class="grid min-h-screen grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
+<main class="min-h-dvh bg-[#eef4f7] text-slate-900">
+  <div class="grid min-h-dvh grid-cols-1 lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
     <!-- ── PANEL IZQUIERDO ── -->
     <section
-      class="relative isolate hidden min-h-screen overflow-hidden bg-[#041925] px-10 py-10 lg:flex lg:flex-col xl:px-14"
+      class="relative isolate hidden min-h-dvh overflow-hidden bg-[#041925] px-10 py-10 lg:flex lg:flex-col xl:px-14"
     >
       <div
         class="absolute inset-0 -z-30 bg-cover bg-[center_right_18%]"
@@ -100,11 +100,11 @@
 
       <!-- contenido inferior -->
       <div class="relative z-10 mt-auto max-w-[540px] pb-10">
-        <p class="mb-5 text-[10px] font-black tracking-[0.30em] text-cyan-300/70">
+        <p class="mb-5 text-[10px] font-semibold tracking-[0.30em] text-[rgba(126,221,224,0.70)]">
           PORTAL PRIVADO DE MONITOREO IIoT
         </p>
 
-        <h1 class="text-[3.2rem] font-black leading-[1.06] text-white xl:text-[3.6rem]">
+        <h1 class="text-[3.2rem] font-semibold leading-[1.06] text-white xl:text-[3.6rem]">
           Visibilidad Total.<br />Seguridad sin<br />Concesiones.
         </h1>
 
@@ -122,7 +122,7 @@
                 border: 1px solid rgba(13, 175, 189, 0.25);
               "
             >
-              <span class="material-symbols-outlined text-[14px] text-cyan-300">shield_lock</span>
+              <span class="material-symbols-outlined text-[14px] text-[#7edde0]">shield_lock</span>
             </div>
             <div class="flex items-baseline gap-2.5">
               <span class="text-[13px] font-bold text-white">Zero Trust</span>
@@ -137,7 +137,7 @@
                 border: 1px solid rgba(13, 175, 189, 0.25);
               "
             >
-              <span class="material-symbols-outlined text-[14px] text-cyan-300">bolt</span>
+              <span class="material-symbols-outlined text-[14px] text-[#7edde0]">bolt</span>
             </div>
             <div class="flex items-baseline gap-2.5">
               <span class="text-[13px] font-bold text-white">Sin latencia</span>
@@ -152,7 +152,7 @@
                 border: 1px solid rgba(13, 175, 189, 0.25);
               "
             >
-              <span class="material-symbols-outlined text-[14px] text-cyan-300">location_on</span>
+              <span class="material-symbols-outlined text-[14px] text-[#7edde0]">location_on</span>
             </div>
             <div class="flex items-baseline gap-2.5">
               <span class="text-[13px] font-bold text-white">Visibilidad Operacional</span>
@@ -165,7 +165,7 @@
 
     <!-- ── PANEL DERECHO ── -->
     <section
-      class="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-5 py-8 sm:px-8 lg:px-10"
+      class="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-5 py-8 sm:px-8 lg:px-10"
     >
       <!-- base -->
       <div
@@ -199,7 +199,7 @@
       ></div>
       <!-- separador izquierdo -->
       <div
-        class="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-transparent via-cyan-300/60 to-transparent lg:block"
+        class="absolute left-0 top-0 hidden h-full w-px bg-gradient-to-b from-transparent via-[rgba(57,201,205,0.60)] to-transparent lg:block"
       ></div>
 
       <div class="relative z-10 w-full max-w-[400px]">
@@ -266,11 +266,11 @@
                     : 'rgba(13,175,189,0.15)'
                 }};"
               ></div>
-              <span class="ml-1 text-[10px] font-black tracking-[0.20em] text-[#0dafbd]/60">{{
+              <span class="ml-1 text-[10px] font-semibold tracking-[0.20em] text-[#0dafbd]/60">{{
                 isCodeSent() ? 'PASO 2 DE 2' : 'PASO 1 DE 2'
               }}</span>
             </div>
-            <h2 class="text-[1.55rem] font-black leading-tight text-slate-900">
+            <h2 class="text-[1.55rem] font-semibold leading-tight text-slate-900">
               {{ isCodeSent() ? 'Ingresa tu código' : 'Acceso seguro' }}
             </h2>
             <p class="mt-1.5 text-[13px] leading-5 text-slate-400">
@@ -304,7 +304,7 @@
           @if (!isCodeSent()) {
             <form (submit)="handleRequestCode($event)" class="space-y-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"
+                <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400"
                   >Correo registrado</label
                 >
                 <div class="relative">
@@ -328,7 +328,7 @@
               <button
                 type="submit"
                 [disabled]="isSubmitting()"
-                class="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[13px] font-black text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                class="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[13px] font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 style="
                   background: linear-gradient(135deg, #0dafbd 0%, #0899a5 60%, #04606a 100%);
                   box-shadow: 0 6px 20px rgba(13, 175, 189, 0.3);
@@ -360,7 +360,7 @@
           } @else {
             <form (submit)="handleLogin($event)" class="space-y-4">
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"
+                <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400"
                   >Correo electrónico</label
                 >
                 <div class="relative">
@@ -379,7 +379,7 @@
               </div>
 
               <div class="space-y-1.5">
-                <label class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400"
+                <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400"
                   >Código de acceso</label
                 >
                 <div class="relative">
@@ -387,7 +387,7 @@
                     type="text"
                     required
                     maxlength="6"
-                    class="h-14 w-full rounded-xl border bg-white pr-4 text-center font-mono text-2xl font-black tracking-[0.30em] text-slate-800 outline-none transition-all placeholder:text-slate-200 focus:bg-white"
+                    class="h-14 w-full rounded-xl border bg-white pr-4 text-center font-mono text-2xl font-semibold tracking-[0.30em] text-slate-800 outline-none transition-all placeholder:text-slate-200 focus:bg-white"
                     style="border-color: rgba(13, 175, 189, 0.2); letter-spacing: 0.35em"
                     placeholder="——————"
                     [ngModel]="password()"
@@ -400,10 +400,10 @@
               <button
                 type="submit"
                 [disabled]="isSubmitting()"
-                class="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-black text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                class="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
                 style="
-                  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-                  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.28);
+                  background: linear-gradient(135deg, #0dafbd 0%, #0899a5 60%, #04606a 100%);
+                  box-shadow: 0 6px 20px rgba(13, 175, 189, 0.30);
                 "
               >
                 @if (isSubmitting()) {
@@ -435,7 +435,7 @@
         <!-- footer -->
         <div class="mt-5 flex items-center justify-center gap-3">
           <span class="h-px w-8 bg-gradient-to-r from-transparent to-slate-300"></span>
-          <p class="text-[10px] font-black tracking-[0.32em] text-slate-400">EMELTEC HUB · 2026</p>
+          <p class="text-[10px] font-semibold tracking-[0.32em] text-slate-400">EMELTEC HUB · 2026</p>
           <span class="h-px w-8 bg-gradient-to-l from-transparent to-slate-300"></span>
         </div>
       </div>

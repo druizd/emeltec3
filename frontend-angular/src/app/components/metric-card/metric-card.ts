@@ -12,11 +12,12 @@ export class MetricCardComponent {
   @Input() value: string | number | null | undefined = undefined;
   @Input() unit = '';
   @Input() time = '';
+  @Input() icon = '';
 
   get formattedTime(): string {
     if (!this.time) return 'Sin datos';
     try {
-      return new Date(this.time).toLocaleString('es-ES', {
+      return new Date(this.time).toLocaleString('es-CL', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -29,6 +30,8 @@ export class MetricCardComponent {
   }
 
   get displayValue(): string {
-    return this.value !== undefined && this.value !== null ? String(this.value) : '--';
+    return this.value !== undefined && this.value !== null && this.value !== ''
+      ? String(this.value)
+      : '--';
   }
 }

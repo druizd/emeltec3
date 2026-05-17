@@ -112,7 +112,7 @@ const MODULES = SITE_MODULES;
                 [value]="searchTerm()"
                 (input)="onSearchInput($event)"
                 placeholder="Buscar empresa..."
-                class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-[11px] font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[#8bdde5] focus:bg-[#faffff]"
+                class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-[11px] font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[rgba(13,175,189,0.40)] focus:bg-white"
               />
               @if (searchTerm()) {
                 <button

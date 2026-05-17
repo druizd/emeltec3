@@ -38,10 +38,10 @@ type FiltroEstado = EventoEstado | 'todos';
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
         @for (stat of stats(); track stat.label) {
           <div class="rounded-xl border bg-white px-4 py-3 shadow-sm" [class]="stat.borderClass">
-            <p class="text-[10px] font-black uppercase tracking-widest" [class]="stat.labelClass">
+            <p class="text-[10px] font-semibold uppercase tracking-widest" [class]="stat.labelClass">
               {{ stat.label }}
             </p>
-            <p class="mt-0.5 text-2xl font-black" [class]="stat.valueClass">{{ stat.valor }}</p>
+            <p class="mt-0.5 text-2xl font-semibold" [class]="stat.valueClass">{{ stat.valor }}</p>
           </div>
         }
       </div>
@@ -85,12 +85,12 @@ type FiltroEstado = EventoEstado | 'todos';
                         }}</span>
                         <span
                           [class]="severidadBadgeClass(ev.severidad)"
-                          class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                          class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
                         >
                           {{ severidadLabel(ev.severidad) }}
                         </span>
                       </div>
-                      <p class="mt-0.5 font-black text-slate-800">
+                      <p class="mt-0.5 font-semibold text-slate-800">
                         {{ ev.alerta_nombre || ev.variable_key }}
                       </p>
                       <p class="text-[12px] text-slate-500">{{ ev.mensaje }}</p>

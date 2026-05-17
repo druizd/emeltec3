@@ -145,10 +145,10 @@ function emptyVariables(): SiteVariablesPayload {
             <span class="material-symbols-outlined text-[22px]">settings</span>
           </span>
           <div class="min-w-0">
-            <p class="truncate text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">
+            <p class="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
               Configuracion del sitio / {{ siteTypeLabel() }}
             </p>
-            <h2 class="truncate text-xl font-black leading-none text-slate-800">
+            <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
               {{ displaySite().descripcion || 'Instalacion' }}
             </h2>
           </div>
@@ -194,7 +194,7 @@ function emptyVariables(): SiteVariablesPayload {
               [style.color]="accentColor"
               >progress_activity</span
             >
-            <p class="mt-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+            <p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
               Cargando configuracion
             </p>
           </div>
@@ -203,7 +203,7 @@ function emptyVariables(): SiteVariablesPayload {
         <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
           <form (submit)="saveVariableMap($event)" class="space-y-4 rounded-xl bg-slate-50 p-4">
             <div>
-              <p class="text-sm font-black text-slate-900">Variables del equipo</p>
+              <p class="text-sm font-semibold text-slate-900">Variables del equipo</p>
               <p class="mt-1 text-xs font-semibold text-slate-400">
                 La lectura cruda no cambia: aqui solo decides que significa cada dato para este
                 sitio.
@@ -379,10 +379,10 @@ function emptyVariables(): SiteVariablesPayload {
                 placeholder="Ej: 14.7"
               />
               <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                <p class="text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+                <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Resultado proyectado
                 </p>
-                <p class="mt-1 text-xl font-black text-slate-800">{{ previewResultText() }}</p>
+                <p class="mt-1 text-xl font-semibold text-slate-800">{{ previewResultText() }}</p>
               </div>
             </div>
 
@@ -408,7 +408,7 @@ function emptyVariables(): SiteVariablesPayload {
               class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
             >
               <div>
-                <h3 class="text-sm font-black text-slate-900">Datos detectados del equipo</h3>
+                <h3 class="text-sm font-semibold text-slate-900">Datos detectados del equipo</h3>
                 <p class="text-xs font-semibold text-slate-400">
                   REG1, REG2 y similares se asignan manualmente por sitio.
                 </p>
@@ -421,7 +421,7 @@ function emptyVariables(): SiteVariablesPayload {
             <div class="overflow-x-auto">
               <table class="w-full min-w-[700px] text-left text-sm">
                 <thead
-                  class="bg-slate-100 text-xs font-black uppercase tracking-[0.12em] text-slate-500"
+                  class="bg-slate-100 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
                 >
                   <tr>
                     <th class="px-4 py-3">Dato</th>

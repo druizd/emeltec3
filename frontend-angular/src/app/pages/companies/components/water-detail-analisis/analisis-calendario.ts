@@ -13,7 +13,7 @@ import { Component } from '@angular/core';
       class="flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center"
     >
       <span class="material-symbols-outlined text-[36px] text-slate-300">calendar_month</span>
-      <h3 class="text-base font-black text-slate-700">Calendario en construcción</h3>
+      <h3 class="text-base font-semibold text-slate-700">Calendario en construcción</h3>
       <p class="max-w-md text-[13px] text-slate-500">
         Consolidará en un solo timeline: envíos DGA, alertas disparadas, mantenciones e
         incidencias. Pendiente definir prioridades de fuentes y agrupación.

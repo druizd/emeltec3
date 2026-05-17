@@ -41,37 +41,37 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Código
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Variable
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Severidad
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Inicio
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Duración
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Resolvió
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Incidencia
                 </th>
@@ -96,7 +96,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
                     <td class="px-4 py-3">
                       <span
                         [class]="severidadClass(ev.severidad)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
                       >
                         <span
                           [class]="severidadDotClass(ev.severidad)"

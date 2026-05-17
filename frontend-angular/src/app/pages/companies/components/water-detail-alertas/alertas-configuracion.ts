@@ -104,7 +104,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
       <!-- Formulario nueva regla -->
       @if (mostrandoNuevo()) {
         <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
-          <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-700">
+          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cyan-700">
             Nueva regla
           </p>
           <ng-container
@@ -152,7 +152,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 ></span>
               </button>
               <div class="min-w-0">
-                <p class="font-black text-slate-800">{{ regla.nombre }}</p>
+                <p class="font-semibold text-slate-800">{{ regla.nombre }}</p>
                 <p class="mt-0.5 text-[12px] text-slate-500">
                   <span class="font-mono font-bold text-slate-700">{{
                     condicionResumen(regla)
@@ -253,7 +253,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Nombre -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Nombre</label
           >
           <input
@@ -267,7 +267,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Descripción -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Descripción (opcional)</label
           >
           <input
@@ -280,7 +280,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Condición -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Condición</label
           >
           <select
@@ -297,7 +297,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         @if (draft.condicion !== 'dga_atrasado') {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Variable</label
             >
             @if (variables().length > 0) {
@@ -342,7 +342,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         ) {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Umbral</label
             >
             <input
@@ -357,7 +357,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >Mínimo</label
               >
               <input
@@ -369,7 +369,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             </div>
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >Máximo</label
               >
               <input
@@ -399,7 +399,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         @if (draft.condicion !== 'dga_atrasado') {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
               >Severidad</label
             >
             <div class="flex flex-wrap gap-1.5">
@@ -424,7 +424,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Cooldown -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
             >Cooldown (minutos)</label
           >
           <input
@@ -439,7 +439,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
         <!-- Días activos -->
         <div>
-          <p class="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <p class="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
             Días activos
           </p>
           <div class="flex flex-wrap gap-1.5">
@@ -452,7 +452,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     ? 'bg-cyan-600 text-white'
                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                 "
-                class="h-8 min-w-[2rem] rounded-lg px-2 text-[11px] font-black transition-colors"
+                class="h-8 min-w-[2rem] rounded-lg px-2 text-[11px] font-semibold transition-colors"
               >
                 {{ diaShort(d) }}
               </button>

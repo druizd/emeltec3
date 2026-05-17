@@ -27,7 +27,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
       @if (variant !== 'superadmin') {
         <div class="mb-8">
           <h3
-            class="mb-2 border-l-4 border-primary-container pl-4 text-sm font-black uppercase tracking-widest text-primary"
+            class="mb-2 border-l-4 border-primary-container pl-4 text-sm font-semibold uppercase tracking-widest text-primary"
           >
             Contactos
           </h3>
@@ -63,13 +63,13 @@ import type { ApiResponse, User } from '@emeltec/shared';
               <div class="mb-4 flex items-start gap-3">
                 <div class="flex min-w-0 items-center gap-3">
                   <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-[11px] font-black text-white shadow-sm"
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-teal-600 text-[11px] font-semibold text-white shadow-sm"
                   >
                     {{ getContactInitials(contact) }}
                   </div>
 
                   <div class="min-w-0">
-                    <h4 class="truncate text-[14px] font-black text-slate-800">
+                    <h4 class="truncate text-[14px] font-semibold text-slate-800">
                       {{ getContactName(contact) }}
                     </h4>
                     <p class="truncate text-[11px] font-semibold text-cyan-700">
@@ -87,7 +87,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                     >badge</span
                   >
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Cargo
                     </p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
@@ -103,7 +103,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                     >call</span
                   >
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Teléfono
                     </p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
@@ -119,7 +119,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
                     >mail</span
                   >
                   <div class="min-w-0">
-                    <p class="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Correo
                     </p>
                     <p class="break-all text-[13px] font-semibold text-slate-700">

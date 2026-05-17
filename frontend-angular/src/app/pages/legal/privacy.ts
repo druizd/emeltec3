@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
     <main class="mx-auto max-w-3xl px-6 py-10 text-slate-700" style="font-family: 'DM Sans';">
       <a
         routerLink="/"
-        class="mb-6 inline-flex items-center gap-1 text-[12px] font-medium text-cyan-600 hover:underline"
+        class="mb-6 inline-flex items-center gap-1 text-[12px] font-medium text-primary-container hover:underline"
       >
         <span class="material-symbols-outlined text-[14px]">arrow_back</span>
         Volver
@@ -28,7 +28,7 @@ import { RouterLink } from '@angular/router';
       <section class="space-y-4 text-[14px] leading-relaxed">
         <p>
           Emeltec SpA ("Emeltec", "nosotros") opera la plataforma de monitoreo industrial disponible
-          en <code class="text-cyan-700">cloud.emeltec.cl</code>. Esta política describe qué datos
+          en <code class="text-primary-container">cloud.emeltec.cl</code>. Esta política describe qué datos
           personales tratamos, con qué finalidad y cómo puedes ejercer tus derechos. Se aplica
           conforme a la <strong>Ley 21.719</strong> sobre protección de datos personales y la
           <strong>Ley 21.663</strong> Marco de Ciberseguridad.
@@ -83,7 +83,7 @@ import { RouterLink } from '@angular/router';
         <p>
           Conforme a la Ley 21.719 puedes ejercer los derechos de Acceso, Rectificación,
           Cancelación, Oposición y Portabilidad enviando una solicitud a
-          <a class="text-cyan-700 underline" href="mailto:privacidad@emeltec.cl"
+          <a class="text-primary-container underline" href="mailto:privacidad@emeltec.cl"
             >privacidad&#64;emeltec.cl</a
           >. Responderemos en un plazo máximo de 30 días corridos.
         </p>
@@ -107,7 +107,7 @@ import { RouterLink } from '@angular/router';
         <p>
           Encargado de Privacidad de Datos: <strong>privacidad&#64;emeltec.cl</strong><br />
           Reportes de seguridad: <strong>seguridad&#64;emeltec.cl</strong> ·
-          <a class="text-cyan-700 underline" href="/.well-known/security.txt">security.txt</a>
+          <a class="text-primary-container underline" href="/.well-known/security.txt">security.txt</a>
         </p>
 
         <p class="mt-8 text-[12px] text-slate-400">

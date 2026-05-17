@@ -69,7 +69,7 @@ const TIPOS: DocumentoTipo[] = [
             >
               {{ tipo.label }}
               <span
-                class="ml-1 rounded-full px-1.5 text-[10px] font-black"
+                class="ml-1 rounded-full px-1.5 text-[10px] font-semibold"
                 [class]="filtroBadgeClass(tipo.key)"
               >
                 {{ contarPorTipo(tipo.key) }}
@@ -91,13 +91,13 @@ const TIPOS: DocumentoTipo[] = [
 
       @if (mostrandoSubida()) {
         <article class="rounded-2xl border-2 border-dashed border-cyan-200 bg-cyan-50/30 p-4">
-          <p class="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-700">
+          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-cyan-700">
             Nuevo documento
           </p>
           <div class="space-y-3">
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >Archivo (máx 25 MB)</label
               >
               <input
@@ -116,7 +116,7 @@ const TIPOS: DocumentoTipo[] = [
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                   >Título</label
                 >
                 <input
@@ -128,7 +128,7 @@ const TIPOS: DocumentoTipo[] = [
               </div>
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                   >Tipo</label
                 >
                 <select
@@ -142,7 +142,7 @@ const TIPOS: DocumentoTipo[] = [
               </div>
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                   >Versión</label
                 >
                 <input
@@ -154,7 +154,7 @@ const TIPOS: DocumentoTipo[] = [
               </div>
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                   >Vigente hasta (opcional)</label
                 >
                 <input
@@ -168,7 +168,7 @@ const TIPOS: DocumentoTipo[] = [
 
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-black uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >Descripción (opcional)</label
               >
               <textarea
@@ -206,27 +206,27 @@ const TIPOS: DocumentoTipo[] = [
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Documento
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Tipo
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Versión
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Cargado
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Acciones
                 </th>

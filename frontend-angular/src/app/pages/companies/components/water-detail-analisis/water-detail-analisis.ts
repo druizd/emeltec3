@@ -39,10 +39,10 @@ interface AnalisisTabItem {
               <span class="material-symbols-outlined text-[22px]">insights</span>
             </span>
             <div class="min-w-0">
-              <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
                 Análisis
               </p>
-              <h2 class="truncate text-lg font-black leading-tight text-slate-800">
+              <h2 class="truncate text-lg font-semibold leading-tight text-slate-800">
                 Salud, calendario y métricas
               </h2>
             </div>

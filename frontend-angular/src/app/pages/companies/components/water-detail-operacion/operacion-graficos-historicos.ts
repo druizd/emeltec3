@@ -30,7 +30,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <!-- Header con selector de rango -->
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
-            <h3 class="text-sm font-black text-slate-800">Gráficos de Tendencia</h3>
+            <h3 class="text-sm font-semibold text-slate-800">Gráficos de Tendencia</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">{{ chartSubtitle() }}</p>
           </div>
 
@@ -67,7 +67,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               >
                 <!-- Presets -->
                 <div class="p-3">
-                  <p class="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+                  <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Rango de tiempo
                   </p>
                   <div class="flex flex-wrap gap-1.5" role="group" aria-label="Presets de rango">
@@ -91,7 +91,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 
                 <!-- Custom dates -->
                 <div class="border-t border-slate-100 px-3 pb-3 pt-2.5 space-y-2">
-                  <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+                  <p class="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                     Personalizado
                   </p>
                   <div class="space-y-1.5">
@@ -136,7 +136,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div class="p-5 xl:border-r xl:border-slate-100">
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p class="text-xs font-black text-slate-700">Nivel Freático</p>
+                <p class="text-xs font-semibold text-slate-700">Nivel Freático</p>
                 <p class="text-[11px] text-slate-400">m bajo superficie</p>
               </div>
               <button
@@ -245,7 +245,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div class="p-5">
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p class="text-xs font-black text-slate-700">Caudal Instantáneo</p>
+                <p class="text-xs font-semibold text-slate-700">Caudal Instantáneo</p>
                 <p class="text-[11px] text-slate-400">L/s</p>
               </div>
               <button
@@ -356,7 +356,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h3 class="text-sm font-black text-slate-800">Flujo Mensual</h3>
+            <h3 class="text-sm font-semibold text-slate-800">Flujo Mensual</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">
               Últimos 12 meses · {{ mensualUnit() }} totales por mes
             </p>
@@ -453,7 +453,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h3 class="text-sm font-black text-slate-800">Flujo Diario</h3>
+            <h3 class="text-sm font-semibold text-slate-800">Flujo Diario</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">
               Últimos 30 días · {{ diarioUnit() }}/día · días sin operación en gris
             </p>
@@ -544,7 +544,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="flex items-start justify-between gap-3 p-5 pb-0">
           <div>
             <div class="flex items-center gap-2">
-              <h3 class="text-sm font-black text-slate-800">
+              <h3 class="text-sm font-semibold text-slate-800">
                 Resumen Operacional {{ jornadaInicio() }}–{{ jornadaFin() }}
               </h3>
               <button
@@ -583,7 +583,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div
             class="mx-5 mt-3 overflow-hidden rounded-xl border border-cyan-200 bg-cyan-50/60 p-4"
           >
-            <p class="mb-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-slate-600">
+            <p class="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
               Período de jornada
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[12px] font-semibold text-slate-600">

@@ -21,6 +21,7 @@ import {
   VariableMapping,
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
+import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
@@ -297,82 +298,68 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 @Component({
   selector: 'app-administration',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, KpiCardComponent],
   template: `
-    <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 font-['Inter'] text-slate-800">
+    <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
       <div class="mx-auto flex max-w-[1500px] flex-col gap-5">
         <header
-          class="flex flex-col gap-4 border-b border-slate-200 pb-5 md:flex-row md:items-center md:justify-between"
+          class="flex flex-col gap-5 border-b border-[#e2e8f0] pb-5 lg:flex-row lg:items-end lg:justify-between"
         >
           <div class="min-w-0">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-[22px] text-cyan-700"
+            <div class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[18px] text-primary-container"
                 >settings_applications</span
               >
-              <p class="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-700">
+              <p
+                class="font-josefin text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-container"
+              >
                 SuperAdmin
               </p>
             </div>
-            <h1 class="mt-1 text-2xl font-black text-slate-900">Administracion</h1>
+            <h1
+              class="mt-1.5 font-josefin text-2xl font-semibold tracking-[-0.01em] text-on-surface"
+            >
+              Administración
+            </h1>
+            <p class="mt-1 text-[13px] text-on-surface-variant">
+              Gestiona empresas, subempresas, sitios y dispositivos detectados.
+            </p>
           </div>
 
-          <div class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(3,12rem)_3.75rem]">
-            <div
-              class="flex min-h-[3.8rem] items-center gap-3 rounded-xl border border-cyan-200 bg-gradient-to-br from-cyan-50 to-white px-3 py-2 shadow-sm"
-            >
-              <span
-                class="material-symbols-outlined grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[20px] leading-none text-cyan-700 shadow-[inset_0_0_0_1px_rgba(8,145,178,0.16)]"
-                >domain</span
-              >
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  Empresas
-                </p>
-                <p class="mt-0.5 text-xl font-black leading-none text-slate-900">
-                  {{ hierarchy().length }}
-                </p>
-              </div>
-            </div>
-            <div
-              class="flex min-h-[3.8rem] items-center gap-3 rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white px-3 py-2 shadow-sm"
-            >
-              <span
-                class="material-symbols-outlined grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[20px] leading-none text-blue-700 shadow-[inset_0_0_0_1px_rgba(37,99,235,0.16)]"
-                >location_on</span
-              >
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  Sitios
-                </p>
-                <p class="mt-0.5 text-xl font-black leading-none text-slate-900">
-                  {{ allSites().length }}
-                </p>
-              </div>
-            </div>
-            <div
-              class="flex min-h-[3.8rem] items-center gap-3 rounded-xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white px-3 py-2 shadow-sm"
-            >
-              <span
-                class="material-symbols-outlined grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-white text-center text-[20px] leading-none text-violet-700 shadow-[inset_0_0_0_1px_rgba(124,58,237,0.16)]"
-                >memory</span
-              >
-              <div>
-                <p class="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
-                  Equipos
-                </p>
-                <p class="mt-0.5 text-xl font-black leading-none text-slate-900">
-                  {{ detectedDevices().length }}
-                </p>
-              </div>
-            </div>
+          <div
+            class="grid grid-cols-1 gap-2 sm:grid-cols-[repeat(3,minmax(160px,1fr))_auto] sm:items-stretch"
+          >
+            <app-kpi-card
+              label="Empresas"
+              icon="domain"
+              tone="primary"
+              [value]="hierarchy().length"
+            />
+            <app-kpi-card
+              label="Sitios"
+              icon="location_on"
+              tone="primary"
+              [value]="allSites().length"
+            />
+            <app-kpi-card
+              label="Equipos"
+              icon="memory"
+              tone="primary"
+              [value]="detectedDevices().length"
+            />
             <button
               type="button"
               (click)="loadDashboard()"
               [disabled]="loading()"
-              class="inline-flex min-h-[3.8rem] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:-translate-y-0.5 hover:bg-cyan-50 hover:text-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-on-surface-variant transition-all hover:border-[rgba(13,175,189,0.30)] hover:text-primary-container hover:shadow-[0_4px_12px_rgba(13,175,189,0.10)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
               aria-label="Actualizar"
             >
-              <span class="material-symbols-outlined text-[22px]" aria-hidden="true">refresh</span>
+              <span
+                class="material-symbols-outlined text-[20px]"
+                [class.animate-spin]="loading()"
+                aria-hidden="true"
+                >refresh</span
+              >
             </button>
           </div>
         </header>
@@ -400,12 +387,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   [class]="
                     dialog.tone === 'danger'
                       ? 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-50 text-[24px] text-red-600'
-                      : 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-50 text-[24px] text-cyan-700'
+                      : 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[rgba(13,175,189,0.10)] text-[24px] text-primary-container'
                   "
                   >{{ dialog.icon }}</span
                 >
                 <div class="min-w-0">
-                  <h3 class="text-lg font-black text-slate-900">{{ dialog.title }}</h3>
+                  <h3 class="text-lg font-semibold text-slate-900">{{ dialog.title }}</h3>
                   <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>
@@ -448,7 +435,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             @if (loading()) {
               <section class="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
                 <div class="flex items-center gap-3 text-sm font-bold text-slate-500">
-                  <span class="material-symbols-outlined animate-spin text-[22px] text-cyan-600"
+                  <span class="material-symbols-outlined animate-spin text-[22px] text-primary-container"
                     >progress_activity</span
                   >
                   Cargando administracion
@@ -458,7 +445,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (activeSection() === 'empresas') {
                 <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-black text-slate-900">Empresas padre</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">Empresas padre</h2>
                   </div>
 
                   <div class="space-y-5 p-6">
@@ -468,7 +455,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     >
                       <div class="flex items-start justify-between gap-3 lg:col-span-3">
                         <div>
-                          <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
+                          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
                             {{ selectedCompanyId() ? 'Empresa seleccionada' : 'Nueva empresa' }}
                           </p>
                           <p class="mt-1 text-sm text-slate-500">
@@ -585,7 +572,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div class="table-card">
                       <div class="table-toolbar">
                         <div>
-                          <p class="text-sm font-black text-slate-800">Empresas registradas</p>
+                          <p class="text-sm font-semibold text-slate-800">Empresas registradas</p>
                           <p class="text-xs font-bold text-slate-400">
                             {{ filteredCompanies().length }} de {{ hierarchy().length }} visibles
                           </p>
@@ -686,7 +673,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (activeSection() === 'subempresas') {
                 <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-black text-slate-900">Subempresas</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">Subempresas</h2>
                   </div>
 
                   <div class="space-y-5 p-6">
@@ -696,7 +683,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     >
                       <div class="flex items-start justify-between gap-3 lg:col-span-3">
                         <div>
-                          <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
+                          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
                             {{
                               selectedSubCompanyId()
                                 ? 'Subempresa seleccionada'
@@ -820,7 +807,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div class="table-card">
                       <div class="table-toolbar">
                         <div>
-                          <p class="text-sm font-black text-slate-800">Subempresas registradas</p>
+                          <p class="text-sm font-semibold text-slate-800">Subempresas registradas</p>
                           <p class="text-xs font-bold text-slate-400">
                             {{ filteredSubCompanies().length }} de
                             {{ allSubCompanies().length }} visibles
@@ -921,7 +908,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (activeSection() === 'sitios') {
                 <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-black text-slate-900">Sitios</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">Sitios</h2>
                   </div>
 
                   <div class="space-y-5 p-6">
@@ -931,7 +918,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     >
                       <div class="flex items-start justify-between gap-3 lg:col-span-4">
                         <div>
-                          <p class="text-xs font-black uppercase tracking-[0.12em] text-cyan-700">
+                          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
                             {{ selectedSiteId() ? 'Sitio seleccionado' : 'Nuevo sitio' }}
                           </p>
                           <p class="mt-1 text-sm text-slate-500">
@@ -1124,7 +1111,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div class="table-card">
                       <div class="table-toolbar">
                         <div>
-                          <p class="text-sm font-black text-slate-800">Sitios registrados</p>
+                          <p class="text-sm font-semibold text-slate-800">Sitios registrados</p>
                           <p class="text-xs font-bold text-slate-400">
                             {{ filteredSites().length }} de {{ allSites().length }} visibles
                           </p>
@@ -1236,14 +1223,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (activeSection() === 'equipos') {
                 <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
                   <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-black text-slate-900">Equipos detectados</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">Equipos detectados</h2>
                   </div>
 
                   <div class="space-y-5 p-6">
                     <div class="table-card">
                       <div class="table-toolbar">
                         <div>
-                          <p class="text-sm font-black text-slate-800">Equipos detectados</p>
+                          <p class="text-sm font-semibold text-slate-800">Equipos detectados</p>
                           <p class="text-xs font-bold text-slate-400">
                             {{ filteredDevices().length }} de
                             {{ detectedDevices().length }} visibles
@@ -1359,114 +1346,138 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
   `,
   styles: [
     `
+      /* Shell ----------------------------------------------------- */
       .admin-shell {
         overflow: hidden;
-        border-radius: 0.9rem;
-        border: 1px solid rgb(226 232 240);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95)), white;
-        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+        border-radius: 12px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
       }
 
+      /* Tabs ------------------------------------------------------ */
       .section-tabs {
         display: flex;
-        gap: 0.55rem;
+        gap: 4px;
         overflow-x: auto;
-        border-bottom: 1px solid rgb(226 232 240);
-        background:
-          linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.86)), white;
-        padding: 0.9rem 1rem 0;
+        border-bottom: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        padding: 0 16px;
       }
 
       .section-tab-button {
         position: relative;
-        min-height: 3.35rem;
-        border: 1px solid transparent;
-        border-bottom: 0;
-        border-radius: 0.9rem 0.9rem 0 0;
-        color: rgb(100 116 139);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        padding: 14px 12px;
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-on-surface-variant);
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        transition:
+          color 160ms ease,
+          border-color 160ms ease;
+        cursor: pointer;
       }
 
       .section-tab-button:hover {
-        border-color: rgb(207 250 254);
-        background: rgb(240 253 250);
+        color: var(--color-primary-container);
+      }
+
+      .section-tab-button:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: -2px;
+        border-radius: 6px;
       }
 
       .section-tab-active {
-        border-color: rgb(186 230 253);
-        background: linear-gradient(180deg, rgb(236 254 255), white);
-        color: rgb(8 145 178);
-        box-shadow: inset 0 -3px 0 rgb(8 145 178);
+        color: var(--color-primary-container);
+        border-bottom-color: var(--color-primary);
       }
 
+      /* Form fields ---------------------------------------------- */
       .field-control {
         width: 100%;
-        border-radius: 0.7rem;
-        border: 1px solid rgb(203 213 225);
-        background: rgba(248, 250, 252, 0.82);
-        padding: 0.625rem 0.75rem;
-        font-size: 0.875rem;
-        color: rgb(15 23 42);
+        border-radius: 8px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        padding: 9px 12px;
+        font-family: var(--font-body);
+        font-size: 13px;
+        color: var(--color-on-surface);
         outline: none;
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease;
       }
 
       .field-control:focus {
-        border-color: rgb(6 182 212);
-        background: white;
-        box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.12);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(13, 175, 189, 0.15);
       }
 
       .field-control:disabled {
-        border-color: rgb(226 232 240);
-        background: rgb(241 245 249);
-        color: rgb(51 65 85);
+        background: var(--color-surface-subtle);
+        color: var(--color-on-surface-variant);
+        cursor: not-allowed;
       }
 
+      .field-control::placeholder {
+        color: var(--color-on-surface-muted);
+      }
+
+      /* Editor panel --------------------------------------------- */
       .editor-panel {
-        border-radius: 0.9rem;
-        border: 1px solid rgb(207 250 254);
-        background:
-          radial-gradient(circle at top left, rgba(6, 182, 212, 0.12), transparent 34rem),
-          linear-gradient(180deg, rgba(236, 254, 255, 0.72), rgba(255, 255, 255, 0.96)), white;
-        padding: 1.25rem;
-        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.055);
+        border-radius: 10px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface-subtle);
+        padding: 20px;
       }
 
+      /* Table card ----------------------------------------------- */
       .table-card {
         min-width: 0;
         overflow: hidden;
-        border-radius: 0.9rem;
-        border: 1px solid rgb(226 232 240);
-        background: white;
-        box-shadow: 0 12px 26px rgba(15, 23, 42, 0.052);
+        border-radius: 10px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
       }
 
       .table-toolbar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
-        border-bottom: 1px solid rgb(226 232 240);
-        padding: 1rem 1.25rem;
+        gap: 16px;
+        border-bottom: 1px solid var(--color-outline-variant);
+        padding: 14px 16px;
       }
 
+      /* Search ---------------------------------------------------- */
       .search-control {
         display: flex;
-        min-height: 2.5rem;
-        width: min(100%, 25rem);
+        min-height: 36px;
+        width: min(100%, 320px);
         align-items: center;
-        gap: 0.5rem;
-        border-radius: 0.65rem;
-        border: 1px solid rgb(203 213 225);
-        background: rgba(248, 250, 252, 0.9);
-        padding: 0 0.75rem;
-        color: rgb(100 116 139);
+        gap: 8px;
+        border-radius: 8px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        padding: 0 12px;
+        color: var(--color-on-surface-muted);
+        transition:
+          border-color 160ms ease,
+          box-shadow 160ms ease;
       }
 
       .search-control:focus-within {
-        border-color: rgb(6 182 212);
-        background: white;
-        box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.12);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(13, 175, 189, 0.15);
+        color: var(--color-on-surface-variant);
       }
 
       .search-control input {
@@ -1474,118 +1485,143 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         flex: 1;
         border: 0;
         background: transparent;
-        font-size: 0.875rem;
-        color: rgb(15 23 42);
+        font-family: var(--font-body);
+        font-size: 13px;
+        color: var(--color-on-surface);
         outline: none;
       }
 
-      .table-head {
-        background: rgb(241 245 249);
-        font-size: 0.75rem;
-        font-weight: 900;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgb(100 116 139);
+      .search-control input::placeholder {
+        color: var(--color-on-surface-muted);
       }
 
+      /* Table head ----------------------------------------------- */
+      .table-head {
+        background: var(--color-surface-subtle);
+        font-family: var(--font-josefin);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--color-on-surface-muted);
+      }
+
+      /* Pagination ----------------------------------------------- */
       .pagination-button {
         display: inline-flex;
-        min-height: 2.25rem;
+        min-height: 32px;
+        min-width: 32px;
         align-items: center;
         justify-content: center;
-        border-radius: 0.65rem;
-        border: 1px solid rgb(226 232 240);
-        background: white;
-        padding: 0 0.8rem;
-        font-size: 0.75rem;
-        font-weight: 900;
-        color: rgb(71 85 105);
+        border-radius: 6px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        padding: 0 10px;
+        font-family: var(--font-body);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-on-surface-variant);
         transition: all 160ms ease;
+        cursor: pointer;
       }
 
       .pagination-button:hover:not(:disabled) {
-        border-color: rgb(165 243 252);
-        color: rgb(8 145 178);
+        border-color: rgba(13, 175, 189, 0.30);
+        color: var(--color-primary-container);
+      }
+
+      .pagination-button:active:not(:disabled) {
+        transform: scale(0.97);
       }
 
       .pagination-button:disabled {
         cursor: not-allowed;
-        opacity: 0.45;
+        opacity: 0.4;
       }
 
+      /* Buttons --------------------------------------------------- */
       .primary-button,
       .secondary-button,
       .danger-button {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 0.45rem;
+        gap: 6px;
+        font-family: var(--font-body);
+        cursor: pointer;
         transition: all 160ms ease;
       }
 
       .primary-button {
-        min-height: 2.5rem;
-        min-width: 11rem;
-        border-radius: 0.7rem;
-        border: 1px solid rgb(8 145 178);
-        background: rgb(8 145 178);
-        padding: 0.625rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 800;
+        min-height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--color-primary);
+        background: var(--color-primary);
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
         color: white;
       }
 
       .primary-button:hover:not(:disabled) {
-        border-color: rgb(14 116 144);
-        background: rgb(14 116 144);
-        transform: translateY(-1px);
-        box-shadow: 0 10px 18px rgba(8, 145, 178, 0.18);
+        background: var(--color-primary-container);
+        border-color: var(--color-primary-container);
+        box-shadow: 0 4px 12px rgba(13, 175, 189, 0.25);
+      }
+
+      .primary-button:active:not(:disabled) {
+        transform: scale(0.98);
       }
 
       .primary-button:disabled {
         cursor: not-allowed;
-        opacity: 0.55;
+        opacity: 0.5;
       }
 
       .secondary-button {
-        min-height: 2.5rem;
-        min-width: 8.5rem;
-        border-radius: 0.7rem;
-        border: 1px solid rgb(203 213 225);
-        background: rgba(255, 255, 255, 0.92);
-        padding: 0.625rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 800;
-        color: rgb(71 85 105);
+        min-height: 36px;
+        border-radius: 8px;
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        padding: 8px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-on-surface-variant);
       }
 
       .secondary-button:hover {
-        border-color: rgb(125 211 252);
-        background: rgb(240 249 255);
-        color: rgb(3 105 161);
-        transform: translateY(-1px);
+        border-color: rgba(13, 175, 189, 0.30);
+        background: rgba(13, 175, 189, 0.04);
+        color: var(--color-primary-container);
+      }
+
+      .secondary-button:active {
+        transform: scale(0.98);
       }
 
       .danger-button {
-        min-height: 2.5rem;
-        border-radius: 0.7rem;
-        border: 1px solid rgb(254 202 202);
-        background: rgb(254 242 242);
-        padding: 0.625rem 0.8rem;
-        font-size: 0.875rem;
-        font-weight: 800;
-        color: rgb(185 28 28);
+        min-height: 36px;
+        border-radius: 8px;
+        border: 1px solid rgba(248, 113, 113, 0.30);
+        background: rgba(248, 113, 113, 0.08);
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #dc2626;
       }
 
       .danger-button:hover:not(:disabled) {
-        border-color: rgb(252 165 165);
-        background: rgb(254 226 226);
-        transform: translateY(-1px);
+        background: rgba(248, 113, 113, 0.14);
+        border-color: rgba(248, 113, 113, 0.45);
+      }
+
+      .danger-button:active:not(:disabled) {
+        transform: scale(0.98);
       }
 
       .danger-button:disabled {
         cursor: not-allowed;
-        opacity: 0.55;
+        opacity: 0.5;
       }
 
       @media (max-width: 760px) {
@@ -1903,11 +1939,10 @@ export class AdministrationComponent implements OnInit {
   }
 
   paginationButtonClass(active: boolean): string {
-    const base =
-      'inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-xs font-black transition';
+    const base = 'pagination-button';
     return active
-      ? `${base} border-cyan-300 bg-cyan-50 text-cyan-700`
-      : `${base} border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700`;
+      ? `${base} border-[rgba(13,175,189,0.45)] bg-[rgba(13,175,189,0.10)] text-primary-container`
+      : base;
   }
 
   companyFormDisabled(): boolean {
@@ -1996,10 +2031,10 @@ export class AdministrationComponent implements OnInit {
 
   calculatorButtonClass(transformId: string): string {
     const base =
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-black uppercase tracking-[0.1em] transition';
+      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
-      ? `${base} border-cyan-300 bg-cyan-100 text-cyan-900`
-      : `${base} border-cyan-100 bg-white text-cyan-800 hover:border-cyan-200 hover:bg-cyan-50`;
+      ? `${base} border-[rgba(13,175,189,0.45)] bg-[rgba(13,175,189,0.12)] text-primary-container`
+      : `${base} border-[#e2e8f0] bg-white text-on-surface-variant hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.05)] hover:text-primary-container`;
   }
 
   previewResultText(): string {
@@ -2682,14 +2717,14 @@ export class AdministrationComponent implements OnInit {
   }
 
   companyTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-xs font-black';
+    const base = 'rounded-md px-2 py-1 text-xs font-semibold';
     const normalized = this.normalizeSearchText(type);
     if (normalized.includes('electrico')) return `${base} bg-amber-50 text-amber-700`;
     if (normalized.includes('industrial')) return `${base} bg-indigo-50 text-indigo-700`;
     if (normalized.includes('riles')) return `${base} bg-emerald-50 text-emerald-700`;
     if (normalized.includes('proceso')) return `${base} bg-violet-50 text-violet-700`;
     if (normalized.includes('cliente')) return `${base} bg-slate-100 text-slate-600`;
-    return `${base} bg-cyan-50 text-cyan-700`;
+    return `${base} bg-[rgba(13,175,189,0.10)] text-primary-container`;
   }
 
   deviceDataCount(device: DetectedDevice): number {
@@ -2731,17 +2766,15 @@ export class AdministrationComponent implements OnInit {
   }
 
   sectionButtonClass(section: SectionId): string {
-    const base = `section-tab-button section-tab-${section} inline-flex items-center gap-2 whitespace-nowrap px-4 py-3 text-sm font-black transition-all`;
-    return this.activeSection() === section
-      ? `${base} section-tab-active`
-      : `${base} text-slate-500 hover:text-cyan-800`;
+    const base = `section-tab-button section-tab-${section}`;
+    return this.activeSection() === section ? `${base} section-tab-active` : base;
   }
 
   rowClass(selected: boolean): string {
     const base = 'cursor-pointer transition-colors';
     return selected
-      ? `${base} bg-cyan-50/80 shadow-[inset_3px_0_0_rgb(8_145_178)]`
-      : `${base} bg-white hover:bg-slate-50`;
+      ? `${base} bg-[rgba(13,175,189,0.08)] shadow-[inset_3px_0_0_var(--color-primary)]`
+      : `${base} bg-white hover:bg-[#f8fafc]`;
   }
 
   statusClass(): string {

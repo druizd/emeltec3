@@ -11,7 +11,7 @@ import { RouterLink } from '@angular/router';
     <main class="mx-auto max-w-3xl px-6 py-10 text-slate-700" style="font-family: 'DM Sans';">
       <a
         routerLink="/"
-        class="mb-6 inline-flex items-center gap-1 text-[12px] font-medium text-cyan-600 hover:underline"
+        class="mb-6 inline-flex items-center gap-1 text-[12px] font-medium text-primary-container hover:underline"
       >
         <span class="material-symbols-outlined text-[14px]">arrow_back</span>
         Volver
@@ -71,7 +71,7 @@ import { RouterLink } from '@angular/router';
         <h2 class="mt-6 text-[18px] font-bold text-slate-900">6. Privacidad</h2>
         <p>
           El tratamiento de datos personales se rige por nuestra
-          <a routerLink="/privacidad" class="text-cyan-700 underline">Política de privacidad</a> y
+          <a routerLink="/privacidad" class="text-primary-container underline">Política de privacidad</a> y
           la legislación chilena vigente.
         </p>
 
@@ -85,7 +85,7 @@ import { RouterLink } from '@angular/router';
         <h2 class="mt-6 text-[18px] font-bold text-slate-900">8. Reporte de vulnerabilidades</h2>
         <p>
           Bienvenidos los reportes responsables de problemas de seguridad. Canal:
-          <a class="text-cyan-700 underline" href="/.well-known/security.txt">security.txt</a>.
+          <a class="text-primary-container underline" href="/.well-known/security.txt">security.txt</a>.
         </p>
 
         <h2 class="mt-6 text-[18px] font-bold text-slate-900">9. Modificaciones</h2>
