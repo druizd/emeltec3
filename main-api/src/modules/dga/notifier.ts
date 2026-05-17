@@ -24,19 +24,28 @@ let cachedMail: MailService | null = null;
 
 function loadMailService(): MailService | null {
   if (cachedMail) return cachedMail;
-  try {
-    // emailService.js vive fuera de dist/, en src/services/. Lo cargamos relativo
-    // a este archivo, atravesando dist/modules/dga → src/services.
-    const p = path.join(__dirname, '..', '..', '..', '..', 'src', 'services', 'emailService.js');
-    cachedMail = require(p);
-    return cachedMail;
-  } catch (err) {
-    logger.warn(
-      { err: (err as Error).message },
-      'DGA notifier: emailService.js no disponible (¿build?)',
-    );
-    return null;
+  // emailService.js vive en src/services/. Layout:
+  //   /app/dist/modules/dga/notifier.js      ← este archivo en runtime
+  //   /app/src/services/emailService.js      ← target
+  // Subir 3 niveles desde __dirname llega a /app, luego src/services.
+  // Intentamos varios paths para cubrir layouts en dev y en docker.
+  const candidates = [
+    path.join(__dirname, '..', '..', '..', 'src', 'services', 'emailService.js'),
+    path.join(__dirname, '..', '..', '..', '..', 'src', 'services', 'emailService.js'),
+  ];
+  for (const p of candidates) {
+    try {
+      cachedMail = require(p);
+      return cachedMail;
+    } catch {
+      // sigue con el próximo path
+    }
   }
+  logger.warn(
+    { tried: candidates },
+    'DGA notifier: emailService.js no encontrado en paths candidatos',
+  );
+  return null;
 }
 
 /**
