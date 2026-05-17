@@ -29,6 +29,22 @@ import { DgaGenerarReporteModalComponent } from './components/dga-generar-report
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { HttpClient } from '@angular/common/http';
 
+/**
+ * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
+ */
+function chileToday(): string {
+  const d = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Devuelve "YYYY-MM-01" del mes actual en zona Chile (UTC-4).
+ */
+function chileMonthStart(): string {
+  const d = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  return d.toISOString().slice(0, 8) + '01';
+}
+
 interface SiteContext {
   company: any;
   subCompany: any;
@@ -3287,8 +3303,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   hoveredRealtimePointIndex = signal<number | null>(null);
   dgaDateFilterOpen = signal(false);
   selectedDgaReport = signal<DgaReportRow | null>(null);
-  dgaDateFrom = signal('2026-04-06');
-  dgaDateTo = signal('2026-04-07');
+  /** Default = primer día del mes actual y hoy (Chile UTC-4). Evita hardcodes que dejan la tabla vacía. */
+  dgaDateFrom = signal(chileMonthStart());
+  dgaDateTo = signal(chileToday());
   dgaRowsPerPage = signal(10);
   dgaPage = signal(1);
   downloadModalOpen = signal(false);
