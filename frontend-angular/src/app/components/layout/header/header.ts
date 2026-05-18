@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { AuthService } from '../../../services/auth.service';
+import { ShortcutService } from '../../../services/shortcut.service';
 
 @Component({
   selector: 'app-header',
@@ -38,6 +39,15 @@ import { AuthService } from '../../../services/auth.service';
         <div class="flex-1"></div>
 
         <div class="flex items-center gap-1.5">
+          <button
+            type="button"
+            (click)="shortcuts.openPalette()"
+            class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            aria-label="Atajos de teclado (?)"
+            title="Atajos de teclado (?)"
+          >
+            <span class="material-symbols-outlined text-[16px]">keyboard</span>
+          </button>
           @if (auth.isSuperAdmin()) {
             <button
               (click)="router.navigate(['/administration'])"
@@ -110,6 +120,7 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class HeaderComponent implements OnInit {
   readonly auth = inject(AuthService);
+  readonly shortcuts = inject(ShortcutService);
   readonly router = inject(Router);
 
   private currentUrl = signal(this.router.url);

@@ -67,13 +67,13 @@ export class KpiCardComponent {
       case 'primary':
         return 'border-primary-tint-25 shadow-primary-soft hover:shadow-primary-glow-lg';
       case 'success':
-        return 'border-[rgba(34,197,94,0.20)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(34,197,94,0.12)]';
+        return 'border-emerald-200 shadow-slate-rest hover:shadow-success-glow';
       case 'danger':
-        return 'border-[rgba(248,113,113,0.25)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(248,113,113,0.12)]';
+        return 'border-rose-200 shadow-slate-rest hover:shadow-danger-glow';
       case 'warning':
-        return 'border-[rgba(251,191,36,0.25)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(251,191,36,0.12)]';
+        return 'border-amber-200 shadow-slate-rest hover:shadow-warning-glow';
       default:
-        return 'border-[#e2e8f0] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)]';
+        return 'border-slate-200 shadow-slate-rest hover:shadow-[0_4px_12px_rgba(15,23,42,0.08)]';
     }
   }
 
