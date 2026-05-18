@@ -154,7 +154,7 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).caudal"
                       (input)="setEdit(s, 'caudal', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-violet-300"
+                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -163,7 +163,7 @@ interface RowEdit {
                       step="1"
                       [value]="edit(s).totalizador"
                       (input)="setEdit(s, 'totalizador', $any($event.target).value)"
-                      class="h-8 w-32 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-violet-300"
+                      class="h-8 w-32 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -172,7 +172,7 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).nivel"
                       (input)="setEdit(s, 'nivel', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-violet-300"
+                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -182,7 +182,7 @@ interface RowEdit {
                       (input)="setEdit(s, 'note', $any($event.target).value)"
                       maxlength="500"
                       placeholder="Razón del cambio…"
-                      class="h-8 w-48 rounded border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-violet-300"
+                      class="h-8 w-48 rounded border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top space-y-1">

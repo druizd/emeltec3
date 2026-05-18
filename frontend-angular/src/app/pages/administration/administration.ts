@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -45,6 +45,20 @@ interface ConfirmDialog {
   tone: 'danger' | 'primary';
   icon: string;
   onConfirm: () => void;
+}
+
+interface PendingDelete {
+  label: string;
+  /** Reverts the optimistic UI mutation when the user cancels. */
+  restore: () => void;
+  /** Fires the actual DELETE against the API after the undo window expires. */
+  commit: () => void;
+  /** setTimeout handle so cancel can clear it. */
+  timerId: number;
+  /** setInterval handle for the countdown UI. */
+  countdownTimerId: number;
+  /** ms remaining for UI; updated by the interval. */
+  remainingMs: number;
 }
 
 interface SubCompanyOption extends SubCompanyNode {
@@ -384,6 +398,29 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               status().type === 'success' ? 'check_circle' : 'error'
             }}</span>
             <span>{{ status().message }}</span>
+          </div>
+        }
+
+        @if (pendingDelete(); as pending) {
+          <div
+            class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+            role="status"
+            aria-live="polite"
+          >
+            <div class="flex min-w-0 items-center gap-2">
+              <span class="material-symbols-outlined text-[19px]">schedule</span>
+              <span class="truncate">
+                Eliminando {{ pending.label }} en {{ pendingDeleteCountdown() }}s…
+              </span>
+            </div>
+            <button
+              type="button"
+              (click)="undoPendingDelete()"
+              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <span class="material-symbols-outlined text-[16px]">undo</span>
+              Deshacer
+            </button>
           </div>
         }
 
@@ -1196,7 +1233,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     `,
   ],
 })
-export class AdministrationComponent implements OnInit {
+export class AdministrationComponent implements OnInit, OnDestroy {
   private api = inject(AdministrationService);
   private companyService = inject(CompanyService);
   private router = inject(Router);
@@ -1213,6 +1250,15 @@ export class AdministrationComponent implements OnInit {
   busyAction = signal('');
   status = signal<AdminStatus>({ type: '', message: '' });
   confirmDialog = signal<ConfirmDialog | null>(null);
+  /**
+   * Pending delete with 5s undo window. The actual API call fires only after
+   * the timer expires; pressing "Deshacer" cancels the timer and restores the
+   * pre-delete UI snapshot. One in-flight at a time — starting a new delete
+   * commits the previous one immediately so the second confirm dialog can't
+   * race the first timer.
+   */
+  pendingDelete = signal<PendingDelete | null>(null);
+  pendingDeleteCountdown = signal(0);
 
   hierarchy = signal<CompanyNode[]>([]);
   detectedDevices = signal<DetectedDevice[]>([]);
@@ -1382,6 +1428,13 @@ export class AdministrationComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadDashboard();
+  }
+
+  ngOnDestroy(): void {
+    // If a delete is mid-undo-window when the user navigates away, fire it
+    // immediately. Otherwise the timer keeps running against a destroyed
+    // component and the row stays locally hidden but un-deleted server-side.
+    this.flushPendingDelete();
   }
 
   setSection(section: SectionId): void {
@@ -1696,18 +1749,27 @@ export class AdministrationComponent implements OnInit {
         this.companyEditMode.set(false);
         this.clampAllPages();
 
-        this.busyAction.set('company-delete');
-        this.api.deleteCompany(company.id).subscribe({
-          next: (res) => {
-            this.busyAction.set('');
-            this.setSuccess(res.message || 'Empresa eliminada.');
-            this.loadDashboard(false);
-          },
-          error: (err: unknown) => {
-            this.busyAction.set('');
+        this.schedulePendingDelete({
+          label: `empresa "${company.nombre}"`,
+          restore: () => {
             this.setHierarchy(previousHierarchy);
             this.selectCompany(company.id);
-            this.setError(this.errorMessage(err, 'No fue posible eliminar la empresa.'));
+          },
+          commit: () => {
+            this.busyAction.set('company-delete');
+            this.api.deleteCompany(company.id).subscribe({
+              next: (res) => {
+                this.busyAction.set('');
+                this.setSuccess(res.message || 'Empresa eliminada.');
+                this.loadDashboard(false);
+              },
+              error: (err: unknown) => {
+                this.busyAction.set('');
+                this.setHierarchy(previousHierarchy);
+                this.selectCompany(company.id);
+                this.setError(this.errorMessage(err, 'No fue posible eliminar la empresa.'));
+              },
+            });
           },
         });
       },
@@ -1851,18 +1913,27 @@ export class AdministrationComponent implements OnInit {
         this.subCompanyEditMode.set(false);
         this.clampAllPages();
 
-        this.busyAction.set('subcompany-delete');
-        this.api.deleteSubCompany(subCompany.empresa_id, subCompany.id).subscribe({
-          next: (res) => {
-            this.busyAction.set('');
-            this.setSuccess(res.message || 'Subempresa eliminada.');
-            this.loadDashboard(false);
-          },
-          error: (err: unknown) => {
-            this.busyAction.set('');
+        this.schedulePendingDelete({
+          label: `subempresa "${subCompany.nombre}"`,
+          restore: () => {
             this.setHierarchy(previousHierarchy);
             this.selectSubCompany(subCompany.id);
-            this.setError(this.errorMessage(err, 'No fue posible eliminar la subempresa.'));
+          },
+          commit: () => {
+            this.busyAction.set('subcompany-delete');
+            this.api.deleteSubCompany(subCompany.empresa_id, subCompany.id).subscribe({
+              next: (res) => {
+                this.busyAction.set('');
+                this.setSuccess(res.message || 'Subempresa eliminada.');
+                this.loadDashboard(false);
+              },
+              error: (err: unknown) => {
+                this.busyAction.set('');
+                this.setHierarchy(previousHierarchy);
+                this.selectSubCompany(subCompany.id);
+                this.setError(this.errorMessage(err, 'No fue posible eliminar la subempresa.'));
+              },
+            });
           },
         });
       },
@@ -2037,18 +2108,27 @@ export class AdministrationComponent implements OnInit {
         });
         this.clampAllPages();
 
-        this.busyAction.set('site-delete');
-        this.api.deleteSite(site.id).subscribe({
-          next: (res) => {
-            this.busyAction.set('');
-            this.setSuccess(res.message || 'Sitio eliminado.');
-            this.loadDashboard(false);
-          },
-          error: (err: unknown) => {
-            this.busyAction.set('');
+        this.schedulePendingDelete({
+          label: `sitio "${site.descripcion}"`,
+          restore: () => {
             this.setHierarchy(previousHierarchy);
             this.selectSite(site.id);
-            this.setError(this.errorMessage(err, 'No fue posible eliminar el sitio.'));
+          },
+          commit: () => {
+            this.busyAction.set('site-delete');
+            this.api.deleteSite(site.id).subscribe({
+              next: (res) => {
+                this.busyAction.set('');
+                this.setSuccess(res.message || 'Sitio eliminado.');
+                this.loadDashboard(false);
+              },
+              error: (err: unknown) => {
+                this.busyAction.set('');
+                this.setHierarchy(previousHierarchy);
+                this.selectSite(site.id);
+                this.setError(this.errorMessage(err, 'No fue posible eliminar el sitio.'));
+              },
+            });
           },
         });
       },
@@ -2251,7 +2331,7 @@ export class AdministrationComponent implements OnInit {
     if (normalized.includes('electrico')) return `${base} bg-amber-50 text-amber-700`;
     if (normalized.includes('industrial')) return `${base} bg-indigo-50 text-indigo-700`;
     if (normalized.includes('riles')) return `${base} bg-emerald-50 text-emerald-700`;
-    if (normalized.includes('proceso')) return `${base} bg-violet-50 text-violet-700`;
+    if (normalized.includes('proceso')) return `${base} bg-accent/10 text-accent-container`;
     if (normalized.includes('cliente')) return `${base} bg-slate-100 text-slate-600`;
     return `${base} bg-[rgba(13,175,189,0.10)] text-primary-container`;
   }
@@ -2396,6 +2476,79 @@ export class AdministrationComponent implements OnInit {
 
   private setError(message: string): void {
     this.status.set({ type: 'error', message });
+  }
+
+  /**
+   * Stages a destructive action with a 5s undo window. The optimistic UI
+   * mutation has already been applied by the caller; we keep the rollback
+   * (`restore`) and the real API trigger (`commit`) so the user can change
+   * their mind in the brief window before commit fires.
+   */
+  private schedulePendingDelete(opts: {
+    label: string;
+    restore: () => void;
+    commit: () => void;
+  }): void {
+    // If another delete is mid-window, commit it now so we don't lose it
+    // when we overwrite the signal below.
+    this.flushPendingDelete();
+
+    const totalMs = 5000;
+    const tickMs = 100;
+
+    const timerId = window.setTimeout(() => {
+      const pending = this.pendingDelete();
+      if (!pending) return;
+      window.clearInterval(pending.countdownTimerId);
+      this.pendingDelete.set(null);
+      this.pendingDeleteCountdown.set(0);
+      pending.commit();
+    }, totalMs);
+
+    const countdownTimerId = window.setInterval(() => {
+      const pending = this.pendingDelete();
+      if (!pending) return;
+      const next = Math.max(0, pending.remainingMs - tickMs);
+      this.pendingDelete.set({ ...pending, remainingMs: next });
+      this.pendingDeleteCountdown.set(Math.ceil(next / 1000));
+    }, tickMs);
+
+    this.pendingDelete.set({
+      label: opts.label,
+      restore: opts.restore,
+      commit: opts.commit,
+      timerId,
+      countdownTimerId,
+      remainingMs: totalMs,
+    });
+    this.pendingDeleteCountdown.set(5);
+  }
+
+  /** User clicked "Deshacer": stop the timer + roll back the optimistic UI. */
+  undoPendingDelete(): void {
+    const pending = this.pendingDelete();
+    if (!pending) return;
+    window.clearTimeout(pending.timerId);
+    window.clearInterval(pending.countdownTimerId);
+    pending.restore();
+    this.pendingDelete.set(null);
+    this.pendingDeleteCountdown.set(0);
+    this.setSuccess(`Eliminación cancelada (${pending.label}).`);
+  }
+
+  /**
+   * Forces the pending delete to fire its commit *now*. Used when navigating
+   * away or queueing another delete — otherwise the page could leave behind a
+   * dangling timer firing against a stale snapshot.
+   */
+  private flushPendingDelete(): void {
+    const pending = this.pendingDelete();
+    if (!pending) return;
+    window.clearTimeout(pending.timerId);
+    window.clearInterval(pending.countdownTimerId);
+    this.pendingDelete.set(null);
+    this.pendingDeleteCountdown.set(0);
+    pending.commit();
   }
 
   private confirmAdminAction(

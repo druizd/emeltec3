@@ -261,7 +261,7 @@ interface IncidenciaPeriodo {
                   {{ t.flujo.toLocaleString('es-CL')
                   }}<span class="ml-1 text-sm font-bold opacity-60">m³</span>
                 </p>
-                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/10">
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-900/10">
                   <div
                     class="h-full rounded-full"
                     [class]="turnoDot(i)"

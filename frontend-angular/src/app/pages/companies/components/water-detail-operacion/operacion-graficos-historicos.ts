@@ -692,7 +692,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <!-- Leyenda -->
         <div class="flex flex-wrap gap-4 px-5 pb-5 pt-3 text-[11px] text-slate-400">
           <span class="flex items-center gap-1.5">
-            <span class="inline-block h-3 w-3 rounded-sm bg-violet-500 opacity-85"></span>
+            <span class="inline-block h-3 w-3 rounded-sm bg-accent opacity-85"></span>
             Jornada con operación
           </span>
           <span class="flex items-center gap-1.5">

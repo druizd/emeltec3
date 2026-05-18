@@ -241,10 +241,10 @@ interface PeriodicidadOption {
 
             <!-- ====== Informante (pool global) ====== -->
             <section
-              class="space-y-3 rounded-lg border border-violet-200 bg-violet-50/40 px-4 py-3"
+              class="space-y-3 rounded-lg border border-accent/20 bg-accent/5 px-4 py-3"
             >
               <div
-                class="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold text-violet-700"
+                class="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold text-accent-container"
               >
                 <span class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-[14px]">badge</span>
@@ -254,7 +254,7 @@ interface PeriodicidadOption {
                   type="button"
                   (click)="reloadInformantes()"
                   [disabled]="informantesLoading()"
-                  class="text-[10px] font-bold text-violet-700 hover:underline disabled:opacity-50"
+                  class="text-[10px] font-bold text-accent-container hover:underline disabled:opacity-50"
                 >
                   Recargar
                 </button>
@@ -269,7 +269,7 @@ interface PeriodicidadOption {
                   [value]="pozo()?.dga_informante_rut ?? ''"
                   [disabled]="pozoSaving() !== '' || informantesLoading()"
                   (change)="changeField('dga_informante_rut', $any($event.target).value || null)"
-                  class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-violet-300"
+                  class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-accent/30"
                 >
                   <option value="">— ninguno —</option>
                   @for (inf of informantes(); track inf.rut) {
@@ -290,7 +290,7 @@ interface PeriodicidadOption {
                   [ngModel]="newInfRut()"
                   (ngModelChange)="newInfRut.set($event)"
                   placeholder="RUT nuevo o existente"
-                  class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-violet-300"
+                  class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-accent/30"
                 />
                 <input
                   type="password"
@@ -298,21 +298,21 @@ interface PeriodicidadOption {
                   (ngModelChange)="newInfClave.set($event)"
                   placeholder="clave SNIA (rotar)"
                   autocomplete="new-password"
-                  class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-violet-300"
+                  class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-accent/30"
                 />
                 <input
                   type="text"
                   [ngModel]="newInfReferencia()"
                   (ngModelChange)="newInfReferencia.set($event)"
                   placeholder="referencia interna (opcional)"
-                  class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-violet-300"
+                  class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-accent/30"
                 />
               </div>
               <button
                 type="button"
                 (click)="guardarInformante()"
                 [disabled]="!newInfRut().trim() || informanteSaving()"
-                class="rounded bg-violet-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-40"
+                class="rounded bg-accent-container px-3 py-1.5 text-[12px] font-bold text-white hover:bg-accent-deep disabled:opacity-40"
               >
                 @if (informanteSaving()) {
                   Guardando…

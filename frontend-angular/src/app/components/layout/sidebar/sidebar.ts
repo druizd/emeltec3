@@ -82,7 +82,7 @@ const MODULES = SITE_MODULES;
           <div class="flex items-center gap-1.5">
             <div class="relative shrink-0">
               <div
-                class="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#0dafbd] to-[#04606a] text-[9px] font-bold text-white"
+                class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white"
               >
                 {{ getUserInitials() }}
               </div>

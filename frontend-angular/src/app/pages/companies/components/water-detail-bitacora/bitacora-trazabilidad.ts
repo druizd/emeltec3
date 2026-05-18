@@ -229,7 +229,7 @@ export class BitacoraAuditLogComponent {
 
   recursoClass(t: string | null): string {
     const map: Record<string, string> = {
-      usuario: 'bg-violet-50 text-violet-700',
+      usuario: 'bg-accent/10 text-accent-container',
       empresa: 'bg-blue-50 text-blue-700',
       alerta: 'bg-amber-50 text-amber-700',
       evento: 'bg-rose-50 text-rose-700',

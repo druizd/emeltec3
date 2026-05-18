@@ -34,7 +34,7 @@ interface AnalisisTabItem {
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <span
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-violet-600"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent"
             >
               <span class="material-symbols-outlined text-[22px]">insights</span>
             </span>
@@ -111,7 +111,7 @@ export class WaterDetailAnalisisComponent {
     return [
       'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
       active
-        ? 'bg-violet-50 text-violet-700 ring-1 ring-violet-100'
+        ? 'bg-accent/10 text-accent-container ring-1 ring-accent/10'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',
     ].join(' ');
   }

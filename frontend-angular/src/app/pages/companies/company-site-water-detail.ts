@@ -227,14 +227,16 @@ type OperationMode = 'realtime' | 'turnos';
                   </span>
                 }
 
-                <button
-                  type="button"
-                  (click)="openSettingsPanel()"
-                  class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
-                  aria-label="Configuracion del sitio"
-                >
-                  <span class="material-symbols-outlined text-[18px]">settings</span>
-                </button>
+                @if (canEditSiteSettings()) {
+                  <button
+                    type="button"
+                    (click)="openSettingsPanel()"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
+                    aria-label="Configuración del sitio"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">settings</span>
+                  </button>
+                }
               </div>
             </div>
 
@@ -2028,7 +2030,7 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div class="flex items-center gap-3">
                 <span
-                  class="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-50 text-violet-600"
+                  class="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent"
                 >
                   <span class="material-symbols-outlined text-[18px]">description</span>
                 </span>
@@ -2060,7 +2062,7 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="applyDgaReportPreset(preset.id)"
                     [class]="
                       dgaReportSelectedPreset() === preset.id
-                        ? 'rounded-lg border border-violet-300 bg-violet-50 px-2 py-2 text-center text-[11px] font-bold text-violet-800 transition-all'
+                        ? 'rounded-lg border border-accent/30 bg-accent/10 px-2 py-2 text-center text-[11px] font-bold text-accent-deep transition-all'
                         : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
                     "
                   >
@@ -2084,7 +2086,7 @@ type OperationMode = 'realtime' | 'turnos';
                       !dgaMonthHasData(i)
                         ? 'rounded-lg py-1.5 text-[10px] font-semibold bg-slate-50 text-slate-300 cursor-not-allowed'
                         : dgaReportSelectedMonths().includes(i)
-                          ? 'rounded-lg py-1.5 text-[10px] font-bold bg-violet-600 text-white ring-2 ring-violet-300'
+                          ? 'rounded-lg py-1.5 text-[10px] font-bold bg-accent-container text-white ring-2 ring-accent/30'
                           : 'rounded-lg py-1.5 text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
                     "
                   >
@@ -2107,7 +2109,7 @@ type OperationMode = 'realtime' | 'turnos';
                     dgaReportSelectedPreset.set('custom');
                     dgaReportSelectedMonths.set([])
                   "
-                  class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 outline-none transition-colors focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 outline-none transition-colors focus:border-accent/30 focus:ring-2 focus:ring-accent/10"
                 />
               </label>
               <label class="grid gap-1.5 text-[11px] font-bold text-slate-500">
@@ -2121,7 +2123,7 @@ type OperationMode = 'realtime' | 'turnos';
                     dgaReportSelectedPreset.set('custom');
                     dgaReportSelectedMonths.set([])
                   "
-                  class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 outline-none transition-colors focus:border-violet-300 focus:ring-2 focus:ring-violet-100"
+                  class="h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-slate-700 outline-none transition-colors focus:border-accent/30 focus:ring-2 focus:ring-accent/10"
                 />
               </label>
             </div>
@@ -2138,8 +2140,8 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="dgaReportBucket.set(opt.value)"
                     [class]="
                       dgaReportBucket() === opt.value
-                        ? 'rounded-lg border border-violet-500 bg-violet-50 px-2 py-1.5 text-[11px] font-semibold text-violet-700'
-                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-violet-200 hover:text-violet-700'
+                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-[11px] font-semibold text-accent-container'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 hover:border-accent/20 hover:text-accent-container'
                     "
                   >
                     {{ opt.label }}
@@ -2191,7 +2193,7 @@ type OperationMode = 'realtime' | 'turnos';
                   type="button"
                   (click)="generateDgaReport()"
                   [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
-                  class="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   @if (dgaReportDownloading()) {
                     <span class="material-symbols-outlined animate-spin text-[16px]">sync</span>
@@ -2438,6 +2440,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly httpClient = inject(HttpClient);
   private readonly authService = inject(AuthService);
   readonly isSuperAdmin = this.authService.isSuperAdmin;
+  readonly isAdmin = this.authService.isAdmin;
+  readonly canEditSiteSettings = computed(() => this.isAdmin() || this.isSuperAdmin());
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
@@ -2940,7 +2944,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       icon: 'description',
       title: 'Reporte DGA',
       subtitle: 'Formato oficial',
-      color: 'text-violet-600',
+      color: 'text-accent',
       openDgaReport: true,
     },
   ];
