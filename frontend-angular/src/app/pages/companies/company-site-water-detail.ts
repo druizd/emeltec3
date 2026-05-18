@@ -3263,10 +3263,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   formatMeters(value: number | null): string {
     if (value === null) return '--';
-    const rounded = Math.round(value * 10) / 10;
-    return Number.isInteger(rounded)
-      ? String(rounded)
-      : String(rounded).replace(/(\.\d*?)0+$/, '$1');
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   }
 
   formatPercent(value: number | null): string {
@@ -4108,7 +4108,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   formatDgaNumber(value: number): string {
     return new Intl.NumberFormat('es-CL', {
-      maximumFractionDigits: 1,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(value);
   }
 
@@ -4363,7 +4364,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     }
 
     return new Intl.NumberFormat('es-CL', {
-      maximumFractionDigits: 3,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(numericValue);
   }
 

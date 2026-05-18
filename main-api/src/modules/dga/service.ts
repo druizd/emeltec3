@@ -457,5 +457,9 @@ function escapeCsv(value: string): string {
 
 function formatNumber(value: string | null): string {
   if (value === null || value === undefined) return '';
+  const num = Number(value);
+  if (Number.isFinite(num)) {
+    return String(parseFloat(num.toFixed(2))).replace('.', ',');
+  }
   return String(value).replace('.', ',');
 }
