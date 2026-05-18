@@ -27,6 +27,7 @@ import { AdminPaginationComponent } from './components/admin-pagination';
 import { AdminFormActionsComponent } from './components/admin-form-actions';
 import { AdminSectionShellComponent } from './components/admin-section-shell';
 import { AdminSectionHeaderComponent } from './components/admin-section-header';
+import { AdminTableToolbarComponent } from './components/admin-table-toolbar';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -310,6 +311,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     AdminFormActionsComponent,
     AdminSectionShellComponent,
     AdminSectionHeaderComponent,
+    AdminTableToolbarComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -528,24 +530,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </form>
 
                     <div class="table-card">
-                      <div class="table-toolbar">
-                        <div>
-                          <p class="text-sm font-semibold text-slate-800">Empresas registradas</p>
-                          <p class="text-xs font-bold text-slate-400">
-                            {{ filteredCompanies().length }} de {{ hierarchy().length }} visibles
-                          </p>
-                        </div>
-                        <label class="search-control">
-                          <span class="material-symbols-outlined text-[18px]">search</span>
-                          <input
-                            type="search"
-                            [ngModel]="companySearch()"
-                            (ngModelChange)="updateCompanySearch($event)"
-                            [ngModelOptions]="{ standalone: true }"
-                            placeholder="Buscar empresa, RUT o tipo"
-                          />
-                        </label>
-                      </div>
+                      <app-admin-table-toolbar
+                        title="Empresas registradas"
+                        [countLabel]="filteredCompanies().length + ' de ' + hierarchy().length + ' visibles'"
+                        [searchValue]="companySearch()"
+                        placeholder="Buscar empresa, RUT o tipo"
+                        (searchChange)="updateCompanySearch($event)"
+                      ></app-admin-table-toolbar>
 
                       <div class="overflow-x-auto">
                         <table class="min-w-[680px] w-full text-left text-sm">
@@ -666,25 +657,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </form>
 
                     <div class="table-card">
-                      <div class="table-toolbar">
-                        <div>
-                          <p class="text-sm font-semibold text-slate-800">Subempresas registradas</p>
-                          <p class="text-xs font-bold text-slate-400">
-                            {{ filteredSubCompanies().length }} de
-                            {{ allSubCompanies().length }} visibles
-                          </p>
-                        </div>
-                        <label class="search-control">
-                          <span class="material-symbols-outlined text-[18px]">search</span>
-                          <input
-                            type="search"
-                            [ngModel]="subCompanySearch()"
-                            (ngModelChange)="updateSubCompanySearch($event)"
-                            [ngModelOptions]="{ standalone: true }"
-                            placeholder="Buscar subempresa, empresa o RUT"
-                          />
-                        </label>
-                      </div>
+                      <app-admin-table-toolbar
+                        title="Subempresas registradas"
+                        [countLabel]="filteredSubCompanies().length + ' de ' + allSubCompanies().length + ' visibles'"
+                        [searchValue]="subCompanySearch()"
+                        placeholder="Buscar subempresa, empresa o RUT"
+                        (searchChange)="updateSubCompanySearch($event)"
+                      ></app-admin-table-toolbar>
 
                       <div class="overflow-x-auto">
                         <table class="min-w-[760px] w-full text-left text-sm">
@@ -873,24 +852,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </form>
 
                     <div class="table-card">
-                      <div class="table-toolbar">
-                        <div>
-                          <p class="text-sm font-semibold text-slate-800">Sitios registrados</p>
-                          <p class="text-xs font-bold text-slate-400">
-                            {{ filteredSites().length }} de {{ allSites().length }} visibles
-                          </p>
-                        </div>
-                        <label class="search-control">
-                          <span class="material-symbols-outlined text-[18px]">search</span>
-                          <input
-                            type="search"
-                            [ngModel]="siteSearch()"
-                            (ngModelChange)="updateSiteSearch($event)"
-                            [ngModelOptions]="{ standalone: true }"
-                            placeholder="Buscar sitio, serial, empresa o estado"
-                          />
-                        </label>
-                      </div>
+                      <app-admin-table-toolbar
+                        title="Sitios registrados"
+                        [countLabel]="filteredSites().length + ' de ' + allSites().length + ' visibles'"
+                        [searchValue]="siteSearch()"
+                        placeholder="Buscar sitio, serial, empresa o estado"
+                        (searchChange)="updateSiteSearch($event)"
+                      ></app-admin-table-toolbar>
 
                       <div class="overflow-x-auto">
                         <table class="min-w-[680px] w-full text-left text-sm">
@@ -949,31 +917,18 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (activeSection() === 'equipos') {
                 <app-admin-section-shell title="Equipos detectados">
                     <div class="table-card">
-                      <div class="table-toolbar">
-                        <div>
-                          <p class="text-sm font-semibold text-slate-800">Equipos detectados</p>
-                          <p class="text-xs font-bold text-slate-400">
-                            {{ filteredDevices().length }} de
-                            {{ detectedDevices().length }} visibles
-                          </p>
-                        </div>
-                        <div class="flex flex-wrap items-center justify-end gap-2">
-                          <label class="search-control">
-                            <span class="material-symbols-outlined text-[18px]">search</span>
-                            <input
-                              type="search"
-                              [ngModel]="deviceSearch()"
-                              (ngModelChange)="updateDeviceSearch($event)"
-                              [ngModelOptions]="{ standalone: true }"
-                              placeholder="Buscar serial, sitio o empresa"
-                            />
-                          </label>
-                          <button type="button" (click)="loadDashboard()" class="secondary-button">
-                            <span class="material-symbols-outlined text-[18px]">sync</span>
-                            Actualizar
-                          </button>
-                        </div>
-                      </div>
+                      <app-admin-table-toolbar
+                        title="Equipos detectados"
+                        [countLabel]="filteredDevices().length + ' de ' + detectedDevices().length + ' visibles'"
+                        [searchValue]="deviceSearch()"
+                        placeholder="Buscar serial, sitio o empresa"
+                        (searchChange)="updateDeviceSearch($event)"
+                      >
+                        <button type="button" (click)="loadDashboard()" class="secondary-button">
+                          <span class="material-symbols-outlined text-[18px]">sync</span>
+                          Actualizar
+                        </button>
+                      </app-admin-table-toolbar>
 
                       <div class="overflow-x-auto">
                         <table class="min-w-[760px] w-full text-left text-sm">
@@ -1131,53 +1086,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         background: var(--color-surface);
       }
 
-      .table-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        border-bottom: 1px solid var(--color-outline-variant);
-        padding: 14px 16px;
-      }
-
-      /* Search ---------------------------------------------------- */
-      .search-control {
-        display: flex;
-        min-height: 36px;
-        width: min(100%, 320px);
-        align-items: center;
-        gap: 8px;
-        border-radius: 8px;
-        border: 1px solid var(--color-outline-variant);
-        background: var(--color-surface);
-        padding: 0 12px;
-        color: var(--color-on-surface-muted);
-        transition:
-          border-color 160ms ease,
-          box-shadow 160ms ease;
-      }
-
-      .search-control:focus-within {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(13, 175, 189, 0.15);
-        color: var(--color-on-surface-variant);
-      }
-
-      .search-control input {
-        min-width: 0;
-        flex: 1;
-        border: 0;
-        background: transparent;
-        font-family: var(--font-body);
-        font-size: 13px;
-        color: var(--color-on-surface);
-        outline: none;
-      }
-
-      .search-control input::placeholder {
-        color: var(--color-on-surface-muted);
-      }
-
       /* Table head ----------------------------------------------- */
       .table-head {
         background: var(--color-surface-subtle);
@@ -1275,15 +1183,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       }
 
       @media (max-width: 760px) {
-        .table-toolbar {
-          align-items: stretch;
-          flex-direction: column;
-        }
-
-        .search-control {
-          width: 100%;
-        }
-
         .primary-button,
         .secondary-button,
         .danger-button {
