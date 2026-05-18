@@ -27,12 +27,12 @@ import type { ApiResponse, User } from '@emeltec/shared';
       @if (variant !== 'superadmin') {
         <div class="mb-8">
           <h3
-            class="mb-2 border-l-4 border-primary-container pl-4 text-sm font-semibold uppercase tracking-widest text-primary"
+            class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary"
           >
             Contactos
           </h3>
-          <p class="pl-4 text-sm text-slate-400">
-            Personal asociado a {{ selectedLabel || 'la division seleccionada' }}
+          <p class="text-sm text-slate-400">
+            Personal asociado a {{ selectedLabel || 'la división seleccionada' }}
           </p>
         </div>
       }
@@ -138,7 +138,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
             Sin contactos registrados
           </p>
           <p class="mt-2 max-w-md text-sm text-slate-400">
-            No hay personas asociadas a {{ selectedLabel || 'esta division' }} por ahora.
+            No hay personas asociadas a {{ selectedLabel || 'esta división' }} por ahora.
           </p>
         </div>
       }

@@ -34,7 +34,7 @@ function dateToUtcIsoEnd(date: string): string {
         class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
       >
         <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-violet-600">leaderboard</span>
+          <span class="material-symbols-outlined text-accent">leaderboard</span>
           <div>
             <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Rango</p>
             <p class="text-sm font-bold text-slate-700">{{ desde() }} → {{ hasta() }}</p>
@@ -48,7 +48,7 @@ function dateToUtcIsoEnd(date: string): string {
               min="2020-01-01"
               [value]="desde()"
               (change)="onDesde($event)"
-              class="h-8 rounded-lg border border-slate-200 px-2 outline-none focus:border-violet-300"
+              class="h-8 rounded-lg border border-slate-200 px-2 outline-none focus:border-accent/30"
             />
           </label>
           <label class="grid gap-0.5">
@@ -58,14 +58,14 @@ function dateToUtcIsoEnd(date: string): string {
               min="2020-01-01"
               [value]="hasta()"
               (change)="onHasta($event)"
-              class="h-8 rounded-lg border border-slate-200 px-2 outline-none focus:border-violet-300"
+              class="h-8 rounded-lg border border-slate-200 px-2 outline-none focus:border-accent/30"
             />
           </label>
           <button
             type="button"
             (click)="reload()"
             [disabled]="loading()"
-            class="rounded-lg bg-violet-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+            class="rounded-lg bg-accent-container px-3 py-1.5 text-[12px] font-bold text-white hover:bg-accent-deep disabled:opacity-50"
           >
             Aplicar
           </button>
@@ -153,7 +153,7 @@ function dateToUtcIsoEnd(date: string): string {
                       {{ fmt(v.min) }}{{ unidadSuffix(v.unidad) }}
                     </td>
                     <td
-                      class="px-3 py-2 text-right font-mono text-[12px] font-bold text-violet-700"
+                      class="px-3 py-2 text-right font-mono text-[12px] font-bold text-accent-container"
                     >
                       {{ fmt(v.avg) }}{{ unidadSuffix(v.unidad) }}
                     </td>

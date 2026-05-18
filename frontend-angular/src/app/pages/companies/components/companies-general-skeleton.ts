@@ -80,7 +80,7 @@ import { Component } from '@angular/core';
                   <div class="skeleton h-8 w-20 rounded-full"></div>
                   <div class="skeleton h-3 w-28 rounded-full"></div>
                 </div>
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/10">
                   <div class="skeleton h-5 w-5 rounded-lg"></div>
                 </div>
               </div>

@@ -35,6 +35,16 @@
   --color-secondary-container: #f8fafc;
   --color-outline-variant: #e2e8f0;
 
+  /* ─── Accent (violet) ───
+     Semantic role: valores manuales / calculados / análisis avanzado
+     (DGA modal "Datos manuales", tab Análisis, badges de origen manual,
+     dga-review admin inputs). Diferenciado del teal primary para que el
+     usuario distinga categoría sin tener que leer la etiqueta. */
+  --color-accent: #8b5cf6;
+  --color-accent-container: #7c3aed;
+  --color-accent-deep: #5b21b6;
+  --color-on-accent-container: #f5f3ff;
+
   /* ─── Status (DGA / monitoring) ─── */
   --color-success: #22c55e;
   --color-warning: #fbbf24;
