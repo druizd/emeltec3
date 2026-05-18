@@ -29,6 +29,7 @@ import {
 import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
+import { formatRutForStorage } from '../../utils/rut';
 import type { HistoryEquipoRow } from '../sites/types';
 import type { Periodicidad } from './schema';
 
@@ -77,7 +78,8 @@ export async function upsertInformanteService(input: {
   clave_informante?: string;
   referencia?: string | null;
 }): Promise<InformantePublic> {
-  const existing = await findInformanteByRut(input.rut);
+  const rut = formatRutForStorage(input.rut);
+  const existing = await findInformanteByRut(rut);
 
   let claveCifrada: string;
   if (input.clave_informante) {
@@ -92,7 +94,7 @@ export async function upsertInformanteService(input: {
   }
 
   const row = await upsertInformante({
-    rut: input.rut,
+    rut,
     clave_cifrada: claveCifrada,
     referencia: input.referencia === undefined ? (existing?.referencia ?? null) : input.referencia,
   });
@@ -100,7 +102,7 @@ export async function upsertInformanteService(input: {
 }
 
 export async function deleteInformanteService(rut: string): Promise<void> {
-  const ok = await deleteInformante(rut);
+  const ok = await deleteInformante(formatRutForStorage(rut));
   if (!ok) throw new NotFoundError('Informante no encontrado');
 }
 
@@ -160,6 +162,9 @@ export async function patchPozoDgaConfigService(
   // hora_inicio puede venir HH:MM (sin segundos); normalizo.
   if (input.dga_hora_inicio && input.dga_hora_inicio.length === 5) {
     input.dga_hora_inicio = `${input.dga_hora_inicio}:00`;
+  }
+  if (input.dga_informante_rut) {
+    input.dga_informante_rut = formatRutForStorage(input.dga_informante_rut);
   }
   const row = await patchPozoDgaConfig(siteId, input);
   if (!row) {

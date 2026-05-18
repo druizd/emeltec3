@@ -2,6 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const emailService = require('../services/emailService');
+const { formatRutForStorage } = require('../utils/rut');
 
 exports.getEmpresas = async (req, res, next) => {
   try {
@@ -49,7 +50,7 @@ exports.getAllUsers = async (req, res, next) => {
     }
 
     let query =
-      'SELECT id, nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id FROM usuario';
+      'SELECT id, nombre, apellido, rut_usuario, email, telefono, cargo, tipo, empresa_id, sub_empresa_id FROM usuario';
     const conditions = [];
     const params = [];
 
@@ -90,7 +91,17 @@ exports.getAllUsers = async (req, res, next) => {
 
 exports.createUser = async (req, res, next) => {
   try {
-    const { nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id } = req.body;
+    const {
+      nombre,
+      apellido,
+      rut_usuario,
+      email,
+      telefono,
+      cargo,
+      tipo,
+      empresa_id,
+      sub_empresa_id,
+    } = req.body;
     const currentUser = req.user;
 
     if (!nombre || !apellido || !email || !tipo) {
@@ -131,15 +142,17 @@ exports.createUser = async (req, res, next) => {
         : empresa_id || currentUser.empresa_id || null;
     const finalSubEmpresaId =
       currentUser.tipo === 'Gerente' ? currentUser.sub_empresa_id : sub_empresa_id || null;
+    const rutUsuario = rut_usuario === undefined ? null : formatRutForStorage(rut_usuario);
 
     const { rows } = await db.query(
-      `INSERT INTO usuario (id, nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id, otp_hash, otp_expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW() + INTERVAL '72 hours')
-       RETURNING id, nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id`,
+      `INSERT INTO usuario (id, nombre, apellido, rut_usuario, email, telefono, cargo, tipo, empresa_id, sub_empresa_id, otp_hash, otp_expires_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, NOW() + INTERVAL '72 hours')
+       RETURNING id, nombre, apellido, rut_usuario, email, telefono, cargo, tipo, empresa_id, sub_empresa_id`,
       [
         newId,
         nombre,
         apellido,
+        rutUsuario || null,
         email,
         telefono || null,
         cargo || null,

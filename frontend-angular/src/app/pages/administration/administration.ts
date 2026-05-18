@@ -23,6 +23,7 @@ import {
 import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
+import { formatRutInput } from '../../shared/rut';
 import { AdminPaginationComponent } from './components/admin-pagination';
 import { AdminFormActionsComponent } from './components/admin-form-actions';
 import { AdminSectionShellComponent } from './components/admin-section-shell';
@@ -493,8 +494,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         name="company-rut"
                         [ngModel]="companyForm().rut"
                         (ngModelChange)="updateCompanyForm('rut', $event)"
+                        inputmode="text"
+                        maxlength="12"
                         class="field-control"
-                        placeholder="76000000-0"
+                        placeholder="76.000.000-0"
                       />
                     </div>
                     <div>
@@ -637,8 +640,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         name="sub-company-rut"
                         [ngModel]="subCompanyForm().rut"
                         (ngModelChange)="updateSubCompanyForm('rut', $event)"
+                        inputmode="text"
+                        maxlength="12"
                         class="field-control"
-                        placeholder="76000000-0"
+                        placeholder="76.000.000-0"
                       />
                     </div>
                     <div class="flex flex-wrap gap-2 lg:col-span-3">
@@ -1415,11 +1420,17 @@ export class AdministrationComponent implements OnInit {
   }
 
   updateCompanyForm(field: keyof CompanyForm, value: string): void {
-    this.companyForm.update((form) => ({ ...form, [field]: value }));
+    this.companyForm.update((form) => ({
+      ...form,
+      [field]: field === 'rut' ? formatRutInput(value) : value,
+    }));
   }
 
   updateSubCompanyForm(field: keyof SubCompanyForm, value: string): void {
-    this.subCompanyForm.update((form) => ({ ...form, [field]: value }));
+    this.subCompanyForm.update((form) => ({
+      ...form,
+      [field]: field === 'rut' ? formatRutInput(value) : value,
+    }));
   }
 
   updateSiteForm(field: keyof SiteForm, value: string): void {
@@ -1607,7 +1618,7 @@ export class AdministrationComponent implements OnInit {
     this.companyEditMode.set(false);
     this.companyForm.set({
       nombre: company.nombre,
-      rut: company.rut,
+      rut: formatRutInput(company.rut),
       tipo_empresa: company.tipo_empresa || 'Agua',
     });
   }
@@ -1737,7 +1748,7 @@ export class AdministrationComponent implements OnInit {
     this.subCompanyForm.set({
       empresa_id: subCompany.empresa_id,
       nombre: subCompany.nombre,
-      rut: subCompany.rut,
+      rut: formatRutInput(subCompany.rut),
     });
   }
 
@@ -2342,8 +2353,17 @@ export class AdministrationComponent implements OnInit {
   }
 
   private setHierarchy(hierarchy: CompanyNode[]): void {
-    this.hierarchy.set(hierarchy);
-    this.companyService.hierarchy.set(hierarchy);
+    const formattedHierarchy = hierarchy.map((company) => ({
+      ...company,
+      rut: formatRutInput(company.rut),
+      subCompanies: company.subCompanies.map((subCompany) => ({
+        ...subCompany,
+        rut: formatRutInput(subCompany.rut),
+      })),
+    }));
+
+    this.hierarchy.set(formattedHierarchy);
+    this.companyService.hierarchy.set(formattedHierarchy);
   }
 
   private seedSelections(): void {

@@ -2,6 +2,7 @@
  * Schemas Zod para módulo DGA — modelo redesign 2026-05-17.
  */
 import { z } from 'zod';
+import { formatRutForStorage } from '../../utils/rut';
 
 export const Periodicidad = z.enum(['hora', 'dia', 'semana', 'mes']);
 export type Periodicidad = z.infer<typeof Periodicidad>;
@@ -9,12 +10,22 @@ export type Periodicidad = z.infer<typeof Periodicidad>;
 export const DgaTransport = z.enum(['off', 'shadow', 'rest']);
 export type DgaTransport = z.infer<typeof DgaTransport>;
 
+const RutPayload = z
+  .string()
+  .transform((value) => formatRutForStorage(value))
+  .refine((value) => value.length > 0, 'rut requerido')
+  .refine((value) => value.length <= 20, 'rut maximo 20 caracteres');
+
+const NullableRutPayload = z
+  .union([RutPayload, z.literal('').transform(() => null), z.null()])
+  .optional();
+
 // ============================================================================
 // Informantes (pool global)
 // ============================================================================
 
 export const UpsertInformantePayload = z.object({
-  rut: z.string().trim().min(1, 'rut requerido').max(20),
+  rut: RutPayload,
   /** Opcional en update si solo se cambia referencia. Required en create. */
   clave_informante: z.string().min(1).max(200).optional(),
   referencia: z.string().trim().max(150).nullable().optional(),
@@ -46,7 +57,7 @@ export const PatchPozoDgaConfigPayload = z
       .regex(/^\d{2}:\d{2}(:\d{2})?$/, 'hora_inicio debe ser HH:MM o HH:MM:SS')
       .nullable()
       .optional(),
-    dga_informante_rut: z.string().trim().max(20).nullable().optional(),
+    dga_informante_rut: NullableRutPayload,
     dga_max_retry_attempts: z.number().int().min(1).max(30).optional(),
     dga_auto_accept_fallback_hours: z.number().int().min(0).max(720).nullable().optional(),
   })
