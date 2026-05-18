@@ -67,138 +67,84 @@ interface MetricOption {
   imports: [CommonModule, RouterLink, VentisquerosFloorMapComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden" style="background: #F0F2F5;">
+    <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       <!-- Site header -->
-      <div
-        style="border-top: 1px solid #E2E8F0; border-bottom: 2px solid #0DAFBD; background: #F8FAFC;"
-        class="flex flex-wrap items-center gap-3 px-5 py-2.5"
-      >
-        <div
-          class="flex h-[38px] w-[38px] shrink-0 items-center justify-center"
-          style="border-radius: 9px; background: rgba(99,102,241,0.10); border: 1px solid rgba(99,102,241,0.25);"
-        >
-          <span class="material-symbols-outlined text-[18px]" style="color: #6366F1;">factory</span>
+      <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
+        <div class="vs-module-icon flex h-[38px] w-[38px] shrink-0 items-center justify-center">
+          <span class="material-symbols-outlined text-[18px] text-[#6366F1]">factory</span>
         </div>
         <div>
-          <div
-            style="font-family: 'Josefin Sans'; font-size: 16px; font-weight: 700; color: #1E293B; letter-spacing: 0.02em; line-height: 1.1;"
-          >
-            Ventisqueros · Planta Castro
-          </div>
-          <div style="font-size: 11px; color: #94A3B8; margin-top: 2px;">
+          <div class="vs-site-title">Ventisqueros · Planta Castro</div>
+          <div class="vs-site-subtitle">
             Variables de Proceso · {{ sensors().length }} sensores THM activos
           </div>
         </div>
         <div class="ml-3 flex gap-1.5">
-          <div
-            class="flex items-center gap-1"
-            style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 6px; padding: 4px 8px; font-size: 11px; font-weight: 500; color: #16A34A;"
-          >
-            <span
-              style="width: 6px; height: 6px; border-radius: 50%; background: #22C55E; display: inline-block;"
-            ></span>
+          <div class="vs-chip-live flex items-center gap-1">
+            <span class="vs-chip-live-dot"></span>
             En vivo
           </div>
-          <div
-            class="flex items-center gap-1"
-            style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: #2563EB;"
-          >
+          <div class="vs-chip-time flex items-center gap-1">
             <span class="material-symbols-outlined text-[10px]">schedule</span>
             {{ nowLabel() }}
           </div>
         </div>
         <div class="ml-auto flex flex-wrap items-center gap-1.5">
-          <span style="font-size: 12px; color: #94A3B8;">Desde</span>
-          <div
-            class="flex items-center gap-[5px]"
-            style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: #475569;"
-          >
+          <span class="vs-range-label">Desde</span>
+          <div class="vs-range-chip flex items-center gap-[5px]">
             <span class="material-symbols-outlined text-[12px]">calendar_today</span>
             {{ rangeFrom }}
           </div>
-          <span style="font-size: 12px; color: #94A3B8;">Hasta</span>
-          <div
-            class="flex items-center gap-[5px]"
-            style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: #475569;"
-          >
+          <span class="vs-range-label">Hasta</span>
+          <div class="vs-range-chip flex items-center gap-[5px]">
             <span class="material-symbols-outlined text-[12px]">calendar_today</span>
             {{ rangeTo }}
           </div>
-          <button
-            style="background: #0DAFBD; border: none; border-radius: 4px; padding: 5px 14px; font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; font-family: 'Josefin Sans'; letter-spacing: 0.08em; text-transform: uppercase;"
-          >
-            Aplicar
-          </button>
+          <button class="vs-apply-btn">Aplicar</button>
         </div>
       </div>
 
       <!-- Sub-tabs -->
-      <div
-        class="flex shrink-0 items-center gap-0"
-        style="background: #FFFFFF; border-bottom: 1px solid #E2E8F0; padding: 0 20px;"
-      >
+      <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
         @for (t of subTabs(); track t.key) {
           <button
-            class="flex items-center gap-1.5"
-            style="padding: 12px 14px; font-size: 13px; font-weight: 500; background: none; border: none; cursor: pointer; font-family: 'DM Sans';"
-            [style.color]="activeTab() === t.key ? '#0899A5' : '#64748B'"
-            [style.border-bottom]="
-              activeTab() === t.key ? '2px solid #0DAFBD' : '2px solid transparent'
-            "
+            class="vs-tab-btn flex items-center gap-1.5"
+            [class.vs-tab-btn--active]="activeTab() === t.key"
             (click)="activeTab.set(t.key)"
           >
             <span class="material-symbols-outlined text-[13px]">{{ t.icon }}</span>
             {{ t.label }}
             @if (t.badge) {
-              <span
-                style="margin-left: 4px; font-family: 'JetBrains Mono'; font-size: 10px; font-weight: 700; background: #EF4444; color: #fff; border-radius: 999px; padding: 1px 6px;"
-                >{{ t.badge }}</span
-              >
+              <span class="vs-tab-badge">{{ t.badge }}</span>
             }
           </button>
         }
         <div class="flex-1"></div>
         <div class="flex items-center gap-2">
-          <span style="font-size: 11px; color: #94A3B8; font-family: 'JetBrains Mono';">
-            <span
-              style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #22C55E; margin-right: 5px; vertical-align: middle;"
-            ></span>
+          <span class="vs-live-indicator">
+            <span class="vs-live-indicator-dot"></span>
             En vivo · hace 0:32
           </span>
         </div>
       </div>
 
       <!-- Scrollable content -->
-      <div
-        class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
-        style="padding: 14px 18px 18px;"
-      >
+      <div class="vs-content min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
         @if (activeTab() === 'general') {
           <!-- Title strip -->
           <div class="mb-3 flex flex-wrap items-end justify-between gap-3.5">
             <div>
-              <div
-                style="font-family: 'Josefin Sans'; font-size: 22px; font-weight: 700; color: #1E293B; letter-spacing: 0.02em; line-height: 1.1;"
-              >
-                Monitoreo de Cámaras
-              </div>
-              <div style="font-size: 12px; color: #64748B; margin-top: 4px;">
+              <div class="vs-h1">Monitoreo de Cámaras</div>
+              <div class="vs-h1-sub">
                 Temperatura, humedad relativa y alertas térmicas en vivo
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <div
-                class="flex gap-[2px]"
-                style="background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 10px; padding: 3px;"
-              >
+              <div class="vs-metric-toggle flex gap-[2px]">
                 @for (o of metricOptions; track o.v) {
                   <button
-                    class="flex items-center gap-1.5"
-                    style="padding: 6px 12px; border: none; border-radius: 7px; font-family: 'DM Sans'; font-size: 12px; cursor: pointer; transition: all 0.12s;"
-                    [style.background]="metric() === o.v ? '#FFFFFF' : 'transparent'"
-                    [style.color]="metric() === o.v ? '#0899A5' : '#64748B'"
-                    [style.font-weight]="metric() === o.v ? 600 : 500"
-                    [style.box-shadow]="metric() === o.v ? '0 1px 3px rgba(15,23,42,0.10)' : 'none'"
+                    class="vs-metric-btn flex items-center gap-1.5"
+                    [class.vs-metric-btn--active]="metric() === o.v"
                     (click)="metric.set(o.v)"
                   >
                     <span class="material-symbols-outlined text-[13px]">{{ o.icon }}</span>
@@ -206,10 +152,7 @@ interface MetricOption {
                   </button>
                 }
               </div>
-              <button
-                class="inline-flex items-center gap-[5px]"
-                style="padding: 7px 12px; border-radius: 8px; background: #FFFFFF; border: 1px solid #E2E8F0; font-family: 'DM Sans'; font-size: 12px; color: #475569; cursor: pointer;"
-              >
+              <button class="vs-ghost-btn inline-flex items-center gap-[5px]">
                 <span class="material-symbols-outlined text-[13px]">download</span>
                 Exportar
               </button>
@@ -219,40 +162,22 @@ interface MetricOption {
           <!-- Alert banner -->
           @if (alerts().length) {
             <div class="mb-3">
-              <div
-                class="relative flex items-center gap-3.5 overflow-hidden"
-                style="
-                background: linear-gradient(90deg, rgba(239,68,68,0.10) 0%, rgba(239,68,68,0.04) 80%);
-                border: 1px solid rgba(239,68,68,0.30);
-                border-radius: 12px;
-                padding: 10px 14px;
-              "
-              >
-                <div class="relative shrink-0" style="width: 28px; height: 28px;">
-                  <div
-                    style="position: absolute; inset: 0; border-radius: 50%; background: rgba(239,68,68,0.18); animation: vsPulse 1.6s ease-out infinite;"
-                  ></div>
-                  <div
-                    class="flex items-center justify-center text-white"
-                    style="position: absolute; inset: 6px; border-radius: 50%; background: #EF4444;"
-                  >
+              <div class="vs-alert-banner relative flex items-center gap-3.5 overflow-hidden">
+                <div class="vs-alert-icon relative shrink-0">
+                  <div class="vs-alert-icon-pulse"></div>
+                  <div class="vs-alert-icon-core flex items-center justify-center text-white">
                     <span class="material-symbols-outlined text-[10px]">warning</span>
                   </div>
                 </div>
                 <div class="min-w-0 flex-1">
-                  <div
-                    style="font-family: 'Josefin Sans'; font-size: 13px; font-weight: 700; color: #991B1B; letter-spacing: 0.02em;"
-                  >
+                  <div class="vs-alert-title">
                     {{ alerts().length }}
                     {{ alerts().length === 1 ? 'alerta activa' : 'alertas activas' }}
                   </div>
-                  <div style="font-size: 12px; color: #7F1D1D; opacity: 0.85; margin-top: 1px;">
+                  <div class="vs-alert-body">
                     Variables fuera de rango detectadas en
                     @for (a of alertSnippet(); track a.id; let last = $last) {
-                      <button
-                        style="background: transparent; border: none; padding: 0; color: #7F1D1D; cursor: pointer; font-weight: 600; text-decoration: underline dotted; font-family: inherit; font-size: inherit;"
-                        (click)="selectedId.set(a.id)"
-                      >
+                      <button class="vs-alert-link" (click)="selectedId.set(a.id)">
                         {{ a.area }} ({{ a.id }})</button
                       >{{ last ? '' : ', ' }}
                     }
@@ -263,16 +188,10 @@ interface MetricOption {
                 </div>
                 <div class="flex gap-1.5">
                   @for (a of alerts().slice(0, 4); track a.id) {
-                    <span
-                      style="font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 600; background: #FFFFFF; color: #B91C1C; border: 1px solid rgba(239,68,68,0.25); border-radius: 6px; padding: 3px 7px;"
-                      >{{ a.id }}</span
-                    >
+                    <span class="vs-alert-chip">{{ a.id }}</span>
                   }
                 </div>
-                <button
-                  class="flex items-center gap-1.5"
-                  style="background: #EF4444; border: none; border-radius: 6px; padding: 6px 12px; color: #fff; font-family: 'DM Sans'; font-size: 12px; font-weight: 600; cursor: pointer;"
-                >
+                <button class="vs-alert-btn flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-[11px]">notifications_active</span>
                   Ver eventos
                 </button>
@@ -281,20 +200,17 @@ interface MetricOption {
           }
 
           <!-- KPI strip -->
-          <div
-            class="mb-3.5 grid gap-2.5"
-            style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));"
-          >
+          <div class="vs-kpi-grid mb-3.5 grid gap-2.5">
             @for (k of kpis(); track k.label) {
               <div
-                class="relative overflow-hidden"
-                style="border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0;"
+                class="vs-kpi-card relative overflow-hidden"
+                [class.vs-kpi-card--highlight]="k.highlight"
                 [style.background]="
                   k.highlight
                     ? 'linear-gradient(135deg, ' + k.accentBg + ' 0%, #FFFFFF 75%)'
                     : '#FFFFFF'
                 "
-                [style.border]="'1px solid ' + (k.highlight ? k.accent + '55' : '#E2E8F0')"
+                [style.border-color]="k.highlight ? k.accent + '55' : '#E2E8F0'"
                 [style.box-shadow]="
                   k.highlight
                     ? '0 0 0 1px ' + k.accent + '1A, 0 2px 10px rgba(15,23,42,0.05)'
@@ -303,10 +219,9 @@ interface MetricOption {
               >
                 <div class="flex items-center gap-1.5">
                   <div
-                    class="flex shrink-0 items-center justify-center"
-                    style="width: 22px; height: 22px; border-radius: 6px;"
+                    class="vs-kpi-icon flex shrink-0 items-center justify-center"
                     [style.background]="k.accentBg"
-                    [style.border]="'1px solid ' + k.accent + '33'"
+                    [style.border-color]="k.accent + '33'"
                   >
                     <span class="material-symbols-outlined text-[12px]" [style.color]="k.accent">{{
                       k.icon
@@ -315,29 +230,20 @@ interface MetricOption {
                   <div class="vs-kpi-label truncate">{{ k.label }}</div>
                 </div>
                 <div class="mt-[2px] flex items-baseline gap-1">
-                  <span
-                    style="font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums;"
-                    [style.color]="k.accent"
-                    >{{ k.value }}</span
-                  >
+                  <span class="vs-kpi-value" [style.color]="k.accent">{{ k.value }}</span>
                   @if (k.unit) {
-                    <span style="font-family: 'JetBrains Mono'; font-size: 12px; color: #64748B;">{{
-                      k.unit
-                    }}</span>
+                    <span class="vs-kpi-unit">{{ k.unit }}</span>
                   }
                 </div>
                 @if (k.sub) {
-                  <div style="font-size: 11px; color: #94A3B8; margin-top: 2px;">{{ k.sub }}</div>
+                  <div class="vs-kpi-sub">{{ k.sub }}</div>
                 }
               </div>
             }
           </div>
 
           <!-- Map + sensor rail -->
-          <div
-            class="grid gap-3"
-            style="grid-template-columns: minmax(0, 1fr) 320px; height: min(760px, calc(100vh - 360px)); min-height: 540px;"
-          >
+          <div class="vs-map-grid grid gap-3">
             <app-ventisqueros-floor-map
               [sensors]="sensors()"
               [metric]="metric()"
@@ -348,68 +254,41 @@ interface MetricOption {
             ></app-ventisqueros-floor-map>
 
             <!-- Sensor rail -->
-            <div
-              class="flex h-full min-w-0 shrink-0 flex-col gap-3 overflow-hidden"
-              style="width: 320px; min-width: 320px;"
-            >
+            <div class="vs-rail flex h-full min-w-0 shrink-0 flex-col gap-3 overflow-hidden">
               @if (focusSensor(); as focus) {
-                <div
-                  class="shrink-0"
-                  style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px 14px 12px; box-shadow: 0 2px 10px rgba(15,23,42,0.05);"
-                >
+                <div class="vs-focus-card shrink-0">
                   <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
                       <div class="flex items-center gap-1.5">
-                        <span
-                          style="font-family: 'JetBrains Mono'; font-size: 11px; font-weight: 600; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 4px; padding: 2px 6px; color: #475569;"
-                          >{{ focus.id }}</span
-                        >
-                        <span
-                          style="font-family: 'Josefin Sans'; font-size: 10px; font-weight: 700; color: #0899A5; background: rgba(13,175,189,0.10); border-radius: 4px; padding: 2px 6px; letter-spacing: 0.06em; border: 1px solid rgba(13,175,189,0.25);"
-                          >{{ focus.tap }}</span
-                        >
+                        <span class="vs-id-chip">{{ focus.id }}</span>
+                        <span class="vs-tap-chip">{{ focus.tap }}</span>
                         @if (focus.alerted) {
-                          <span
-                            style="font-family: 'Josefin Sans'; font-size: 10px; font-weight: 700; color: #B91C1C; background: rgba(239,68,68,0.10); border-radius: 4px; padding: 2px 6px; border: 1px solid rgba(239,68,68,0.25); letter-spacing: 0.06em;"
-                            >EN ALERTA</span
-                          >
+                          <span class="vs-alert-mini-chip">EN ALERTA</span>
                         }
                       </div>
-                      <div
-                        style="font-family: 'Josefin Sans'; font-size: 17px; font-weight: 700; color: #1E293B; margin-top: 6px; letter-spacing: 0.02em;"
-                      >
-                        {{ focus.area }}
-                      </div>
+                      <div class="vs-focus-area">{{ focus.area }}</div>
                     </div>
-                    <button
-                      class="flex"
-                      style="background: none; border: 1px solid #E2E8F0; border-radius: 6px; padding: 4px; cursor: pointer; color: #64748B;"
-                    >
+                    <button class="vs-focus-open-btn flex">
                       <span class="material-symbols-outlined text-[13px]">open_in_new</span>
                     </button>
                   </div>
 
                   <div class="mt-3 grid grid-cols-2 gap-2.5">
-                    <div
-                      style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px;"
-                    >
+                    <div class="vs-stat-card">
                       <div class="vs-stat-label">Temperatura</div>
                       <div class="mt-1 flex items-baseline gap-[3px]">
                         <span
-                          style="font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; line-height: 1;"
+                          class="vs-stat-value"
                           [style.color]="focus.alerted ? '#B91C1C' : '#1E293B'"
                           >{{ focus.t.toFixed(1) }}</span
                         >
-                        <span
-                          style="font-family: 'JetBrains Mono'; font-size: 12px; color: #64748B;"
-                          >°C</span
-                        >
+                        <span class="vs-stat-unit">°C</span>
                       </div>
                       <div class="mt-1.5">
                         <svg
                           [attr.width]="120"
                           [attr.height]="28"
-                          style="display: block; overflow: visible;"
+                          class="vs-spark-svg"
                         >
                           <defs>
                             <linearGradient
@@ -454,64 +333,39 @@ interface MetricOption {
                         </svg>
                       </div>
                     </div>
-                    <div
-                      style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 10px;"
-                    >
+                    <div class="vs-stat-card">
                       <div class="vs-stat-label">Humedad</div>
                       <div class="mt-1 flex items-baseline gap-[3px]">
-                        <span
-                          style="font-family: 'JetBrains Mono'; font-size: 22px; font-weight: 700; color: #1E293B; line-height: 1;"
-                          >{{ focus.h }}</span
-                        >
-                        <span
-                          style="font-family: 'JetBrains Mono'; font-size: 12px; color: #64748B;"
-                          >%</span
-                        >
+                        <span class="vs-stat-value text-[#1E293B]">{{ focus.h }}</span>
+                        <span class="vs-stat-unit">%</span>
                       </div>
-                      <div
-                        style="margin-top: 8px; height: 6px; background: #E2E8F0; border-radius: 999px; overflow: hidden;"
-                      >
+                      <div class="vs-h-bar-track">
                         <div
-                          style="height: 100%; border-radius: 999px;"
+                          class="vs-h-bar-fill"
                           [style.width]="focus.h + '%'"
                           [style.background]="humBarGradient(focus.h)"
                         ></div>
                       </div>
-                      <div
-                        class="mt-1 flex justify-between"
-                        style="font-size: 9px; color: #94A3B8; font-family: 'JetBrains Mono';"
-                      >
+                      <div class="vs-h-bar-scale mt-1 flex justify-between">
                         <span>40%</span><span>100%</span>
                       </div>
                     </div>
                   </div>
 
-                  <div
-                    class="mt-2.5 flex items-center justify-between pt-2.5"
-                    style="border-top: 1px dashed #E2E8F0; font-size: 11px; color: #64748B;"
-                  >
+                  <div class="vs-focus-footer mt-2.5 flex items-center justify-between pt-2.5">
                     <span class="flex items-center gap-1">
                       <span class="material-symbols-outlined text-[11px]">schedule</span>
                       hace 32 s
                     </span>
-                    <span style="font-family: 'JetBrains Mono'; font-size: 11px;"
-                      >Base: {{ fmtTemp(focus.baseT) }}</span
-                    >
+                    <span class="vs-focus-base">Base: {{ fmtTemp(focus.baseT) }}</span>
                   </div>
                 </div>
               }
 
-              <div
-                class="flex min-h-0 flex-1 flex-col gap-1 overflow-hidden"
-                style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 12px 10px;"
-              >
-                <div class="flex items-center justify-between" style="padding: 0 4px 4px;">
-                  <div
-                    style="font-family: 'Josefin Sans'; font-size: 12px; font-weight: 700; color: #1E293B; letter-spacing: 0.04em;"
-                  >
-                    TAP
-                  </div>
-                  <span style="font-size: 10px; color: #94A3B8; font-family: 'JetBrains Mono';">
+              <div class="vs-tap-panel flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
+                <div class="vs-tap-panel-head flex items-center justify-between">
+                  <div class="vs-tap-panel-title">TAP</div>
+                  <span class="vs-tap-panel-meta">
                     {{ sensors().length }} sensores · {{ taps.length }} TAP
                   </span>
                 </div>
@@ -519,26 +373,22 @@ interface MetricOption {
                   @for (tap of taps; track tap) {
                     @if ((groupedSensors()[tap] || []).length > 0) {
                       <div class="mb-2">
-                        <div
-                          class="flex items-center justify-between"
-                          style="padding: 6px 8px 4px; font-size: 10px; font-weight: 700; color: #94A3B8; letter-spacing: 0.1em; text-transform: uppercase;"
-                        >
+                        <div class="vs-tap-group-head flex items-center justify-between">
                           <span>{{ tap }}</span>
-                          <span style="font-family: 'JetBrains Mono'; color: #CBD5E1;">
+                          <span class="vs-tap-group-count">
                             {{ groupedSensors()[tap]?.length || 0 }}
                           </span>
                         </div>
                         <div class="flex flex-col gap-[2px]">
                           @for (s of groupedSensors()[tap] || []; track s.id) {
                             <div
-                              class="grid cursor-pointer items-center gap-2.5"
-                              style="grid-template-columns: 8px 1fr auto; padding: 8px 10px; border-radius: 8px; transition: background 0.12s, border-color 0.12s;"
+                              class="vs-sensor-row grid cursor-pointer items-center gap-2.5"
                               [style.background]="rowBg(s)"
                               [style.border]="rowBorder(s)"
                               (click)="selectedId.set(s.id)"
                             >
                               <span
-                                style="width: 8px; height: 8px; border-radius: 50%;"
+                                class="vs-sensor-dot"
                                 [style.background]="
                                   metric() === 'H' ? humColor(s.h) : tempColor(s.t)
                                 "
@@ -550,35 +400,22 @@ interface MetricOption {
                                 <div class="flex items-center gap-1.5">
                                   <span class="vs-id-chip">{{ s.id }}</span>
                                   @if (s.alerted) {
-                                    <span
-                                      class="inline-flex items-center gap-[3px] rounded border border-[rgba(239,68,68,0.25)] bg-[rgba(239,68,68,0.10)] px-[5px] py-px text-[9.5px] font-bold tracking-[0.04em] text-[#B91C1C]"
-                                    >
-                                      <span
-                                        style="width: 5px; height: 5px; border-radius: 50%; background: #EF4444; animation: vsPulse 1.4s ease-out infinite;"
-                                      ></span>
+                                    <span class="vs-sensor-alert-chip inline-flex items-center gap-[3px]">
+                                      <span class="vs-sensor-alert-dot"></span>
                                       ALERTA
                                     </span>
                                   }
                                 </div>
-                                <div
-                                  class="truncate"
-                                  style="font-family: 'DM Sans'; font-size: 12.5px; color: #1E293B; margin-top: 2px;"
-                                >
-                                  {{ s.area }}
-                                </div>
+                                <div class="vs-sensor-area truncate">{{ s.area }}</div>
                               </div>
                               <div class="text-right">
                                 <div
-                                  style="font-family: 'JetBrains Mono'; font-size: 13px; font-weight: 700; line-height: 1;"
+                                  class="vs-sensor-temp"
                                   [style.color]="s.alerted ? '#B91C1C' : '#1E293B'"
                                 >
                                   {{ fmtTemp(s.t) }}
                                 </div>
-                                <div
-                                  style="font-family: 'JetBrains Mono'; font-size: 10.5px; color: #64748B; margin-top: 2px;"
-                                >
-                                  {{ fmtHum(s.h) }}
-                                </div>
+                                <div class="vs-sensor-hum">{{ fmtHum(s.h) }}</div>
                               </div>
                             </div>
                           }
@@ -592,30 +429,22 @@ interface MetricOption {
           </div>
 
           <!-- Sensor visibility panel -->
-          <div
-            class="mt-3.5"
-            style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; box-shadow: 0 1px 4px rgba(15,23,42,0.04);"
-          >
+          <div class="vs-visibility mt-3.5">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div>
-                <div
-                  style="font-family: 'Josefin Sans'; font-size: 14px; font-weight: 700; color: #1E293B; letter-spacing: 0.02em;"
-                >
-                  Visibilidad en plano
-                </div>
-                <div style="font-size: 11px; color: #94A3B8; margin-top: 2px;">
+                <div class="vs-visibility-title">Visibilidad en plano</div>
+                <div class="vs-visibility-sub">
                   Oculta sensores individuales o grupos completos (TAP) sin perder su lectura
                 </div>
               </div>
               <div class="flex items-center gap-1.5">
-                <span style="font-size: 11px; color: #64748B; font-family: 'JetBrains Mono';">
+                <span class="vs-visibility-count">
                   {{ sensors().length - hiddenSensors().size }}/{{ sensors().length }} visibles
                 </span>
                 <button
                   (click)="showAll()"
                   [disabled]="hiddenSensors().size === 0"
-                  class="flex items-center gap-1"
-                  style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 5px 10px; font-size: 11px; color: #475569; font-family: 'DM Sans'; cursor: pointer;"
+                  class="vs-visibility-btn flex items-center gap-1"
                   [style.opacity]="hiddenSensors().size === 0 ? 0.5 : 1"
                 >
                   <span class="material-symbols-outlined text-[12px]">visibility</span>
@@ -624,8 +453,7 @@ interface MetricOption {
                 <button
                   (click)="hideAll()"
                   [disabled]="hiddenSensors().size === sensors().length"
-                  class="flex items-center gap-1"
-                  style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 5px 10px; font-size: 11px; color: #475569; font-family: 'DM Sans'; cursor: pointer;"
+                  class="vs-visibility-btn flex items-center gap-1"
                   [style.opacity]="hiddenSensors().size === sensors().length ? 0.5 : 1"
                 >
                   <span class="material-symbols-outlined text-[12px]">visibility_off</span>
@@ -634,39 +462,23 @@ interface MetricOption {
               </div>
             </div>
 
-            <div
-              class="grid gap-2.5"
-              style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));"
-            >
+            <div class="vs-tap-card-grid grid gap-2.5">
               @for (tap of taps; track tap) {
                 @if ((groupedSensors()[tap] || []).length > 0) {
-                  <div
-                    style="border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; background: #FFFFFF;"
-                  >
-                    <button
-                      (click)="toggleTap(tap)"
-                      class="flex w-full items-center justify-between gap-2"
-                      style="padding: 10px 12px; background: #F8FAFC; border: none; border-bottom: 1px solid #E2E8F0; cursor: pointer; font-family: 'DM Sans';"
-                    >
+                  <div class="vs-tap-card-wrap">
+                    <button (click)="toggleTap(tap)" class="vs-tap-card-head flex w-full items-center justify-between gap-2">
                       <div class="flex items-center gap-2">
                         <span
-                          style="width: 10px; height: 10px; border-radius: 50%;"
+                          class="vs-tap-color-dot"
                           [style.background]="tapColors[tap]"
                           [style.box-shadow]="'0 0 0 3px ' + tapColors[tap] + '22'"
                         ></span>
-                        <span
-                          style="font-family: 'Josefin Sans'; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #1E293B;"
-                          >{{ tap }}</span
-                        >
-                        <span
-                          style="font-family: 'JetBrains Mono'; font-size: 10px; color: #94A3B8;"
-                          >{{ (groupedSensors()[tap] || []).length }} sensores</span
-                        >
+                        <span class="vs-tap-card-title">{{ tap }}</span>
+                        <span class="vs-tap-card-meta">
+                          {{ (groupedSensors()[tap] || []).length }} sensores
+                        </span>
                       </div>
-                      <span
-                        class="flex items-center gap-1"
-                        style="font-size: 11px; color: #475569;"
-                      >
+                      <span class="vs-tap-card-toggle flex items-center gap-1">
                         <span
                           class="material-symbols-outlined text-[16px]"
                           [style.color]="
@@ -687,7 +499,7 @@ interface MetricOption {
                         </span>
                       </span>
                     </button>
-                    <div class="flex flex-col" style="padding: 6px;">
+                    <div class="vs-tap-card-body flex flex-col">
                       @for (s of groupedSensors()[tap] || []; track s.id) {
                         <label
                           class="vs-row flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
@@ -695,25 +507,16 @@ interface MetricOption {
                         >
                           <input
                             type="checkbox"
+                            class="vs-check"
                             [checked]="!isSensorHidden(s.id)"
                             (change)="toggleSensor(s.id)"
-                            style="width: 14px; height: 14px; accent-color: #0DAFBD; cursor: pointer;"
                           />
                           <span class="vs-id-chip">{{ s.id }}</span>
-                          <span
-                            class="flex-1 truncate"
-                            style="font-family: 'DM Sans'; font-size: 12px; color: #1E293B;"
-                            >{{ s.area }}</span
-                          >
+                          <span class="vs-check-area flex-1 truncate">{{ s.area }}</span>
                           @if (s.alerted) {
-                            <span
-                              style="width: 6px; height: 6px; border-radius: 50%; background: #EF4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.25);"
-                            ></span>
+                            <span class="vs-check-alert-dot"></span>
                           }
-                          <span
-                            style="font-family: 'JetBrains Mono'; font-size: 10.5px; color: #64748B;"
-                            >{{ fmtTemp(s.t) }}</span
-                          >
+                          <span class="vs-check-temp">{{ fmtTemp(s.t) }}</span>
                         </label>
                       }
                     </div>
@@ -728,12 +531,7 @@ interface MetricOption {
           <!-- TAPS view: compact, site-card pattern, navegable -->
           <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2
-                class="text-slate-800"
-                style="font-family: 'Josefin Sans'; font-size: 22px; font-weight: 700; letter-spacing: 0.02em; line-height: 1.1;"
-              >
-                Concentradores TAP
-              </h2>
+              <h2 class="vs-h1 text-slate-800">Concentradores TAP</h2>
               <p class="mt-1 text-[12px] text-slate-500">
                 {{ taps.length }} instalaciones · {{ sensors().length }} sensores THM · click para
                 ver detalle
@@ -751,15 +549,12 @@ interface MetricOption {
             </div>
           </div>
 
-          <div
-            class="grid gap-3"
-            style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));"
-          >
+          <div class="vs-taps-grid grid gap-3">
             @for (t of tapAggregates(); track t.tap) {
               <button
                 type="button"
                 [routerLink]="['/ventisqueros/tap', t.tap.replace(' ', '-')]"
-                class="group flex w-full cursor-pointer flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
+                class="vs-tap-summary group flex w-full cursor-pointer flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
                 [style.border-color]="t.alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
                 [style.box-shadow]="
                   t.alerts > 0
@@ -779,12 +574,7 @@ interface MetricOption {
                       }}</span>
                     </div>
                     <div class="min-w-0">
-                      <h3
-                        class="truncate font-bold text-slate-800"
-                        style="font-family: 'Josefin Sans'; font-size: 15px; letter-spacing: 0.02em;"
-                      >
-                        {{ t.tap }}
-                      </h3>
+                      <h3 class="vs-tap-summary-title truncate text-slate-800">{{ t.tap }}</h3>
                       <p class="truncate text-[11px] text-slate-400">
                         @if (t.count === 0) {
                           Concentrador maestro
@@ -803,28 +593,21 @@ interface MetricOption {
 
                 <div class="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
                   <div>
-                    <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">
-                      Prom.
-                    </p>
-                    <p
-                      class="text-slate-800"
-                      style="font-family: 'JetBrains Mono'; font-size: 14px; font-weight: 700;"
-                    >
+                    <p class="vs-stat-mini-label">Prom.</p>
+                    <p class="vs-stat-mini-val text-slate-800">
                       {{ t.avgT }}<span class="text-[10px] text-slate-500">°C</span>
                     </p>
                   </div>
                   <div>
-                    <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Mín</p>
-                    <p
-                      style="font-family: 'JetBrains Mono'; font-size: 14px; font-weight: 700; color: #0DAFBD;"
-                    >
+                    <p class="vs-stat-mini-label">Mín</p>
+                    <p class="vs-stat-mini-val text-primary">
                       {{ t.minT }}<span class="text-[10px] text-slate-500">°C</span>
                     </p>
                   </div>
                   <div>
-                    <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400">Máx</p>
+                    <p class="vs-stat-mini-label">Máx</p>
                     <p
-                      style="font-family: 'JetBrains Mono'; font-size: 14px; font-weight: 700;"
+                      class="vs-stat-mini-val"
                       [style.color]="t.alerts > 0 ? '#EF4444' : '#475569'"
                     >
                       {{ t.maxT }}<span class="text-[10px] text-slate-500">°C</span>
@@ -845,10 +628,7 @@ interface MetricOption {
                     <span
                       class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600"
                     >
-                      <span
-                        class="inline-block h-1.5 w-1.5 rounded-full bg-rose-500"
-                        style="animation: vsPulse 1.4s ease-out infinite;"
-                      ></span>
+                      <span class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"></span>
                       {{ t.alerts }} en alerta
                     </span>
                   } @else {
@@ -860,9 +640,7 @@ interface MetricOption {
                     </span>
                   }
                   @if (t.count > 0) {
-                    <span class="text-[10px] text-slate-400" style="font-family: 'JetBrains Mono';">
-                      HR {{ t.avgH }}%
-                    </span>
+                    <span class="vs-tap-summary-hr text-slate-400">HR {{ t.avgH }}%</span>
                   }
                 </div>
               </button>
@@ -897,7 +675,639 @@ interface MetricOption {
         }
       }
 
-      /* Repeated chip/label patterns extracted for parity with Emeltec tokens. */
+      :host {
+        display: block;
+        height: 100%;
+      }
+
+      /* Layout shell */
+      .vs-page {
+        background: #f0f2f5;
+      }
+      .vs-site-header {
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 2px solid var(--color-primary);
+        background: #f8fafc;
+      }
+      .vs-module-icon {
+        border-radius: 9px;
+        background: rgba(99, 102, 241, 0.1);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+      }
+      .vs-site-title {
+        font-family: var(--font-josefin);
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+        line-height: 1.1;
+      }
+      .vs-site-subtitle {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+      .vs-chip-live {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 11px;
+        font-weight: 500;
+        color: #16a34a;
+      }
+      .vs-chip-live-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #22c55e;
+        display: inline-block;
+      }
+      .vs-chip-time {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 11px;
+        color: #2563eb;
+      }
+      .vs-range-label {
+        font-size: 12px;
+        color: #94a3b8;
+      }
+      .vs-range-chip {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 12px;
+        color: #475569;
+      }
+      .vs-apply-btn {
+        background: var(--color-primary);
+        border: none;
+        border-radius: 4px;
+        padding: 5px 14px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        font-family: var(--font-josefin);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: background 0.12s ease;
+      }
+      .vs-apply-btn:hover {
+        background: var(--color-primary-container);
+      }
+
+      /* Sub-tabs */
+      .vs-tabs-bar {
+        background: #ffffff;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 0 20px;
+      }
+      .vs-tab-btn {
+        padding: 12px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+        font-family: var(--font-body);
+        color: #64748b;
+        transition: color 0.12s ease, border-color 0.12s ease;
+      }
+      .vs-tab-btn--active {
+        color: var(--color-primary-container);
+        border-bottom-color: var(--color-primary);
+      }
+      .vs-tab-badge {
+        margin-left: 4px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        background: #ef4444;
+        color: #fff;
+        border-radius: 999px;
+        padding: 1px 6px;
+      }
+      .vs-live-indicator {
+        font-size: 11px;
+        color: #94a3b8;
+        font-family: var(--font-mono);
+      }
+      .vs-live-indicator-dot {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #22c55e;
+        margin-right: 5px;
+        vertical-align: middle;
+      }
+
+      /* Content */
+      .vs-content {
+        padding: 14px 18px 18px;
+      }
+      .vs-h1 {
+        font-family: var(--font-josefin);
+        font-size: 22px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+        line-height: 1.1;
+      }
+      .vs-h1-sub {
+        font-size: 12px;
+        color: #64748b;
+        margin-top: 4px;
+      }
+
+      /* Metric toggle */
+      .vs-metric-toggle {
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 3px;
+      }
+      .vs-metric-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 7px;
+        font-family: var(--font-body);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.12s;
+        background: transparent;
+        color: #64748b;
+        font-weight: 500;
+      }
+      .vs-metric-btn--active {
+        background: #ffffff;
+        color: var(--color-primary-container);
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+      }
+      .vs-ghost-btn {
+        padding: 7px 12px;
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        font-family: var(--font-body);
+        font-size: 12px;
+        color: #475569;
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .vs-ghost-btn:hover {
+        background: #f8fafc;
+      }
+
+      /* Alert banner */
+      .vs-alert-banner {
+        background: linear-gradient(
+          90deg,
+          rgba(239, 68, 68, 0.1) 0%,
+          rgba(239, 68, 68, 0.04) 80%
+        );
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 12px;
+        padding: 10px 14px;
+      }
+      .vs-alert-icon {
+        width: 28px;
+        height: 28px;
+      }
+      .vs-alert-icon-pulse {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: rgba(239, 68, 68, 0.18);
+        animation: vsPulse 1.6s ease-out infinite;
+      }
+      .vs-alert-icon-core {
+        position: absolute;
+        inset: 6px;
+        border-radius: 50%;
+        background: #ef4444;
+      }
+      .vs-alert-title {
+        font-family: var(--font-josefin);
+        font-size: 13px;
+        font-weight: 600;
+        color: #991b1b;
+        letter-spacing: 0.02em;
+      }
+      .vs-alert-body {
+        font-size: 12px;
+        color: #7f1d1d;
+        opacity: 0.85;
+        margin-top: 1px;
+      }
+      .vs-alert-link {
+        background: transparent;
+        border: none;
+        padding: 0;
+        color: #7f1d1d;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: underline dotted;
+        font-family: inherit;
+        font-size: inherit;
+      }
+      .vs-alert-chip {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        background: #ffffff;
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 6px;
+        padding: 3px 7px;
+      }
+      .vs-alert-btn {
+        background: #ef4444;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        color: #fff;
+        font-family: var(--font-body);
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .vs-alert-btn:hover {
+        background: #dc2626;
+      }
+
+      /* KPI strip */
+      .vs-kpi-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+      .vs-kpi-card {
+        border-radius: 12px;
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+      }
+      .vs-kpi-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        border: 1px solid transparent;
+      }
+      .vs-kpi-value {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 600;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .vs-kpi-unit {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #64748b;
+      }
+      .vs-kpi-sub {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+
+      /* Map + rail */
+      .vs-map-grid {
+        grid-template-columns: minmax(0, 1fr) 320px;
+        height: min(760px, calc(100vh - 360px));
+        min-height: 540px;
+      }
+      .vs-rail {
+        width: 320px;
+        min-width: 320px;
+      }
+
+      /* Focus card */
+      .vs-focus-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px 14px 12px;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.05);
+      }
+      .vs-tap-chip {
+        font-family: var(--font-josefin);
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--color-primary-container);
+        background: rgba(13, 175, 189, 0.1);
+        border-radius: 4px;
+        padding: 2px 6px;
+        letter-spacing: 0.06em;
+        border: 1px solid rgba(13, 175, 189, 0.25);
+      }
+      .vs-alert-mini-chip {
+        font-family: var(--font-josefin);
+        font-size: 10px;
+        font-weight: 600;
+        color: #b91c1c;
+        background: rgba(239, 68, 68, 0.1);
+        border-radius: 4px;
+        padding: 2px 6px;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        letter-spacing: 0.06em;
+      }
+      .vs-focus-area {
+        font-family: var(--font-josefin);
+        font-size: 17px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-top: 6px;
+        letter-spacing: 0.02em;
+      }
+      .vs-focus-open-btn {
+        background: none;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 4px;
+        cursor: pointer;
+        color: #64748b;
+        transition: background 0.12s ease;
+      }
+      .vs-focus-open-btn:hover {
+        background: #f8fafc;
+      }
+      .vs-stat-card {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 10px;
+      }
+      .vs-stat-value {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 600;
+        line-height: 1;
+      }
+      .vs-stat-unit {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #64748b;
+      }
+      .vs-spark-svg {
+        display: block;
+        overflow: visible;
+      }
+      .vs-h-bar-track {
+        margin-top: 8px;
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .vs-h-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+      }
+      .vs-h-bar-scale {
+        font-size: 9px;
+        color: #94a3b8;
+        font-family: var(--font-mono);
+      }
+      .vs-focus-footer {
+        border-top: 1px dashed #e2e8f0;
+        font-size: 11px;
+        color: #64748b;
+      }
+      .vs-focus-base {
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+
+      /* TAP panel (rail) */
+      .vs-tap-panel {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 10px;
+      }
+      .vs-tap-panel-head {
+        padding: 0 4px 4px;
+      }
+      .vs-tap-panel-title {
+        font-family: var(--font-josefin);
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.04em;
+      }
+      .vs-tap-panel-meta {
+        font-size: 10px;
+        color: #94a3b8;
+        font-family: var(--font-mono);
+      }
+      .vs-tap-group-head {
+        padding: 6px 8px 4px;
+        font-size: 10px;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+      .vs-tap-group-count {
+        font-family: var(--font-mono);
+        color: #cbd5e1;
+      }
+      .vs-sensor-row {
+        grid-template-columns: 8px 1fr auto;
+        padding: 8px 10px;
+        border-radius: 8px;
+        transition: background 0.12s, border-color 0.12s;
+      }
+      .vs-sensor-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+      .vs-sensor-alert-chip {
+        border-radius: 4px;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        background: rgba(239, 68, 68, 0.1);
+        padding: 1px 5px;
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #b91c1c;
+      }
+      .vs-sensor-alert-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #ef4444;
+        animation: vsPulse 1.4s ease-out infinite;
+      }
+      .vs-sensor-area {
+        font-family: var(--font-body);
+        font-size: 12.5px;
+        color: #1e293b;
+        margin-top: 2px;
+      }
+      .vs-sensor-temp {
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1;
+      }
+      .vs-sensor-hum {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+
+      /* Visibility panel */
+      .vs-visibility {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+      }
+      .vs-visibility-title {
+        font-family: var(--font-josefin);
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .vs-visibility-sub {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+      .vs-visibility-count {
+        font-size: 11px;
+        color: #64748b;
+        font-family: var(--font-mono);
+      }
+      .vs-visibility-btn {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 11px;
+        color: #475569;
+        font-family: var(--font-body);
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+      .vs-visibility-btn:hover:not(:disabled) {
+        background: #f8fafc;
+      }
+
+      /* TAP card grid (visibility) */
+      .vs-tap-card-grid {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+      .vs-tap-card-wrap {
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+      .vs-tap-card-head {
+        padding: 10px 12px;
+        background: #f8fafc;
+        border: none;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        font-family: var(--font-body);
+      }
+      .vs-tap-color-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+      .vs-tap-card-title {
+        font-family: var(--font-josefin);
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #1e293b;
+      }
+      .vs-tap-card-meta {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: #94a3b8;
+      }
+      .vs-tap-card-toggle {
+        font-size: 11px;
+        color: #475569;
+      }
+      .vs-tap-card-body {
+        padding: 6px;
+      }
+      .vs-check {
+        width: 14px;
+        height: 14px;
+        accent-color: var(--color-primary);
+        cursor: pointer;
+      }
+      .vs-check-area {
+        font-family: var(--font-body);
+        font-size: 12px;
+        color: #1e293b;
+      }
+      .vs-check-alert-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #ef4444;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+      }
+      .vs-check-temp {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        color: #64748b;
+      }
+
+      /* TAPS tab grid */
+      .vs-taps-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      }
+      .vs-tap-summary-title {
+        font-family: var(--font-josefin);
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .vs-stat-mini-label {
+        font-size: 9px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #94a3b8;
+      }
+      .vs-stat-mini-val {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .vs-pulse-dot {
+        animation: vsPulse 1.4s ease-out infinite;
+      }
+      .vs-tap-summary-hr {
+        font-size: 10px;
+        font-family: var(--font-mono);
+      }
+
+      /* Reusable chips/labels */
       .vs-id-chip {
         font-family: var(--font-mono);
         font-size: 10.5px;
@@ -908,25 +1318,22 @@ interface MetricOption {
         padding: 1px 5px;
         color: #475569;
       }
-
       .vs-kpi-label {
         font-family: var(--font-body);
         font-size: 10px;
-        font-weight: 700;
+        font-weight: 600;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: #94a3b8;
       }
-
       .vs-stat-label {
         font-family: var(--font-body);
         font-size: 9px;
-        font-weight: 700;
+        font-weight: 600;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         color: #94a3b8;
       }
-
       .vs-placeholder {
         height: 320px;
         background: #ffffff;
@@ -936,9 +1343,16 @@ interface MetricOption {
         font-family: var(--font-body);
         font-size: 13px;
       }
-
       .vs-row:hover {
         background: #f8fafc;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .vs-alert-icon-pulse,
+        .vs-sensor-alert-dot,
+        .vs-pulse-dot {
+          animation: none !important;
+        }
       }
     `,
   ],
