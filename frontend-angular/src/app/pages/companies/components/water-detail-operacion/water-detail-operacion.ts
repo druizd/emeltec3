@@ -336,7 +336,9 @@ interface RealtimeChartPoint {
                   <div class="rounded-2xl p-4 shadow-sm" [class]="turnoGradiente(i)">
                     <div class="flex items-start justify-between gap-1">
                       <div>
-                        <p class="text-[10px] font-semibold uppercase tracking-widest text-white/80">
+                        <p
+                          class="text-[10px] font-semibold uppercase tracking-widest text-white/80"
+                        >
                           {{ turno.nombre }}
                         </p>
                         <p class="mt-0.5 text-[10px] text-white/50">{{ turno.horario }}</p>

@@ -194,10 +194,8 @@ export async function patchEquipo(
 }
 
 export async function deleteEquipo(id: number): Promise<boolean> {
-  const r = await query(
-    `DELETE FROM sitio_equipo WHERE id = $1`,
-    [id],
-    { name: 'bitacora__delete_equipo' },
-  );
+  const r = await query(`DELETE FROM sitio_equipo WHERE id = $1`, [id], {
+    name: 'bitacora__delete_equipo',
+  });
   return (r.rowCount ?? 0) > 0;
 }

@@ -15,9 +15,9 @@ import { Component } from '@angular/core';
       <span class="material-symbols-outlined text-[36px] text-slate-300">auto_awesome</span>
       <h3 class="text-base font-semibold text-slate-700">Predictivo en diseño</h3>
       <p class="max-w-md text-[13px] text-slate-500">
-        Forecast de caudal, nivel freático y vencimiento de garantías. Requiere
-        evaluación de modelos (regresión simple para series cortas, ARIMA / LSTM para
-        históricos largos). Pendiente decisión técnica.
+        Forecast de caudal, nivel freático y vencimiento de garantías. Requiere evaluación de
+        modelos (regresión simple para series cortas, ARIMA / LSTM para históricos largos).
+        Pendiente decisión técnica.
       </p>
     </div>
   `,

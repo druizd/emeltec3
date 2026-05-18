@@ -268,8 +268,9 @@ async function main() {
       }
       const site = await siteRepo.getSiteById(siteId);
       const pozoConfig = await siteRepo.getPozoConfigBySiteId(siteId);
-      const obra = (pozoConfig && pozoConfig.obra_dga ? pozoConfig.obra_dga.trim() : '') ||
-                   (site ? site.descripcion : codigoObra);
+      const obra =
+        (pozoConfig && pozoConfig.obra_dga ? pozoConfig.obra_dga.trim() : '') ||
+        (site ? site.descripcion : codigoObra);
       userResolved = { site_id: siteId, obra };
       console.log(`[import] sitio resuelto: id=${siteId}`);
       console.log(`[import] obra (denormalizada): ${userResolved.obra}`);

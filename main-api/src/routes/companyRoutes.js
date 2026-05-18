@@ -24,10 +24,7 @@ try {
   );
 } catch (err) {
   if (err && err.code !== 'MODULE_NOT_FOUND') {
-    console.warn(
-      '[companyRoutes] No se pudo cargar siteOperacionConfig controller:',
-      err.message,
-    );
+    console.warn('[companyRoutes] No se pudo cargar siteOperacionConfig controller:', err.message);
   }
 }
 

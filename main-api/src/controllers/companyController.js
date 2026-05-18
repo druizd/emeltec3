@@ -296,7 +296,9 @@ async function upsertPozoConfig(client, siteId, rawConfig = {}) {
 
   const profPozo = hasProfPozo ? parseOptionalNumber(source.profundidad_pozo_m) : null;
   const profSensor = hasProfSensor ? parseOptionalNumber(source.profundidad_sensor_m) : null;
-  const nivelEstatico = hasNivelEstatico ? parseOptionalNumber(source.nivel_estatico_manual_m) : null;
+  const nivelEstatico = hasNivelEstatico
+    ? parseOptionalNumber(source.nivel_estatico_manual_m)
+    : null;
   const obraDga = hasObraDga ? nullableString(source.obra_dga) : null;
   const slug = hasSlug ? nullableString(source.slug) : null;
 

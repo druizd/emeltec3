@@ -777,10 +777,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               @if (settingsLoading()) {
                 <div class="flex min-h-[360px] items-center justify-center bg-slate-50/60">
                   <div class="text-center">
-                    <span class="material-symbols-outlined animate-spin text-[34px] text-primary-container"
+                    <span
+                      class="material-symbols-outlined animate-spin text-[34px] text-primary-container"
                       >progress_activity</span
                     >
-                    <p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <p
+                      class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                    >
                       Cargando configuracion
                     </p>
                   </div>
@@ -789,9 +792,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
                   <div class="space-y-4">
                     @if (isSettingsPozo()) {
-                      <section class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4">
+                      <section
+                        class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4"
+                      >
                         <div class="mb-4 flex items-start gap-3">
-                          <span class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
+                          <span
+                            class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
                             >water_drop</span
                           >
                           <div>
@@ -1073,17 +1079,22 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </div>
                         </div>
                         <p class="text-[10px] text-slate-400">
-                          Fórmula: <span class="font-mono">resultado = raw × factor / divisor + offset</span>.
-                          Usá divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
+                          Fórmula:
+                          <span class="font-mono">resultado = raw × factor / divisor + offset</span
+                          >. Usá divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
                         </p>
                       }
 
-                      <div class="rounded-lg border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-3">
+                      <div
+                        class="rounded-lg border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-3"
+                      >
                         <div class="mb-3 flex items-center gap-2">
                           <span class="material-symbols-outlined text-[18px] text-primary-container"
                             >calculate</span
                           >
-                          <h3 class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-container">
+                          <h3
+                            class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-container"
+                          >
                             Calculadora de prueba (vista previa)
                           </h3>
                         </div>
@@ -1158,7 +1169,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     <div
                       class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
                     >
-                      <h3 class="text-sm font-semibold text-slate-900">Datos detectados del equipo</h3>
+                      <h3 class="text-sm font-semibold text-slate-900">
+                        Datos detectados del equipo
+                      </h3>
                       <p class="text-xs font-semibold text-slate-400">
                         {{ siteVariables().variables.length }} variables
                       </p>
@@ -1358,7 +1371,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
-                    <tr class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <tr
+                      class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400"
+                    >
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
                       <th class="px-4 py-3">NIVEL</th>
@@ -1373,7 +1388,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       >
                         <td class="px-4 py-3">
                           <span class="inline-flex items-center gap-2">
-                            <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0"></span>
+                            <span
+                              class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0"
+                            ></span>
                             {{ row.fecha }}
                           </span>
                         </td>
@@ -1456,7 +1473,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                      <p
+                        class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                      >
                         Último envío aceptado
                       </p>
                     </div>
@@ -1475,11 +1494,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                      <p
+                        class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                      >
                         Último envío aceptado
                       </p>
                     </div>
-                    <p class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800">
+                    <p
+                      class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800"
+                    >
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
                     <span class="truncate font-mono text-[10px] text-slate-500">{{ comp }}</span>
@@ -1515,9 +1538,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   Tasa de éxito
                 </p>
                 <p
-                  [class]="
-                    'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
-                  "
+                  [class]="'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text"
                 >
                   {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                 </p>
@@ -1545,7 +1566,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <article
                   class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
-                  <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p
+                    class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
+                  >
                     Diagrama del pozo
                   </p>
 
@@ -2195,7 +2218,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                       >
                         @for (month of monthlyFlowMonths(); track $index) {
-                          <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+                          <div
+                            class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
+                          >
                             <div
                               class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-[11px] font-semibold text-white shadow-lg group-hover:block"
                             >
@@ -2252,7 +2277,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
                 </article>
 
-                <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <article
+                  class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                >
                   <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
@@ -2385,7 +2412,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 [style.background]="getDgaStatusColor(report.estado)"
                               ></span>
                               {{ report.estado }}
-                              <span class="material-symbols-outlined text-[13px]">chevron_right</span>
+                              <span class="material-symbols-outlined text-[13px]"
+                                >chevron_right</span
+                              >
                             </button>
                             @if (
                               report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
@@ -2521,7 +2550,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left: presets + months -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -2536,7 +2567,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
-                        <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"></span>
+                        <span
+                          class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"
+                        ></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2695,7 +2728,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left panel: presets + month selector -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -2710,7 +2745,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       "
                     >
                       @if (downloadSelectedPreset() === preset.id) {
-                        <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"></span>
+                        <span
+                          class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"
+                        ></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2798,7 +2835,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <!-- Data types -->
-                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Datos a incluir
                 </p>
                 <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -2818,7 +2857,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <!-- Format -->
-                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Formato de archivo
                 </p>
                 <div class="flex gap-2">
@@ -3512,11 +3553,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
     const t = this.dgaTasaExito();
     if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
-    if (t >= 100) return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
-    if (t >= 90) return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+    if (t >= 100)
+      return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
+    if (t >= 90)
+      return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
     if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
     if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
-    if (t >= 40) return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
+    if (t >= 40)
+      return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
     return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
   });
 
@@ -4361,9 +4405,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         : new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
       const to = this.dgaDateTo() ? this.toChileEndIso(this.dgaDateTo()) : new Date().toISOString();
       // Lee de dato_dga (pipeline nuevo) — trae estatus real + comprobante SNIA.
-      const rows = await firstValueFrom(
-        this.dgaService.consultarDatoBySite(siteId, from, to),
-      );
+      const rows = await firstValueFrom(this.dgaService.consultarDatoBySite(siteId, from, to));
       this.dgaReportRows.set(rows.map((r, i) => this.datoDgaToRow(r, i)));
     } catch {
       this.dgaReportRows.set([]);
@@ -4421,7 +4463,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     d.setUTCDate(d.getUTCDate() + 1);
     return new Date(d.getTime() - 1).toISOString();
   }
-
 
   private createDgaReportRow(
     id: string,

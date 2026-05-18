@@ -8,9 +8,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   template: `
     <div class="flex items-start justify-between gap-3">
       <div>
-        <p
-          class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container"
-        >
+        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
           {{ selected() ? selectedLabel() : newLabel() }}
         </p>
         <p class="mt-1 text-sm text-slate-500">
@@ -18,11 +16,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
         </p>
       </div>
       @if (selected()) {
-        <button
-          type="button"
-          (click)="createNew.emit()"
-          class="admin-section-header__btn"
-        >
+        <button type="button" (click)="createNew.emit()" class="admin-section-header__btn">
           <span class="material-symbols-outlined text-[18px]">add</span>
           {{ buttonLabel() }}
         </button>

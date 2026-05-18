@@ -236,14 +236,14 @@ export class AlertasHistoricoComponent {
     if (s === 'critica') return 'bg-rose-50 text-rose-600';
     if (s === 'alta') return 'bg-orange-50 text-orange-600';
     if (s === 'media') return 'bg-amber-50 text-amber-600';
-    return "bg-slate-100 text-slate-500";
+    return 'bg-slate-100 text-slate-500';
   }
 
   severidadDotClass(s: AlertaSeveridad): string {
     if (s === 'critica') return 'bg-rose-500';
     if (s === 'alta') return 'bg-orange-500';
     if (s === 'media') return 'bg-amber-500';
-    return "bg-slate-400";
+    return 'bg-slate-400';
   }
 
   filtroClass(key: HistoricoFiltro): string {

@@ -449,7 +449,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             @if (loading()) {
               <section class="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
                 <div class="flex items-center gap-3 text-sm font-bold text-slate-500">
-                  <span class="material-symbols-outlined animate-spin text-[22px] text-primary-container"
+                  <span
+                    class="material-symbols-outlined animate-spin text-[22px] text-primary-container"
                     >progress_activity</span
                   >
                   Cargando administracion
@@ -458,510 +459,525 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             } @else {
               @if (activeSection() === 'empresas') {
                 <app-admin-section-shell title="Empresas padre">
-                    <form
-                      (submit)="submitCompany($event)"
-                      class="editor-panel grid gap-4 lg:grid-cols-3"
-                    >
-                      <div class="lg:col-span-3">
-                        <app-admin-section-header
-                          [selected]="!!selectedCompanyId()"
-                          selectedLabel="Empresa seleccionada"
-                          newLabel="Nueva empresa"
-                          selectedHint="Presiona editar datos para habilitar cambios."
-                          newHint="Completa los datos para crear una empresa."
-                          (createNew)="startCreateCompany()"
-                        ></app-admin-section-header>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
-                        <input
-                          required
-                          [disabled]="companyFormDisabled()"
-                          name="company-name"
-                          [ngModel]="companyForm().nombre"
-                          (ngModelChange)="updateCompanyForm('nombre', $event)"
-                          class="field-control"
-                          placeholder="Empresa padre"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
-                        <input
-                          required
-                          [disabled]="companyFormDisabled()"
-                          name="company-rut"
-                          [ngModel]="companyForm().rut"
-                          (ngModelChange)="updateCompanyForm('rut', $event)"
-                          class="field-control"
-                          placeholder="76000000-0"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
-                        <select
-                          name="company-type"
-                          [disabled]="companyFormDisabled()"
-                          [ngModel]="companyForm().tipo_empresa"
-                          (ngModelChange)="updateCompanyForm('tipo_empresa', $event)"
-                          class="field-control"
-                        >
-                          <option value="Agua">Agua</option>
-                          <option value="Eléctrico">Eléctrico</option>
-                          <option value="Industrial">Industrial</option>
-                          <option value="Cliente">Cliente</option>
-                        </select>
-                      </div>
-                      <div class="flex flex-wrap gap-2 lg:col-span-3">
-                        <app-admin-form-actions
-                          [selected]="!!selectedCompanyId()"
-                          [editMode]="companyEditMode()"
-                          [busy]="busyAction()"
-                          createKey="company"
-                          updateKey="company-update"
-                          deleteKey="company-delete"
-                          createLabel="Crear empresa"
-                          createIcon="domain_add"
-                          entityLabel="empresa"
-                          (enableEdit)="enableCompanyEdit()"
-                          (cancelEdit)="cancelCompanyEdit()"
-                          (remove)="deleteSelectedCompany()"
-                        ></app-admin-form-actions>
-                      </div>
-                    </form>
-
-                    <div class="table-card">
-                      <app-admin-table-toolbar
-                        title="Empresas registradas"
-                        [countLabel]="filteredCompanies().length + ' de ' + hierarchy().length + ' visibles'"
-                        [searchValue]="companySearch()"
-                        placeholder="Buscar empresa, RUT o tipo"
-                        (searchChange)="updateCompanySearch($event)"
-                      ></app-admin-table-toolbar>
-
-                      <div class="overflow-x-auto">
-                        <table class="min-w-[680px] w-full text-left text-sm">
-                          <thead class="table-head">
-                            <tr>
-                              <th class="px-4 py-3">Nombre</th>
-                              <th class="px-4 py-3">RUT</th>
-                              <th class="px-4 py-3">Tipo</th>
-                              <th class="px-4 py-3 text-right">Sitios</th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-slate-100">
-                            @for (company of paginatedCompanies(); track company.id) {
-                              <tr
-                                (click)="selectCompany(company.id)"
-                                [class]="rowClass(selectedCompanyId() === company.id)"
-                              >
-                                <td class="px-4 py-3 font-bold text-slate-800">
-                                  {{ company.nombre }}
-                                </td>
-                                <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
-                                <td class="px-4 py-3">
-                                  <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
-                                    company.tipo_empresa
-                                  }}</span>
-                                </td>
-                                <td class="px-4 py-3 text-right font-bold text-slate-600">
-                                  {{ countCompanySites(company) }}
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                      <app-admin-pagination
-                        [total]="filteredCompanies().length"
-                        [page]="companyPage()"
-                        (pageChange)="setPage('empresas', $event)"
-                      ></app-admin-pagination>
+                  <form
+                    (submit)="submitCompany($event)"
+                    class="editor-panel grid gap-4 lg:grid-cols-3"
+                  >
+                    <div class="lg:col-span-3">
+                      <app-admin-section-header
+                        [selected]="!!selectedCompanyId()"
+                        selectedLabel="Empresa seleccionada"
+                        newLabel="Nueva empresa"
+                        selectedHint="Presiona editar datos para habilitar cambios."
+                        newHint="Completa los datos para crear una empresa."
+                        (createNew)="startCreateCompany()"
+                      ></app-admin-section-header>
                     </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
+                      <input
+                        required
+                        [disabled]="companyFormDisabled()"
+                        name="company-name"
+                        [ngModel]="companyForm().nombre"
+                        (ngModelChange)="updateCompanyForm('nombre', $event)"
+                        class="field-control"
+                        placeholder="Empresa padre"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
+                      <input
+                        required
+                        [disabled]="companyFormDisabled()"
+                        name="company-rut"
+                        [ngModel]="companyForm().rut"
+                        (ngModelChange)="updateCompanyForm('rut', $event)"
+                        class="field-control"
+                        placeholder="76000000-0"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
+                      <select
+                        name="company-type"
+                        [disabled]="companyFormDisabled()"
+                        [ngModel]="companyForm().tipo_empresa"
+                        (ngModelChange)="updateCompanyForm('tipo_empresa', $event)"
+                        class="field-control"
+                      >
+                        <option value="Agua">Agua</option>
+                        <option value="Eléctrico">Eléctrico</option>
+                        <option value="Industrial">Industrial</option>
+                        <option value="Cliente">Cliente</option>
+                      </select>
+                    </div>
+                    <div class="flex flex-wrap gap-2 lg:col-span-3">
+                      <app-admin-form-actions
+                        [selected]="!!selectedCompanyId()"
+                        [editMode]="companyEditMode()"
+                        [busy]="busyAction()"
+                        createKey="company"
+                        updateKey="company-update"
+                        deleteKey="company-delete"
+                        createLabel="Crear empresa"
+                        createIcon="domain_add"
+                        entityLabel="empresa"
+                        (enableEdit)="enableCompanyEdit()"
+                        (cancelEdit)="cancelCompanyEdit()"
+                        (remove)="deleteSelectedCompany()"
+                      ></app-admin-form-actions>
+                    </div>
+                  </form>
+
+                  <div class="table-card">
+                    <app-admin-table-toolbar
+                      title="Empresas registradas"
+                      [countLabel]="
+                        filteredCompanies().length + ' de ' + hierarchy().length + ' visibles'
+                      "
+                      [searchValue]="companySearch()"
+                      placeholder="Buscar empresa, RUT o tipo"
+                      (searchChange)="updateCompanySearch($event)"
+                    ></app-admin-table-toolbar>
+
+                    <div class="overflow-x-auto">
+                      <table class="min-w-[680px] w-full text-left text-sm">
+                        <thead class="table-head">
+                          <tr>
+                            <th class="px-4 py-3">Nombre</th>
+                            <th class="px-4 py-3">RUT</th>
+                            <th class="px-4 py-3">Tipo</th>
+                            <th class="px-4 py-3 text-right">Sitios</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                          @for (company of paginatedCompanies(); track company.id) {
+                            <tr
+                              (click)="selectCompany(company.id)"
+                              [class]="rowClass(selectedCompanyId() === company.id)"
+                            >
+                              <td class="px-4 py-3 font-bold text-slate-800">
+                                {{ company.nombre }}
+                              </td>
+                              <td class="px-4 py-3 text-slate-500">{{ company.rut }}</td>
+                              <td class="px-4 py-3">
+                                <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
+                                  company.tipo_empresa
+                                }}</span>
+                              </td>
+                              <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                {{ countCompanySites(company) }}
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <app-admin-pagination
+                      [total]="filteredCompanies().length"
+                      [page]="companyPage()"
+                      (pageChange)="setPage('empresas', $event)"
+                    ></app-admin-pagination>
+                  </div>
                 </app-admin-section-shell>
               }
 
               @if (activeSection() === 'subempresas') {
                 <app-admin-section-shell title="Subempresas">
-                    <form
-                      (submit)="submitSubCompany($event)"
-                      class="editor-panel grid gap-4 lg:grid-cols-3"
-                    >
-                      <div class="lg:col-span-3">
-                        <app-admin-section-header
-                          [selected]="!!selectedSubCompanyId()"
-                          selectedLabel="Subempresa seleccionada"
-                          newLabel="Nueva subempresa"
-                          selectedHint="Presiona editar datos para habilitar cambios."
-                          newHint="Completa los datos para crear una subempresa."
-                          (createNew)="startCreateSubCompany()"
-                        ></app-admin-section-header>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Empresa padre</label
-                        >
-                        <select
-                          required
-                          [disabled]="subCompanyFormDisabled()"
-                          name="sub-company-parent"
-                          [ngModel]="subCompanyForm().empresa_id"
-                          (ngModelChange)="updateSubCompanyForm('empresa_id', $event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona empresa</option>
-                          @for (company of hierarchy(); track company.id) {
-                            <option [value]="company.id">{{ company.nombre }}</option>
-                          }
-                        </select>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
-                        <input
-                          required
-                          [disabled]="subCompanyFormDisabled()"
-                          name="sub-company-name"
-                          [ngModel]="subCompanyForm().nombre"
-                          (ngModelChange)="updateSubCompanyForm('nombre', $event)"
-                          class="field-control"
-                          placeholder="Subempresa o faena"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
-                        <input
-                          required
-                          [disabled]="subCompanyFormDisabled()"
-                          name="sub-company-rut"
-                          [ngModel]="subCompanyForm().rut"
-                          (ngModelChange)="updateSubCompanyForm('rut', $event)"
-                          class="field-control"
-                          placeholder="76000000-0"
-                        />
-                      </div>
-                      <div class="flex flex-wrap gap-2 lg:col-span-3">
-                        <app-admin-form-actions
-                          [selected]="!!selectedSubCompanyId()"
-                          [editMode]="subCompanyEditMode()"
-                          [busy]="busyAction()"
-                          createKey="subcompany"
-                          updateKey="subcompany-update"
-                          deleteKey="subcompany-delete"
-                          createLabel="Crear subempresa"
-                          createIcon="add_business"
-                          entityLabel="subempresa"
-                          (enableEdit)="enableSubCompanyEdit()"
-                          (cancelEdit)="cancelSubCompanyEdit()"
-                          (remove)="deleteSelectedSubCompany()"
-                        ></app-admin-form-actions>
-                      </div>
-                    </form>
-
-                    <div class="table-card">
-                      <app-admin-table-toolbar
-                        title="Subempresas registradas"
-                        [countLabel]="filteredSubCompanies().length + ' de ' + allSubCompanies().length + ' visibles'"
-                        [searchValue]="subCompanySearch()"
-                        placeholder="Buscar subempresa, empresa o RUT"
-                        (searchChange)="updateSubCompanySearch($event)"
-                      ></app-admin-table-toolbar>
-
-                      <div class="overflow-x-auto">
-                        <table class="min-w-[760px] w-full text-left text-sm">
-                          <thead class="table-head">
-                            <tr>
-                              <th class="px-4 py-3">Nombre</th>
-                              <th class="px-4 py-3">Empresa</th>
-                              <th class="px-4 py-3">RUT</th>
-                              <th class="px-4 py-3 text-right">Sitios</th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-slate-100">
-                            @for (sub of paginatedSubCompanies(); track sub.id) {
-                              <tr
-                                (click)="selectSubCompany(sub.id)"
-                                [class]="rowClass(selectedSubCompanyId() === sub.id)"
-                              >
-                                <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
-                                <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
-                                <td class="px-4 py-3 text-right font-bold text-slate-600">
-                                  {{ sub.sites.length }}
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                      <app-admin-pagination
-                        [total]="filteredSubCompanies().length"
-                        [page]="subCompanyPage()"
-                        (pageChange)="setPage('subempresas', $event)"
-                      ></app-admin-pagination>
+                  <form
+                    (submit)="submitSubCompany($event)"
+                    class="editor-panel grid gap-4 lg:grid-cols-3"
+                  >
+                    <div class="lg:col-span-3">
+                      <app-admin-section-header
+                        [selected]="!!selectedSubCompanyId()"
+                        selectedLabel="Subempresa seleccionada"
+                        newLabel="Nueva subempresa"
+                        selectedHint="Presiona editar datos para habilitar cambios."
+                        newHint="Completa los datos para crear una subempresa."
+                        (createNew)="startCreateSubCompany()"
+                      ></app-admin-section-header>
                     </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                        >Empresa padre</label
+                      >
+                      <select
+                        required
+                        [disabled]="subCompanyFormDisabled()"
+                        name="sub-company-parent"
+                        [ngModel]="subCompanyForm().empresa_id"
+                        (ngModelChange)="updateSubCompanyForm('empresa_id', $event)"
+                        class="field-control"
+                      >
+                        <option value="" disabled>Selecciona empresa</option>
+                        @for (company of hierarchy(); track company.id) {
+                          <option [value]="company.id">{{ company.nombre }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
+                      <input
+                        required
+                        [disabled]="subCompanyFormDisabled()"
+                        name="sub-company-name"
+                        [ngModel]="subCompanyForm().nombre"
+                        (ngModelChange)="updateSubCompanyForm('nombre', $event)"
+                        class="field-control"
+                        placeholder="Subempresa o faena"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
+                      <input
+                        required
+                        [disabled]="subCompanyFormDisabled()"
+                        name="sub-company-rut"
+                        [ngModel]="subCompanyForm().rut"
+                        (ngModelChange)="updateSubCompanyForm('rut', $event)"
+                        class="field-control"
+                        placeholder="76000000-0"
+                      />
+                    </div>
+                    <div class="flex flex-wrap gap-2 lg:col-span-3">
+                      <app-admin-form-actions
+                        [selected]="!!selectedSubCompanyId()"
+                        [editMode]="subCompanyEditMode()"
+                        [busy]="busyAction()"
+                        createKey="subcompany"
+                        updateKey="subcompany-update"
+                        deleteKey="subcompany-delete"
+                        createLabel="Crear subempresa"
+                        createIcon="add_business"
+                        entityLabel="subempresa"
+                        (enableEdit)="enableSubCompanyEdit()"
+                        (cancelEdit)="cancelSubCompanyEdit()"
+                        (remove)="deleteSelectedSubCompany()"
+                      ></app-admin-form-actions>
+                    </div>
+                  </form>
+
+                  <div class="table-card">
+                    <app-admin-table-toolbar
+                      title="Subempresas registradas"
+                      [countLabel]="
+                        filteredSubCompanies().length +
+                        ' de ' +
+                        allSubCompanies().length +
+                        ' visibles'
+                      "
+                      [searchValue]="subCompanySearch()"
+                      placeholder="Buscar subempresa, empresa o RUT"
+                      (searchChange)="updateSubCompanySearch($event)"
+                    ></app-admin-table-toolbar>
+
+                    <div class="overflow-x-auto">
+                      <table class="min-w-[760px] w-full text-left text-sm">
+                        <thead class="table-head">
+                          <tr>
+                            <th class="px-4 py-3">Nombre</th>
+                            <th class="px-4 py-3">Empresa</th>
+                            <th class="px-4 py-3">RUT</th>
+                            <th class="px-4 py-3 text-right">Sitios</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                          @for (sub of paginatedSubCompanies(); track sub.id) {
+                            <tr
+                              (click)="selectSubCompany(sub.id)"
+                              [class]="rowClass(selectedSubCompanyId() === sub.id)"
+                            >
+                              <td class="px-4 py-3 font-bold text-slate-800">{{ sub.nombre }}</td>
+                              <td class="px-4 py-3 text-slate-500">{{ sub.companyName }}</td>
+                              <td class="px-4 py-3 text-slate-500">{{ sub.rut }}</td>
+                              <td class="px-4 py-3 text-right font-bold text-slate-600">
+                                {{ sub.sites.length }}
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <app-admin-pagination
+                      [total]="filteredSubCompanies().length"
+                      [page]="subCompanyPage()"
+                      (pageChange)="setPage('subempresas', $event)"
+                    ></app-admin-pagination>
+                  </div>
                 </app-admin-section-shell>
               }
 
               @if (activeSection() === 'sitios') {
                 <app-admin-section-shell title="Sitios">
-                    <form
-                      (submit)="submitSite($event)"
-                      class="editor-panel grid gap-4 lg:grid-cols-4"
-                    >
-                      <div class="lg:col-span-4">
-                        <app-admin-section-header
-                          [selected]="!!selectedSiteId()"
-                          selectedLabel="Sitio seleccionado"
-                          newLabel="Nuevo sitio"
-                          selectedHint="Selecciona editar datos para modificar este sitio."
-                          newHint="Completa los datos para crear un sitio."
-                          buttonLabel="Nuevo"
-                          (createNew)="startCreateSite()"
-                        ></app-admin-section-header>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Empresa padre</label
-                        >
-                        <select
-                          required
-                          [disabled]="siteFormDisabled()"
-                          name="site-company"
-                          [ngModel]="siteForm().empresa_id"
-                          (ngModelChange)="selectCompanyForSite($event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona empresa</option>
-                          @for (company of hierarchy(); track company.id) {
-                            <option [value]="company.id">{{ company.nombre }}</option>
-                          }
-                        </select>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Subempresa</label
-                        >
-                        <select
-                          required
-                          [disabled]="siteFormDisabled()"
-                          name="site-subcompany"
-                          [ngModel]="siteForm().sub_empresa_id"
-                          (ngModelChange)="updateSiteForm('sub_empresa_id', $event)"
-                          class="field-control"
-                        >
-                          <option value="" disabled>Selecciona subempresa</option>
-                          @for (sub of subCompaniesForSiteForm(); track sub.id) {
-                            <option [value]="sub.id">{{ sub.nombre }}</option>
-                          }
-                        </select>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Tipo de instalacion</label
-                        >
-                        <select
-                          name="site-type"
-                          [disabled]="siteFormDisabled()"
-                          [ngModel]="siteForm().tipo_sitio"
-                          (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
-                          class="field-control"
-                        >
-                          @for (type of siteTypeOptions(); track type.id) {
-                            <option [value]="type.id">{{ type.label }}</option>
-                          }
-                        </select>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Estado</label>
-                        <select
-                          name="site-active"
-                          [disabled]="siteFormDisabled()"
-                          [ngModel]="siteForm().activo ? 'true' : 'false'"
-                          (ngModelChange)="updateSiteActive($event)"
-                          class="field-control"
-                        >
-                          <option value="true">Activo</option>
-                          <option value="false">Inactivo</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Nombre del sitio</label
-                        >
-                        <input
-                          required
-                          [disabled]="siteFormDisabled()"
-                          name="site-description"
-                          [ngModel]="siteForm().descripcion"
-                          (ngModelChange)="updateSiteForm('descripcion', $event)"
-                          class="field-control"
-                          placeholder="Pozo, planta o instalacion"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Serial del equipo</label
-                        >
-                        <input
-                          required
-                          [disabled]="siteFormDisabled()"
-                          name="site-serial"
-                          [ngModel]="siteForm().id_serial"
-                          (ngModelChange)="updateSiteForm('id_serial', $event)"
-                          class="field-control"
-                          placeholder="151.20.43.6"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Ubicacion</label>
-                        <input
-                          name="site-location"
-                          [disabled]="siteFormDisabled()"
-                          [ngModel]="siteForm().ubicacion"
-                          (ngModelChange)="updateSiteForm('ubicacion', $event)"
-                          class="field-control"
-                          placeholder="Ciudad, faena o coordenadas"
-                        />
-                      </div>
-                      <div class="lg:col-span-4 flex flex-wrap gap-2">
-                        <app-admin-form-actions
-                          [selected]="!!selectedSiteId()"
-                          [editMode]="siteEditMode()"
-                          [busy]="busyAction()"
-                          createKey="site"
-                          updateKey="site-update"
-                          deleteKey="site-delete"
-                          createLabel="Crear sitio"
-                          createIcon="add_location_alt"
-                          entityLabel="sitio"
-                          (enableEdit)="enableSiteEdit()"
-                          (cancelEdit)="cancelSiteEdit()"
-                          (remove)="deleteSelectedSite()"
-                        ></app-admin-form-actions>
-                      </div>
-                      @if (selectedSiteId() && !siteEditMode()) {
-                        <div
-                          class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 lg:col-span-4"
-                        >
-                          {{
-                            selectedSite()?.ubicacion
-                              ? 'Ubicacion: ' + selectedSite()?.ubicacion
-                              : 'Sin ubicacion registrada'
-                          }}
-                        </div>
-                      }
-                    </form>
-
-                    <div class="table-card">
-                      <app-admin-table-toolbar
-                        title="Sitios registrados"
-                        [countLabel]="filteredSites().length + ' de ' + allSites().length + ' visibles'"
-                        [searchValue]="siteSearch()"
-                        placeholder="Buscar sitio, serial, empresa o estado"
-                        (searchChange)="updateSiteSearch($event)"
-                      ></app-admin-table-toolbar>
-
-                      <div class="overflow-x-auto">
-                        <table class="min-w-[680px] w-full text-left text-sm">
-                          <thead class="table-head">
-                            <tr>
-                              <th class="px-4 py-3">Sitio</th>
-                              <th class="px-4 py-3">Tipo</th>
-                              <th class="px-4 py-3">Serial</th>
-                              <th class="px-4 py-3">Subempresa</th>
-                              <th class="px-4 py-3">Estado</th>
-                            </tr>
-                          </thead>
-                          <tbody class="divide-y divide-slate-100">
-                            @for (site of paginatedSites(); track site.id) {
-                              <tr
-                                (click)="selectSite(site.id)"
-                                [class]="rowClass(selectedSiteId() === site.id)"
-                              >
-                                <td class="px-4 py-3 font-bold text-slate-800">
-                                  {{ site.descripcion }}
-                                </td>
-                                <td class="px-4 py-3">
-                                  <span [class]="siteTypeBadgeClass(site.tipo_sitio)">{{
-                                    siteTypeLabel(site.tipo_sitio)
-                                  }}</span>
-                                </td>
-                                <td class="px-4 py-3 font-mono text-xs text-slate-600">
-                                  {{ site.id_serial }}
-                                </td>
-                                <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
-                                <td class="px-4 py-3">
-                                  <span [class]="statusBadgeClass(site.activo ? 'success' : 'neutral')">
-                                    {{ site.activo ? 'Activo' : 'Inactivo' }}
-                                  </span>
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                      <app-admin-pagination
-                        [total]="filteredSites().length"
-                        [page]="sitePage()"
-                        (pageChange)="setPage('sitios', $event)"
-                      ></app-admin-pagination>
+                  <form
+                    (submit)="submitSite($event)"
+                    class="editor-panel grid gap-4 lg:grid-cols-4"
+                  >
+                    <div class="lg:col-span-4">
+                      <app-admin-section-header
+                        [selected]="!!selectedSiteId()"
+                        selectedLabel="Sitio seleccionado"
+                        newLabel="Nuevo sitio"
+                        selectedHint="Selecciona editar datos para modificar este sitio."
+                        newHint="Completa los datos para crear un sitio."
+                        buttonLabel="Nuevo"
+                        (createNew)="startCreateSite()"
+                      ></app-admin-section-header>
                     </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                        >Empresa padre</label
+                      >
+                      <select
+                        required
+                        [disabled]="siteFormDisabled()"
+                        name="site-company"
+                        [ngModel]="siteForm().empresa_id"
+                        (ngModelChange)="selectCompanyForSite($event)"
+                        class="field-control"
+                      >
+                        <option value="" disabled>Selecciona empresa</option>
+                        @for (company of hierarchy(); track company.id) {
+                          <option [value]="company.id">{{ company.nombre }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Subempresa</label>
+                      <select
+                        required
+                        [disabled]="siteFormDisabled()"
+                        name="site-subcompany"
+                        [ngModel]="siteForm().sub_empresa_id"
+                        (ngModelChange)="updateSiteForm('sub_empresa_id', $event)"
+                        class="field-control"
+                      >
+                        <option value="" disabled>Selecciona subempresa</option>
+                        @for (sub of subCompaniesForSiteForm(); track sub.id) {
+                          <option [value]="sub.id">{{ sub.nombre }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                        >Tipo de instalacion</label
+                      >
+                      <select
+                        name="site-type"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().tipo_sitio"
+                        (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
+                        class="field-control"
+                      >
+                        @for (type of siteTypeOptions(); track type.id) {
+                          <option [value]="type.id">{{ type.label }}</option>
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Estado</label>
+                      <select
+                        name="site-active"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().activo ? 'true' : 'false'"
+                        (ngModelChange)="updateSiteActive($event)"
+                        class="field-control"
+                      >
+                        <option value="true">Activo</option>
+                        <option value="false">Inactivo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                        >Nombre del sitio</label
+                      >
+                      <input
+                        required
+                        [disabled]="siteFormDisabled()"
+                        name="site-description"
+                        [ngModel]="siteForm().descripcion"
+                        (ngModelChange)="updateSiteForm('descripcion', $event)"
+                        class="field-control"
+                        placeholder="Pozo, planta o instalacion"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                        >Serial del equipo</label
+                      >
+                      <input
+                        required
+                        [disabled]="siteFormDisabled()"
+                        name="site-serial"
+                        [ngModel]="siteForm().id_serial"
+                        (ngModelChange)="updateSiteForm('id_serial', $event)"
+                        class="field-control"
+                        placeholder="151.20.43.6"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Ubicacion</label>
+                      <input
+                        name="site-location"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().ubicacion"
+                        (ngModelChange)="updateSiteForm('ubicacion', $event)"
+                        class="field-control"
+                        placeholder="Ciudad, faena o coordenadas"
+                      />
+                    </div>
+                    <div class="lg:col-span-4 flex flex-wrap gap-2">
+                      <app-admin-form-actions
+                        [selected]="!!selectedSiteId()"
+                        [editMode]="siteEditMode()"
+                        [busy]="busyAction()"
+                        createKey="site"
+                        updateKey="site-update"
+                        deleteKey="site-delete"
+                        createLabel="Crear sitio"
+                        createIcon="add_location_alt"
+                        entityLabel="sitio"
+                        (enableEdit)="enableSiteEdit()"
+                        (cancelEdit)="cancelSiteEdit()"
+                        (remove)="deleteSelectedSite()"
+                      ></app-admin-form-actions>
+                    </div>
+                    @if (selectedSiteId() && !siteEditMode()) {
+                      <div
+                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 lg:col-span-4"
+                      >
+                        {{
+                          selectedSite()?.ubicacion
+                            ? 'Ubicacion: ' + selectedSite()?.ubicacion
+                            : 'Sin ubicacion registrada'
+                        }}
+                      </div>
+                    }
+                  </form>
+
+                  <div class="table-card">
+                    <app-admin-table-toolbar
+                      title="Sitios registrados"
+                      [countLabel]="
+                        filteredSites().length + ' de ' + allSites().length + ' visibles'
+                      "
+                      [searchValue]="siteSearch()"
+                      placeholder="Buscar sitio, serial, empresa o estado"
+                      (searchChange)="updateSiteSearch($event)"
+                    ></app-admin-table-toolbar>
+
+                    <div class="overflow-x-auto">
+                      <table class="min-w-[680px] w-full text-left text-sm">
+                        <thead class="table-head">
+                          <tr>
+                            <th class="px-4 py-3">Sitio</th>
+                            <th class="px-4 py-3">Tipo</th>
+                            <th class="px-4 py-3">Serial</th>
+                            <th class="px-4 py-3">Subempresa</th>
+                            <th class="px-4 py-3">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                          @for (site of paginatedSites(); track site.id) {
+                            <tr
+                              (click)="selectSite(site.id)"
+                              [class]="rowClass(selectedSiteId() === site.id)"
+                            >
+                              <td class="px-4 py-3 font-bold text-slate-800">
+                                {{ site.descripcion }}
+                              </td>
+                              <td class="px-4 py-3">
+                                <span [class]="siteTypeBadgeClass(site.tipo_sitio)">{{
+                                  siteTypeLabel(site.tipo_sitio)
+                                }}</span>
+                              </td>
+                              <td class="px-4 py-3 font-mono text-xs text-slate-600">
+                                {{ site.id_serial }}
+                              </td>
+                              <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
+                              <td class="px-4 py-3">
+                                <span
+                                  [class]="statusBadgeClass(site.activo ? 'success' : 'neutral')"
+                                >
+                                  {{ site.activo ? 'Activo' : 'Inactivo' }}
+                                </span>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <app-admin-pagination
+                      [total]="filteredSites().length"
+                      [page]="sitePage()"
+                      (pageChange)="setPage('sitios', $event)"
+                    ></app-admin-pagination>
+                  </div>
                 </app-admin-section-shell>
               }
 
               @if (activeSection() === 'equipos') {
                 <app-admin-section-shell title="Equipos detectados">
-                    <div class="table-card">
-                      <app-admin-table-toolbar
-                        title="Equipos detectados"
-                        [countLabel]="filteredDevices().length + ' de ' + detectedDevices().length + ' visibles'"
-                        [searchValue]="deviceSearch()"
-                        placeholder="Buscar serial, sitio o empresa"
-                        (searchChange)="updateDeviceSearch($event)"
-                      >
-                        <button type="button" (click)="loadDashboard()" class="secondary-button">
-                          <span class="material-symbols-outlined text-[18px]">sync</span>
-                          Actualizar
-                        </button>
-                      </app-admin-table-toolbar>
+                  <div class="table-card">
+                    <app-admin-table-toolbar
+                      title="Equipos detectados"
+                      [countLabel]="
+                        filteredDevices().length + ' de ' + detectedDevices().length + ' visibles'
+                      "
+                      [searchValue]="deviceSearch()"
+                      placeholder="Buscar serial, sitio o empresa"
+                      (searchChange)="updateDeviceSearch($event)"
+                    >
+                      <button type="button" (click)="loadDashboard()" class="secondary-button">
+                        <span class="material-symbols-outlined text-[18px]">sync</span>
+                        Actualizar
+                      </button>
+                    </app-admin-table-toolbar>
 
-                      <div class="overflow-x-auto">
-                        <table class="min-w-[760px] w-full text-left text-sm">
-                          <thead class="table-head">
-                            <tr>
-                              <th class="px-4 py-3">Serial</th>
-                              <th class="px-4 py-3">Ultimo registro</th>
-                              <th class="px-4 py-3 text-right">Cantidad de datos</th>
-                              <th class="px-4 py-3">Sitio</th>
+                    <div class="overflow-x-auto">
+                      <table class="min-w-[760px] w-full text-left text-sm">
+                        <thead class="table-head">
+                          <tr>
+                            <th class="px-4 py-3">Serial</th>
+                            <th class="px-4 py-3">Ultimo registro</th>
+                            <th class="px-4 py-3 text-right">Cantidad de datos</th>
+                            <th class="px-4 py-3">Sitio</th>
+                          </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                          @for (device of paginatedDevices(); track device.id_serial) {
+                            <tr class="bg-white transition-colors hover:bg-slate-50">
+                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
+                                {{ device.id_serial }}
+                              </td>
+                              <td class="px-4 py-3 text-slate-500">
+                                {{ deviceLastSeenLabel(device) }}
+                              </td>
+                              <td class="px-4 py-3 text-right font-bold text-slate-700">
+                                {{ deviceDataCountLabel(device) }}
+                              </td>
+                              <td class="px-4 py-3">
+                                <span
+                                  [class]="
+                                    statusBadgeClass(device.sitio_id ? 'success' : 'warning')
+                                  "
+                                >
+                                  {{ device.sitio_descripcion || 'Sin asignar' }}
+                                </span>
+                              </td>
                             </tr>
-                          </thead>
-                          <tbody class="divide-y divide-slate-100">
-                            @for (device of paginatedDevices(); track device.id_serial) {
-                              <tr class="bg-white transition-colors hover:bg-slate-50">
-                                <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
-                                  {{ device.id_serial }}
-                                </td>
-                                <td class="px-4 py-3 text-slate-500">
-                                  {{ deviceLastSeenLabel(device) }}
-                                </td>
-                                <td class="px-4 py-3 text-right font-bold text-slate-700">
-                                  {{ deviceDataCountLabel(device) }}
-                                </td>
-                                <td class="px-4 py-3">
-                                  <span [class]="statusBadgeClass(device.sitio_id ? 'success' : 'warning')">
-                                    {{ device.sitio_descripcion || 'Sin asignar' }}
-                                  </span>
-                                </td>
-                              </tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
-                      <app-admin-pagination
-                        [total]="filteredDevices().length"
-                        [page]="devicePage()"
-                        (pageChange)="setPage('equipos', $event)"
-                      ></app-admin-pagination>
+                          }
+                        </tbody>
+                      </table>
                     </div>
+                    <app-admin-pagination
+                      [total]="filteredDevices().length"
+                      [page]="devicePage()"
+                      (pageChange)="setPage('equipos', $event)"
+                    ></app-admin-pagination>
+                  </div>
                 </app-admin-section-shell>
               }
             }
@@ -1136,7 +1152,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       }
 
       .secondary-button:hover {
-        border-color: rgba(13, 175, 189, 0.30);
+        border-color: rgba(13, 175, 189, 0.3);
         background: rgba(13, 175, 189, 0.04);
         color: var(--color-primary-container);
       }
@@ -1148,7 +1164,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       .danger-button {
         min-height: 36px;
         border-radius: 8px;
-        border: 1px solid rgba(248, 113, 113, 0.30);
+        border: 1px solid rgba(248, 113, 113, 0.3);
         background: rgba(248, 113, 113, 0.08);
         padding: 8px 12px;
         font-size: 13px;

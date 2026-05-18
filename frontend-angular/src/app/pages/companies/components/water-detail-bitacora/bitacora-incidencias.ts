@@ -113,8 +113,12 @@ function emptyDraft(): DraftIncidencia {
       </header>
 
       @if (mostrandoNueva()) {
-        <article class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4">
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container">
+        <article
+          class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
+        >
+          <p
+            class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container"
+          >
             Nueva incidencia
           </p>
           <ng-container
@@ -655,7 +659,9 @@ export class BitacoraIncidenciasComponent {
   }
 
   origenIconClass(o: IncidenciaOrigen): string {
-    return o === 'terreno' ? 'bg-orange-50 text-orange-600' : 'bg-[rgba(13,175,189,0.08)] text-primary-container';
+    return o === 'terreno'
+      ? 'bg-orange-50 text-orange-600'
+      : 'bg-[rgba(13,175,189,0.08)] text-primary-container';
   }
 
   origenLabel(o: IncidenciaOrigen): string {

@@ -89,10 +89,14 @@ function dateToUtcIsoEnd(date: string): string {
           <table class="w-full min-w-[700px] text-left text-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
-                <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                >
                   Variable
                 </th>
-                <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                <th
+                  class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                >
                   Rol
                 </th>
                 <th

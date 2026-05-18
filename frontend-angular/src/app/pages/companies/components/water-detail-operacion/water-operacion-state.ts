@@ -140,11 +140,7 @@ export class WaterOperacionStateService {
       });
 
     this.jornadaCountersLoading.set(true);
-    this.jornadaSub = combineLatest([
-      timer(0, 10 * 60_000),
-      this.jornadaInicio$,
-      this.jornadaFin$,
-    ])
+    this.jornadaSub = combineLatest([timer(0, 10 * 60_000), this.jornadaInicio$, this.jornadaFin$])
       .pipe(
         debounceTime(300),
         switchMap(([, inicio, fin]) =>

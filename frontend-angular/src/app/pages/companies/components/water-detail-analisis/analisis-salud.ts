@@ -6,7 +6,11 @@
  */
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
-import { AnalisisService, type SaludData, type SensorEstado } from '../../../../services/analisis.service';
+import {
+  AnalisisService,
+  type SaludData,
+  type SensorEstado,
+} from '../../../../services/analisis.service';
 
 type Tono = 'ok' | 'advertencia' | 'error';
 
@@ -97,7 +101,9 @@ type Tono = 'ok' | 'advertencia' | 'error';
 
       <div class="grid gap-3 xl:grid-cols-2">
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <h3
+            class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+          >
             <span class="material-symbols-outlined text-[16px]">sensors</span>
             Estado de sensores
           </h3>
@@ -128,7 +134,9 @@ type Tono = 'ok' | 'advertencia' | 'error';
         </section>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h3 class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <h3
+            class="mb-3 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+          >
             <span class="material-symbols-outlined text-[16px]">data_loss_prevention</span>
             Gaps de datos — últimos 30 días
           </h3>
@@ -258,7 +266,11 @@ export class AnalisisSaludComponent implements OnInit {
   // ===== Styling =====
 
   metricaBorde(t: Tono): string {
-    return t === 'error' ? 'border-rose-200' : t === 'advertencia' ? 'border-amber-200' : 'border-slate-200';
+    return t === 'error'
+      ? 'border-rose-200'
+      : t === 'advertencia'
+        ? 'border-amber-200'
+        : 'border-slate-200';
   }
   metricaIconClass(t: Tono): string {
     return t === 'error'
@@ -268,7 +280,11 @@ export class AnalisisSaludComponent implements OnInit {
         : 'bg-emerald-50 text-emerald-600';
   }
   metricaLabelColor(t: Tono): string {
-    return t === 'error' ? 'text-rose-400' : t === 'advertencia' ? 'text-amber-400' : 'text-slate-400';
+    return t === 'error'
+      ? 'text-rose-400'
+      : t === 'advertencia'
+        ? 'text-amber-400'
+        : 'text-slate-400';
   }
   tonoBadgeClass(t: Tono): string {
     return t === 'error'

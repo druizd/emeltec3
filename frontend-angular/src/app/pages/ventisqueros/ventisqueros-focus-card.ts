@@ -31,33 +31,17 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
           <div class="vs-stat-card">
             <div class="vs-stat-label">Temperatura</div>
             <div class="mt-1 flex items-baseline gap-0.75">
-              <span
-                class="vs-stat-value"
-                [style.color]="f.alerted ? '#B91C1C' : '#1E293B'"
-                >{{ f.t.toFixed(1) }}</span
-              >
+              <span class="vs-stat-value" [style.color]="f.alerted ? '#B91C1C' : '#1E293B'">{{
+                f.t.toFixed(1)
+              }}</span>
               <span class="vs-stat-unit">°C</span>
             </div>
             <div class="mt-1.5">
               <svg [attr.width]="120" [attr.height]="28" class="vs-spark-svg">
                 <defs>
-                  <linearGradient
-                    [attr.id]="'sparkFill-' + f.id"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="0%"
-                      [attr.stop-color]="sparkColor(f)"
-                      stop-opacity="0.28"
-                    />
-                    <stop
-                      offset="100%"
-                      [attr.stop-color]="sparkColor(f)"
-                      stop-opacity="0"
-                    />
+                  <linearGradient [attr.id]="'sparkFill-' + f.id" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" [attr.stop-color]="sparkColor(f)" stop-opacity="0.28" />
+                    <stop offset="100%" [attr.stop-color]="sparkColor(f)" stop-opacity="0" />
                   </linearGradient>
                 </defs>
                 <path

@@ -426,7 +426,9 @@ interface Periodo {
                         <span class="material-symbols-outlined text-[12px] text-slate-300"
                           >speed</span
                         >
-                        <p class="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                        <p
+                          class="text-[9px] font-semibold uppercase tracking-widest text-slate-400"
+                        >
                           Caudal
                         </p>
                       </div>
@@ -470,7 +472,9 @@ interface Periodo {
                         <span class="material-symbols-outlined text-[12px] text-slate-300"
                           >water_drop</span
                         >
-                        <p class="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                        <p
+                          class="text-[9px] font-semibold uppercase tracking-widest text-slate-400"
+                        >
                           Nivel
                         </p>
                       </div>
@@ -514,7 +518,9 @@ interface Periodo {
                         <span class="material-symbols-outlined text-[12px] text-slate-300"
                           >monitoring</span
                         >
-                        <p class="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+                        <p
+                          class="text-[9px] font-semibold uppercase tracking-widest text-slate-400"
+                        >
                           Consumo
                         </p>
                       </div>

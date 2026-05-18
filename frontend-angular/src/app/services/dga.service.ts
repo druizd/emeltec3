@@ -160,7 +160,10 @@ export class DgaService {
    * Crea o actualiza un informante. Si `clave_informante` está presente,
    * exige 2FA (header X-DGA-2FA-Code). Otros campos (referencia) sin 2FA.
    */
-  upsertInformante(payload: UpsertInformantePayload, twoFactorCode?: string): Observable<DgaInformantePublic> {
+  upsertInformante(
+    payload: UpsertInformantePayload,
+    twoFactorCode?: string,
+  ): Observable<DgaInformantePublic> {
     const opts = twoFactorCode ? { headers: this.headers2fa(twoFactorCode) } : {};
     const url = `/api/v2/dga/informantes${payload.rut ? `/${encodeURIComponent(payload.rut)}` : ''}`;
     const method = payload.rut ? 'patch' : 'post';
@@ -173,10 +176,9 @@ export class DgaService {
 
   deleteInformante(rut: string, twoFactorCode: string): Observable<void> {
     return this.http
-      .delete<ApiResponse<{ deleted: true }>>(
-        `/api/v2/dga/informantes/${encodeURIComponent(rut)}`,
-        { headers: this.headers2fa(twoFactorCode) },
-      )
+      .delete<
+        ApiResponse<{ deleted: true }>
+      >(`/api/v2/dga/informantes/${encodeURIComponent(rut)}`, { headers: this.headers2fa(twoFactorCode) })
       .pipe(map(() => void 0));
   }
 
@@ -184,9 +186,9 @@ export class DgaService {
 
   getPozoDgaConfig(siteId: string): Observable<PozoDgaConfig | null> {
     return this.http
-      .get<ApiResponse<PozoDgaConfig | null>>(
-        `/api/v2/dga/sites/${encodeURIComponent(siteId)}/pozo-config`,
-      )
+      .get<
+        ApiResponse<PozoDgaConfig | null>
+      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/pozo-config`)
       .pipe(map((r) => (r.ok ? r.data : null)));
   }
 
@@ -201,19 +203,17 @@ export class DgaService {
   ): Observable<PozoDgaConfig> {
     const opts = twoFactorCode ? { headers: this.headers2fa(twoFactorCode) } : {};
     return this.http
-      .patch<ApiResponse<PozoDgaConfig>>(
-        `/api/v2/dga/sites/${encodeURIComponent(siteId)}/pozo-config`,
-        payload,
-        opts,
-      )
+      .patch<
+        ApiResponse<PozoDgaConfig>
+      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/pozo-config`, payload, opts)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
   getLivePreview(siteId: string): Observable<DgaLivePreview> {
     return this.http
-      .get<ApiResponse<DgaLivePreview>>(
-        `/api/v2/dga/sites/${encodeURIComponent(siteId)}/live-preview`,
-      )
+      .get<
+        ApiResponse<DgaLivePreview>
+      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/live-preview`)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
@@ -223,15 +223,19 @@ export class DgaService {
    */
   getUltimoEnvio(siteId: string): Observable<{ ts: string; comprobante: string | null } | null> {
     return this.http
-      .get<ApiResponse<{ ts: string; comprobante: string | null } | null>>(
-        `/api/v2/dga/sites/${encodeURIComponent(siteId)}/ultimo-envio`,
-      )
+      .get<
+        ApiResponse<{ ts: string; comprobante: string | null } | null>
+      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/ultimo-envio`)
       .pipe(map((r) => (r.ok ? r.data : null)));
   }
 
   // -------- Mediciones (Detalle de Registros) --------
 
-  consultarDatoBySite(siteId: string, desdeIso: string, hastaIso: string): Observable<DatoDgaRow[]> {
+  consultarDatoBySite(
+    siteId: string,
+    desdeIso: string,
+    hastaIso: string,
+  ): Observable<DatoDgaRow[]> {
     const params = new HttpParams()
       .set('site_id', siteId)
       .set('desde', desdeIso)

@@ -28,9 +28,9 @@ import { RouterLink } from '@angular/router';
       <section class="space-y-4 text-[14px] leading-relaxed">
         <p>
           Emeltec SpA ("Emeltec", "nosotros") opera la plataforma de monitoreo industrial disponible
-          en <code class="text-primary-container">cloud.emeltec.cl</code>. Esta política describe qué datos
-          personales tratamos, con qué finalidad y cómo puedes ejercer tus derechos. Se aplica
-          conforme a la <strong>Ley 21.719</strong> sobre protección de datos personales y la
+          en <code class="text-primary-container">cloud.emeltec.cl</code>. Esta política describe
+          qué datos personales tratamos, con qué finalidad y cómo puedes ejercer tus derechos. Se
+          aplica conforme a la <strong>Ley 21.719</strong> sobre protección de datos personales y la
           <strong>Ley 21.663</strong> Marco de Ciberseguridad.
         </p>
 
@@ -107,7 +107,9 @@ import { RouterLink } from '@angular/router';
         <p>
           Encargado de Privacidad de Datos: <strong>privacidad&#64;emeltec.cl</strong><br />
           Reportes de seguridad: <strong>seguridad&#64;emeltec.cl</strong> ·
-          <a class="text-primary-container underline" href="/.well-known/security.txt">security.txt</a>
+          <a class="text-primary-container underline" href="/.well-known/security.txt"
+            >security.txt</a
+          >
         </p>
 
         <p class="mt-8 text-[12px] text-slate-400">

@@ -1,10 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  input,
-  output,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 
 @Component({
   selector: 'app-admin-pagination',
@@ -29,11 +23,7 @@ import {
             Anterior
           </button>
           @for (p of pages(); track p) {
-            <button
-              type="button"
-              (click)="goto(p)"
-              [class]="btnClass(p === page())"
-            >
+            <button type="button" (click)="goto(p)" [class]="btnClass(p === page())">
               {{ p }}
             </button>
           }
@@ -97,9 +87,7 @@ export class AdminPaginationComponent {
 
   readonly pageChange = output<number>();
 
-  readonly totalPages = computed(() =>
-    Math.max(1, Math.ceil(this.total() / this.pageSize())),
-  );
+  readonly totalPages = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
 
   readonly startItem = computed(() => {
     const total = this.total();

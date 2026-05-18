@@ -15,8 +15,8 @@ import { Component } from '@angular/core';
       <span class="material-symbols-outlined text-[36px] text-slate-300">calendar_month</span>
       <h3 class="text-base font-semibold text-slate-700">Calendario en construcción</h3>
       <p class="max-w-md text-[13px] text-slate-500">
-        Consolidará en un solo timeline: envíos DGA, alertas disparadas, mantenciones e
-        incidencias. Pendiente definir prioridades de fuentes y agrupación.
+        Consolidará en un solo timeline: envíos DGA, alertas disparadas, mantenciones e incidencias.
+        Pendiente definir prioridades de fuentes y agrupación.
       </p>
       <p class="text-[11px] italic text-slate-400">
         Mientras tanto, cada fuente está disponible por separado en Bitácora.

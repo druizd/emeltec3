@@ -5,14 +5,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
-import {
-  deleteEquipo,
-  getFicha,
-  insertEquipo,
-  listEquipos,
-  patchEquipo,
-  patchFicha,
-} from './repo';
+import { deleteEquipo, getFicha, insertEquipo, listEquipos, patchEquipo, patchFicha } from './repo';
 import { CreateEquipoPayload, FichaPayload, PatchEquipoPayload } from './schema';
 
 // ============================================================================

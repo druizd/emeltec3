@@ -131,10 +131,7 @@ async function processSlot(
     });
   } catch (err) {
     const msg = (err as Error).message;
-    logger.error(
-      { site_id: slot.site_id, ts: slot.ts, err: msg },
-      'submission: error pre-envío',
-    );
+    logger.error({ site_id: slot.site_id, ts: slot.ts, err: msg }, 'submission: error pre-envío');
     await markSlotRechazado({
       site_id: slot.site_id,
       ts: slot.ts,

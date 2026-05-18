@@ -88,11 +88,7 @@ export function verifyDgaCode(user: AuthUser, providedCode: string): boolean {
  * Middleware Express: exige header `X-DGA-2FA-Code` válido. El handler
  * de la acción se ejecuta solo si pasa.
  */
-export function requireDgaTwoFactor(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): void {
+export function requireDgaTwoFactor(req: Request, _res: Response, next: NextFunction): void {
   const user = (req as Request & { user?: AuthUser }).user;
   if (!user) {
     return next(new UnauthorizedError('No autenticado'));

@@ -110,9 +110,9 @@ export async function upsertInformanteHandler(
       }),
       ...(parsed.data.referencia !== undefined && { referencia: parsed.data.referencia }),
     });
-    res.status(req.method === 'POST' ? 201 : 200).json(
-      ok(result, { durationMs: elapsedMs(startedAt) }),
-    );
+    res
+      .status(req.method === 'POST' ? 201 : 200)
+      .json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }

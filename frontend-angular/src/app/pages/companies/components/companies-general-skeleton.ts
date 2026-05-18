@@ -93,9 +93,7 @@ import { Component } from '@angular/core';
                   <div class="skeleton h-8 w-16 rounded-full"></div>
                   <div class="skeleton h-3 w-24 rounded-full"></div>
                 </div>
-                <div
-                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f8fafc]"
-                >
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f8fafc]">
                   <div class="skeleton h-5 w-5 rounded-lg"></div>
                 </div>
               </div>

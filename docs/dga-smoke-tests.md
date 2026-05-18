@@ -209,12 +209,12 @@ emails enviados a `MONITOR_PRIMARY_EMAIL` y actuar manualmente.
 
 ## 6. Cuándo correr cada check
 
-| Cuándo | Checks |
-|---|---|
-| **Post-deploy** | §1, §2 — verifica que migración y workers están OK |
-| **Diario** | §3, §5 — estado de datos + hallazgos reconciler |
-| **Tras activar transport=rest en un pozo** | §3.b, §3.c — config completa, informante asociado |
-| **Si admin reporta problema** | §4 — endpoints responden |
+| Cuándo                                     | Checks                                             |
+| ------------------------------------------ | -------------------------------------------------- |
+| **Post-deploy**                            | §1, §2 — verifica que migración y workers están OK |
+| **Diario**                                 | §3, §5 — estado de datos + hallazgos reconciler    |
+| **Tras activar transport=rest en un pozo** | §3.b, §3.c — config completa, informante asociado  |
+| **Si admin reporta problema**              | §4 — endpoints responden                           |
 
 ---
 

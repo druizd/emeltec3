@@ -94,8 +94,7 @@ export function buildSniaPayload(input: SniaSendInput): {
 
   const caudalStr = input.caudal == null ? null : input.caudal.toFixed(2);
   // Totalizador: entero sin decimales sin separador, máx 15 chars.
-  const totalizadorStr =
-    input.totalizador == null ? null : String(Math.trunc(input.totalizador));
+  const totalizadorStr = input.totalizador == null ? null : String(Math.trunc(input.totalizador));
   // Nivel freático: vacío permitido (pozos pequeños / minero), enviamos ""
   // en ese caso. Numérico 2 decimales si está presente.
   const nivelStr = input.nivelFreatico == null ? '' : input.nivelFreatico.toFixed(2);
@@ -207,10 +206,7 @@ export async function sendToSnia(input: SniaSendInput): Promise<SniaSendResult> 
   } catch (err) {
     // Error de red, timeout, DNS, certificado, etc. SNIA no recibió o no respondió.
     const msg = (err as Error).message;
-    logger.error(
-      { codigoObra: input.codigoObra, err: msg },
-      'SNIA: fallo de red al enviar',
-    );
+    logger.error({ codigoObra: input.codigoObra, err: msg }, 'SNIA: fallo de red al enviar');
     return {
       http_status: httpStatus,
       dga_status_code: null,

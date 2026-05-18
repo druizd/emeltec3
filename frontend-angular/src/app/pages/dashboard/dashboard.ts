@@ -40,9 +40,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
    * Evita freeze del render cuando hay 100+ instalaciones (rol admin).
    */
   visibleCount = signal(0);
-  visibleInstallations = computed(() =>
-    this.installations().slice(0, this.visibleCount()),
-  );
+  visibleInstallations = computed(() => this.installations().slice(0, this.visibleCount()));
 
   private lazyTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -136,13 +134,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             subCompanyName: subCompany.nombre || 'Division sin nombre',
             type: company.tipo_empresa || 'Instalacion',
             location:
-              this.pickFirst(site, [
-                'ubicacion',
-                'sector',
-                'alias',
-                'nombre_corto',
-                'site_code',
-              ]) ||
+              this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) ||
               subCompany.nombre ||
               'Sin referencia',
             ageMinutes: ageMin,
