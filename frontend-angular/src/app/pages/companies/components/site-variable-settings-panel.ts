@@ -490,6 +490,65 @@ function emptyVariables(): SiteVariablesPayload {
       }
     </section>
   `,
+  styles: [
+    `
+      .primary-button,
+      .secondary-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 36px;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 160ms ease;
+      }
+      .primary-button {
+        border: 1px solid var(--color-primary);
+        background: var(--color-primary);
+        color: white;
+      }
+      .primary-button:hover:not(:disabled) {
+        background: var(--color-primary-container);
+        border-color: var(--color-primary-container);
+        box-shadow: 0 4px 12px rgba(13, 175, 189, 0.25);
+      }
+      .primary-button:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+      .primary-button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+      .secondary-button {
+        border: 1px solid var(--color-outline-variant);
+        background: var(--color-surface);
+        color: var(--color-on-surface-variant);
+      }
+      .secondary-button:hover {
+        border-color: rgba(13, 175, 189, 0.3);
+        background: rgba(13, 175, 189, 0.04);
+        color: var(--color-primary-container);
+      }
+      .secondary-button:active {
+        transform: scale(0.98);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .primary-button,
+        .secondary-button {
+          transition: none;
+        }
+        .primary-button:active:not(:disabled),
+        .secondary-button:active {
+          transform: none;
+        }
+      }
+    `,
+  ],
 })
 export class SiteVariableSettingsPanelComponent implements OnChanges {
   @Input() siteId = '';
