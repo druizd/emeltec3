@@ -13,6 +13,36 @@
     </p>
   </div>
 
+  @if (welcomeBannerVisible() && !loading() && installations().length > 0) {
+    <div
+      class="mb-4 flex items-start gap-3 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-4 py-3 text-[13px] text-[#04606a]"
+      role="status"
+    >
+      <span class="material-symbols-outlined mt-0.5 text-[20px] text-primary">waving_hand</span>
+      <div class="min-w-0 flex-1">
+        <p class="font-semibold leading-snug">
+          @if (userFirstName()) {
+            Hola, {{ userFirstName() }}. Bienvenido a Emeltec Cloud.
+          } @else {
+            Bienvenido a Emeltec Cloud.
+          }
+        </p>
+        <p class="mt-1 text-[12px] leading-snug text-[#0899a5]">
+          Acá ves todas tus instalaciones. Clic en una tarjeta para entrar al detalle del sitio
+          (DGA, Operación, Alertas, Bitácora).
+        </p>
+      </div>
+      <button
+        type="button"
+        (click)="dismissWelcomeBanner()"
+        class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[#0899a5] transition-colors hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        aria-label="Ocultar bienvenida"
+      >
+        <span class="material-symbols-outlined text-[18px]">close</span>
+      </button>
+    </div>
+  }
+
   @if (loading()) {
     <div class="grid grid-cols-1 gap-2.5 lg:grid-cols-2 2xl:grid-cols-3">
       @for (item of [1, 2, 3, 4, 5, 6]; track item) {
@@ -31,12 +61,34 @@
     </div>
   } @else if (installations().length === 0) {
     <div
-      class="rounded-[10px] border border-dashed border-[#dbe4ef] bg-white px-6 py-12 text-center"
+      class="mx-auto max-w-xl rounded-2xl border border-[#e2e8f0] bg-white px-8 py-12 text-center shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
     >
-      <span class="material-symbols-outlined mb-3 block text-[32px] text-[#cbd5e1]"
-        >sensors_off</span
+      <div
+        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(13,175,189,0.10)]"
       >
-      <p class="text-[14px] font-semibold text-[#64748b]">No hay instalaciones registradas.</p>
+        <span class="material-symbols-outlined text-[28px] text-primary">water_drop</span>
+      </div>
+      <h2
+        class="mb-2 text-[18px] font-semibold text-[#1e293b]"
+        style="font-family: 'Josefin Sans', sans-serif"
+      >
+        @if (userFirstName()) {
+          Hola, {{ userFirstName() }}. Tu cuenta está lista.
+        } @else {
+          Tu cuenta de Emeltec Cloud está lista.
+        }
+      </h2>
+      <p class="mx-auto max-w-md text-[13px] leading-relaxed text-[#64748b]">
+        Pronto verás acá las instalaciones que tu empresa monitoree con nosotros: consumo de agua,
+        energía, riles o variables de proceso. El equipo de Emeltec te avisará cuando los sitios
+        estén asignados.
+      </p>
+      <p class="mx-auto mt-4 max-w-md text-[12px] leading-relaxed text-[#94a3b8]">
+        ¿Tienes preguntas? Escribe a
+        <a class="font-semibold text-primary hover:underline" href="mailto:soporte@emeltec.cl"
+          >soporte&#64;emeltec.cl</a
+        >.
+      </p>
     </div>
   } @else {
     <div class="grid grid-cols-1 gap-1.5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

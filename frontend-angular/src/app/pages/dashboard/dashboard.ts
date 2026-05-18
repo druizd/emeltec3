@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CompanyService } from '../../services/company.service';
+import { AuthService } from '../../services/auth.service';
 import type { ApiResponse, CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+
+const WELCOME_DISMISSED_KEY = 'emeltec-welcome-dismissed';
 
 interface InstallationCard {
   id: string;
@@ -29,10 +32,23 @@ const LAZY_CHUNK_MS = 50;
 export class DashboardComponent implements OnInit, OnDestroy {
   private companyService = inject(CompanyService);
   private router = inject(Router);
+  private auth = inject(AuthService);
 
   /** Total de instalaciones cargadas desde el backend (puede ser grande). */
   installations = signal<InstallationCard[]>([]);
   loading = signal(true);
+
+  /**
+   * First-session welcome banner. Shows on first visit until the user
+   * dismisses it. Persisted in localStorage so we don't nag returning users.
+   * Hidden entirely when the hierarchy is empty — the empty-state card
+   * already greets them.
+   */
+  welcomeBannerVisible = signal(false);
+  userFirstName = computed(() => {
+    const full = this.auth.user()?.nombre?.trim() ?? '';
+    return full ? full.split(/\s+/)[0] : '';
+  });
 
   /**
    * Lazy loading: cuántas mostrar actualmente. Se incrementa en chunks
@@ -46,6 +62,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadInstallations();
+    // Read once on mount. localStorage may throw in incognito / sandboxed
+    // frames — fall back to "show" so the user still gets the experience.
+    try {
+      this.welcomeBannerVisible.set(localStorage.getItem(WELCOME_DISMISSED_KEY) !== 'true');
+    } catch {
+      this.welcomeBannerVisible.set(true);
+    }
+  }
+
+  dismissWelcomeBanner(): void {
+    this.welcomeBannerVisible.set(false);
+    try {
+      localStorage.setItem(WELCOME_DISMISSED_KEY, 'true');
+    } catch {
+      // localStorage unavailable — banner stays dismissed for this session
+      // only, which is acceptable.
+    }
   }
 
   ngOnDestroy(): void {

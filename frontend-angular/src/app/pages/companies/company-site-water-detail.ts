@@ -637,20 +637,69 @@ type OperationMode = 'realtime' | 'turnos';
               <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
               <article
                 [class]="
-                  'rounded-xl border px-4 py-3 text-center shadow-sm ' +
+                  'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
                   dgaTasaExitoColors().border +
                   ' ' +
                   dgaTasaExitoColors().bg
                 "
               >
-                <p
-                  [class]="
-                    'text-[10px] font-semibold uppercase tracking-[0.2em] ' +
-                    dgaTasaExitoColors().text
-                  "
-                >
-                  Tasa de éxito
-                </p>
+                <div class="flex items-start justify-between">
+                  <p
+                    [class]="
+                      'flex-1 text-[10px] font-semibold uppercase tracking-[0.2em] ' +
+                      dgaTasaExitoColors().text
+                    "
+                  >
+                    Tasa de éxito
+                  </p>
+                  <details class="group relative">
+                    <summary
+                      [class]="
+                        'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-[11px] font-bold hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
+                        dgaTasaExitoColors().text
+                      "
+                      aria-label="Ver leyenda de la tasa de éxito"
+                    >
+                      ?
+                    </summary>
+                    <div
+                      class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs shadow-lg"
+                    >
+                      <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
+                      <p class="mb-3 text-slate-500">
+                        enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
+                        dentro del rango filtrado.
+                      </p>
+                      <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
+                      <ul class="space-y-1.5 text-slate-600">
+                        <li class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                          100 % — sin rechazos
+                        </li>
+                        <li class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                          90–99 % — alerta leve
+                        </li>
+                        <li class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>
+                          75–89 % — revisar configuración
+                        </li>
+                        <li class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                          60–74 % — atención requerida
+                        </li>
+                        <li class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+                          40–59 % — bloqueo probable
+                        </li>
+                        <li class="flex items-center gap-2">
+                          <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                          &lt; 40 % — falla persistente
+                        </li>
+                      </ul>
+                    </div>
+                  </details>
+                </div>
                 <p
                   [class]="'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text"
                 >
