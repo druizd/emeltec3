@@ -49,7 +49,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
   `,
 })
 export class InlineErrorComponent {
-  @Input({ required: true }) message = '';
+  @Input({ required: true }) message: string | null = '';
   /** Texto del botón de acción. Cuando vacío, no se renderiza botón. */
   @Input() actionLabel = '';
   /** Material Symbol icon name del botón. Default refresh para Reintentar. */
