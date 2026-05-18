@@ -129,9 +129,9 @@
               [style.color]="getStatusColor(installation.status)"
             >
               <span
-                class="h-1.5 w-1.5 rounded-full"
+                class="h-1.5 w-1.5 rounded-full transition-opacity"
                 [style.background]="getStatusColor(installation.status)"
-                [class.animate-pulse]="installation.status === 'online'"
+                [class.group-hover:animate-pulse]="installation.status === 'online'"
               ></span>
               {{ getStatusLabel(installation.status) }}
             </span>

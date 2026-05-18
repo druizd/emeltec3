@@ -1445,8 +1445,8 @@ type OperationMode = 'realtime' | 'turnos';
                         [title]="quickActionTitle(action)"
                         [class]="
                           quickActionDisabled(action)
-                            ? 'rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                            : 'rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition-all hover:border-[rgba(13,175,189,0.30)] hover:bg-white hover:shadow-sm'
+                            ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
+                            : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-[rgba(13,175,189,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
                         "
                       >
                         <span

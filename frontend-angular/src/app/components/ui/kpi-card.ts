@@ -10,7 +10,7 @@ export type KpiTone = 'primary' | 'success' | 'danger' | 'warning' | 'neutral';
   host: { class: 'block' },
   template: `
     <article
-      class="group flex min-h-[104px] items-center justify-between gap-3 rounded-xl border bg-white p-4 transition-all duration-200 hover:-translate-y-px"
+      class="flex min-h-[104px] items-center justify-between gap-3 rounded-xl border bg-white p-4"
       [class]="cardToneClass()"
     >
       <div class="min-w-0 flex-1">

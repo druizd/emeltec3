@@ -43,7 +43,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
                 [class]="
                   'h-1.5 w-1.5 rounded-full ' +
                   getStatusDotClass() +
-                  (getStatusLabel() === 'En vivo' ? ' animate-pulse' : '')
+                  (getStatusLabel() === 'En vivo' ? ' group-hover:animate-pulse' : '')
                 "
               ></span>
               {{ getStatusLabel() }}
