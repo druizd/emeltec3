@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
@@ -321,6 +322,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
   imports: [
     CommonModule,
     FormsModule,
+    A11yModule,
     KpiCardComponent,
     AdminPaginationComponent,
     AdminFormActionsComponent,
@@ -433,7 +435,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <section
               class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
               role="dialog"
-              aria-modal="true"
+              cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
               aria-labelledby="admin-confirm-title"
               (click)="$event.stopPropagation()"
             >

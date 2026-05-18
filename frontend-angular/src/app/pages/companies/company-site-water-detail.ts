@@ -1,6 +1,8 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, HostListener, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { InlineErrorComponent } from '../../components/ui/inline-error';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -177,6 +179,7 @@ type OperationMode = 'realtime' | 'turnos';
     CommonModule,
     FormsModule,
     RouterLink,
+    A11yModule,
     CompaniesSiteDetailSkeletonComponent,
     WaterDetailOperacionComponent,
     WaterDetailAlertasComponent,
@@ -184,6 +187,7 @@ type OperationMode = 'realtime' | 'turnos';
     WaterDetailAnalisisComponent,
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
+    InlineErrorComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -1686,23 +1690,12 @@ type OperationMode = 'realtime' | 'turnos';
           </div>
         </div>
       } @else {
-        <div
-          class="flex flex-col items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-body-sm font-semibold text-rose-700 sm:flex-row sm:items-center sm:justify-between"
-          role="alert"
-        >
-          <div class="flex items-center gap-2">
-            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">error</span>
-            <span>No se encontró la instalación solicitada.</span>
-          </div>
-          <button
-            type="button"
-            (click)="volverAListado()"
-            class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-          >
-            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">arrow_back</span>
-            Volver al listado
-          </button>
-        </div>
+        <app-inline-error
+          message="No se encontró la instalación solicitada."
+          actionLabel="Volver al listado"
+          actionIcon="arrow_back"
+          (action)="volverAListado()"
+        />
       }
 
       @if (dgaDateFilterOpen()) {
@@ -1714,7 +1707,7 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
-            aria-modal="true"
+            cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
             aria-labelledby="dga-date-filter-title"
           >
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -1886,7 +1879,7 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
-            aria-modal="true"
+            cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
             aria-labelledby="download-modal-title"
           >
             <!-- Modal header -->
@@ -2122,7 +2115,7 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[480px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
-            aria-modal="true"
+            cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
             aria-labelledby="dga-report-modal-title"
           >
             <!-- Header -->
@@ -2317,7 +2310,7 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
-            aria-modal="true"
+            cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
             aria-labelledby="dga-report-detail-title"
           >
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">

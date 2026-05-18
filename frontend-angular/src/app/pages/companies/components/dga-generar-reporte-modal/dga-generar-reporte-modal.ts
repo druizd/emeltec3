@@ -12,6 +12,7 @@
  *      valores formateados tal como se enviarían a SNIA con la última
  *      lectura del pozo.
  */
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
@@ -50,14 +51,14 @@ interface PeriodicidadOption {
 @Component({
   selector: 'app-dga-generar-reporte-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, A11yModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (open) {
       <div
         class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
         role="dialog"
-        aria-modal="true"
+        cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
         aria-labelledby="dga-generar-reporte-title"
         (click)="onBackdrop($event)"
       >

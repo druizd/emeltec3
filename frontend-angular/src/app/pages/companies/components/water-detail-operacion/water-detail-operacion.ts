@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
@@ -75,7 +76,12 @@ interface RealtimeChartPoint {
 @Component({
   selector: 'app-water-detail-operacion',
   standalone: true,
-  imports: [CommonModule, OperacionGraficosHistoricosComponent, OperacionResumenPeriodoComponent],
+  imports: [
+    CommonModule,
+    InlineErrorComponent,
+    OperacionGraficosHistoricosComponent,
+    OperacionResumenPeriodoComponent,
+  ],
   providers: [WaterOperacionStateService],
   template: `
     <div class="space-y-3">
@@ -131,24 +137,12 @@ interface RealtimeChartPoint {
       </nav>
 
       @if (loadError()) {
-        <div
-          class="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-body-sm text-rose-800"
-          role="alert"
-          aria-live="polite"
-        >
-          <div class="flex min-w-0 items-center gap-2">
-            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
-            <span class="truncate">{{ loadError() }}</span>
-          </div>
-          <button
-            type="button"
-            (click)="retryLoad()"
-            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-          >
-            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">refresh</span>
-            Reintentar
-          </button>
-        </div>
+        <app-inline-error
+          [message]="loadError()"
+          actionLabel="Reintentar"
+          actionIcon="refresh"
+          (action)="retryLoad()"
+        />
       }
 
       <!-- Hoy en tiempo real (fusión realtime + turnos) -->
