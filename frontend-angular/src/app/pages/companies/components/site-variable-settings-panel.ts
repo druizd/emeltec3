@@ -162,7 +162,9 @@ function emptyVariables(): SiteVariablesPayload {
               <span class="material-symbols-outlined text-[22px]">settings</span>
             </span>
             <div class="min-w-0">
-              <p class="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              <p
+                class="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+              >
                 Configuración del sitio / {{ siteTypeLabel() }}
               </p>
               <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
@@ -230,7 +232,9 @@ function emptyVariables(): SiteVariablesPayload {
         <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
           <div class="space-y-4">
             @if (showPozoConfig && isPozoSite()) {
-              <section class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4">
+              <section
+                class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4"
+              >
                 <div class="mb-4 flex items-start gap-3">
                   <span class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
                     >water_drop</span
@@ -329,7 +333,9 @@ function emptyVariables(): SiteVariablesPayload {
                       <div
                         class="absolute right-0 top-7 z-10 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg"
                       >
-                        <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                        <p
+                          class="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400"
+                        >
                           Tipos de transformación
                         </p>
                         <dl class="space-y-2">
@@ -514,8 +520,9 @@ function emptyVariables(): SiteVariablesPayload {
                   </div>
                 </div>
                 <p class="text-[10px] text-slate-400">
-                  Fórmula: <span class="font-mono">resultado = raw × factor / divisor + offset</span>.
-                  Usá divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
+                  Fórmula:
+                  <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usá
+                  divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
                 </p>
               }
 
@@ -549,9 +556,7 @@ function emptyVariables(): SiteVariablesPayload {
                 <div
                   class="mt-3 rounded-lg border border-[rgba(13,175,189,0.15)] bg-white px-3 py-2 shadow-sm"
                 >
-                  <p
-                    class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                  >
+                  <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Resultado proyectado en gráfico
                   </p>
                   <p class="mt-1 text-xl font-semibold text-primary-container">
@@ -574,18 +579,10 @@ function emptyVariables(): SiteVariablesPayload {
               </div>
 
               <div class="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  (click)="resetVariableForm()"
-                  class="secondary-button"
-                >
+                <button type="button" (click)="resetVariableForm()" class="secondary-button">
                   Limpiar
                 </button>
-                <button
-                  type="submit"
-                  [disabled]="busy() === 'variable'"
-                  class="primary-button"
-                >
+                <button type="submit" [disabled]="busy() === 'variable'" class="primary-button">
                   <span class="material-symbols-outlined text-[18px]">label</span>
                   {{
                     busy() === 'variable'
