@@ -141,7 +141,7 @@ interface RowEdit {
                             class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700"
                             >{{ w.code }}</span
                           >
-                          @if (w.suggested != null) {
+                          @if (w.suggested !== null) {
                             <span class="ml-1 text-[10px] text-slate-500"
                               >sugerido: {{ w.suggested }}</span
                             >

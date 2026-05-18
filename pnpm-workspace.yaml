@@ -3,6 +3,7 @@ packages:
   - frontend-angular
   - main-api
   - auth-api
+  - dga-api
 
 # Native build scripts approved — required for runtime compilation.
 # bcrypt: auth-api password hashing

@@ -8,6 +8,7 @@
  * (MONITOR_PRIMARY_EMAIL), loguea warn y no falla.
  */
 import path from 'path';
+import { createRequire } from 'module';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 
@@ -21,6 +22,7 @@ interface MailService {
 }
 
 let cachedMail: MailService | null = null;
+const nodeRequire = createRequire(__filename);
 
 function loadMailService(): MailService | null {
   if (cachedMail) return cachedMail;
@@ -35,7 +37,7 @@ function loadMailService(): MailService | null {
   ];
   for (const p of candidates) {
     try {
-      cachedMail = require(p);
+      cachedMail = nodeRequire(p) as MailService;
       return cachedMail;
     } catch {
       // sigue con el próximo path
