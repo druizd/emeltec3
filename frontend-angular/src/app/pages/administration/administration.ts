@@ -1543,14 +1543,6 @@ export class AdministrationComponent implements OnInit {
     );
   }
 
-  calculatorButtonClass(transformId: string): string {
-    const base =
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
-    return this.variableForm().transformacion === transformId
-      ? `${base} border-[rgba(13,175,189,0.45)] bg-[rgba(13,175,189,0.12)] text-primary-container`
-      : `${base} border-[#e2e8f0] bg-white text-on-surface-variant hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.05)] hover:text-primary-container`;
-  }
-
   previewResultText(): string {
     const form = this.variableForm();
     const rawText = String(form.sandboxRaw ?? '').trim();
