@@ -35,7 +35,9 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
 
           <div class="flex shrink-0 items-center gap-2">
             <span
-              [class]="'inline-flex items-center gap-1 text-[10px] font-semibold ' + getStatusClass()"
+              [class]="
+                'inline-flex items-center gap-1 text-[10px] font-semibold ' + getStatusClass()
+              "
             >
               <span
                 [class]="

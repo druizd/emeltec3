@@ -7,23 +7,24 @@ Compose.
 
 ## Repo y entorno reales
 
-| Campo | Valor |
-|---|---|
-| Repo | `github.com/druizd/emeltec3` |
-| Branch deploy | `main` |
-| VM | Azure, `104.46.7.78` |
-| Usuario VM | `azureuser` |
-| Path repo en VM | `~/emeltec3` (= `/home/azureuser/emeltec3`) |
-| Container DB | `timescaledb-infra` (TimescaleDB + PG16) |
-| Volumen datos | `timescaledb_data` (persiste entre rebuilds) |
-| Container API | `emeltec-api` (main-api) |
-| DB user/name | `postgres` / `telemetry_platform` |
-| Puerto API | 3000 |
+| Campo           | Valor                                        |
+| --------------- | -------------------------------------------- |
+| Repo            | `github.com/druizd/emeltec3`                 |
+| Branch deploy   | `main`                                       |
+| VM              | Azure, `104.46.7.78`                         |
+| Usuario VM      | `azureuser`                                  |
+| Path repo en VM | `~/emeltec3` (= `/home/azureuser/emeltec3`)  |
+| Container DB    | `timescaledb-infra` (TimescaleDB + PG16)     |
+| Volumen datos   | `timescaledb_data` (persiste entre rebuilds) |
+| Container API   | `emeltec-api` (main-api)                     |
+| DB user/name    | `postgres` / `telemetry_platform`            |
+| Puerto API      | 3000                                         |
 
 > **Nota DB local vs prod**: el compose en `infra-db/docker-compose.yml`
 > usa defaults `admin_infra` / `db_infra` para desarrollo local. La VM
 > usa los valores reales de `~/emeltec3/.env`. Usar siempre `postgres`
-> + `telemetry_platform` para queries en prod.
+>
+> - `telemetry_platform` para queries en prod.
 
 ## Flujo de deploy
 
@@ -52,17 +53,17 @@ nano .env
 
 Variables críticas en `~/emeltec3/.env`:
 
-| Var | Para qué |
-|---|---|
-| `POSTGRES_USER` / `POSTGRES_DB` / `POSTGRES_PASSWORD` | DB credentials (no tocar tras primer deploy) |
-| `JWT_SECRET` | Firma JWT. Compartido entre `main-api` y `auth-api` |
-| `INTERNAL_API_KEY` | Llamadas service-to-service |
-| `RESEND_API_KEY` / `RESEND_FROM` / `FRONTEND_URL` | Códigos de acceso por email |
-| `DGA_ENCRYPTION_KEY` | Cifrado AES-256 de claves SNIA en `dga_informante` |
-| `DGA_RUT_EMPRESA` | RUT del Centro de Control Emeltec ante DGA |
-| `DGA_API_URL` | Endpoint SNIA (default `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`) |
-| `ENABLE_DGA_SUBMISSION_WORKER` | **Default `false`**. Activar solo cuando gerencia autorice cutover real |
-| `MONITOR_PRIMARY_EMAIL` | Destino de 2FA email-OTP + alertas reconciler |
+| Var                                                   | Para qué                                                                           |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `POSTGRES_USER` / `POSTGRES_DB` / `POSTGRES_PASSWORD` | DB credentials (no tocar tras primer deploy)                                       |
+| `JWT_SECRET`                                          | Firma JWT. Compartido entre `main-api` y `auth-api`                                |
+| `INTERNAL_API_KEY`                                    | Llamadas service-to-service                                                        |
+| `RESEND_API_KEY` / `RESEND_FROM` / `FRONTEND_URL`     | Códigos de acceso por email                                                        |
+| `DGA_ENCRYPTION_KEY`                                  | Cifrado AES-256 de claves SNIA en `dga_informante`                                 |
+| `DGA_RUT_EMPRESA`                                     | RUT del Centro de Control Emeltec ante DGA                                         |
+| `DGA_API_URL`                                         | Endpoint SNIA (default `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`) |
+| `ENABLE_DGA_SUBMISSION_WORKER`                        | **Default `false`**. Activar solo cuando gerencia autorice cutover real            |
+| `MONITOR_PRIMARY_EMAIL`                               | Destino de 2FA email-OTP + alertas reconciler                                      |
 
 Prueba deploy manual:
 
@@ -75,12 +76,12 @@ bash scripts/deploy-production.sh
 
 `Settings → Secrets and variables → Actions`:
 
-| Secret | Valor |
-|---|---|
-| `AZURE_VM_HOST` | `104.46.7.78` |
-| `AZURE_VM_USER` | `azureuser` |
+| Secret             | Valor                               |
+| ------------------ | ----------------------------------- |
+| `AZURE_VM_HOST`    | `104.46.7.78`                       |
+| `AZURE_VM_USER`    | `azureuser`                         |
 | `AZURE_VM_SSH_KEY` | Llave privada SSH (formato ed25519) |
-| `AZURE_VM_APP_DIR` | `/home/azureuser/emeltec3` |
+| `AZURE_VM_APP_DIR` | `/home/azureuser/emeltec3`          |
 
 Crear llave dedicada:
 

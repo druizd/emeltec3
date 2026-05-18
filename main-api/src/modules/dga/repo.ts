@@ -23,8 +23,7 @@ export interface DgaInformanteRow {
   updated_at: string;
 }
 
-const INFORMANTE_COLS =
-  'rut, clave_informante, referencia, created_at, updated_at';
+const INFORMANTE_COLS = 'rut, clave_informante, referencia, created_at, updated_at';
 
 export async function listInformantes(): Promise<DgaInformanteRow[]> {
   const r = await query<DgaInformanteRow>(
@@ -70,11 +69,9 @@ export async function upsertInformante(input: {
 }
 
 export async function deleteInformante(rut: string): Promise<boolean> {
-  const r = await query(
-    `DELETE FROM dga_informante WHERE rut = $1`,
-    [rut],
-    { name: 'dga__delete_informante' },
-  );
+  const r = await query(`DELETE FROM dga_informante WHERE rut = $1`, [rut], {
+    name: 'dga__delete_informante',
+  });
   return (r.rowCount ?? 0) > 0;
 }
 
@@ -161,7 +158,8 @@ export async function patchPozoDgaConfig(
 
   if (input.dga_activo !== undefined) addSet('dga_activo', input.dga_activo);
   if (input.dga_transport !== undefined) addSet('dga_transport', input.dga_transport);
-  if (input.dga_caudal_max_lps !== undefined) addSet('dga_caudal_max_lps', input.dga_caudal_max_lps);
+  if (input.dga_caudal_max_lps !== undefined)
+    addSet('dga_caudal_max_lps', input.dga_caudal_max_lps);
   if (input.dga_caudal_tolerance_pct !== undefined)
     addSet('dga_caudal_tolerance_pct', input.dga_caudal_tolerance_pct);
   if (input.dga_periodicidad !== undefined) addSet('dga_periodicidad', input.dga_periodicidad);

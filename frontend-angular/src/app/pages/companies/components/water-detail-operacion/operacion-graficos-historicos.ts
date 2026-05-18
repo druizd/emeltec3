@@ -67,7 +67,9 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               >
                 <!-- Presets -->
                 <div class="p-3">
-                  <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <p
+                    class="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400"
+                  >
                     Rango de tiempo
                   </p>
                   <div class="flex flex-wrap gap-1.5" role="group" aria-label="Presets de rango">
@@ -153,90 +155,88 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
             <div class="relative h-44 w-full">
               @if (nivelEmpty()) {
-                <div
-                  class="flex h-full items-center justify-center text-[11px] text-slate-400"
-                >
+                <div class="flex h-full items-center justify-center text-[11px] text-slate-400">
                   Sin datos de nivel freático en el rango seleccionado.
                 </div>
               } @else {
-              <svg
-                viewBox="0 0 1100 220"
-                class="h-full w-full cursor-crosshair"
-                preserveAspectRatio="none"
-                #nivelSvg
-                (mousemove)="onLineHover('nivel', $event, nivelSvg)"
-                (mouseleave)="clearLineHover('nivel')"
-              >
-                <defs>
-                  <linearGradient id="nfGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.25" />
-                    <stop offset="100%" stop-color="#0DAFBD" stop-opacity="0.02" />
-                  </linearGradient>
-                </defs>
-                @for (t of nivel24().yTicks; track t.y) {
-                  <line
-                    x1="55"
-                    [attr.y1]="t.y"
-                    x2="1090"
-                    [attr.y2]="t.y"
-                    stroke="#f1f5f9"
-                    stroke-width="1"
-                  />
-                  <text
-                    x="50"
-                    [attr.y]="t.y + 4"
-                    font-size="11"
-                    fill="#94a3b8"
-                    text-anchor="end"
-                    font-family="monospace"
-                  >
-                    {{ t.label }}
-                  </text>
-                }
-                @for (l of nivel24().xLabels; track l.x) {
-                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
-                    {{ l.label }}
-                  </text>
-                }
-                <polygon [attr.points]="nivel24().fill" fill="url(#nfGrad)" />
-                <polyline
-                  [attr.points]="nivel24().polyline"
-                  fill="none"
-                  stroke="#0DAFBD"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                @if (nivelHover(); as h) {
-                  <line
-                    [attr.x1]="h.x"
-                    [attr.x2]="h.x"
-                    [attr.y1]="DY"
-                    [attr.y2]="DY + DH"
-                    stroke="#CBD5E1"
-                    stroke-width="1"
-                    stroke-dasharray="4 4"
-                  />
-                  <circle
-                    [attr.cx]="h.x"
-                    [attr.cy]="h.y"
-                    r="4.5"
-                    fill="#ffffff"
+                <svg
+                  viewBox="0 0 1100 220"
+                  class="h-full w-full cursor-crosshair"
+                  preserveAspectRatio="none"
+                  #nivelSvg
+                  (mousemove)="onLineHover('nivel', $event, nivelSvg)"
+                  (mouseleave)="clearLineHover('nivel')"
+                >
+                  <defs>
+                    <linearGradient id="nfGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.25" />
+                      <stop offset="100%" stop-color="#0DAFBD" stop-opacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  @for (t of nivel24().yTicks; track t.y) {
+                    <line
+                      x1="55"
+                      [attr.y1]="t.y"
+                      x2="1090"
+                      [attr.y2]="t.y"
+                      stroke="#f1f5f9"
+                      stroke-width="1"
+                    />
+                    <text
+                      x="50"
+                      [attr.y]="t.y + 4"
+                      font-size="11"
+                      fill="#94a3b8"
+                      text-anchor="end"
+                      font-family="monospace"
+                    >
+                      {{ t.label }}
+                    </text>
+                  }
+                  @for (l of nivel24().xLabels; track l.x) {
+                    <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
+                      {{ l.label }}
+                    </text>
+                  }
+                  <polygon [attr.points]="nivel24().fill" fill="url(#nfGrad)" />
+                  <polyline
+                    [attr.points]="nivel24().polyline"
+                    fill="none"
                     stroke="#0DAFBD"
                     stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
                   />
+                  @if (nivelHover(); as h) {
+                    <line
+                      [attr.x1]="h.x"
+                      [attr.x2]="h.x"
+                      [attr.y1]="DY"
+                      [attr.y2]="DY + DH"
+                      stroke="#CBD5E1"
+                      stroke-width="1"
+                      stroke-dasharray="4 4"
+                    />
+                    <circle
+                      [attr.cx]="h.x"
+                      [attr.cy]="h.y"
+                      r="4.5"
+                      fill="#ffffff"
+                      stroke="#0DAFBD"
+                      stroke-width="2.5"
+                    />
+                  }
+                </svg>
+                @if (nivelHover(); as h) {
+                  <div
+                    class="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
+                    [style.left.%]="h.leftPct"
+                    [style.top]="'4px'"
+                  >
+                    <div class="font-bold">{{ h.label }}</div>
+                    <div class="font-mono">{{ h.value }} {{ h.unit }}</div>
+                  </div>
                 }
-              </svg>
-              @if (nivelHover(); as h) {
-                <div
-                  class="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
-                  [style.left.%]="h.leftPct"
-                  [style.top]="'4px'"
-                >
-                  <div class="font-bold">{{ h.label }}</div>
-                  <div class="font-mono">{{ h.value }} {{ h.unit }}</div>
-                </div>
-              }
               }
             </div>
           </div>
@@ -262,90 +262,88 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
             <div class="relative h-44 w-full">
               @if (caudalEmpty()) {
-                <div
-                  class="flex h-full items-center justify-center text-[11px] text-slate-400"
-                >
+                <div class="flex h-full items-center justify-center text-[11px] text-slate-400">
                   Sin datos de caudal en el rango seleccionado.
                 </div>
               } @else {
-              <svg
-                viewBox="0 0 1100 220"
-                class="h-full w-full cursor-crosshair"
-                preserveAspectRatio="none"
-                #caudalSvg
-                (mousemove)="onLineHover('caudal', $event, caudalSvg)"
-                (mouseleave)="clearLineHover('caudal')"
-              >
-                <defs>
-                  <linearGradient id="cqGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2" />
-                    <stop offset="100%" stop-color="#4F46E5" stop-opacity="0.02" />
-                  </linearGradient>
-                </defs>
-                @for (t of caudal24().yTicks; track t.y) {
-                  <line
-                    x1="55"
-                    [attr.y1]="t.y"
-                    x2="1090"
-                    [attr.y2]="t.y"
-                    stroke="#f1f5f9"
-                    stroke-width="1"
-                  />
-                  <text
-                    x="50"
-                    [attr.y]="t.y + 4"
-                    font-size="11"
-                    fill="#94a3b8"
-                    text-anchor="end"
-                    font-family="monospace"
-                  >
-                    {{ t.label }}
-                  </text>
-                }
-                @for (l of caudal24().xLabels; track l.x) {
-                  <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
-                    {{ l.label }}
-                  </text>
-                }
-                <polygon [attr.points]="caudal24().fill" fill="url(#cqGrad)" />
-                <polyline
-                  [attr.points]="caudal24().polyline"
-                  fill="none"
-                  stroke="#4F46E5"
-                  stroke-width="2.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                @if (caudalHover(); as h) {
-                  <line
-                    [attr.x1]="h.x"
-                    [attr.x2]="h.x"
-                    [attr.y1]="DY"
-                    [attr.y2]="DY + DH"
-                    stroke="#CBD5E1"
-                    stroke-width="1"
-                    stroke-dasharray="4 4"
-                  />
-                  <circle
-                    [attr.cx]="h.x"
-                    [attr.cy]="h.y"
-                    r="4.5"
-                    fill="#ffffff"
+                <svg
+                  viewBox="0 0 1100 220"
+                  class="h-full w-full cursor-crosshair"
+                  preserveAspectRatio="none"
+                  #caudalSvg
+                  (mousemove)="onLineHover('caudal', $event, caudalSvg)"
+                  (mouseleave)="clearLineHover('caudal')"
+                >
+                  <defs>
+                    <linearGradient id="cqGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#4F46E5" stop-opacity="0.2" />
+                      <stop offset="100%" stop-color="#4F46E5" stop-opacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  @for (t of caudal24().yTicks; track t.y) {
+                    <line
+                      x1="55"
+                      [attr.y1]="t.y"
+                      x2="1090"
+                      [attr.y2]="t.y"
+                      stroke="#f1f5f9"
+                      stroke-width="1"
+                    />
+                    <text
+                      x="50"
+                      [attr.y]="t.y + 4"
+                      font-size="11"
+                      fill="#94a3b8"
+                      text-anchor="end"
+                      font-family="monospace"
+                    >
+                      {{ t.label }}
+                    </text>
+                  }
+                  @for (l of caudal24().xLabels; track l.x) {
+                    <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
+                      {{ l.label }}
+                    </text>
+                  }
+                  <polygon [attr.points]="caudal24().fill" fill="url(#cqGrad)" />
+                  <polyline
+                    [attr.points]="caudal24().polyline"
+                    fill="none"
                     stroke="#4F46E5"
                     stroke-width="2.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
                   />
+                  @if (caudalHover(); as h) {
+                    <line
+                      [attr.x1]="h.x"
+                      [attr.x2]="h.x"
+                      [attr.y1]="DY"
+                      [attr.y2]="DY + DH"
+                      stroke="#CBD5E1"
+                      stroke-width="1"
+                      stroke-dasharray="4 4"
+                    />
+                    <circle
+                      [attr.cx]="h.x"
+                      [attr.cy]="h.y"
+                      r="4.5"
+                      fill="#ffffff"
+                      stroke="#4F46E5"
+                      stroke-width="2.5"
+                    />
+                  }
+                </svg>
+                @if (caudalHover(); as h) {
+                  <div
+                    class="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
+                    [style.left.%]="h.leftPct"
+                    [style.top]="'4px'"
+                  >
+                    <div class="font-bold">{{ h.label }}</div>
+                    <div class="font-mono">{{ h.value }} {{ h.unit }}</div>
+                  </div>
                 }
-              </svg>
-              @if (caudalHover(); as h) {
-                <div
-                  class="pointer-events-none absolute z-10 -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-lg"
-                  [style.left.%]="h.leftPct"
-                  [style.top]="'4px'"
-                >
-                  <div class="font-bold">{{ h.label }}</div>
-                  <div class="font-mono">{{ h.value }} {{ h.unit }}</div>
-                </div>
-              }
               }
             </div>
           </div>
@@ -827,8 +825,7 @@ export class OperacionGraficosHistoricosComponent {
   );
 
   onLineHover(chart: 'nivel' | 'caudal', event: MouseEvent, svg: Element): void {
-    const pts =
-      chart === 'nivel' ? this.rowsInRange('nivelFreatico') : this.rowsInRange('caudal');
+    const pts = chart === 'nivel' ? this.rowsInRange('nivelFreatico') : this.rowsInRange('caudal');
     if (pts.length === 0) {
       this.clearLineHover(chart);
       return;
@@ -959,9 +956,7 @@ export class OperacionGraficosHistoricosComponent {
     () => this.dailyCountersLoading() && this.diarioPoints().length === 0,
   );
   readonly diarioEmpty = computed(
-    () =>
-      !this.dailyCountersLoading() &&
-      this.diarioPoints().every((p) => (p.delta ?? 0) === 0),
+    () => !this.dailyCountersLoading() && this.diarioPoints().every((p) => (p.delta ?? 0) === 0),
   );
 
   readonly diarioHoverIndex = signal<number | null>(null);

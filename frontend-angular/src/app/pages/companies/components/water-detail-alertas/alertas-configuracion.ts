@@ -103,8 +103,12 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
       <!-- Formulario nueva regla -->
       @if (mostrandoNuevo()) {
-        <article class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4">
-          <p class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container">
+        <article
+          class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
+        >
+          <p
+            class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container"
+          >
             Nueva regla
           </p>
           <ng-container
@@ -312,10 +316,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   </option>
                 }
               </select>
-              @if (
-                draft.variable_key &&
-                !isVariableRegistrada(draft.variable_key)
-              ) {
+              @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
                 <p class="mt-1 text-[11px] text-amber-600">
                   ⚠ "{{ draft.variable_key }}" no esta en las variables registradas del sitio.
                 </p>

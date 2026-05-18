@@ -12,11 +12,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import {
-  DgaReviewActionPayload,
-  DgaReviewSlot,
-  DgaService,
-} from '../../services/dga.service';
+import { DgaReviewActionPayload, DgaReviewSlot, DgaService } from '../../services/dga.service';
 
 interface RowEdit {
   caudal: string;
@@ -36,8 +32,8 @@ interface RowEdit {
         <div>
           <h1 class="text-2xl font-semibold text-slate-800">Cola de revisión DGA</h1>
           <p class="text-[12px] text-slate-500">
-            Slots con anomalías detectadas en validación. Requieren decisión admin
-            antes de enviar a SNIA.
+            Slots con anomalías detectadas en validación. Requieren decisión admin antes de enviar a
+            SNIA.
           </p>
         </div>
         <button
@@ -128,7 +124,9 @@ interface RowEdit {
                 <tr class="hover:bg-slate-50">
                   <td class="px-3 py-2 align-top">
                     <div class="font-semibold text-slate-700">{{ s.codigo_obra || s.obra }}</div>
-                    <div class="text-[10px] text-slate-500">{{ s.referencia_informante || s.site_id }}</div>
+                    <div class="text-[10px] text-slate-500">
+                      {{ s.referencia_informante || s.site_id }}
+                    </div>
                   </td>
                   <td class="px-3 py-2 align-top font-mono text-[11px] text-slate-600">
                     {{ s.ts }}
@@ -242,7 +240,9 @@ export class DgaReviewComponent {
     const e = this.edits()[key];
     if (e) return e;
     // Inicializa con valores actuales o sugeridos.
-    const suggestedTot = s.validation_warnings.find((w) => w.code === 'totalizator_zero')?.suggested;
+    const suggestedTot = s.validation_warnings.find(
+      (w) => w.code === 'totalizator_zero',
+    )?.suggested;
     const initial: RowEdit = {
       caudal: s.caudal_instantaneo ?? '',
       totalizador:
@@ -275,7 +275,9 @@ export class DgaReviewComponent {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set('No se pudo cargar la cola: ' + (err?.error?.error?.message ?? err?.message ?? ''));
+        this.error.set(
+          'No se pudo cargar la cola: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+        );
         this.loading.set(false);
       },
     });
@@ -371,14 +373,11 @@ export class DgaReviewComponent {
         this.acting.set('');
         const code = err?.error?.error?.code;
         if (code === 'DGA_2FA_INVALID' || code === 'DGA_2FA_REQUIRED') {
-          this.error.set(
-            'Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.',
-          );
+          this.error.set('Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.');
           this.twoFactorCode.set('');
         } else {
           this.error.set(
-            'No se pudo aplicar la acción: ' +
-              (err?.error?.error?.message ?? err?.message ?? ''),
+            'No se pudo aplicar la acción: ' + (err?.error?.error?.message ?? err?.message ?? ''),
           );
         }
       },

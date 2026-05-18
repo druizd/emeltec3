@@ -33,9 +33,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
           <span class="material-symbols-outlined text-[18px]">save</span>
           {{ busy() === updateKey() ? 'Actualizando' : 'Actualizar' }}
         </button>
-        <button type="button" (click)="cancelEdit.emit()" class="secondary-button">
-          Cancelar
-        </button>
+        <button type="button" (click)="cancelEdit.emit()" class="secondary-button">Cancelar</button>
       </div>
     }
   `,

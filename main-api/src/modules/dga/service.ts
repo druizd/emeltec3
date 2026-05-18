@@ -130,8 +130,7 @@ function toPozoDgaPublic(row: PozoDgaConfigRow): PozoDgaConfigPublic {
     obra_dga: row.obra_dga,
     dga_activo: row.dga_activo,
     dga_transport: row.dga_transport,
-    dga_caudal_max_lps:
-      row.dga_caudal_max_lps == null ? null : Number(row.dga_caudal_max_lps),
+    dga_caudal_max_lps: row.dga_caudal_max_lps == null ? null : Number(row.dga_caudal_max_lps),
     dga_caudal_tolerance_pct: Number(row.dga_caudal_tolerance_pct),
     dga_periodicidad: row.dga_periodicidad,
     dga_fecha_inicio: row.dga_fecha_inicio,
@@ -405,8 +404,7 @@ export async function getDgaLivePreview(siteId: string): Promise<DgaLivePreview>
     mappings,
     pozoConfig,
   });
-  const tsIso =
-    typeof latest.time === 'string' ? latest.time : new Date(latest.time).toISOString();
+  const tsIso = typeof latest.time === 'string' ? latest.time : new Date(latest.time).toISOString();
   const ageSec = Math.max(0, Math.round((Date.now() - new Date(tsIso).getTime()) / 1000));
 
   const caudal = numericOrNull(mapped.caudal.valor);

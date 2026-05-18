@@ -66,7 +66,9 @@ interface PeriodicidadOption {
           <!-- Header -->
           <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
             <div class="flex items-center gap-3">
-              <span class="material-symbols-outlined text-[24px] text-primary-container">description</span>
+              <span class="material-symbols-outlined text-[24px] text-primary-container"
+                >description</span
+              >
               <div>
                 <h2 class="text-base font-semibold text-slate-800">Configurar reporte DGA</h2>
                 <p class="text-[12px] text-slate-500">
@@ -115,7 +117,9 @@ interface PeriodicidadOption {
                 </label>
 
                 <!-- Modo envío -->
-                <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <label
+                  class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+                >
                   Modo envío
                   <select
                     [value]="pozo()?.dga_transport ?? 'off'"
@@ -130,7 +134,9 @@ interface PeriodicidadOption {
                 </label>
 
                 <!-- Código de obra -->
-                <div class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <div
+                  class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+                >
                   Código de obra
                   <div class="flex gap-2">
                     <input
@@ -153,7 +159,9 @@ interface PeriodicidadOption {
                 </div>
 
                 <!-- Caudal max -->
-                <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <label
+                  class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+                >
                   Caudal máx [L/s]
                   <input
                     type="number"
@@ -168,7 +176,9 @@ interface PeriodicidadOption {
                 </label>
 
                 <!-- Periodicidad -->
-                <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <label
+                  class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+                >
                   Periodicidad
                   <select
                     [value]="pozo()?.dga_periodicidad ?? ''"
@@ -184,7 +194,9 @@ interface PeriodicidadOption {
                 </label>
 
                 <!-- Fecha inicio -->
-                <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <label
+                  class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+                >
                   Fecha inicio
                   <input
                     type="date"
@@ -197,7 +209,9 @@ interface PeriodicidadOption {
                 </label>
 
                 <!-- Hora inicio -->
-                <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <label
+                  class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+                >
                   Hora inicio (UTC-4)
                   <input
                     type="time"
@@ -220,9 +234,8 @@ interface PeriodicidadOption {
               }
 
               <p class="text-[10px] text-slate-500">
-                Pasar a <strong>REST</strong> envía a SNIA en producción. Verifica que el
-                sistema legacy esté apagado para esta obra antes (Res 2170 §6.3).
-                Requiere código 2FA.
+                Pasar a <strong>REST</strong> envía a SNIA en producción. Verifica que el sistema
+                legacy esté apagado para esta obra antes (Res 2170 §6.3). Requiere código 2FA.
               </p>
             </section>
 
@@ -248,7 +261,9 @@ interface PeriodicidadOption {
               </div>
 
               <!-- Selector pool -->
-              <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+              <label
+                class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              >
                 Asociar informante (RUT)
                 <select
                   [value]="pozo()?.dga_informante_rut ?? ''"
@@ -258,7 +273,9 @@ interface PeriodicidadOption {
                 >
                   <option value="">— ninguno —</option>
                   @for (inf of informantes(); track inf.rut) {
-                    <option [value]="inf.rut">{{ inf.rut }}{{ inf.referencia ? ' · ' + inf.referencia : '' }}</option>
+                    <option [value]="inf.rut">
+                      {{ inf.rut }}{{ inf.referencia ? ' · ' + inf.referencia : '' }}
+                    </option>
                   }
                 </select>
                 <span class="text-[10px] text-slate-500">
@@ -297,7 +314,11 @@ interface PeriodicidadOption {
                 [disabled]="!newInfRut().trim() || informanteSaving()"
                 class="rounded bg-violet-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-violet-700 disabled:opacity-40"
               >
-                @if (informanteSaving()) { Guardando… } @else { Guardar informante }
+                @if (informanteSaving()) {
+                  Guardando…
+                } @else {
+                  Guardar informante
+                }
               </button>
               @if (informanteError()) {
                 <div
@@ -307,15 +328,13 @@ interface PeriodicidadOption {
                 </div>
               }
               <p class="text-[10px] text-slate-500">
-                Solo RUT es obligatorio. La clave solo se exige al crear nuevo o rotar
-                (requiere 2FA). Referencia es etiqueta libre interna.
+                Solo RUT es obligatorio. La clave solo se exige al crear nuevo o rotar (requiere
+                2FA). Referencia es etiqueta libre interna.
               </p>
             </section>
 
             <!-- ====== Datos en vivo ====== -->
-            <section
-              class="space-y-2 rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3"
-            >
+            <section class="space-y-2 rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3">
               <div
                 class="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold text-slate-500"
               >
@@ -396,7 +415,9 @@ interface PeriodicidadOption {
         >
           <section class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-5 py-3">
-              <span class="material-symbols-outlined text-[20px] text-amber-700">verified_user</span>
+              <span class="material-symbols-outlined text-[20px] text-amber-700"
+                >verified_user</span
+              >
               <h3 class="text-sm font-semibold uppercase tracking-wide text-amber-900">
                 Verificación 2FA
               </h3>
@@ -406,8 +427,8 @@ interface PeriodicidadOption {
               <p
                 class="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[12px] text-amber-800"
               >
-                Verifica que el sistema legacy esté apagado para esta obra antes de
-                activar REST (Res 2170 §6.3).
+                Verifica que el sistema legacy esté apagado para esta obra antes de activar REST
+                (Res 2170 §6.3).
               </p>
               <div class="flex items-center gap-2">
                 <button
@@ -420,7 +441,9 @@ interface PeriodicidadOption {
                 </button>
                 <span class="text-[11px] text-amber-700">Se envía al email admin.</span>
               </div>
-              <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+              <label
+                class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              >
                 Código (6 dígitos)
                 <input
                   type="text"
@@ -562,7 +585,9 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
         this.obraDgaInitial.set(cfg?.obra_dga ?? '');
       },
       error: (err: HttpErrorResponse) => {
-        this.pozoError.set('No se pudo cargar config DGA: ' + (err.error?.error?.message ?? err.message));
+        this.pozoError.set(
+          'No se pudo cargar config DGA: ' + (err.error?.error?.message ?? err.message),
+        );
       },
     });
   }
@@ -633,13 +658,10 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
           const code = err.error?.error?.code;
           if (code === 'DGA_2FA_REQUIRED' || code === 'DGA_2FA_INVALID') {
             // Activar prompt de 2FA y reintento.
-            this.promptTwoFactor(
-              'Cambiar a REST exige verificación 2FA.',
-              async (twoCode) => {
-                const ok = await this.patchPozo(fieldLabel, payload, twoCode);
-                if (!ok) throw new Error('reintento falló');
-              },
-            );
+            this.promptTwoFactor('Cambiar a REST exige verificación 2FA.', async (twoCode) => {
+              const ok = await this.patchPozo(fieldLabel, payload, twoCode);
+              if (!ok) throw new Error('reintento falló');
+            });
             resolve(false);
           } else {
             this.pozoError.set(err.error?.error?.message ?? err.message ?? 'Error desconocido');

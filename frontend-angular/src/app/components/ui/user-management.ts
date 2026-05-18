@@ -219,13 +219,19 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
         <table class="w-full text-left text-sm">
           <thead class="bg-slate-50/50 border-b border-slate-100">
             <tr>
-              <th class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
+              <th
+                class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+              >
                 Nombre
               </th>
-              <th class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
+              <th
+                class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+              >
                 Email
               </th>
-              <th class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
+              <th
+                class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+              >
                 Rol
               </th>
               @if (!readOnly) {

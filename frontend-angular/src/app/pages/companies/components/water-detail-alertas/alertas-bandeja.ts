@@ -38,7 +38,10 @@ type FiltroEstado = EventoEstado | 'todos';
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
         @for (stat of stats(); track stat.label) {
           <div class="rounded-xl border bg-white px-4 py-3 shadow-sm" [class]="stat.borderClass">
-            <p class="text-[10px] font-semibold uppercase tracking-widest" [class]="stat.labelClass">
+            <p
+              class="text-[10px] font-semibold uppercase tracking-widest"
+              [class]="stat.labelClass"
+            >
               {{ stat.label }}
             </p>
             <p class="mt-0.5 text-2xl font-semibold" [class]="stat.valueClass">{{ stat.valor }}</p>
@@ -445,7 +448,7 @@ export class AlertasBandejaComponent {
     if (s === 'critica') return 'bg-rose-50 text-rose-500';
     if (s === 'alta') return 'bg-orange-50 text-orange-500';
     if (s === 'media') return 'bg-amber-50 text-amber-500';
-    return "bg-slate-100 text-slate-500";
+    return 'bg-slate-100 text-slate-500';
   }
 
   severidadLabel(s: AlertaSeveridad): string {
@@ -456,7 +459,7 @@ export class AlertasBandejaComponent {
     if (s === 'critica') return 'bg-rose-50 text-rose-600';
     if (s === 'alta') return 'bg-orange-50 text-orange-600';
     if (s === 'media') return 'bg-amber-50 text-amber-600';
-    return "bg-slate-100 text-slate-500";
+    return 'bg-slate-100 text-slate-500';
   }
 
   estadoLabel(e: EventoEstado): string {

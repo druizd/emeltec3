@@ -60,10 +60,7 @@ const Schema = z.object({
 
   // Endpoint REST oficial SNIA aguas subterráneas (Res. Exenta 2.170/2025).
   // Default = endpoint productivo. Override en .env solo para piloto/staging.
-  DGA_API_URL: z
-    .string()
-    .url()
-    .default('https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas'),
+  DGA_API_URL: z.string().url().default('https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas'),
 
   // RUT del Centro de Control (Emeltec) registrado ante DGA. Requerido para
   // que el submission worker pueda enviar. Sin esto, el worker no arranca.

@@ -32,7 +32,9 @@ import {
             >warning</span
           >
           <div class="min-w-0 flex-1">
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-amber-600">Atención</p>
+            <p class="text-[10px] font-semibold uppercase tracking-widest text-amber-600">
+              Atención
+            </p>
             @if (isInternal()) {
               <input
                 type="text"
@@ -176,15 +178,9 @@ import {
                       Eliminar
                     </button>
                   } @else {
-                    <p class="font-semibold text-slate-700">
-                      {{ a.persona }} · {{ a.tipo }}
-                    </p>
+                    <p class="font-semibold text-slate-700">{{ a.persona }} · {{ a.tipo }}</p>
                     <p [class]="vigenciaClass(a.vigencia_hasta)">
-                      {{
-                        a.vigencia_hasta
-                          ? 'Vigente hasta ' + a.vigencia_hasta
-                          : 'Sin vigencia'
-                      }}
+                      {{ a.vigencia_hasta ? 'Vigente hasta ' + a.vigencia_hasta : 'Sin vigencia' }}
                     </p>
                   }
                 </li>
@@ -194,9 +190,7 @@ import {
         </section>
 
         <!-- Riesgos -->
-        <section
-          class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2"
-        >
+        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
               Riesgos identificados
@@ -262,8 +256,8 @@ import {
                   } @else {
                     <p class="font-semibold text-slate-700">{{ r.descripcion }}</p>
                     <p class="text-slate-500">
-                      Prob: {{ r.probabilidad ?? '—' }} · Impacto:
-                      {{ r.impacto ?? '—' }} · Mitigación:
+                      Prob: {{ r.probabilidad ?? '—' }} · Impacto: {{ r.impacto ?? '—' }} ·
+                      Mitigación:
                       {{ r.mitigacion || '—' }}
                     </p>
                   }
@@ -329,7 +323,9 @@ export class BitacoraFichaSitioComponent implements OnInit {
         this.original = JSON.stringify(f);
       },
       error: (err) =>
-        this.error.set('No se pudo cargar ficha: ' + (err?.error?.error?.message ?? err?.message ?? '')),
+        this.error.set(
+          'No se pudo cargar ficha: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+        ),
     });
   }
 
@@ -398,7 +394,12 @@ export class BitacoraFichaSitioComponent implements OnInit {
 
   // -------- Riesgos --------
   addRiesgo(): void {
-    const next: FichaRiesgo = { descripcion: '', probabilidad: null, impacto: null, mitigacion: '' };
+    const next: FichaRiesgo = {
+      descripcion: '',
+      probabilidad: null,
+      impacto: null,
+      mitigacion: '',
+    };
     this.ficha.update((f) => ({ ...f, riesgos: [...f.riesgos, next] }));
   }
   removeRiesgo(idx: number): void {

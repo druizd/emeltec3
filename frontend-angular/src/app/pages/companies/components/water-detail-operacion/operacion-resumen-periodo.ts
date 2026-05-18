@@ -173,9 +173,7 @@ interface IncidenciaPeriodo {
                   (click)="numTurnos.set(2)"
                   class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
                   [class]="
-                    numTurnos() === 2
-                      ? 'bg-primary text-white'
-                      : 'text-slate-500 hover:bg-slate-50'
+                    numTurnos() === 2 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
                   [attr.aria-pressed]="numTurnos() === 2"
                 >
@@ -186,9 +184,7 @@ interface IncidenciaPeriodo {
                   (click)="numTurnos.set(3)"
                   class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
                   [class]="
-                    numTurnos() === 3
-                      ? 'bg-primary text-white'
-                      : 'text-slate-500 hover:bg-slate-50'
+                    numTurnos() === 3 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
                   [attr.aria-pressed]="numTurnos() === 3"
                 >
@@ -292,9 +288,10 @@ interface IncidenciaPeriodo {
             <h3 class="text-sm font-semibold text-slate-800">Flujo diario en el período</h3>
             <p class="mt-0.5 text-[11px] text-slate-400">m³/día · días sin operación en gris</p>
           </div>
-          <span class="rounded-full bg-[rgba(13,175,189,0.08)] px-2.5 py-1 text-[11px] font-bold text-primary-container">{{
-            periodoLabel()
-          }}</span>
+          <span
+            class="rounded-full bg-[rgba(13,175,189,0.08)] px-2.5 py-1 text-[11px] font-bold text-primary-container"
+            >{{ periodoLabel() }}</span
+          >
         </div>
         <div class="h-44 w-full">
           <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
@@ -661,20 +658,21 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
   turnoResumenLabel(i: number): string {
     return (
-      (['text-primary-container', 'text-emerald-700', 'text-slate-500'] as const)[i] ?? 'text-slate-500'
+      (['text-primary-container', 'text-emerald-700', 'text-slate-500'] as const)[i] ??
+      'text-slate-500'
     );
   }
 
   turnoResumenSub(i: number): string {
     return (
-      (['text-primary/70', 'text-emerald-500/70', 'text-slate-400'] as const)[i] ??
-      'text-slate-400'
+      (['text-primary/70', 'text-emerald-500/70', 'text-slate-400'] as const)[i] ?? 'text-slate-400'
     );
   }
 
   turnoResumenValue(i: number): string {
     return (
-      (['text-primary-container', 'text-emerald-700', 'text-slate-700'] as const)[i] ?? 'text-slate-700'
+      (['text-primary-container', 'text-emerald-700', 'text-slate-700'] as const)[i] ??
+      'text-slate-700'
     );
   }
 
@@ -1034,17 +1032,17 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   private readonly dailyInRange = computed(() => {
     const desde = this.fechaDesde();
     const hasta = this.fechaHasta();
-    return this.state
-      .dailyCountersData()
-      .filter((p) => p.dia >= desde && p.dia <= hasta);
+    return this.state.dailyCountersData().filter((p) => p.dia >= desde && p.dia <= hasta);
   });
 
   private readonly historyInRange = computed(() => {
     const desdeMs = new Date(`${this.fechaDesde()}T00:00:00-04:00`).getTime();
     const hastaMs = new Date(`${this.fechaHasta()}T23:59:59-04:00`).getTime();
-    return this.state.historyRows().filter(
-      (r) => r.timestampMs !== null && r.timestampMs >= desdeMs && r.timestampMs <= hastaMs,
-    );
+    return this.state
+      .historyRows()
+      .filter(
+        (r) => r.timestampMs !== null && r.timestampMs >= desdeMs && r.timestampMs <= hastaMs,
+      );
   });
 
   private readonly diasEsperados = computed(() => {

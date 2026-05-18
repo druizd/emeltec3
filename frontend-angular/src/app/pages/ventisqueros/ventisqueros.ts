@@ -143,9 +143,7 @@ interface MetricOption {
           <div class="mb-3 flex flex-wrap items-end justify-between gap-3.5">
             <div>
               <div class="vs-h1">Monitoreo de Cámaras</div>
-              <div class="vs-h1-sub">
-                Temperatura, humedad relativa y alertas térmicas en vivo
-              </div>
+              <div class="vs-h1-sub">Temperatura, humedad relativa y alertas térmicas en vivo</div>
             </div>
             <div class="flex items-center gap-2">
               <div class="vs-metric-toggle flex gap-0.5">
@@ -263,9 +261,7 @@ interface MetricOption {
 
             <!-- Sensor rail -->
             <div class="vs-rail flex h-full min-w-0 shrink-0 flex-col gap-3 overflow-hidden">
-              <app-ventisqueros-focus-card
-                [focus]="focusSensor()"
-              ></app-ventisqueros-focus-card>
+              <app-ventisqueros-focus-card [focus]="focusSensor()"></app-ventisqueros-focus-card>
 
               <div class="vs-tap-panel flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                 <div class="vs-tap-panel-head flex items-center justify-between">
@@ -305,7 +301,9 @@ interface MetricOption {
                                 <div class="flex items-center gap-1.5">
                                   <span class="vs-id-chip">{{ s.id }}</span>
                                   @if (s.alerted) {
-                                    <span class="vs-sensor-alert-chip inline-flex items-center gap-0.75">
+                                    <span
+                                      class="vs-sensor-alert-chip inline-flex items-center gap-0.75"
+                                    >
                                       <span class="vs-sensor-alert-dot"></span>
                                       ALERTA
                                     </span>
@@ -445,7 +443,9 @@ interface MetricOption {
                     <span
                       class="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600"
                     >
-                      <span class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                      <span
+                        class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"
+                      ></span>
                       {{ t.alerts }} en alerta
                     </span>
                   } @else {
@@ -594,7 +594,9 @@ interface MetricOption {
         cursor: pointer;
         font-family: var(--font-body);
         color: #64748b;
-        transition: color 0.12s ease, border-color 0.12s ease;
+        transition:
+          color 0.12s ease,
+          border-color 0.12s ease;
       }
       .vs-tab-btn--active {
         color: var(--color-primary-container);
@@ -685,11 +687,7 @@ interface MetricOption {
 
       /* Alert banner */
       .vs-alert-banner {
-        background: linear-gradient(
-          90deg,
-          rgba(239, 68, 68, 0.1) 0%,
-          rgba(239, 68, 68, 0.04) 80%
-        );
+        background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.04) 80%);
         border: 1px solid rgba(239, 68, 68, 0.3);
         border-radius: 12px;
         padding: 10px 14px;
@@ -810,7 +808,6 @@ interface MetricOption {
         min-width: 320px;
       }
 
-
       /* TAP panel (rail) */
       .vs-tap-panel {
         background: #ffffff;
@@ -849,7 +846,9 @@ interface MetricOption {
         grid-template-columns: 8px 1fr auto;
         padding: 8px 10px;
         border-radius: 8px;
-        transition: background 0.12s, border-color 0.12s;
+        transition:
+          background 0.12s,
+          border-color 0.12s;
       }
       .vs-sensor-dot {
         width: 8px;
@@ -1172,5 +1171,4 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     if (s.alerted) return '1px solid rgba(239,68,68,0.20)';
     return '1px solid transparent';
   }
-
 }

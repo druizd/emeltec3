@@ -33,7 +33,9 @@ import {
       </div>
 
       @if (loading()) {
-        <div class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">
+        <div
+          class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400"
+        >
           Cargando equipos…
         </div>
       } @else if (equipos().length === 0) {
@@ -51,22 +53,34 @@ import {
             <table class="w-full min-w-[860px] text-left text-sm">
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50">
-                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <th
+                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     Equipo
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <th
+                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     Fabricante / Modelo
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <th
+                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     N° Serie
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <th
+                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     Compra
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <th
+                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     Garantía
                   </th>
-                  <th class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <th
+                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     Estado
                   </th>
                   <th class="px-3 py-2"></th>
@@ -86,7 +100,11 @@ import {
                     <td class="px-3 py-2 font-mono text-[11px] text-slate-500">
                       {{ eq.fecha_compra || '—' }}
                     </td>
-                    <td [class]="'px-3 py-2 font-mono text-[11px] ' + garantiaClass(eq.garantia_hasta)">
+                    <td
+                      [class]="
+                        'px-3 py-2 font-mono text-[11px] ' + garantiaClass(eq.garantia_hasta)
+                      "
+                    >
                       {{ eq.garantia_hasta || '—' }}
                     </td>
                     <td class="px-3 py-2">
@@ -129,9 +147,7 @@ import {
       }
 
       @if (error()) {
-        <div
-          class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
-        >
+        <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
           {{ error() }}
         </div>
       }
@@ -160,7 +176,9 @@ import {
             </button>
           </div>
           <div class="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-2">
-            <label class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Nombre
               <input
                 type="text"
@@ -170,7 +188,9 @@ import {
                 class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
-            <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Fabricante
               <input
                 type="text"
@@ -179,7 +199,9 @@ import {
                 class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
-            <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Modelo
               <input
                 type="text"
@@ -188,7 +210,9 @@ import {
                 class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
-            <label class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               N° Serie
               <input
                 type="text"
@@ -197,7 +221,9 @@ import {
                 class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
-            <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Fecha compra
               <input
                 type="date"
@@ -207,7 +233,9 @@ import {
                 class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
-            <label class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Garantía hasta
               <input
                 type="date"
@@ -217,7 +245,9 @@ import {
                 class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
-            <label class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Estado
               <select
                 [ngModel]="form().estado"
@@ -229,7 +259,9 @@ import {
                 <option value="fuera_de_servicio">Fuera de servicio</option>
               </select>
             </label>
-            <label class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+            <label
+              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+            >
               Notas
               <textarea
                 rows="3"
@@ -301,7 +333,9 @@ export class BitacoraEquipamientoComponent implements OnInit {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set('No se pudo cargar equipos: ' + (err?.error?.error?.message ?? err?.message ?? ''));
+        this.error.set(
+          'No se pudo cargar equipos: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+        );
         this.loading.set(false);
       },
     });
@@ -384,7 +418,9 @@ export class BitacoraEquipamientoComponent implements OnInit {
     this.api.deleteEquipo(eq.id).subscribe({
       next: () => this.equipos.update((list) => list.filter((e) => e.id !== eq.id)),
       error: (err) =>
-        this.error.set('No se pudo eliminar: ' + (err?.error?.error?.message ?? err?.message ?? '')),
+        this.error.set(
+          'No se pudo eliminar: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+        ),
     });
   }
 

@@ -50,9 +50,7 @@ export class AnalisisService {
 
   getSalud(siteId: string): Observable<SaludData> {
     return this.http
-      .get<ApiResponse<SaludData>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/analisis/salud`,
-      )
+      .get<ApiResponse<SaludData>>(`/api/v2/sites/${encodeURIComponent(siteId)}/analisis/salud`)
       .pipe(
         map((r) =>
           r.ok
@@ -65,17 +63,13 @@ export class AnalisisService {
   getMetricas(siteId: string, desdeIso: string, hastaIso: string): Observable<MetricasData> {
     const params = new HttpParams().set('desde', desdeIso).set('hasta', hastaIso);
     return this.http
-      .get<ApiResponse<MetricasData>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/analisis/metricas`,
-        { params },
-      )
+      .get<
+        ApiResponse<MetricasData>
+      >(`/api/v2/sites/${encodeURIComponent(siteId)}/analisis/metricas`, { params })
       .pipe(
         map((r) =>
-          r.ok
-            ? r.data
-            : { desde: desdeIso, hasta: hastaIso, total_lecturas: 0, variables: [] },
+          r.ok ? r.data : { desde: desdeIso, hasta: hastaIso, total_lecturas: 0, variables: [] },
         ),
       );
   }
-
 }

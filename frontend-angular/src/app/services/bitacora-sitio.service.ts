@@ -71,24 +71,19 @@ export class BitacoraSitioService {
 
   getFicha(siteId: string): Observable<FichaSitio> {
     return this.http
-      .get<ApiResponse<FichaSitio>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/ficha`,
-      )
+      .get<ApiResponse<FichaSitio>>(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/ficha`)
       .pipe(
         map((r) =>
-          r.ok
-            ? r.data
-            : { pin_critico: null, contactos: [], acreditaciones: [], riesgos: [] },
+          r.ok ? r.data : { pin_critico: null, contactos: [], acreditaciones: [], riesgos: [] },
         ),
       );
   }
 
   patchFicha(siteId: string, ficha: FichaSitio): Observable<FichaSitio> {
     return this.http
-      .patch<ApiResponse<FichaSitio>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/ficha`,
-        ficha,
-      )
+      .patch<
+        ApiResponse<FichaSitio>
+      >(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/ficha`, ficha)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
@@ -96,35 +91,33 @@ export class BitacoraSitioService {
 
   listEquipos(siteId: string): Observable<SitioEquipo[]> {
     return this.http
-      .get<ApiResponse<SitioEquipo[]>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/equipos`,
-      )
+      .get<
+        ApiResponse<SitioEquipo[]>
+      >(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/equipos`)
       .pipe(map((r) => (r.ok ? r.data : [])));
   }
 
   createEquipo(siteId: string, payload: CreateEquipoPayload): Observable<SitioEquipo> {
     return this.http
-      .post<ApiResponse<SitioEquipo>>(
-        `/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/equipos`,
-        payload,
-      )
+      .post<
+        ApiResponse<SitioEquipo>
+      >(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/equipos`, payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
   patchEquipo(id: string, payload: PatchEquipoPayload): Observable<SitioEquipo> {
     return this.http
-      .patch<ApiResponse<SitioEquipo>>(
-        `/api/v2/sites/bitacora/equipos/${encodeURIComponent(id)}`,
-        payload,
-      )
+      .patch<
+        ApiResponse<SitioEquipo>
+      >(`/api/v2/sites/bitacora/equipos/${encodeURIComponent(id)}`, payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
   deleteEquipo(id: string): Observable<void> {
     return this.http
-      .delete<ApiResponse<{ deleted: true }>>(
-        `/api/v2/sites/bitacora/equipos/${encodeURIComponent(id)}`,
-      )
+      .delete<
+        ApiResponse<{ deleted: true }>
+      >(`/api/v2/sites/bitacora/equipos/${encodeURIComponent(id)}`)
       .pipe(map(() => void 0));
   }
 }

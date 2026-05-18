@@ -80,9 +80,7 @@ async function reportEnviadoSinAudit(): Promise<number> {
   if (orphans.length > 0) {
     const lines = orphans
       .slice(0, 50)
-      .map(
-        (o) => `- site=${o.site_id} ts=${o.ts} comprobante=${o.comprobante ?? '(null)'}`,
-      );
+      .map((o) => `- site=${o.site_id} ts=${o.ts} comprobante=${o.comprobante ?? '(null)'}`);
     await sendDgaAdminAlert({
       subject: `[DGA] ${orphans.length} slot(s) enviado(s) SIN audit`,
       body:

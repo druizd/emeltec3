@@ -145,7 +145,9 @@ function emptyVariables(): SiteVariablesPayload {
             <span class="material-symbols-outlined text-[22px]">settings</span>
           </span>
           <div class="min-w-0">
-            <p class="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            <p
+              class="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+            >
               Configuracion del sitio / {{ siteTypeLabel() }}
             </p>
             <h2 class="truncate text-xl font-semibold leading-none text-slate-800">

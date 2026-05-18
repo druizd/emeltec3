@@ -54,10 +54,7 @@ function loadMailService(): MailService | null {
  * Envía un email de alerta admin. Si no hay destinatario configurado
  * (MONITOR_PRIMARY_EMAIL vacío), loguea warn y sigue sin error.
  */
-export async function sendDgaAdminAlert(input: {
-  subject: string;
-  body: string;
-}): Promise<void> {
+export async function sendDgaAdminAlert(input: { subject: string; body: string }): Promise<void> {
   const to = config.monitor.primaryEmail;
   if (!to) {
     logger.warn({ subject: input.subject }, 'DGA notifier: MONITOR_PRIMARY_EMAIL no configurado');
