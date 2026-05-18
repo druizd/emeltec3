@@ -15,8 +15,23 @@ import {
   UpdateAlertaPayload,
 } from '../../../../services/alerta.service';
 import { AdministrationService } from '../../../../services/administration.service';
-import type { VariableMapping } from '@emeltec/shared';
+import { CompanyService } from '../../../../services/company.service';
+import type { SiteDashboardHistoryEntry, VariableMapping } from '@emeltec/shared';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+
+interface SimulationResultRow {
+  timestamp: string;
+  value: number | null;
+  raw: unknown;
+  matched: boolean;
+}
+
+interface SimulationSummary {
+  total: number;
+  matched: number;
+  rows: SimulationResultRow[];
+  withValueCount: number;
+}
 
 interface DraftAlerta {
   nombre: string;
@@ -463,6 +478,129 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             }
           </div>
         </div>
+
+        <!-- Vista previa con datos reales (rule-tester) -->
+        @if (esCondicionSimulable(draft.condicion)) {
+          <section
+            class="space-y-3 rounded-2xl border border-primary-tint-25 bg-primary-tint-08/30 px-4 py-3"
+          >
+            <header class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] text-primary-container"
+                  >science</span
+                >
+                <p class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container">
+                  Vista previa con datos reales
+                </p>
+              </div>
+              <button
+                type="button"
+                (click)="simularRegla(draft)"
+                [disabled]="simulating() || !puedeSimular(draft)"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
+              >
+                <span
+                  class="material-symbols-outlined text-[14px]"
+                  [class.animate-spin]="simulating()"
+                  aria-hidden="true"
+                  >{{ simulating() ? 'progress_activity' : 'play_circle' }}</span
+                >
+                {{ simulating() ? 'Probando…' : 'Probar regla' }}
+              </button>
+            </header>
+            <p class="text-caption-xs text-on-surface-muted">
+              Evalúa la condición contra las últimas 500 lecturas del sitio. Read-only — no
+              guarda nada ni dispara notificaciones.
+            </p>
+            @if (simulationError()) {
+              <app-inline-error [message]="simulationError()" />
+            }
+            @if (simulationSummary(); as sim) {
+              <div class="flex flex-wrap items-center gap-3 text-caption-xs">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-bold"
+                  [class]="
+                    sim.matched > 0
+                      ? 'bg-rose-100 text-rose-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                  "
+                >
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
+                    sim.matched > 0 ? 'notifications_active' : 'check_circle'
+                  }}</span>
+                  {{ sim.matched }}
+                  {{ sim.matched === 1 ? 'match' : 'matches' }} en {{ sim.total }} lecturas
+                </span>
+                @if (draft.condicion !== 'sin_datos') {
+                  <span class="text-on-surface-muted">
+                    {{ sim.withValueCount }} con valor numérico
+                  </span>
+                }
+              </div>
+              @if (sim.rows.length > 0) {
+                <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <table class="w-full text-caption-xs">
+                    <thead class="bg-slate-50 text-on-surface-muted">
+                      <tr>
+                        <th class="px-3 py-2 text-left font-semibold uppercase tracking-wider">
+                          Fecha
+                        </th>
+                        <th class="px-3 py-2 text-right font-semibold uppercase tracking-wider">
+                          Valor
+                        </th>
+                        <th class="px-3 py-2 text-right font-semibold uppercase tracking-wider">
+                          Resultado
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                      @for (row of sim.rows; track row.timestamp) {
+                        <tr>
+                          <td class="px-3 py-2 font-mono text-slate-600">
+                            {{ formatSimulationTime(row.timestamp) }}
+                          </td>
+                          <td class="px-3 py-2 text-right font-mono font-bold text-slate-800">
+                            @if (row.value !== null) {
+                              {{ row.value }}
+                            } @else {
+                              <span class="text-on-surface-muted italic">sin dato</span>
+                            }
+                          </td>
+                          <td class="px-3 py-2 text-right">
+                            <span
+                              class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 font-bold text-rose-700"
+                            >
+                              <span
+                                class="material-symbols-outlined text-[12px]"
+                                aria-hidden="true"
+                                >warning</span
+                              >
+                              dispara
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                  @if (sim.matched > sim.rows.length) {
+                    <p class="bg-slate-50 px-3 py-2 text-caption-xs text-on-surface-muted">
+                      Mostrando los primeros {{ sim.rows.length }} matches de {{ sim.matched }} en
+                      total.
+                    </p>
+                  }
+                </div>
+              } @else {
+                <p
+                  class="rounded-xl bg-emerald-50 px-4 py-3 text-caption text-emerald-700"
+                  role="status"
+                >
+                  La regla no habría disparado contra las últimas {{ sim.total }} lecturas. Listo
+                  para activar.
+                </p>
+              }
+            }
+          </section>
+        }
       </div>
     </ng-template>
   `,
@@ -470,6 +608,14 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 export class AlertasConfiguracionComponent {
   private readonly alertaService = inject(AlertaService);
   private readonly adminService = inject(AdministrationService);
+  private readonly companyService = inject(CompanyService);
+
+  /** Rule-tester state. Una sola simulación activa a la vez — el draft
+   * que está siendo testeado se identifica por su `variable_key` + `condicion`.
+   * Se resetea cuando el draft cambia o el panel se cierra. */
+  readonly simulating = signal(false);
+  readonly simulationSummary = signal<SimulationSummary | null>(null);
+  readonly simulationError = signal('');
 
   readonly sitioId = input<string>('');
   readonly empresaId = input<string>('');
@@ -746,5 +892,176 @@ export class AlertasConfiguracionComponent {
       default:
         return r.condicion;
     }
+  }
+
+  // ─── Rule-tester ────────────────────────────────────────────────────
+
+  /**
+   * `dga_atrasado` no simula contra historic readings — depende de la cola
+   * SNIA, no de valores de variable. UI oculta el botón para esa condición.
+   */
+  esCondicionSimulable(condicion: AlertaCondicion): boolean {
+    return condicion !== 'dga_atrasado';
+  }
+
+  /**
+   * Una regla es "simulable" cuando tiene los inputs mínimos: condicion
+   * simulable + variable_key + umbrales válidos según condición.
+   */
+  puedeSimular(draft: DraftAlerta): boolean {
+    if (!this.esCondicionSimulable(draft.condicion)) return false;
+    if (draft.condicion === 'sin_datos') {
+      return !!this.sitioId() && draft.cooldown_minutos > 0;
+    }
+    if (!draft.variable_key) return false;
+    if (draft.condicion === 'fuera_rango') {
+      return draft.umbral_bajo !== '' && draft.umbral_alto !== '';
+    }
+    return draft.umbral_bajo !== '';
+  }
+
+  /**
+   * Ejecuta la regla contra las últimas 500 lecturas del dashboard-history
+   * endpoint y reporta cuántas habrían disparado. NO escribe — solo lectura.
+   * 500 entries ≈ últimas 8.3 horas (a 60s polling) o más si el sitio tiene
+   * polling más lento. Buffer suficiente para que el admin pruebe sin
+   * sobrecargar el backend.
+   */
+  simularRegla(draft: DraftAlerta): void {
+    const siteId = this.sitioId();
+    if (!siteId) {
+      this.simulationError.set('No hay sitio seleccionado.');
+      return;
+    }
+    if (!this.puedeSimular(draft)) {
+      this.simulationError.set('Completa la regla antes de probarla.');
+      return;
+    }
+
+    this.simulating.set(true);
+    this.simulationError.set('');
+    this.simulationSummary.set(null);
+
+    this.companyService.getSiteDashboardHistory(siteId, 500).subscribe({
+      next: (res) => {
+        this.simulating.set(false);
+        if (!res.ok) {
+          this.simulationError.set('No se pudo cargar el histórico para la simulación.');
+          return;
+        }
+        const entries = res.data ?? [];
+        this.simulationSummary.set(this.buildSimulation(draft, entries));
+      },
+      error: (err: unknown) => {
+        this.simulating.set(false);
+        const e = err as { error?: { error?: { message?: string } }; message?: string };
+        this.simulationError.set(
+          e?.error?.error?.message ?? 'No se pudo cargar el histórico para la simulación.',
+        );
+      },
+    });
+  }
+
+  resetSimulacion(): void {
+    this.simulationSummary.set(null);
+    this.simulationError.set('');
+  }
+
+  /** Evalúa una entry de historial contra la condición del draft. */
+  private evalCondicion(value: number | null, draft: DraftAlerta): boolean {
+    if (draft.condicion === 'sin_datos') {
+      // Para "sin datos", value === null implica que la lectura llegó vacía
+      // — el match real depende del gap inter-entry y se evalúa en
+      // buildSimulation(), no aquí.
+      return false;
+    }
+    if (value === null) return false;
+    const bajo = draft.umbral_bajo === '' ? null : Number(draft.umbral_bajo);
+    const alto = draft.umbral_alto === '' ? null : Number(draft.umbral_alto);
+    switch (draft.condicion) {
+      case 'mayor_que':
+        return bajo !== null && Number.isFinite(bajo) && value > bajo;
+      case 'menor_que':
+        return bajo !== null && Number.isFinite(bajo) && value < bajo;
+      case 'igual_a':
+        return bajo !== null && Number.isFinite(bajo) && Math.abs(value - bajo) < 1e-9;
+      case 'fuera_rango':
+        if (bajo === null || alto === null || !Number.isFinite(bajo) || !Number.isFinite(alto)) {
+          return false;
+        }
+        return value < bajo || value > alto;
+      default:
+        return false;
+    }
+  }
+
+  private buildSimulation(
+    draft: DraftAlerta,
+    entries: SiteDashboardHistoryEntry[],
+  ): SimulationSummary {
+    // Mostrar más recientes primero para que el admin vea los hits relevantes.
+    const sorted = [...entries].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+    if (draft.condicion === 'sin_datos') {
+      // Gap detection: marcar como match cada gap > cooldown_minutos entre
+      // entries consecutivas (de más reciente a más antigua), o lecturas con
+      // valor null/undefined para el variable_key.
+      const gapMs = draft.cooldown_minutos * 60_000;
+      const rows: SimulationResultRow[] = [];
+      let matchedCount = 0;
+      let withValueCount = 0;
+      for (let i = 0; i < sorted.length; i++) {
+        const entry = sorted[i];
+        const raw = draft.variable_key ? entry.variables[draft.variable_key] : null;
+        const isNull = raw === null || raw === undefined || raw === '';
+        let isGap = false;
+        if (i < sorted.length - 1) {
+          const t1 = Date.parse(entry.timestamp);
+          const t2 = Date.parse(sorted[i + 1].timestamp);
+          if (Number.isFinite(t1) && Number.isFinite(t2) && t1 - t2 > gapMs) isGap = true;
+        }
+        const matched = isNull || isGap;
+        if (matched) matchedCount++;
+        if (!isNull) withValueCount++;
+        if (rows.length < 5 && matched) {
+          rows.push({ timestamp: entry.timestamp, value: this.toNum(raw), raw, matched: true });
+        }
+      }
+      return { total: sorted.length, matched: matchedCount, rows, withValueCount };
+    }
+
+    const rows: SimulationResultRow[] = [];
+    let matchedCount = 0;
+    let withValueCount = 0;
+    for (const entry of sorted) {
+      const raw = entry.variables[draft.variable_key];
+      const value = this.toNum(raw);
+      const hasValue = value !== null;
+      if (hasValue) withValueCount++;
+      const matched = this.evalCondicion(value, draft);
+      if (matched) matchedCount++;
+      if (matched && rows.length < 5) {
+        rows.push({ timestamp: entry.timestamp, value, raw, matched: true });
+      }
+    }
+    return { total: sorted.length, matched: matchedCount, rows, withValueCount };
+  }
+
+  private toNum(raw: unknown): number | null {
+    if (raw === null || raw === undefined || raw === '') return null;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  formatSimulationTime(iso: string): string {
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return iso;
+    return d.toLocaleString('es-CL', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    });
   }
 }
