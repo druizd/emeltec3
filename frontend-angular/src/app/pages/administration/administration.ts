@@ -26,6 +26,7 @@ import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui'
 import { AdminPaginationComponent } from './components/admin-pagination';
 import { AdminFormActionsComponent } from './components/admin-form-actions';
 import { AdminSectionShellComponent } from './components/admin-section-shell';
+import { AdminSectionHeaderComponent } from './components/admin-section-header';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -308,6 +309,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     AdminPaginationComponent,
     AdminFormActionsComponent,
     AdminSectionShellComponent,
+    AdminSectionHeaderComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -458,29 +460,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       (submit)="submitCompany($event)"
                       class="editor-panel grid gap-4 lg:grid-cols-3"
                     >
-                      <div class="flex items-start justify-between gap-3 lg:col-span-3">
-                        <div>
-                          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
-                            {{ selectedCompanyId() ? 'Empresa seleccionada' : 'Nueva empresa' }}
-                          </p>
-                          <p class="mt-1 text-sm text-slate-500">
-                            {{
-                              selectedCompanyId()
-                                ? 'Presiona editar datos para habilitar cambios.'
-                                : 'Completa los datos para crear una empresa.'
-                            }}
-                          </p>
-                        </div>
-                        @if (selectedCompanyId()) {
-                          <button
-                            type="button"
-                            (click)="startCreateCompany()"
-                            class="secondary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">add</span>
-                            Nueva
-                          </button>
-                        }
+                      <div class="lg:col-span-3">
+                        <app-admin-section-header
+                          [selected]="!!selectedCompanyId()"
+                          selectedLabel="Empresa seleccionada"
+                          newLabel="Nueva empresa"
+                          selectedHint="Presiona editar datos para habilitar cambios."
+                          newHint="Completa los datos para crear una empresa."
+                          (createNew)="startCreateCompany()"
+                        ></app-admin-section-header>
                       </div>
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
@@ -607,33 +595,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       (submit)="submitSubCompany($event)"
                       class="editor-panel grid gap-4 lg:grid-cols-3"
                     >
-                      <div class="flex items-start justify-between gap-3 lg:col-span-3">
-                        <div>
-                          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
-                            {{
-                              selectedSubCompanyId()
-                                ? 'Subempresa seleccionada'
-                                : 'Nueva subempresa'
-                            }}
-                          </p>
-                          <p class="mt-1 text-sm text-slate-500">
-                            {{
-                              selectedSubCompanyId()
-                                ? 'Presiona editar datos para habilitar cambios.'
-                                : 'Completa los datos para crear una subempresa.'
-                            }}
-                          </p>
-                        </div>
-                        @if (selectedSubCompanyId()) {
-                          <button
-                            type="button"
-                            (click)="startCreateSubCompany()"
-                            class="secondary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">add</span>
-                            Nueva
-                          </button>
-                        }
+                      <div class="lg:col-span-3">
+                        <app-admin-section-header
+                          [selected]="!!selectedSubCompanyId()"
+                          selectedLabel="Subempresa seleccionada"
+                          newLabel="Nueva subempresa"
+                          selectedHint="Presiona editar datos para habilitar cambios."
+                          newHint="Completa los datos para crear una subempresa."
+                          (createNew)="startCreateSubCompany()"
+                        ></app-admin-section-header>
                       </div>
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500"
@@ -758,29 +728,16 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       (submit)="submitSite($event)"
                       class="editor-panel grid gap-4 lg:grid-cols-4"
                     >
-                      <div class="flex items-start justify-between gap-3 lg:col-span-4">
-                        <div>
-                          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
-                            {{ selectedSiteId() ? 'Sitio seleccionado' : 'Nuevo sitio' }}
-                          </p>
-                          <p class="mt-1 text-sm text-slate-500">
-                            {{
-                              selectedSiteId()
-                                ? 'Selecciona editar datos para modificar este sitio.'
-                                : 'Completa los datos para crear un sitio.'
-                            }}
-                          </p>
-                        </div>
-                        @if (selectedSiteId()) {
-                          <button
-                            type="button"
-                            (click)="startCreateSite()"
-                            class="secondary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">add</span>
-                            Nuevo
-                          </button>
-                        }
+                      <div class="lg:col-span-4">
+                        <app-admin-section-header
+                          [selected]="!!selectedSiteId()"
+                          selectedLabel="Sitio seleccionado"
+                          newLabel="Nuevo sitio"
+                          selectedHint="Selecciona editar datos para modificar este sitio."
+                          newHint="Completa los datos para crear un sitio."
+                          buttonLabel="Nuevo"
+                          (createNew)="startCreateSite()"
+                        ></app-admin-section-header>
                       </div>
                       <div>
                         <label class="mb-1 block text-xs font-bold text-slate-500"
