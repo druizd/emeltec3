@@ -1330,7 +1330,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return estado === 'resuelta'
       ? 'bg-emerald-500'
       : estado === 'en_proceso'
-        ? 'bg-[rgba(13,175,189,0.08)]0'
+        ? 'bg-primary/10'
         : 'bg-amber-500';
   }
 }

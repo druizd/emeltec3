@@ -485,7 +485,7 @@ export class AlertasBandejaComponent {
     const map: Record<EventoEstado, string> = {
       activa: 'bg-rose-500',
       reconocida: 'bg-amber-500',
-      asignada: 'bg-[rgba(13,175,189,0.08)]0',
+      asignada: 'bg-primary/10',
       resuelta: 'bg-slate-400',
     };
     return map[e];

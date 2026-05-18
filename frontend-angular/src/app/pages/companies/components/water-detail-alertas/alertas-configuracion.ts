@@ -146,7 +146,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               <button
                 type="button"
                 (click)="toggleActiva(regla)"
-                [class]="regla.activa ? 'bg-[rgba(13,175,189,0.08)]0' : 'bg-slate-300'"
+                [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
                 class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
                 [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
               >

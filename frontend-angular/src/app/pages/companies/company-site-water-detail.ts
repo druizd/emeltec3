@@ -169,6 +169,7 @@ interface SiteDashboardData {
 type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
 type OperationMode = 'realtime' | 'turnos';
 
+
 @Component({
   selector: 'app-company-site-water-detail',
   standalone: true,
@@ -485,9 +486,7 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
-                    <tr
-                      class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400"
-                    >
+                    <tr class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
                       <th class="px-4 py-3">NIVEL</th>
@@ -502,9 +501,7 @@ type OperationMode = 'realtime' | 'turnos';
                       >
                         <td class="px-4 py-3">
                           <span class="inline-flex items-center gap-2">
-                            <span
-                              class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0"
-                            ></span>
+                            <span class="h-1.5 w-1.5 rounded-full bg-primary/10"></span>
                             {{ row.fecha }}
                           </span>
                         </td>
@@ -587,9 +584,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      >
+                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                         Último envío aceptado
                       </p>
                     </div>
@@ -602,21 +597,17 @@ type OperationMode = 'realtime' | 'turnos';
                 } @else {
                   <article
                     class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm"
-                    [title]="'Cargá número de obra para habilitar link SNIA · ' + comp"
+                    [title]="'Carga el número de obra para habilitar el link SNIA · ' + comp"
                   >
                     <div class="flex items-center gap-1.5">
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      >
+                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                         Último envío aceptado
                       </p>
                     </div>
-                    <p
-                      class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800"
-                    >
+                    <p class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800">
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
                     <span class="truncate font-mono text-[10px] text-slate-500">{{ comp }}</span>
@@ -665,43 +656,47 @@ type OperationMode = 'realtime' | 'turnos';
                     <div
                       class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs shadow-lg"
                     >
-                      <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
+                      <p class="mb-2 font-semibold text-slate-700">
+                        Cómo se calcula
+                      </p>
                       <p class="mb-3 text-slate-500">
-                        enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
-                        dentro del rango filtrado.
+                        enviados ÷ (enviados + rechazados + fallidos) × 100.
+                        Solo se cuentan slots dentro del rango filtrado.
                       </p>
                       <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
                       <ul class="space-y-1.5 text-slate-600">
                         <li class="flex items-center gap-2">
                           <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                          100 % — sin rechazos
+                          100 %: sin rechazos
                         </li>
                         <li class="flex items-center gap-2">
                           <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
-                          90–99 % — alerta leve
+                          90–99 %: alerta leve
                         </li>
                         <li class="flex items-center gap-2">
                           <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>
-                          75–89 % — revisar configuración
+                          75–89 %: revisar configuración
                         </li>
                         <li class="flex items-center gap-2">
                           <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                          60–74 % — atención requerida
+                          60–74 %: atención requerida
                         </li>
                         <li class="flex items-center gap-2">
                           <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
-                          40–59 % — bloqueo probable
+                          40–59 %: bloqueo probable
                         </li>
                         <li class="flex items-center gap-2">
                           <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                          &lt; 40 % — falla persistente
+                          &lt; 40 %: falla persistente
                         </li>
                       </ul>
                     </div>
                   </details>
                 </div>
                 <p
-                  [class]="'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text"
+                  [class]="
+                    'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
+                  "
                 >
                   {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                 </p>
@@ -732,9 +727,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <article
                   class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
-                  <p
-                    class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
-                  >
+                  <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Diagrama del pozo
                   </p>
 
@@ -1384,9 +1377,7 @@ type OperationMode = 'realtime' | 'turnos';
                         class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                       >
                         @for (month of monthlyFlowMonths(); track $index) {
-                          <div
-                            class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
-                          >
+                          <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
                             <div
                               class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-[11px] font-semibold text-white shadow-lg group-hover:block"
                             >
@@ -1443,9 +1434,7 @@ type OperationMode = 'realtime' | 'turnos';
                   </div>
                 </article>
 
-                <article
-                  class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                >
+                <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                   <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
@@ -1578,9 +1567,7 @@ type OperationMode = 'realtime' | 'turnos';
                                 [style.background]="getDgaStatusColor(report.estado)"
                               ></span>
                               {{ report.estado }}
-                              <span class="material-symbols-outlined text-[13px]"
-                                >chevron_right</span
-                              >
+                              <span class="material-symbols-outlined text-[13px]">chevron_right</span>
                             </button>
                             @if (
                               report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
@@ -1716,9 +1703,7 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left: presets + months -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -1733,9 +1718,7 @@ type OperationMode = 'realtime' | 'turnos';
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
-                        <span
-                          class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"
-                        ></span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-primary/10 flex-shrink-0"></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -1894,9 +1877,7 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left panel: presets + month selector -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -1911,9 +1892,7 @@ type OperationMode = 'realtime' | 'turnos';
                       "
                     >
                       @if (downloadSelectedPreset() === preset.id) {
-                        <span
-                          class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"
-                        ></span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-primary/10 flex-shrink-0"></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2001,9 +1980,7 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <!-- Data types -->
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Datos a incluir
                 </p>
                 <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -2023,9 +2000,7 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <!-- Format -->
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Formato de archivo
                 </p>
                 <div class="flex gap-2">
@@ -2408,7 +2383,7 @@ type OperationMode = 'realtime' | 'turnos';
                     } @else {
                       <p
                         class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-slate-600"
-                        [title]="'Cargá el número de obra del pozo para habilitar el link al portal SNIA'"
+                        [title]="'Carga el número de obra del pozo para habilitar el link al portal SNIA'"
                       >
                         <span class="font-mono">{{ report.comprobante }}</span>
                       </p>
@@ -2507,6 +2482,7 @@ type OperationMode = 'realtime' | 'turnos';
         animation: dga-shine 5.8s ease-in-out infinite;
         pointer-events: none;
       }
+
     `,
   ],
 })
@@ -2620,14 +2596,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
     const t = this.dgaTasaExito();
     if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
-    if (t >= 100)
-      return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
-    if (t >= 90)
-      return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+    if (t >= 100) return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
+    if (t >= 90) return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
     if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
     if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
-    if (t >= 40)
-      return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
+    if (t >= 40) return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
     return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
   });
 
@@ -3439,7 +3412,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         : new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
       const to = this.dgaDateTo() ? this.toChileEndIso(this.dgaDateTo()) : new Date().toISOString();
       // Lee de dato_dga (pipeline nuevo) — trae estatus real + comprobante SNIA.
-      const rows = await firstValueFrom(this.dgaService.consultarDatoBySite(siteId, from, to));
+      const rows = await firstValueFrom(
+        this.dgaService.consultarDatoBySite(siteId, from, to),
+      );
       this.dgaReportRows.set(rows.map((r, i) => this.datoDgaToRow(r, i)));
     } catch {
       this.dgaReportRows.set([]);
@@ -3497,6 +3472,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     d.setUTCDate(d.getUTCDate() + 1);
     return new Date(d.getTime() - 1).toISOString();
   }
+
 
   private createDgaReportRow(
     id: string,

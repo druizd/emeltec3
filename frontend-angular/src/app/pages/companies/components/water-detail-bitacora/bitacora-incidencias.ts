@@ -713,7 +713,7 @@ export class BitacoraIncidenciasComponent {
     const map: Record<IncidenciaEstado, string> = {
       abierta: 'bg-rose-500',
       en_progreso: 'bg-amber-500',
-      resuelta: 'bg-[rgba(13,175,189,0.08)]0',
+      resuelta: 'bg-primary/10',
       cerrada: 'bg-slate-400',
     };
     return map[e];
