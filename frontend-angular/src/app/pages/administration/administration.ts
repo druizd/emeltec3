@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -428,11 +428,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         @if (confirmDialog(); as dialog) {
           <div
             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+            (click)="cancelConfirmDialog()"
           >
             <section
               class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
               role="dialog"
               aria-modal="true"
+              aria-labelledby="admin-confirm-title"
+              (click)="$event.stopPropagation()"
             >
               <div class="flex gap-4 border-b border-slate-100 px-5 py-5">
                 <span
@@ -444,7 +447,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   >{{ dialog.icon }}</span
                 >
                 <div class="min-w-0">
-                  <h3 class="text-lg font-semibold text-slate-900">{{ dialog.title }}</h3>
+                  <h3 id="admin-confirm-title" class="text-lg font-semibold text-slate-900">{{ dialog.title }}</h3>
                   <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>
@@ -1533,6 +1536,12 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     if (!dialog) return;
     this.confirmDialog.set(null);
     dialog.onConfirm();
+  }
+
+  /** Closes the confirm dialog on Escape. No-op if no dialog is open. */
+  @HostListener('document:keydown.escape')
+  handleEscapeKey(): void {
+    if (this.confirmDialog()) this.cancelConfirmDialog();
   }
 
   private totalPages(totalItems: number): number {

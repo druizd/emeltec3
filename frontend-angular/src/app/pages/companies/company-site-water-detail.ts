@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, HostListener, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -1677,6 +1677,9 @@ type OperationMode = 'realtime' | 'turnos';
           <section
             class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dga-date-filter-title"
           >
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div class="flex items-center gap-3">
@@ -1686,7 +1689,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
                 <div>
-                  <h2 class="text-lg font-semibold text-slate-800">Filtrar por Período</h2>
+                  <h2 id="dga-date-filter-title" class="text-lg font-semibold text-slate-800">Filtrar por Período</h2>
                   <p class="text-xs font-semibold text-slate-400">Registros DGA</p>
                 </div>
               </div>
@@ -1846,6 +1849,9 @@ type OperationMode = 'realtime' | 'turnos';
           <section
             class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="download-modal-title"
           >
             <!-- Modal header -->
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
@@ -1856,7 +1862,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[20px]">download</span>
                 </span>
                 <div>
-                  <h2 class="text-lg font-semibold text-slate-800">Exportar Datos</h2>
+                  <h2 id="download-modal-title" class="text-lg font-semibold text-slate-800">Exportar Datos</h2>
                   @if (siteContext(); as ctx) {
                     <p class="text-xs font-semibold text-slate-400">
                       {{ getSiteName(ctx) }}
@@ -2079,6 +2085,9 @@ type OperationMode = 'realtime' | 'turnos';
           <section
             class="w-full max-w-[480px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dga-report-modal-title"
           >
             <!-- Header -->
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
@@ -2089,7 +2098,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[18px]">description</span>
                 </span>
                 <div>
-                  <h2 class="text-base font-semibold text-slate-800">Reporte DGA</h2>
+                  <h2 id="dga-report-modal-title" class="text-base font-semibold text-slate-800">Reporte DGA</h2>
                   <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                     Formato oficial · período a exportar
                   </p>
@@ -2266,11 +2275,18 @@ type OperationMode = 'realtime' | 'turnos';
       @if (selectedDgaReport(); as report) {
         <div
           class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-[2px]"
+          (click)="closeDgaReportDetail()"
         >
-          <section class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <section
+            class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dga-report-detail-title"
+          >
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-              <h2 class="text-xl font-semibold uppercase tracking-wide text-slate-800">
-                Seguimiento de envio
+              <h2 id="dga-report-detail-title" class="text-xl font-semibold uppercase tracking-wide text-slate-800">
+                Seguimiento de envío
               </h2>
               <button
                 type="button"
@@ -3983,6 +3999,45 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   closeDgaDateFilter(): void {
     this.dgaDateFilterOpen.set(false);
+  }
+
+  /**
+   * Closes whichever modal/panel is currently open when the user presses
+   * Escape. Order = newest visible layer first (date filter sits above the
+   * detail panel; download / DGA-report are siblings). Each handler is a
+   * no-op if its modal is already closed, so the order only affects which
+   * one wins when multiple are somehow open simultaneously.
+   */
+  @HostListener('document:keydown.escape')
+  handleEscapeKey(): void {
+    if (this.selectedDgaReport()) {
+      this.closeDgaReportDetail();
+      return;
+    }
+    if (this.dgaReportModalOpen()) {
+      this.closeDgaReportModal();
+      return;
+    }
+    if (this.downloadModalOpen()) {
+      this.closeDownloadModal();
+      return;
+    }
+    if (this.dgaDateFilterOpen()) {
+      this.closeDgaDateFilter();
+      return;
+    }
+    if (this.dgaReporteModalOpen()) {
+      this.cerrarDgaReporteModal();
+      return;
+    }
+    if (this.settingsPanelOpen()) {
+      this.closeSettingsPanel();
+      return;
+    }
+    if (this.historyPanelOpen()) {
+      this.closeHistoryView();
+      return;
+    }
   }
 
   applyDgaDateFilter(): void {
