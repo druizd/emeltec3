@@ -24,6 +24,7 @@ import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
 import { AdminPaginationComponent } from './components/admin-pagination';
+import { AdminFormActionsComponent } from './components/admin-form-actions';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -299,7 +300,13 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 @Component({
   selector: 'app-administration',
   standalone: true,
-  imports: [CommonModule, FormsModule, KpiCardComponent, AdminPaginationComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    KpiCardComponent,
+    AdminPaginationComponent,
+    AdminFormActionsComponent,
+  ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
       <div class="mx-auto flex max-w-[1500px] flex-col gap-5">
@@ -518,55 +525,20 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         </select>
                       </div>
                       <div class="flex flex-wrap gap-2 lg:col-span-3">
-                        @if (!selectedCompanyId()) {
-                          <button
-                            type="submit"
-                            [disabled]="busyAction() === 'company'"
-                            class="primary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">domain_add</span>
-                            {{ busyAction() === 'company' ? 'Guardando' : 'Crear empresa' }}
-                          </button>
-                        } @else if (!companyEditMode()) {
-                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-                            <button
-                              type="button"
-                              (click)="enableCompanyEdit()"
-                              class="secondary-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">edit</span>
-                              Editar datos
-                            </button>
-                            <button
-                              type="button"
-                              (click)="deleteSelectedCompany()"
-                              [disabled]="busyAction() === 'company-delete'"
-                              class="danger-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </div>
-                        } @else {
-                          <div class="grid gap-2 sm:grid-cols-2">
-                            <button
-                              type="submit"
-                              [disabled]="busyAction() === 'company-update'"
-                              class="primary-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">save</span>
-                              {{
-                                busyAction() === 'company-update' ? 'Actualizando' : 'Actualizar'
-                              }}
-                            </button>
-                            <button
-                              type="button"
-                              (click)="cancelCompanyEdit()"
-                              class="secondary-button"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        }
+                        <app-admin-form-actions
+                          [selected]="!!selectedCompanyId()"
+                          [editMode]="companyEditMode()"
+                          [busy]="busyAction()"
+                          createKey="company"
+                          updateKey="company-update"
+                          deleteKey="company-delete"
+                          createLabel="Crear empresa"
+                          createIcon="domain_add"
+                          entityLabel="empresa"
+                          (enableEdit)="enableCompanyEdit()"
+                          (cancelEdit)="cancelCompanyEdit()"
+                          (remove)="deleteSelectedCompany()"
+                        ></app-admin-form-actions>
                       </div>
                     </form>
 
@@ -715,55 +687,20 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         />
                       </div>
                       <div class="flex flex-wrap gap-2 lg:col-span-3">
-                        @if (!selectedSubCompanyId()) {
-                          <button
-                            type="submit"
-                            [disabled]="busyAction() === 'subcompany'"
-                            class="primary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]">add_business</span>
-                            {{ busyAction() === 'subcompany' ? 'Guardando' : 'Crear subempresa' }}
-                          </button>
-                        } @else if (!subCompanyEditMode()) {
-                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-                            <button
-                              type="button"
-                              (click)="enableSubCompanyEdit()"
-                              class="secondary-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">edit</span>
-                              Editar datos
-                            </button>
-                            <button
-                              type="button"
-                              (click)="deleteSelectedSubCompany()"
-                              [disabled]="busyAction() === 'subcompany-delete'"
-                              class="danger-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </div>
-                        } @else {
-                          <div class="grid gap-2 sm:grid-cols-2">
-                            <button
-                              type="submit"
-                              [disabled]="busyAction() === 'subcompany-update'"
-                              class="primary-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">save</span>
-                              {{
-                                busyAction() === 'subcompany-update' ? 'Actualizando' : 'Actualizar'
-                              }}
-                            </button>
-                            <button
-                              type="button"
-                              (click)="cancelSubCompanyEdit()"
-                              class="secondary-button"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        }
+                        <app-admin-form-actions
+                          [selected]="!!selectedSubCompanyId()"
+                          [editMode]="subCompanyEditMode()"
+                          [busy]="busyAction()"
+                          createKey="subcompany"
+                          updateKey="subcompany-update"
+                          deleteKey="subcompany-delete"
+                          createLabel="Crear subempresa"
+                          createIcon="add_business"
+                          entityLabel="subempresa"
+                          (enableEdit)="enableSubCompanyEdit()"
+                          (cancelEdit)="cancelSubCompanyEdit()"
+                          (remove)="deleteSelectedSubCompany()"
+                        ></app-admin-form-actions>
                       </div>
                     </form>
 
@@ -965,55 +902,20 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         />
                       </div>
                       <div class="lg:col-span-4 flex flex-wrap gap-2">
-                        @if (!selectedSiteId()) {
-                          <button
-                            type="submit"
-                            [disabled]="busyAction() === 'site'"
-                            class="primary-button"
-                          >
-                            <span class="material-symbols-outlined text-[18px]"
-                              >add_location_alt</span
-                            >
-                            {{ busyAction() === 'site' ? 'Guardando' : 'Crear sitio' }}
-                          </button>
-                        } @else if (!siteEditMode()) {
-                          <div class="grid gap-2 sm:grid-cols-[1fr_auto]">
-                            <button
-                              type="button"
-                              (click)="enableSiteEdit()"
-                              class="secondary-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">edit</span>
-                              Editar datos
-                            </button>
-                            <button
-                              type="button"
-                              (click)="deleteSelectedSite()"
-                              [disabled]="busyAction() === 'site-delete'"
-                              class="danger-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">delete</span>
-                            </button>
-                          </div>
-                        } @else {
-                          <div class="grid gap-2 sm:grid-cols-2">
-                            <button
-                              type="submit"
-                              [disabled]="busyAction() === 'site-update'"
-                              class="primary-button"
-                            >
-                              <span class="material-symbols-outlined text-[18px]">save</span>
-                              {{ busyAction() === 'site-update' ? 'Actualizando' : 'Actualizar' }}
-                            </button>
-                            <button
-                              type="button"
-                              (click)="cancelSiteEdit()"
-                              class="secondary-button"
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        }
+                        <app-admin-form-actions
+                          [selected]="!!selectedSiteId()"
+                          [editMode]="siteEditMode()"
+                          [busy]="busyAction()"
+                          createKey="site"
+                          updateKey="site-update"
+                          deleteKey="site-delete"
+                          createLabel="Crear sitio"
+                          createIcon="add_location_alt"
+                          entityLabel="sitio"
+                          (enableEdit)="enableSiteEdit()"
+                          (cancelEdit)="cancelSiteEdit()"
+                          (remove)="deleteSelectedSite()"
+                        ></app-admin-form-actions>
                       </div>
                       @if (selectedSiteId() && !siteEditMode()) {
                         <div
