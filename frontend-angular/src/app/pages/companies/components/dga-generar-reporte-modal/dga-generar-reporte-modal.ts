@@ -58,6 +58,7 @@ interface PeriodicidadOption {
         class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="dga-generar-reporte-title"
         (click)="onBackdrop($event)"
       >
         <div
@@ -71,7 +72,9 @@ interface PeriodicidadOption {
                 >description</span
               >
               <div>
-                <h2 class="text-base font-semibold text-slate-800">Configurar reporte DGA</h2>
+                <h2 id="dga-generar-reporte-title" class="text-base font-semibold text-slate-800">
+                  Configurar reporte DGA
+                </h2>
                 <p class="text-[12px] text-slate-500">
                   Obra: <span class="font-mono">{{ siteName || siteId }}</span>
                 </p>

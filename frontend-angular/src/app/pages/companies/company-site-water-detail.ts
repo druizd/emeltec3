@@ -578,7 +578,7 @@ type OperationMode = 'realtime' | 'turnos';
                     target="_blank"
                     rel="noopener noreferrer"
                     [title]="'Abrir comprobante en SNIA · ' + comp"
-                    class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
+                    class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
                   >
                     <div class="flex items-center gap-1.5">
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
@@ -596,7 +596,7 @@ type OperationMode = 'realtime' | 'turnos';
                   </a>
                 } @else {
                   <article
-                    class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm"
+                    class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm"
                     [title]="'Carga el número de obra para habilitar el link SNIA · ' + comp"
                   >
                     <div class="flex items-center gap-1.5">

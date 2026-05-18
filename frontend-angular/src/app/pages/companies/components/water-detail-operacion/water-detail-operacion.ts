@@ -84,6 +84,10 @@ interface RealtimeChartPoint {
         class="flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white px-2 py-2 shadow-sm"
         aria-label="Selector de modo de operación"
         role="tablist"
+        (keydown.arrowright)="cycleModo(1); $event.preventDefault()"
+        (keydown.arrowleft)="cycleModo(-1); $event.preventDefault()"
+        (keydown.home)="modo.set('hoy'); $event.preventDefault()"
+        (keydown.end)="modo.set('resumen'); $event.preventDefault()"
       >
         <button
           type="button"
@@ -91,6 +95,7 @@ interface RealtimeChartPoint {
           (click)="modo.set('hoy')"
           [class]="modoClass('hoy')"
           [attr.aria-selected]="modo() === 'hoy'"
+          [attr.tabindex]="modo() === 'hoy' ? 0 : -1"
         >
           <span class="material-symbols-outlined text-[17px]" aria-hidden="true">today</span>
           Hoy en tiempo real
@@ -101,6 +106,7 @@ interface RealtimeChartPoint {
           (click)="modo.set('historico')"
           [class]="modoClass('historico')"
           [attr.aria-selected]="modo() === 'historico'"
+          [attr.tabindex]="modo() === 'historico' ? 0 : -1"
         >
           <span class="material-symbols-outlined text-[17px]" aria-hidden="true">query_stats</span>
           Gráficos Históricos
@@ -111,6 +117,7 @@ interface RealtimeChartPoint {
           (click)="modo.set('resumen')"
           [class]="modoClass('resumen')"
           [attr.aria-selected]="modo() === 'resumen'"
+          [attr.tabindex]="modo() === 'resumen' ? 0 : -1"
         >
           <span class="material-symbols-outlined text-[17px]" aria-hidden="true"
             >calendar_view_month</span
@@ -478,7 +485,7 @@ interface RealtimeChartPoint {
               class="h-full w-full cursor-crosshair select-none"
               preserveAspectRatio="none"
               (click)="selectRealtimePoint($event)"
-              aria-label="Grafico de caudal en tiempo real"
+              aria-label="Gráfico de caudal en tiempo real"
             >
               <defs>
                 <linearGradient id="rtFill" x1="0" y1="0" x2="0" y2="1">
@@ -774,7 +781,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const siteId = this.resolveSiteId();
     if (!siteId) {
-      this.loadError.set('No se encontro el sitio actual.');
+      this.loadError.set('No se encontró el sitio actual.');
       return;
     }
 
@@ -789,8 +796,8 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
             history: this.companyService.getSiteDashboardHistory(siteId, this.historyLimit),
           }).pipe(
             catchError((err) => {
-              console.error('No fue posible cargar operacion del pozo', err);
-              this.loadError.set('No fue posible cargar datos de operacion.');
+              console.error('No fue posible cargar operación del pozo', err);
+              this.loadError.set('No fue posible cargar datos de operación.');
               this.loading.set(false);
               return of(null);
             }),
@@ -907,6 +914,20 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
 
   turnoDot(index: number): string {
     return this.barClasses[index] ?? 'bg-slate-400';
+  }
+
+  /**
+   * Roving-tabindex WAI-ARIA tablist nav: ArrowLeft/Right cycle modo() and
+   * Home/End jump to first/last. The active tab keeps focus through the
+   * change because Angular re-applies tabindex=0 on the newly-selected
+   * button after the signal update — the user keeps tabbing forward into
+   * the panel naturally.
+   */
+  cycleModo(delta: 1 | -1): void {
+    const order: OperacionModo[] = ['hoy', 'historico', 'resumen'];
+    const idx = order.indexOf(this.modo());
+    const nextIdx = (idx + delta + order.length) % order.length;
+    this.modo.set(order[nextIdx]);
   }
 
   modoClass(m: OperacionModo): string {

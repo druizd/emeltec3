@@ -863,7 +863,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Ubicacion</label>
+                      <label class="mb-1 block text-xs font-bold text-slate-500">Ubicación</label>
                       <input
                         name="site-location"
                         [disabled]="siteFormDisabled()"
