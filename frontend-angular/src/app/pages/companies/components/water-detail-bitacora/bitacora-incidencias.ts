@@ -24,6 +24,7 @@ import {
   ORIGEN_LABELS,
 } from '../../../../services/incidencia.service';
 import { UserService } from '../../../../services/user.service';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 
 interface DraftIncidencia {
   titulo: string;
@@ -64,11 +65,11 @@ function emptyDraft(): DraftIncidencia {
   selector: 'app-bitacora-incidencias',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <!-- Filtros + Nueva -->

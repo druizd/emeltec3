@@ -16,6 +16,7 @@ import {
 } from '../../../../services/alerta.service';
 import { AdministrationService } from '../../../../services/administration.service';
 import type { VariableMapping } from '@emeltec/shared';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 
 interface DraftAlerta {
   nombre: string;
@@ -72,7 +73,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
   selector: 'app-alertas-configuracion',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       <!-- Header -->
@@ -98,7 +99,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">Cargando reglas…</p>
       }
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <!-- Formulario nueva regla -->

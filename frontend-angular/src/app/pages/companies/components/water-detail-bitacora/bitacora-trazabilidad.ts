@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -21,11 +22,11 @@ type RecursoFiltro = AuditTargetType | 'todos';
   selector: 'app-bitacora-trazabilidad',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <header class="flex flex-wrap items-center gap-2">

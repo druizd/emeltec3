@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import {
   DocumentoRow,
   DocumentoService,
@@ -52,11 +53,11 @@ const TIPOS: DocumentoTipo[] = [
   selector: 'app-bitacora-documentos',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <header class="flex flex-wrap items-center justify-between gap-3">

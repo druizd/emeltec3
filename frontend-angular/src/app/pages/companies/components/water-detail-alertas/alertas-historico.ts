@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { AlertaService, AlertaSeveridad, EventoRow } from '../../../../services/alerta.service';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 
 type HistoricoFiltro = 'todos' | AlertaSeveridad;
 
@@ -16,11 +17,11 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
   selector: 'app-alertas-historico',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <!-- Filtros -->

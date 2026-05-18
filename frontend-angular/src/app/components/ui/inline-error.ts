@@ -28,17 +28,16 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
     <div
       class="flex flex-col items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-body-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
-      aria-live="polite"
     >
       <div class="flex min-w-0 items-center gap-2">
         <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
-        <span class="truncate font-semibold">{{ message }}</span>
+        <span class="line-clamp-2 font-semibold" [attr.title]="message">{{ message }}</span>
       </div>
       @if (actionLabel) {
         <button
           type="button"
           (click)="action.emit()"
-          class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+          class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 sm:h-8"
         >
           <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
             actionIcon
