@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { VentisquerosFloorMapComponent } from './ventisqueros-floor-map';
+import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-panel';
 import {
   AlertMode,
   MetricKey,
@@ -64,7 +65,12 @@ interface MetricOption {
 @Component({
   selector: 'app-ventisqueros',
   standalone: true,
-  imports: [CommonModule, RouterLink, VentisquerosFloorMapComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    VentisquerosFloorMapComponent,
+    VentisquerosVisibilityPanelComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
@@ -429,102 +435,14 @@ interface MetricOption {
           </div>
 
           <!-- Sensor visibility panel -->
-          <div class="vs-visibility mt-3.5">
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <div class="vs-visibility-title">Visibilidad en plano</div>
-                <div class="vs-visibility-sub">
-                  Oculta sensores individuales o grupos completos (TAP) sin perder su lectura
-                </div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <span class="vs-visibility-count">
-                  {{ sensors().length - hiddenSensors().size }}/{{ sensors().length }} visibles
-                </span>
-                <button
-                  (click)="showAll()"
-                  [disabled]="hiddenSensors().size === 0"
-                  class="vs-visibility-btn flex items-center gap-1"
-                  [style.opacity]="hiddenSensors().size === 0 ? 0.5 : 1"
-                >
-                  <span class="material-symbols-outlined text-[12px]">visibility</span>
-                  Mostrar todos
-                </button>
-                <button
-                  (click)="hideAll()"
-                  [disabled]="hiddenSensors().size === sensors().length"
-                  class="vs-visibility-btn flex items-center gap-1"
-                  [style.opacity]="hiddenSensors().size === sensors().length ? 0.5 : 1"
-                >
-                  <span class="material-symbols-outlined text-[12px]">visibility_off</span>
-                  Ocultar todos
-                </button>
-              </div>
-            </div>
-
-            <div class="vs-tap-card-grid grid gap-2.5">
-              @for (tap of taps; track tap) {
-                @if ((groupedSensors()[tap] || []).length > 0) {
-                  <div class="vs-tap-card-wrap">
-                    <button (click)="toggleTap(tap)" class="vs-tap-card-head flex w-full items-center justify-between gap-2">
-                      <div class="flex items-center gap-2">
-                        <span
-                          class="vs-tap-color-dot"
-                          [style.background]="tapColors[tap]"
-                          [style.box-shadow]="'0 0 0 3px ' + tapColors[tap] + '22'"
-                        ></span>
-                        <span class="vs-tap-card-title">{{ tap }}</span>
-                        <span class="vs-tap-card-meta">
-                          {{ (groupedSensors()[tap] || []).length }} sensores
-                        </span>
-                      </div>
-                      <span class="vs-tap-card-toggle flex items-center gap-1">
-                        <span
-                          class="material-symbols-outlined text-[16px]"
-                          [style.color]="
-                            isTapHidden(tap)
-                              ? '#94A3B8'
-                              : isTapPartiallyHidden(tap)
-                                ? '#F59E0B'
-                                : '#0DAFBD'
-                          "
-                        >
-                          {{
-                            isTapHidden(tap)
-                              ? 'visibility_off'
-                              : isTapPartiallyHidden(tap)
-                                ? 'visibility'
-                                : 'visibility'
-                          }}
-                        </span>
-                      </span>
-                    </button>
-                    <div class="vs-tap-card-body flex flex-col">
-                      @for (s of groupedSensors()[tap] || []; track s.id) {
-                        <label
-                          class="vs-row flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors"
-                          [style.opacity]="isSensorHidden(s.id) ? 0.55 : 1"
-                        >
-                          <input
-                            type="checkbox"
-                            class="vs-check"
-                            [checked]="!isSensorHidden(s.id)"
-                            (change)="toggleSensor(s.id)"
-                          />
-                          <span class="vs-id-chip">{{ s.id }}</span>
-                          <span class="vs-check-area flex-1 truncate">{{ s.area }}</span>
-                          @if (s.alerted) {
-                            <span class="vs-check-alert-dot"></span>
-                          }
-                          <span class="vs-check-temp">{{ fmtTemp(s.t) }}</span>
-                        </label>
-                      }
-                    </div>
-                  </div>
-                }
-              }
-            </div>
-          </div>
+          <app-ventisqueros-visibility-panel
+            class="mt-3.5 block"
+            [sensors]="sensors()"
+            [hidden]="hiddenSensors()"
+            [taps]="taps"
+            [tapColors]="tapColors"
+            (hiddenChange)="hiddenSensors.set($event)"
+          ></app-ventisqueros-visibility-panel>
         }
 
         @if (activeTab() === 'taps') {
@@ -1171,112 +1089,6 @@ interface MetricOption {
         margin-top: 2px;
       }
 
-      /* Visibility panel */
-      .vs-visibility {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 14px;
-        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
-      }
-      .vs-visibility-title {
-        font-family: var(--font-josefin);
-        font-size: 14px;
-        font-weight: 600;
-        color: #1e293b;
-        letter-spacing: 0.02em;
-      }
-      .vs-visibility-sub {
-        font-size: 11px;
-        color: #94a3b8;
-        margin-top: 2px;
-      }
-      .vs-visibility-count {
-        font-size: 11px;
-        color: #64748b;
-        font-family: var(--font-mono);
-      }
-      .vs-visibility-btn {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 5px 10px;
-        font-size: 11px;
-        color: #475569;
-        font-family: var(--font-body);
-        cursor: pointer;
-        transition: background 0.12s ease;
-      }
-      .vs-visibility-btn:hover:not(:disabled) {
-        background: #f8fafc;
-      }
-
-      /* TAP card grid (visibility) */
-      .vs-tap-card-grid {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      }
-      .vs-tap-card-wrap {
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        overflow: hidden;
-        background: #ffffff;
-      }
-      .vs-tap-card-head {
-        padding: 10px 12px;
-        background: #f8fafc;
-        border: none;
-        border-bottom: 1px solid #e2e8f0;
-        cursor: pointer;
-        font-family: var(--font-body);
-      }
-      .vs-tap-color-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-      }
-      .vs-tap-card-title {
-        font-family: var(--font-josefin);
-        font-size: 13px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        color: #1e293b;
-      }
-      .vs-tap-card-meta {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: #94a3b8;
-      }
-      .vs-tap-card-toggle {
-        font-size: 11px;
-        color: #475569;
-      }
-      .vs-tap-card-body {
-        padding: 6px;
-      }
-      .vs-check {
-        width: 14px;
-        height: 14px;
-        accent-color: var(--color-primary);
-        cursor: pointer;
-      }
-      .vs-check-area {
-        font-family: var(--font-body);
-        font-size: 12px;
-        color: #1e293b;
-      }
-      .vs-check-alert-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: #ef4444;
-        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
-      }
-      .vs-check-temp {
-        font-family: var(--font-mono);
-        font-size: 10.5px;
-        color: #64748b;
-      }
-
       /* TAPS tab grid */
       .vs-taps-grid {
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1553,47 +1365,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   fmtHum = fmtHum;
   tempColor = tempColor;
   humColor = humColor;
-
-  isSensorHidden(id: string): boolean {
-    return this.hiddenSensors().has(id);
-  }
-
-  toggleSensor(id: string): void {
-    const next = new Set(this.hiddenSensors());
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    this.hiddenSensors.set(next);
-  }
-
-  isTapHidden(tap: TapKey): boolean {
-    const group = this.sensors().filter((s) => s.tap === tap);
-    return group.length > 0 && group.every((s) => this.hiddenSensors().has(s.id));
-  }
-
-  isTapPartiallyHidden(tap: TapKey): boolean {
-    const group = this.sensors().filter((s) => s.tap === tap);
-    const hidden = group.filter((s) => this.hiddenSensors().has(s.id)).length;
-    return hidden > 0 && hidden < group.length;
-  }
-
-  toggleTap(tap: TapKey): void {
-    const group = this.sensors().filter((s) => s.tap === tap);
-    const next = new Set(this.hiddenSensors());
-    if (this.isTapHidden(tap)) {
-      group.forEach((s) => next.delete(s.id));
-    } else {
-      group.forEach((s) => next.add(s.id));
-    }
-    this.hiddenSensors.set(next);
-  }
-
-  showAll(): void {
-    this.hiddenSensors.set(new Set());
-  }
-
-  hideAll(): void {
-    this.hiddenSensors.set(new Set(this.sensors().map((s) => s.id)));
-  }
 
   rowBg(s: Sensor): string {
     if (this.selectedId() === s.id) return 'rgba(13,175,189,0.07)';
