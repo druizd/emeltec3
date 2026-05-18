@@ -305,6 +305,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           >
           <select
             [(ngModel)]="draft.condicion"
+            (ngModelChange)="resetSimulacion()"
             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           >
             @for (c of condicionesDisponibles; track c) {
@@ -323,6 +324,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             @if (variables().length > 0) {
               <select
                 [(ngModel)]="draft.variable_key"
+                (ngModelChange)="resetSimulacion()"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               >
                 <option value="" disabled>Selecciona una variable…</option>
@@ -333,14 +335,16 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 }
               </select>
               @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
-                <p class="mt-1 text-caption-xs text-amber-600">
-                  ⚠ "{{ draft.variable_key }}" no esta en las variables registradas del sitio.
+                <p class="mt-1 flex items-center gap-1 text-caption-xs text-amber-600">
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">warning</span>
+                  "{{ draft.variable_key }}" no está en las variables registradas del sitio.
                 </p>
               }
             } @else {
               <input
                 type="text"
                 [(ngModel)]="draft.variable_key"
+                (ngModelChange)="resetSimulacion()"
                 placeholder="Ej: caudal, nivel_freatico"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
@@ -366,6 +370,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="number"
               step="any"
               [(ngModel)]="draft.umbral_bajo"
+              (ngModelChange)="resetSimulacion()"
               class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
           </div>
@@ -393,6 +398,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_alto"
+                (ngModelChange)="resetSimulacion()"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
