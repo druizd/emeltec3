@@ -200,7 +200,7 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="flex min-w-0 items-center gap-3">
                 <a
                   routerLink="/companies"
-                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-tint-15 bg-primary-tint-08 text-primary-container transition-colors hover:bg-primary-tint-14"
                   aria-label="Volver a instalaciones"
                 >
                   <span class="material-symbols-outlined text-[22px]">water_drop</span>
@@ -231,7 +231,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="openSettingsPanel()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
                     aria-label="Configuración del sitio"
                   >
                     <span class="material-symbols-outlined text-[18px]">settings</span>
@@ -387,7 +387,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[20px]">arrow_back</span>
                     </button>
                     <span
-                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
+                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
                     >
                       <span class="material-symbols-outlined text-[22px]">database</span>
                     </span>
@@ -428,7 +428,7 @@ type OperationMode = 'realtime' | 'turnos';
                       min="2020-01-01"
                       [value]="historyDateFrom()"
                       (input)="setHistoryDateFrom($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1">
@@ -438,7 +438,7 @@ type OperationMode = 'realtime' | 'turnos';
                       min="2020-01-01"
                       [value]="historyDateTo()"
                       (input)="setHistoryDateTo($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1">
@@ -446,7 +446,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <select
                       [value]="historyRecordLimit()"
                       (change)="setHistoryRecordLimit($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     >
                       @for (limit of historyRecordLimitOptions; track limit) {
                         <option [value]="limit">{{ limit }}</option>
@@ -726,7 +726,7 @@ type OperationMode = 'realtime' | 'turnos';
             >
               <div class="flex flex-col gap-3 xl:h-full">
                 <article
-                  class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
+                  class="flex flex-1 flex-col rounded-xl border border-primary-tint-25 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
                   <p class="mb-3 text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Diagrama del pozo
@@ -1454,7 +1454,7 @@ type OperationMode = 'realtime' | 'turnos';
                         [class]="
                           quickActionDisabled(action)
                             ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                            : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-[rgba(13,175,189,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
+                            : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
                         "
                       >
                         <span
@@ -1501,7 +1501,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="openDgaDateFilter()"
-                    class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
+                    class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
                   >
                     <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                     {{ dgaSelectedRangeLabel() }}
@@ -1619,7 +1619,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <select
                     [value]="dgaRowsPerPage()"
                     (change)="setDgaRowsPerPage($event)"
-                    class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                    class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                   >
                     @for (size of dgaRowsPerPageOptions; track size) {
                       <option [value]="size">{{ size }}</option>
@@ -1716,7 +1716,7 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div class="flex items-center gap-3">
                 <span
-                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
                 >
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
@@ -1748,7 +1748,7 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDgaDatePreset(preset.id)"
                       [class]="
                         dgaSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-[rgba(13,175,189,0.08)] text-primary-container border border-[rgba(13,175,189,0.25)]'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
                           : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
@@ -1819,7 +1819,7 @@ type OperationMode = 'realtime' | 'turnos';
                         dgaSelectedPreset.set('custom');
                         dgaSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1.5 text-xs font-bold text-slate-600">
@@ -1833,7 +1833,7 @@ type OperationMode = 'realtime' | 'turnos';
                         dgaSelectedPreset.set('custom');
                         dgaSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                 </div>
@@ -1925,7 +1925,7 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDownloadPreset(preset.id)"
                       [class]="
                         downloadSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-[rgba(13,175,189,0.08)] text-primary-container border border-[rgba(13,175,189,0.25)]'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
                           : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
@@ -1998,7 +1998,7 @@ type OperationMode = 'realtime' | 'turnos';
                         downloadSelectedPreset.set('custom');
                         downloadSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1.5 text-xs font-bold text-slate-600">
@@ -2012,7 +2012,7 @@ type OperationMode = 'realtime' | 'turnos';
                         downloadSelectedPreset.set('custom');
                         downloadSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                 </div>
@@ -2028,7 +2028,7 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="toggleDownloadDataType(dtype.id)"
                       [class]="
                         isDownloadTypeSelected(dtype.id)
-                          ? 'rounded-lg border border-[rgba(13,175,189,0.55)] bg-[rgba(13,175,189,0.08)] px-3 py-2.5 text-center text-sm font-bold text-primary-container transition-all'
+                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-sm font-bold text-primary-container transition-all'
                           : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
                       "
                     >
@@ -2334,7 +2334,7 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="mx-auto max-w-[620px]">
                 <div class="mb-5 flex items-center gap-3">
                   <span
-                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.14)] text-primary-container"
+                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-tint-14 text-primary-container"
                   >
                     <span class="material-symbols-outlined text-[22px]">assignment</span>
                   </span>
@@ -4221,7 +4221,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const active = this.operationMode() === mode;
     const base = 'inline-flex h-11 items-center gap-2 border-b-2 px-5 text-sm transition-colors';
     return active
-      ? `${base} border-[rgba(13,175,189,0.55)] bg-[rgba(13,175,189,0.08)] font-semibold text-primary-container`
+      ? `${base} border-primary-tint-55 bg-primary-tint-08 font-semibold text-primary-container`
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;
   }
 

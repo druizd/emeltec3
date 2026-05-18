@@ -18,7 +18,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
         <div class="flex items-center justify-between gap-2">
           <div class="flex min-w-0 items-center gap-2">
             <div
-              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(13,175,189,0.20)] bg-[rgba(13,175,189,0.08)] text-primary-container"
+              class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary-tint-20 bg-primary-tint-08 text-primary-container"
             >
               <span class="material-symbols-outlined text-[14px]">{{ getSiteIcon() }}</span>
             </div>
@@ -62,8 +62,8 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
               [class]="
                 'flex h-9 w-9 items-center justify-center rounded-lg transition-colors ' +
                 (selected
-                  ? 'bg-[rgba(13,175,189,0.10)]'
-                  : 'bg-slate-100 group-hover:bg-[rgba(13,175,189,0.10)]')
+                  ? 'bg-primary-tint-10'
+                  : 'bg-slate-100 group-hover:bg-primary-tint-10')
               "
             >
               <span
@@ -126,8 +126,8 @@ export class SiteCardComponent {
       return [
         'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
         this.selected
-          ? 'border-[rgba(13,175,189,0.35)] shadow-[0_4px_12px_rgba(13,175,189,0.14)]'
-          : 'border-slate-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.04)] hover:border-[rgba(13,175,189,0.30)] hover:shadow-[0_4px_10px_rgba(13,175,189,0.10)]',
+          ? 'border-primary-tint-35 shadow-[0_4px_12px_rgba(13,175,189,0.14)]'
+          : 'border-slate-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.04)] hover:border-primary-tint-30 hover:shadow-[0_4px_10px_rgba(13,175,189,0.10)]',
       ].join(' ');
     }
 

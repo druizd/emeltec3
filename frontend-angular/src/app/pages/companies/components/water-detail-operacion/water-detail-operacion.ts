@@ -155,13 +155,13 @@ interface RealtimeChartPoint {
       @if (modo() === 'hoy') {
         <!-- Banner tiempo real -->
         <div
-          class="rounded-2xl border border-[rgba(13,175,189,0.25)] bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_4px_12px_rgba(13,175,189,0.06)]"
+          class="rounded-2xl border border-primary-tint-25 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_4px_12px_rgba(13,175,189,0.06)]"
           [attr.aria-busy]="loading()"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
               <span
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[rgba(13,175,189,0.10)]"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-tint-10"
               >
                 <span class="material-symbols-outlined text-[18px] text-primary-container"
                   >bolt</span
@@ -220,7 +220,7 @@ interface RealtimeChartPoint {
                   class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                   [class]="
                     turnosSettingsOpen()
-                      ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
+                      ? 'bg-primary-tint-14 text-primary-container'
                       : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                   "
                   aria-label="Configurar horarios de turno"
@@ -245,7 +245,7 @@ interface RealtimeChartPoint {
                   {{ fechaDiaReal() }}
                   @if (esHoy()) {
                     <span
-                      class="rounded-full bg-[rgba(13,175,189,0.14)] px-2 py-0.5 text-caption-xs font-semibold text-primary-container"
+                      class="rounded-full bg-primary-tint-14 px-2 py-0.5 text-caption-xs font-semibold text-primary-container"
                       >Hoy</span
                     >
                   }
@@ -277,7 +277,7 @@ interface RealtimeChartPoint {
             <!-- Panel de configuración de turnos -->
             @if (turnosSettingsOpen()) {
               <div
-                class="overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4 shadow-sm"
+                class="overflow-hidden rounded-xl border border-primary-tint-25 bg-primary-tint-08 p-4 shadow-sm"
               >
                 <div class="mb-3 flex items-center justify-between">
                   <p class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
@@ -338,19 +338,19 @@ interface RealtimeChartPoint {
                       type="text"
                       [value]="t.nombre"
                       (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                     <input
                       type="time"
                       [value]="t.inicio"
                       (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                     <input
                       type="time"
                       [value]="t.fin"
                       (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                   }
                 </div>
@@ -369,7 +369,7 @@ interface RealtimeChartPoint {
               @for (turno of turnosReal(); track turno.nombre; let i = $index) {
                 @if (turno.esTotal) {
                   <div
-                    class="rounded-2xl border border-[rgba(13,175,189,0.30)] bg-white p-4 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_2px_8px_rgba(13,175,189,0.06)]"
+                    class="rounded-2xl border border-primary-tint-30 bg-white p-4 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_2px_8px_rgba(13,175,189,0.06)]"
                   >
                     <p class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container">
                       {{ turno.nombre }}
@@ -937,7 +937,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
    */
   turnoActivoClass(index: number): string {
     if (index === 0)
-      return 'border-[rgba(13,175,189,0.35)] bg-[rgba(13,175,189,0.10)]';
+      return 'border-primary-tint-35 bg-primary-tint-10';
     if (index === 1) return 'border-emerald-200 bg-emerald-50';
     return 'border-slate-200 bg-slate-50';
   }
@@ -983,7 +983,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return [
       'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
       active
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
+        ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',
     ].join(' ');
   }

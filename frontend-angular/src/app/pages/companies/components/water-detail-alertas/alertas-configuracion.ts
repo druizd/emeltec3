@@ -84,7 +84,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <button
           type="button"
           (click)="toggleNuevo()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             mostrandoNuevo() ? 'close' : 'add'
@@ -104,7 +104,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
       <!-- Formulario nueva regla -->
       @if (mostrandoNuevo()) {
         <article
-          class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
+          class="rounded-2xl border-2 border-dashed border-primary-tint-25 bg-primary-tint-08/30 p-4"
         >
           <p
             class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
@@ -264,7 +264,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             type="text"
             [(ngModel)]="draft.nombre"
             placeholder="Ej: Nivel freático crítico"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
         </div>
 
@@ -277,7 +277,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <input
             type="text"
             [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
         </div>
 
@@ -289,7 +289,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           >
           <select
             [(ngModel)]="draft.condicion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           >
             @for (c of condicionesDisponibles; track c) {
               <option [value]="c">{{ condicionLabel(c) }}</option>
@@ -307,7 +307,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             @if (variables().length > 0) {
               <select
                 [(ngModel)]="draft.variable_key"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               >
                 <option value="" disabled>Selecciona una variable…</option>
                 @for (v of variables(); track v.id) {
@@ -326,7 +326,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="text"
                 [(ngModel)]="draft.variable_key"
                 placeholder="Ej: caudal, nivel_freatico"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
               <p class="mt-1 text-caption-xs text-slate-400">
                 Sin variables registradas en el sitio; ingresa la clave manualmente.
@@ -350,7 +350,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="number"
               step="any"
               [(ngModel)]="draft.umbral_bajo"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
           </div>
         }
@@ -365,7 +365,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_bajo"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
             <div>
@@ -377,7 +377,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_alto"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
           </div>
@@ -433,7 +433,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             min="1"
             max="1440"
             [(ngModel)]="draft.cooldown_minutos"
-            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
           <span class="ml-2 text-caption-xs text-slate-400">tiempo mínimo entre notificaciones</span>
         </div>

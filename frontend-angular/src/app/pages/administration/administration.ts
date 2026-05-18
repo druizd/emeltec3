@@ -380,7 +380,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               type="button"
               (click)="loadDashboard()"
               [disabled]="loading()"
-              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-on-surface-variant transition-all hover:border-[rgba(13,175,189,0.30)] hover:text-primary-container hover:shadow-[0_4px_12px_rgba(13,175,189,0.10)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
+              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container hover:shadow-[0_4px_12px_rgba(13,175,189,0.10)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
               aria-label="Actualizar"
             >
               <span
@@ -442,7 +442,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   [class]="
                     dialog.tone === 'danger'
                       ? 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-50 text-[24px] text-red-600'
-                      : 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[rgba(13,175,189,0.10)] text-[24px] text-primary-container'
+                      : 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-primary-tint-10 text-[24px] text-primary-container'
                   "
                   >{{ dialog.icon }}</span
                 >
@@ -2353,7 +2353,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     if (normalized.includes('riles')) return `${base} bg-emerald-50 text-emerald-700`;
     if (normalized.includes('proceso')) return `${base} bg-accent/10 text-accent-container`;
     if (normalized.includes('cliente')) return `${base} bg-slate-100 text-slate-600`;
-    return `${base} bg-[rgba(13,175,189,0.10)] text-primary-container`;
+    return `${base} bg-primary-tint-10 text-primary-container`;
   }
 
   deviceDataCount(device: DetectedDevice): number {
@@ -2402,7 +2402,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   rowClass(selected: boolean): string {
     const base = 'cursor-pointer transition-colors';
     return selected
-      ? `${base} bg-[rgba(13,175,189,0.08)] shadow-[inset_3px_0_0_var(--color-primary)]`
+      ? `${base} bg-primary-tint-08 shadow-[inset_3px_0_0_var(--color-primary)]`
       : `${base} bg-white hover:bg-[#f8fafc]`;
   }
 

@@ -15,7 +15,7 @@ import { inject } from '@angular/core';
     >
       <section class="w-full max-w-md text-center">
         <div
-          class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-[rgba(13,175,189,0.20)] bg-[rgba(13,175,189,0.08)] text-primary-container"
+          class="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary-tint-20 bg-primary-tint-08 text-primary-container"
         >
           <span class="material-symbols-outlined text-[32px]">travel_explore</span>
         </div>
@@ -47,7 +47,7 @@ import { inject } from '@angular/core';
           <button
             type="button"
             (click)="goBack()"
-            class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-5 text-[13px] font-semibold text-on-surface-variant transition-all hover:border-[rgba(13,175,189,0.30)] hover:text-primary-container active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#e2e8f0] bg-white px-5 text-[13px] font-semibold text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <span class="material-symbols-outlined text-[18px]">arrow_back</span>
             Volver

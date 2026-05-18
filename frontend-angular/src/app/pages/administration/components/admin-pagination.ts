@@ -116,7 +116,7 @@ export class AdminPaginationComponent {
   btnClass(active: boolean): string {
     const base = 'admin-pag-btn';
     return active
-      ? `${base} border-[rgba(13,175,189,0.45)] bg-[rgba(13,175,189,0.10)] text-primary-container`
+      ? `${base} border-[rgba(13,175,189,0.45)] bg-primary-tint-10 text-primary-container`
       : base;
   }
 

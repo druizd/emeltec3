@@ -79,7 +79,7 @@ interface IncidenciaPeriodo {
               [value]="fechaDesde()"
               (change)="onFechaChange('desde', $any($event.target).value)"
               aria-labelledby="label-desde"
-              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
             <span class="font-semibold" id="label-hasta">Hasta</span>
             <input
@@ -88,7 +88,7 @@ interface IncidenciaPeriodo {
               [value]="fechaHasta()"
               (change)="onFechaChange('hasta', $any($event.target).value)"
               aria-labelledby="label-hasta"
-              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
           </div>
 
@@ -147,7 +147,7 @@ interface IncidenciaPeriodo {
             class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
             [class]="
               resumenSettingsOpen()
-                ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
+                ? 'bg-primary-tint-14 text-primary-container'
                 : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
             "
             aria-label="Configurar horarios de turno"
@@ -158,7 +158,7 @@ interface IncidenciaPeriodo {
         </div>
 
         @if (resumenSettingsOpen()) {
-          <div class="border-b border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4">
+          <div class="border-b border-primary-tint-15 bg-primary-tint-08 p-4">
             <div class="mb-3 flex items-center justify-between">
               <p class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
                 Configurar horarios
@@ -214,19 +214,19 @@ interface IncidenciaPeriodo {
                   type="text"
                   [value]="t.nombre"
                   (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
                 <input
                   type="time"
                   [value]="t.inicio"
                   (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
                 <input
                   type="time"
                   [value]="t.fin"
                   (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               }
             </div>
@@ -289,7 +289,7 @@ interface IncidenciaPeriodo {
             <p class="mt-0.5 text-caption-xs text-slate-400">m³/día · días sin operación en gris</p>
           </div>
           <span
-            class="rounded-full bg-[rgba(13,175,189,0.08)] px-2.5 py-1 text-caption-xs font-bold text-primary-container"
+            class="rounded-full bg-primary-tint-08 px-2.5 py-1 text-caption-xs font-bold text-primary-container"
             >{{ periodoLabel() }}</span
           >
         </div>
@@ -649,7 +649,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
   turnoResumenCard(i: number): string {
     const cards = [
-      'border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]',
+      'border-primary-tint-25 bg-primary-tint-08',
       'border-emerald-200 bg-emerald-50',
       'border-slate-200 bg-slate-50',
     ];
@@ -1290,7 +1290,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return t === 'warn'
       ? 'bg-amber-50 text-amber-600'
       : t === 'ok'
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container'
+        ? 'bg-primary-tint-08 text-primary-container'
         : 'bg-slate-100 text-slate-500';
   }
 
@@ -1322,7 +1322,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return estado === 'resuelta'
       ? 'bg-emerald-50 text-emerald-700'
       : estado === 'en_proceso'
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container'
+        ? 'bg-primary-tint-08 text-primary-container'
         : 'bg-amber-50 text-amber-700';
   }
 

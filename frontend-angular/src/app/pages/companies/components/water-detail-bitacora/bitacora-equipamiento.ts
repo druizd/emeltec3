@@ -25,7 +25,7 @@ import {
         <button
           type="button"
           (click)="openForm()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
         >
           <span class="material-symbols-outlined text-[16px]">add</span>
           Registrar equipo
@@ -185,7 +185,7 @@ import {
                 [ngModel]="form().nombre"
                 (ngModelChange)="updateForm('nombre', $event)"
                 placeholder="Ej. Caudalímetro principal"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-primary-tint-35"
               />
             </label>
             <label
@@ -196,7 +196,7 @@ import {
                 type="text"
                 [ngModel]="form().fabricante"
                 (ngModelChange)="updateForm('fabricante', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-primary-tint-35"
               />
             </label>
             <label
@@ -207,7 +207,7 @@ import {
                 type="text"
                 [ngModel]="form().modelo"
                 (ngModelChange)="updateForm('modelo', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-primary-tint-35"
               />
             </label>
             <label
@@ -218,7 +218,7 @@ import {
                 type="text"
                 [ngModel]="form().serie"
                 (ngModelChange)="updateForm('serie', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-primary-tint-35"
               />
             </label>
             <label
@@ -230,7 +230,7 @@ import {
                 min="2000-01-01"
                 [ngModel]="form().fecha_compra"
                 (ngModelChange)="updateForm('fecha_compra', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-primary-tint-35"
               />
             </label>
             <label
@@ -242,7 +242,7 @@ import {
                 min="2000-01-01"
                 [ngModel]="form().garantia_hasta"
                 (ngModelChange)="updateForm('garantia_hasta', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-primary-tint-35"
               />
             </label>
             <label
@@ -252,7 +252,7 @@ import {
               <select
                 [ngModel]="form().estado"
                 (ngModelChange)="updateForm('estado', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-primary-tint-35"
               >
                 <option value="operativo">Operativo</option>
                 <option value="en_mantencion">En mantención</option>
@@ -267,7 +267,7 @@ import {
                 rows="3"
                 [ngModel]="form().notas"
                 (ngModelChange)="updateForm('notas', $event)"
-                class="rounded border border-slate-200 px-2 py-1.5 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="rounded border border-slate-200 px-2 py-1.5 text-body-sm outline-none focus:border-primary-tint-35"
               ></textarea>
             </label>
           </div>

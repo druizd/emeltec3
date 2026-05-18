@@ -76,7 +76,7 @@ interface Periodo {
       <!-- KPIs principales -->
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article
-          class="rounded-2xl border border-[rgba(13,175,189,0.30)] bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.06),0_4px_12px_rgba(13,175,189,0.08)]"
+          class="rounded-2xl border border-primary-tint-30 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.06),0_4px_12px_rgba(13,175,189,0.08)]"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
@@ -89,7 +89,7 @@ interface Periodo {
               <p class="mt-1 text-caption-xs text-on-surface-variant">Acumulado en mayo 2026</p>
             </div>
             <span
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.10)]"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-10"
             >
               <span class="material-symbols-outlined text-[22px] text-primary-container">water_drop</span>
             </span>
@@ -839,7 +839,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   metricaOpIconClass(tono: MetricaOperacional['tono']): string {
     if (tono === 'warn') return 'bg-amber-50 text-amber-600';
-    if (tono === 'ok') return 'bg-[rgba(13,175,189,0.10)] text-primary-container';
+    if (tono === 'ok') return 'bg-primary-tint-10 text-primary-container';
     return 'bg-slate-100 text-slate-500';
   }
 

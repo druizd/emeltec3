@@ -94,7 +94,7 @@ interface PeriodicidadOption {
           <div class="space-y-5 px-6 py-5">
             <!-- ====== Activación DGA (siempre visible) ====== -->
             <section
-              class="space-y-3 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/40 px-4 py-3"
+              class="space-y-3 rounded-lg border border-primary-tint-25 bg-primary-tint-08/40 px-4 py-3"
             >
               <div
                 class="flex items-center gap-2 text-[10px] uppercase tracking-wider font-semibold text-primary-container"
@@ -129,7 +129,7 @@ interface PeriodicidadOption {
                     [value]="pozo()?.dga_transport ?? 'off'"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeTransport($any($event.target).value)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                   >
                     <option value="off">Off (no envía)</option>
                     <option value="shadow">Shadow (rellena sin enviar)</option>
@@ -149,7 +149,7 @@ interface PeriodicidadOption {
                       (ngModelChange)="obraDga.set($event)"
                       placeholder="OB-XXXX-XXX"
                       [disabled]="obraDgaSaving()"
-                      class="flex-1 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono uppercase tracking-wider text-slate-700 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                      class="flex-1 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono uppercase tracking-wider text-slate-700 outline-none focus:border-primary-tint-35"
                     />
                     <button
                       type="button"
@@ -175,7 +175,7 @@ interface PeriodicidadOption {
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeCaudalMax($any($event.target).value)"
                     placeholder="sin cargar (fallback 1000)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
                   />
                 </label>
 
@@ -188,7 +188,7 @@ interface PeriodicidadOption {
                     [value]="pozo()?.dga_periodicidad ?? ''"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_periodicidad', $any($event.target).value || null)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] outline-none focus:border-[rgba(13,175,189,0.35)]"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] outline-none focus:border-primary-tint-35"
                   >
                     <option value="">— elegir —</option>
                     @for (p of periodicidades; track p.value) {
@@ -208,7 +208,7 @@ interface PeriodicidadOption {
                     [value]="pozo()?.dga_fecha_inicio ?? ''"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_fecha_inicio', $any($event.target).value || null)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
                   />
                 </label>
 
@@ -223,7 +223,7 @@ interface PeriodicidadOption {
                     [value]="horaInicioForInput()"
                     [disabled]="pozoSaving() !== ''"
                     (change)="changeField('dga_hora_inicio', $any($event.target).value || null)"
-                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
                   />
                 </label>
               </div>

@@ -117,7 +117,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
                     <td class="px-4 py-3">
                       @if (ev.incidencia_id) {
                         <span
-                          class="inline-flex items-center gap-1 rounded-full bg-[rgba(13,175,189,0.08)] px-2 py-0.5 text-caption-xs font-bold text-primary-container"
+                          class="inline-flex items-center gap-1 rounded-full bg-primary-tint-08 px-2 py-0.5 text-caption-xs font-bold text-primary-container"
                         >
                           <span class="material-symbols-outlined text-[12px]">link</span>
                           {{ ev.incidencia_id }}

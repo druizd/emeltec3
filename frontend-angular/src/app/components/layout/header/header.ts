@@ -53,7 +53,7 @@ import { AuthService } from '../../../services/auth.service';
             <button
               type="button"
               (click)="toggleUserMenu()"
-              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-all hover:ring-[rgba(13,175,189,0.30)] focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
+              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-all hover:ring-primary-tint-30 focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
               aria-label="Menú de usuario"
               [attr.aria-expanded]="userMenuOpen()"
             >

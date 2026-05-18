@@ -184,7 +184,7 @@ function emptyVariables(): SiteVariablesPayload {
               <button
                 type="button"
                 (click)="openDgaReporte.emit()"
-                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 text-caption font-semibold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 text-caption font-semibold text-primary-container transition-colors hover:bg-primary-tint-14"
                 aria-label="Configurar reporte DGA"
               >
                 <span class="material-symbols-outlined text-[16px]">description</span>
@@ -233,7 +233,7 @@ function emptyVariables(): SiteVariablesPayload {
           <div class="space-y-4">
             @if (showPozoConfig && isPozoSite()) {
               <section
-                class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4"
+                class="rounded-xl border border-primary-tint-15 bg-primary-tint-08 p-4"
               >
                 <div class="mb-4 flex items-start gap-3">
                   <span class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
@@ -409,7 +409,7 @@ function emptyVariables(): SiteVariablesPayload {
                       </div>
                     } @else {
                       <div
-                        class="rounded-md border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-xs font-semibold text-primary-container"
+                        class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-xs font-semibold text-primary-container"
                       >
                         Fórmula: {{ variableForm().d1 || 'primer registro' }} *
                         {{ variableForm().d2 || 'segundo registro' }}
@@ -527,7 +527,7 @@ function emptyVariables(): SiteVariablesPayload {
               }
 
               <div
-                class="rounded-lg border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-3"
+                class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3"
               >
                 <div class="mb-3 flex items-center gap-2">
                   <span class="material-symbols-outlined text-[18px] text-primary-container"
@@ -554,7 +554,7 @@ function emptyVariables(): SiteVariablesPayload {
                 </div>
 
                 <div
-                  class="mt-3 rounded-lg border border-[rgba(13,175,189,0.15)] bg-white px-3 py-2 shadow-sm"
+                  class="mt-3 rounded-lg border border-primary-tint-15 bg-white px-3 py-2 shadow-sm"
                 >
                   <p class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Resultado proyectado en gráfico
@@ -625,7 +625,7 @@ function emptyVariables(): SiteVariablesPayload {
                 <tbody class="divide-y divide-slate-100">
                   @for (variable of siteVariables().variables; track variable.nombre_dato) {
                     <tr
-                      class="group cursor-pointer bg-white transition-colors hover:bg-[rgba(13,175,189,0.06)]"
+                      class="group cursor-pointer bg-white transition-colors hover:bg-primary-tint-06"
                       (click)="prepareVariableMap(variable)"
                       title="Seleccionar variable"
                     >
@@ -1091,8 +1091,8 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     const base =
       'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
-      ? `${base} border-[rgba(13,175,189,0.35)] bg-[rgba(13,175,189,0.14)] text-primary-container`
-      : `${base} border-[rgba(13,175,189,0.15)] bg-white text-primary-container hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)]`;
+      ? `${base} border-primary-tint-35 bg-primary-tint-14 text-primary-container`
+      : `${base} border-primary-tint-15 bg-white text-primary-container hover:border-primary-tint-30 hover:bg-primary-tint-08`;
   }
 
   liveRawValueForPreview(): string {

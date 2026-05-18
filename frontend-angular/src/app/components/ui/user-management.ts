@@ -29,7 +29,7 @@ import { formatRutInput } from '../../shared/rut';
         <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
           <div class="flex items-center gap-3 mb-8">
             <div
-              class="w-10 h-10 bg-[rgba(13,175,189,0.10)] rounded-xl flex items-center justify-center"
+              class="w-10 h-10 bg-primary-tint-10 rounded-xl flex items-center justify-center"
             >
               <span class="material-symbols-outlined text-primary-container">person_add</span>
             </div>
@@ -216,7 +216,7 @@ import { formatRutInput } from '../../shared/rut';
             {{ readOnly ? 'Equipo de ' + subName() : 'Usuarios en ' + subName() }}
           </h3>
           <span
-            class="px-3 py-1 bg-[rgba(13,175,189,0.14)] text-primary-container rounded-full text-[10px] font-semibold"
+            class="px-3 py-1 bg-primary-tint-14 text-primary-container rounded-full text-[10px] font-semibold"
             >{{ users().length }} Usuarios</span
           >
         </div>
@@ -422,7 +422,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       case 'SuperAdmin':
         return 'bg-purple-100 text-purple-700';
       case 'Admin':
-        return 'bg-[rgba(13,175,189,0.14)] text-primary-container';
+        return 'bg-primary-tint-14 text-primary-container';
       case 'Gerente':
         return 'bg-emerald-100 text-emerald-700';
       case 'Cliente':

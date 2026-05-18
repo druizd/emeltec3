@@ -176,7 +176,7 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="reconocer(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)] disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-primary-tint-14 disabled:opacity-50"
                         >
                           <span class="material-symbols-outlined text-[14px]">visibility</span>
                           Reconocer
@@ -475,7 +475,7 @@ export class AlertasBandejaComponent {
     const map: Record<EventoEstado, string> = {
       activa: 'bg-rose-50 text-rose-600',
       reconocida: 'bg-amber-50 text-amber-700',
-      asignada: 'bg-[rgba(13,175,189,0.08)] text-primary-container',
+      asignada: 'bg-primary-tint-08 text-primary-container',
       resuelta: 'bg-slate-100 text-slate-500',
     };
     return map[e];

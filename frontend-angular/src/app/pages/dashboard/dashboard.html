@@ -15,7 +15,7 @@
 
   @if (welcomeBannerVisible() && !loading() && installations().length > 0) {
     <div
-      class="mb-4 flex items-start gap-3 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-4 py-3 text-body-sm text-[#04606a]"
+      class="mb-4 flex items-start gap-3 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-4 py-3 text-body-sm text-[#04606a]"
       role="status"
     >
       <span class="material-symbols-outlined mt-0.5 text-[20px] text-primary">waving_hand</span>
@@ -64,7 +64,7 @@
       class="mx-auto max-w-xl rounded-2xl border border-[#e2e8f0] bg-white px-8 py-12 text-center shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
     >
       <div
-        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(13,175,189,0.10)]"
+        class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-tint-10"
       >
         <span class="material-symbols-outlined text-[28px] text-primary">water_drop</span>
       </div>
@@ -107,7 +107,7 @@
           "
         >
           <div
-            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[rgba(13,175,189,0.20)] bg-[rgba(13,175,189,0.10)]"
+            class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary-tint-20 bg-primary-tint-10"
           >
             <span class="material-symbols-outlined text-[14px] text-[#0dafbd]">{{
               getTypeIcon(installation.type)
