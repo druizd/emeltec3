@@ -42,8 +42,8 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
               [class]="
                 chartRangeOpen()
-                  ? 'border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] text-primary-container'
-                  : 'border-slate-200 bg-white text-slate-600 hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container'
+                  ? 'border-primary-tint-25 bg-primary-tint-08 text-primary-container'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container'
               "
               aria-label="Selector de rango de tiempo"
               [attr.aria-expanded]="chartRangeOpen()"
@@ -107,7 +107,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                         type="datetime-local"
                         [value]="editStart()"
                         (change)="onEditStart($any($event.target).value)"
-                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:bg-white focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:bg-white focus:ring-1 focus:ring-primary-tint-20"
                       />
                     </label>
                     <label
@@ -118,7 +118,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                         type="datetime-local"
                         [value]="editEnd()"
                         (change)="onEditEnd($any($event.target).value)"
-                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:bg-white focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                        class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:bg-white focus:ring-1 focus:ring-primary-tint-20"
                       />
                     </label>
                   </div>
@@ -557,7 +557,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                 [class]="
                   jornadaSettingsOpen()
-                    ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
+                    ? 'bg-primary-tint-14 text-primary-container'
                     : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                 "
                 aria-label="Configurar período de jornada"
@@ -585,7 +585,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 
         @if (jornadaSettingsOpen()) {
           <div
-            class="mx-5 mt-3 overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4"
+            class="mx-5 mt-3 overflow-hidden rounded-xl border border-primary-tint-25 bg-primary-tint-08 p-4"
           >
             <p
               class="mb-2.5 text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600"
@@ -601,7 +601,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   type="time"
                   [value]="jornadaInicio()"
                   (change)="jornadaInicio.set($any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               </label>
               <span class="text-slate-300">–</span>
@@ -611,7 +611,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   type="time"
                   [value]="jornadaFin()"
                   (change)="jornadaFin.set($any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               </label>
               <span class="text-caption-xs text-slate-400"

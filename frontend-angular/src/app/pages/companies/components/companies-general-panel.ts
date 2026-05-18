@@ -76,20 +76,22 @@ interface Periodo {
       <!-- KPIs principales -->
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article
-          class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0899A5] to-[#0DAFBD] p-5 shadow-sm"
+          class="rounded-2xl border border-primary-tint-30 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.06),0_4px_12px_rgba(13,175,189,0.08)]"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-[#bdefef]">
+              <p class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container">
                 Flujo acumulado mensual
               </p>
-              <p class="mt-2 font-mono text-3xl font-semibold leading-none text-white">14,921 m³</p>
-              <p class="mt-1 text-[11px] text-[#7edde0]">Acumulado en mayo 2026</p>
+              <p class="mt-2 font-mono text-h3 font-semibold leading-none text-on-surface">
+                14,921 m³
+              </p>
+              <p class="mt-1 text-caption-xs text-on-surface-variant">Acumulado en mayo 2026</p>
             </div>
             <span
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-10"
             >
-              <span class="material-symbols-outlined text-[22px] text-white">water_drop</span>
+              <span class="material-symbols-outlined text-[22px] text-primary-container">water_drop</span>
             </span>
           </div>
         </article>
@@ -98,13 +100,13 @@ interface Periodo {
           <article class="rounded-2xl border bg-white p-5 shadow-sm" [class]="kpiBorde(k.tono)">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1">
-                <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                <p class="text-caption-xs font-semibold uppercase tracking-widest text-on-surface-muted">
                   {{ k.label }}
                 </p>
-                <p class="mt-2 font-mono text-3xl font-semibold leading-none text-slate-800">
+                <p class="mt-2 font-mono text-h3 font-semibold leading-none text-on-surface">
                   {{ k.valor }}
                 </p>
-                <p class="mt-1 text-[11px] text-slate-400">{{ k.subtext }}</p>
+                <p class="mt-1 text-caption-xs text-on-surface-muted">{{ k.subtext }}</p>
               </div>
               <span
                 [class]="kpiIconClass(k.tono)"
@@ -124,7 +126,7 @@ interface Periodo {
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 class="text-sm font-semibold text-slate-800">Flujo mensual por instalación</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">
+              <p class="mt-0.5 text-caption-xs text-slate-400">
                 m³/mes · últimos 6 meses · clic en leyenda para ocultar
               </p>
             </div>
@@ -133,7 +135,7 @@ interface Periodo {
               @for (s of sitiosResumen; track s.nombre; let i = $index) {
                 <button
                   (click)="toggleSite(i)"
-                  class="flex items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold text-slate-500 transition-all hover:bg-slate-100"
+                  class="flex items-center gap-1.5 rounded-full px-2 py-1 text-caption-xs font-bold text-slate-500 transition-all hover:bg-slate-100"
                   [style.opacity]="hiddenSites().has(i) ? '0.3' : '1'"
                   [title]="hiddenSites().has(i) ? 'Mostrar ' + s.nombre : 'Ocultar ' + s.nombre"
                 >
@@ -199,7 +201,7 @@ interface Periodo {
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-2">
             <h3 class="text-sm font-semibold text-slate-800">Estado de sitios</h3>
-            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500"
+            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-caption-xs font-bold text-slate-500"
               >{{ sitiosResumen.length }} sitios</span
             >
           </div>
@@ -207,7 +209,7 @@ interface Periodo {
           @if (sitiosResumen.length === 0) {
             <div class="py-8 text-center">
               <span class="material-symbols-outlined text-3xl text-slate-300">sensors_off</span>
-              <p class="mt-2 text-[12px] font-semibold text-slate-400">Sin sitios registrados</p>
+              <p class="mt-2 text-caption font-semibold text-slate-400">Sin sitios registrados</p>
             </div>
           } @else {
             <div class="space-y-2 overflow-y-auto" style="max-height: 340px">
@@ -229,17 +231,17 @@ interface Periodo {
                       [class]="estadoDotClass(s.estado)"
                     ></span>
                     <div class="min-w-0 flex-1">
-                      <p class="truncate text-[12px] font-semibold text-slate-800">
+                      <p class="truncate text-caption font-semibold text-slate-800">
                         {{ s.nombre }}
                       </p>
-                      <p class="truncate text-[10px] text-slate-400">{{ s.ubicacion }}</p>
+                      <p class="truncate text-caption-xs text-slate-400">{{ s.ubicacion }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
-                      <span class="text-[10px] font-semibold" [class]="estadoTextClass(s.estado)">{{
+                      <span class="text-caption-xs font-semibold" [class]="estadoTextClass(s.estado)">{{
                         estadoLabel(s.estado)
                       }}</span>
                       <span
-                        class="text-[9px] font-bold"
+                        class="text-caption-xs font-bold"
                         [style.color]="s.tendenciaCaudal >= 0 ? '#16A34A' : '#DC2626'"
                       >
                         {{ s.tendenciaCaudal >= 0 ? '▲' : '▼' }} {{ formatNum(s.tendenciaCaudal) }}%
@@ -250,26 +252,26 @@ interface Periodo {
                   <!-- Proyección mensual -->
                   <div class="mt-2 space-y-1.5 border-t border-slate-100 pt-2">
                     <div class="flex items-center justify-between">
-                      <span class="text-[9px] font-semibold text-slate-400"
+                      <span class="text-caption-xs font-semibold text-slate-400"
                         >Consumido este mes</span
                       >
-                      <span class="font-mono text-[11px] font-bold text-slate-700"
+                      <span class="font-mono text-caption-xs font-bold text-slate-700"
                         >{{ s.consumoMes.toLocaleString() }} m³</span
                       >
                     </div>
                     <div class="flex items-center justify-between">
-                      <span class="text-[9px] font-semibold text-slate-400"
+                      <span class="text-caption-xs font-semibold text-slate-400"
                         >Proyección fin de mes</span
                       >
-                      <span class="font-mono text-[11px] font-bold" style="color:#0dafbd"
+                      <span class="font-mono text-caption-xs font-bold" style="color:#0dafbd"
                         >{{ s.m3Proyectados.toLocaleString() }} m³</span
                       >
                     </div>
                     <div class="flex items-center justify-between">
-                      <span class="text-[9px] font-semibold text-slate-400"
+                      <span class="text-caption-xs font-semibold text-slate-400"
                         >Días con extracción</span
                       >
-                      <span class="font-mono text-[11px] font-bold text-slate-700"
+                      <span class="font-mono text-caption-xs font-bold text-slate-700"
                         >{{ s.diasActivos }}
                         <span class="font-normal text-slate-400">de {{ s.diasMes }}</span></span
                       >
@@ -289,7 +291,7 @@ interface Periodo {
           <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
             <div>
               <h3 class="text-sm font-semibold text-slate-800">Mapa de instalaciones</h3>
-              <p class="mt-0.5 text-[11px] text-slate-400">
+              <p class="mt-0.5 text-caption-xs text-slate-400">
                 Posición geográfica · clic en marcador para métricas
               </p>
             </div>
@@ -300,7 +302,7 @@ interface Periodo {
               <div class="absolute inset-0 z-10 flex items-center justify-center bg-slate-50">
                 <div class="text-center">
                   <span class="material-symbols-outlined text-3xl text-slate-300">map</span>
-                  <p class="mt-2 text-[12px] font-semibold text-slate-400">Sin instalaciones</p>
+                  <p class="mt-2 text-caption font-semibold text-slate-400">Sin instalaciones</p>
                 </div>
               </div>
             }
@@ -312,7 +314,7 @@ interface Periodo {
           <div class="mb-4 flex items-center justify-between gap-3">
             <h3 class="text-sm font-semibold text-slate-800">Resumen operacional</h3>
             <span
-              class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-[11px] font-semibold text-on-surface-variant"
+              class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
             >
               Mayo 2026
             </span>
@@ -322,7 +324,7 @@ interface Periodo {
               <div class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
                 <div class="mb-2 flex items-center justify-between gap-1">
                   <p
-                    class="text-[9px] font-semibold uppercase tracking-widest text-slate-400 leading-tight"
+                    class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400 leading-tight"
                   >
                     {{ m.label }}
                   </p>
@@ -333,7 +335,7 @@ interface Periodo {
                     <span class="material-symbols-outlined text-[16px]">{{ m.icon }}</span>
                   </span>
                 </div>
-                <p class="font-mono text-xl font-semibold text-slate-800">{{ m.valor }}</p>
+                <p class="font-mono text-h5 font-semibold text-slate-800">{{ m.valor }}</p>
               </div>
             }
           </div>
@@ -346,27 +348,27 @@ interface Periodo {
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <div class="flex-1">
             <h3 class="text-sm font-semibold text-slate-800">Comparación de períodos por pozo</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-400">
               Período A vs Período B · caudal, nivel y consumo
             </p>
           </div>
           <!-- Period labels -->
           <div class="flex items-center gap-2">
             <div class="rounded-lg px-3 py-1.5" style="background: rgba(13,175,189,0.08)">
-              <p class="text-[9px] font-semibold uppercase tracking-widest" style="color: #0dafbd">
+              <p class="text-caption-xs font-semibold uppercase tracking-widest" style="color: #0dafbd">
                 A · {{ periodoA().label }}
               </p>
             </div>
-            <span class="text-[11px] text-slate-300">vs</span>
+            <span class="text-caption-xs text-slate-300">vs</span>
             <div class="rounded-lg bg-slate-100 px-3 py-1.5">
-              <p class="text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+              <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 B · {{ periodoB().label }}
               </p>
             </div>
           </div>
           <button
             (click)="periodosOpen.set(!periodosOpen())"
-            class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-100"
+            class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-100"
           >
             <span class="material-symbols-outlined text-[14px]">date_range</span>
             Escoger períodos
@@ -376,14 +378,14 @@ interface Periodo {
         <!-- Selector de presets -->
         @if (periodosOpen()) {
           <div class="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
-            <p class="mb-2 text-[9px] font-semibold uppercase tracking-widest text-slate-400">
+            <p class="mb-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Período de comparación
             </p>
             <div class="flex flex-wrap gap-2">
               @for (p of presets; track p.key) {
                 <button
                   (click)="setPreset(p.key)"
-                  class="rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors"
+                  class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors"
                   [style.background]="periodoPreset() === p.key ? '#0dafbd' : 'white'"
                   [style.color]="periodoPreset() === p.key ? 'white' : '#475569'"
                   [style.border]="
@@ -401,7 +403,7 @@ interface Periodo {
         @if (sitiosComparacion.length === 0) {
           <div class="py-8 text-center">
             <span class="material-symbols-outlined text-3xl text-slate-300">sensors_off</span>
-            <p class="mt-2 text-[12px] font-semibold text-slate-400">Sin datos de pozos</p>
+            <p class="mt-2 text-caption font-semibold text-slate-400">Sin datos de pozos</p>
           </div>
         } @else {
           <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -413,7 +415,7 @@ interface Periodo {
                     class="h-2 w-2 shrink-0 rounded-full"
                     [class]="estadoDotClass(s.estado)"
                   ></span>
-                  <span class="truncate text-[12px] font-bold text-slate-800"
+                  <span class="truncate text-caption font-bold text-slate-800"
                     >{{ s.nombre | slice: 0 : 20 }}{{ s.nombre.length > 20 ? '…' : '' }}</span
                   >
                 </div>
@@ -427,13 +429,13 @@ interface Periodo {
                           >speed</span
                         >
                         <p
-                          class="text-[9px] font-semibold uppercase tracking-widest text-slate-400"
+                          class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                         >
                           Caudal
                         </p>
                       </div>
                       <span
-                        class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+                        class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
                         [style.background]="
                           s.caudalTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
                         "
@@ -449,9 +451,9 @@ interface Periodo {
                           style="background:rgba(13,175,189,0.12);color:#0899A5"
                           >A</span
                         >
-                        <span class="font-mono text-[13px] font-bold text-slate-800"
+                        <span class="font-mono text-body-sm font-bold text-slate-800"
                           >{{ s.caudalA }}
-                          <span class="text-[10px] font-normal text-slate-400">L/s</span></span
+                          <span class="text-caption-xs font-normal text-slate-400">L/s</span></span
                         >
                       </div>
                       <div class="flex items-center gap-1.5">
@@ -459,8 +461,8 @@ interface Periodo {
                           class="rounded bg-slate-200 px-1 py-0.5 text-[8px] font-semibold text-slate-500"
                           >B</span
                         >
-                        <span class="font-mono text-[12px] font-bold text-slate-400"
-                          >{{ s.caudalB }} <span class="text-[10px] font-normal">L/s</span></span
+                        <span class="font-mono text-caption font-bold text-slate-400"
+                          >{{ s.caudalB }} <span class="text-caption-xs font-normal">L/s</span></span
                         >
                       </div>
                     </div>
@@ -473,13 +475,13 @@ interface Periodo {
                           >water_drop</span
                         >
                         <p
-                          class="text-[9px] font-semibold uppercase tracking-widest text-slate-400"
+                          class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                         >
                           Nivel
                         </p>
                       </div>
                       <span
-                        class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+                        class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
                         [style.background]="
                           s.nivelTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
                         "
@@ -495,9 +497,9 @@ interface Periodo {
                           style="background:rgba(13,175,189,0.12);color:#0899A5"
                           >A</span
                         >
-                        <span class="font-mono text-[13px] font-bold text-slate-800"
+                        <span class="font-mono text-body-sm font-bold text-slate-800"
                           >{{ s.nivelA }}
-                          <span class="text-[10px] font-normal text-slate-400">m</span></span
+                          <span class="text-caption-xs font-normal text-slate-400">m</span></span
                         >
                       </div>
                       <div class="flex items-center gap-1.5">
@@ -505,8 +507,8 @@ interface Periodo {
                           class="rounded bg-slate-200 px-1 py-0.5 text-[8px] font-semibold text-slate-500"
                           >B</span
                         >
-                        <span class="font-mono text-[12px] font-bold text-slate-400"
-                          >{{ s.nivelB }} <span class="text-[10px] font-normal">m</span></span
+                        <span class="font-mono text-caption font-bold text-slate-400"
+                          >{{ s.nivelB }} <span class="text-caption-xs font-normal">m</span></span
                         >
                       </div>
                     </div>
@@ -519,13 +521,13 @@ interface Periodo {
                           >monitoring</span
                         >
                         <p
-                          class="text-[9px] font-semibold uppercase tracking-widest text-slate-400"
+                          class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                         >
                           Consumo
                         </p>
                       </div>
                       <span
-                        class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
+                        class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
                         [style.background]="
                           s.consumoTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
                         "
@@ -541,9 +543,9 @@ interface Periodo {
                           style="background:rgba(13,175,189,0.12);color:#0899A5"
                           >A</span
                         >
-                        <span class="font-mono text-[13px] font-bold text-slate-800"
+                        <span class="font-mono text-body-sm font-bold text-slate-800"
                           >{{ s.consumoA }}
-                          <span class="text-[10px] font-normal text-slate-400">m³</span></span
+                          <span class="text-caption-xs font-normal text-slate-400">m³</span></span
                         >
                       </div>
                       <div class="flex items-center gap-1.5">
@@ -551,8 +553,8 @@ interface Periodo {
                           class="rounded bg-slate-200 px-1 py-0.5 text-[8px] font-semibold text-slate-500"
                           >B</span
                         >
-                        <span class="font-mono text-[12px] font-bold text-slate-400"
-                          >{{ s.consumoB }} <span class="text-[10px] font-normal">m³</span></span
+                        <span class="font-mono text-caption font-bold text-slate-400"
+                          >{{ s.consumoB }} <span class="text-caption-xs font-normal">m³</span></span
                         >
                       </div>
                     </div>
@@ -837,7 +839,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   metricaOpIconClass(tono: MetricaOperacional['tono']): string {
     if (tono === 'warn') return 'bg-amber-50 text-amber-600';
-    if (tono === 'ok') return 'bg-[rgba(13,175,189,0.10)] text-primary-container';
+    if (tono === 'ok') return 'bg-primary-tint-10 text-primary-container';
     return 'bg-slate-100 text-slate-500';
   }
 

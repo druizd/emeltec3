@@ -134,7 +134,15 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
 
         <main class="mx-auto max-w-[1540px] px-6 py-6">
           <section class="border border-slate-200 bg-white">
-            <nav class="flex h-16 items-center gap-7 border-b border-slate-200 px-6" role="tablist">
+            <nav
+              class="flex h-16 items-center gap-7 border-b border-slate-200 px-6"
+              role="tablist"
+              aria-label="Pestañas del sitio eléctrico"
+              (keydown.arrowright)="cycleTab(1); $event.preventDefault()"
+              (keydown.arrowleft)="cycleTab(-1); $event.preventDefault()"
+              (keydown.home)="cycleTab(0, 'first'); $event.preventDefault()"
+              (keydown.end)="cycleTab(0, 'last'); $event.preventDefault()"
+            >
               @for (tab of tabs; track tab.id) {
                 <button
                   type="button"
@@ -142,6 +150,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   [class]="tabClass(tab.id)"
                   role="tab"
                   [attr.aria-selected]="activeTab() === tab.id"
+                  [attr.tabindex]="activeTab() === tab.id ? 0 : -1"
                 >
                   <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
                   {{ tab.label }}
@@ -501,6 +510,22 @@ export class CompanySiteElectricDetailComponent implements OnInit {
 
   setTab(tab: ElectricTab): void {
     this.activeTab.set(tab);
+  }
+
+  /** WAI-ARIA tablist nav: ArrowLeft/Right cyclan, Home/End first/last. */
+  cycleTab(delta: 1 | -1 | 0, edge?: 'first' | 'last'): void {
+    if (this.tabs.length === 0) return;
+    if (edge === 'first') {
+      this.setTab(this.tabs[0].id as ElectricTab);
+      return;
+    }
+    if (edge === 'last') {
+      this.setTab(this.tabs[this.tabs.length - 1].id as ElectricTab);
+      return;
+    }
+    const idx = this.tabs.findIndex((t) => t.id === this.activeTab());
+    const nextIdx = (idx + delta + this.tabs.length) % this.tabs.length;
+    this.setTab(this.tabs[nextIdx].id as ElectricTab);
   }
 
   refreshDashboard(): void {

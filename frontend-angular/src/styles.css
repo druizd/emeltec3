@@ -30,6 +30,23 @@
   --color-primary-deep: #04606a;
   --color-on-primary-container: #f0fafb;
 
+  /* ─── Brand teal tints ───
+     Reusable color stops para reemplazar las 200+ ocurrencias de
+     rgba(13,175,189,X) dispersas por todo el frontend. Usar como
+     bg-primary-tint-NN, border-primary-tint-NN, ring-primary-tint-NN. */
+  --color-primary-tint-04: rgba(13, 175, 189, 0.04);
+  --color-primary-tint-06: rgba(13, 175, 189, 0.06);
+  --color-primary-tint-08: rgba(13, 175, 189, 0.08);
+  --color-primary-tint-10: rgba(13, 175, 189, 0.10);
+  --color-primary-tint-14: rgba(13, 175, 189, 0.14);
+  --color-primary-tint-15: rgba(13, 175, 189, 0.15);
+  --color-primary-tint-20: rgba(13, 175, 189, 0.20);
+  --color-primary-tint-25: rgba(13, 175, 189, 0.25);
+  --color-primary-tint-30: rgba(13, 175, 189, 0.30);
+  --color-primary-tint-35: rgba(13, 175, 189, 0.35);
+  --color-primary-tint-40: rgba(13, 175, 189, 0.40);
+  --color-primary-tint-55: rgba(13, 175, 189, 0.55);
+
   /* ─── Secondary neutral ─── */
   --color-secondary: #64748b;
   --color-secondary-container: #f8fafc;

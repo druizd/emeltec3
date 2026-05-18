@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import {
   DocumentoRow,
   DocumentoService,
@@ -52,11 +53,11 @@ const TIPOS: DocumentoTipo[] = [
   selector: 'app-bitacora-documentos',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <header class="flex flex-wrap items-center justify-between gap-3">
@@ -80,7 +81,7 @@ const TIPOS: DocumentoTipo[] = [
         <button
           type="button"
           (click)="toggleSubida()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             mostrandoSubida() ? 'close' : 'upload_file'
@@ -91,7 +92,7 @@ const TIPOS: DocumentoTipo[] = [
 
       @if (mostrandoSubida()) {
         <article
-          class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
+          class="rounded-2xl border-2 border-dashed border-primary-tint-25 bg-primary-tint-08/30 p-4"
         >
           <p
             class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
@@ -288,7 +289,7 @@ const TIPOS: DocumentoTipo[] = [
                         <button
                           type="button"
                           (click)="descargar(doc)"
-                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-primary-tint-08 hover:text-primary-container"
                           [attr.aria-label]="'Descargar ' + doc.titulo"
                         >
                           <span class="material-symbols-outlined text-[18px]">download</span>
@@ -488,7 +489,7 @@ export class BitacoraDocumentosComponent {
 
   tipoIconClass(t: DocumentoTipo): string {
     const map: Record<DocumentoTipo, string> = {
-      ficha_tecnica: 'bg-[rgba(13,175,189,0.08)] text-primary-container',
+      ficha_tecnica: 'bg-primary-tint-08 text-primary-container',
       datasheet: 'bg-emerald-50 text-emerald-700',
       certificado: 'bg-amber-50 text-amber-700',
       manual: 'bg-accent/10 text-accent-container',
@@ -507,7 +508,7 @@ export class BitacoraDocumentosComponent {
     return [
       'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
       active
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
+        ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }
@@ -515,7 +516,7 @@ export class BitacoraDocumentosComponent {
   filtroBadgeClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
     return active
-      ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
+      ? 'bg-primary-tint-14 text-primary-container'
       : 'bg-slate-100 text-slate-500';
   }
 

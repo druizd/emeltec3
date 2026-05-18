@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -21,11 +22,11 @@ type RecursoFiltro = AuditTargetType | 'todos';
   selector: 'app-bitacora-trazabilidad',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <header class="flex flex-wrap items-center gap-2">
@@ -241,7 +242,7 @@ export class BitacoraAuditLogComponent {
 
   accionClass(action: string): string {
     const { verbo } = describeAccion(action);
-    if (verbo === 'Creó') return 'bg-[rgba(13,175,189,0.08)] text-primary-container';
+    if (verbo === 'Creó') return 'bg-primary-tint-08 text-primary-container';
     if (verbo === 'Modificó') return 'bg-amber-50 text-amber-700';
     if (verbo === 'Eliminó') return 'bg-rose-50 text-rose-700';
     return 'bg-slate-100 text-slate-600';
@@ -266,7 +267,7 @@ export class BitacoraAuditLogComponent {
     return [
       'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
       active
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
+        ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }

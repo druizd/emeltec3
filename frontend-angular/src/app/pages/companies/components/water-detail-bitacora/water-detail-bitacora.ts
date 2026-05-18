@@ -36,7 +36,7 @@ interface BitacoraTabItem {
         <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)] lg:items-center">
           <div class="flex items-center gap-3">
             <span
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
             >
               <span class="material-symbols-outlined text-[22px]">menu_book</span>
             </span>
@@ -51,7 +51,7 @@ interface BitacoraTabItem {
           </div>
 
           <label
-            class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 transition-colors focus-within:border-[rgba(13,175,189,0.35)] focus-within:bg-white"
+            class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 transition-colors focus-within:border-primary-tint-35 focus-within:bg-white"
           >
             <span class="material-symbols-outlined text-[18px] text-slate-400">search</span>
             <input
@@ -151,7 +151,7 @@ export class WaterDetailBitacoraComponent {
     return [
       'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
       active
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.20)]'
+        ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-20'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',
     ].join(' ');
   }

@@ -1,3 +1,4 @@
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
@@ -9,6 +10,7 @@ import {
   OnInit,
   signal,
 } from '@angular/core';
+import { InlineErrorComponent } from '../../components/ui/inline-error';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -184,6 +186,7 @@ type OperationMode = 'realtime' | 'turnos';
     CommonModule,
     FormsModule,
     RouterLink,
+    A11yModule,
     CompaniesSiteDetailSkeletonComponent,
     WaterDetailOperacionComponent,
     WaterDetailAlertasComponent,
@@ -191,6 +194,7 @@ type OperationMode = 'realtime' | 'turnos';
     WaterDetailAnalisisComponent,
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
+    InlineErrorComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -207,7 +211,7 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="flex min-w-0 items-center gap-3">
                 <a
                   routerLink="/companies"
-                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+                  class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-tint-15 bg-primary-tint-08 text-primary-container transition-colors hover:bg-primary-tint-14"
                   aria-label="Volver a instalaciones"
                 >
                   <span class="material-symbols-outlined text-[22px]">water_drop</span>
@@ -240,7 +244,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="openSettingsPanel()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
                     aria-label="Configuración del sitio"
                   >
                     <span class="material-symbols-outlined text-[18px]">settings</span>
@@ -253,6 +257,10 @@ type OperationMode = 'realtime' | 'turnos';
               class="flex items-center gap-5 px-3"
               role="tablist"
               aria-label="Pestañas de detalle del sitio"
+              (keydown.arrowright)="cycleDetailTab(1); $event.preventDefault()"
+              (keydown.arrowleft)="cycleDetailTab(-1); $event.preventDefault()"
+              (keydown.home)="cycleDetailTab(0, 'first'); $event.preventDefault()"
+              (keydown.end)="cycleDetailTab(0, 'last'); $event.preventDefault()"
             >
               <button
                 type="button"
@@ -260,7 +268,9 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('dga')"
                 [class]="getDetailTabClass('dga')"
                 [attr.aria-selected]="activeDetailTab() === 'dga'"
+                id="tab-dga"
                 aria-controls="tabpanel-dga"
+                [attr.tabindex]="activeDetailTab() === 'dga' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
                 DGA
@@ -277,7 +287,9 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('operacion')"
                 [class]="getDetailTabClass('operacion')"
                 [attr.aria-selected]="activeDetailTab() === 'operacion'"
+                id="tab-operacion"
                 aria-controls="tabpanel-operacion"
+                [attr.tabindex]="activeDetailTab() === 'operacion' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >monitoring</span
@@ -296,7 +308,9 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('alertas')"
                 [class]="getDetailTabClass('alertas')"
                 [attr.aria-selected]="activeDetailTab() === 'alertas'"
+                id="tab-alertas"
                 aria-controls="tabpanel-alertas"
+                [attr.tabindex]="activeDetailTab() === 'alertas' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >notifications_active</span
@@ -315,7 +329,9 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('bitacora')"
                 [class]="getDetailTabClass('bitacora')"
                 [attr.aria-selected]="activeDetailTab() === 'bitacora'"
+                id="tab-bitacora"
                 aria-controls="tabpanel-bitacora"
+                [attr.tabindex]="activeDetailTab() === 'bitacora' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >menu_book</span
@@ -335,7 +351,9 @@ type OperationMode = 'realtime' | 'turnos';
                   (click)="setDetailTab('analisis')"
                   [class]="getDetailTabClass('analisis')"
                   [attr.aria-selected]="activeDetailTab() === 'analisis'"
+                  id="tab-analisis"
                   aria-controls="tabpanel-analisis"
+                  [attr.tabindex]="activeDetailTab() === 'analisis' ? 0 : -1"
                 >
                   <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                     >insights</span
@@ -396,7 +414,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[20px]">arrow_back</span>
                     </button>
                     <span
-                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
+                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
                     >
                       <span class="material-symbols-outlined text-[22px]">database</span>
                     </span>
@@ -437,7 +455,7 @@ type OperationMode = 'realtime' | 'turnos';
                       min="2020-01-01"
                       [value]="historyDateFrom()"
                       (input)="setHistoryDateFrom($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1">
@@ -447,7 +465,7 @@ type OperationMode = 'realtime' | 'turnos';
                       min="2020-01-01"
                       [value]="historyDateTo()"
                       (input)="setHistoryDateTo($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1">
@@ -455,7 +473,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <select
                       [value]="historyRecordLimit()"
                       (change)="setHistoryRecordLimit($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     >
                       @for (limit of historyRecordLimitOptions; track limit) {
                         <option [value]="limit">{{ limit }}</option>
@@ -567,1133 +585,1158 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
-            <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-              <!-- Enviados: cuenta en rango filtrado -->
-              <article
-                class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
-              >
-                <p
-                  class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600"
-                >
-                  Enviados
-                </p>
-                <p class="mt-1 text-3xl font-semibold leading-none text-emerald-600">
-                  {{ dgaCountEnviados() }}
-                </p>
-                <p class="mt-1 text-xs font-semibold text-emerald-500">en rango filtrado</p>
-              </article>
-
-              <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
-              @if (dgaUltimoEnvio()?.comprobante; as comp) {
-                @if (comprobanteUrl(comp); as url) {
-                  <a
-                    [href]="url"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    [title]="'Abrir comprobante en SNIA · ' + comp"
-                    class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
-                  >
-                    <div class="flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-[14px] text-emerald-600"
-                        >verified</span
-                      >
-                      <p
-                        class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      >
-                        Último envío aceptado
-                      </p>
-                    </div>
-                    <p
-                      class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
-                    >
-                      {{ dgaUltimoEnvioFecha() }}
-                    </p>
-                  </a>
-                } @else {
-                  <article
-                    class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white px-4 py-3 shadow-sm"
-                    [title]="'Carga el número de obra para habilitar el link SNIA · ' + comp"
-                  >
-                    <div class="flex items-center gap-1.5">
-                      <span class="material-symbols-outlined text-[14px] text-emerald-600"
-                        >verified</span
-                      >
-                      <p
-                        class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      >
-                        Último envío aceptado
-                      </p>
-                    </div>
-                    <p
-                      class="text-center font-mono text-h5 font-semibold leading-tight text-slate-800"
-                    >
-                      {{ dgaUltimoEnvioFecha() }}
-                    </p>
-                    <span class="truncate font-mono text-caption-xs text-slate-500">{{
-                      comp
-                    }}</span>
-                  </article>
-                }
-              } @else {
+            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga">
+              <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                <!-- Enviados: cuenta en rango filtrado -->
                 <article
-                  class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
+                  class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
                 >
                   <p
-                    class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+                    class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600"
                   >
-                    Último envío aceptado
+                    Enviados
                   </p>
-                  <p class="text-h5 font-semibold text-slate-400">—</p>
-                  <span class="text-caption-xs italic text-slate-400">sin envíos aún</span>
+                  <p class="mt-1 text-3xl font-semibold leading-none text-emerald-600">
+                    {{ dgaCountEnviados() }}
+                  </p>
+                  <p class="mt-1 text-xs font-semibold text-emerald-500">en rango filtrado</p>
                 </article>
-              }
 
-              <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
-              <article
-                [class]="
-                  'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
-                  dgaTasaExitoColors().border +
-                  ' ' +
-                  dgaTasaExitoColors().bg
-                "
-              >
-                <div class="flex items-start justify-between">
-                  <p
-                    [class]="
-                      'flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
-                      dgaTasaExitoColors().text
-                    "
-                  >
-                    Tasa de éxito
-                  </p>
-                  <details class="group relative">
-                    <summary
-                      [class]="
-                        'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-caption-xs font-bold hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
-                        dgaTasaExitoColors().text
-                      "
-                      aria-label="Ver leyenda de la tasa de éxito"
+                <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
+                @if (dgaUltimoEnvio()?.comprobante; as comp) {
+                  @if (comprobanteUrl(comp); as url) {
+                    <a
+                      [href]="url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      [title]="'Abrir comprobante en SNIA · ' + comp"
+                      class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
                     >
-                      ?
-                    </summary>
-                    <div
-                      class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs shadow-lg"
-                    >
-                      <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
-                      <p class="mb-3 text-slate-500">
-                        enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
-                        dentro del rango filtrado.
-                      </p>
-                      <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
-                      <ul class="space-y-1.5 text-slate-600">
-                        <li class="flex items-center gap-2">
-                          <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                          100 %: sin rechazos
-                        </li>
-                        <li class="flex items-center gap-2">
-                          <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
-                          90–99 %: alerta leve
-                        </li>
-                        <li class="flex items-center gap-2">
-                          <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>
-                          75–89 %: revisar configuración
-                        </li>
-                        <li class="flex items-center gap-2">
-                          <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                          60–74 %: atención requerida
-                        </li>
-                        <li class="flex items-center gap-2">
-                          <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
-                          40–59 %: bloqueo probable
-                        </li>
-                        <li class="flex items-center gap-2">
-                          <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                          &lt; 40 %: falla persistente
-                        </li>
-                      </ul>
-                    </div>
-                  </details>
-                </div>
-                <p
-                  [class]="'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text"
-                >
-                  {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
-                </p>
-                <p class="mt-1 text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
-              </article>
-
-              <!-- Rechazados: cuenta en rango -->
-              <article
-                class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
-                title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
-              >
-                <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
-                  Rechazados
-                </p>
-                <p class="mt-1 text-3xl font-semibold leading-none text-rose-600">
-                  {{ dgaCountRechazados() }}
-                </p>
-                <p class="mt-1 text-xs font-semibold text-rose-700">
-                  Rechazados por SNIA + fallidos antes del envío
-                </p>
-              </article>
-            </section>
-
-            <section
-              class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
-            >
-              <div class="flex flex-col gap-3 xl:h-full">
-                <article
-                  class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
-                >
-                  <p
-                    class="mb-3 text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                  >
-                    Diagrama del pozo
-                  </p>
-
-                  @if (dashboardLoading()) {
-                    <div
-                      class="flex min-h-[360px] items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
-                    >
-                      <div class="text-center">
-                        <span
-                          class="material-symbols-outlined animate-spin text-[32px] text-primary-container"
-                          >progress_activity</span
+                      <div class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[14px] text-emerald-600"
+                          >verified</span
                         >
                         <p
-                          class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                          class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
                         >
-                          Cargando datos del pozo
+                          Último envío aceptado
                         </p>
                       </div>
-                    </div>
+                      <p
+                        class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
+                      >
+                        {{ dgaUltimoEnvioFecha() }}
+                      </p>
+                    </a>
                   } @else {
-                    <div class="flex gap-3 items-start">
-                      <!-- SVG Well Diagram (flex:1) -->
-                      <div style="flex:1;min-width:0;overflow:visible">
-                        <svg
-                          [attr.viewBox]="'0 0 ' + svgW + ' ' + svgH"
-                          style="width:100%;height:auto;display:block;overflow:visible"
+                    <article
+                      class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm"
+                      [title]="'Carga el número de obra para habilitar el link SNIA · ' + comp"
+                    >
+                      <div class="flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[14px] text-emerald-600"
+                          >verified</span
                         >
-                          <style>
-                            @keyframes wdiagWave1 {
-                              0%,
-                              100% {
-                                transform: translateX(0);
+                        <p
+                          class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                        >
+                          Último envío aceptado
+                        </p>
+                      </div>
+                      <p
+                        class="text-center font-mono text-h5 font-semibold leading-tight text-slate-800"
+                      >
+                        {{ dgaUltimoEnvioFecha() }}
+                      </p>
+                      <span class="truncate font-mono text-caption-xs text-slate-500">{{
+                        comp
+                      }}</span>
+                    </article>
+                  }
+                } @else {
+                  <article
+                    class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
+                  >
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+                    >
+                      Último envío aceptado
+                    </p>
+                    <p class="text-h5 font-semibold text-slate-400">—</p>
+                    <span class="text-caption-xs italic text-slate-400">sin envíos aún</span>
+                  </article>
+                }
+
+                <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
+                <article
+                  [class]="
+                    'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
+                    dgaTasaExitoColors().border +
+                    ' ' +
+                    dgaTasaExitoColors().bg
+                  "
+                >
+                  <div class="flex items-start justify-between">
+                    <p
+                      [class]="
+                        'flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
+                        dgaTasaExitoColors().text
+                      "
+                    >
+                      Tasa de éxito
+                    </p>
+                    <details class="group relative">
+                      <summary
+                        [class]="
+                          'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-caption-xs font-bold hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
+                          dgaTasaExitoColors().text
+                        "
+                        aria-label="Ver leyenda de la tasa de éxito"
+                      >
+                        ?
+                      </summary>
+                      <div
+                        class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs shadow-lg"
+                      >
+                        <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
+                        <p class="mb-3 text-slate-500">
+                          enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
+                          dentro del rango filtrado.
+                        </p>
+                        <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
+                        <ul class="space-y-1.5 text-slate-600">
+                          <li class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                            100 %: sin rechazos
+                          </li>
+                          <li class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                            90–99 %: alerta leve
+                          </li>
+                          <li class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>
+                            75–89 %: revisar configuración
+                          </li>
+                          <li class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                            60–74 %: atención requerida
+                          </li>
+                          <li class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+                            40–59 %: bloqueo probable
+                          </li>
+                          <li class="flex items-center gap-2">
+                            <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                            &lt; 40 %: falla persistente
+                          </li>
+                        </ul>
+                      </div>
+                    </details>
+                  </div>
+                  <p
+                    [class]="
+                      'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
+                    "
+                  >
+                    {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
+                  </p>
+                  <p class="mt-1 text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
+                </article>
+
+                <!-- Rechazados: cuenta en rango -->
+                <article
+                  class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
+                  title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
+                >
+                  <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
+                    Rechazados
+                  </p>
+                  <p class="mt-1 text-3xl font-semibold leading-none text-rose-600">
+                    {{ dgaCountRechazados() }}
+                  </p>
+                  <p class="mt-1 text-xs font-semibold text-rose-700">
+                    Rechazados por SNIA + fallidos antes del envío
+                  </p>
+                </article>
+              </section>
+
+              <section
+                class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
+              >
+                <div class="flex flex-col gap-3 xl:h-full">
+                  <article
+                    class="flex flex-1 flex-col rounded-xl border border-primary-tint-25 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
+                  >
+                    <p
+                      class="mb-3 text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+                    >
+                      Diagrama del pozo
+                    </p>
+
+                    @if (dashboardLoading()) {
+                      <div
+                        class="flex min-h-[360px] items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
+                      >
+                        <div class="text-center">
+                          <span
+                            class="material-symbols-outlined animate-spin text-[32px] text-primary-container"
+                            >progress_activity</span
+                          >
+                          <p
+                            class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                          >
+                            Cargando datos del pozo
+                          </p>
+                        </div>
+                      </div>
+                    } @else {
+                      <div class="flex gap-3 items-start">
+                        <!-- SVG Well Diagram (flex:1) -->
+                        <div style="flex:1;min-width:0;overflow:visible">
+                          <svg
+                            [attr.viewBox]="'0 0 ' + svgW + ' ' + svgH"
+                            style="width:100%;height:auto;display:block;overflow:visible"
+                          >
+                            <style>
+                              @keyframes wdiagWave1 {
+                                0%,
+                                100% {
+                                  transform: translateX(0);
+                                }
+                                50% {
+                                  transform: translateX(-7px);
+                                }
                               }
-                              50% {
-                                transform: translateX(-7px);
+                              @keyframes wdiagWave2 {
+                                0%,
+                                100% {
+                                  transform: translateX(0);
+                                }
+                                50% {
+                                  transform: translateX(6px);
+                                }
                               }
-                            }
-                            @keyframes wdiagWave2 {
-                              0%,
-                              100% {
-                                transform: translateX(0);
+                              @keyframes wdiagBubble {
+                                0% {
+                                  opacity: 0;
+                                  transform: translateY(0);
+                                }
+                                8% {
+                                  opacity: 0.62;
+                                }
+                                78% {
+                                  opacity: 0.22;
+                                }
+                                100% {
+                                  opacity: 0;
+                                  transform: translateY(-580px);
+                                }
                               }
-                              50% {
-                                transform: translateX(6px);
+                              .wdiag-w1 {
+                                animation: wdiagWave1 3s ease-in-out infinite;
                               }
-                            }
-                            @keyframes wdiagBubble {
-                              0% {
-                                opacity: 0;
-                                transform: translateY(0);
+                              .wdiag-w2 {
+                                animation: wdiagWave2 4.8s ease-in-out infinite;
                               }
-                              8% {
-                                opacity: 0.62;
+                              .wdiag-b {
+                                animation-name: wdiagBubble;
+                                animation-timing-function: ease-in;
+                                animation-iteration-count: infinite;
+                                animation-fill-mode: both;
+                                animation-duration: var(--d, 4s);
+                                animation-delay: var(--e, 0s);
                               }
-                              78% {
-                                opacity: 0.22;
+                              @media (prefers-reduced-motion: reduce) {
+                                .wdiag-w1,
+                                .wdiag-w2,
+                                .wdiag-b {
+                                  animation: none !important;
+                                }
                               }
-                              100% {
-                                opacity: 0;
-                                transform: translateY(-580px);
-                              }
-                            }
-                            .wdiag-w1 {
-                              animation: wdiagWave1 3s ease-in-out infinite;
-                            }
-                            .wdiag-w2 {
-                              animation: wdiagWave2 4.8s ease-in-out infinite;
-                            }
-                            .wdiag-b {
-                              animation-name: wdiagBubble;
-                              animation-timing-function: ease-in;
-                              animation-iteration-count: infinite;
-                              animation-fill-mode: both;
-                              animation-duration: var(--d, 4s);
-                              animation-delay: var(--e, 0s);
-                            }
-                          </style>
-                          <defs>
-                            <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stop-color="#8EEAF1" stop-opacity="0.85" />
-                              <stop offset="18%" stop-color="#0DAFBD" stop-opacity="0.92" />
-                              <stop offset="65%" stop-color="#067D88" stop-opacity="0.97" />
-                              <stop offset="100%" stop-color="#034851" stop-opacity="1" />
-                            </linearGradient>
-                            <radialGradient id="shimmer" cx="40%" cy="25%" r="55%">
-                              <stop offset="0%" stop-color="white" stop-opacity="0.22" />
-                              <stop offset="100%" stop-color="white" stop-opacity="0" />
-                            </radialGradient>
-                            <pattern
-                              id="dots"
+                            </style>
+                            <defs>
+                              <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#8EEAF1" stop-opacity="0.85" />
+                                <stop offset="18%" stop-color="#0DAFBD" stop-opacity="0.92" />
+                                <stop offset="65%" stop-color="#067D88" stop-opacity="0.97" />
+                                <stop offset="100%" stop-color="#034851" stop-opacity="1" />
+                              </linearGradient>
+                              <radialGradient id="shimmer" cx="40%" cy="25%" r="55%">
+                                <stop offset="0%" stop-color="white" stop-opacity="0.22" />
+                                <stop offset="100%" stop-color="white" stop-opacity="0" />
+                              </radialGradient>
+                              <pattern
+                                id="dots"
+                                x="0"
+                                y="0"
+                                width="8"
+                                height="8"
+                                patternUnits="userSpaceOnUse"
+                              >
+                                <rect width="8" height="8" fill="#F5EDD8" />
+                                <circle cx="3" cy="3" r="1" fill="#C4A882" opacity="0.6" />
+                                <circle cx="7" cy="7" r="0.7" fill="#C4A882" opacity="0.4" />
+                              </pattern>
+                              <clipPath id="wellClip">
+                                <rect
+                                  [attr.x]="svgWellL + 4"
+                                  [attr.y]="svgWellTop"
+                                  [attr.width]="svgWellR - svgWellL - 8"
+                                  [attr.height]="svgWellH"
+                                />
+                              </clipPath>
+                            </defs>
+
+                            <!-- Soil left -->
+                            <rect
+                              x="0"
+                              [attr.y]="svgWellTop"
+                              [attr.width]="svgWellL"
+                              [attr.height]="svgWellH"
+                              fill="url(#dots)"
+                            />
+                            <!-- Soil right (extended to SVG edge so annotation zone has background) -->
+                            <rect
+                              [attr.x]="svgWellR"
+                              [attr.y]="svgWellTop"
+                              [attr.width]="svgW - svgWellR"
+                              [attr.height]="svgWellH"
+                              fill="url(#dots)"
+                            />
+
+                            <!-- Ground surface band -->
+                            <rect
                               x="0"
                               y="0"
-                              width="8"
-                              height="8"
-                              patternUnits="userSpaceOnUse"
-                            >
-                              <rect width="8" height="8" fill="#F5EDD8" />
-                              <circle cx="3" cy="3" r="1" fill="#C4A882" opacity="0.6" />
-                              <circle cx="7" cy="7" r="0.7" fill="#C4A882" opacity="0.4" />
-                            </pattern>
-                            <clipPath id="wellClip">
-                              <rect
-                                [attr.x]="svgWellL + 4"
-                                [attr.y]="svgWellTop"
-                                [attr.width]="svgWellR - svgWellL - 8"
-                                [attr.height]="svgWellH"
-                              />
-                            </clipPath>
-                          </defs>
-
-                          <!-- Soil left -->
-                          <rect
-                            x="0"
-                            [attr.y]="svgWellTop"
-                            [attr.width]="svgWellL"
-                            [attr.height]="svgWellH"
-                            fill="url(#dots)"
-                          />
-                          <!-- Soil right (extended to SVG edge so annotation zone has background) -->
-                          <rect
-                            [attr.x]="svgWellR"
-                            [attr.y]="svgWellTop"
-                            [attr.width]="svgW - svgWellR"
-                            [attr.height]="svgWellH"
-                            fill="url(#dots)"
-                          />
-
-                          <!-- Ground surface band -->
-                          <rect
-                            x="0"
-                            y="0"
-                            [attr.width]="svgW"
-                            [attr.height]="svgWellTop"
-                            fill="#8B7355"
-                            opacity="0.15"
-                          />
-                          <line
-                            x1="0"
-                            [attr.y1]="svgWellTop"
-                            [attr.x2]="svgW"
-                            [attr.y2]="svgWellTop"
-                            stroke="#8B7355"
-                            stroke-width="2"
-                          />
-
-                          <!-- Grass marks -->
-                          @for (gx of svgGrassX; track gx) {
-                            <line
-                              [attr.x1]="gx"
-                              [attr.y1]="svgWellTop"
-                              [attr.x2]="gx - 3"
-                              [attr.y2]="svgWellTop - 7"
-                              stroke="#6B9B37"
-                              stroke-width="1.5"
-                              stroke-linecap="round"
+                              [attr.width]="svgW"
+                              [attr.height]="svgWellTop"
+                              fill="#8B7355"
+                              opacity="0.15"
                             />
-                          }
-
-                          <!-- Well casing — empty air gap -->
-                          <rect
-                            [attr.x]="svgWellL + 4"
-                            [attr.y]="svgWellTop"
-                            [attr.width]="svgWellR - svgWellL - 8"
-                            [attr.height]="svgWaterY - svgWellTop"
-                            fill="#F0F9FF"
-                            opacity="0.9"
-                          />
-
-                          <!-- Water fill (gradient) -->
-                          <rect
-                            [attr.x]="svgWellL + 4"
-                            [attr.y]="svgWaterY"
-                            [attr.width]="svgWellR - svgWellL - 8"
-                            [attr.height]="svgWellBot - svgWaterY"
-                            fill="url(#wg)"
-                            clip-path="url(#wellClip)"
-                          />
-                          <!-- Water shimmer overlay -->
-                          <rect
-                            [attr.x]="svgWellL + 4"
-                            [attr.y]="svgWaterY"
-                            [attr.width]="svgWellR - svgWellL - 8"
-                            [attr.height]="svgWellBot - svgWaterY"
-                            fill="url(#shimmer)"
-                            clip-path="url(#wellClip)"
-                          />
-                          <!-- Surface refraction stripe -->
-                          <rect
-                            [attr.x]="svgWellL + 7"
-                            [attr.y]="svgWaterY + 3"
-                            [attr.width]="svgWellR - svgWellL - 16"
-                            height="4"
-                            fill="white"
-                            opacity="0.28"
-                            rx="2"
-                            clip-path="url(#wellClip)"
-                          />
-                          <!-- Caustic light patches near bottom -->
-                          <ellipse
-                            [attr.cx]="svgTextCX - 9"
-                            [attr.cy]="svgWellBot - 24"
-                            rx="9"
-                            ry="3"
-                            fill="white"
-                            opacity="0.07"
-                            clip-path="url(#wellClip)"
-                          />
-                          <ellipse
-                            [attr.cx]="svgTextCX + 7"
-                            [attr.cy]="svgWellBot - 40"
-                            rx="6"
-                            ry="2"
-                            fill="white"
-                            opacity="0.05"
-                            clip-path="url(#wellClip)"
-                          />
-
-                          <!-- Wave surface (primary, animated) -->
-                          <g class="wdiag-w1" clip-path="url(#wellClip)">
-                            <path
-                              [attr.d]="svgWavePath"
-                              fill="none"
-                              stroke="rgba(255,255,255,0.65)"
+                            <line
+                              x1="0"
+                              [attr.y1]="svgWellTop"
+                              [attr.x2]="svgW"
+                              [attr.y2]="svgWellTop"
+                              stroke="#8B7355"
                               stroke-width="2"
-                              stroke-linecap="round"
                             />
-                          </g>
-                          <!-- Wave surface (secondary, animated opposite direction) -->
-                          <g class="wdiag-w2" clip-path="url(#wellClip)">
-                            <path
-                              [attr.d]="svgWave2Path"
-                              fill="none"
-                              stroke="rgba(13,175,189,0.45)"
-                              stroke-width="1.2"
-                            />
-                          </g>
-                          <!-- Bubbles rising from bottom -->
-                          <g clip-path="url(#wellClip)">
-                            <circle
-                              class="wdiag-b"
-                              style="--d:4s;--e:0s"
-                              cx="97"
-                              [attr.cy]="svgWellBot - 22"
-                              r="2"
-                              fill="rgba(255,255,255,0.82)"
-                            />
-                            <circle
-                              class="wdiag-b"
-                              style="--d:5.5s;--e:1.4s"
-                              cx="131"
-                              [attr.cy]="svgWellBot - 40"
-                              r="1.5"
-                              fill="rgba(255,255,255,0.70)"
-                            />
-                            <circle
-                              class="wdiag-b"
-                              style="--d:3.8s;--e:2.7s"
-                              cx="113"
-                              [attr.cy]="svgWellBot - 13"
-                              r="2.5"
-                              fill="rgba(255,255,255,0.75)"
-                            />
-                            <circle
-                              class="wdiag-b"
-                              style="--d:5s;--e:0.6s"
-                              cx="145"
-                              [attr.cy]="svgWellBot - 52"
-                              r="1.8"
-                              fill="rgba(255,255,255,0.65)"
-                            />
-                            <circle
-                              class="wdiag-b"
-                              style="--d:4.3s;--e:3.8s"
-                              cx="104"
-                              [attr.cy]="svgWellBot - 30"
-                              r="1.2"
-                              fill="rgba(255,255,255,0.80)"
-                            />
-                            <circle
-                              class="wdiag-b"
-                              style="--d:6s;--e:2s"
-                              cx="122"
-                              [attr.cy]="svgWellBot - 8"
-                              r="1.8"
-                              fill="rgba(255,255,255,0.68)"
-                            />
-                          </g>
 
-                          <!-- Fill % label inside water -->
-                          @if (svgFillPct > 12) {
-                            <text
-                              [attr.x]="svgTextCX"
-                              [attr.y]="svgTextWaterY"
-                              font-size="15"
-                              font-weight="700"
-                              fill="white"
-                              text-anchor="middle"
-                              font-family="JetBrains Mono"
-                              opacity="0.9"
-                            >
-                              {{ svgFillPct }}%
-                            </text>
-                          }
+                            <!-- Grass marks -->
+                            @for (gx of svgGrassX; track gx) {
+                              <line
+                                [attr.x1]="gx"
+                                [attr.y1]="svgWellTop"
+                                [attr.x2]="gx - 3"
+                                [attr.y2]="svgWellTop - 7"
+                                stroke="#6B9B37"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                              />
+                            }
 
-                          <!-- Well walls -->
-                          <rect
-                            [attr.x]="svgWellL"
-                            [attr.y]="svgWellTop"
-                            width="8"
-                            [attr.height]="svgWellH"
-                            fill="#94A3B8"
-                            rx="2"
-                          />
-                          <rect
-                            [attr.x]="svgWellR - 8"
-                            [attr.y]="svgWellTop"
-                            width="8"
-                            [attr.height]="svgWellH"
-                            fill="#94A3B8"
-                            rx="2"
-                          />
-                          <rect
-                            [attr.x]="svgWellL"
-                            [attr.y]="svgWellBot - 6"
-                            [attr.width]="svgWellR - svgWellL"
-                            height="7"
-                            fill="#64748B"
-                            rx="2"
-                          />
-
-                          <!-- Sensor: only shown when depth data exists, right wall, proportional -->
-                          @if (wellSensorDepth() !== null) {
-                            <!-- Vertical depth guide from well top to sensor -->
-                            <line
-                              [attr.x1]="svgWellR - 4"
-                              [attr.y1]="svgWellTop"
-                              [attr.x2]="svgWellR - 4"
-                              [attr.y2]="svgSensorY"
-                              stroke="#F97316"
-                              stroke-width="1"
-                              stroke-dasharray="3 3"
-                              opacity="0.35"
-                            />
-                            <!-- Horizontal indicator from right wall outward -->
-                            <line
-                              [attr.x1]="svgWellR"
-                              [attr.y1]="svgSensorY"
-                              [attr.x2]="svgWellR + 18"
-                              [attr.y2]="svgSensorY"
-                              stroke="#F97316"
-                              stroke-width="1.5"
-                              stroke-dasharray="3 2"
-                            />
-                            <!-- Sensor marker -->
+                            <!-- Well casing — empty air gap -->
                             <rect
-                              [attr.x]="svgWellR + 18"
-                              [attr.y]="svgSensorY - 5"
-                              width="9"
-                              height="10"
-                              fill="#F97316"
+                              [attr.x]="svgWellL + 4"
+                              [attr.y]="svgWellTop"
+                              [attr.width]="svgWellR - svgWellL - 8"
+                              [attr.height]="svgWaterY - svgWellTop"
+                              fill="#F0F9FF"
+                              opacity="0.9"
+                            />
+
+                            <!-- Water fill (gradient) -->
+                            <rect
+                              [attr.x]="svgWellL + 4"
+                              [attr.y]="svgWaterY"
+                              [attr.width]="svgWellR - svgWellL - 8"
+                              [attr.height]="svgWellBot - svgWaterY"
+                              fill="url(#wg)"
+                              clip-path="url(#wellClip)"
+                            />
+                            <!-- Water shimmer overlay -->
+                            <rect
+                              [attr.x]="svgWellL + 4"
+                              [attr.y]="svgWaterY"
+                              [attr.width]="svgWellR - svgWellL - 8"
+                              [attr.height]="svgWellBot - svgWaterY"
+                              fill="url(#shimmer)"
+                              clip-path="url(#wellClip)"
+                            />
+                            <!-- Surface refraction stripe -->
+                            <rect
+                              [attr.x]="svgWellL + 7"
+                              [attr.y]="svgWaterY + 3"
+                              [attr.width]="svgWellR - svgWellL - 16"
+                              height="4"
+                              fill="white"
+                              opacity="0.28"
+                              rx="2"
+                              clip-path="url(#wellClip)"
+                            />
+                            <!-- Caustic light patches near bottom -->
+                            <ellipse
+                              [attr.cx]="svgTextCX - 9"
+                              [attr.cy]="svgWellBot - 24"
+                              rx="9"
+                              ry="3"
+                              fill="white"
+                              opacity="0.07"
+                              clip-path="url(#wellClip)"
+                            />
+                            <ellipse
+                              [attr.cx]="svgTextCX + 7"
+                              [attr.cy]="svgWellBot - 40"
+                              rx="6"
+                              ry="2"
+                              fill="white"
+                              opacity="0.05"
+                              clip-path="url(#wellClip)"
+                            />
+
+                            <!-- Wave surface (primary, animated) -->
+                            <g class="wdiag-w1" clip-path="url(#wellClip)">
+                              <path
+                                [attr.d]="svgWavePath"
+                                fill="none"
+                                stroke="rgba(255,255,255,0.65)"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                              />
+                            </g>
+                            <!-- Wave surface (secondary, animated opposite direction) -->
+                            <g class="wdiag-w2" clip-path="url(#wellClip)">
+                              <path
+                                [attr.d]="svgWave2Path"
+                                fill="none"
+                                stroke="rgba(13,175,189,0.45)"
+                                stroke-width="1.2"
+                              />
+                            </g>
+                            <!-- Bubbles rising from bottom -->
+                            <g clip-path="url(#wellClip)">
+                              <circle
+                                class="wdiag-b"
+                                style="--d:4s;--e:0s"
+                                cx="97"
+                                [attr.cy]="svgWellBot - 22"
+                                r="2"
+                                fill="rgba(255,255,255,0.82)"
+                              />
+                              <circle
+                                class="wdiag-b"
+                                style="--d:5.5s;--e:1.4s"
+                                cx="131"
+                                [attr.cy]="svgWellBot - 40"
+                                r="1.5"
+                                fill="rgba(255,255,255,0.70)"
+                              />
+                              <circle
+                                class="wdiag-b"
+                                style="--d:3.8s;--e:2.7s"
+                                cx="113"
+                                [attr.cy]="svgWellBot - 13"
+                                r="2.5"
+                                fill="rgba(255,255,255,0.75)"
+                              />
+                              <circle
+                                class="wdiag-b"
+                                style="--d:5s;--e:0.6s"
+                                cx="145"
+                                [attr.cy]="svgWellBot - 52"
+                                r="1.8"
+                                fill="rgba(255,255,255,0.65)"
+                              />
+                              <circle
+                                class="wdiag-b"
+                                style="--d:4.3s;--e:3.8s"
+                                cx="104"
+                                [attr.cy]="svgWellBot - 30"
+                                r="1.2"
+                                fill="rgba(255,255,255,0.80)"
+                              />
+                              <circle
+                                class="wdiag-b"
+                                style="--d:6s;--e:2s"
+                                cx="122"
+                                [attr.cy]="svgWellBot - 8"
+                                r="1.8"
+                                fill="rgba(255,255,255,0.68)"
+                              />
+                            </g>
+
+                            <!-- Fill % label inside water -->
+                            @if (svgFillPct > 12) {
+                              <text
+                                [attr.x]="svgTextCX"
+                                [attr.y]="svgTextWaterY"
+                                font-size="15"
+                                font-weight="700"
+                                fill="white"
+                                text-anchor="middle"
+                                font-family="JetBrains Mono"
+                                opacity="0.9"
+                              >
+                                {{ svgFillPct }}%
+                              </text>
+                            }
+
+                            <!-- Well walls -->
+                            <rect
+                              [attr.x]="svgWellL"
+                              [attr.y]="svgWellTop"
+                              width="8"
+                              [attr.height]="svgWellH"
+                              fill="#94A3B8"
                               rx="2"
                             />
-                            <!-- Sensor label -->
+                            <rect
+                              [attr.x]="svgWellR - 8"
+                              [attr.y]="svgWellTop"
+                              width="8"
+                              [attr.height]="svgWellH"
+                              fill="#94A3B8"
+                              rx="2"
+                            />
+                            <rect
+                              [attr.x]="svgWellL"
+                              [attr.y]="svgWellBot - 6"
+                              [attr.width]="svgWellR - svgWellL"
+                              height="7"
+                              fill="#64748B"
+                              rx="2"
+                            />
+
+                            <!-- Sensor: only shown when depth data exists, right wall, proportional -->
+                            @if (wellSensorDepth() !== null) {
+                              <!-- Vertical depth guide from well top to sensor -->
+                              <line
+                                [attr.x1]="svgWellR - 4"
+                                [attr.y1]="svgWellTop"
+                                [attr.x2]="svgWellR - 4"
+                                [attr.y2]="svgSensorY"
+                                stroke="#F97316"
+                                stroke-width="1"
+                                stroke-dasharray="3 3"
+                                opacity="0.35"
+                              />
+                              <!-- Horizontal indicator from right wall outward -->
+                              <line
+                                [attr.x1]="svgWellR"
+                                [attr.y1]="svgSensorY"
+                                [attr.x2]="svgWellR + 18"
+                                [attr.y2]="svgSensorY"
+                                stroke="#F97316"
+                                stroke-width="1.5"
+                                stroke-dasharray="3 2"
+                              />
+                              <!-- Sensor marker -->
+                              <rect
+                                [attr.x]="svgWellR + 18"
+                                [attr.y]="svgSensorY - 5"
+                                width="9"
+                                height="10"
+                                fill="#F97316"
+                                rx="2"
+                              />
+                              <!-- Sensor label -->
+                              <text
+                                [attr.x]="svgWellR + 30"
+                                [attr.y]="svgSensorY + 5"
+                                font-size="12"
+                                fill="#F97316"
+                                font-family="DM Sans"
+                                font-weight="600"
+                              >
+                                Sensor
+                              </text>
+                            }
+
+                            <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
+                            <!-- Superficie circle (at ground level) -->
+                            <circle
+                              [attr.cx]="svgAnnotX"
+                              [attr.cy]="svgWellTop"
+                              r="3"
+                              fill="#64748B"
+                            />
+                            <!-- Superficie label: left-center, higher above line -->
                             <text
-                              [attr.x]="svgWellR + 30"
-                              [attr.y]="svgSensorY + 5"
-                              font-size="12"
-                              fill="#F97316"
+                              x="124"
+                              [attr.y]="svgWellTop - 16"
+                              font-size="9"
+                              fill="#64748B"
                               font-family="DM Sans"
                               font-weight="600"
+                              text-anchor="middle"
                             >
-                              Sensor
+                              Superficie
                             </text>
-                          }
 
-                          <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
-                          <!-- Superficie circle (at ground level) -->
-                          <circle
-                            [attr.cx]="svgAnnotX"
-                            [attr.cy]="svgWellTop"
-                            r="3"
-                            fill="#64748B"
-                          />
-                          <!-- Superficie label: left-center, higher above line -->
-                          <text
-                            x="124"
-                            [attr.y]="svgWellTop - 16"
-                            font-size="9"
-                            fill="#64748B"
-                            font-family="DM Sans"
-                            font-weight="600"
-                            text-anchor="middle"
-                          >
-                            Superficie
-                          </text>
+                            <!-- Vertical dashed line: Superficie → Nivel Freático -->
+                            <line
+                              [attr.x1]="svgAnnotX"
+                              [attr.y1]="svgWellTop + 3"
+                              [attr.x2]="svgAnnotX"
+                              [attr.y2]="svgWaterY - 3"
+                              stroke="#0DAFBD"
+                              stroke-width="1.5"
+                              stroke-dasharray="4 3"
+                            />
 
-                          <!-- Vertical dashed line: Superficie → Nivel Freático -->
-                          <line
-                            [attr.x1]="svgAnnotX"
-                            [attr.y1]="svgWellTop + 3"
-                            [attr.x2]="svgAnnotX"
-                            [attr.y2]="svgWaterY - 3"
-                            stroke="#0DAFBD"
-                            stroke-width="1.5"
-                            stroke-dasharray="4 3"
-                          />
+                            <!-- Nivel Freático circle + horizontal line into well -->
+                            <circle
+                              [attr.cx]="svgAnnotX"
+                              [attr.cy]="svgWaterY"
+                              r="3"
+                              fill="#0DAFBD"
+                            />
+                            <line
+                              [attr.x1]="svgAnnotX"
+                              [attr.y1]="svgWaterY"
+                              [attr.x2]="svgWellR - 5"
+                              [attr.y2]="svgWaterY"
+                              stroke="#0DAFBD"
+                              stroke-width="1.5"
+                              stroke-dasharray="4 2"
+                            />
+                            <!-- Nivel Freático label: centered above the horizontal dashed line -->
+                            <text
+                              [attr.x]="(svgAnnotX + svgWellR - 5) / 2"
+                              [attr.y]="svgWaterY - 7"
+                              font-size="12"
+                              fill="#0DAFBD"
+                              font-family="DM Sans"
+                              font-weight="700"
+                              text-anchor="middle"
+                            >
+                              Nv. Freático
+                            </text>
 
-                          <!-- Nivel Freático circle + horizontal line into well -->
-                          <circle
-                            [attr.cx]="svgAnnotX"
-                            [attr.cy]="svgWaterY"
-                            r="3"
-                            fill="#0DAFBD"
-                          />
-                          <line
-                            [attr.x1]="svgAnnotX"
-                            [attr.y1]="svgWaterY"
-                            [attr.x2]="svgWellR - 5"
-                            [attr.y2]="svgWaterY"
-                            stroke="#0DAFBD"
-                            stroke-width="1.5"
-                            stroke-dasharray="4 2"
-                          />
-                          <!-- Nivel Freático label: centered above the horizontal dashed line -->
-                          <text
-                            [attr.x]="(svgAnnotX + svgWellR - 5) / 2"
-                            [attr.y]="svgWaterY - 7"
-                            font-size="12"
-                            fill="#0DAFBD"
-                            font-family="DM Sans"
-                            font-weight="700"
-                            text-anchor="middle"
-                          >
-                            Nv. Freático
-                          </text>
-
-                          <!-- Left depth arrow -->
-                          <line
-                            [attr.x1]="svgWellL - 10"
-                            [attr.y1]="svgWellTop + 2"
-                            [attr.x2]="svgWellL - 10"
-                            [attr.y2]="svgWellBot - 2"
-                            stroke="#CBD5E1"
-                            stroke-width="1"
-                          />
-                          <line
-                            [attr.x1]="svgWellL - 14"
-                            [attr.y1]="svgWellTop + 2"
-                            [attr.x2]="svgWellL - 6"
-                            [attr.y2]="svgWellTop + 2"
-                            stroke="#CBD5E1"
-                            stroke-width="1"
-                          />
-                          <line
-                            [attr.x1]="svgWellL - 14"
-                            [attr.y1]="svgWellBot - 2"
-                            [attr.x2]="svgWellL - 6"
-                            [attr.y2]="svgWellBot - 2"
-                            stroke="#CBD5E1"
-                            stroke-width="1"
-                          />
-                          <text
-                            [attr.x]="svgWellL - 12"
-                            [attr.y]="svgDepthMidY + 4"
-                            font-size="13"
-                            fill="#94A3B8"
-                            font-family="JetBrains Mono"
-                            text-anchor="middle"
-                            [attr.transform]="
-                              'rotate(-90,' + (svgWellL - 12) + ',' + svgDepthMidY + ')'
-                            "
-                          >
-                            {{ wellTotalDepth() ?? 18 }}m prof.
-                          </text>
-                        </svg>
-                      </div>
-                      <!-- Stats column (derecha) -->
-                      <div class="flex flex-col gap-2" style="flex-shrink:0;width:124px">
-                        <div
-                          style="background:rgba(13,175,189,0.06);border:1px solid rgba(13,175,189,0.2);border-radius:8px;padding:8px 10px"
-                        >
-                          <p
-                            style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                          >
-                            Nv. Freático
-                          </p>
-                          <p
-                            style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0DAFBD;line-height:1"
-                          >
-                            {{ formatMeters(wellNivelFreatico())
-                            }}<span style="font-size:11px;color:#64748B;margin-left:2px">m</span>
-                          </p>
-                          <p style="font-size:9px;color:#94A3B8;margin-top:2px">desde superficie</p>
+                            <!-- Left depth arrow -->
+                            <line
+                              [attr.x1]="svgWellL - 10"
+                              [attr.y1]="svgWellTop + 2"
+                              [attr.x2]="svgWellL - 10"
+                              [attr.y2]="svgWellBot - 2"
+                              stroke="#CBD5E1"
+                              stroke-width="1"
+                            />
+                            <line
+                              [attr.x1]="svgWellL - 14"
+                              [attr.y1]="svgWellTop + 2"
+                              [attr.x2]="svgWellL - 6"
+                              [attr.y2]="svgWellTop + 2"
+                              stroke="#CBD5E1"
+                              stroke-width="1"
+                            />
+                            <line
+                              [attr.x1]="svgWellL - 14"
+                              [attr.y1]="svgWellBot - 2"
+                              [attr.x2]="svgWellL - 6"
+                              [attr.y2]="svgWellBot - 2"
+                              stroke="#CBD5E1"
+                              stroke-width="1"
+                            />
+                            <text
+                              [attr.x]="svgWellL - 12"
+                              [attr.y]="svgDepthMidY + 4"
+                              font-size="13"
+                              fill="#94A3B8"
+                              font-family="JetBrains Mono"
+                              text-anchor="middle"
+                              [attr.transform]="
+                                'rotate(-90,' + (svgWellL - 12) + ',' + svgDepthMidY + ')'
+                              "
+                            >
+                              {{ wellTotalDepth() ?? 18 }}m prof.
+                            </text>
+                          </svg>
                         </div>
-                        <div
-                          style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
-                        >
-                          <p
-                            style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                          >
-                            Llenado
-                          </p>
-                          <p
-                            style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#1E293B;line-height:1"
-                          >
-                            {{ svgFillPct }}<span style="font-size:11px;color:#64748B">%</span>
-                          </p>
+                        <!-- Stats column (derecha) -->
+                        <div class="flex flex-col gap-2" style="flex-shrink:0;width:124px">
                           <div
-                            style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
-                          >
-                            <div
-                              [style.width.%]="wellFillStylePercent()"
-                              style="height:100%;background:linear-gradient(90deg,#0DAFBD,#22C55E);border-radius:999px"
-                            ></div>
-                          </div>
-                        </div>
-                        <div
-                          style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
-                        >
-                          <p
-                            style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                          >
-                            Prof. Total
-                          </p>
-                          <p
-                            style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1"
-                          >
-                            {{ formatMeters(wellTotalDepth()) }} m
-                          </p>
-                        </div>
-                        <div
-                          style="background:#FFF7F0;border:1px solid #FED7AA;border-radius:8px;padding:8px 10px"
-                        >
-                          <p
-                            style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#F97316;margin-bottom:3px"
-                          >
-                            Sensor
-                          </p>
-                          <p
-                            style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1"
-                          >
-                            {{ formatMeters(wellSensorDepth()) }} m
-                          </p>
-                        </div>
-                        @if (wellSignalPercent() !== null) {
-                          <div
-                            style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:8px 10px"
+                            style="background:rgba(13,175,189,0.06);border:1px solid rgba(13,175,189,0.2);border-radius:8px;padding:8px 10px"
                           >
                             <p
-                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px"
+                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
                             >
-                              % Señal
+                              Nv. Freático
                             </p>
                             <p
-                              style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1"
+                              style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0DAFBD;line-height:1"
                             >
-                              {{ wellSignalPercent()
-                              }}<span style="font-size:11px;color:#64748B">%</span>
+                              {{ formatMeters(wellNivelFreatico())
+                              }}<span style="font-size:11px;color:#64748B;margin-left:2px">m</span>
+                            </p>
+                            <p style="font-size:9px;color:#94A3B8;margin-top:2px">
+                              desde superficie
+                            </p>
+                          </div>
+                          <div
+                            style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
+                          >
+                            <p
+                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
+                            >
+                              Llenado
+                            </p>
+                            <p
+                              style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#1E293B;line-height:1"
+                            >
+                              {{ svgFillPct }}<span style="font-size:11px;color:#64748B">%</span>
                             </p>
                             <div
                               style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
                             >
                               <div
-                                [style.width.%]="wellSignalPercent()"
-                                style="height:100%;background:linear-gradient(90deg,#0284C7,#22C55E);border-radius:999px"
+                                [style.width.%]="wellFillStylePercent()"
+                                style="height:100%;background:linear-gradient(90deg,#0DAFBD,#22C55E);border-radius:999px"
                               ></div>
                             </div>
                           </div>
-                        }
-                        <div
-                          style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
+                          <div
+                            style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
+                          >
+                            <p
+                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
+                            >
+                              Prof. Total
+                            </p>
+                            <p
+                              style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1"
+                            >
+                              {{ formatMeters(wellTotalDepth()) }} m
+                            </p>
+                          </div>
+                          <div
+                            style="background:#FFF7F0;border:1px solid #FED7AA;border-radius:8px;padding:8px 10px"
+                          >
+                            <p
+                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#F97316;margin-bottom:3px"
+                            >
+                              Sensor
+                            </p>
+                            <p
+                              style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1"
+                            >
+                              {{ formatMeters(wellSensorDepth()) }} m
+                            </p>
+                          </div>
+                          @if (wellSignalPercent() !== null) {
+                            <div
+                              style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:8px 10px"
+                            >
+                              <p
+                                style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px"
+                              >
+                                % Señal
+                              </p>
+                              <p
+                                style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1"
+                              >
+                                {{ wellSignalPercent()
+                                }}<span style="font-size:11px;color:#64748B">%</span>
+                              </p>
+                              <div
+                                style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
+                              >
+                                <div
+                                  [style.width.%]="wellSignalPercent()"
+                                  style="height:100%;background:linear-gradient(90deg,#0284C7,#22C55E);border-radius:999px"
+                                ></div>
+                              </div>
+                            </div>
+                          }
+                          <div
+                            style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
+                          >
+                            <p
+                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
+                            >
+                              Último dato recibido
+                            </p>
+                            <p
+                              style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#1E293B;line-height:1"
+                            >
+                              {{ latestDeviceTimeLabel() }}
+                            </p>
+                            <p style="font-size:9px;color:#94A3B8;margin-top:3px">
+                              {{ latestDeviceDateLabel() }}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </article>
+                </div>
+
+                <div class="flex flex-col gap-3 xl:h-full">
+                  <article
+                    class="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
+                  >
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                      <div class="flex min-w-0 items-center gap-3">
+                        <span
+                          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600"
                         >
-                          <p
-                            style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                          >
-                            Último dato recibido
-                          </p>
-                          <p
-                            style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#1E293B;line-height:1"
-                          >
-                            {{ latestDeviceTimeLabel() }}
-                          </p>
-                          <p style="font-size:9px;color:#94A3B8;margin-top:3px">
-                            {{ latestDeviceDateLabel() }}
+                          <span class="material-symbols-outlined text-[22px]">bar_chart</span>
+                        </span>
+                        <div class="min-w-0">
+                          <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
+                            Flujo Mensual
+                          </h2>
+                          <p class="mt-1 text-sm font-bold text-slate-400">
+                            Volumen acumulado en {{ monthlyFlowUnit() }}
                           </p>
                         </div>
                       </div>
-                    </div>
-                  }
-                </article>
-              </div>
 
-              <div class="flex flex-col gap-3 xl:h-full">
-                <article
-                  class="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
-                >
-                  <div class="flex flex-wrap items-start justify-between gap-3">
-                    <div class="flex min-w-0 items-center gap-3">
-                      <span
-                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600"
-                      >
-                        <span class="material-symbols-outlined text-[22px]">bar_chart</span>
-                      </span>
-                      <div class="min-w-0">
-                        <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
-                          Flujo Mensual
-                        </h2>
-                        <p class="mt-1 text-sm font-bold text-slate-400">
-                          Volumen acumulado en {{ monthlyFlowUnit() }}
-                        </p>
+                      <div class="flex items-center gap-3 text-xs font-bold text-slate-400">
+                        <span class="inline-flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-[16px]">info</span>
+                          Últimos 12 meses
+                        </span>
+                        <button
+                          type="button"
+                          class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-50"
+                          aria-label="Opciones de grafico"
+                        >
+                          <span class="material-symbols-outlined text-[18px]">more_vert</span>
+                        </button>
                       </div>
                     </div>
 
-                    <div class="flex items-center gap-3 text-xs font-bold text-slate-400">
-                      <span class="inline-flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-[16px]">info</span>
-                        Últimos 12 meses
-                      </span>
-                      <button
-                        type="button"
-                        class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-50"
-                        aria-label="Opciones de grafico"
-                      >
-                        <span class="material-symbols-outlined text-[18px]">more_vert</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="mt-5 grid grid-cols-[58px_minmax(0,1fr)] gap-2">
-                    <div
-                      class="grid h-[250px] grid-rows-5 text-right text-xs font-semibold text-slate-400"
-                    >
-                      @for (tick of monthlyFlowTicks(); track $index) {
-                        <span>{{ tick }}</span>
-                      }
-                    </div>
-
-                    <div class="relative h-[250px] border-b border-l border-slate-200">
-                      <div class="absolute inset-0 grid grid-rows-4">
-                        <span class="border-t border-slate-200"></span>
-                        <span class="border-t border-slate-200"></span>
-                        <span class="border-t border-slate-200"></span>
-                        <span class="border-t border-slate-200"></span>
-                      </div>
-
+                    <div class="mt-5 grid grid-cols-[58px_minmax(0,1fr)] gap-2">
                       <div
-                        class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
+                        class="grid h-[250px] grid-rows-5 text-right text-xs font-semibold text-slate-400"
                       >
-                        @for (month of monthlyFlowMonths(); track $index) {
-                          <div
-                            class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
-                          >
-                            <div
-                              class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-caption-xs font-semibold text-white shadow-lg group-hover:block"
-                            >
-                              <div class="font-bold">{{ month.label }}</div>
-                              <div class="font-mono">
-                                {{ formatMonthlyFlowValue(month.value) }} {{ monthlyFlowUnit() }}
-                              </div>
-                              @if (month.proyeccion) {
-                                <div class="font-mono text-slate-300">
-                                  proy. {{ formatMonthlyFlowValue(month.proyeccion) }}
-                                  {{ monthlyFlowUnit() }}
-                                </div>
-                              }
-                              <div
-                                class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-800"
-                              ></div>
-                            </div>
-                            <div
-                              class="mx-auto flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t"
-                              [style.height.%]="
-                                month.proyeccion && month.proyeccion > month.value
-                                  ? getMonthlyFlowHeight(month.proyeccion)
-                                  : getMonthlyFlowHeight(month.value)
-                              "
-                            >
-                              @if (month.proyeccion && month.proyeccion > month.value) {
-                                <div
-                                  class="w-full bg-[#5874c8]/30"
-                                  [style.height.%]="getMonthlyFlowProjectionExtra(month)"
-                                ></div>
-                              }
-                              <div
-                                class="w-full bg-[#5874c8] shadow-sm transition-opacity group-hover:opacity-85"
-                                [style.flex]="'1 1 auto'"
-                              ></div>
-                            </div>
-                          </div>
+                        @for (tick of monthlyFlowTicks(); track $index) {
+                          <span>{{ tick }}</span>
                         }
                       </div>
-                    </div>
-                  </div>
 
-                  <div
-                    class="ml-[66px] mt-2 flex h-10 justify-between gap-2 px-2 text-caption-xs font-bold text-slate-400"
-                  >
-                    @for (month of monthlyFlowMonths(); track $index) {
-                      <div class="relative h-full min-w-0 flex-1">
-                        <span
-                          class="absolute right-1/2 top-1 origin-top-right -rotate-45 whitespace-nowrap"
-                          >{{ month.label }}</span
-                        >
-                      </div>
-                    }
-                  </div>
-                </article>
+                      <div class="relative h-[250px] border-b border-l border-slate-200">
+                        <div class="absolute inset-0 grid grid-rows-4">
+                          <span class="border-t border-slate-200"></span>
+                          <span class="border-t border-slate-200"></span>
+                          <span class="border-t border-slate-200"></span>
+                          <span class="border-t border-slate-200"></span>
+                        </div>
 
-                <article
-                  class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                >
-                  <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
-                  <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    @for (action of quickActions; track action.title) {
-                      <button
-                        type="button"
-                        (click)="handleQuickAction(action)"
-                        [disabled]="quickActionDisabled(action)"
-                        [title]="quickActionTitle(action)"
-                        [class]="
-                          quickActionDisabled(action)
-                            ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                            : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-[rgba(13,175,189,0.06)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
-                        "
-                      >
-                        <span
-                          [class]="
-                            quickActionDisabled(action)
-                              ? 'material-symbols-outlined text-[20px] text-slate-400'
-                              : 'material-symbols-outlined text-[20px] ' + action.color
-                          "
-                          >{{ action.icon }}</span
+                        <div
+                          class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                         >
-                        <p
-                          [class]="
-                            quickActionDisabled(action)
-                              ? 'mt-0.5 text-sm font-semibold text-slate-500'
-                              : 'mt-0.5 text-sm font-semibold text-slate-800'
-                          "
-                        >
-                          {{ action.title }}
-                        </p>
-                        <p class="text-xs font-medium text-slate-400">
-                          {{ action.subtitle }}
-                        </p>
-                      </button>
-                    }
-                  </div>
-                </article>
-              </div>
-            </section>
-            <!-- Registros DGA -->
-            <section
-              class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-            >
-              <div
-                class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
-              >
-                <div>
-                  <h2 class="text-sm font-semibold text-slate-800">Detalle de Registros</h2>
-                  <p class="mt-1 text-xs font-semibold text-slate-400">
-                    Reportes completos enviados a la DGA
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
-                  <button
-                    type="button"
-                    (click)="openDgaDateFilter()"
-                    class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)] hover:text-primary-container"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">calendar_month</span>
-                    {{ dgaSelectedRangeLabel() }}
-                  </button>
-                  <span class="text-slate-400">{{ dgaTotalRecordsLabel() }}</span>
-                </div>
-              </div>
-
-              <div class="overflow-x-auto">
-                <table class="w-full min-w-[960px] text-left text-sm">
-                  <thead style="background:#F8FAFC">
-                    <tr style="border-bottom:1px solid #F1F5F9">
-                      @for (
-                        h of [
-                          'Fecha',
-                          'Nv. Freático [m]',
-                          'Caudal [l/s]',
-                          'Totalizador [m³]',
-                          'Estado',
-                        ];
-                        track h
-                      ) {
-                        <th
-                          class="px-4 py-[9px] text-left"
-                          style="font-family:'Josefin Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8"
-                        >
-                          {{ h }}
-                        </th>
-                      }
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (report of paginatedDgaReports(); track report.id) {
-                      <tr style="border-bottom:1px solid #F1F5F9">
-                        <td
-                          class="px-4 py-[9px]"
-                          style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8"
-                        >
-                          {{ report.fecha }}
-                        </td>
-                        <td
-                          class="px-4 py-[9px]"
-                          style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
-                        >
-                          {{ formatDgaNumber(report.nivelFreatico) }}
-                        </td>
-                        <td
-                          class="px-4 py-[9px]"
-                          style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
-                        >
-                          {{ formatDgaNumber(report.caudal) }}
-                        </td>
-                        <td
-                          class="px-4 py-[9px]"
-                          style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
-                        >
-                          {{ formatDgaInteger(report.totalizador) }}
-                        </td>
-                        <td class="px-4 py-3">
-                          <div class="inline-flex items-center gap-2">
-                            <button
-                              type="button"
-                              (click)="openDgaReportDetail(report)"
-                              class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
-                              [style.background]="getDgaStatusBg(report.estado)"
-                              [style.border-color]="getDgaStatusBorder(report.estado)"
-                              [style.color]="getDgaStatusColor(report.estado)"
+                          @for (month of monthlyFlowMonths(); track $index) {
+                            <div
+                              class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
                             >
-                              <span
-                                class="h-[5px] w-[5px] rounded-full"
-                                [style.background]="getDgaStatusColor(report.estado)"
-                              ></span>
-                              {{ report.estado }}
-                              <span class="material-symbols-outlined text-[13px]"
-                                >chevron_right</span
+                              <div
+                                class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-caption-xs font-semibold text-white shadow-lg group-hover:block"
                               >
-                            </button>
-                            @if (
-                              report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
-                              as snia
-                            ) {
-                              <a
-                                [href]="snia"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                (click)="$event.stopPropagation()"
-                                [title]="'Ver comprobante en SNIA: ' + report.comprobante"
-                                class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
+                                <div class="font-bold">{{ month.label }}</div>
+                                <div class="font-mono">
+                                  {{ formatMonthlyFlowValue(month.value) }} {{ monthlyFlowUnit() }}
+                                </div>
+                                @if (month.proyeccion) {
+                                  <div class="font-mono text-slate-300">
+                                    proy. {{ formatMonthlyFlowValue(month.proyeccion) }}
+                                    {{ monthlyFlowUnit() }}
+                                  </div>
+                                }
+                                <div
+                                  class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-800"
+                                ></div>
+                              </div>
+                              <div
+                                class="mx-auto flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t"
+                                [style.height.%]="
+                                  month.proyeccion && month.proyeccion > month.value
+                                    ? getMonthlyFlowHeight(month.proyeccion)
+                                    : getMonthlyFlowHeight(month.value)
+                                "
                               >
-                                <span class="material-symbols-outlined text-[14px]"
-                                  >receipt_long</span
-                                >
-                              </a>
-                            }
-                          </div>
-                        </td>
-                      </tr>
-                    } @empty {
-                      <tr>
-                        <td
-                          colspan="5"
-                          class="px-4 py-8 text-center text-sm font-semibold text-slate-400"
-                        >
-                          Sin registros para el periodo seleccionado.
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+                                @if (month.proyeccion && month.proyeccion > month.value) {
+                                  <div
+                                    class="w-full bg-[#5874c8]/30"
+                                    [style.height.%]="getMonthlyFlowProjectionExtra(month)"
+                                  ></div>
+                                }
+                                <div
+                                  class="w-full bg-[#5874c8] shadow-sm transition-opacity group-hover:opacity-85"
+                                  [style.flex]="'1 1 auto'"
+                                ></div>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </div>
+                    </div>
 
-              <div
-                class="flex flex-wrap items-center justify-end gap-5 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500"
-              >
-                <label class="inline-flex items-center gap-2">
-                  Filas por pagina:
-                  <select
-                    [value]="dgaRowsPerPage()"
-                    (change)="setDgaRowsPerPage($event)"
-                    class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                    <div
+                      class="ml-[66px] mt-2 flex h-10 justify-between gap-2 px-2 text-caption-xs font-bold text-slate-400"
+                    >
+                      @for (month of monthlyFlowMonths(); track $index) {
+                        <div class="relative h-full min-w-0 flex-1">
+                          <span
+                            class="absolute right-1/2 top-1 origin-top-right -rotate-45 whitespace-nowrap"
+                            >{{ month.label }}</span
+                          >
+                        </div>
+                      }
+                    </div>
+                  </article>
+
+                  <article
+                    class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
                   >
-                    @for (size of dgaRowsPerPageOptions; track size) {
-                      <option [value]="size">{{ size }}</option>
-                    }
-                  </select>
-                </label>
-                <span
-                  >{{ dgaRangeStart() }} - {{ dgaRangeEnd() }} de {{ dgaDisplayedTotal() }}</span
-                >
-                <div class="flex items-center gap-2">
-                  <button
-                    type="button"
-                    (click)="previousDgaPage()"
-                    [disabled]="dgaPage() === 1"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Pagina anterior"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">chevron_left</span>
-                  </button>
-                  <button
-                    type="button"
-                    (click)="nextDgaPage()"
-                    [disabled]="dgaPage() === dgaTotalPages()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    aria-label="Pagina siguiente"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-                  </button>
+                    <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
+                    <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                      @for (action of quickActions; track action.title) {
+                        <button
+                          type="button"
+                          (click)="handleQuickAction(action)"
+                          [disabled]="quickActionDisabled(action)"
+                          [title]="quickActionTitle(action)"
+                          [class]="
+                            quickActionDisabled(action)
+                              ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
+                              : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
+                          "
+                        >
+                          <span
+                            [class]="
+                              quickActionDisabled(action)
+                                ? 'material-symbols-outlined text-[20px] text-slate-400'
+                                : 'material-symbols-outlined text-[20px] ' + action.color
+                            "
+                            >{{ action.icon }}</span
+                          >
+                          <p
+                            [class]="
+                              quickActionDisabled(action)
+                                ? 'mt-0.5 text-sm font-semibold text-slate-500'
+                                : 'mt-0.5 text-sm font-semibold text-slate-800'
+                            "
+                          >
+                            {{ action.title }}
+                          </p>
+                          <p class="text-xs font-medium text-slate-400">
+                            {{ action.subtitle }}
+                          </p>
+                        </button>
+                      }
+                    </div>
+                  </article>
                 </div>
-              </div>
-            </section>
+              </section>
+              <!-- Registros DGA -->
+              <section
+                class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+              >
+                <div
+                  class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
+                >
+                  <div>
+                    <h2 class="text-sm font-semibold text-slate-800">Detalle de Registros</h2>
+                    <p class="mt-1 text-xs font-semibold text-slate-400">
+                      Reportes completos enviados a la DGA
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                    <button
+                      type="button"
+                      (click)="openDgaDateFilter()"
+                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">calendar_month</span>
+                      {{ dgaSelectedRangeLabel() }}
+                    </button>
+                    <span class="text-slate-400">{{ dgaTotalRecordsLabel() }}</span>
+                  </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[960px] text-left text-sm">
+                    <thead style="background:#F8FAFC">
+                      <tr style="border-bottom:1px solid #F1F5F9">
+                        @for (
+                          h of [
+                            'Fecha',
+                            'Nv. Freático [m]',
+                            'Caudal [l/s]',
+                            'Totalizador [m³]',
+                            'Estado',
+                          ];
+                          track h
+                        ) {
+                          <th
+                            class="px-4 py-[9px] text-left"
+                            style="font-family:'Josefin Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8"
+                          >
+                            {{ h }}
+                          </th>
+                        }
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (report of paginatedDgaReports(); track report.id) {
+                        <tr style="border-bottom:1px solid #F1F5F9">
+                          <td
+                            class="px-4 py-[9px]"
+                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8"
+                          >
+                            {{ report.fecha }}
+                          </td>
+                          <td
+                            class="px-4 py-[9px]"
+                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
+                          >
+                            {{ formatDgaNumber(report.nivelFreatico) }}
+                          </td>
+                          <td
+                            class="px-4 py-[9px]"
+                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
+                          >
+                            {{ formatDgaNumber(report.caudal) }}
+                          </td>
+                          <td
+                            class="px-4 py-[9px]"
+                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
+                          >
+                            {{ formatDgaInteger(report.totalizador) }}
+                          </td>
+                          <td class="px-4 py-3">
+                            <div class="inline-flex items-center gap-2">
+                              <button
+                                type="button"
+                                (click)="openDgaReportDetail(report)"
+                                class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
+                                [style.background]="getDgaStatusBg(report.estado)"
+                                [style.border-color]="getDgaStatusBorder(report.estado)"
+                                [style.color]="getDgaStatusColor(report.estado)"
+                              >
+                                <span
+                                  class="h-[5px] w-[5px] rounded-full"
+                                  [style.background]="getDgaStatusColor(report.estado)"
+                                ></span>
+                                {{ report.estado }}
+                                <span class="material-symbols-outlined text-[13px]"
+                                  >chevron_right</span
+                                >
+                              </button>
+                              @if (
+                                report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
+                                as snia
+                              ) {
+                                <a
+                                  [href]="snia"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  (click)="$event.stopPropagation()"
+                                  [title]="'Ver comprobante en SNIA: ' + report.comprobante"
+                                  class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
+                                >
+                                  <span class="material-symbols-outlined text-[14px]"
+                                    >receipt_long</span
+                                  >
+                                </a>
+                              }
+                            </div>
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td
+                            colspan="5"
+                            class="px-4 py-8 text-center text-sm font-semibold text-slate-400"
+                          >
+                            Sin registros para el periodo seleccionado.
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                <div
+                  class="flex flex-wrap items-center justify-end gap-5 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500"
+                >
+                  <label class="inline-flex items-center gap-2">
+                    Filas por pagina:
+                    <select
+                      [value]="dgaRowsPerPage()"
+                      (change)="setDgaRowsPerPage($event)"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-slate-600 outline-none focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
+                    >
+                      @for (size of dgaRowsPerPageOptions; track size) {
+                        <option [value]="size">{{ size }}</option>
+                      }
+                    </select>
+                  </label>
+                  <span
+                    >{{ dgaRangeStart() }} - {{ dgaRangeEnd() }} de {{ dgaDisplayedTotal() }}</span
+                  >
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      (click)="previousDgaPage()"
+                      [disabled]="dgaPage() === 1"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Pagina anterior"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="nextDgaPage()"
+                      [disabled]="dgaPage() === dgaTotalPages()"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Pagina siguiente"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </div>
           } @else if (activeDetailTab() === 'alertas') {
-            <app-water-detail-alertas
-              [sitioId]="siteContext()?.site?.id || ''"
-              [empresaId]="siteContext()?.company?.id || ''"
-            />
+            <div role="tabpanel" id="tabpanel-alertas" aria-labelledby="tab-alertas">
+              <app-water-detail-alertas
+                [sitioId]="siteContext()?.site?.id || ''"
+                [empresaId]="siteContext()?.company?.id || ''"
+              />
+            </div>
           } @else if (activeDetailTab() === 'bitacora') {
-            <app-water-detail-bitacora
-              [sitioId]="siteContext()?.site?.id || ''"
-              [empresaId]="siteContext()?.company?.id || ''"
-            />
+            <div role="tabpanel" id="tabpanel-bitacora" aria-labelledby="tab-bitacora">
+              <app-water-detail-bitacora
+                [sitioId]="siteContext()?.site?.id || ''"
+                [empresaId]="siteContext()?.company?.id || ''"
+              />
+            </div>
           } @else if (activeDetailTab() === 'analisis' && isSuperAdmin()) {
-            <app-water-detail-analisis [sitioId]="siteContext()?.site?.id || ''" />
+            <div role="tabpanel" id="tabpanel-analisis" aria-labelledby="tab-analisis">
+              <app-water-detail-analisis [sitioId]="siteContext()?.site?.id || ''" />
+            </div>
           }
 
-          <div [class.hidden]="activeDetailTab() !== 'operacion'">
+          <div
+            role="tabpanel"
+            id="tabpanel-operacion"
+            aria-labelledby="tab-operacion"
+            [class.hidden]="activeDetailTab() !== 'operacion'"
+          >
             <app-water-detail-operacion />
           </div>
         </div>
       } @else {
-        <div
-          class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700"
-        >
-          No se encontro la instalacion solicitada.
-        </div>
+        <app-inline-error
+          message="No se encontró la instalación solicitada."
+          actionLabel="Volver al listado"
+          actionIcon="arrow_back"
+          (action)="volverAListado()"
+        />
       }
 
       @if (dgaDateFilterOpen()) {
@@ -1705,13 +1748,15 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
             aria-modal="true"
             aria-labelledby="dga-date-filter-title"
           >
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
               <div class="flex items-center gap-3">
                 <span
-                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
                 >
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
@@ -1747,7 +1792,7 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDgaDatePreset(preset.id)"
                       [class]="
                         dgaSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-[rgba(13,175,189,0.08)] text-primary-container border border-[rgba(13,175,189,0.25)]'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
                           : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
@@ -1818,7 +1863,7 @@ type OperationMode = 'realtime' | 'turnos';
                         dgaSelectedPreset.set('custom');
                         dgaSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1.5 text-xs font-bold text-slate-600">
@@ -1832,7 +1877,7 @@ type OperationMode = 'realtime' | 'turnos';
                         dgaSelectedPreset.set('custom');
                         dgaSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                 </div>
@@ -1881,6 +1926,8 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
             aria-modal="true"
             aria-labelledby="download-modal-title"
           >
@@ -1928,7 +1975,7 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDownloadPreset(preset.id)"
                       [class]="
                         downloadSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-[rgba(13,175,189,0.08)] text-primary-container border border-[rgba(13,175,189,0.25)]'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
                           : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
@@ -2001,7 +2048,7 @@ type OperationMode = 'realtime' | 'turnos';
                         downloadSelectedPreset.set('custom');
                         downloadSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                   <label class="grid gap-1.5 text-xs font-bold text-slate-600">
@@ -2015,7 +2062,7 @@ type OperationMode = 'realtime' | 'turnos';
                         downloadSelectedPreset.set('custom');
                         downloadSelectedMonths.set([])
                       "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-[rgba(13,175,189,0.35)] focus:ring-2 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
                 </div>
@@ -2033,7 +2080,7 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="toggleDownloadDataType(dtype.id)"
                       [class]="
                         isDownloadTypeSelected(dtype.id)
-                          ? 'rounded-lg border border-[rgba(13,175,189,0.55)] bg-[rgba(13,175,189,0.08)] px-3 py-2.5 text-center text-sm font-bold text-primary-container transition-all'
+                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-sm font-bold text-primary-container transition-all'
                           : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
                       "
                     >
@@ -2125,6 +2172,8 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[480px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
             aria-modal="true"
             aria-labelledby="dga-report-modal-title"
           >
@@ -2326,6 +2375,8 @@ type OperationMode = 'realtime' | 'turnos';
             class="w-full max-w-[740px] overflow-hidden rounded-2xl bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
             role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
             aria-modal="true"
             aria-labelledby="dga-report-detail-title"
           >
@@ -2350,7 +2401,7 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="mx-auto max-w-[620px]">
                 <div class="mb-5 flex items-center gap-3">
                   <span
-                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.14)] text-primary-container"
+                    class="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-tint-14 text-primary-container"
                   >
                     <span class="material-symbols-outlined text-[22px]">assignment</span>
                   </span>
@@ -2547,6 +2598,19 @@ type OperationMode = 'realtime' | 'turnos';
         );
         animation: dga-shine 5.8s ease-in-out infinite;
         pointer-events: none;
+      }
+
+      /* Custom keyframes (dga-shine, dga-wave-drift, dga-wave-bob, wdiagWave1/2,
+         wdiagBubble) no caen bajo el global rule de styles.css que solo cubre
+         animate-pulse/spin/ping/skeleton. Guard explícito acá para WCAG 2.3.3
+         + usuarios con vestibular disorder. */
+      @media (prefers-reduced-motion: reduce) {
+        .dga-water-column,
+        .dga-water-wave-a,
+        .dga-water-wave-b,
+        .dga-water-shine {
+          animation: none !important;
+        }
       }
     `,
   ],
@@ -3616,6 +3680,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return next;
   }
 
+  /** Empty-state recovery: navigate back to the installations list. */
+  volverAListado(): void {
+    this.router.navigate(['/companies']);
+  }
+
   openSettingsPanel(): void {
     this.historyPanelOpen.set(false);
     this.settingsPanelOpen.set(true);
@@ -3676,6 +3745,30 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.settingsPanelOpen.set(false);
     this.activeDetailTab.set(tab);
     if (tab === 'dga') void this.loadDgaReports();
+  }
+
+  /**
+   * WAI-ARIA tablist nav. ArrowLeft/Right cyclan, Home/End van a primero/
+   * último. Análisis se incluye solo si el rol lo permite — un usuario
+   * non-SuperAdmin no debe poder llegar via teclado a una tab que no debe
+   * ver. Roving tabindex en el template asegura que solo el tab activo es
+   * focusable via Tab.
+   */
+  cycleDetailTab(delta: 1 | -1 | 0, edge?: 'first' | 'last'): void {
+    const all: DetailTab[] = ['dga', 'operacion', 'alertas', 'bitacora', 'analisis'];
+    const available = all.filter((t) => t !== 'analisis' || this.isSuperAdmin());
+    if (available.length === 0) return;
+    if (edge === 'first') {
+      this.setDetailTab(available[0]);
+      return;
+    }
+    if (edge === 'last') {
+      this.setDetailTab(available[available.length - 1]);
+      return;
+    }
+    const idx = available.indexOf(this.activeDetailTab());
+    const nextIdx = (idx + delta + available.length) % available.length;
+    this.setDetailTab(available[nextIdx]);
   }
 
   setOperationMode(mode: OperationMode): void {
@@ -3850,7 +3943,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const fields = this.downloadSelectedTypes();
 
     if (!siteId) {
-      this.downloadError.set('No se encontro el sitio actual.');
+      this.downloadError.set('No se encontró el sitio actual.');
       return;
     }
 
@@ -4221,7 +4314,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const active = this.operationMode() === mode;
     const base = 'inline-flex h-11 items-center gap-2 border-b-2 px-5 text-sm transition-colors';
     return active
-      ? `${base} border-[rgba(13,175,189,0.55)] bg-[rgba(13,175,189,0.08)] font-semibold text-primary-container`
+      ? `${base} border-primary-tint-55 bg-primary-tint-08 font-semibold text-primary-container`
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;
   }
 

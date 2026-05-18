@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { catchError, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
@@ -75,7 +76,12 @@ interface RealtimeChartPoint {
 @Component({
   selector: 'app-water-detail-operacion',
   standalone: true,
-  imports: [CommonModule, OperacionGraficosHistoricosComponent, OperacionResumenPeriodoComponent],
+  imports: [
+    CommonModule,
+    InlineErrorComponent,
+    OperacionGraficosHistoricosComponent,
+    OperacionResumenPeriodoComponent,
+  ],
   providers: [WaterOperacionStateService],
   template: `
     <div class="space-y-3">
@@ -84,6 +90,10 @@ interface RealtimeChartPoint {
         class="flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-white px-2 py-2 shadow-sm"
         aria-label="Selector de modo de operación"
         role="tablist"
+        (keydown.arrowright)="cycleModo(1); $event.preventDefault()"
+        (keydown.arrowleft)="cycleModo(-1); $event.preventDefault()"
+        (keydown.home)="modo.set('hoy'); $event.preventDefault()"
+        (keydown.end)="modo.set('resumen'); $event.preventDefault()"
       >
         <button
           type="button"
@@ -91,6 +101,7 @@ interface RealtimeChartPoint {
           (click)="modo.set('hoy')"
           [class]="modoClass('hoy')"
           [attr.aria-selected]="modo() === 'hoy'"
+          [attr.tabindex]="modo() === 'hoy' ? 0 : -1"
         >
           <span class="material-symbols-outlined text-[17px]" aria-hidden="true">today</span>
           Hoy en tiempo real
@@ -101,6 +112,7 @@ interface RealtimeChartPoint {
           (click)="modo.set('historico')"
           [class]="modoClass('historico')"
           [attr.aria-selected]="modo() === 'historico'"
+          [attr.tabindex]="modo() === 'historico' ? 0 : -1"
         >
           <span class="material-symbols-outlined text-[17px]" aria-hidden="true">query_stats</span>
           Gráficos Históricos
@@ -111,6 +123,7 @@ interface RealtimeChartPoint {
           (click)="modo.set('resumen')"
           [class]="modoClass('resumen')"
           [attr.aria-selected]="modo() === 'resumen'"
+          [attr.tabindex]="modo() === 'resumen' ? 0 : -1"
         >
           <span class="material-symbols-outlined text-[17px]" aria-hidden="true"
             >calendar_view_month</span
@@ -123,31 +136,65 @@ interface RealtimeChartPoint {
         </p>
       </nav>
 
+      @if (loadError()) {
+        <app-inline-error
+          [message]="loadError()"
+          actionLabel="Reintentar"
+          actionIcon="refresh"
+          (action)="retryLoad()"
+        />
+      }
+
       <!-- Hoy en tiempo real (fusión realtime + turnos) -->
       @if (modo() === 'hoy') {
         <!-- Banner tiempo real -->
         <div
-          class="rounded-2xl bg-gradient-to-br from-[#04606A] via-[#0899A5] to-[#0DAFBD] p-5 text-white shadow-sm"
+          class="rounded-2xl border border-primary-tint-25 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_4px_12px_rgba(13,175,189,0.06)]"
+          [attr.aria-busy]="loading()"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p class="font-semibold text-sm">Datos en tiempo real</p>
-              <p class="mt-0.5 text-caption-xs text-[#bdefef]">actualización cada minuto</p>
+            <div class="flex items-center gap-2.5">
+              <span
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-tint-10"
+              >
+                <span class="material-symbols-outlined text-[18px] text-primary-container"
+                  >bolt</span
+                >
+              </span>
+              <div>
+                <p class="text-body font-semibold text-on-surface">Datos en tiempo real</p>
+                <p class="mt-0.5 text-caption-xs text-on-surface-muted">
+                  actualización cada minuto
+                </p>
+              </div>
             </div>
-            <span class="flex items-center gap-2 text-caption-xs font-bold text-[#e6fafb]">
-              <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-300"></span>
-              {{ latestTimestampLabel() }}
+            <span class="flex items-center gap-2 text-caption-xs font-bold">
+              @if (loading()) {
+                <span
+                  class="material-symbols-outlined animate-spin text-[14px] text-primary-container"
+                  aria-hidden="true"
+                  >progress_activity</span
+                >
+                <span class="text-primary-container">Actualizando…</span>
+              } @else {
+                <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
+                <span class="text-emerald-700">{{ latestTimestampLabel() }}</span>
+              }
             </span>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
             @for (m of metricas(); track m.label) {
-              <div class="rounded-xl bg-white/10 px-4 py-3 ring-1 ring-white/10">
-                <p class="text-caption-xs font-bold uppercase tracking-widest text-[#bdefef]">
+              <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <p
+                  class="text-caption-xs font-bold uppercase tracking-widest text-on-surface-muted"
+                >
                   {{ m.label }}
                 </p>
-                <p class="mt-1 text-2xl font-semibold leading-none">
+                <p class="mt-1 font-mono text-h4 font-semibold leading-none text-on-surface">
                   {{ m.valor
-                  }}<span class="ml-1 text-sm font-bold text-white/70">{{ m.unidad }}</span>
+                  }}<span class="ml-1 text-body-sm font-bold text-on-surface-muted">{{
+                    m.unidad
+                  }}</span>
                 </p>
               </div>
             }
@@ -169,7 +216,7 @@ interface RealtimeChartPoint {
                   class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                   [class]="
                     turnosSettingsOpen()
-                      ? 'bg-[rgba(13,175,189,0.14)] text-primary-container'
+                      ? 'bg-primary-tint-14 text-primary-container'
                       : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                   "
                   aria-label="Configurar horarios de turno"
@@ -194,7 +241,7 @@ interface RealtimeChartPoint {
                   {{ fechaDiaReal() }}
                   @if (esHoy()) {
                     <span
-                      class="rounded-full bg-[rgba(13,175,189,0.14)] px-2 py-0.5 text-caption-xs font-semibold text-primary-container"
+                      class="rounded-full bg-primary-tint-14 px-2 py-0.5 text-caption-xs font-semibold text-primary-container"
                       >Hoy</span
                     >
                   }
@@ -226,7 +273,7 @@ interface RealtimeChartPoint {
             <!-- Panel de configuración de turnos -->
             @if (turnosSettingsOpen()) {
               <div
-                class="overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4 shadow-sm"
+                class="overflow-hidden rounded-xl border border-primary-tint-25 bg-primary-tint-08 p-4 shadow-sm"
               >
                 <div class="mb-3 flex items-center justify-between">
                   <p
@@ -290,19 +337,19 @@ interface RealtimeChartPoint {
                       type="text"
                       [value]="t.nombre"
                       (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                     <input
                       type="time"
                       [value]="t.inicio"
                       (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                     <input
                       type="time"
                       [value]="t.fin"
                       (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
-                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                      class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                   }
                 </div>
@@ -320,37 +367,40 @@ interface RealtimeChartPoint {
             <div class="grid grid-cols-2 gap-2 xl:grid-cols-4">
               @for (turno of turnosReal(); track turno.nombre; let i = $index) {
                 @if (turno.esTotal) {
-                  <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div
+                    class="rounded-2xl border border-primary-tint-30 bg-white p-4 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_2px_8px_rgba(13,175,189,0.06)]"
+                  >
                     <p
-                      class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
                     >
                       {{ turno.nombre }}
                     </p>
-                    <p class="mt-0.5 text-caption-xs text-slate-400">{{ turno.horario }}</p>
-                    <p class="mt-3 font-mono text-3xl font-semibold text-slate-800">
+                    <p class="mt-0.5 text-caption-xs text-on-surface-muted">{{ turno.horario }}</p>
+                    <p class="mt-3 font-mono text-h3 font-semibold text-on-surface">
                       {{ formatTurnoConsumo(turno.consumo)
-                      }}<span class="ml-1 text-sm font-bold text-slate-400">m³</span>
+                      }}<span class="ml-1 text-body-sm font-bold text-on-surface-muted">m³</span>
                     </p>
                     <div class="mt-2 h-1 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        class="h-full w-full rounded-full bg-gradient-to-r from-[#0dafbd] to-[#0899a5]"
-                      ></div>
+                      <div class="h-full w-full rounded-full bg-primary"></div>
                     </div>
                   </div>
                 } @else if (turno.activo) {
-                  <div class="rounded-2xl p-4 shadow-sm" [class]="turnoGradiente(i)">
+                  <div class="rounded-2xl border p-4 shadow-sm" [class]="turnoActivoClass(i)">
                     <div class="flex items-start justify-between gap-1">
                       <div>
                         <p
-                          class="text-caption-xs font-semibold uppercase tracking-widest text-white/80"
+                          class="text-caption-xs font-semibold uppercase tracking-widest"
+                          [class]="turnoActivoLabelClass(i)"
                         >
                           {{ turno.nombre }}
                         </p>
-                        <p class="mt-0.5 text-caption-xs text-white/50">{{ turno.horario }}</p>
+                        <p class="mt-0.5 text-caption-xs" [class]="turnoActivoSubLabelClass(i)">
+                          {{ turno.horario }}
+                        </p>
                       </div>
                       <button
                         type="button"
-                        class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/15 text-white/70 hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                        class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/60 text-slate-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="Descargar datos del turno"
                       >
                         <span class="material-symbols-outlined text-[13px]" aria-hidden="true"
@@ -358,9 +408,16 @@ interface RealtimeChartPoint {
                         >
                       </button>
                     </div>
-                    <p class="mt-3 font-mono text-3xl font-semibold text-white">
+                    <p
+                      class="mt-3 font-mono text-h3 font-semibold"
+                      [class]="turnoActivoValueClass(i)"
+                    >
                       {{ formatTurnoConsumo(turno.consumo)
-                      }}<span class="ml-1 text-base font-bold text-white/60">m³</span>
+                      }}<span
+                        class="ml-1 text-body-sm font-bold"
+                        [class]="turnoActivoSubLabelClass(i)"
+                        >m³</span
+                      >
                     </p>
                   </div>
                 } @else {
@@ -457,7 +514,7 @@ interface RealtimeChartPoint {
               preserveAspectRatio="none"
               (mousemove)="selectRealtimePoint($event)"
               (mouseleave)="clearRealtimePoint()"
-              aria-label="Grafico de caudal en tiempo real"
+              aria-label="Gráfico de caudal en tiempo real"
             >
               <defs>
                 <linearGradient id="rtFill" x1="0" y1="0" x2="0" y2="1">
@@ -753,12 +810,34 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const siteId = this.resolveSiteId();
     if (!siteId) {
-      this.loadError.set('No se encontro el sitio actual.');
+      this.loadError.set('No se encontró el sitio actual.');
       return;
     }
 
     this.state.startCountersPolling(siteId);
+    this.startPolling(siteId);
+  }
 
+  ngOnDestroy(): void {
+    this.pollingSub?.unsubscribe();
+    this.state.stopCountersPolling();
+  }
+
+  /** User-triggered retry when the load banner is showing. Unsubscribes the
+   * current timer (which may still be ticking against a dead siteId) and
+   * starts a fresh one immediately. */
+  retryLoad(): void {
+    const siteId = this.resolveSiteId();
+    if (!siteId) {
+      this.loadError.set('No se encontró el sitio actual.');
+      return;
+    }
+    this.pollingSub?.unsubscribe();
+    this.loadError.set('');
+    this.startPolling(siteId);
+  }
+
+  private startPolling(siteId: string): void {
     this.loading.set(true);
     this.pollingSub = timer(0, 60000)
       .pipe(
@@ -768,8 +847,8 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
             history: this.companyService.getSiteDashboardHistory(siteId, this.historyLimit),
           }).pipe(
             catchError((err) => {
-              console.error('No fue posible cargar operacion del pozo', err);
-              this.loadError.set('No fue posible cargar datos de operacion.');
+              console.error('No fue posible cargar operación del pozo', err);
+              this.loadError.set('No fue posible cargar datos de operación.');
               this.loading.set(false);
               return of(null);
             }),
@@ -784,11 +863,6 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
         this.loadError.set('');
         this.loading.set(false);
       });
-  }
-
-  ngOnDestroy(): void {
-    this.pollingSub?.unsubscribe();
-    this.state.stopCountersPolling();
   }
 
   updateTurnoConfig(index: number, field: 'nombre' | 'inicio' | 'fin', value: string): void {
@@ -857,14 +931,52 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return `0,${H} ${coords} ${(safePoints.length - 1) * step},${H}`;
   }
 
-  turnoGradiente(index: number): string {
-    if (index === 0) return 'bg-gradient-to-br from-[#04606A] to-[#0DAFBD]';
-    if (index === 1) return 'bg-gradient-to-br from-[#065F46] to-[#22C55E]';
-    return 'bg-slate-100';
+  /**
+   * Active turno styling. Different turno indices get different semantic
+   * colour roles so an operator can scan which shift is running. We avoid
+   * gradients — solid tinted background + colored text matches the rest
+   * of the design system.
+   */
+  turnoActivoClass(index: number): string {
+    if (index === 0) return 'border-primary-tint-35 bg-primary-tint-10';
+    if (index === 1) return 'border-emerald-200 bg-emerald-50';
+    return 'border-slate-200 bg-slate-50';
+  }
+
+  turnoActivoLabelClass(index: number): string {
+    if (index === 0) return 'text-primary-container';
+    if (index === 1) return 'text-emerald-700';
+    return 'text-slate-600';
+  }
+
+  turnoActivoSubLabelClass(index: number): string {
+    if (index === 0) return 'text-primary-container/70';
+    if (index === 1) return 'text-emerald-700/70';
+    return 'text-slate-500';
+  }
+
+  turnoActivoValueClass(index: number): string {
+    if (index === 0) return 'text-primary-container';
+    if (index === 1) return 'text-emerald-700';
+    return 'text-slate-800';
   }
 
   turnoDot(index: number): string {
     return this.barClasses[index] ?? 'bg-slate-400';
+  }
+
+  /**
+   * Roving-tabindex WAI-ARIA tablist nav: ArrowLeft/Right cycle modo() and
+   * Home/End jump to first/last. The active tab keeps focus through the
+   * change because Angular re-applies tabindex=0 on the newly-selected
+   * button after the signal update — the user keeps tabbing forward into
+   * the panel naturally.
+   */
+  cycleModo(delta: 1 | -1): void {
+    const order: OperacionModo[] = ['hoy', 'historico', 'resumen'];
+    const idx = order.indexOf(this.modo());
+    const nextIdx = (idx + delta + order.length) % order.length;
+    this.modo.set(order[nextIdx]);
   }
 
   modoClass(m: OperacionModo): string {
@@ -872,7 +984,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return [
       'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
       active
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
+        ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',
     ].join(' ');
   }

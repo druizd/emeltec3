@@ -61,7 +61,7 @@ import {
               <button
                 type="button"
                 (click)="addContacto()"
-                class="rounded p-1 text-primary-container hover:bg-[rgba(13,175,189,0.08)]"
+                class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
               >
                 <span class="material-symbols-outlined text-[16px]">add</span>
               </button>
@@ -80,12 +80,12 @@ import {
                         [ngModel]="c.nombre"
                         (ngModelChange)="updateContacto($index, 'nombre', $event)"
                         placeholder="Nombre"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <select
                         [ngModel]="c.rol"
                         (ngModelChange)="updateContacto($index, 'rol', $event)"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       >
                         <option value="Responsable">Responsable</option>
                         <option value="Operador">Operador</option>
@@ -95,14 +95,14 @@ import {
                         [ngModel]="c.telefono"
                         (ngModelChange)="updateContacto($index, 'telefono', $event)"
                         placeholder="Teléfono"
-                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
                       />
                       <input
                         type="email"
                         [ngModel]="c.email"
                         (ngModelChange)="updateContacto($index, 'email', $event)"
                         placeholder="Email"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                     </div>
                     <button
@@ -134,7 +134,7 @@ import {
               <button
                 type="button"
                 (click)="addAcreditacion()"
-                class="rounded p-1 text-primary-container hover:bg-[rgba(13,175,189,0.08)]"
+                class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
               >
                 <span class="material-symbols-outlined text-[16px]">add</span>
               </button>
@@ -153,21 +153,21 @@ import {
                         [ngModel]="a.persona"
                         (ngModelChange)="updateAcreditacion($index, 'persona', $event)"
                         placeholder="Persona"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <input
                         type="text"
                         [ngModel]="a.tipo"
                         (ngModelChange)="updateAcreditacion($index, 'tipo', $event)"
                         placeholder="Tipo (DGA, etc)"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <input
                         type="date"
                         min="2000-01-01"
                         [ngModel]="a.vigencia_hasta"
                         (ngModelChange)="updateAcreditacion($index, 'vigencia_hasta', $event)"
-                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
                       />
                     </div>
                     <button
@@ -199,7 +199,7 @@ import {
               <button
                 type="button"
                 (click)="addRiesgo()"
-                class="rounded p-1 text-primary-container hover:bg-[rgba(13,175,189,0.08)]"
+                class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
               >
                 <span class="material-symbols-outlined text-[16px]">add</span>
               </button>
@@ -218,7 +218,7 @@ import {
                         [ngModel]="r.descripcion"
                         (ngModelChange)="updateRiesgo($index, 'descripcion', $event)"
                         placeholder="Descripción del riesgo"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <input
                         type="number"
@@ -227,7 +227,7 @@ import {
                         [ngModel]="r.probabilidad"
                         (ngModelChange)="updateRiesgo($index, 'probabilidad', $event)"
                         placeholder="Prob (1-5)"
-                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
                       />
                       <input
                         type="number"
@@ -236,14 +236,14 @@ import {
                         [ngModel]="r.impacto"
                         (ngModelChange)="updateRiesgo($index, 'impacto', $event)"
                         placeholder="Imp (1-5)"
-                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
                       />
                       <input
                         type="text"
                         [ngModel]="r.mitigacion"
                         (ngModelChange)="updateRiesgo($index, 'mitigacion', $event)"
                         placeholder="Mitigación"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-[rgba(13,175,189,0.35)]"
+                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                     </div>
                     <button

@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { AlertaService, AlertaSeveridad, EventoRow } from '../../../../services/alerta.service';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 
 type HistoricoFiltro = 'todos' | AlertaSeveridad;
 
@@ -16,11 +17,11 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
   selector: 'app-alertas-historico',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <!-- Filtros -->
@@ -117,7 +118,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
                     <td class="px-4 py-3">
                       @if (ev.incidencia_id) {
                         <span
-                          class="inline-flex items-center gap-1 rounded-full bg-[rgba(13,175,189,0.08)] px-2 py-0.5 text-caption-xs font-bold text-primary-container"
+                          class="inline-flex items-center gap-1 rounded-full bg-primary-tint-08 px-2 py-0.5 text-caption-xs font-bold text-primary-container"
                         >
                           <span class="material-symbols-outlined text-[12px]">link</span>
                           {{ ev.incidencia_id }}

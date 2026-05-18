@@ -24,6 +24,7 @@ import {
   ORIGEN_LABELS,
 } from '../../../../services/incidencia.service';
 import { UserService } from '../../../../services/user.service';
+import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 
 interface DraftIncidencia {
   titulo: string;
@@ -64,11 +65,11 @@ function emptyDraft(): DraftIncidencia {
   selector: 'app-bitacora-incidencias',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, InlineErrorComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
+        <app-inline-error [message]="errorMsg()" />
       }
 
       <!-- Filtros + Nueva -->
@@ -103,7 +104,7 @@ function emptyDraft(): DraftIncidencia {
         <button
           type="button"
           (click)="toggleNueva()"
-          class="inline-flex items-center gap-1 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-primary-tint-14"
         >
           <span class="material-symbols-outlined text-[14px]">{{
             mostrandoNueva() ? 'close' : 'add'
@@ -114,7 +115,7 @@ function emptyDraft(): DraftIncidencia {
 
       @if (mostrandoNueva()) {
         <article
-          class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
+          class="rounded-2xl border-2 border-dashed border-primary-tint-25 bg-primary-tint-08/30 p-4"
         >
           <p
             class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
@@ -330,7 +331,7 @@ function emptyDraft(): DraftIncidencia {
             type="text"
             [(ngModel)]="draft.titulo"
             placeholder="Ej. Tablero eléctrico con sobrecalentamiento"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
         </div>
 
@@ -342,7 +343,7 @@ function emptyDraft(): DraftIncidencia {
           <textarea
             rows="3"
             [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           ></textarea>
         </div>
 
@@ -661,7 +662,7 @@ export class BitacoraIncidenciasComponent {
   origenIconClass(o: IncidenciaOrigen): string {
     return o === 'terreno'
       ? 'bg-orange-50 text-orange-600'
-      : 'bg-[rgba(13,175,189,0.08)] text-primary-container';
+      : 'bg-primary-tint-08 text-primary-container';
   }
 
   origenLabel(o: IncidenciaOrigen): string {
@@ -703,7 +704,7 @@ export class BitacoraIncidenciasComponent {
     const map: Record<IncidenciaEstado, string> = {
       abierta: 'bg-rose-50 text-rose-600',
       en_progreso: 'bg-amber-50 text-amber-700',
-      resuelta: 'bg-[rgba(13,175,189,0.08)] text-primary-container',
+      resuelta: 'bg-primary-tint-08 text-primary-container',
       cerrada: 'bg-slate-100 text-slate-500',
     };
     return map[e];
@@ -724,7 +725,7 @@ export class BitacoraIncidenciasComponent {
     return [
       'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
       active
-        ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
+        ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
   }
