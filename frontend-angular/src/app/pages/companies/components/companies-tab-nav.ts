@@ -12,7 +12,15 @@ export interface CompaniesTabItem {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div [class]="getContainerClass()" role="tablist" [attr.aria-label]="ariaLabel">
+    <div
+      [class]="getContainerClass()"
+      role="tablist"
+      [attr.aria-label]="ariaLabel"
+      (keydown.arrowright)="cycleTab(1); $event.preventDefault()"
+      (keydown.arrowleft)="cycleTab(-1); $event.preventDefault()"
+      (keydown.home)="firstTab(); $event.preventDefault()"
+      (keydown.end)="lastTab(); $event.preventDefault()"
+    >
       @for (tab of tabs; track tab.key) {
         <button
           type="button"
@@ -20,7 +28,9 @@ export interface CompaniesTabItem {
           (click)="selectTab(tab.key)"
           [class]="getButtonClass(tab.key)"
           [attr.aria-selected]="activeTab === tab.key"
-          [attr.aria-controls]="'tabpanel-' + tab.key"
+          [attr.aria-controls]="wireAriaControls ? 'tabpanel-' + tab.key : null"
+          [attr.id]="wireAriaControls ? 'tab-' + tab.key : null"
+          [attr.tabindex]="activeTab === tab.key ? 0 : -1"
         >
           <span [class]="'material-symbols-outlined ' + getIconClass()" aria-hidden="true">{{
             tab.icon
@@ -36,11 +46,35 @@ export class CompaniesTabNavComponent {
   @Input() activeTab = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
   @Input() ariaLabel = 'Pestañas de navegación';
+  /**
+   * Cuando true, emite `aria-controls="tabpanel-{key}"` + `id="tab-{key}"` en
+   * cada tab button. Solo activar cuando el parent component también wrap
+   * cada panel con `<div role="tabpanel" id="tabpanel-{key}" aria-labelledby
+   * ="tab-{key}">`. Default false para no romper consumers que aún no
+   * implementan tabpanel wrappers — orphan aria-controls es peor que faltar.
+   */
+  @Input() wireAriaControls = false;
 
   @Output() activeTabChange = new EventEmitter<string>();
 
   selectTab(tab: string): void {
     this.activeTabChange.emit(tab);
+  }
+
+  /** WAI-ARIA tablist roving-tabindex cycle. delta=1 → siguiente, -1 → anterior. */
+  cycleTab(delta: 1 | -1): void {
+    if (this.tabs.length === 0) return;
+    const idx = this.tabs.findIndex((t) => t.key === this.activeTab);
+    const nextIdx = (idx + delta + this.tabs.length) % this.tabs.length;
+    this.selectTab(this.tabs[nextIdx].key);
+  }
+
+  firstTab(): void {
+    if (this.tabs.length > 0) this.selectTab(this.tabs[0].key);
+  }
+
+  lastTab(): void {
+    if (this.tabs.length > 0) this.selectTab(this.tabs[this.tabs.length - 1].key);
   }
 
   getContainerClass(): string {

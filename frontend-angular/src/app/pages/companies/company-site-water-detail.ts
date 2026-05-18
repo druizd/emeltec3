@@ -244,6 +244,10 @@ type OperationMode = 'realtime' | 'turnos';
               class="flex items-center gap-5 px-3"
               role="tablist"
               aria-label="Pestañas de detalle del sitio"
+              (keydown.arrowright)="cycleDetailTab(1); $event.preventDefault()"
+              (keydown.arrowleft)="cycleDetailTab(-1); $event.preventDefault()"
+              (keydown.home)="cycleDetailTab(0, 'first'); $event.preventDefault()"
+              (keydown.end)="cycleDetailTab(0, 'last'); $event.preventDefault()"
             >
               <button
                 type="button"
@@ -251,7 +255,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('dga')"
                 [class]="getDetailTabClass('dga')"
                 [attr.aria-selected]="activeDetailTab() === 'dga'"
-                id="tab-dga" aria-controls="tabpanel-dga"
+                id="tab-dga" aria-controls="tabpanel-dga" [attr.tabindex]="activeDetailTab() === 'dga' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
                 DGA
@@ -268,7 +272,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('operacion')"
                 [class]="getDetailTabClass('operacion')"
                 [attr.aria-selected]="activeDetailTab() === 'operacion'"
-                id="tab-operacion" aria-controls="tabpanel-operacion"
+                id="tab-operacion" aria-controls="tabpanel-operacion" [attr.tabindex]="activeDetailTab() === 'operacion' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >monitoring</span
@@ -287,7 +291,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('alertas')"
                 [class]="getDetailTabClass('alertas')"
                 [attr.aria-selected]="activeDetailTab() === 'alertas'"
-                id="tab-alertas" aria-controls="tabpanel-alertas"
+                id="tab-alertas" aria-controls="tabpanel-alertas" [attr.tabindex]="activeDetailTab() === 'alertas' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >notifications_active</span
@@ -306,7 +310,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('bitacora')"
                 [class]="getDetailTabClass('bitacora')"
                 [attr.aria-selected]="activeDetailTab() === 'bitacora'"
-                id="tab-bitacora" aria-controls="tabpanel-bitacora"
+                id="tab-bitacora" aria-controls="tabpanel-bitacora" [attr.tabindex]="activeDetailTab() === 'bitacora' ? 0 : -1"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >menu_book</span
@@ -326,7 +330,7 @@ type OperationMode = 'realtime' | 'turnos';
                   (click)="setDetailTab('analisis')"
                   [class]="getDetailTabClass('analisis')"
                   [attr.aria-selected]="activeDetailTab() === 'analisis'"
-                  id="tab-analisis" aria-controls="tabpanel-analisis"
+                  id="tab-analisis" aria-controls="tabpanel-analisis" [attr.tabindex]="activeDetailTab() === 'analisis' ? 0 : -1"
                 >
                   <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                     >insights</span
@@ -3676,6 +3680,30 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.settingsPanelOpen.set(false);
     this.activeDetailTab.set(tab);
     if (tab === 'dga') void this.loadDgaReports();
+  }
+
+  /**
+   * WAI-ARIA tablist nav. ArrowLeft/Right cyclan, Home/End van a primero/
+   * último. Análisis se incluye solo si el rol lo permite — un usuario
+   * non-SuperAdmin no debe poder llegar via teclado a una tab que no debe
+   * ver. Roving tabindex en el template asegura que solo el tab activo es
+   * focusable via Tab.
+   */
+  cycleDetailTab(delta: 1 | -1 | 0, edge?: 'first' | 'last'): void {
+    const all: DetailTab[] = ['dga', 'operacion', 'alertas', 'bitacora', 'analisis'];
+    const available = all.filter((t) => t !== 'analisis' || this.isSuperAdmin());
+    if (available.length === 0) return;
+    if (edge === 'first') {
+      this.setDetailTab(available[0]);
+      return;
+    }
+    if (edge === 'last') {
+      this.setDetailTab(available[available.length - 1]);
+      return;
+    }
+    const idx = available.indexOf(this.activeDetailTab());
+    const nextIdx = (idx + delta + available.length) % available.length;
+    this.setDetailTab(available[nextIdx]);
   }
 
   setOperationMode(mode: OperationMode): void {
