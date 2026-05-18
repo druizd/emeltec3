@@ -130,6 +130,27 @@ interface RealtimeChartPoint {
         </p>
       </nav>
 
+      @if (loadError()) {
+        <div
+          class="flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-body-sm text-rose-800"
+          role="alert"
+          aria-live="polite"
+        >
+          <div class="flex min-w-0 items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
+            <span class="truncate">{{ loadError() }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="retryLoad()"
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+          >
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">refresh</span>
+            Reintentar
+          </button>
+        </div>
+      }
+
       <!-- Hoy en tiempo real (fusión realtime + turnos) -->
       @if (modo() === 'hoy') {
         <!-- Banner tiempo real -->
@@ -786,7 +807,29 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     }
 
     this.state.startCountersPolling(siteId);
+    this.startPolling(siteId);
+  }
 
+  ngOnDestroy(): void {
+    this.pollingSub?.unsubscribe();
+    this.state.stopCountersPolling();
+  }
+
+  /** User-triggered retry when the load banner is showing. Unsubscribes the
+   * current timer (which may still be ticking against a dead siteId) and
+   * starts a fresh one immediately. */
+  retryLoad(): void {
+    const siteId = this.resolveSiteId();
+    if (!siteId) {
+      this.loadError.set('No se encontró el sitio actual.');
+      return;
+    }
+    this.pollingSub?.unsubscribe();
+    this.loadError.set('');
+    this.startPolling(siteId);
+  }
+
+  private startPolling(siteId: string): void {
     this.loading.set(true);
     this.pollingSub = timer(0, 60000)
       .pipe(
@@ -812,11 +855,6 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
         this.loadError.set('');
         this.loading.set(false);
       });
-  }
-
-  ngOnDestroy(): void {
-    this.pollingSub?.unsubscribe();
-    this.state.stopCountersPolling();
   }
 
   updateTurnoConfig(index: number, field: 'nombre' | 'inicio' | 'fin', value: string): void {

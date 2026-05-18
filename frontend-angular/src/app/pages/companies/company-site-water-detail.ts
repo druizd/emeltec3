@@ -804,6 +804,13 @@ type OperationMode = 'realtime' | 'turnos';
                               animation-duration: var(--d, 4s);
                               animation-delay: var(--e, 0s);
                             }
+                            @media (prefers-reduced-motion: reduce) {
+                              .wdiag-w1,
+                              .wdiag-w2,
+                              .wdiag-b {
+                                animation: none !important;
+                              }
+                            }
                           </style>
                           <defs>
                             <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
@@ -1665,7 +1672,7 @@ type OperationMode = 'realtime' | 'turnos';
         <div
           class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700"
         >
-          No se encontro la instalacion solicitada.
+          No se encontró la instalación solicitada.
         </div>
       }
 
@@ -2499,6 +2506,18 @@ type OperationMode = 'realtime' | 'turnos';
         pointer-events: none;
       }
 
+      /* Custom keyframes (dga-shine, dga-wave-drift, dga-wave-bob, wdiagWave1/2,
+         wdiagBubble) no caen bajo el global rule de styles.css que solo cubre
+         animate-pulse/spin/ping/skeleton. Guard explícito acá para WCAG 2.3.3
+         + usuarios con vestibular disorder. */
+      @media (prefers-reduced-motion: reduce) {
+        .dga-water-column,
+        .dga-water-wave-a,
+        .dga-water-wave-b,
+        .dga-water-shine {
+          animation: none !important;
+        }
+      }
     `,
   ],
 })
@@ -3801,7 +3820,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const fields = this.downloadSelectedTypes();
 
     if (!siteId) {
-      this.downloadError.set('No se encontro el sitio actual.');
+      this.downloadError.set('No se encontró el sitio actual.');
       return;
     }
 

@@ -649,8 +649,8 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
   turnoResumenCard(i: number): string {
     const cards = [
-      'border-[rgba(13,175,189,0.25)] bg-gradient-to-br from-[rgba(13,175,189,0.08)] to-white',
-      'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white',
+      'border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]',
+      'border-emerald-200 bg-emerald-50',
       'border-slate-200 bg-slate-50',
     ];
     return cards[i] ?? 'border-slate-200 bg-slate-50';
