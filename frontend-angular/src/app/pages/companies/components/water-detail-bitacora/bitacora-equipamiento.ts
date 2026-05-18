@@ -34,13 +34,13 @@ import {
 
       @if (loading()) {
         <div
-          class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400"
+          class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-body-sm text-slate-400"
         >
           Cargando equipos…
         </div>
       } @else if (equipos().length === 0) {
         <div
-          class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500"
+          class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-body-sm text-slate-500"
         >
           <span class="material-symbols-outlined mb-2 block text-[28px] text-slate-300"
             >precision_manufacturing</span
@@ -50,7 +50,7 @@ import {
       } @else {
         <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="overflow-x-auto">
-            <table class="w-full min-w-[860px] text-left text-sm">
+            <table class="w-full min-w-[860px] text-left text-body-sm">
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50">
                   <th
@@ -166,7 +166,7 @@ import {
           (click)="$event.stopPropagation()"
         >
           <div class="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-            <h3 class="text-sm font-semibold uppercase tracking-wide text-slate-700">
+            <h3 class="text-body-sm font-semibold uppercase tracking-wide text-slate-700">
               {{ editingId() ? 'Editar equipo' : 'Registrar equipo' }}
             </h3>
             <button
@@ -277,7 +277,7 @@ import {
             <button
               type="button"
               (click)="cancelForm()"
-              class="rounded px-3 py-1.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              class="rounded px-3 py-1.5 text-body-sm font-semibold text-slate-500 hover:bg-slate-50"
             >
               Cancelar
             </button>
@@ -285,7 +285,7 @@ import {
               type="button"
               (click)="save()"
               [disabled]="!form().nombre || saving()"
-              class="rounded bg-primary px-4 py-1.5 text-sm font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
+              class="rounded bg-primary px-4 py-1.5 text-body-sm font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
             >
               {{ saving() ? 'Guardando…' : 'Guardar' }}
             </button>

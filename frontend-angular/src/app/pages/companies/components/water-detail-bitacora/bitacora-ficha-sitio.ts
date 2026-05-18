@@ -41,10 +41,12 @@ import {
                 [ngModel]="ficha().pin_critico"
                 (ngModelChange)="updatePin($event)"
                 placeholder="Mensaje crítico (ej. Acceso requiere permiso DGA)"
-                class="mt-0.5 w-full bg-transparent text-sm font-semibold text-amber-900 placeholder:text-amber-400 focus:outline-none"
+                class="mt-0.5 w-full bg-transparent text-body-sm font-semibold text-amber-900 placeholder:text-amber-400 focus:outline-none"
               />
             } @else {
-              <p class="mt-0.5 text-sm font-semibold text-amber-900">{{ ficha().pin_critico }}</p>
+              <p class="mt-0.5 text-body-sm font-semibold text-amber-900">
+                {{ ficha().pin_critico }}
+              </p>
             }
           </div>
         </div>

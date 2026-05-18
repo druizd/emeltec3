@@ -76,11 +76,13 @@ interface Periodo {
       <!-- KPIs principales -->
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article
-          class="rounded-2xl border border-primary-tint-30 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.06),0_4px_12px_rgba(13,175,189,0.08)]"
+          class="rounded-2xl border border-primary-tint-30 bg-white p-5 shadow-primary-banner"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
-              <p class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container">
+              <p
+                class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
+              >
                 Flujo acumulado mensual
               </p>
               <p class="mt-2 font-mono text-h3 font-semibold leading-none text-on-surface">
@@ -91,7 +93,9 @@ interface Periodo {
             <span
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-10"
             >
-              <span class="material-symbols-outlined text-[22px] text-primary-container">water_drop</span>
+              <span class="material-symbols-outlined text-[22px] text-primary-container"
+                >water_drop</span
+              >
             </span>
           </div>
         </article>
@@ -100,7 +104,9 @@ interface Periodo {
           <article class="rounded-2xl border bg-white p-5 shadow-sm" [class]="kpiBorde(k.tono)">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1">
-                <p class="text-caption-xs font-semibold uppercase tracking-widest text-on-surface-muted">
+                <p
+                  class="text-caption-xs font-semibold uppercase tracking-widest text-on-surface-muted"
+                >
                   {{ k.label }}
                 </p>
                 <p class="mt-2 font-mono text-h3 font-semibold leading-none text-on-surface">
@@ -125,7 +131,9 @@ interface Periodo {
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h3 class="text-sm font-semibold text-slate-800">Flujo mensual por instalación</h3>
+              <h3 class="text-body-sm font-semibold text-slate-800">
+                Flujo mensual por instalación
+              </h3>
               <p class="mt-0.5 text-caption-xs text-slate-400">
                 m³/mes · últimos 6 meses · clic en leyenda para ocultar
               </p>
@@ -200,8 +208,9 @@ interface Periodo {
         <!-- Lista de sitios: toggle + proyección por pozo -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-2">
-            <h3 class="text-sm font-semibold text-slate-800">Estado de sitios</h3>
-            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-caption-xs font-bold text-slate-500"
+            <h3 class="text-body-sm font-semibold text-slate-800">Estado de sitios</h3>
+            <span
+              class="rounded-full bg-slate-100 px-2.5 py-1 text-caption-xs font-bold text-slate-500"
               >{{ sitiosResumen.length }} sitios</span
             >
           </div>
@@ -237,9 +246,11 @@ interface Periodo {
                       <p class="truncate text-caption-xs text-slate-400">{{ s.ubicacion }}</p>
                     </div>
                     <div class="flex flex-col items-end gap-0.5 shrink-0">
-                      <span class="text-caption-xs font-semibold" [class]="estadoTextClass(s.estado)">{{
-                        estadoLabel(s.estado)
-                      }}</span>
+                      <span
+                        class="text-caption-xs font-semibold"
+                        [class]="estadoTextClass(s.estado)"
+                        >{{ estadoLabel(s.estado) }}</span
+                      >
                       <span
                         class="text-caption-xs font-bold"
                         [style.color]="s.tendenciaCaudal >= 0 ? '#16A34A' : '#DC2626'"
@@ -290,7 +301,7 @@ interface Periodo {
         <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
             <div>
-              <h3 class="text-sm font-semibold text-slate-800">Mapa de instalaciones</h3>
+              <h3 class="text-body-sm font-semibold text-slate-800">Mapa de instalaciones</h3>
               <p class="mt-0.5 text-caption-xs text-slate-400">
                 Posición geográfica · clic en marcador para métricas
               </p>
@@ -312,7 +323,7 @@ interface Periodo {
         <!-- Resumen operacional (panel lateral) -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h3 class="text-sm font-semibold text-slate-800">Resumen operacional</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Resumen operacional</h3>
             <span
               class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
             >
@@ -347,7 +358,9 @@ interface Periodo {
         <!-- Header -->
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <div class="flex-1">
-            <h3 class="text-sm font-semibold text-slate-800">Comparación de períodos por pozo</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">
+              Comparación de períodos por pozo
+            </h3>
             <p class="mt-0.5 text-caption-xs text-slate-400">
               Período A vs Período B · caudal, nivel y consumo
             </p>
@@ -355,7 +368,10 @@ interface Periodo {
           <!-- Period labels -->
           <div class="flex items-center gap-2">
             <div class="rounded-lg px-3 py-1.5" style="background: rgba(13,175,189,0.08)">
-              <p class="text-caption-xs font-semibold uppercase tracking-widest" style="color: #0dafbd">
+              <p
+                class="text-caption-xs font-semibold uppercase tracking-widest"
+                style="color: #0dafbd"
+              >
                 A · {{ periodoA().label }}
               </p>
             </div>
@@ -462,7 +478,8 @@ interface Periodo {
                           >B</span
                         >
                         <span class="font-mono text-caption font-bold text-slate-400"
-                          >{{ s.caudalB }} <span class="text-caption-xs font-normal">L/s</span></span
+                          >{{ s.caudalB }}
+                          <span class="text-caption-xs font-normal">L/s</span></span
                         >
                       </div>
                     </div>
@@ -554,7 +571,8 @@ interface Periodo {
                           >B</span
                         >
                         <span class="font-mono text-caption font-bold text-slate-400"
-                          >{{ s.consumoB }} <span class="text-caption-xs font-normal">m³</span></span
+                          >{{ s.consumoB }}
+                          <span class="text-caption-xs font-normal">m³</span></span
                         >
                       </div>
                     </div>

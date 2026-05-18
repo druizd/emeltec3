@@ -120,7 +120,7 @@ interface IncidenciaPeriodo {
               <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 {{ k.label }}
               </p>
-              <p class="mt-0.5 text-xl font-semibold text-slate-800">{{ k.valor }}</p>
+              <p class="mt-0.5 text-h5 font-semibold text-slate-800">{{ k.valor }}</p>
               <p class="text-caption-xs text-slate-400">{{ k.subtext }}</p>
             </div>
           </article>
@@ -257,9 +257,9 @@ interface IncidenciaPeriodo {
                 {{ t.horario }}
               </p>
               @if (t.flujo > 0) {
-                <p class="mt-3 font-mono text-2xl font-semibold" [class]="turnoResumenValue(i)">
+                <p class="mt-3 font-mono text-h4 font-semibold" [class]="turnoResumenValue(i)">
                   {{ t.flujo.toLocaleString('es-CL')
-                  }}<span class="ml-1 text-sm font-bold opacity-60">m³</span>
+                  }}<span class="ml-1 text-body-sm font-bold opacity-60">m³</span>
                 </p>
                 <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-900/10">
                   <div
@@ -272,7 +272,7 @@ interface IncidenciaPeriodo {
                   {{ t.pct }}% del período
                 </p>
               } @else {
-                <p class="mt-3 text-sm font-bold opacity-40" [class]="turnoResumenLabel(i)">
+                <p class="mt-3 text-body-sm font-bold opacity-40" [class]="turnoResumenLabel(i)">
                   Sin operación
                 </p>
               }
@@ -285,7 +285,7 @@ interface IncidenciaPeriodo {
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-semibold text-slate-800">Flujo diario en el período</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Flujo diario en el período</h3>
             <p class="mt-0.5 text-caption-xs text-slate-400">m³/día · días sin operación en gris</p>
           </div>
           <span
@@ -353,7 +353,7 @@ interface IncidenciaPeriodo {
           </button>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[560px] text-left text-sm">
+          <table class="w-full min-w-[560px] text-left text-body-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50/60">
                 <th
@@ -530,7 +530,7 @@ interface IncidenciaPeriodo {
           </div>
         } @else {
           <div class="overflow-x-auto">
-            <table class="w-full min-w-[620px] text-left text-sm">
+            <table class="w-full min-w-[620px] text-left text-body-sm">
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50/60">
                   <th

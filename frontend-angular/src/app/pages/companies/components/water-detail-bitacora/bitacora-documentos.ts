@@ -109,7 +109,7 @@ const TIPOS: DocumentoTipo[] = [
                 #fileInput
                 type="file"
                 (change)="onFileChange($event)"
-                class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
               />
               @if (archivoSeleccionado()) {
                 <p class="mt-1 text-caption-xs text-slate-500">
@@ -128,7 +128,7 @@ const TIPOS: DocumentoTipo[] = [
                   type="text"
                   [(ngModel)]="draft.titulo"
                   placeholder="Ej. Cert. calibración caudalímetro"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
                 />
               </div>
               <div>
@@ -138,7 +138,7 @@ const TIPOS: DocumentoTipo[] = [
                 >
                 <select
                   [(ngModel)]="draft.tipo"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
                 >
                   @for (t of tipos; track t) {
                     <option [value]="t">{{ tipoLabel(t) }}</option>
@@ -154,7 +154,7 @@ const TIPOS: DocumentoTipo[] = [
                   type="text"
                   [(ngModel)]="draft.version"
                   placeholder="1.0"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700"
                 />
               </div>
               <div>
@@ -166,7 +166,7 @@ const TIPOS: DocumentoTipo[] = [
                   type="date"
                   min="2020-01-01"
                   [(ngModel)]="draft.fecha_vigencia"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
                 />
               </div>
             </div>
@@ -179,7 +179,7 @@ const TIPOS: DocumentoTipo[] = [
               <textarea
                 rows="2"
                 [(ngModel)]="draft.descripcion"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
               ></textarea>
             </div>
 
@@ -207,7 +207,7 @@ const TIPOS: DocumentoTipo[] = [
 
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[700px] text-left text-sm">
+          <table class="w-full min-w-[700px] text-left text-body-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
@@ -311,7 +311,7 @@ const TIPOS: DocumentoTipo[] = [
                       <span class="material-symbols-outlined text-3xl text-slate-300"
                         >folder_open</span
                       >
-                      <p class="mt-2 text-sm font-semibold text-slate-400">
+                      <p class="mt-2 text-body-sm font-semibold text-slate-400">
                         Sin documentos con estos filtros
                       </p>
                     </td>
@@ -515,9 +515,7 @@ export class BitacoraDocumentosComponent {
 
   filtroBadgeClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
-    return active
-      ? 'bg-primary-tint-14 text-primary-container'
-      : 'bg-slate-100 text-slate-500';
+    return active ? 'bg-primary-tint-14 text-primary-container' : 'bg-slate-100 text-slate-500';
   }
 
   formatBytes(b: number): string {

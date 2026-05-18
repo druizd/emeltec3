@@ -61,9 +61,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             <div
               [class]="
                 'flex h-9 w-9 items-center justify-center rounded-lg transition-colors ' +
-                (selected
-                  ? 'bg-primary-tint-10'
-                  : 'bg-slate-100 group-hover:bg-primary-tint-10')
+                (selected ? 'bg-primary-tint-10' : 'bg-slate-100 group-hover:bg-primary-tint-10')
               "
             >
               <span
@@ -126,15 +124,15 @@ export class SiteCardComponent {
       return [
         'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
         this.selected
-          ? 'border-primary-tint-35 shadow-[0_4px_12px_rgba(13,175,189,0.14)]'
-          : 'border-slate-200/90 shadow-[0_2px_6px_rgba(15,23,42,0.04)] hover:border-primary-tint-30 hover:shadow-[0_4px_10px_rgba(13,175,189,0.10)]',
+          ? 'border-primary-tint-35 shadow-primary-glow-md'
+          : 'border-slate-200/90 shadow-slate-rest hover:border-primary-tint-30 hover:shadow-primary-glow',
       ].join(' ');
     }
 
     return [
       'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
       this.selected
-        ? 'border-primary-container ring-2 ring-primary-container/15 shadow-[0_4px_12px_rgba(13,175,189,0.18)]'
+        ? 'border-primary-container ring-2 ring-primary-container/15 shadow-primary-glow-md'
         : 'border-slate-200 hover:border-slate-300 hover:shadow-md',
     ].join(' ');
   }

@@ -58,7 +58,9 @@ interface PeriodicidadOption {
       <div
         class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
         role="dialog"
-        cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        aria-modal="true"
         aria-labelledby="dga-generar-reporte-title"
         (click)="onBackdrop($event)"
       >
@@ -73,7 +75,7 @@ interface PeriodicidadOption {
                 >description</span
               >
               <div>
-                <h2 id="dga-generar-reporte-title" class="text-base font-semibold text-slate-800">
+                <h2 id="dga-generar-reporte-title" class="text-body font-semibold text-slate-800">
                   Configurar reporte DGA
                 </h2>
                 <p class="text-[12px] text-slate-500">
@@ -423,7 +425,7 @@ interface PeriodicidadOption {
               <span class="material-symbols-outlined text-[20px] text-amber-700"
                 >verified_user</span
               >
-              <h3 class="text-sm font-semibold uppercase tracking-wide text-amber-900">
+              <h3 class="text-body-sm font-semibold uppercase tracking-wide text-amber-900">
                 Verificación 2FA
               </h3>
             </div>
@@ -468,7 +470,7 @@ interface PeriodicidadOption {
               <button
                 type="button"
                 (click)="cancelTwoFactor()"
-                class="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+                class="rounded-lg px-3 py-1.5 text-body-sm font-semibold text-slate-500 hover:bg-slate-50"
               >
                 Cancelar
               </button>
@@ -476,7 +478,7 @@ interface PeriodicidadOption {
                 type="button"
                 (click)="confirmTwoFactor()"
                 [disabled]="twoFactorCode().length !== 6 || twoFactorBusy()"
-                class="rounded-lg bg-amber-600 px-4 py-1.5 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+                class="rounded-lg bg-amber-600 px-4 py-1.5 text-body-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
               >
                 {{ twoFactorBusy() ? 'Confirmando…' : 'Confirmar' }}
               </button>

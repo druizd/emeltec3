@@ -30,7 +30,7 @@ interface RowEdit {
     <div class="mx-auto max-w-6xl p-6 space-y-4">
       <header class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-semibold text-slate-800">Cola de revisión DGA</h1>
+          <h1 class="text-h4 font-semibold text-slate-800">Cola de revisión DGA</h1>
           <p class="text-caption text-slate-500">
             Slots con anomalías detectadas en validación. Requieren decisión admin antes de enviar a
             SNIA.
@@ -40,7 +40,7 @@ interface RowEdit {
           type="button"
           (click)="reload()"
           [disabled]="loading()"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           Recargar
         </button>
@@ -50,11 +50,11 @@ interface RowEdit {
       <section
         class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 space-y-2"
       >
-        <div class="flex items-center gap-2 text-sm font-bold">
+        <div class="flex items-center gap-2 text-body-sm font-bold">
           <span class="material-symbols-outlined text-[18px]">verified_user</span>
           Verificación 2FA (requerida para aceptar/descartar)
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-sm">
+        <div class="flex flex-wrap items-center gap-2 text-body-sm">
           <button
             type="button"
             (click)="requestCode()"
@@ -96,13 +96,13 @@ interface RowEdit {
 
       <!-- Tabla -->
       @if (loading()) {
-        <div class="text-sm text-slate-500">Cargando…</div>
+        <div class="text-body-sm text-slate-500">Cargando…</div>
       } @else if (slots().length === 0) {
         <div
           class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center text-emerald-800"
         >
           <span class="material-symbols-outlined text-[24px]">check_circle</span>
-          <p class="mt-1 text-sm font-semibold">Sin slots en revisión.</p>
+          <p class="mt-1 text-body-sm font-semibold">Sin slots en revisión.</p>
         </div>
       } @else {
         <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">

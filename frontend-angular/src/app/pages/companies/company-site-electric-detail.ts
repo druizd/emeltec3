@@ -58,16 +58,16 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   <span class="material-symbols-outlined text-[24px]">bolt</span>
                 </a>
                 <div class="min-w-0">
-                  <h1 class="truncate text-xl font-semibold text-slate-900">
+                  <h1 class="truncate text-h5 font-semibold text-slate-900">
                     {{ siteName(context) }}
                   </h1>
-                  <p class="truncate text-sm font-semibold text-slate-500">
+                  <p class="truncate text-body-sm font-semibold text-slate-500">
                     Panel de monitoreo electrico
                   </p>
                 </div>
               </div>
 
-              <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+              <div class="flex flex-wrap items-center gap-2 text-caption font-bold">
                 <span
                   class="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-emerald-700"
                 >
@@ -114,7 +114,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                 <button
                   type="button"
                   (click)="refreshDashboard()"
-                  class="inline-flex h-10 items-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
+                  class="inline-flex h-10 items-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-body-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
                 >
                   Aplicar
                 </button>
@@ -190,11 +190,11 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   @for (metric of secondaryMetrics; track metric.label) {
                     <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                      <p class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                      <p class="flex items-center gap-2 text-caption font-semibold text-slate-400">
                         <span class="h-2 w-2 rounded-full" [style.background]="metric.color"></span>
                         {{ metric.label }}
                       </p>
-                      <p class="mt-3 text-2xl font-semibold text-slate-900">
+                      <p class="mt-3 text-h4 font-semibold text-slate-900">
                         {{ metricValue(metric.role, metric.fallback) }}
                       </p>
                     </article>
@@ -209,11 +209,13 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                     >
                       <div class="mb-5 flex items-start justify-between gap-3">
                         <div>
-                          <h2 class="text-base font-semibold text-slate-800">{{ chart.title }}</h2>
-                          <p class="mt-1 text-xs font-bold text-slate-400">{{ chart.subtitle }}</p>
+                          <h2 class="text-body font-semibold text-slate-800">{{ chart.title }}</h2>
+                          <p class="mt-1 text-caption font-bold text-slate-400">
+                            {{ chart.subtitle }}
+                          </p>
                         </div>
                         @if (chart.note) {
-                          <p class="text-xs font-bold text-slate-400">{{ chart.note }}</p>
+                          <p class="text-caption font-bold text-slate-400">{{ chart.note }}</p>
                         }
                       </div>
 
@@ -253,7 +255,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                       </div>
 
                       <div
-                        class="mt-4 flex flex-wrap justify-center gap-5 text-xs font-semibold text-slate-500"
+                        class="mt-4 flex flex-wrap justify-center gap-5 text-caption font-semibold text-slate-500"
                       >
                         @for (serie of chart.legend; track serie.label) {
                           <span class="inline-flex items-center gap-1.5">
@@ -277,8 +279,8 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                   >
                     <span class="material-symbols-outlined text-[30px]">construction</span>
                   </span>
-                  <h2 class="mt-4 text-xl font-semibold text-slate-900">Proximamente</h2>
-                  <p class="mt-2 text-sm font-semibold text-slate-500">
+                  <h2 class="mt-4 text-h5 font-semibold text-slate-900">Proximamente</h2>
+                  <p class="mt-2 text-body-sm font-semibold text-slate-500">
                     Esta seccion queda preparada para reportes y calculadoras electricas.
                   </p>
                 </div>
@@ -581,7 +583,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   tabClass(tab: ElectricTab): string {
     const active = this.activeTab() === tab;
     const base =
-      'relative inline-flex h-full items-center gap-2 border-b-2 text-sm font-semibold transition-colors';
+      'relative inline-flex h-full items-center gap-2 border-b-2 text-body-sm font-semibold transition-colors';
     return active
       ? `${base} border-orange-500 text-orange-600`
       : `${base} border-transparent text-slate-500 hover:text-slate-800`;

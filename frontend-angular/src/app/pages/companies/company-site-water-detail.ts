@@ -218,7 +218,7 @@ type OperationMode = 'realtime' | 'turnos';
                 </a>
 
                 <div class="min-w-0">
-                  <h1 class="truncate text-xl font-semibold leading-tight text-slate-800">
+                  <h1 class="truncate text-h5 font-semibold leading-tight text-slate-800">
                     {{ getSiteHeaderLabel(context) }}
                   </h1>
                   <p class="truncate text-caption-xs font-semibold text-slate-400">
@@ -235,7 +235,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <span [class]="telemetryBadgeIconClass(badge.tone)">{{ badge.icon }}</span>
                     <span class="grid leading-tight">
                       <span class="text-caption-xs font-semibold">{{ badge.title }}</span>
-                      <span class="text-xs font-semibold">{{ badge.value }}</span>
+                      <span class="text-caption font-semibold">{{ badge.value }}</span>
                     </span>
                   </span>
                 }
@@ -388,7 +388,7 @@ type OperationMode = 'realtime' | 'turnos';
                 >
                   <span class="material-symbols-outlined text-[20px]">arrow_back</span>
                 </button>
-                <p class="text-xs font-semibold text-slate-500">Volver al detalle del sitio</p>
+                <p class="text-caption font-semibold text-slate-500">Volver al detalle del sitio</p>
               </div>
               <app-site-variable-settings-panel
                 [siteId]="context.site?.id || ''"
@@ -422,13 +422,13 @@ type OperationMode = 'realtime' | 'turnos';
                       <p class="truncate text-caption-xs font-bold text-slate-400">
                         Sitios / {{ context.subCompany.nombre }} / Datos Historicos
                       </p>
-                      <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
+                      <h2 class="truncate text-h5 font-semibold leading-none text-slate-800">
                         {{ getSiteName(context) }}
                       </h2>
                     </div>
                   </div>
 
-                  <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                  <div class="flex flex-wrap items-center gap-2 text-caption font-bold">
                     <button
                       type="button"
                       (click)="openDownloadModal()"
@@ -447,7 +447,9 @@ type OperationMode = 'realtime' | 'turnos';
                   </div>
                 </div>
 
-                <div class="mt-4 flex flex-wrap items-end gap-2 text-xs font-bold text-slate-500">
+                <div
+                  class="mt-4 flex flex-wrap items-end gap-2 text-caption font-bold text-slate-500"
+                >
                   <label class="grid gap-1">
                     <span>Desde</span>
                     <input
@@ -494,8 +496,8 @@ type OperationMode = 'realtime' | 'turnos';
                 class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3"
               >
                 <div>
-                  <h3 class="text-sm font-semibold text-slate-800">Datos Historicos</h3>
-                  <p class="mt-0.5 text-xs font-semibold text-slate-400">
+                  <h3 class="text-body-sm font-semibold text-slate-800">Datos Historicos</h3>
+                  <p class="mt-0.5 text-caption font-semibold text-slate-400">
                     @if (historyLoading()) {
                       Actualizando registros...
                     } @else if (isHistoryMock()) {
@@ -505,13 +507,13 @@ type OperationMode = 'realtime' | 'turnos';
                     }
                   </p>
                 </div>
-                <p class="text-xs font-semibold text-slate-400">
+                <p class="text-caption font-semibold text-slate-400">
                   {{ currentHistoryPageCount() }} registros en esta pagina
                 </p>
               </div>
 
               <div class="overflow-x-auto">
-                <table class="w-full min-w-[1040px] text-left text-xs">
+                <table class="w-full min-w-[1040px] text-left text-caption">
                   <thead class="bg-slate-50">
                     <tr
                       class="text-caption-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
@@ -553,7 +555,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
 
               <div
-                class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-400"
+                class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-caption font-semibold text-slate-400"
               >
                 <span
                   >Filas por pagina: 50 &middot; {{ historyRangeStart() }}-{{
@@ -596,10 +598,10 @@ type OperationMode = 'realtime' | 'turnos';
                   >
                     Enviados
                   </p>
-                  <p class="mt-1 text-3xl font-semibold leading-none text-emerald-600">
+                  <p class="mt-1 text-h3 font-semibold leading-none text-emerald-600">
                     {{ dgaCountEnviados() }}
                   </p>
-                  <p class="mt-1 text-xs font-semibold text-emerald-500">en rango filtrado</p>
+                  <p class="mt-1 text-caption font-semibold text-emerald-500">en rango filtrado</p>
                 </article>
 
                 <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
@@ -696,7 +698,7 @@ type OperationMode = 'realtime' | 'turnos';
                         ?
                       </summary>
                       <div
-                        class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs shadow-lg"
+                        class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-caption shadow-lg"
                       >
                         <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
                         <p class="mb-3 text-slate-500">
@@ -734,9 +736,7 @@ type OperationMode = 'realtime' | 'turnos';
                     </details>
                   </div>
                   <p
-                    [class]="
-                      'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
-                    "
+                    [class]="'mt-1 text-h3 font-semibold leading-none ' + dgaTasaExitoColors().text"
                   >
                     {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                   </p>
@@ -751,10 +751,10 @@ type OperationMode = 'realtime' | 'turnos';
                   <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
                     Rechazados
                   </p>
-                  <p class="mt-1 text-3xl font-semibold leading-none text-rose-600">
+                  <p class="mt-1 text-h3 font-semibold leading-none text-rose-600">
                     {{ dgaCountRechazados() }}
                   </p>
-                  <p class="mt-1 text-xs font-semibold text-rose-700">
+                  <p class="mt-1 text-caption font-semibold text-rose-700">
                     Rechazados por SNIA + fallidos antes del envío
                   </p>
                 </article>
@@ -783,7 +783,7 @@ type OperationMode = 'realtime' | 'turnos';
                             >progress_activity</span
                           >
                           <p
-                            class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                            class="mt-2 text-caption font-semibold uppercase tracking-[0.16em] text-slate-400"
                           >
                             Cargando datos del pozo
                           </p>
@@ -1383,16 +1383,16 @@ type OperationMode = 'realtime' | 'turnos';
                           <span class="material-symbols-outlined text-[22px]">bar_chart</span>
                         </span>
                         <div class="min-w-0">
-                          <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
+                          <h2 class="truncate text-h5 font-semibold leading-none text-slate-800">
                             Flujo Mensual
                           </h2>
-                          <p class="mt-1 text-sm font-bold text-slate-400">
+                          <p class="mt-1 text-body-sm font-bold text-slate-400">
                             Volumen acumulado en {{ monthlyFlowUnit() }}
                           </p>
                         </div>
                       </div>
 
-                      <div class="flex items-center gap-3 text-xs font-bold text-slate-400">
+                      <div class="flex items-center gap-3 text-caption font-bold text-slate-400">
                         <span class="inline-flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-[16px]">info</span>
                           Últimos 12 meses
@@ -1409,7 +1409,7 @@ type OperationMode = 'realtime' | 'turnos';
 
                     <div class="mt-5 grid grid-cols-[58px_minmax(0,1fr)] gap-2">
                       <div
-                        class="grid h-[250px] grid-rows-5 text-right text-xs font-semibold text-slate-400"
+                        class="grid h-[250px] grid-rows-5 text-right text-caption font-semibold text-slate-400"
                       >
                         @for (tick of monthlyFlowTicks(); track $index) {
                           <span>{{ tick }}</span>
@@ -1490,7 +1490,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <article
                     class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
                   >
-                    <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
+                    <p class="mb-2 text-body-sm font-semibold text-slate-700">Acciones Rápidas</p>
                     <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                       @for (action of quickActions; track action.title) {
                         <button
@@ -1515,13 +1515,13 @@ type OperationMode = 'realtime' | 'turnos';
                           <p
                             [class]="
                               quickActionDisabled(action)
-                                ? 'mt-0.5 text-sm font-semibold text-slate-500'
-                                : 'mt-0.5 text-sm font-semibold text-slate-800'
+                                ? 'mt-0.5 text-body-sm font-semibold text-slate-500'
+                                : 'mt-0.5 text-body-sm font-semibold text-slate-800'
                             "
                           >
                             {{ action.title }}
                           </p>
-                          <p class="text-xs font-medium text-slate-400">
+                          <p class="text-caption font-medium text-slate-400">
                             {{ action.subtitle }}
                           </p>
                         </button>
@@ -1538,13 +1538,13 @@ type OperationMode = 'realtime' | 'turnos';
                   class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 lg:flex-row lg:items-center lg:justify-between"
                 >
                   <div>
-                    <h2 class="text-sm font-semibold text-slate-800">Detalle de Registros</h2>
-                    <p class="mt-1 text-xs font-semibold text-slate-400">
+                    <h2 class="text-body-sm font-semibold text-slate-800">Detalle de Registros</h2>
+                    <p class="mt-1 text-caption font-semibold text-slate-400">
                       Reportes completos enviados a la DGA
                     </p>
                   </div>
 
-                  <div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+                  <div class="flex flex-wrap items-center gap-2 text-caption font-bold">
                     <button
                       type="button"
                       (click)="openDgaDateFilter()"
@@ -1558,7 +1558,7 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <div class="overflow-x-auto">
-                  <table class="w-full min-w-[960px] text-left text-sm">
+                  <table class="w-full min-w-[960px] text-left text-body-sm">
                     <thead style="background:#F8FAFC">
                       <tr style="border-bottom:1px solid #F1F5F9">
                         @for (
@@ -1650,7 +1650,7 @@ type OperationMode = 'realtime' | 'turnos';
                         <tr>
                           <td
                             colspan="5"
-                            class="px-4 py-8 text-center text-sm font-semibold text-slate-400"
+                            class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
                           >
                             Sin registros para el periodo seleccionado.
                           </td>
@@ -1661,7 +1661,7 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <div
-                  class="flex flex-wrap items-center justify-end gap-5 border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500"
+                  class="flex flex-wrap items-center justify-end gap-5 border-t border-slate-100 px-4 py-3 text-caption font-semibold text-slate-500"
                 >
                   <label class="inline-flex items-center gap-2">
                     Filas por pagina:
@@ -1761,10 +1761,10 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
                 <div>
-                  <h2 id="dga-date-filter-title" class="text-lg font-semibold text-slate-800">
+                  <h2 id="dga-date-filter-title" class="text-h6 font-semibold text-slate-800">
                     Filtrar por Período
                   </h2>
-                  <p class="text-xs font-semibold text-slate-400">Registros DGA</p>
+                  <p class="text-caption font-semibold text-slate-400">Registros DGA</p>
                 </div>
               </div>
               <button
@@ -1792,8 +1792,8 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDgaDatePreset(preset.id)"
                       [class]="
                         dgaSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
+                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
@@ -1840,7 +1840,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
                       Rango seleccionado
                     </p>
-                    <p class="mt-0.5 text-sm font-semibold text-slate-700">
+                    <p class="mt-0.5 text-body-sm font-semibold text-slate-700">
                       {{ dgaModalRangeLabel() }}
                     </p>
                   </div>
@@ -1852,7 +1852,7 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2">
-                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
+                  <label class="grid gap-1.5 text-caption font-bold text-slate-600">
                     Desde
                     <input
                       type="date"
@@ -1866,7 +1866,7 @@ type OperationMode = 'realtime' | 'turnos';
                       class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
-                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
+                  <label class="grid gap-1.5 text-caption font-bold text-slate-600">
                     Hasta
                     <input
                       type="date"
@@ -1885,7 +1885,7 @@ type OperationMode = 'realtime' | 'turnos';
             </div>
 
             <div
-              class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 text-sm font-semibold"
+              class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4 text-body-sm font-semibold"
             >
               <button
                 type="button"
@@ -1940,11 +1940,11 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[20px]">download</span>
                 </span>
                 <div>
-                  <h2 id="download-modal-title" class="text-lg font-semibold text-slate-800">
+                  <h2 id="download-modal-title" class="text-h6 font-semibold text-slate-800">
                     Exportar Datos
                   </h2>
                   @if (siteContext(); as ctx) {
-                    <p class="text-xs font-semibold text-slate-400">
+                    <p class="text-caption font-semibold text-slate-400">
                       {{ getSiteName(ctx) }}
                     </p>
                   }
@@ -1975,8 +1975,8 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDownloadPreset(preset.id)"
                       [class]="
                         downloadSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 hover:bg-slate-50'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
+                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
                       "
                     >
                       @if (downloadSelectedPreset() === preset.id) {
@@ -2024,7 +2024,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
                       Rango seleccionado
                     </p>
-                    <p class="mt-0.5 text-sm font-semibold text-slate-700">
+                    <p class="mt-0.5 text-body-sm font-semibold text-slate-700">
                       {{ downloadRangeLabel() }}
                     </p>
                   </div>
@@ -2037,7 +2037,7 @@ type OperationMode = 'realtime' | 'turnos';
 
                 <!-- Custom date range -->
                 <div class="mb-5 grid gap-3 sm:grid-cols-2">
-                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
+                  <label class="grid gap-1.5 text-caption font-bold text-slate-600">
                     Desde
                     <input
                       type="date"
@@ -2051,7 +2051,7 @@ type OperationMode = 'realtime' | 'turnos';
                       class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
-                  <label class="grid gap-1.5 text-xs font-bold text-slate-600">
+                  <label class="grid gap-1.5 text-caption font-bold text-slate-600">
                     Hasta
                     <input
                       type="date"
@@ -2080,8 +2080,8 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="toggleDownloadDataType(dtype.id)"
                       [class]="
                         isDownloadTypeSelected(dtype.id)
-                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-sm font-bold text-primary-container transition-all'
-                          : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-body-sm font-bold text-primary-container transition-all'
+                          : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-body-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
                       "
                     >
                       {{ dtype.label }}
@@ -2101,8 +2101,8 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="downloadFormat.set('csv')"
                     [class]="
                       downloadFormat() === 'csv'
-                        ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700'
-                        : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50'
+                        ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-body-sm font-bold text-emerald-700'
+                        : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
                     "
                   >
                     <span class="material-symbols-outlined text-[16px]">csv</span>
@@ -2117,12 +2117,12 @@ type OperationMode = 'realtime' | 'turnos';
               class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4"
             >
               @if (downloadError()) {
-                <p class="basis-full text-xs font-semibold text-rose-500">
+                <p class="basis-full text-caption font-semibold text-rose-500">
                   {{ downloadError() }}
                 </p>
               }
               <p
-                class="text-xs font-semibold"
+                class="text-caption font-semibold"
                 [class]="downloadError() ? 'text-rose-500' : 'text-slate-400'"
               >
                 {{
@@ -2139,7 +2139,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <button
                   type="button"
                   (click)="closeDownloadModal()"
-                  class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                  class="rounded-lg px-4 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
                 >
                   Cancelar
                 </button>
@@ -2152,7 +2152,7 @@ type OperationMode = 'realtime' | 'turnos';
                     !downloadDateFrom() ||
                     !downloadDateTo()
                   "
-                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span class="material-symbols-outlined text-[17px]">download</span>
                   {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
@@ -2186,7 +2186,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[18px]">description</span>
                 </span>
                 <div>
-                  <h2 id="dga-report-modal-title" class="text-base font-semibold text-slate-800">
+                  <h2 id="dga-report-modal-title" class="text-body font-semibold text-slate-800">
                     Reporte DGA
                   </h2>
                   <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -2330,7 +2330,7 @@ type OperationMode = 'realtime' | 'turnos';
               class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
             >
               <div>
-                <p class="text-xs font-semibold text-slate-700">
+                <p class="text-caption font-semibold text-slate-700">
                   {{ dgaReportRangeLabel() }}
                 </p>
                 <p class="text-caption-xs font-semibold text-slate-400">
@@ -2342,7 +2342,7 @@ type OperationMode = 'realtime' | 'turnos';
                   type="button"
                   (click)="closeDgaReportModal()"
                   [disabled]="dgaReportDownloading()"
-                  class="rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                  class="rounded-lg px-3 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
                 >
                   Cancelar
                 </button>
@@ -2350,7 +2350,7 @@ type OperationMode = 'realtime' | 'turnos';
                   type="button"
                   (click)="generateDgaReport()"
                   [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
-                  class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   @if (dgaReportDownloading()) {
                     <span class="material-symbols-outlined animate-spin text-[16px]">sync</span>
@@ -2383,7 +2383,7 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
               <h2
                 id="dga-report-detail-title"
-                class="text-xl font-semibold uppercase tracking-wide text-slate-800"
+                class="text-h5 font-semibold uppercase tracking-wide text-slate-800"
               >
                 Seguimiento de envío
               </h2>
@@ -2409,7 +2409,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
                       Registro {{ report.recordId }}
                     </p>
-                    <p class="text-lg font-semibold text-slate-800">
+                    <p class="text-h6 font-semibold text-slate-800">
                       {{ report.fecha }}
                     </p>
                   </div>
@@ -2422,10 +2422,10 @@ type OperationMode = 'realtime' | 'turnos';
                     <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
                       Nivel freatico
                     </p>
-                    <p class="mt-2 text-2xl font-semibold text-slate-800">
+                    <p class="mt-2 text-h4 font-semibold text-slate-800">
                       {{ formatDgaNumber(report.nivelFreatico) }}
                     </p>
-                    <p class="mt-1 text-xs font-bold text-slate-400">m</p>
+                    <p class="mt-1 text-caption font-bold text-slate-400">m</p>
                   </div>
                   <div
                     class="border-y border-slate-100 px-5 py-5 text-center sm:border-x sm:border-y-0"
@@ -2433,19 +2433,19 @@ type OperationMode = 'realtime' | 'turnos';
                     <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
                       Caudal
                     </p>
-                    <p class="mt-2 text-2xl font-semibold text-slate-800">
+                    <p class="mt-2 text-h4 font-semibold text-slate-800">
                       {{ formatDgaNumber(report.caudal) }}
                     </p>
-                    <p class="mt-1 text-xs font-bold text-slate-400">l/s</p>
+                    <p class="mt-1 text-caption font-bold text-slate-400">l/s</p>
                   </div>
                   <div class="px-5 py-5 text-center">
                     <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
                       Totalizado
                     </p>
-                    <p class="mt-2 text-2xl font-semibold text-slate-800">
+                    <p class="mt-2 text-h4 font-semibold text-slate-800">
                       {{ formatDgaInteger(report.totalizador) }}
                     </p>
-                    <p class="mt-1 text-xs font-bold text-slate-400">m&sup3;</p>
+                    <p class="mt-1 text-caption font-bold text-slate-400">m&sup3;</p>
                   </div>
                 </div>
 
@@ -2462,14 +2462,14 @@ type OperationMode = 'realtime' | 'turnos';
                       >
                         Envío a DGA
                       </p>
-                      <p class="text-sm font-semibold text-slate-800">
+                      <p class="text-body-sm font-semibold text-slate-800">
                         {{ report.enviadoDga }}
                       </p>
                     </div>
                   </div>
 
                   <span
-                    class="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700"
+                    class="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-caption font-semibold text-emerald-700"
                   >
                     <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                     Completado
@@ -2480,18 +2480,18 @@ type OperationMode = 'realtime' | 'turnos';
                   <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
                     Respuesta del software de DGA
                   </p>
-                  <p class="mt-4 text-sm font-semibold text-slate-700">Respuesta</p>
-                  <p class="mt-1 text-sm text-slate-600">
+                  <p class="mt-4 text-body-sm font-semibold text-slate-700">Respuesta</p>
+                  <p class="mt-1 text-body-sm text-slate-600">
                     {{ report.respuesta }}
                   </p>
-                  <p class="mt-4 text-sm font-semibold text-slate-700">N&deg; Comprobante</p>
+                  <p class="mt-4 text-body-sm font-semibold text-slate-700">N&deg; Comprobante</p>
                   @if (report.comprobante) {
                     @if (comprobanteUrl(report.comprobante); as url) {
                       <a
                         [href]="url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-primary-container hover:text-primary-container hover:underline"
+                        class="mt-1 inline-flex items-center gap-2 text-body-sm font-bold text-primary-container hover:text-primary-container hover:underline"
                         [title]="'Abrir en portal SNIA: ' + url"
                       >
                         <span class="font-mono">{{ report.comprobante }}</span>
@@ -2499,14 +2499,14 @@ type OperationMode = 'realtime' | 'turnos';
                       </a>
                     } @else {
                       <p
-                        class="mt-1 inline-flex items-center gap-2 text-sm font-bold text-slate-600"
+                        class="mt-1 inline-flex items-center gap-2 text-body-sm font-bold text-slate-600"
                         [title]="'Carga el número de obra del pozo para habilitar el link al portal SNIA'"
                       >
                         <span class="font-mono">{{ report.comprobante }}</span>
                       </p>
                     }
                   } @else {
-                    <p class="mt-1 text-sm italic text-slate-400">sin comprobante</p>
+                    <p class="mt-1 text-body-sm italic text-slate-400">sin comprobante</p>
                   }
                 </div>
               </div>
@@ -4304,7 +4304,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   getDetailTabClass(tab: DetailTab): string {
     const active = this.activeDetailTab() === tab;
     const base =
-      'relative inline-flex h-9 items-center gap-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
+      'relative inline-flex h-9 items-center gap-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
     return active
       ? `${base} font-semibold text-primary-container`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;
@@ -4312,7 +4312,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   getOperationModeClass(mode: OperationMode): string {
     const active = this.operationMode() === mode;
-    const base = 'inline-flex h-11 items-center gap-2 border-b-2 px-5 text-sm transition-colors';
+    const base =
+      'inline-flex h-11 items-center gap-2 border-b-2 px-5 text-body-sm transition-colors';
     return active
       ? `${base} border-primary-tint-55 bg-primary-tint-08 font-semibold text-primary-container`
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;

@@ -30,7 +30,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <!-- Header con selector de rango -->
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
-            <h3 class="text-sm font-semibold text-slate-800">Gráficos de Tendencia</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Gráficos de Tendencia</h3>
             <p class="mt-0.5 text-caption-xs text-slate-400">{{ chartSubtitle() }}</p>
           </div>
 
@@ -144,7 +144,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div class="p-5 xl:border-r xl:border-slate-100">
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p class="text-xs font-semibold text-slate-700">Nivel Freático</p>
+                <p class="text-caption font-semibold text-slate-700">Nivel Freático</p>
                 <p class="text-caption-xs text-slate-400">m bajo superficie</p>
               </div>
               <button
@@ -251,7 +251,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div class="p-5">
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
-                <p class="text-xs font-semibold text-slate-700">Caudal Instantáneo</p>
+                <p class="text-caption font-semibold text-slate-700">Caudal Instantáneo</p>
                 <p class="text-caption-xs text-slate-400">L/s</p>
               </div>
               <button
@@ -360,7 +360,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold text-slate-800">Flujo Mensual</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Flujo Mensual</h3>
             <p class="mt-0.5 text-caption-xs text-slate-400">
               Últimos 12 meses · {{ mensualUnit() }} totales por mes
             </p>
@@ -457,7 +457,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h3 class="text-sm font-semibold text-slate-800">Flujo Diario</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Flujo Diario</h3>
             <p class="mt-0.5 text-caption-xs text-slate-400">
               Últimos 30 días · {{ diarioUnit() }}/día · días sin operación en gris
             </p>
@@ -548,7 +548,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="flex items-start justify-between gap-3 p-5 pb-0">
           <div>
             <div class="flex items-center gap-2">
-              <h3 class="text-sm font-semibold text-slate-800">
+              <h3 class="text-body-sm font-semibold text-slate-800">
                 Resumen Operacional {{ jornadaInicio() }}–{{ jornadaFin() }}
               </h3>
               <button

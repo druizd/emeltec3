@@ -39,7 +39,7 @@ function dateToUtcIsoEnd(date: string): string {
             <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Rango
             </p>
-            <p class="text-sm font-bold text-slate-700">{{ desde() }} → {{ hasta() }}</p>
+            <p class="text-body-sm font-bold text-slate-700">{{ desde() }} → {{ hasta() }}</p>
           </div>
         </div>
         <div class="flex items-center gap-2 text-caption">
@@ -78,7 +78,7 @@ function dateToUtcIsoEnd(date: string): string {
         <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
           Total de lecturas en rango
         </p>
-        <p class="mt-1 text-3xl font-semibold text-slate-800">
+        <p class="mt-1 text-h3 font-semibold text-slate-800">
           {{ data().total_lecturas.toLocaleString('es-CL') }}
         </p>
         <p class="text-caption-xs text-slate-400">
@@ -88,7 +88,7 @@ function dateToUtcIsoEnd(date: string): string {
 
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[700px] text-left text-sm">
+          <table class="w-full min-w-[700px] text-left text-body-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
@@ -131,13 +131,13 @@ function dateToUtcIsoEnd(date: string): string {
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
                 <tr>
-                  <td colspan="7" class="px-3 py-6 text-center text-sm text-slate-400">
+                  <td colspan="7" class="px-3 py-6 text-center text-body-sm text-slate-400">
                     Calculando…
                   </td>
                 </tr>
               } @else if (data().variables.length === 0) {
                 <tr>
-                  <td colspan="7" class="px-3 py-6 text-center text-sm italic text-slate-400">
+                  <td colspan="7" class="px-3 py-6 text-center text-body-sm italic text-slate-400">
                     Sin variables configuradas o sin lecturas en el rango.
                   </td>
                 </tr>

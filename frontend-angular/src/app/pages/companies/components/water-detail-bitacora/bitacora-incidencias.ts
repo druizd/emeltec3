@@ -310,7 +310,7 @@ function emptyDraft(): DraftIncidencia {
               class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
             >
               <span class="material-symbols-outlined text-4xl text-slate-300">checklist</span>
-              <p class="mt-2 text-sm font-semibold text-slate-400">
+              <p class="mt-2 text-body-sm font-semibold text-slate-400">
                 Sin incidencias con estos filtros
               </p>
             </div>
@@ -331,7 +331,7 @@ function emptyDraft(): DraftIncidencia {
             type="text"
             [(ngModel)]="draft.titulo"
             placeholder="Ej. Tablero eléctrico con sobrecalentamiento"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
         </div>
 
@@ -343,7 +343,7 @@ function emptyDraft(): DraftIncidencia {
           <textarea
             rows="3"
             [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           ></textarea>
         </div>
 
@@ -355,7 +355,7 @@ function emptyDraft(): DraftIncidencia {
             >
             <select
               [(ngModel)]="draft.origen"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
             >
               @for (o of origenes; track o) {
                 <option [value]="o">{{ origenLabel(o) }}</option>
@@ -369,7 +369,7 @@ function emptyDraft(): DraftIncidencia {
             >
             <select
               [(ngModel)]="draft.categoria"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
             >
               @for (c of categorias; track c) {
                 <option [value]="c">{{ categoriaLabel(c) }}</option>
@@ -383,7 +383,7 @@ function emptyDraft(): DraftIncidencia {
             >
             <select
               [(ngModel)]="draft.gravedad"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
             >
               @for (g of gravedades; track g) {
                 <option [value]="g">{{ gravedadLabel(g) }}</option>
@@ -397,7 +397,7 @@ function emptyDraft(): DraftIncidencia {
             >
             <select
               [(ngModel)]="draft.estado"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
             >
               @for (e of estados; track e) {
                 <option [value]="e">{{ estadoLabel(e) }}</option>
@@ -413,7 +413,7 @@ function emptyDraft(): DraftIncidencia {
           >
           <select
             [(ngModel)]="draft.tecnico_id"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
           >
             <option [ngValue]="null">Sin asignar</option>
             @for (u of usuariosEmpresa(); track u.id) {
@@ -432,7 +432,7 @@ function emptyDraft(): DraftIncidencia {
               type="number"
               [(ngModel)]="draft.alerta_evento_id"
               placeholder="Ej. 123"
-              class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700"
+              class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700"
             />
           </div>
         }

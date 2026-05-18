@@ -24,7 +24,7 @@ import type { SiteRecord } from '@emeltec/shared';
           <p
             [class]="
               variant === 'superadmin'
-                ? 'text-slate-500 text-sm font-semibold'
+                ? 'text-slate-500 text-body-sm font-semibold'
                 : 'text-slate-400 font-bold uppercase tracking-widest'
             "
           >

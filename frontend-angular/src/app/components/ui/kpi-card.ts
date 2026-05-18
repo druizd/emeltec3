@@ -65,7 +65,7 @@ export class KpiCardComponent {
   cardToneClass(): string {
     switch (this.tone) {
       case 'primary':
-        return 'border-primary-tint-25 shadow-[0_1px_4px_rgba(13,175,189,0.08)] hover:shadow-[0_4px_16px_rgba(13,175,189,0.15)]';
+        return 'border-primary-tint-25 shadow-primary-soft hover:shadow-primary-glow-lg';
       case 'success':
         return 'border-[rgba(34,197,94,0.20)] shadow-[0_1px_4px_rgba(15,23,42,0.05)] hover:shadow-[0_4px_16px_rgba(34,197,94,0.12)]';
       case 'danger':
