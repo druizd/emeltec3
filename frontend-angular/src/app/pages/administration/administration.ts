@@ -23,6 +23,7 @@ import {
 import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
+import { AdminPaginationComponent } from './components/admin-pagination';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -298,7 +299,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 @Component({
   selector: 'app-administration',
   standalone: true,
-  imports: [CommonModule, FormsModule, KpiCardComponent],
+  imports: [CommonModule, FormsModule, KpiCardComponent, AdminPaginationComponent],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
       <div class="mx-auto flex max-w-[1500px] flex-col gap-5">
@@ -622,49 +623,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </tbody>
                         </table>
                       </div>
-                      <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
-                      >
-                        <p class="text-xs font-bold text-slate-400">
-                          Mostrando
-                          {{ paginationStart(filteredCompanies().length, companyPage()) }}-{{
-                            paginationEnd(filteredCompanies().length, companyPage())
-                          }}
-                          de {{ filteredCompanies().length }}
-                        </p>
-                        @if (totalPages(filteredCompanies().length) > 1) {
-                          <div class="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              (click)="setPage('empresas', companyPage() - 1)"
-                              [disabled]="companyPage() === 1"
-                              class="pagination-button"
-                            >
-                              Anterior
-                            </button>
-                            @for (
-                              page of paginationPages(filteredCompanies().length, companyPage());
-                              track page
-                            ) {
-                              <button
-                                type="button"
-                                (click)="setPage('empresas', page)"
-                                [class]="paginationButtonClass(companyPage() === page)"
-                              >
-                                {{ page }}
-                              </button>
-                            }
-                            <button
-                              type="button"
-                              (click)="setPage('empresas', companyPage() + 1)"
-                              [disabled]="companyPage() >= totalPages(filteredCompanies().length)"
-                              class="pagination-button"
-                            >
-                              Siguiente
-                            </button>
-                          </div>
-                        }
-                      </div>
+                      <app-admin-pagination
+                        [total]="filteredCompanies().length"
+                        [page]="companyPage()"
+                        (pageChange)="setPage('empresas', $event)"
+                      ></app-admin-pagination>
                     </div>
                   </div>
                 </section>
@@ -852,54 +815,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </tbody>
                         </table>
                       </div>
-                      <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
-                      >
-                        <p class="text-xs font-bold text-slate-400">
-                          Mostrando
-                          {{ paginationStart(filteredSubCompanies().length, subCompanyPage()) }}-{{
-                            paginationEnd(filteredSubCompanies().length, subCompanyPage())
-                          }}
-                          de {{ filteredSubCompanies().length }}
-                        </p>
-                        @if (totalPages(filteredSubCompanies().length) > 1) {
-                          <div class="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              (click)="setPage('subempresas', subCompanyPage() - 1)"
-                              [disabled]="subCompanyPage() === 1"
-                              class="pagination-button"
-                            >
-                              Anterior
-                            </button>
-                            @for (
-                              page of paginationPages(
-                                filteredSubCompanies().length,
-                                subCompanyPage()
-                              );
-                              track page
-                            ) {
-                              <button
-                                type="button"
-                                (click)="setPage('subempresas', page)"
-                                [class]="paginationButtonClass(subCompanyPage() === page)"
-                              >
-                                {{ page }}
-                              </button>
-                            }
-                            <button
-                              type="button"
-                              (click)="setPage('subempresas', subCompanyPage() + 1)"
-                              [disabled]="
-                                subCompanyPage() >= totalPages(filteredSubCompanies().length)
-                              "
-                              class="pagination-button"
-                            >
-                              Siguiente
-                            </button>
-                          </div>
-                        }
-                      </div>
+                      <app-admin-pagination
+                        [total]="filteredSubCompanies().length"
+                        [page]="subCompanyPage()"
+                        (pageChange)="setPage('subempresas', $event)"
+                      ></app-admin-pagination>
                     </div>
                   </div>
                 </section>
@@ -1173,48 +1093,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </tbody>
                         </table>
                       </div>
-                      <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
-                      >
-                        <p class="text-xs font-bold text-slate-400">
-                          Mostrando {{ paginationStart(filteredSites().length, sitePage()) }}-{{
-                            paginationEnd(filteredSites().length, sitePage())
-                          }}
-                          de {{ filteredSites().length }}
-                        </p>
-                        @if (totalPages(filteredSites().length) > 1) {
-                          <div class="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              (click)="setPage('sitios', sitePage() - 1)"
-                              [disabled]="sitePage() === 1"
-                              class="pagination-button"
-                            >
-                              Anterior
-                            </button>
-                            @for (
-                              page of paginationPages(filteredSites().length, sitePage());
-                              track page
-                            ) {
-                              <button
-                                type="button"
-                                (click)="setPage('sitios', page)"
-                                [class]="paginationButtonClass(sitePage() === page)"
-                              >
-                                {{ page }}
-                              </button>
-                            }
-                            <button
-                              type="button"
-                              (click)="setPage('sitios', sitePage() + 1)"
-                              [disabled]="sitePage() >= totalPages(filteredSites().length)"
-                              class="pagination-button"
-                            >
-                              Siguiente
-                            </button>
-                          </div>
-                        }
-                      </div>
+                      <app-admin-pagination
+                        [total]="filteredSites().length"
+                        [page]="sitePage()"
+                        (pageChange)="setPage('sitios', $event)"
+                      ></app-admin-pagination>
                     </div>
                   </div>
                 </section>
@@ -1292,48 +1175,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                           </tbody>
                         </table>
                       </div>
-                      <div
-                        class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
-                      >
-                        <p class="text-xs font-bold text-slate-400">
-                          Mostrando {{ paginationStart(filteredDevices().length, devicePage()) }}-{{
-                            paginationEnd(filteredDevices().length, devicePage())
-                          }}
-                          de {{ filteredDevices().length }}
-                        </p>
-                        @if (totalPages(filteredDevices().length) > 1) {
-                          <div class="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              (click)="setPage('equipos', devicePage() - 1)"
-                              [disabled]="devicePage() === 1"
-                              class="pagination-button"
-                            >
-                              Anterior
-                            </button>
-                            @for (
-                              page of paginationPages(filteredDevices().length, devicePage());
-                              track page
-                            ) {
-                              <button
-                                type="button"
-                                (click)="setPage('equipos', page)"
-                                [class]="paginationButtonClass(devicePage() === page)"
-                              >
-                                {{ page }}
-                              </button>
-                            }
-                            <button
-                              type="button"
-                              (click)="setPage('equipos', devicePage() + 1)"
-                              [disabled]="devicePage() >= totalPages(filteredDevices().length)"
-                              class="pagination-button"
-                            >
-                              Siguiente
-                            </button>
-                          </div>
-                        }
-                      </div>
+                      <app-admin-pagination
+                        [total]="filteredDevices().length"
+                        [page]="devicePage()"
+                        (pageChange)="setPage('equipos', $event)"
+                      ></app-admin-pagination>
                     </div>
                   </div>
                 </section>
@@ -1504,39 +1350,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--color-on-surface-muted);
-      }
-
-      /* Pagination ----------------------------------------------- */
-      .pagination-button {
-        display: inline-flex;
-        min-height: 32px;
-        min-width: 32px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 6px;
-        border: 1px solid var(--color-outline-variant);
-        background: var(--color-surface);
-        padding: 0 10px;
-        font-family: var(--font-body);
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-on-surface-variant);
-        transition: all 160ms ease;
-        cursor: pointer;
-      }
-
-      .pagination-button:hover:not(:disabled) {
-        border-color: rgba(13, 175, 189, 0.30);
-        color: var(--color-primary-container);
-      }
-
-      .pagination-button:active:not(:disabled) {
-        transform: scale(0.97);
-      }
-
-      .pagination-button:disabled {
-        cursor: not-allowed;
-        opacity: 0.4;
       }
 
       /* Buttons --------------------------------------------------- */
@@ -1918,31 +1731,8 @@ export class AdministrationComponent implements OnInit {
     dialog.onConfirm();
   }
 
-  totalPages(totalItems: number): number {
+  private totalPages(totalItems: number): number {
     return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
-  }
-
-  paginationPages(totalItems: number, currentPage: number): number[] {
-    const total = this.totalPages(totalItems);
-    const start = Math.max(1, Math.min(currentPage - 2, Math.max(1, total - 4)));
-    const end = Math.min(total, start + 4);
-    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
-  }
-
-  paginationStart(totalItems: number, currentPage: number): number {
-    if (!totalItems) return 0;
-    return (this.clampPage(currentPage, totalItems) - 1) * ADMIN_PAGE_SIZE + 1;
-  }
-
-  paginationEnd(totalItems: number, currentPage: number): number {
-    return Math.min(totalItems, this.clampPage(currentPage, totalItems) * ADMIN_PAGE_SIZE);
-  }
-
-  paginationButtonClass(active: boolean): string {
-    const base = 'pagination-button';
-    return active
-      ? `${base} border-[rgba(13,175,189,0.45)] bg-[rgba(13,175,189,0.10)] text-primary-container`
-      : base;
   }
 
   companyFormDisabled(): boolean {
