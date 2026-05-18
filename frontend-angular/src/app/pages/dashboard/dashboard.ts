@@ -180,7 +180,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Nombre + " · OB-XXXX-XXX" si el pozo tiene obra_dga. */
   private composeName(site: SiteRecord): string {
-    const base = this.pickFirst(site, ['descripcion', 'nombre', 'name', 'codigo']) || 'Instalacion';
+    const base = this.pickFirst(site, ['descripcion', 'nombre', 'name', 'codigo']) || 'Instalación';
     const obra = site.pozo_config?.obra_dga?.trim();
     return obra ? `${base} · ${obra}` : base;
   }

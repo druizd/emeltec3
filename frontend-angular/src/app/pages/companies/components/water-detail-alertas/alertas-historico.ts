@@ -265,7 +265,7 @@ export class AlertasHistoricoComponent {
       'Severidad',
       'Inicio',
       'Cierre',
-      'Duracion',
+      'Duración',
       'Resolvio',
       'Incidencia',
     ];

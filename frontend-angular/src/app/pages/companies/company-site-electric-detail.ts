@@ -369,7 +369,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     },
     {
       title: 'Factor de Potencia',
-      subtitle: 'Relacion potencia activa / aparente (cos phi)',
+      subtitle: 'Relación potencia activa / aparente (cos phi)',
       note: 'Linea roja: meta 0.93',
       legend: [
         {

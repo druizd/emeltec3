@@ -274,7 +274,7 @@ export class BitacoraAuditLogComponent {
   exportarCsv(): void {
     const rows = this.entradas();
     if (!rows.length) return;
-    const header = ['Fecha', 'Usuario', 'Rol', 'Accion', 'Recurso', 'Target ID', 'Status', 'IP'];
+    const header = ['Fecha', 'Usuario', 'Rol', 'Acción', 'Recurso', 'Target ID', 'Status', 'IP'];
     const lines = rows.map((e) =>
       [
         this.formatFecha(e.ts),

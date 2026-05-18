@@ -86,7 +86,7 @@ const COMMON_TRANSFORMS: SiteTypeTransformOption[] = [
     id: 'lineal',
     label: 'Lineal',
     description:
-      'Aplica resultado = raw × factor ÷ divisor + offset. Ejemplo: si el equipo envía 1234 y querés mostrar 12.34, usa divisor = 100.',
+      'Aplica resultado = raw × factor ÷ divisor + offset. Ejemplo: si el equipo envía 1234 y quieres mostrar 12.34, usa divisor = 100.',
     enabled: true,
   },
   {

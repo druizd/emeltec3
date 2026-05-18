@@ -895,8 +895,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       >
                         {{
                           selectedSite()?.ubicacion
-                            ? 'Ubicacion: ' + selectedSite()?.ubicacion
-                            : 'Sin ubicacion registrada'
+                            ? 'Ubicación: ' + selectedSite()?.ubicacion
+                            : 'Sin ubicación registrada'
                         }}
                       </div>
                     }

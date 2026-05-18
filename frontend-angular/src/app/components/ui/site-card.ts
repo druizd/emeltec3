@@ -144,7 +144,7 @@ export class SiteCardComponent {
    * y tiene obra_dga cargada. Si no, solo descripción.
    */
   getSiteTitle(): string {
-    const base = this.pickFirst(['descripcion', 'nombre', 'name', 'codigo']) ?? 'Instalacion';
+    const base = this.pickFirst(['descripcion', 'nombre', 'name', 'codigo']) ?? 'Instalación';
     const obra = this.getObraDga();
     return obra ? `${base} · ${obra}` : base;
   }
@@ -167,7 +167,7 @@ export class SiteCardComponent {
   getContextLine(): string {
     return (
       this.pickFirst(['empresa_nombre', 'company_name', 'sub_empresa_nombre', 'subCompanyName']) ??
-      (this.contextLabel || 'Sin ubicacion')
+      (this.contextLabel || 'Sin ubicación')
     );
   }
 

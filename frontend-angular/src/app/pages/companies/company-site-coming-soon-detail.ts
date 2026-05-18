@@ -87,7 +87,7 @@ interface SiteContext {
                         Dashboard {{ typeUi().label }} proximamente
                       </h2>
                       <p class="mt-3 text-sm font-semibold leading-6 text-slate-500">
-                        La ruta y la configuracion de variables ya quedan separadas por tipo de
+                        La ruta y la configuración de variables ya quedan separadas por tipo de
                         instalacion. Esta vista puede crecer con sus propios graficos, calculos y
                         alertas sin tocar el dashboard de pozo.
                       </p>
@@ -195,7 +195,7 @@ export class CompanySiteComingSoonDetailComponent implements OnInit {
   }
 
   siteName(context: SiteContext): string {
-    return context.site.descripcion || context.subCompany.nombre || 'Instalacion';
+    return context.site.descripcion || context.subCompany.nombre || 'Instalación';
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {

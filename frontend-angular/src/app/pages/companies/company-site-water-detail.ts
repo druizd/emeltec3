@@ -2359,7 +2359,7 @@ type OperationMode = 'realtime' | 'turnos';
                     </span>
                     <div>
                       <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Envio a DGA
+                        Envío a DGA
                       </p>
                       <p class="text-sm font-semibold text-slate-800">
                         {{ report.enviadoDga }}
@@ -3199,7 +3199,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   getSiteName(context: SiteContext): string {
-    return context.site?.descripcion || context.subCompany?.nombre || 'Instalacion de agua';
+    return context.site?.descripcion || context.subCompany?.nombre || 'Instalación de agua';
   }
 
   /** Header largo: "Nombre · OB-XXXX-XXX" si el sitio tiene obra_dga. */
@@ -3510,7 +3510,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       totalizador,
       estado: 'Enviado',
       enviadoDga: '30/04/2026 20:00',
-      respuesta: 'Medicion subterranea ingresada correctamente',
+      respuesta: 'Medición subterránea ingresada correctamente',
       comprobante: '3qaonemdN5SkOozAE9TZAdjFo3CVr4Wg',
     };
   }

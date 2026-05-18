@@ -40,7 +40,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
   },
   {
     key: 'Riles',
-    label: 'Generacion de Riles',
+    label: 'Generación de Riles',
     icon: 'waves',
     color: '#22c55e',
     bg: 'rgba(34,197,94,0.08)',
