@@ -3,20 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, firstValueFrom, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
-import {
-  AdministrationService,
-  CreateVariableMapPayload,
-  PozoConfig,
-  SiteRecord,
-  SiteTypeCatalogItem,
-  SiteTypeCatalogResponse,
-  SiteTypeRoleOption,
-  SiteTypeTransformOption,
-  SiteVariable,
-  SiteVariablesPayload,
-  VariableMapping,
-} from '../../services/administration.service';
+import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
 import { CompanyService, ContadorMensualPoint } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
 import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
@@ -26,6 +13,7 @@ import { WaterDetailAnalisisComponent } from './components/water-detail-analisis
 import { CHILE_TIME_ZONE } from '../../shared/timezone';
 import { getSiteTypeUi, siteTypesForModule } from '../../shared/site-type-ui';
 import { DgaGenerarReporteModalComponent } from './components/dga-generar-reporte-modal/dga-generar-reporte-modal';
+import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
@@ -180,349 +168,7 @@ interface SiteDashboardData {
 
 type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
 type OperationMode = 'realtime' | 'turnos';
-type SettingsStatusType = 'success' | 'error' | '';
 
-interface SettingsStatus {
-  type: SettingsStatusType;
-  message: string;
-}
-
-interface VariableForm {
-  mapId: string;
-  alias: string;
-  d1: string;
-  d2: string;
-  tipo_dato: string;
-  unidad: string;
-  rol_dashboard: string;
-  transformacion: string;
-  factor: string;
-  /** Divisor UI-only: se combina con factor al guardar (factor_efectivo = factor / divisor). */
-  divisor: string;
-  offset: string;
-  wordSwap: string;
-  sandboxRaw: string;
-}
-
-interface PozoConfigForm {
-  profundidad_pozo_m: string;
-  profundidad_sensor_m: string;
-}
-
-const DEFAULT_VARIABLE_FORM: VariableForm = {
-  mapId: '',
-  alias: '',
-  d1: '',
-  d2: '',
-  tipo_dato: 'FLOAT',
-  unidad: '',
-  rol_dashboard: 'generico',
-  transformacion: 'directo',
-  factor: '1',
-  divisor: '1',
-  offset: '0',
-  wordSwap: 'false',
-  sandboxRaw: '',
-};
-
-const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
-  pozo: {
-    id: 'pozo',
-    label: 'Pozo',
-    roles: [
-      {
-        id: 'nivel',
-        label: 'Nivel',
-        unitHint: 'm',
-        description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.',
-      },
-      {
-        id: 'caudal',
-        label: 'Caudal',
-        unitHint: 'L/s',
-        description: 'Flujo instantaneo.',
-      },
-      {
-        id: 'totalizador',
-        label: 'Totalizador',
-        unitHint: 'm3',
-        description: 'Volumen acumulado.',
-      },
-      {
-        id: 'seÃ±al',
-        label: 'SeÃ±al',
-        unitHint: '%',
-        description: 'Intensidad de seÃ±al.',
-      },
-      {
-        id: 'generico',
-        label: 'Generico',
-        unitHint: '',
-        description: 'Variable auxiliar.',
-      },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-      {
-        id: 'uint32_registros',
-        label: 'D1 * D2',
-        description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  electrico: {
-    id: 'electrico',
-    label: 'Electrico',
-    roles: [
-      {
-        id: 'energia',
-        label: 'Energia',
-        unitHint: 'kWh',
-        description: 'Energia acumulada o consumida.',
-      },
-      {
-        id: 'estado',
-        label: 'Estado',
-        unitHint: '',
-        description: 'Estado operativo.',
-      },
-      {
-        id: 'temperatura',
-        label: 'Temperatura',
-        unitHint: 'C',
-        description: 'Temperatura asociada.',
-      },
-      {
-        id: 'seÃ±al',
-        label: 'SeÃ±al',
-        unitHint: '%',
-        description: 'Intensidad de seÃ±al.',
-      },
-      {
-        id: 'generico',
-        label: 'Generico',
-        unitHint: '',
-        description: 'Variable auxiliar.',
-      },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-      {
-        id: 'uint32_registros',
-        label: 'D1 * D2',
-        description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  riles: {
-    id: 'riles',
-    label: 'Riles',
-    roles: [
-      {
-        id: 'caudal',
-        label: 'Caudal',
-        unitHint: 'L/s',
-        description: 'Flujo instantaneo.',
-      },
-      {
-        id: 'totalizador',
-        label: 'Totalizador',
-        unitHint: 'm3',
-        description: 'Volumen acumulado.',
-      },
-      {
-        id: 'presion',
-        label: 'Presion',
-        unitHint: 'bar',
-        description: 'Presion de proceso.',
-      },
-      {
-        id: 'seÃ±al',
-        label: 'SeÃ±al',
-        unitHint: '%',
-        description: 'Intensidad de seÃ±al.',
-      },
-      {
-        id: 'generico',
-        label: 'Generico',
-        unitHint: '',
-        description: 'Variable auxiliar.',
-      },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-      {
-        id: 'uint32_registros',
-        label: 'D1 * D2',
-        description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  proceso: {
-    id: 'proceso',
-    label: 'Proceso',
-    roles: [
-      {
-        id: 'caudal',
-        label: 'Caudal',
-        unitHint: 'L/s',
-        description: 'Flujo instantaneo.',
-      },
-      {
-        id: 'presion',
-        label: 'Presion',
-        unitHint: 'bar',
-        description: 'Presion de proceso.',
-      },
-      {
-        id: 'temperatura',
-        label: 'Temperatura',
-        unitHint: 'C',
-        description: 'Temperatura de proceso.',
-      },
-      {
-        id: 'seÃ±al',
-        label: 'SeÃ±al',
-        unitHint: '%',
-        description: 'Intensidad de seÃ±al.',
-      },
-      {
-        id: 'generico',
-        label: 'Generico',
-        unitHint: '',
-        description: 'Variable auxiliar.',
-      },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-      {
-        id: 'uint32_registros',
-        label: 'D1 * D2',
-        description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  generico: {
-    id: 'generico',
-    label: 'Generico',
-    roles: [
-      {
-        id: 'generico',
-        label: 'Generico',
-        unitHint: '',
-        description: 'Variable auxiliar sin uso especial.',
-      },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-      {
-        id: 'uint32_registros',
-        label: 'D1 * D2',
-        description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-};
 
 @Component({
   selector: 'app-company-site-water-detail',
@@ -537,6 +183,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     WaterDetailBitacoraComponent,
     WaterDetailAnalisisComponent,
     DgaGenerarReporteModalComponent,
+    SiteVariableSettingsPanelComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -702,560 +349,26 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
           </section>
 
           @if (settingsPanelOpen()) {
-            <section
-              class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
-            >
-              <div class="border-b border-slate-100 px-4 py-3">
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div class="flex min-w-0 items-center gap-3">
-                    <button
-                      type="button"
-                      (click)="closeSettingsPanel()"
-                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
-                      aria-label="Volver al detalle del sitio"
-                    >
-                      <span class="material-symbols-outlined text-[20px]">arrow_back</span>
-                    </button>
-                    <span
-                      class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[rgba(13,175,189,0.08)] text-primary-container"
-                    >
-                      <span class="material-symbols-outlined text-[22px]">settings</span>
-                    </span>
-                    <div class="min-w-0">
-                      <p class="truncate text-[11px] font-bold text-slate-400">
-                        Configuracion del sitio /
-                        {{ siteTypeLabel(settingsSiteType()) }}
-                      </p>
-                      <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
-                        {{ getSiteName(context) }}
-                      </h2>
-                    </div>
-                  </div>
-
-                  <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
-                    <span
-                      class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">memory</span>
-                      {{ settingsSiteSerial() || 'Sin serial' }}
-                    </span>
-                    <button
-                      type="button"
-                      (click)="abrirDgaReporteModal()"
-                      class="inline-flex items-center gap-1.5 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 h-8 text-[12px] font-semibold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
-                      aria-label="Configurar reporte DGA"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">description</span>
-                      Configurar reporte DGA
-                    </button>
-                    <button
-                      type="button"
-                      (click)="reloadSettingsPanel()"
-                      [disabled]="settingsLoading()"
-                      class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Recargar configuracion"
-                    >
-                      <span
-                        class="material-symbols-outlined text-[18px]"
-                        [class.animate-spin]="settingsLoading()"
-                        >refresh</span
-                      >
-                    </button>
-                  </div>
-                </div>
-
-                @if (settingsStatus().message) {
-                  <div [class]="settingsStatusClass()">
-                    <span class="material-symbols-outlined text-[18px]">{{
-                      settingsStatus().type === 'success' ? 'check_circle' : 'error'
-                    }}</span>
-                    {{ settingsStatus().message }}
-                  </div>
-                }
+            <div class="space-y-3">
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  (click)="closeSettingsPanel()"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                  aria-label="Volver al detalle del sitio"
+                >
+                  <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                </button>
+                <p class="text-xs font-semibold text-slate-500">Volver al detalle del sitio</p>
               </div>
-
-              @if (settingsLoading()) {
-                <div class="flex min-h-[360px] items-center justify-center bg-slate-50/60">
-                  <div class="text-center">
-                    <span
-                      class="material-symbols-outlined animate-spin text-[34px] text-primary-container"
-                      >progress_activity</span
-                    >
-                    <p
-                      class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
-                    >
-                      Cargando configuracion
-                    </p>
-                  </div>
-                </div>
-              } @else {
-                <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
-                  <div class="space-y-4">
-                    @if (isSettingsPozo()) {
-                      <section
-                        class="rounded-xl border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4"
-                      >
-                        <div class="mb-4 flex items-start gap-3">
-                          <span
-                            class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
-                            >water_drop</span
-                          >
-                          <div>
-                            <h3 class="text-sm font-semibold text-slate-900">
-                              Configuracion manual del pozo
-                            </h3>
-                            <p class="text-xs font-semibold text-primary-container">
-                              Campos opcionales para proyectar el nivel freatico.
-                            </p>
-                          </div>
-                        </div>
-
-                        <div class="grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Profundidad total del pozo (m)</label
-                            >
-                            <input
-                              type="number"
-                              step="any"
-                              name="settings-pozo-depth"
-                              [ngModel]="pozoConfigForm().profundidad_pozo_m"
-                              (ngModelChange)="updatePozoConfigForm('profundidad_pozo_m', $event)"
-                              class="field-control bg-white"
-                              placeholder="Ej: 80"
-                            />
-                          </div>
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Distancia del sensor desde superficie (m)</label
-                            >
-                            <input
-                              type="number"
-                              step="any"
-                              name="settings-sensor-depth"
-                              [ngModel]="pozoConfigForm().profundidad_sensor_m"
-                              (ngModelChange)="updatePozoConfigForm('profundidad_sensor_m', $event)"
-                              class="field-control bg-white"
-                              placeholder="Opcional"
-                            />
-                          </div>
-                        </div>
-
-                        <button
-                          type="button"
-                          (click)="savePozoConfig()"
-                          [disabled]="settingsBusy() === 'pozo'"
-                          class="primary-button mt-4"
-                        >
-                          <span class="material-symbols-outlined text-[18px]">save</span>
-                          {{ settingsBusy() === 'pozo' ? 'Guardando' : 'Guardar configuracion' }}
-                        </button>
-                      </section>
-                    }
-
-                    <form
-                      (submit)="createVariableMap($event)"
-                      class="space-y-4 rounded-xl border border-slate-200 bg-white p-4"
-                    >
-                      <div>
-                        <p class="text-sm font-semibold text-slate-900">Variables del equipo</p>
-                        <p class="mt-1 text-xs font-semibold text-slate-400">
-                          Se guardan directamente en este sitio, sin seleccionar equipo.
-                        </p>
-                      </div>
-
-                      <div class="rounded-lg border border-slate-100 bg-slate-50/70 p-3">
-                        <div class="grid gap-3">
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Dato original</label
-                            >
-                            <select
-                              required
-                              name="settings-variable-key"
-                              [ngModel]="variableForm().d1"
-                              (ngModelChange)="selectVariableKey($event)"
-                              class="field-control bg-white"
-                            >
-                              <option value="" disabled>Selecciona variable</option>
-                              @for (
-                                variable of siteVariables().variables;
-                                track variable.nombre_dato
-                              ) {
-                                <option [value]="variable.nombre_dato">
-                                  {{ variable.nombre_dato }}
-                                </option>
-                              }
-                            </select>
-                          </div>
-
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Transformacion</label
-                            >
-                            <select
-                              name="settings-variable-transform"
-                              [ngModel]="variableForm().transformacion"
-                              (ngModelChange)="updateVariableTransform($event)"
-                              class="field-control bg-white"
-                            >
-                              @for (transform of variableTransformOptions(); track transform.id) {
-                                <option [value]="transform.id">
-                                  {{ transform.label }}
-                                </option>
-                              }
-                            </select>
-                            @if (selectedVariableTransform()?.description) {
-                              <p class="mt-1 text-xs font-semibold text-slate-400">
-                                {{ selectedVariableTransform()?.description }}
-                              </p>
-                            }
-                          </div>
-
-                          @if (requiresSecondRegister()) {
-                            <div class="grid gap-3 sm:grid-cols-2">
-                              <div>
-                                <label class="mb-1 block text-xs font-bold text-slate-500"
-                                  >Segundo registro</label
-                                >
-                                <select
-                                  name="settings-variable-key-d2"
-                                  [ngModel]="variableForm().d2"
-                                  (ngModelChange)="updateVariableForm('d2', $event)"
-                                  class="field-control bg-white"
-                                >
-                                  <option value="">Selecciona variable</option>
-                                  @for (
-                                    variable of siteVariables().variables;
-                                    track variable.nombre_dato
-                                  ) {
-                                    <option [value]="variable.nombre_dato">
-                                      {{ variable.nombre_dato }}
-                                    </option>
-                                  }
-                                </select>
-                              </div>
-                              @if (usesRegisterOrder()) {
-                                <div>
-                                  <label class="mb-1 block text-xs font-bold text-slate-500"
-                                    >Orden de registros</label
-                                  >
-                                  <select
-                                    name="settings-variable-word-swap"
-                                    [ngModel]="variableForm().wordSwap"
-                                    (ngModelChange)="updateVariableForm('wordSwap', $event)"
-                                    class="field-control bg-white"
-                                  >
-                                    @if (isUint32TransformSelected()) {
-                                      <option value="true">Invertido CDAB</option>
-                                      <option value="false">Normal ABCD</option>
-                                    } @else {
-                                      <option value="false">Normal ABCD</option>
-                                      <option value="true">Invertido CDAB</option>
-                                    }
-                                  </select>
-                                  <p class="mt-1 text-xs font-semibold text-slate-400">
-                                    {{ registerOrderHint() }}
-                                  </p>
-                                </div>
-                              } @else {
-                                <div
-                                  class="rounded-md border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-xs font-semibold text-primary-container"
-                                >
-                                  Formula:
-                                  {{ variableForm().d1 || 'primer registro' }} *
-                                  {{ variableForm().d2 || 'segundo registro' }}
-                                </div>
-                              }
-                            </div>
-                          }
-                        </div>
-                      </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500">Alias</label>
-                        <input
-                          required
-                          name="settings-variable-alias"
-                          [ngModel]="variableForm().alias"
-                          (ngModelChange)="updateVariableForm('alias', $event)"
-                          class="field-control"
-                          placeholder="Nivel, caudal, energia"
-                        />
-                      </div>
-
-                      <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
-                          >Uso en dashboard</label
-                        >
-                        <select
-                          name="settings-variable-role"
-                          [ngModel]="variableForm().rol_dashboard"
-                          (ngModelChange)="updateVariableRole($event)"
-                          class="field-control"
-                        >
-                          @for (role of variableRoleOptions(); track role.id) {
-                            <option [value]="role.id">{{ role.label }}</option>
-                          }
-                        </select>
-                        @if (selectedVariableRole()?.description) {
-                          <p class="mt-1 text-xs font-semibold text-slate-400">
-                            {{ selectedVariableRole()?.description }}
-                          </p>
-                        }
-                      </div>
-
-                      <div class="grid grid-cols-2 gap-3">
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
-                          <select
-                            name="settings-variable-type"
-                            [ngModel]="variableForm().tipo_dato"
-                            (ngModelChange)="updateVariableForm('tipo_dato', $event)"
-                            class="field-control"
-                          >
-                            <option value="FLOAT">FLOAT</option>
-                            <option value="INTEGER">INTEGER</option>
-                            <option value="BOOLEAN">BOOLEAN</option>
-                            <option value="TEXT">TEXT</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500">Unidad</label>
-                          <input
-                            name="settings-variable-unit"
-                            [ngModel]="variableForm().unidad"
-                            (ngModelChange)="updateVariableForm('unidad', $event)"
-                            class="field-control"
-                            placeholder="m, %, L/s"
-                          />
-                        </div>
-                      </div>
-
-                      @if (isLinearTransform()) {
-                        <div class="grid grid-cols-3 gap-3">
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Factor Multiplicador</label
-                            >
-                            <input
-                              type="number"
-                              step="any"
-                              name="settings-variable-factor"
-                              [ngModel]="variableForm().factor"
-                              (ngModelChange)="updateVariableForm('factor', $event)"
-                              class="field-control"
-                              placeholder="1"
-                            />
-                          </div>
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Divisor</label
-                            >
-                            <input
-                              type="number"
-                              step="any"
-                              min="0"
-                              name="settings-variable-divisor"
-                              [ngModel]="variableForm().divisor"
-                              (ngModelChange)="updateVariableForm('divisor', $event)"
-                              class="field-control"
-                              placeholder="1"
-                            />
-                          </div>
-                          <div>
-                            <label class="mb-1 block text-xs font-bold text-slate-500"
-                              >Offset</label
-                            >
-                            <input
-                              type="number"
-                              step="any"
-                              name="settings-variable-offset"
-                              [ngModel]="variableForm().offset"
-                              (ngModelChange)="updateVariableForm('offset', $event)"
-                              class="field-control"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-                        <p class="text-[10px] text-slate-400">
-                          Fórmula:
-                          <span class="font-mono">resultado = raw × factor / divisor + offset</span
-                          >. Usá divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
-                        </p>
-                      }
-
-                      <div
-                        class="rounded-lg border border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-3"
-                      >
-                        <div class="mb-3 flex items-center gap-2">
-                          <span class="material-symbols-outlined text-[18px] text-primary-container"
-                            >calculate</span
-                          >
-                          <h3
-                            class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-container"
-                          >
-                            Calculadora de prueba (vista previa)
-                          </h3>
-                        </div>
-
-                        <div>
-                          <label class="mb-1 block text-xs font-bold text-slate-500"
-                            >Valor crudo entrante (en vivo desde el equipo)</label
-                          >
-                          <input
-                            name="settings-variable-sandbox-raw"
-                            [value]="liveRawValueForPreview()"
-                            readonly
-                            class="field-control bg-slate-50 cursor-not-allowed font-mono text-slate-700"
-                            placeholder="(se carga al elegir registro d1)"
-                          />
-                        </div>
-
-                        <div
-                          class="mt-3 rounded-lg border border-[rgba(13,175,189,0.15)] bg-white px-3 py-2 shadow-sm"
-                        >
-                          <p
-                            class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                          >
-                            Resultado proyectado en grafico
-                          </p>
-                          <p class="mt-1 text-xl font-semibold text-primary-container">
-                            {{ previewResultText() }}
-                          </p>
-                        </div>
-
-                        <div class="mt-3 grid gap-2">
-                          @for (transform of variableTransformOptions(); track transform.id) {
-                            <button
-                              type="button"
-                              (click)="updateVariableTransform(transform.id)"
-                              [class]="calculatorButtonClass(transform.id)"
-                            >
-                              <span class="material-symbols-outlined text-[16px]">functions</span>
-                              <span>{{ transform.label }}</span>
-                            </button>
-                          }
-                        </div>
-                      </div>
-
-                      <div class="grid gap-2 sm:grid-cols-2">
-                        <button
-                          type="button"
-                          (click)="resetVariableForm()"
-                          class="secondary-button"
-                        >
-                          Limpiar
-                        </button>
-                        <button
-                          type="submit"
-                          [disabled]="settingsBusy() === 'variable'"
-                          class="primary-button"
-                        >
-                          <span class="material-symbols-outlined text-[18px]">label</span>
-                          {{
-                            settingsBusy() === 'variable'
-                              ? 'Guardando'
-                              : variableForm().mapId
-                                ? 'Actualizar variable'
-                                : 'Guardar variable'
-                          }}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-
-                  <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <div
-                      class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
-                    >
-                      <h3 class="text-sm font-semibold text-slate-900">
-                        Datos detectados del equipo
-                      </h3>
-                      <p class="text-xs font-semibold text-slate-400">
-                        {{ siteVariables().variables.length }} variables
-                      </p>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                      <table class="w-full min-w-[700px] text-left text-sm">
-                        <thead
-                          class="bg-slate-100 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
-                        >
-                          <tr>
-                            <th class="px-4 py-3">Dato</th>
-                            <th class="px-4 py-3">Valor</th>
-                            <th class="px-4 py-3">Alias</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                            <tr
-                              class="group cursor-pointer bg-white transition-colors hover:bg-[rgba(13,175,189,0.08)]/50"
-                              (click)="prepareVariableMap(variable)"
-                              title="Seleccionar variable"
-                            >
-                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
-                                {{ variable.nombre_dato }}
-                              </td>
-                              <td class="px-4 py-3 font-bold text-slate-900">
-                                {{ displayValue(variable.valor_dato) }}
-                              </td>
-                              <td class="px-4 py-3">
-                                <div class="flex items-center justify-between gap-3">
-                                  @if (variable.mapping) {
-                                    <div>
-                                      <p class="font-bold text-slate-800">
-                                        {{ variable.mapping.alias }}
-                                      </p>
-                                      <p class="text-xs text-slate-400">
-                                        {{ variable.mapping.tipo_dato }} -
-                                        {{
-                                          displayVariableTransform(variable.mapping.transformacion)
-                                        }}
-                                        {{ variable.mapping.unidad || '' }}
-                                      </p>
-                                    </div>
-                                    <button
-                                      type="button"
-                                      (click)="
-                                        $event.stopPropagation();
-                                        deleteVariableMap(variable.mapping)
-                                      "
-                                      class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
-                                      title="Eliminar alias"
-                                      aria-label="Eliminar alias"
-                                    >
-                                      <span class="material-symbols-outlined text-[18px]"
-                                        >delete</span
-                                      >
-                                    </button>
-                                  } @else {
-                                    <span
-                                      class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500"
-                                      >Sin alias</span
-                                    >
-                                  }
-                                </div>
-                              </td>
-                            </tr>
-                          } @empty {
-                            <tr class="bg-white">
-                              <td
-                                colspan="3"
-                                class="px-4 py-8 text-center text-sm font-semibold text-slate-400"
-                              >
-                                Aun no hay variables detectadas para el serial de este sitio.
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              }
-            </section>
+              <app-site-variable-settings-panel
+                [siteId]="context.site?.id || ''"
+                [site]="context.site"
+                [showDgaReporteButton]="true"
+                (openDgaReporte)="abrirDgaReporteModal()"
+                (variableMapChanged)="onVariableMapChanged()"
+              />
+            </div>
           } @else if (historyPanelOpen()) {
             <section
               class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
@@ -1371,9 +484,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
-                    <tr
-                      class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400"
-                    >
+                    <tr class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
                       <th class="px-4 py-3">NIVEL</th>
@@ -1388,9 +499,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       >
                         <td class="px-4 py-3">
                           <span class="inline-flex items-center gap-2">
-                            <span
-                              class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0"
-                            ></span>
+                            <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0"></span>
                             {{ row.fecha }}
                           </span>
                         </td>
@@ -1473,9 +582,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      >
+                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                         Último envío aceptado
                       </p>
                     </div>
@@ -1494,15 +601,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p
-                        class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      >
+                      <p class="text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-700">
                         Último envío aceptado
                       </p>
                     </div>
-                    <p
-                      class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800"
-                    >
+                    <p class="text-center font-mono text-[20px] font-semibold leading-tight text-slate-800">
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
                     <span class="truncate font-mono text-[10px] text-slate-500">{{ comp }}</span>
@@ -1538,7 +641,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   Tasa de éxito
                 </p>
                 <p
-                  [class]="'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text"
+                  [class]="
+                    'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
+                  "
                 >
                   {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                 </p>
@@ -1566,9 +671,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 <article
                   class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
-                  <p
-                    class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
-                  >
+                  <p class="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
                     Diagrama del pozo
                   </p>
 
@@ -2218,9 +1321,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                       >
                         @for (month of monthlyFlowMonths(); track $index) {
-                          <div
-                            class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
-                          >
+                          <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
                             <div
                               class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-[11px] font-semibold text-white shadow-lg group-hover:block"
                             >
@@ -2277,9 +1378,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
                 </article>
 
-                <article
-                  class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-                >
+                <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
                   <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
@@ -2412,9 +1511,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 [style.background]="getDgaStatusColor(report.estado)"
                               ></span>
                               {{ report.estado }}
-                              <span class="material-symbols-outlined text-[13px]"
-                                >chevron_right</span
-                              >
+                              <span class="material-symbols-outlined text-[13px]">chevron_right</span>
                             </button>
                             @if (
                               report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
@@ -2550,9 +1647,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left: presets + months -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -2567,9 +1662,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
-                        <span
-                          class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"
-                        ></span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2728,9 +1821,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left panel: presets + month selector -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -2745,9 +1836,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       "
                     >
                       @if (downloadSelectedPreset() === preset.id) {
-                        <span
-                          class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"
-                        ></span>
+                        <span class="h-1.5 w-1.5 rounded-full bg-[rgba(13,175,189,0.08)]0 flex-shrink-0"></span>
                       }
                       {{ preset.label }}
                     </button>
@@ -2835,9 +1924,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <!-- Data types -->
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Datos a incluir
                 </p>
                 <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -2857,9 +1944,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 </div>
 
                 <!-- Format -->
-                <p
-                  class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
+                <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   Formato de archivo
                 </p>
                 <div class="flex gap-2">
@@ -3342,90 +2427,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         pointer-events: none;
       }
 
-      .field-control {
-        width: 100%;
-        border-radius: 0.5rem;
-        border: 1px solid rgb(203 213 225);
-        background: rgb(248 250 252);
-        padding: 0.625rem 0.75rem;
-        font-size: 0.875rem;
-        color: rgb(15 23 42);
-        outline: none;
-        transition:
-          border-color 160ms ease,
-          background-color 160ms ease,
-          box-shadow 160ms ease;
-      }
-
-      .field-control:focus {
-        border-color: rgb(6 182 212);
-        background: white;
-        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.14);
-      }
-
-      .primary-button,
-      .secondary-button,
-      .icon-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.45rem;
-        transition:
-          background-color 160ms ease,
-          color 160ms ease,
-          border-color 160ms ease,
-          transform 160ms ease;
-      }
-
-      .primary-button {
-        min-height: 2.5rem;
-        width: 100%;
-        border-radius: 0.5rem;
-        background: rgb(8 145 178);
-        padding: 0.625rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 800;
-        color: white;
-      }
-
-      .primary-button:hover:not(:disabled) {
-        background: rgb(14 116 144);
-      }
-
-      .primary-button:disabled {
-        cursor: not-allowed;
-        opacity: 0.55;
-      }
-
-      .secondary-button {
-        min-height: 2.5rem;
-        border-radius: 0.5rem;
-        border: 1px solid rgb(203 213 225);
-        background: white;
-        padding: 0.625rem 1rem;
-        font-size: 0.875rem;
-        font-weight: 800;
-        color: rgb(71 85 105);
-      }
-
-      .secondary-button:hover {
-        background: rgb(248 250 252);
-      }
-
-      .icon-button {
-        height: 2rem;
-        width: 2rem;
-        border-radius: 0.5rem;
-        border: 1px solid rgb(226 232 240);
-        background: white;
-        color: rgb(71 85 105);
-      }
-
-      .icon-button:hover:not(:disabled) {
-        border-color: rgb(165 243 252);
-        background: rgb(236 254 255);
-        color: rgb(8 145 178);
-      }
     `,
   ],
 })
@@ -3433,7 +2434,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly companyService = inject(CompanyService);
-  private readonly adminApi = inject(AdministrationService);
   private readonly dgaService = inject(DgaService);
   private readonly httpClient = inject(HttpClient);
   private readonly authService = inject(AuthService);
@@ -3454,8 +2454,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   activeDetailTab = signal<DetailTab>('dga');
   historyPanelOpen = signal(false);
   settingsPanelOpen = signal(false);
-  settingsLoading = signal(false);
-  settingsBusy = signal('');
   dgaReporteModalOpen = signal(false);
   dgaReportDownloading = signal<boolean>(false);
   dgaReportError = signal<string>('');
@@ -3470,19 +2468,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { value: 'semana', label: 'Cada semana' },
     { value: 'mes', label: 'Cada mes' },
   ];
-  settingsStatus = signal<SettingsStatus>({ type: '', message: '' });
-  siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
-  siteVariables = signal<SiteVariablesPayload>({
-    site: this.emptySettingsSite(),
-    pozo_config: null,
-    variables: [],
-    mappings: [],
-  });
-  pozoConfigForm = signal<PozoConfigForm>({
-    profundidad_pozo_m: '',
-    profundidad_sensor_m: '',
-  });
-  variableForm = signal<VariableForm>({ ...DEFAULT_VARIABLE_FORM });
   operationMode = signal<OperationMode>('realtime');
   historyLoading = signal(true);
   historyError = signal('');
@@ -3553,14 +2538,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
     const t = this.dgaTasaExito();
     if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
-    if (t >= 100)
-      return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
-    if (t >= 90)
-      return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+    if (t >= 100) return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
+    if (t >= 90) return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
     if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
     if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
-    if (t >= 40)
-      return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
+    if (t >= 40) return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
     return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
   });
 
@@ -3807,39 +2789,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return latest ? this.formatChileDateTime(latest) : 'Sin registros';
   });
   realtimeChart = computed<RealtimeChartData>(() => this.buildRealtimeChart());
-  settingsSite = computed<SiteRecord>(() => {
-    const site = this.siteVariables().site;
-    if (site?.id) return site;
-
-    const contextSite = this.siteContext()?.site || {};
-    return {
-      id: contextSite.id || '',
-      descripcion: contextSite.descripcion || '',
-      empresa_id: contextSite.empresa_id || '',
-      sub_empresa_id: contextSite.sub_empresa_id || '',
-      id_serial: contextSite.id_serial || '',
-      ubicacion: contextSite.ubicacion || null,
-      tipo_sitio: contextSite.tipo_sitio || 'generico',
-      activo: contextSite.activo !== false,
-    };
-  });
-  settingsSiteType = computed(() => this.settingsSite().tipo_sitio || 'generico');
-  settingsSiteSerial = computed(
-    () => this.settingsSite().id_serial || this.siteContext()?.site?.id_serial || '',
-  );
-  isSettingsPozo = computed(() => this.settingsSiteType() === 'pozo');
-  selectedSiteCatalog = computed<SiteTypeCatalogItem>(() => {
-    const type = this.settingsSiteType();
-    return (
-      this.siteTypeCatalog()[type] ||
-      this.siteTypeCatalog()['generico'] ||
-      DEFAULT_SITE_TYPE_CATALOG['generico']
-    );
-  });
-  variableRoleOptions = computed<SiteTypeRoleOption[]>(() => this.selectedSiteCatalog().roles);
-  variableTransformOptions = computed<SiteTypeTransformOption[]>(() =>
-    this.selectedSiteCatalog().transforms.filter((transform) => transform.enabled !== false),
-  );
   dgaFilteredReports = computed(() => {
     const from = this.parseDateInputMs(this.dgaDateFrom(), 'start');
     const to = this.parseDateInputMs(this.dgaDateTo(), 'end');
@@ -4405,7 +3354,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         : new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
       const to = this.dgaDateTo() ? this.toChileEndIso(this.dgaDateTo()) : new Date().toISOString();
       // Lee de dato_dga (pipeline nuevo) — trae estatus real + comprobante SNIA.
-      const rows = await firstValueFrom(this.dgaService.consultarDatoBySite(siteId, from, to));
+      const rows = await firstValueFrom(
+        this.dgaService.consultarDatoBySite(siteId, from, to),
+      );
       this.dgaReportRows.set(rows.map((r, i) => this.datoDgaToRow(r, i)));
     } catch {
       this.dgaReportRows.set([]);
@@ -4463,6 +3414,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     d.setUTCDate(d.getUTCDate() + 1);
     return new Date(d.getTime() - 1).toISOString();
   }
+
 
   private createDgaReportRow(
     id: string,
@@ -4544,11 +3496,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   openSettingsPanel(): void {
     this.historyPanelOpen.set(false);
     this.settingsPanelOpen.set(true);
-    this.loadSiteSettings();
   }
 
   closeSettingsPanel(): void {
     this.settingsPanelOpen.set(false);
+  }
+
+  /** Called by <app-site-variable-settings-panel> after a save/delete so the well diagram + sidebar stay in sync. */
+  onVariableMapChanged(): void {
+    const siteId = this.currentSiteId();
+    if (siteId) this.refreshDashboardSnapshot(siteId);
+    this.refreshHierarchySnapshot();
   }
 
   abrirDgaReporteModal(): void {
@@ -4584,334 +3542,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas?codigoObra=${encodeURIComponent(obra)}&numeroComprobante=${encodeURIComponent(comprobante)}`;
   }
 
-  reloadSettingsPanel(): void {
-    this.loadSiteSettings();
-  }
-
-  updatePozoConfigForm(field: keyof PozoConfigForm, value: string): void {
-    this.pozoConfigForm.update((form) => ({ ...form, [field]: value }));
-  }
-
-  savePozoConfig(): void {
-    const siteId = this.currentSiteId();
-    if (!siteId || !this.isSettingsPozo()) return;
-
-    this.settingsBusy.set('pozo');
-    this.adminApi
-      .updateSite(siteId, {
-        pozo_config: this.buildPozoConfigPayload(),
-      })
-      .subscribe({
-        next: (res) => {
-          this.settingsBusy.set('');
-          this.setSettingsSuccess(res.message || 'Configuracion del pozo guardada.');
-          const pozoConfig =
-            (res.data as SiteRecord & { pozo_config?: PozoConfig | null })?.pozo_config || null;
-          this.siteVariables.update((current) => ({
-            ...current,
-            pozo_config: pozoConfig,
-          }));
-          this.patchPozoConfigForm(pozoConfig);
-          this.siteContext.update((current) =>
-            current
-              ? {
-                  ...current,
-                  site: { ...current.site, pozo_config: pozoConfig },
-                }
-              : current,
-          );
-          this.refreshDashboardSnapshot(siteId);
-          this.refreshHierarchySnapshot();
-        },
-        error: (err: unknown) => {
-          this.settingsBusy.set('');
-          this.setSettingsError(
-            this.errorMessage(err, 'No fue posible guardar la configuracion del pozo.'),
-          );
-        },
-      });
-  }
-
-  updateVariableForm(field: keyof VariableForm, value: string): void {
-    this.variableForm.update((form) => ({ ...form, [field]: value }));
-  }
-
-  updateVariableRole(role: string): void {
-    const nextRole = this.normalizeVariableRoleForForm(role);
-    const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
-
-    this.variableForm.update((form) => ({
-      ...form,
-      rol_dashboard: nextRole,
-      unidad: form.unidad || roleOption?.unitHint || '',
-      transformacion: this.suggestTransformForRole(nextRole, form.transformacion),
-    }));
-  }
-
-  selectVariableKey(d1: string): void {
-    const selected = this.siteVariables().variables.find((variable) => variable.nombre_dato === d1);
-    const nextRole = this.inferVariableRoleFromValues(
-      this.variableForm().alias || selected?.nombre_dato,
-      d1,
-      this.variableForm().unidad,
-    );
-    const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
-
-    this.variableForm.update((form) => ({
-      ...form,
-      d1,
-      alias: form.alias || selected?.nombre_dato || '',
-      tipo_dato: form.tipo_dato || this.guessDataType(selected?.valor_dato ?? null),
-      rol_dashboard: form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
-      unidad: form.unidad || roleOption?.unitHint || '',
-      transformacion: this.suggestTransformForRole(
-        form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
-        form.transformacion,
-      ),
-      sandboxRaw:
-        selected?.valor_dato === null || selected?.valor_dato === undefined
-          ? form.sandboxRaw
-          : String(selected.valor_dato),
-    }));
-  }
-
-  updateVariableTransform(transformacion: string): void {
-    const normalizedTransform = this.normalizeVariableTransformForForm(transformacion);
-
-    this.variableForm.update((form) => ({
-      ...form,
-      transformacion: normalizedTransform,
-      wordSwap: normalizedTransform === 'uint32_registros' ? 'true' : form.wordSwap,
-      factor: this.isLinearTransformValue(normalizedTransform) ? form.factor || '1' : '1',
-      divisor: this.isLinearTransformValue(normalizedTransform) ? form.divisor || '1' : '1',
-      offset: this.isLinearTransformValue(normalizedTransform) ? form.offset || '0' : '0',
-    }));
-  }
-
-  isLinearTransform(): boolean {
-    return this.isLinearTransformValue(this.variableForm().transformacion);
-  }
-
-  requiresSecondRegister(): boolean {
-    return this.selectedVariableTransform()?.requiresD2 === true;
-  }
-
-  usesRegisterOrder(): boolean {
-    return ['ieee754_32', 'uint32_registros'].includes(this.variableForm().transformacion);
-  }
-
-  isUint32TransformSelected(): boolean {
-    return this.variableForm().transformacion === 'uint32_registros';
-  }
-
-  selectedVariableRole(): SiteTypeRoleOption | undefined {
-    return this.variableRoleOptions().find((role) => role.id === this.variableForm().rol_dashboard);
-  }
-
-  selectedVariableTransform(): SiteTypeTransformOption | undefined {
-    return this.variableTransformOptions().find(
-      (transform) => transform.id === this.variableForm().transformacion,
-    );
-  }
-
-  registerOrderHint(): string {
-    const form = this.variableForm();
-    const first = form.d1 || 'primer registro';
-    const second = form.d2 || 'segundo registro';
-
-    if (form.wordSwap === 'true') {
-      return `${second} queda como registro alto y ${first} como registro bajo.`;
-    }
-
-    return `${first} queda como registro alto y ${second} como registro bajo.`;
-  }
-
-  calculatorButtonClass(transformId: string): string {
-    const base =
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
-    return this.variableForm().transformacion === transformId
-      ? `${base} border-[rgba(13,175,189,0.35)] bg-[rgba(13,175,189,0.14)] text-primary-container`
-      : `${base} border-[rgba(13,175,189,0.15)] bg-white text-primary-container hover:border-[rgba(13,175,189,0.30)] hover:bg-[rgba(13,175,189,0.08)]`;
-  }
-
   /**
    * Valor crudo en vivo del registro d1 elegido, para la "Calculadora de
    * prueba". Antes el input era editable; ahora es read-only y refleja
    * la última lectura real del equipo.
    */
-  liveRawValueForPreview(): string {
-    const form = this.variableForm();
-    if (!form.d1) return '';
-    const v = this.valueForVariableKey(form.d1);
-    if (v === null || v === undefined) return '';
-    return typeof v === 'number' ? String(v) : String(v);
-  }
-
-  previewResultText(): string {
-    const form = this.variableForm();
-    // Valor crudo: ahora SIEMPRE viene del último registro real del equipo
-    // (vista previa, no sandbox manual). Si no hay d1 elegido o sin data,
-    // mostramos hint para el admin.
-    const rawText = this.liveRawValueForPreview();
-    const unit = form.unidad ? ` ${form.unidad}` : '';
-
-    if (!rawText && !this.requiresSecondRegister()) {
-      return form.d1 ? 'Sin lectura reciente del equipo' : 'Selecciona registro d1';
-    }
-
-    if (this.isLinearTransformValue(form.transformacion)) {
-      const raw = this.toNumber(rawText);
-      const factor = this.toNumber(form.factor) ?? 1;
-      const divisorRaw = this.toNumber(form.divisor) ?? 1;
-      // Guard contra divisor 0 o negativo.
-      const divisor = divisorRaw > 0 ? divisorRaw : 1;
-      const offset = this.toNumber(form.offset) ?? 0;
-      if (raw === null) return 'Valor crudo no numerico';
-      return `${this.formatPreviewNumber((raw * factor) / divisor + offset)}${unit}`;
-    }
-
-    if (form.transformacion === 'ieee754_32') {
-      const rawA = this.valueForVariableKey(form.d1);
-      const rawB = this.valueForVariableKey(form.d2);
-      const decoded = this.decodeFloat32FromRegisters(rawA, rawB, form.wordSwap === 'true');
-
-      if (decoded === null) {
-        return form.d2 ? 'Registros no numericos' : 'Selecciona segundo registro';
-      }
-
-      return `${this.formatPreviewNumber(decoded)}${unit}`;
-    }
-
-    if (form.transformacion === 'uint32_registros') {
-      const rawA = this.toRegisterWord(this.valueForVariableKey(form.d1));
-      const rawB = this.toRegisterWord(this.valueForVariableKey(form.d2));
-
-      if (rawA === null || rawB === null) {
-        return form.d2 ? 'Registros no numericos' : 'Selecciona segundo registro';
-      }
-
-      const high = form.wordSwap === 'true' ? rawB : rawA;
-      const low = form.wordSwap === 'true' ? rawA : rawB;
-      return `${this.formatPreviewNumber(high * 65536 + low)}${unit}`;
-    }
-
-    return `${rawText}${unit}`;
-  }
-
-  resetVariableForm(): void {
-    this.variableForm.set({ ...DEFAULT_VARIABLE_FORM });
-  }
-
-  createVariableMap(event: Event): void {
-    event.preventDefault();
-    const siteId = this.currentSiteId();
-
-    if (!siteId) {
-      this.setSettingsError('No se encontro el sitio actual.');
-      return;
-    }
-
-    const payload: CreateVariableMapPayload = {
-      alias: this.variableForm().alias,
-      d1: this.variableForm().d1,
-      d2: this.variableForm().d2 || null,
-      tipo_dato: this.variableForm().tipo_dato,
-      unidad: this.variableForm().unidad || null,
-      rol_dashboard: this.normalizeVariableRoleForForm(this.variableForm().rol_dashboard),
-      transformacion: this.normalizeVariableTransformForForm(this.variableForm().transformacion),
-      parametros: this.buildVariableParameters(),
-    };
-
-    this.settingsBusy.set('variable');
-    const request$ = this.variableForm().mapId
-      ? this.adminApi.updateSiteVariableMap(siteId, this.variableForm().mapId, payload)
-      : this.adminApi.createSiteVariableMap(siteId, payload);
-
-    request$.subscribe({
-      next: (res) => {
-        this.settingsBusy.set('');
-        this.setSettingsSuccess(res.message || 'Variable guardada.');
-        this.resetVariableForm();
-        this.loadSiteVariables(siteId);
-        this.refreshDashboardSnapshot(siteId);
-        this.refreshHierarchySnapshot();
-      },
-      error: (err: unknown) => {
-        this.settingsBusy.set('');
-        this.setSettingsError(this.errorMessage(err, 'No fue posible guardar la variable.'));
-      },
-    });
-  }
-
-  prepareVariableMap(variable: SiteVariable): void {
-    const params = variable.mapping?.parametros || null;
-
-    this.variableForm.set({
-      mapId: variable.mapping?.id || '',
-      alias: variable.mapping?.alias || variable.nombre_dato,
-      d1: variable.nombre_dato,
-      d2: variable.mapping?.d2 || '',
-      tipo_dato: variable.mapping?.tipo_dato || this.guessDataType(variable.valor_dato),
-      unidad: variable.mapping?.unidad || '',
-      rol_dashboard: this.normalizeVariableRoleForForm(variable.mapping?.rol_dashboard),
-      transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
-      factor: this.configNumberToString(params?.factor) || '1',
-      // divisor es UI-only; BD solo persiste factor. Al cargar, default 1
-      // → admin puede re-split si quiere editar decimales con divisor.
-      divisor: '1',
-      offset: this.configNumberToString(params?.offset) || '0',
-      wordSwap: String(params?.word_swap ?? params?.wordSwap ?? false),
-      // sandboxRaw ya no se usa para input — calculadora lee live de d1.
-      sandboxRaw: '',
-    });
-  }
-
-  deleteVariableMap(mapping: VariableMapping): void {
-    const siteId = this.currentSiteId();
-    if (!siteId) return;
-
-    this.settingsBusy.set('delete-variable');
-    this.adminApi.deleteSiteVariableMap(siteId, mapping.id).subscribe({
-      next: (res) => {
-        this.settingsBusy.set('');
-        this.setSettingsSuccess(res.message || 'Variable eliminada.');
-        this.loadSiteVariables(siteId);
-        this.refreshDashboardSnapshot(siteId);
-        this.refreshHierarchySnapshot();
-      },
-      error: (err: unknown) => {
-        this.settingsBusy.set('');
-        this.setSettingsError(this.errorMessage(err, 'No fue posible eliminar la variable.'));
-      },
-    });
-  }
-
-  displayValue(value: SiteVariable['valor_dato']): string {
-    if (value === null || value === undefined) return '-';
-    return String(value);
-  }
-
-  displayVariableTransform(transformacion: string | null | undefined): string {
-    const normalized = this.normalizeVariableTransformForForm(transformacion);
-    return this.findTransformOption(normalized)?.label || normalized;
-  }
-
-  siteTypeLabel(type: string): string {
-    if (type === 'electrico') return 'Electrico';
-    if (type === 'riles') return 'Riles';
-    if (type === 'camara_frio') return 'Camara de frio';
-    if (type === 'proceso') return 'Proceso';
-    if (type === 'generico') return 'Generico';
-    return 'Pozo';
-  }
-
-  settingsStatusClass(): string {
-    const base = 'mt-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-bold';
-    return this.settingsStatus().type === 'success'
-      ? `${base} border-emerald-200 bg-emerald-50 text-emerald-700`
-      : `${base} border-red-200 bg-red-50 text-red-700`;
-  }
-
   setDetailTab(tab: DetailTab): void {
     if (tab === 'analisis' && !this.isSuperAdmin()) return;
     this.historyPanelOpen.set(false);
@@ -5427,53 +4062,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       : `${base} border-transparent font-bold text-slate-500 hover:bg-slate-50 hover:text-slate-700`;
   }
 
-  private loadSiteSettings(): void {
-    const siteId = this.currentSiteId();
-
-    if (!siteId) {
-      this.setSettingsError('No se encontro el sitio actual.');
-      return;
-    }
-
-    this.settingsLoading.set(true);
-    this.settingsStatus.set({ type: '', message: '' });
-
-    forkJoin({
-      catalog: this.adminApi.getSiteTypeCatalog(),
-      variables: this.adminApi.getSiteVariables(siteId),
-    }).subscribe({
-      next: ({ catalog, variables }) => {
-        this.siteTypeCatalog.set(catalog.ok ? catalog.data : DEFAULT_SITE_TYPE_CATALOG);
-
-        if (variables.ok) {
-          this.siteVariables.set(variables.data);
-          this.patchPozoConfigForm(variables.data.pozo_config);
-        }
-
-        this.settingsLoading.set(false);
-      },
-      error: (err: unknown) => {
-        this.settingsLoading.set(false);
-        this.setSettingsError(
-          this.errorMessage(err, 'No fue posible cargar la configuracion del sitio.'),
-        );
-      },
-    });
-  }
-
-  private loadSiteVariables(siteId: string): void {
-    this.adminApi.getSiteVariables(siteId).subscribe({
-      next: (res) => {
-        if (res.ok) {
-          this.siteVariables.set(res.data);
-          this.patchPozoConfigForm(res.data.pozo_config);
-        }
-      },
-      error: (err: unknown) =>
-        this.setSettingsError(this.errorMessage(err, 'No fue posible recargar variables.')),
-    });
-  }
-
   private refreshDashboardSnapshot(siteId: string): void {
     this.companyService.getSiteDashboardData(siteId).subscribe({
       next: (res: any) => {
@@ -5520,14 +4108,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return this.siteContext()?.site?.id || this.route.snapshot.paramMap.get('siteId') || '';
   }
 
-  private setSettingsSuccess(message: string): void {
-    this.settingsStatus.set({ type: 'success', message });
-  }
-
-  private setSettingsError(message: string): void {
-    this.settingsStatus.set({ type: 'error', message });
-  }
-
   private errorMessage(err: unknown, fallback: string): string {
     if (err instanceof HttpErrorResponse) {
       const payload = err.error as { message?: string; error?: string } | string | undefined;
@@ -5536,196 +4116,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     }
 
     return fallback;
-  }
-
-  private emptySettingsSite(): SiteRecord {
-    return {
-      id: '',
-      descripcion: '',
-      empresa_id: '',
-      sub_empresa_id: '',
-      id_serial: '',
-      ubicacion: null,
-      tipo_sitio: 'generico',
-      activo: true,
-    };
-  }
-
-  private buildPozoConfigPayload(): PozoConfig {
-    return {
-      profundidad_pozo_m: this.toNumber(this.pozoConfigForm().profundidad_pozo_m),
-      profundidad_sensor_m: this.toNumber(this.pozoConfigForm().profundidad_sensor_m),
-    };
-  }
-
-  private patchPozoConfigForm(config: PozoConfig | null): void {
-    this.pozoConfigForm.set({
-      profundidad_pozo_m: this.configNumberToString(config?.profundidad_pozo_m),
-      profundidad_sensor_m: this.configNumberToString(config?.profundidad_sensor_m),
-    });
-  }
-
-  private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
-    const form = this.variableForm();
-
-    if (form.transformacion === 'ieee754_32' || form.transformacion === 'uint32_registros') {
-      return {
-        word_swap: form.wordSwap === 'true',
-        formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
-      };
-    }
-
-    if (this.transformUsesLinearParameters(form.transformacion)) {
-      // factor efectivo persistido = factor_ui / divisor_ui. La BD no conoce
-      // de "divisor" — el split UI solo facilita ingresar decimales sin
-      // pensar (ej. divisor=100 vs factor=0.01).
-      const factor = this.toNumber(form.factor) ?? 1;
-      const divisorRaw = this.toNumber(form.divisor) ?? 1;
-      const divisor = divisorRaw > 0 ? divisorRaw : 1;
-      return {
-        factor: factor / divisor,
-        offset: this.toNumber(form.offset) ?? 0,
-      };
-    }
-
-    return {};
-  }
-
-  private inferVariableRoleFromValues(...values: (string | null | undefined)[]): string {
-    const text = this.normalizeSearchText(...values);
-    const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
-
-    if (text.includes('freatico') && availableRoles.has('nivel')) return 'nivel';
-    if (
-      (text.includes('nivel') || text.includes('level') || text.includes('sonda')) &&
-      availableRoles.has('nivel')
-    )
-      return 'nivel';
-    if (
-      (text.includes('caudal') || text.includes('l s') || text.includes('lps')) &&
-      availableRoles.has('caudal')
-    )
-      return 'caudal';
-    if (
-      text.includes('totalizador') ||
-      text.includes('totalizado') ||
-      text.includes('acumulado') ||
-      text.includes('volumen')
-    ) {
-      return availableRoles.has('totalizador') ? 'totalizador' : 'generico';
-    }
-    if ((text.includes('energia') || text.includes('kwh')) && availableRoles.has('energia'))
-      return 'energia';
-    if (text.includes('temperatura') && availableRoles.has('temperatura')) return 'temperatura';
-    if (text.includes('presion') && availableRoles.has('presion')) return 'presion';
-    if (
-      (text.includes('senal') ||
-        text.includes('signal') ||
-        text.includes('rssi') ||
-        text.includes('csq')) &&
-      availableRoles.has('señal')
-    )
-      return 'señal';
-
-    return 'generico';
-  }
-
-  private guessDataType(value: SiteVariable['valor_dato']): string {
-    if (typeof value === 'boolean') return 'BOOLEAN';
-    if (typeof value === 'number') return Number.isInteger(value) ? 'INTEGER' : 'FLOAT';
-    return 'TEXT';
-  }
-
-  private isLinearTransformValue(transformacion: string): boolean {
-    return this.transformUsesLinearParameters(transformacion);
-  }
-
-  private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
-    if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
-    if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
-    if (transformacion === 'uint32' || transformacion === 'uint32_registros')
-      return 'uint32_registros';
-    if (
-      transformacion === 'caudal' ||
-      transformacion === 'caudal_m3h_lps' ||
-      transformacion === 'nivel_freatico'
-    )
-      return 'lineal';
-    return 'directo';
-  }
-
-  private normalizeVariableRoleForForm(role: string | null | undefined): string {
-    const normalizedInput = String(role ?? '')
-      .trim()
-      .toLowerCase();
-    const normalized =
-      normalizedInput === 'nivel_freatico' ? 'nivel' : normalizedInput || 'generico';
-    return this.variableRoleOptions().some((option) => option.id === normalized)
-      ? normalized
-      : 'generico';
-  }
-
-  private suggestTransformForRole(_role: string, currentTransform: string): string {
-    return this.normalizeVariableTransformForForm(currentTransform);
-  }
-
-  private transformUsesLinearParameters(transformacion: string): boolean {
-    return transformacion === 'lineal';
-  }
-
-  private findTransformOption(transformacion: string): SiteTypeTransformOption | undefined {
-    const normalized = this.normalizeVariableTransformForForm(transformacion);
-    return this.variableTransformOptions().find((option) => option.id === normalized);
-  }
-
-  private valueForVariableKey(key: string): unknown {
-    if (!key) return null;
-    return (
-      this.siteVariables().variables.find((variable) => variable.nombre_dato === key)?.valor_dato ??
-      null
-    );
-  }
-
-  private decodeFloat32FromRegisters(
-    rawA: unknown,
-    rawB: unknown,
-    wordSwap: boolean,
-  ): number | null {
-    const wordA = this.toRegisterWord(rawA);
-    const wordB = this.toRegisterWord(rawB);
-    if (wordA === null || wordB === null) return null;
-
-    const buffer = new ArrayBuffer(4);
-    const view = new DataView(buffer);
-    const first = wordSwap ? wordB : wordA;
-    const second = wordSwap ? wordA : wordB;
-
-    view.setUint16(0, first, false);
-    view.setUint16(2, second, false);
-
-    const decoded = view.getFloat32(0, false);
-    return Number.isFinite(decoded) ? decoded : null;
-  }
-
-  private toRegisterWord(value: unknown): number | null {
-    const parsed = this.toNumber(value);
-    if (parsed === null || !Number.isInteger(parsed) || parsed < 0 || parsed > 65535) return null;
-    return parsed;
-  }
-
-  private formatPreviewNumber(value: number): string {
-    if (!Number.isFinite(value)) return 'No calculable';
-    const rounded = Math.round(value * 1000) / 1000;
-    return Number.isInteger(rounded)
-      ? String(rounded)
-      : String(rounded)
-          .replace(/(\.\d*?)0+$/, '$1')
-          .replace(/\.$/, '');
-  }
-
-  private configNumberToString(value: number | null | undefined): string {
-    if (value === null || value === undefined) return '';
-    return String(value);
   }
 
   private loadHydratedSite(match: SiteContext): void {
@@ -6221,11 +4611,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private normalizeSearchText(...values: (string | null | undefined)[]): string {
     return values
       .map((value) => String(value ?? '').trim())
+      .filter((value) => value.length > 0)
       .join(' ')
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
   }
 }
