@@ -455,7 +455,8 @@ interface RealtimeChartPoint {
               viewBox="0 0 1120 80"
               class="h-full w-full cursor-crosshair select-none"
               preserveAspectRatio="none"
-              (click)="selectRealtimePoint($event)"
+              (mousemove)="selectRealtimePoint($event)"
+              (mouseleave)="clearRealtimePoint()"
               aria-label="Grafico de caudal en tiempo real"
             >
               <defs>
@@ -806,6 +807,10 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     );
 
     this.selectedRealtimeTimestamp.set(closest.timestampMs);
+  }
+
+  clearRealtimePoint(): void {
+    this.selectedRealtimeTimestamp.set(null);
   }
 
   tooltipLeftPercent(point: RealtimeChartPoint): number {
