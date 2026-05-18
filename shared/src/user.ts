@@ -4,6 +4,7 @@ export interface User {
   id: string;
   nombre: string;
   apellido: string;
+  rut_usuario?: string | null;
   email: string;
   tipo: UserRole;
   telefono?: string | null;
@@ -15,6 +16,7 @@ export interface User {
 export interface CreateUserPayload {
   nombre: string;
   apellido: string;
+  rut_usuario?: string | null;
   email: string;
   tipo: UserRole;
   telefono?: string | null;

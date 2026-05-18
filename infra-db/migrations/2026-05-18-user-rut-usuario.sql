@@ -1,0 +1,1 @@
+ALTER TABLE usuario ADD COLUMN IF NOT EXISTS rut_usuario VARCHAR(20);

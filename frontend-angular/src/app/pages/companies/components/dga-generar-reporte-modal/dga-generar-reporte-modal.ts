@@ -37,6 +37,7 @@ import {
   PatchPozoDgaConfigPayload,
   PozoDgaConfig,
 } from '../../../../services/dga.service';
+import { formatRutInput } from '../../../../shared/rut';
 
 const LIVE_REFRESH_MS = 10_000;
 
@@ -286,7 +287,9 @@ interface PeriodicidadOption {
                 <input
                   type="text"
                   [ngModel]="newInfRut()"
-                  (ngModelChange)="newInfRut.set($event)"
+                  (ngModelChange)="updateNewInfRut($event)"
+                  inputmode="text"
+                  maxlength="12"
                   placeholder="RUT nuevo o existente"
                   class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-accent/30"
                 />
@@ -728,8 +731,12 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
 
   // ============ Informante ============
 
+  updateNewInfRut(value: string): void {
+    this.newInfRut.set(formatRutInput(value));
+  }
+
   guardarInformante(): void {
-    const rut = this.newInfRut().trim();
+    const rut = formatRutInput(this.newInfRut());
     if (!rut) return;
     const clave = this.newInfClave();
     const referencia = this.newInfReferencia().trim() || null;

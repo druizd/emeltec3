@@ -12,6 +12,7 @@ const {
   VARIABLE_TRANSFORM_IDS,
 } = require('../config/siteTypeCatalog');
 const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
+const { formatRutForStorage } = require('../utils/rut');
 
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
@@ -514,7 +515,7 @@ exports.createCompany = async (req, res, next) => {
     }
 
     const nombre = cleanString(req.body.nombre);
-    const rut = cleanString(req.body.rut);
+    const rut = formatRutForStorage(req.body.rut);
     const tipoEmpresa = cleanString(req.body.tipo_empresa) || 'Cliente';
 
     if (!nombre || !rut) {
@@ -572,7 +573,7 @@ exports.updateCompany = async (req, res, next) => {
 
     const fields = [
       ['nombre', req.body.nombre === undefined ? undefined : cleanString(req.body.nombre)],
-      ['rut', req.body.rut === undefined ? undefined : cleanString(req.body.rut)],
+      ['rut', req.body.rut === undefined ? undefined : formatRutForStorage(req.body.rut)],
       [
         'tipo_empresa',
         req.body.tipo_empresa === undefined ? undefined : cleanString(req.body.tipo_empresa),
@@ -672,7 +673,7 @@ exports.createSubCompany = async (req, res, next) => {
     }
 
     const nombre = cleanString(req.body.nombre);
-    const rut = cleanString(req.body.rut);
+    const rut = formatRutForStorage(req.body.rut);
 
     if (!nombre || !rut) {
       return badRequest(res, 'nombre y rut son requeridos.');
@@ -745,7 +746,7 @@ exports.updateSubCompany = async (req, res, next) => {
 
     const fields = [
       ['nombre', req.body.nombre === undefined ? undefined : cleanString(req.body.nombre)],
-      ['rut', req.body.rut === undefined ? undefined : cleanString(req.body.rut)],
+      ['rut', req.body.rut === undefined ? undefined : formatRutForStorage(req.body.rut)],
       ['empresa_id', nextEmpresaId === current.empresa_id ? undefined : nextEmpresaId],
     ];
     const updates = [];

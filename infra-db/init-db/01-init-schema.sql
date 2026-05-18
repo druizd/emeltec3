@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS usuario (
     id             VARCHAR(10)   PRIMARY KEY,
     nombre         VARCHAR(100)  NOT NULL,
     apellido       VARCHAR(100)  NOT NULL,
+    rut_usuario    VARCHAR(20),
     email          VARCHAR(150)  NOT NULL UNIQUE,
     telefono       VARCHAR(20),
     cargo          VARCHAR(80),
