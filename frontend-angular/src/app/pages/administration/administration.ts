@@ -890,13 +890,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                 </td>
                                 <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
                                 <td class="px-4 py-3">
-                                  <span
-                                    [class]="
-                                      site.activo
-                                        ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
-                                        : 'rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500'
-                                    "
-                                  >
+                                  <span [class]="statusBadgeClass(site.activo ? 'success' : 'neutral')">
                                     {{ site.activo ? 'Activo' : 'Inactivo' }}
                                   </span>
                                 </td>
@@ -953,13 +947,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                   {{ deviceDataCountLabel(device) }}
                                 </td>
                                 <td class="px-4 py-3">
-                                  <span
-                                    [class]="
-                                      device.sitio_id
-                                        ? 'rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'
-                                        : 'rounded-md bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700'
-                                    "
-                                  >
+                                  <span [class]="statusBadgeClass(device.sitio_id ? 'success' : 'warning')">
                                     {{ device.sitio_descripcion || 'Sin asignar' }}
                                   </span>
                                 </td>
@@ -2240,6 +2228,13 @@ export class AdministrationComponent implements OnInit {
   siteTypeBadgeClass(type: string): string {
     const base = 'rounded-md px-2 py-1 text-xs font-bold';
     return `${base} ${getSiteTypeUi(type).badgeClass}`;
+  }
+
+  statusBadgeClass(tone: 'success' | 'warning' | 'neutral'): string {
+    const base = 'rounded-md px-2 py-1 text-xs font-bold';
+    if (tone === 'success') return `${base} bg-emerald-50 text-emerald-700`;
+    if (tone === 'warning') return `${base} bg-amber-50 text-amber-700`;
+    return `${base} bg-slate-100 text-slate-500`;
   }
 
   companyTypeBadgeClass(type: string): string {
