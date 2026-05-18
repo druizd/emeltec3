@@ -192,6 +192,11 @@ function csvValue(variable) {
     return '';
   }
 
+  const num = Number(variable.valor);
+  if (Number.isFinite(num) && String(variable.valor).trim() !== '') {
+    return String(parseFloat(num.toFixed(2)));
+  }
+
   return variable.valor;
 }
 
