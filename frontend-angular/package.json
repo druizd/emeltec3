@@ -19,11 +19,10 @@
     "@angular/platform-browser": "^21.2.12",
     "@angular/router": "^21.2.12",
     "chart.js": "^4.5.1",
-    "lucide-angular": "^1.0.0",
     "ng2-charts": "^10.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@angular/build": "^21.2.10",
