@@ -251,7 +251,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('dga')"
                 [class]="getDetailTabClass('dga')"
                 [attr.aria-selected]="activeDetailTab() === 'dga'"
-                aria-controls="tabpanel-dga"
+                id="tab-dga" aria-controls="tabpanel-dga"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
                 DGA
@@ -268,7 +268,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('operacion')"
                 [class]="getDetailTabClass('operacion')"
                 [attr.aria-selected]="activeDetailTab() === 'operacion'"
-                aria-controls="tabpanel-operacion"
+                id="tab-operacion" aria-controls="tabpanel-operacion"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >monitoring</span
@@ -287,7 +287,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('alertas')"
                 [class]="getDetailTabClass('alertas')"
                 [attr.aria-selected]="activeDetailTab() === 'alertas'"
-                aria-controls="tabpanel-alertas"
+                id="tab-alertas" aria-controls="tabpanel-alertas"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >notifications_active</span
@@ -306,7 +306,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="setDetailTab('bitacora')"
                 [class]="getDetailTabClass('bitacora')"
                 [attr.aria-selected]="activeDetailTab() === 'bitacora'"
-                aria-controls="tabpanel-bitacora"
+                id="tab-bitacora" aria-controls="tabpanel-bitacora"
               >
                 <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                   >menu_book</span
@@ -326,7 +326,7 @@ type OperationMode = 'realtime' | 'turnos';
                   (click)="setDetailTab('analisis')"
                   [class]="getDetailTabClass('analisis')"
                   [attr.aria-selected]="activeDetailTab() === 'analisis'"
-                  aria-controls="tabpanel-analisis"
+                  id="tab-analisis" aria-controls="tabpanel-analisis"
                 >
                   <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
                     >insights</span
@@ -556,6 +556,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
+            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga">
             <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
               <!-- Enviados: cuenta en rango filtrado -->
               <article
@@ -1650,29 +1651,53 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
               </div>
             </section>
+            </div>
           } @else if (activeDetailTab() === 'alertas') {
-            <app-water-detail-alertas
-              [sitioId]="siteContext()?.site?.id || ''"
-              [empresaId]="siteContext()?.company?.id || ''"
-            />
+            <div role="tabpanel" id="tabpanel-alertas" aria-labelledby="tab-alertas">
+              <app-water-detail-alertas
+                [sitioId]="siteContext()?.site?.id || ''"
+                [empresaId]="siteContext()?.company?.id || ''"
+              />
+            </div>
           } @else if (activeDetailTab() === 'bitacora') {
-            <app-water-detail-bitacora
-              [sitioId]="siteContext()?.site?.id || ''"
-              [empresaId]="siteContext()?.company?.id || ''"
-            />
+            <div role="tabpanel" id="tabpanel-bitacora" aria-labelledby="tab-bitacora">
+              <app-water-detail-bitacora
+                [sitioId]="siteContext()?.site?.id || ''"
+                [empresaId]="siteContext()?.company?.id || ''"
+              />
+            </div>
           } @else if (activeDetailTab() === 'analisis' && isSuperAdmin()) {
-            <app-water-detail-analisis [sitioId]="siteContext()?.site?.id || ''" />
+            <div role="tabpanel" id="tabpanel-analisis" aria-labelledby="tab-analisis">
+              <app-water-detail-analisis [sitioId]="siteContext()?.site?.id || ''" />
+            </div>
           }
 
-          <div [class.hidden]="activeDetailTab() !== 'operacion'">
+          <div
+            role="tabpanel"
+            id="tabpanel-operacion"
+            aria-labelledby="tab-operacion"
+            [class.hidden]="activeDetailTab() !== 'operacion'"
+          >
             <app-water-detail-operacion />
           </div>
         </div>
       } @else {
         <div
-          class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-700"
+          class="flex flex-col items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-body-sm font-semibold text-rose-700 sm:flex-row sm:items-center sm:justify-between"
+          role="alert"
         >
-          No se encontró la instalación solicitada.
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">error</span>
+            <span>No se encontró la instalación solicitada.</span>
+          </div>
+          <button
+            type="button"
+            (click)="volverAListado()"
+            class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+          >
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">arrow_back</span>
+            Volver al listado
+          </button>
         </div>
       }
 
@@ -3584,6 +3609,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const next = new Date(value);
     next.setDate(next.getDate() + days);
     return next;
+  }
+
+  /** Empty-state recovery: navigate back to the installations list. */
+  volverAListado(): void {
+    this.router.navigate(['/companies']);
   }
 
   openSettingsPanel(): void {

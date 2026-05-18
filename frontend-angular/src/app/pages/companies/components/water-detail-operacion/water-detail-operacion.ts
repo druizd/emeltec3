@@ -156,6 +156,7 @@ interface RealtimeChartPoint {
         <!-- Banner tiempo real -->
         <div
           class="rounded-2xl border border-[rgba(13,175,189,0.25)] bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_4px_12px_rgba(13,175,189,0.06)]"
+          [attr.aria-busy]="loading()"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex items-center gap-2.5">
@@ -173,9 +174,18 @@ interface RealtimeChartPoint {
                 </p>
               </div>
             </div>
-            <span class="flex items-center gap-2 text-caption-xs font-bold text-emerald-700">
-              <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
-              {{ latestTimestampLabel() }}
+            <span class="flex items-center gap-2 text-caption-xs font-bold">
+              @if (loading()) {
+                <span
+                  class="material-symbols-outlined animate-spin text-[14px] text-primary-container"
+                  aria-hidden="true"
+                  >progress_activity</span
+                >
+                <span class="text-primary-container">Actualizando…</span>
+              } @else {
+                <span class="h-2 w-2 animate-pulse rounded-full bg-emerald-500"></span>
+                <span class="text-emerald-700">{{ latestTimestampLabel() }}</span>
+              }
             </span>
           </div>
           <div class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
