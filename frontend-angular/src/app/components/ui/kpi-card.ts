@@ -15,19 +15,19 @@ export type KpiTone = 'primary' | 'success' | 'danger' | 'warning' | 'neutral';
     >
       <div class="min-w-0 flex-1">
         <p
-          class="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-on-surface-muted"
+          class="truncate text-caption-xs font-semibold uppercase tracking-[0.12em] text-on-surface-muted"
           style="font-family: var(--font-josefin);"
         >
           {{ label }}
         </p>
         <p
-          class="mt-2 truncate text-[26px] font-semibold leading-none text-on-surface"
+          class="mt-2 truncate text-h4 font-semibold leading-none text-on-surface"
           style="font-family: var(--font-mono); letter-spacing: -0.02em;"
         >
           {{ displayValue }}
         </p>
         @if (unit || helper) {
-          <p class="mt-1.5 truncate text-[11px] font-medium text-on-surface-variant">
+          <p class="mt-1.5 truncate text-caption-xs font-medium text-on-surface-variant">
             {{ helper || unit }}
           </p>
         }

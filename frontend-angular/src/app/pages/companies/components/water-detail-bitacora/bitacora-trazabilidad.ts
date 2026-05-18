@@ -25,7 +25,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
       }
 
       <header class="flex flex-wrap items-center gap-2">
@@ -35,7 +35,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
             {{ f.label }}
           </button>
         }
-        <span class="ml-auto text-[11px] font-semibold text-slate-400">
+        <span class="ml-auto text-caption-xs font-semibold text-slate-400">
           {{ entradas().length }} registros
         </span>
       </header>
@@ -46,27 +46,27 @@ type RecursoFiltro = AuditTargetType | 'todos';
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Fecha y hora
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Usuario
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Acción
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Recurso
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Detalle
                 </th>
@@ -75,28 +75,28 @@ type RecursoFiltro = AuditTargetType | 'todos';
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
                 <tr>
-                  <td colspan="5" class="px-4 py-10 text-center text-[12px] text-slate-400">
+                  <td colspan="5" class="px-4 py-10 text-center text-caption text-slate-400">
                     Cargando bitácora…
                   </td>
                 </tr>
               } @else {
                 @for (entry of entradas(); track entry.id) {
                   <tr class="hover:bg-slate-50/60">
-                    <td class="px-4 py-3 font-mono text-[12px] text-slate-500">
+                    <td class="px-4 py-3 font-mono text-caption text-slate-500">
                       {{ formatFecha(entry.ts) }}
                     </td>
                     <td class="px-4 py-3">
                       <p class="font-semibold text-slate-800">
                         {{ entry.actor_email || '—' }}
                       </p>
-                      <p class="text-[10px] uppercase tracking-wide text-slate-400">
+                      <p class="text-caption-xs uppercase tracking-wide text-slate-400">
                         {{ entry.actor_tipo || '—' }}
                       </p>
                     </td>
                     <td class="px-4 py-3">
                       <span
                         [class]="accionClass(entry.action)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-bold"
                       >
                         {{ accionLabel(entry.action) }}
                       </span>
@@ -104,7 +104,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
                     <td class="px-4 py-3">
                       <span
                         [class]="recursoClass(entry.target_type)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-bold"
                       >
                         <span class="material-symbols-outlined text-[12px]">
                           {{ recursoIcon(entry.target_type) }}
@@ -112,7 +112,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
                         {{ recursoLabel(entry.target_type) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 text-[12px] text-slate-500">
+                    <td class="px-4 py-3 text-caption text-slate-500">
                       {{ detalle(entry) }}
                     </td>
                   </tr>
@@ -134,11 +134,11 @@ type RecursoFiltro = AuditTargetType | 'todos';
         </div>
 
         <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-          <p class="text-[11px] text-slate-400">Registro automático — solo lectura</p>
+          <p class="text-caption-xs text-slate-400">Registro automático — solo lectura</p>
           <button
             type="button"
             (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-[12px] font-bold text-primary-container hover:underline"
+            class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
           >
             <span class="material-symbols-outlined text-[14px]">download</span>
             Exportar CSV
@@ -264,7 +264,7 @@ export class BitacoraAuditLogComponent {
   filtroClass(key: RecursoFiltro): string {
     const active = this.filtroRecurso() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

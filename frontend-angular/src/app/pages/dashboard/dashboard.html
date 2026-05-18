@@ -1,12 +1,12 @@
 <section class="min-h-full bg-[#F0F2F5] px-5 py-5">
   <div class="mb-5">
     <h1
-      class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
+      class="text-h4 font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
       style="font-family: 'Josefin Sans', sans-serif"
     >
       Instalaciones
     </h1>
-    <p class="mt-0.5 text-[13px] text-[#94a3b8]">
+    <p class="mt-0.5 text-body-sm text-[#94a3b8]">
       @if (!loading()) {
         {{ installations().length }} instalaciones registradas
       }
@@ -15,7 +15,7 @@
 
   @if (welcomeBannerVisible() && !loading() && installations().length > 0) {
     <div
-      class="mb-4 flex items-start gap-3 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-4 py-3 text-[13px] text-[#04606a]"
+      class="mb-4 flex items-start gap-3 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-4 py-3 text-body-sm text-[#04606a]"
       role="status"
     >
       <span class="material-symbols-outlined mt-0.5 text-[20px] text-primary">waving_hand</span>
@@ -27,7 +27,7 @@
             Bienvenido a Emeltec Cloud.
           }
         </p>
-        <p class="mt-1 text-[12px] leading-snug text-[#0899a5]">
+        <p class="mt-1 text-caption leading-snug text-[#0899a5]">
           Acá ves todas tus instalaciones. Clic en una tarjeta para entrar al detalle del sitio
           (DGA, Operación, Alertas, Bitácora).
         </p>
@@ -69,7 +69,7 @@
         <span class="material-symbols-outlined text-[28px] text-primary">water_drop</span>
       </div>
       <h2
-        class="mb-2 text-[18px] font-semibold text-[#1e293b]"
+        class="mb-2 text-h5 font-semibold text-[#1e293b]"
         style="font-family: 'Josefin Sans', sans-serif"
       >
         @if (userFirstName()) {
@@ -78,12 +78,12 @@
           Tu cuenta de Emeltec Cloud está lista.
         }
       </h2>
-      <p class="mx-auto max-w-md text-[13px] leading-relaxed text-[#64748b]">
+      <p class="mx-auto max-w-md text-body-sm leading-relaxed text-[#64748b]">
         Pronto verás acá las instalaciones que tu empresa monitoree con nosotros: consumo de agua,
         energía, riles o variables de proceso. El equipo de Emeltec te avisará cuando los sitios
         estén asignados.
       </p>
-      <p class="mx-auto mt-4 max-w-md text-[12px] leading-relaxed text-[#94a3b8]">
+      <p class="mx-auto mt-4 max-w-md text-caption leading-relaxed text-[#94a3b8]">
         ¿Tienes preguntas? Escribe a
         <a class="font-semibold text-primary hover:underline" href="mailto:soporte@emeltec.cl"
           >soporte&#64;emeltec.cl</a
@@ -115,17 +115,17 @@
           </div>
 
           <div class="min-w-0 flex-1">
-            <h2 class="truncate text-[12px] font-semibold leading-tight text-[#1e293b]">
+            <h2 class="truncate text-caption font-semibold leading-tight text-[#1e293b]">
               {{ installation.name }}
             </h2>
-            <p class="truncate text-[10px] leading-tight text-[#94a3b8]">
+            <p class="truncate text-caption-xs leading-tight text-[#94a3b8]">
               {{ installation.companyName }}
             </p>
           </div>
 
           <div class="flex shrink-0 items-center gap-1.5">
             <span
-              class="flex items-center gap-1 text-[10px] font-semibold"
+              class="flex items-center gap-1 text-caption-xs font-semibold"
               [style.color]="getStatusColor(installation.status)"
             >
               <span
@@ -142,7 +142,7 @@
     </div>
 
     @if (visibleInstallations().length < installations().length) {
-      <div class="mt-3 flex items-center justify-center gap-2 text-[11px] text-[#94a3b8]">
+      <div class="mt-3 flex items-center justify-center gap-2 text-caption-xs text-[#94a3b8]">
         <span class="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
         Cargando {{ installations().length - visibleInstallations().length }} más…
       </div>

@@ -76,6 +76,6 @@ export class CompaniesTabNavComponent {
   }
 
   getIconClass(): string {
-    return this.variant === 'superadmin' ? 'text-[18px]' : 'text-lg';
+    return this.variant === 'superadmin' ? 'text-h5' : 'text-lg';
   }
 }

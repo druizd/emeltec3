@@ -14,7 +14,7 @@ import { Component } from '@angular/core';
     >
       <span class="material-symbols-outlined text-[36px] text-slate-300">lightbulb</span>
       <h3 class="text-base font-semibold text-slate-700">Sugerencias en diseño</h3>
-      <p class="max-w-md text-[13px] text-slate-500">
+      <p class="max-w-md text-body-sm text-slate-500">
         Motor de recomendaciones (mantenciones preventivas, optimización energética, ajustes de
         operación). Requiere definir reglas de negocio o entrenar modelo sobre histórico del sitio.
       </p>

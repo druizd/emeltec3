@@ -56,7 +56,7 @@ const TIPOS: DocumentoTipo[] = [
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
       }
 
       <header class="flex flex-wrap items-center justify-between gap-3">
@@ -69,7 +69,7 @@ const TIPOS: DocumentoTipo[] = [
             >
               {{ tipo.label }}
               <span
-                class="ml-1 rounded-full px-1.5 text-[10px] font-semibold"
+                class="ml-1 rounded-full px-1.5 text-caption-xs font-semibold"
                 [class]="filtroBadgeClass(tipo.key)"
               >
                 {{ contarPorTipo(tipo.key) }}
@@ -80,7 +80,7 @@ const TIPOS: DocumentoTipo[] = [
         <button
           type="button"
           (click)="toggleSubida()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-[12px] font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             mostrandoSubida() ? 'close' : 'upload_file'
@@ -94,14 +94,14 @@ const TIPOS: DocumentoTipo[] = [
           class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
         >
           <p
-            class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container"
+            class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
           >
             Nuevo documento
           </p>
           <div class="space-y-3">
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Archivo (máx 25 MB)</label
               >
               <input
@@ -111,7 +111,7 @@ const TIPOS: DocumentoTipo[] = [
                 class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
               />
               @if (archivoSeleccionado()) {
-                <p class="mt-1 text-[11px] text-slate-500">
+                <p class="mt-1 text-caption-xs text-slate-500">
                   {{ archivoSeleccionado()!.name }} ({{ formatBytes(archivoSeleccionado()!.size) }})
                 </p>
               }
@@ -120,7 +120,7 @@ const TIPOS: DocumentoTipo[] = [
             <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >Título</label
                 >
                 <input
@@ -132,7 +132,7 @@ const TIPOS: DocumentoTipo[] = [
               </div>
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >Tipo</label
                 >
                 <select
@@ -146,7 +146,7 @@ const TIPOS: DocumentoTipo[] = [
               </div>
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >Versión</label
                 >
                 <input
@@ -158,7 +158,7 @@ const TIPOS: DocumentoTipo[] = [
               </div>
               <div>
                 <label
-                  class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >Vigente hasta (opcional)</label
                 >
                 <input
@@ -172,7 +172,7 @@ const TIPOS: DocumentoTipo[] = [
 
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Descripción (opcional)</label
               >
               <textarea
@@ -186,7 +186,7 @@ const TIPOS: DocumentoTipo[] = [
               <button
                 type="button"
                 (click)="toggleSubida()"
-                class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
               >
                 Cancelar
               </button>
@@ -194,7 +194,7 @@ const TIPOS: DocumentoTipo[] = [
                 type="button"
                 [disabled]="uploading() || !puedeSubir()"
                 (click)="subir()"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
                 {{ uploading() ? 'Subiendo…' : 'Subir' }}
@@ -210,27 +210,27 @@ const TIPOS: DocumentoTipo[] = [
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Documento
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Tipo
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Versión
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Cargado
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Acciones
                 </th>
@@ -239,7 +239,7 @@ const TIPOS: DocumentoTipo[] = [
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
                 <tr>
-                  <td colspan="5" class="px-4 py-10 text-center text-[12px] text-slate-400">
+                  <td colspan="5" class="px-4 py-10 text-center text-caption text-slate-400">
                     Cargando documentos…
                   </td>
                 </tr>
@@ -258,7 +258,7 @@ const TIPOS: DocumentoTipo[] = [
                         </span>
                         <div class="min-w-0">
                           <p class="truncate font-semibold text-slate-800">{{ doc.titulo }}</p>
-                          <p class="truncate text-[11px] text-slate-400">
+                          <p class="truncate text-caption-xs text-slate-400">
                             {{ doc.nombre_original }} · {{ formatBytes(doc.size_bytes) }}
                           </p>
                         </div>
@@ -267,18 +267,18 @@ const TIPOS: DocumentoTipo[] = [
                     <td class="px-4 py-3">
                       <span
                         [class]="tipoLabelClass(doc.tipo)"
-                        class="rounded-full px-2 py-0.5 text-[11px] font-bold"
+                        class="rounded-full px-2 py-0.5 text-caption-xs font-bold"
                       >
                         {{ tipoLabel(doc.tipo) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 font-mono text-[12px] text-slate-700">
+                    <td class="px-4 py-3 font-mono text-caption text-slate-700">
                       v{{ doc.version || '—' }}
                     </td>
-                    <td class="px-4 py-3 text-[11px] text-slate-500">
+                    <td class="px-4 py-3 text-caption-xs text-slate-500">
                       <p>{{ formatFecha(doc.created_at) }}</p>
                       @if (doc.uploader_nombre_completo) {
-                        <p class="text-[10px] text-slate-400">
+                        <p class="text-caption-xs text-slate-400">
                           por {{ doc.uploader_nombre_completo }}
                         </p>
                       }
@@ -505,7 +505,7 @@ export class BitacoraDocumentosComponent {
   filtroClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

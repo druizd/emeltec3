@@ -37,7 +37,7 @@ interface AlertasTabItem {
               <span class="material-symbols-outlined text-[22px]">notifications_active</span>
             </span>
             <div class="min-w-0">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 Alertas
               </p>
               <h2 class="truncate text-lg font-semibold leading-tight text-slate-800">
@@ -48,7 +48,7 @@ interface AlertasTabItem {
           <!-- Badge activas -->
           @if (activasCount() > 0) {
             <span
-              class="hidden shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-bold text-rose-600 sm:inline-flex"
+              class="hidden shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-caption-xs font-bold text-rose-600 sm:inline-flex"
             >
               <span class="h-2 w-2 animate-pulse rounded-full bg-rose-500"></span>
               {{ activasCount() }} {{ activasCount() === 1 ? 'alerta activa' : 'alertas activas' }}

@@ -10,25 +10,25 @@
       </span>
       <div class="min-w-0">
         <h3
-          class="truncate text-[12px] font-semibold uppercase tracking-[0.10em] text-on-surface-muted"
+          class="truncate text-caption font-semibold uppercase tracking-[0.10em] text-on-surface-muted"
           style="font-family: var(--font-josefin)"
         >
           {{ title }}
         </h3>
-        <p class="truncate text-[11px] text-on-surface-variant">{{ formattedTime }}</p>
+        <p class="truncate text-caption-xs text-on-surface-variant">{{ formattedTime }}</p>
       </div>
     </div>
   </header>
 
   <div class="mt-4 flex flex-1 items-baseline gap-1.5">
     <span
-      class="text-[30px] font-semibold leading-none text-on-surface"
+      class="text-h3 font-semibold leading-none text-on-surface"
       style="font-family: var(--font-mono); letter-spacing: -0.02em"
     >
       {{ displayValue }}
     </span>
     @if (unit) {
-      <span class="text-[13px] font-medium text-on-surface-variant">{{ unit }}</span>
+      <span class="text-body-sm font-medium text-on-surface-variant">{{ unit }}</span>
     }
   </div>
 </article>

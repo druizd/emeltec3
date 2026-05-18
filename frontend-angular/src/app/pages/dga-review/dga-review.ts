@@ -31,7 +31,7 @@ interface RowEdit {
       <header class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold text-slate-800">Cola de revisión DGA</h1>
-          <p class="text-[12px] text-slate-500">
+          <p class="text-caption text-slate-500">
             Slots con anomalías detectadas en validación. Requieren decisión admin antes de enviar a
             SNIA.
           </p>
@@ -59,14 +59,14 @@ interface RowEdit {
             type="button"
             (click)="requestCode()"
             [disabled]="requestingCode()"
-            class="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+            class="rounded-lg bg-amber-600 px-3 py-1.5 text-caption font-bold text-white hover:bg-amber-700 disabled:opacity-50"
           >
             {{ requestingCode() ? 'Enviando…' : 'Solicitar código' }}
           </button>
-          <span class="text-[11px] text-amber-700">
+          <span class="text-caption-xs text-amber-700">
             Se enviará al email admin (MONITOR_PRIMARY_EMAIL). Vence en 5 min.
           </span>
-          <label class="ml-auto flex items-center gap-2 text-[12px]">
+          <label class="ml-auto flex items-center gap-2 text-caption">
             Código:
             <input
               type="text"
@@ -75,19 +75,19 @@ interface RowEdit {
               [value]="twoFactorCode()"
               (input)="twoFactorCode.set($any($event.target).value.replace(/\\D/g, ''))"
               placeholder="000000"
-              class="h-9 w-24 rounded-lg border border-amber-300 bg-white px-2 font-mono text-center text-[14px] font-bold tracking-widest text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
+              class="h-9 w-24 rounded-lg border border-amber-300 bg-white px-2 font-mono text-center text-body font-bold tracking-widest text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
             />
           </label>
         </div>
         @if (codeMessage()) {
-          <div class="text-[11px] text-amber-800">{{ codeMessage() }}</div>
+          <div class="text-caption-xs text-amber-800">{{ codeMessage() }}</div>
         }
       </section>
 
       <!-- Errores -->
       @if (error()) {
         <div
-          class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[13px] text-red-800"
+          class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-body-sm text-red-800"
         >
           <span class="material-symbols-outlined text-[18px]">error</span>
           <span>{{ error() }}</span>
@@ -106,8 +106,8 @@ interface RowEdit {
         </div>
       } @else {
         <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-          <table class="min-w-full text-[12px]">
-            <thead class="bg-slate-50 text-[10px] uppercase tracking-wider text-slate-500">
+          <table class="min-w-full text-caption">
+            <thead class="bg-slate-50 text-caption-xs uppercase tracking-wider text-slate-500">
               <tr>
                 <th class="px-3 py-2 text-left">Obra</th>
                 <th class="px-3 py-2 text-left">Slot</th>
@@ -124,11 +124,11 @@ interface RowEdit {
                 <tr class="hover:bg-slate-50">
                   <td class="px-3 py-2 align-top">
                     <div class="font-semibold text-slate-700">{{ s.codigo_obra || s.obra }}</div>
-                    <div class="text-[10px] text-slate-500">
+                    <div class="text-caption-xs text-slate-500">
                       {{ s.referencia_informante || s.site_id }}
                     </div>
                   </td>
-                  <td class="px-3 py-2 align-top font-mono text-[11px] text-slate-600">
+                  <td class="px-3 py-2 align-top font-mono text-caption-xs text-slate-600">
                     {{ s.ts }}
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -136,11 +136,11 @@ interface RowEdit {
                       @for (w of s.validation_warnings; track w.code) {
                         <li>
                           <span
-                            class="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700"
+                            class="rounded bg-rose-100 px-1.5 py-0.5 text-caption-xs font-bold text-rose-700"
                             >{{ w.code }}</span
                           >
                           @if (w.suggested !== null) {
-                            <span class="ml-1 text-[10px] text-slate-500"
+                            <span class="ml-1 text-caption-xs text-slate-500"
                               >sugerido: {{ w.suggested }}</span
                             >
                           }
@@ -154,7 +154,7 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).caudal"
                       (input)="setEdit(s, 'caudal', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-accent/30"
+                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -163,7 +163,7 @@ interface RowEdit {
                       step="1"
                       [value]="edit(s).totalizador"
                       (input)="setEdit(s, 'totalizador', $any($event.target).value)"
-                      class="h-8 w-32 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-accent/30"
+                      class="h-8 w-32 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -172,7 +172,7 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).nivel"
                       (input)="setEdit(s, 'nivel', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-[11px] outline-none focus:border-accent/30"
+                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -182,7 +182,7 @@ interface RowEdit {
                       (input)="setEdit(s, 'note', $any($event.target).value)"
                       maxlength="500"
                       placeholder="Razón del cambio…"
-                      class="h-8 w-48 rounded border border-slate-200 bg-white px-2 text-[11px] outline-none focus:border-accent/30"
+                      class="h-8 w-48 rounded border border-slate-200 bg-white px-2 text-caption-xs outline-none focus:border-accent/30"
                     />
                   </td>
                   <td class="px-3 py-2 align-top space-y-1">
@@ -190,7 +190,7 @@ interface RowEdit {
                       type="button"
                       (click)="accept(s)"
                       [disabled]="acting() === slotKey(s)"
-                      class="block w-full rounded bg-emerald-600 px-2 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      class="block w-full rounded bg-emerald-600 px-2 py-1 text-caption-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                     >
                       Aceptar → enviar
                     </button>
@@ -198,7 +198,7 @@ interface RowEdit {
                       type="button"
                       (click)="discard(s)"
                       [disabled]="acting() === slotKey(s)"
-                      class="block w-full rounded border border-red-200 bg-white px-2 py-1 text-[11px] font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      class="block w-full rounded border border-red-200 bg-white px-2 py-1 text-caption-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
                     >
                       Descartar
                     </button>

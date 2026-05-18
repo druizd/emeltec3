@@ -36,13 +36,13 @@ function dateToUtcIsoEnd(date: string): string {
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-accent">leaderboard</span>
           <div>
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Rango</p>
+            <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">Rango</p>
             <p class="text-sm font-bold text-slate-700">{{ desde() }} → {{ hasta() }}</p>
           </div>
         </div>
-        <div class="flex items-center gap-2 text-[12px]">
+        <div class="flex items-center gap-2 text-caption">
           <label class="grid gap-0.5">
-            <span class="text-[10px] font-bold text-slate-500">Desde</span>
+            <span class="text-caption-xs font-bold text-slate-500">Desde</span>
             <input
               type="date"
               min="2020-01-01"
@@ -52,7 +52,7 @@ function dateToUtcIsoEnd(date: string): string {
             />
           </label>
           <label class="grid gap-0.5">
-            <span class="text-[10px] font-bold text-slate-500">Hasta</span>
+            <span class="text-caption-xs font-bold text-slate-500">Hasta</span>
             <input
               type="date"
               min="2020-01-01"
@@ -65,7 +65,7 @@ function dateToUtcIsoEnd(date: string): string {
             type="button"
             (click)="reload()"
             [disabled]="loading()"
-            class="rounded-lg bg-accent-container px-3 py-1.5 text-[12px] font-bold text-white hover:bg-accent-deep disabled:opacity-50"
+            class="rounded-lg bg-accent-container px-3 py-1.5 text-caption font-bold text-white hover:bg-accent-deep disabled:opacity-50"
           >
             Aplicar
           </button>
@@ -73,13 +73,13 @@ function dateToUtcIsoEnd(date: string): string {
       </header>
 
       <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+        <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
           Total de lecturas en rango
         </p>
         <p class="mt-1 text-3xl font-semibold text-slate-800">
           {{ data().total_lecturas.toLocaleString('es-CL') }}
         </p>
-        <p class="text-[11px] text-slate-400">
+        <p class="text-caption-xs text-slate-400">
           de {{ data().variables.length }} variable(s) configurada(s)
         </p>
       </article>
@@ -90,37 +90,37 @@ function dateToUtcIsoEnd(date: string): string {
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Variable
                 </th>
                 <th
-                  class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Rol
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Lecturas
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Mín
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Prom
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Máx
                 </th>
                 <th
-                  class="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-3 py-2 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Último
                 </th>
@@ -143,24 +143,24 @@ function dateToUtcIsoEnd(date: string): string {
                 @for (v of data().variables; track v.reg_map_id) {
                   <tr class="hover:bg-slate-50/60">
                     <td class="px-3 py-2 font-semibold text-slate-800">{{ v.alias }}</td>
-                    <td class="px-3 py-2 text-[11px] uppercase text-slate-500">
+                    <td class="px-3 py-2 text-caption-xs uppercase text-slate-500">
                       {{ v.rol_dashboard || '—' }}
                     </td>
-                    <td class="px-3 py-2 text-right font-mono text-[11px] text-slate-600">
+                    <td class="px-3 py-2 text-right font-mono text-caption-xs text-slate-600">
                       {{ v.count.toLocaleString('es-CL') }}
                     </td>
-                    <td class="px-3 py-2 text-right font-mono text-[12px] text-slate-700">
+                    <td class="px-3 py-2 text-right font-mono text-caption text-slate-700">
                       {{ fmt(v.min) }}{{ unidadSuffix(v.unidad) }}
                     </td>
                     <td
-                      class="px-3 py-2 text-right font-mono text-[12px] font-bold text-accent-container"
+                      class="px-3 py-2 text-right font-mono text-caption font-bold text-accent-container"
                     >
                       {{ fmt(v.avg) }}{{ unidadSuffix(v.unidad) }}
                     </td>
-                    <td class="px-3 py-2 text-right font-mono text-[12px] text-slate-700">
+                    <td class="px-3 py-2 text-right font-mono text-caption text-slate-700">
                       {{ fmt(v.max) }}{{ unidadSuffix(v.unidad) }}
                     </td>
-                    <td class="px-3 py-2 text-right font-mono text-[12px] text-slate-800">
+                    <td class="px-3 py-2 text-right font-mono text-caption text-slate-800">
                       {{ fmt(v.last) }}{{ unidadSuffix(v.unidad) }}
                     </td>
                   </tr>

@@ -71,7 +71,7 @@ interface IncidenciaPeriodo {
           </div>
 
           <!-- Rango custom -->
-          <div class="flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
+          <div class="flex flex-wrap items-center gap-2 text-caption text-slate-500">
             <span class="font-semibold" id="label-desde">Desde</span>
             <input
               type="date"
@@ -79,7 +79,7 @@ interface IncidenciaPeriodo {
               [value]="fechaDesde()"
               (change)="onFechaChange('desde', $any($event.target).value)"
               aria-labelledby="label-desde"
-              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-[12px] text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
             />
             <span class="font-semibold" id="label-hasta">Hasta</span>
             <input
@@ -88,14 +88,14 @@ interface IncidenciaPeriodo {
               [value]="fechaHasta()"
               (change)="onFechaChange('hasta', $any($event.target).value)"
               aria-labelledby="label-hasta"
-              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-[12px] text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
+              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
             />
           </div>
 
           <!-- Exportar -->
           <button
             type="button"
-            class="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50"
+            class="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50"
           >
             <span class="material-symbols-outlined text-[15px]">download</span>
             Exportar
@@ -117,11 +117,11 @@ interface IncidenciaPeriodo {
               <span class="material-symbols-outlined text-[20px]">{{ k.icon }}</span>
             </span>
             <div class="min-w-0">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 {{ k.label }}
               </p>
               <p class="mt-0.5 text-xl font-semibold text-slate-800">{{ k.valor }}</p>
-              <p class="text-[11px] text-slate-400">{{ k.subtext }}</p>
+              <p class="text-caption-xs text-slate-400">{{ k.subtext }}</p>
             </div>
           </article>
         }
@@ -133,10 +133,10 @@ interface IncidenciaPeriodo {
           class="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
           <div class="min-w-0">
-            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Resumen operacional por turno
             </h3>
-            <p class="mt-0.5 flex items-center gap-1 text-[10px] font-medium text-slate-400">
+            <p class="mt-0.5 flex items-center gap-1 text-caption-xs font-medium text-slate-400">
               <span class="material-symbols-outlined text-[12px]">link</span>
               Turnos vinculados con "Hoy en tiempo real" — los cambios se guardan por sitio
             </p>
@@ -160,11 +160,11 @@ interface IncidenciaPeriodo {
         @if (resumenSettingsOpen()) {
           <div class="border-b border-[rgba(13,175,189,0.15)] bg-[rgba(13,175,189,0.08)] p-4">
             <div class="mb-3 flex items-center justify-between">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+              <p class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
                 Configurar horarios
               </p>
               <div
-                class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-[11px] font-bold"
+                class="flex items-center overflow-hidden rounded-lg border border-slate-200 bg-white text-caption-xs font-bold"
                 role="group"
                 aria-label="Cantidad de turnos"
               >
@@ -197,15 +197,15 @@ interface IncidenciaPeriodo {
               style="grid-template-columns: 8px 1fr 82px 82px"
             >
               <span></span>
-              <span class="text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Nombre</span
               >
               <span
-                class="text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                class="text-center text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Inicio</span
               >
               <span
-                class="text-center text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                class="text-center text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Fin</span
               >
               @for (t of turnosConfig().slice(0, numTurnos()); track t.nombre; let i = $index) {
@@ -214,26 +214,26 @@ interface IncidenciaPeriodo {
                   type="text"
                   [value]="t.nombre"
                   (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-[12px] font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                 />
                 <input
                   type="time"
                   [value]="t.inicio"
                   (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-[11px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                 />
                 <input
                   type="time"
                   [value]="t.fin"
                   (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
-                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-[11px] text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
+                  class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                 />
               }
             </div>
             <button
               type="button"
               (click)="resumenSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5]"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
             >
               <span class="material-symbols-outlined text-[14px]">check</span>
               Listo
@@ -247,13 +247,13 @@ interface IncidenciaPeriodo {
               <div class="flex items-center gap-2">
                 <span class="h-2 w-2 rounded-full" [class]="turnoDot(i)"></span>
                 <p
-                  class="text-[10px] font-semibold uppercase tracking-widest"
+                  class="text-caption-xs font-semibold uppercase tracking-widest"
                   [class]="turnoResumenLabel(i)"
                 >
                   {{ t.nombre }}
                 </p>
               </div>
-              <p class="mt-0.5 font-mono text-[11px]" [class]="turnoResumenSub(i)">
+              <p class="mt-0.5 font-mono text-caption-xs" [class]="turnoResumenSub(i)">
                 {{ t.horario }}
               </p>
               @if (t.flujo > 0) {
@@ -268,7 +268,7 @@ interface IncidenciaPeriodo {
                     [style.width]="t.pct + '%'"
                   ></div>
                 </div>
-                <p class="mt-1 text-right font-mono text-[11px]" [class]="turnoResumenSub(i)">
+                <p class="mt-1 text-right font-mono text-caption-xs" [class]="turnoResumenSub(i)">
                   {{ t.pct }}% del período
                 </p>
               } @else {
@@ -286,10 +286,10 @@ interface IncidenciaPeriodo {
         <div class="mb-4 flex items-center justify-between">
           <div>
             <h3 class="text-sm font-semibold text-slate-800">Flujo diario en el período</h3>
-            <p class="mt-0.5 text-[11px] text-slate-400">m³/día · días sin operación en gris</p>
+            <p class="mt-0.5 text-caption-xs text-slate-400">m³/día · días sin operación en gris</p>
           </div>
           <span
-            class="rounded-full bg-[rgba(13,175,189,0.08)] px-2.5 py-1 text-[11px] font-bold text-primary-container"
+            class="rounded-full bg-[rgba(13,175,189,0.08)] px-2.5 py-1 text-caption-xs font-bold text-primary-container"
             >{{ periodoLabel() }}</span
           >
         </div>
@@ -340,13 +340,13 @@ interface IncidenciaPeriodo {
         <div
           class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
-          <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Resumen diario — últimos 7 días del período
           </h3>
           <button
             type="button"
             aria-label="Descargar resumen diario en CSV"
-            class="inline-flex items-center gap-1 text-[11px] font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex items-center gap-1 text-caption-xs font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
           >
             <span class="material-symbols-outlined text-[13px]" aria-hidden="true">download</span
             >.CSV
@@ -357,27 +357,27 @@ interface IncidenciaPeriodo {
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50/60">
                 <th
-                  class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Fecha
                 </th>
                 <th
-                  class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
                 >
                   Flujo (m³)
                 </th>
                 <th
-                  class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
                 >
                   Caudal prom.
                 </th>
                 <th
-                  class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
                 >
                   Nivel freat.
                 </th>
                 <th
-                  class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
                 >
                   Alertas
                 </th>
@@ -386,35 +386,35 @@ interface IncidenciaPeriodo {
             <tbody class="divide-y divide-slate-100">
               @for (fila of data().tabla; track fila.fecha) {
                 <tr class="hover:bg-slate-50/60" [class.opacity-50]="fila.flujo === 0">
-                  <td class="px-4 py-2.5 font-mono text-[12px] font-bold text-slate-600">
+                  <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
                     {{ fila.fecha }}
                   </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-[12px] text-slate-700">
+                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
                     @if (fila.flujo > 0) {
                       {{ fila.flujo }}
                     } @else {
                       <span class="text-slate-300">—</span>
                     }
                   </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-[12px] text-slate-700">
+                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
                     @if (fila.caudalProm > 0) {
                       {{ fila.caudalProm }} L/s
                     } @else {
                       <span class="text-slate-300">—</span>
                     }
                   </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-[12px] text-slate-700">
+                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
                     {{ fila.nivel }} m
                   </td>
                   <td class="px-4 py-2.5 text-right">
                     @if (fila.alertas > 0) {
                       <span
-                        class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+                        class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
                       >
                         {{ fila.alertas }}
                       </span>
                     } @else {
-                      <span class="font-mono text-[12px] text-slate-300">—</span>
+                      <span class="font-mono text-caption text-slate-300">—</span>
                     }
                   </td>
                 </tr>
@@ -423,7 +423,7 @@ interface IncidenciaPeriodo {
           </table>
         </div>
         <div class="border-t border-slate-100 px-4 py-2.5">
-          <p class="text-[11px] text-slate-400">
+          <p class="text-caption-xs text-slate-400">
             Los datos son provisorios hasta confirmar sincronización con DGA.
           </p>
         </div>
@@ -434,13 +434,13 @@ interface IncidenciaPeriodo {
         <div
           class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
-          <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Alertas en el período
           </h3>
           <!-- Resumen por severidad -->
           <div class="flex items-center gap-2">
             <span
-              class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[11px] font-semibold text-rose-700 ring-1 ring-rose-200"
+              class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-caption-xs font-semibold text-rose-700 ring-1 ring-rose-200"
             >
               <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
               {{ data().alertasResumen.criticas }} crítica{{
@@ -448,7 +448,7 @@ interface IncidenciaPeriodo {
               }}
             </span>
             <span
-              class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200"
+              class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-caption-xs font-semibold text-amber-700 ring-1 ring-amber-200"
             >
               <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
               {{ data().alertasResumen.advertencias }} advertencia{{
@@ -456,7 +456,7 @@ interface IncidenciaPeriodo {
               }}
             </span>
             <span
-              class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold text-slate-600 ring-1 ring-slate-200"
+              class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-caption-xs font-semibold text-slate-600 ring-1 ring-slate-200"
             >
               <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
               {{ data().alertasResumen.info }} informativa{{
@@ -469,7 +469,7 @@ interface IncidenciaPeriodo {
         @if (data().alertas.length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">check_circle</span>
-            <p class="text-[13px] font-bold text-slate-400">
+            <p class="text-body-sm font-bold text-slate-400">
               Sin alertas en el período seleccionado
             </p>
           </div>
@@ -488,12 +488,12 @@ interface IncidenciaPeriodo {
                 </span>
                 <!-- Contenido -->
                 <div class="min-w-0 flex-1">
-                  <p class="text-[13px] font-bold text-slate-700">{{ alerta.titulo }}</p>
-                  <p class="mt-0.5 font-mono text-[10px] text-slate-400">{{ alerta.fechaHora }}</p>
+                  <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
+                  <p class="mt-0.5 font-mono text-caption-xs text-slate-400">{{ alerta.fechaHora }}</p>
                 </div>
                 <!-- Estado -->
                 <span
-                  class="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
+                  class="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
                   [class]="alertaEstadoClass(alerta.estado)"
                 >
                   {{ alerta.estado === 'resuelta' ? 'Resuelta' : 'Activa' }}
@@ -509,10 +509,10 @@ interface IncidenciaPeriodo {
         <div
           class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
-          <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Incidencias en el período
           </h3>
-          <span class="font-mono text-[11px] text-slate-400"
+          <span class="font-mono text-caption-xs text-slate-400"
             >{{ data().incidencias.length }} registro{{
               data().incidencias.length !== 1 ? 's' : ''
             }}</span
@@ -522,7 +522,7 @@ interface IncidenciaPeriodo {
         @if (data().incidencias.length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
-            <p class="text-[13px] font-bold text-slate-400">
+            <p class="text-body-sm font-bold text-slate-400">
               Sin incidencias registradas en el período
             </p>
           </div>
@@ -532,27 +532,27 @@ interface IncidenciaPeriodo {
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50/60">
                   <th
-                    class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Fecha
                   </th>
                   <th
-                    class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Descripción
                   </th>
                   <th
-                    class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Categoría
                   </th>
                   <th
-                    class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Estado
                   </th>
                   <th
-                    class="px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Técnico
                   </th>
@@ -561,19 +561,19 @@ interface IncidenciaPeriodo {
               <tbody class="divide-y divide-slate-100">
                 @for (inc of data().incidencias; track inc.fecha + inc.descripcion) {
                   <tr class="hover:bg-slate-50/60">
-                    <td class="px-4 py-2.5 font-mono text-[11px] font-bold text-slate-500">
+                    <td class="px-4 py-2.5 font-mono text-caption-xs font-bold text-slate-500">
                       {{ inc.fecha }}
                     </td>
-                    <td class="px-4 py-2.5 text-[12px] text-slate-700">{{ inc.descripcion }}</td>
+                    <td class="px-4 py-2.5 text-caption text-slate-700">{{ inc.descripcion }}</td>
                     <td class="px-4 py-2.5">
                       <span
-                        class="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600"
+                        class="rounded-md bg-slate-100 px-2 py-0.5 text-caption-xs font-bold text-slate-600"
                         >{{ inc.categoria }}</span
                       >
                     </td>
                     <td class="px-4 py-2.5">
                       <span
-                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
+                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
                         [class]="incEstadoClass(inc.estado)"
                       >
                         <span
@@ -583,7 +583,7 @@ interface IncidenciaPeriodo {
                         {{ incEstadoLabel(inc.estado) }}
                       </span>
                     </td>
-                    <td class="px-4 py-2.5 text-[12px] text-slate-500">{{ inc.tecnico }}</td>
+                    <td class="px-4 py-2.5 text-caption text-slate-500">{{ inc.tecnico }}</td>
                   </tr>
                 }
               </tbody>
@@ -1275,7 +1275,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   presetClass(p: Preset): string {
     const active = this.preset() === p;
     return [
-      'rounded-lg px-3 py-1.5 text-[12px] font-bold transition-all',
+      'rounded-lg px-3 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

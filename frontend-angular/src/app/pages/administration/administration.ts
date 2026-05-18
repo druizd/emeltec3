@@ -340,7 +340,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                 >settings_applications</span
               >
               <p
-                class="font-josefin text-[11px] font-semibold uppercase tracking-[0.16em] text-primary-container"
+                class="font-josefin text-caption-xs font-semibold uppercase tracking-[0.16em] text-primary-container"
               >
                 SuperAdmin
               </p>
@@ -350,7 +350,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             >
               Administración
             </h1>
-            <p class="mt-1 text-[13px] text-on-surface-variant">
+            <p class="mt-1 text-body-sm text-on-surface-variant">
               Gestiona empresas, subempresas, sitios y dispositivos detectados.
             </p>
           </div>

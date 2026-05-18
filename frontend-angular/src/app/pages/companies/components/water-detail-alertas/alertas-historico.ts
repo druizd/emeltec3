@@ -20,7 +20,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
       }
 
       <!-- Filtros -->
@@ -30,7 +30,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
             {{ f.label }}
           </button>
         }
-        <span class="ml-auto text-[11px] font-semibold text-slate-400"
+        <span class="ml-auto text-caption-xs font-semibold text-slate-400"
           >{{ historialFiltrado().length }} registros</span
         >
       </header>
@@ -41,37 +41,37 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Código
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Variable
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Severidad
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Inicio
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Duración
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Resolvió
                 </th>
                 <th
-                  class="px-4 py-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Incidencia
                 </th>
@@ -80,14 +80,14 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
                 <tr>
-                  <td colspan="7" class="px-4 py-10 text-center text-[12px] text-slate-400">
+                  <td colspan="7" class="px-4 py-10 text-center text-caption text-slate-400">
                     Cargando histórico…
                   </td>
                 </tr>
               } @else {
                 @for (ev of historialFiltrado(); track ev.id) {
                   <tr class="group hover:bg-slate-50/60">
-                    <td class="px-4 py-3 font-mono text-[12px] text-slate-500">
+                    <td class="px-4 py-3 font-mono text-caption text-slate-500">
                       {{ codigoEvento(ev) }}
                     </td>
                     <td class="px-4 py-3 font-semibold text-slate-800">
@@ -96,7 +96,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
                     <td class="px-4 py-3">
                       <span
                         [class]="severidadClass(ev.severidad)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
                       >
                         <span
                           [class]="severidadDotClass(ev.severidad)"
@@ -105,25 +105,25 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
                         {{ severidadLabel(ev.severidad) }}
                       </span>
                     </td>
-                    <td class="px-4 py-3 font-mono text-[12px] text-slate-600">
+                    <td class="px-4 py-3 font-mono text-caption text-slate-600">
                       {{ formatFecha(ev.triggered_at) }}
                     </td>
-                    <td class="px-4 py-3 text-[12px] font-semibold text-slate-600">
+                    <td class="px-4 py-3 text-caption font-semibold text-slate-600">
                       {{ duracion(ev.triggered_at, ev.resuelta_at) }}
                     </td>
-                    <td class="px-4 py-3 text-[12px] text-slate-600">
+                    <td class="px-4 py-3 text-caption text-slate-600">
                       {{ ev.asignado_nombre_completo || '—' }}
                     </td>
                     <td class="px-4 py-3">
                       @if (ev.incidencia_id) {
                         <span
-                          class="inline-flex items-center gap-1 rounded-full bg-[rgba(13,175,189,0.08)] px-2 py-0.5 text-[11px] font-bold text-primary-container"
+                          class="inline-flex items-center gap-1 rounded-full bg-[rgba(13,175,189,0.08)] px-2 py-0.5 text-caption-xs font-bold text-primary-container"
                         >
                           <span class="material-symbols-outlined text-[12px]">link</span>
                           {{ ev.incidencia_id }}
                         </span>
                       } @else {
-                        <span class="text-[11px] text-slate-300">—</span>
+                        <span class="text-caption-xs text-slate-300">—</span>
                       }
                     </td>
                   </tr>
@@ -142,11 +142,11 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
           </table>
         </div>
         <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-          <p class="text-[11px] text-slate-400">Últimos 90 días</p>
+          <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
           <button
             type="button"
             (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-[12px] font-bold text-primary-container hover:underline"
+            class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
           >
             <span class="material-symbols-outlined text-[14px]">download</span>
             Exportar CSV
@@ -249,7 +249,7 @@ export class AlertasHistoricoComponent {
   filtroClass(key: HistoricoFiltro): string {
     const active = this.filtroActivo() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

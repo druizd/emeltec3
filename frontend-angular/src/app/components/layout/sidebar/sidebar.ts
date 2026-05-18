@@ -82,7 +82,7 @@ const MODULES = SITE_MODULES;
           <div class="flex items-center gap-1.5">
             <div class="relative shrink-0">
               <div
-                class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white"
+                class="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white"
               >
                 {{ getUserInitials() }}
               </div>
@@ -91,10 +91,10 @@ const MODULES = SITE_MODULES;
               ></span>
             </div>
             <div class="min-w-0">
-              <p class="truncate text-[12px] font-semibold leading-tight text-[#1e293b]">
+              <p class="truncate text-caption font-semibold leading-tight text-[#1e293b]">
                 {{ auth.user()?.nombre || 'Usuario' }}
               </p>
-              <p class="text-[10px] text-[#94a3b8]">{{ auth.user()?.tipo || 'Rol' }}</p>
+              <p class="text-caption-xs text-[#94a3b8]">{{ auth.user()?.tipo || 'Rol' }}</p>
             </div>
           </div>
         </div>
@@ -112,7 +112,7 @@ const MODULES = SITE_MODULES;
                 [value]="searchTerm()"
                 (input)="onSearchInput($event)"
                 placeholder="Buscar empresa..."
-                class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-[11px] font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[rgba(13,175,189,0.40)] focus:bg-white"
+                class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-caption-xs font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-[rgba(13,175,189,0.40)] focus:bg-white"
               />
               @if (searchTerm()) {
                 <button
@@ -158,7 +158,7 @@ const MODULES = SITE_MODULES;
                   }}</span>
                 </span>
                 @if (!collapsed()) {
-                  <span class="truncate text-left text-[13px] font-medium">{{ mod.label }}</span>
+                  <span class="truncate text-left text-body-sm font-medium">{{ mod.label }}</span>
                 }
               </span>
 
@@ -178,7 +178,7 @@ const MODULES = SITE_MODULES;
                   <button
                     type="button"
                     (click)="toggleCompany(company.id)"
-                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-[9px] font-bold uppercase tracking-[0.07em] text-[#94a3b8] transition-colors hover:bg-[#f8fafc] hover:text-[#64748b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-[#94a3b8] transition-colors hover:bg-[#f8fafc] hover:text-[#64748b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
                     [attr.aria-expanded]="isCompanyOpen(company.id)"
                   >
                     <span class="material-symbols-outlined text-[11px] opacity-50">domain</span>
@@ -217,7 +217,7 @@ const MODULES = SITE_MODULES;
 
         @if (!collapsed() && searchTerm() && !hasSearchResults()) {
           <div
-            class="mx-2 mt-2 rounded-lg border border-dashed border-[#E2E8F0] bg-[#f8fafc] px-2 py-2 text-center text-[11px] font-medium text-[#94a3b8]"
+            class="mx-2 mt-2 rounded-lg border border-dashed border-[#E2E8F0] bg-[#f8fafc] px-2 py-2 text-center text-caption-xs font-medium text-[#94a3b8]"
           >
             Sin resultados
           </div>
@@ -237,7 +237,7 @@ const MODULES = SITE_MODULES;
           >
             <span class="material-symbols-outlined text-[16px]">fact_check</span>
             @if (!collapsed()) {
-              <span class="text-[12px] font-semibold">Revisión DGA</span>
+              <span class="text-caption font-semibold">Revisión DGA</span>
             }
           </button>
         </div>
@@ -255,7 +255,7 @@ const MODULES = SITE_MODULES;
         >
           <span class="material-symbols-outlined text-[16px]">logout</span>
           @if (!collapsed()) {
-            <span class="text-[12px]">Cerrar sesión</span>
+            <span class="text-caption">Cerrar sesión</span>
           }
         </button>
       </div>

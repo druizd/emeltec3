@@ -32,7 +32,7 @@ import {
             >warning</span
           >
           <div class="min-w-0 flex-1">
-            <p class="text-[10px] font-semibold uppercase tracking-widest text-amber-600">
+            <p class="text-caption-xs font-semibold uppercase tracking-widest text-amber-600">
               Atención
             </p>
             @if (isInternal()) {
@@ -54,7 +54,7 @@ import {
         <!-- Contactos -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Contactos técnicos
             </h3>
             @if (isInternal()) {
@@ -68,13 +68,13 @@ import {
             }
           </div>
           @if (ficha().contactos.length === 0) {
-            <p class="text-[12px] italic text-slate-400">Sin contactos registrados.</p>
+            <p class="text-caption italic text-slate-400">Sin contactos registrados.</p>
           } @else {
             <ul class="space-y-2">
               @for (c of ficha().contactos; track $index) {
                 <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2">
                   @if (isInternal()) {
-                    <div class="grid grid-cols-2 gap-2 text-[12px]">
+                    <div class="grid grid-cols-2 gap-2 text-caption">
                       <input
                         type="text"
                         [ngModel]="c.nombre"
@@ -108,13 +108,13 @@ import {
                     <button
                       type="button"
                       (click)="removeContacto($index)"
-                      class="mt-1 text-[10px] font-semibold text-rose-500 hover:underline"
+                      class="mt-1 text-caption-xs font-semibold text-rose-500 hover:underline"
                     >
                       Eliminar
                     </button>
                   } @else {
-                    <p class="text-[13px] font-semibold text-slate-700">{{ c.nombre }}</p>
-                    <p class="text-[11px] text-slate-500">
+                    <p class="text-body-sm font-semibold text-slate-700">{{ c.nombre }}</p>
+                    <p class="text-caption-xs text-slate-500">
                       {{ c.rol }} · {{ c.telefono || '—' }} · {{ c.email || '—' }}
                     </p>
                   }
@@ -127,7 +127,7 @@ import {
         <!-- Acreditaciones -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Acreditaciones
             </h3>
             @if (isInternal()) {
@@ -141,11 +141,11 @@ import {
             }
           </div>
           @if (ficha().acreditaciones.length === 0) {
-            <p class="text-[12px] italic text-slate-400">Sin acreditaciones registradas.</p>
+            <p class="text-caption italic text-slate-400">Sin acreditaciones registradas.</p>
           } @else {
             <ul class="space-y-2">
               @for (a of ficha().acreditaciones; track $index) {
-                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-[12px]">
+                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-caption">
                   @if (isInternal()) {
                     <div class="grid grid-cols-3 gap-2">
                       <input
@@ -173,7 +173,7 @@ import {
                     <button
                       type="button"
                       (click)="removeAcreditacion($index)"
-                      class="mt-1 text-[10px] font-semibold text-rose-500 hover:underline"
+                      class="mt-1 text-caption-xs font-semibold text-rose-500 hover:underline"
                     >
                       Eliminar
                     </button>
@@ -192,7 +192,7 @@ import {
         <!-- Riesgos -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2">
           <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+            <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Riesgos identificados
             </h3>
             @if (isInternal()) {
@@ -206,11 +206,11 @@ import {
             }
           </div>
           @if (ficha().riesgos.length === 0) {
-            <p class="text-[12px] italic text-slate-400">Sin riesgos registrados.</p>
+            <p class="text-caption italic text-slate-400">Sin riesgos registrados.</p>
           } @else {
             <ul class="space-y-2">
               @for (r of ficha().riesgos; track $index) {
-                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-[12px]">
+                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-caption">
                   @if (isInternal()) {
                     <div class="grid gap-2 md:grid-cols-[1fr_auto_auto_1fr]">
                       <input
@@ -249,7 +249,7 @@ import {
                     <button
                       type="button"
                       (click)="removeRiesgo($index)"
-                      class="mt-1 text-[10px] font-semibold text-rose-500 hover:underline"
+                      class="mt-1 text-caption-xs font-semibold text-rose-500 hover:underline"
                     >
                       Eliminar
                     </button>
@@ -271,16 +271,16 @@ import {
       @if (isInternal()) {
         <div class="flex items-center justify-end gap-2">
           @if (saveMsg()) {
-            <span class="text-[11px] font-semibold text-emerald-600">{{ saveMsg() }}</span>
+            <span class="text-caption-xs font-semibold text-emerald-600">{{ saveMsg() }}</span>
           }
           @if (error()) {
-            <span class="text-[11px] font-semibold text-rose-600">{{ error() }}</span>
+            <span class="text-caption-xs font-semibold text-rose-600">{{ error() }}</span>
           }
           <button
             type="button"
             (click)="save()"
             [disabled]="saving() || !dirty()"
-            class="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
+            class="rounded-lg bg-primary px-4 py-2 text-body-sm font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
           >
             {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
           </button>

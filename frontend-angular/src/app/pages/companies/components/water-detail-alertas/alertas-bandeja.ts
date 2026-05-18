@@ -28,10 +28,10 @@ type FiltroEstado = EventoEstado | 'todos';
   template: `
     <div class="space-y-3">
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-[12px] text-slate-500">Cargando eventos…</p>
+        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">Cargando eventos…</p>
       }
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
       }
 
       <!-- Resumen rápido -->
@@ -39,7 +39,7 @@ type FiltroEstado = EventoEstado | 'todos';
         @for (stat of stats(); track stat.label) {
           <div class="rounded-xl border bg-white px-4 py-3 shadow-sm" [class]="stat.borderClass">
             <p
-              class="text-[10px] font-semibold uppercase tracking-widest"
+              class="text-caption-xs font-semibold uppercase tracking-widest"
               [class]="stat.labelClass"
             >
               {{ stat.label }}
@@ -56,7 +56,7 @@ type FiltroEstado = EventoEstado | 'todos';
             {{ f.label }}
           </button>
         }
-        <span class="ml-auto self-center text-[11px] font-semibold text-slate-400">
+        <span class="ml-auto self-center text-caption-xs font-semibold text-slate-400">
           {{ eventosFiltrados().length }} alertas
         </span>
       </div>
@@ -83,12 +83,12 @@ type FiltroEstado = EventoEstado | 'todos';
                   <div class="flex flex-wrap items-start justify-between gap-2">
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-mono text-[11px] font-bold text-slate-400">{{
+                        <span class="font-mono text-caption-xs font-bold text-slate-400">{{
                           codigoEvento(ev)
                         }}</span>
                         <span
                           [class]="severidadBadgeClass(ev.severidad)"
-                          class="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                          class="rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
                         >
                           {{ severidadLabel(ev.severidad) }}
                         </span>
@@ -96,11 +96,11 @@ type FiltroEstado = EventoEstado | 'todos';
                       <p class="mt-0.5 font-semibold text-slate-800">
                         {{ ev.alerta_nombre || ev.variable_key }}
                       </p>
-                      <p class="text-[12px] text-slate-500">{{ ev.mensaje }}</p>
+                      <p class="text-caption text-slate-500">{{ ev.mensaje }}</p>
                     </div>
                     <span
                       [class]="estadoBadgeClass(ev.estado)"
-                      class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                      class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-caption-xs font-bold"
                     >
                       <span
                         [class]="estadoDotClass(ev.estado)"
@@ -112,7 +112,7 @@ type FiltroEstado = EventoEstado | 'todos';
 
                   <!-- Meta info -->
                   <div
-                    class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400"
+                    class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption-xs text-slate-400"
                   >
                     <span class="flex items-center gap-1">
                       <span class="material-symbols-outlined text-[14px]">calendar_today</span>
@@ -143,7 +143,7 @@ type FiltroEstado = EventoEstado | 'todos';
                     >
                       <select
                         [(ngModel)]="asignadoSeleccionado"
-                        class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[12px] text-slate-700"
+                        class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-caption text-slate-700"
                       >
                         <option value="">Selecciona usuario…</option>
                         @for (u of usuariosEmpresa(); track u.id) {
@@ -154,14 +154,14 @@ type FiltroEstado = EventoEstado | 'todos';
                         type="button"
                         (click)="confirmarAsignar(ev)"
                         [disabled]="!asignadoSeleccionado || actuando()"
-                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
                       >
                         Confirmar
                       </button>
                       <button
                         type="button"
                         (click)="cancelarAsignar()"
-                        class="text-[12px] font-bold text-slate-500 hover:text-slate-700"
+                        class="text-caption font-bold text-slate-500 hover:text-slate-700"
                       >
                         Cancelar
                       </button>
@@ -176,7 +176,7 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="reconocer(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-[12px] font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)] disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)] disabled:opacity-50"
                         >
                           <span class="material-symbols-outlined text-[14px]">visibility</span>
                           Reconocer
@@ -187,7 +187,7 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="iniciarAsignar(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                           <span class="material-symbols-outlined text-[14px]">person_add</span>
                           Asignar
@@ -197,7 +197,7 @@ type FiltroEstado = EventoEstado | 'todos';
                         type="button"
                         [disabled]="actuando()"
                         (click)="resolver(ev)"
-                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[14px]">check_circle</span>
                         Resolver
@@ -207,7 +207,7 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="vincularIncidencia(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                         >
                           <span class="material-symbols-outlined text-[14px]">link</span>
                           Vincular incidencia
@@ -494,7 +494,7 @@ export class AlertasBandejaComponent {
   filtroClass(key: FiltroEstado): string {
     const active = this.filtroActivo() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

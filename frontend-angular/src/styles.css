@@ -58,6 +58,38 @@
   --font-josefin: 'Josefin Sans', system-ui, sans-serif;
   --font-body: 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+
+  /* ─── Type scale ───
+     Product UI scale (fixed rem-based, ratio ~1.2). Reemplaza la mezcla
+     de text-[10–32px] dispersa por todo el frontend. Iconos
+     (material-symbols-outlined) siguen usando text-[Npx] porque su
+     font-size controla tamaño del glyph, no jerarquía tipográfica.
+
+     Roles:
+       caption-xs (10px) – uppercase labels en KPI, hints diminutos
+       caption    (12px) – metadata, badges, descripción secundaria
+       body-sm    (13px) – párrafo compacto, tabla densa
+       body       (14px) – párrafo standard, form labels
+       h6         (16px) – títulos de sección menores
+       h5         (18px) – títulos de panel
+       h4         (22px) – título de página
+       h3         (28px) – título hero (well diagram, dashboard) */
+  --text-caption-xs: 0.625rem;
+  --text-caption-xs--line-height: 0.875rem;
+  --text-caption: 0.75rem;
+  --text-caption--line-height: 1rem;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.25rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.375rem;
+  --text-h6: 1rem;
+  --text-h6--line-height: 1.5rem;
+  --text-h5: 1.125rem;
+  --text-h5--line-height: 1.625rem;
+  --text-h4: 1.375rem;
+  --text-h4--line-height: 1.875rem;
+  --text-h3: 1.75rem;
+  --text-h3--line-height: 2.125rem;
 }
 
 @layer base {

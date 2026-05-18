@@ -41,7 +41,7 @@ interface BitacoraTabItem {
               <span class="material-symbols-outlined text-[22px]">menu_book</span>
             </span>
             <div class="min-w-0">
-              <p class="text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+              <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 Bitácora
               </p>
               <h2 class="truncate text-lg font-semibold leading-tight text-slate-800">

@@ -24,10 +24,10 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             </div>
 
             <div class="min-w-0">
-              <h3 class="truncate text-[12px] font-bold leading-tight text-slate-800">
+              <h3 class="truncate text-caption font-bold leading-tight text-slate-800">
                 {{ getSiteTitle() }}
               </h3>
-              <p class="truncate text-[10px] leading-tight text-slate-400">
+              <p class="truncate text-caption-xs leading-tight text-slate-400">
                 {{ getContextLine() }}
               </p>
             </div>
@@ -36,7 +36,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
           <div class="flex shrink-0 items-center gap-2">
             <span
               [class]="
-                'inline-flex items-center gap-1 text-[10px] font-semibold ' + getStatusClass()
+                'inline-flex items-center gap-1 text-caption-xs font-semibold ' + getStatusClass()
               "
             >
               <span
@@ -77,10 +77,10 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
               >
             </div>
             <div class="min-w-0">
-              <h3 class="max-w-[180px] truncate text-[13px] font-bold text-primary">
+              <h3 class="max-w-[180px] truncate text-body-sm font-bold text-primary">
                 {{ getSiteTitle() }}
               </h3>
-              <p class="mt-0.5 truncate text-[11px] text-slate-500">{{ getSiteSecondary() }}</p>
+              <p class="mt-0.5 truncate text-caption-xs text-slate-500">{{ getSiteSecondary() }}</p>
             </div>
           </div>
           <span
@@ -99,11 +99,11 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             <span class="material-symbols-outlined text-[12px] text-slate-400">{{
               getSiteIcon()
             }}</span>
-            <span class="text-[10px] font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
+            <span class="text-caption-xs font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
           </div>
           <div class="flex items-center gap-1.5">
             <span [class]="'h-1.5 w-1.5 rounded-full ' + getStatusDotClass()"></span>
-            <span [class]="'text-[10px] font-semibold ' + getStatusClass()">{{
+            <span [class]="'text-caption-xs font-semibold ' + getStatusClass()">{{
               getStatusLabel()
             }}</span>
           </div>

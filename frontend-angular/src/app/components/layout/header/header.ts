@@ -17,7 +17,7 @@ import { AuthService } from '../../../services/auth.service';
             (click)="router.navigate(['/dashboard'])"
             [style.color]="isDashboard() ? '#0899A5' : '#94A3B8'"
             [style.border-bottom]="isDashboard() ? '2px solid #0DAFBD' : '2px solid transparent'"
-            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-[14px] font-medium transition-colors"
+            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors"
           >
             <span class="material-symbols-outlined text-[16px]">grid_view</span>
             <span>Dashboard</span>
@@ -28,7 +28,7 @@ import { AuthService } from '../../../services/auth.service';
             (click)="router.navigate(['/companies'])"
             [style.color]="isMonitoreo() ? '#0899A5' : '#94A3B8'"
             [style.border-bottom]="isMonitoreo() ? '2px solid #0DAFBD' : '2px solid transparent'"
-            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-[14px] font-medium transition-colors"
+            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors"
           >
             <span class="material-symbols-outlined text-[16px]">monitoring</span>
             <span>Monitoreo</span>
@@ -53,7 +53,7 @@ import { AuthService } from '../../../services/auth.service';
             <button
               type="button"
               (click)="toggleUserMenu()"
-              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white ring-2 ring-transparent transition-all hover:ring-[rgba(13,175,189,0.30)] focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
+              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-all hover:ring-[rgba(13,175,189,0.30)] focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
               aria-label="Menú de usuario"
               [attr.aria-expanded]="userMenuOpen()"
             >
@@ -66,23 +66,23 @@ import { AuthService } from '../../../services/auth.service';
               >
                 <!-- User info -->
                 <div class="border-b border-[#E2E8F0] px-4 py-3">
-                  <p class="text-[13px] font-bold text-slate-800">
+                  <p class="text-body-sm font-bold text-slate-800">
                     {{ auth.user()?.nombre }} {{ auth.user()?.apellido }}
                   </p>
-                  <p class="text-[11px] text-slate-400">{{ auth.user()?.tipo }}</p>
+                  <p class="text-caption-xs text-slate-400">{{ auth.user()?.tipo }}</p>
                 </div>
                 <!-- Actions -->
                 <div class="py-1">
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
                     <span class="material-symbols-outlined text-[16px] text-slate-400">person</span>
                     Mi perfil
                   </button>
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
                     <span class="material-symbols-outlined text-[16px] text-slate-400"
                       >notifications</span
@@ -94,7 +94,7 @@ import { AuthService } from '../../../services/auth.service';
                   <button
                     type="button"
                     (click)="auth.logout()"
-                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
                   >
                     <span class="material-symbols-outlined text-[16px]">logout</span>
                     Cerrar sesión

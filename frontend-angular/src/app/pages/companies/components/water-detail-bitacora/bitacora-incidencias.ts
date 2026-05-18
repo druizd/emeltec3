@@ -68,7 +68,7 @@ function emptyDraft(): DraftIncidencia {
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
       }
 
       <!-- Filtros + Nueva -->
@@ -97,13 +97,13 @@ function emptyDraft(): DraftIncidencia {
             </button>
           }
         </div>
-        <span class="ml-auto text-[11px] font-semibold text-slate-400">
+        <span class="ml-auto text-caption-xs font-semibold text-slate-400">
           {{ incidenciasFiltradas().length }} incidencias
         </span>
         <button
           type="button"
           (click)="toggleNueva()"
-          class="inline-flex items-center gap-1 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-[12px] font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[14px]">{{
             mostrandoNueva() ? 'close' : 'add'
@@ -117,7 +117,7 @@ function emptyDraft(): DraftIncidencia {
           class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
         >
           <p
-            class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container"
+            class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
           >
             Nueva incidencia
           </p>
@@ -128,7 +128,7 @@ function emptyDraft(): DraftIncidencia {
             <button
               type="button"
               (click)="toggleNueva()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
             >
               Cancelar
             </button>
@@ -136,7 +136,7 @@ function emptyDraft(): DraftIncidencia {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaDraft)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear
@@ -146,7 +146,7 @@ function emptyDraft(): DraftIncidencia {
       }
 
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
+        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">
           Cargando incidencias…
         </p>
       }
@@ -172,12 +172,12 @@ function emptyDraft(): DraftIncidencia {
                 <div class="flex flex-wrap items-start justify-between gap-2">
                   <div class="min-w-0">
                     <div class="flex flex-wrap items-center gap-2">
-                      <span class="font-mono text-[11px] font-bold text-slate-400">{{
+                      <span class="font-mono text-caption-xs font-bold text-slate-400">{{
                         inc.codigo
                       }}</span>
                       <span
                         [class]="gravedadClass(inc.gravedad)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
                       >
                         <span
                           [class]="gravedadDotClass(inc.gravedad)"
@@ -186,13 +186,13 @@ function emptyDraft(): DraftIncidencia {
                         {{ gravedadLabel(inc.gravedad) }}
                       </span>
                       <span
-                        class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500"
+                        class="rounded-full bg-slate-100 px-2 py-0.5 text-caption-xs font-bold text-slate-500"
                       >
                         {{ categoriaLabel(inc.categoria) }}
                       </span>
                       @if (inc.alerta_evento_id) {
                         <span
-                          class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700"
+                          class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption-xs font-bold text-amber-700"
                         >
                           <span class="material-symbols-outlined text-[12px]"
                             >notifications_active</span
@@ -205,7 +205,7 @@ function emptyDraft(): DraftIncidencia {
                   </div>
                   <span
                     [class]="estadoClass(inc.estado)"
-                    class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold"
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-caption-xs font-bold"
                   >
                     <span
                       [class]="estadoDotClass(inc.estado)"
@@ -216,13 +216,13 @@ function emptyDraft(): DraftIncidencia {
                 </div>
 
                 @if (inc.descripcion) {
-                  <p class="mt-2 text-[12px] leading-relaxed text-slate-500">
+                  <p class="mt-2 text-caption leading-relaxed text-slate-500">
                     {{ inc.descripcion }}
                   </p>
                 }
 
                 <div
-                  class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400"
+                  class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption-xs text-slate-400"
                 >
                   <span class="flex items-center gap-1">
                     <span class="material-symbols-outlined text-[14px]">calendar_today</span>
@@ -254,7 +254,7 @@ function emptyDraft(): DraftIncidencia {
                       <button
                         type="button"
                         (click)="cancelarEdicion(inc)"
-                        class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 hover:bg-slate-200"
+                        class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
                       >
                         Cancelar
                       </button>
@@ -262,7 +262,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving() || !puedeGuardar(drafts()[inc.id]!)"
                         (click)="guardarEdicion(inc)"
-                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[16px]">check</span>
                         Guardar
@@ -274,7 +274,7 @@ function emptyDraft(): DraftIncidencia {
                     <button
                       type="button"
                       (click)="expandir(inc)"
-                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[12px] font-bold text-slate-600 hover:bg-slate-50"
+                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50"
                     >
                       <span class="material-symbols-outlined text-[14px]">edit</span>
                       Editar
@@ -284,7 +284,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving()"
                         (click)="cerrar(inc)"
-                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[12px] font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[14px]">check_circle</span>
                         Cerrar
@@ -293,7 +293,7 @@ function emptyDraft(): DraftIncidencia {
                     <button
                       type="button"
                       (click)="eliminar(inc)"
-                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-[12px] font-bold text-rose-600 hover:bg-rose-50"
+                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-caption font-bold text-rose-600 hover:bg-rose-50"
                     >
                       <span class="material-symbols-outlined text-[14px]">delete</span>
                       Eliminar
@@ -323,7 +323,7 @@ function emptyDraft(): DraftIncidencia {
       <div class="space-y-3">
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Título</label
           >
           <input
@@ -336,7 +336,7 @@ function emptyDraft(): DraftIncidencia {
 
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Descripción</label
           >
           <textarea
@@ -349,7 +349,7 @@ function emptyDraft(): DraftIncidencia {
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Origen</label
             >
             <select
@@ -363,7 +363,7 @@ function emptyDraft(): DraftIncidencia {
           </div>
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Categoría</label
             >
             <select
@@ -377,7 +377,7 @@ function emptyDraft(): DraftIncidencia {
           </div>
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Gravedad</label
             >
             <select
@@ -391,7 +391,7 @@ function emptyDraft(): DraftIncidencia {
           </div>
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Estado</label
             >
             <select
@@ -407,7 +407,7 @@ function emptyDraft(): DraftIncidencia {
 
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Técnico asignado</label
           >
           <select
@@ -424,7 +424,7 @@ function emptyDraft(): DraftIncidencia {
         @if (isNew) {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Evento de alerta vinculado (ID, opcional)</label
             >
             <input
@@ -722,7 +722,7 @@ export class BitacoraIncidenciasComponent {
   filtroOrigenClass(key: IncidenciaOrigen | 'todos'): string {
     const active = this.filtroOrigen() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[12px] font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-[rgba(13,175,189,0.08)] text-primary-container ring-1 ring-[rgba(13,175,189,0.30)]'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
@@ -732,7 +732,7 @@ export class BitacoraIncidenciasComponent {
   filtroEstadoClass(key: IncidenciaEstado | 'todos'): string {
     const active = this.filtroEstado() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-[12px] font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

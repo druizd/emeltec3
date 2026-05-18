@@ -77,14 +77,14 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
     <div class="space-y-3">
       <!-- Header -->
       <div class="flex items-center justify-between gap-3">
-        <p class="text-[11px] font-semibold text-slate-400">
+        <p class="text-caption-xs font-semibold text-slate-400">
           {{ reglas().length }}
           {{ reglas().length === 1 ? 'regla configurada' : 'reglas configuradas' }}
         </p>
         <button
           type="button"
           (click)="toggleNuevo()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-[12px] font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             mostrandoNuevo() ? 'close' : 'add'
@@ -95,10 +95,10 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
       <!-- Loading / error -->
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-[12px] text-slate-500">Cargando reglas…</p>
+        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">Cargando reglas…</p>
       }
       @if (errorMsg()) {
-        <p class="rounded-xl bg-rose-50 px-4 py-3 text-[12px] text-rose-700">{{ errorMsg() }}</p>
+        <p class="rounded-xl bg-rose-50 px-4 py-3 text-caption text-rose-700">{{ errorMsg() }}</p>
       }
 
       <!-- Formulario nueva regla -->
@@ -107,7 +107,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           class="rounded-2xl border-2 border-dashed border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)]/30 p-4"
         >
           <p
-            class="mb-3 text-[10px] font-semibold uppercase tracking-widest text-primary-container"
+            class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
           >
             Nueva regla
           </p>
@@ -118,7 +118,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             <button
               type="button"
               (click)="toggleNuevo()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 transition-colors hover:bg-slate-200"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200"
             >
               Cancelar
             </button>
@@ -126,7 +126,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaRegla)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear regla
@@ -157,12 +157,12 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               </button>
               <div class="min-w-0">
                 <p class="font-semibold text-slate-800">{{ regla.nombre }}</p>
-                <p class="mt-0.5 text-[12px] text-slate-500">
+                <p class="mt-0.5 text-caption text-slate-500">
                   <span class="font-mono font-bold text-slate-700">{{
                     condicionResumen(regla)
                   }}</span>
                   <span
-                    class="ml-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    class="ml-2 inline-block rounded-full px-2 py-0.5 text-caption-xs font-bold"
                     [class]="severidadBadgeClass(regla.severidad)"
                   >
                     {{ severidadLabel(regla.severidad) }}
@@ -196,16 +196,16 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             <div
               class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-3"
             >
-              <span class="flex items-center gap-1 text-[11px] text-slate-400">
+              <span class="flex items-center gap-1 text-caption-xs text-slate-400">
                 <span class="material-symbols-outlined text-[14px]">calendar_today</span>
                 {{ diasResumen(regla.dias_activos) }}
               </span>
-              <span class="flex items-center gap-1 text-[11px] text-slate-400">
+              <span class="flex items-center gap-1 text-caption-xs text-slate-400">
                 <span class="material-symbols-outlined text-[14px]">schedule</span>
                 cooldown {{ regla.cooldown_minutos }} min
               </span>
               @if (regla.variable_key && regla.condicion !== 'dga_atrasado') {
-                <span class="flex items-center gap-1 text-[11px] text-slate-400">
+                <span class="flex items-center gap-1 text-caption-xs text-slate-400">
                   <span class="material-symbols-outlined text-[14px]">data_object</span>
                   {{ regla.variable_key }}
                 </span>
@@ -225,7 +225,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 <button
                   type="button"
                   (click)="cancelarEdicion(regla)"
-                  class="rounded-xl bg-slate-100 px-4 py-2 text-[12px] font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                  class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200"
                 >
                   Cancelar
                 </button>
@@ -233,7 +233,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   type="button"
                   [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
                   (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span class="material-symbols-outlined text-[16px]">check</span>
                   Guardar
@@ -244,7 +244,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         </article>
       } @empty {
         @if (!loading()) {
-          <p class="rounded-xl bg-slate-50 px-4 py-6 text-center text-[12px] text-slate-500">
+          <p class="rounded-xl bg-slate-50 px-4 py-6 text-center text-caption text-slate-500">
             No hay reglas configuradas para este sitio. Crea una con el botón "Nueva regla".
           </p>
         }
@@ -257,7 +257,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Nombre -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Nombre</label
           >
           <input
@@ -271,7 +271,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Descripción -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Descripción (opcional)</label
           >
           <input
@@ -284,7 +284,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Condición -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Condición</label
           >
           <select
@@ -301,7 +301,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         @if (draft.condicion !== 'dga_atrasado') {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Variable</label
             >
             @if (variables().length > 0) {
@@ -317,7 +317,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 }
               </select>
               @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
-                <p class="mt-1 text-[11px] text-amber-600">
+                <p class="mt-1 text-caption-xs text-amber-600">
                   ⚠ "{{ draft.variable_key }}" no esta en las variables registradas del sitio.
                 </p>
               }
@@ -328,7 +328,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 placeholder="Ej: caudal, nivel_freatico"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
               />
-              <p class="mt-1 text-[11px] text-slate-400">
+              <p class="mt-1 text-caption-xs text-slate-400">
                 Sin variables registradas en el sitio; ingresa la clave manualmente.
               </p>
             }
@@ -343,7 +343,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         ) {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Umbral</label
             >
             <input
@@ -358,7 +358,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Mínimo</label
               >
               <input
@@ -370,7 +370,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             </div>
             <div>
               <label
-                class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Máximo</label
               >
               <input
@@ -386,7 +386,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Nota especial dga_atrasado -->
         @if (draft.condicion === 'dga_atrasado') {
           <div
-            class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[12px] text-amber-800"
+            class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-caption text-amber-800"
           >
             <p class="mb-1 font-bold">Escalación automática</p>
             <p>
@@ -400,7 +400,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         @if (draft.condicion !== 'dga_atrasado') {
           <div>
             <label
-              class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
               >Severidad</label
             >
             <div class="flex flex-wrap gap-1.5">
@@ -413,7 +413,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                       ? severidadButtonActive(s)
                       : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                   "
-                  class="rounded-full px-3 py-1 text-[11px] font-bold transition-colors"
+                  class="rounded-full px-3 py-1 text-caption-xs font-bold transition-colors"
                 >
                   {{ severidadLabel(s) }}
                 </button>
@@ -425,7 +425,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <!-- Cooldown -->
         <div>
           <label
-            class="mb-1.5 block text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
             >Cooldown (minutos)</label
           >
           <input
@@ -435,12 +435,12 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             [(ngModel)]="draft.cooldown_minutos"
             class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm text-slate-700 focus:border-[rgba(13,175,189,0.55)] focus:outline-none"
           />
-          <span class="ml-2 text-[11px] text-slate-400">tiempo mínimo entre notificaciones</span>
+          <span class="ml-2 text-caption-xs text-slate-400">tiempo mínimo entre notificaciones</span>
         </div>
 
         <!-- Días activos -->
         <div>
-          <p class="mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+          <p class="mb-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Días activos
           </p>
           <div class="flex flex-wrap gap-1.5">
@@ -453,7 +453,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     ? 'bg-primary text-white'
                     : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                 "
-                class="h-8 min-w-[2rem] rounded-lg px-2 text-[11px] font-semibold transition-colors"
+                class="h-8 min-w-[2rem] rounded-lg px-2 text-caption-xs font-semibold transition-colors"
               >
                 {{ diaShort(d) }}
               </button>

@@ -163,7 +163,7 @@ function emptyVariables(): SiteVariablesPayload {
             </span>
             <div class="min-w-0">
               <p
-                class="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400"
+                class="truncate text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
               >
                 Configuración del sitio / {{ siteTypeLabel() }}
               </p>
@@ -184,7 +184,7 @@ function emptyVariables(): SiteVariablesPayload {
               <button
                 type="button"
                 (click)="openDgaReporte.emit()"
-                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 text-[12px] font-semibold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 text-caption font-semibold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
                 aria-label="Configurar reporte DGA"
               >
                 <span class="material-symbols-outlined text-[16px]">description</span>
@@ -325,7 +325,7 @@ function emptyVariables(): SiteVariablesPayload {
                     <label class="block text-xs font-bold text-slate-500">Transformación</label>
                     <details class="group relative">
                       <summary
-                        class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-[11px] font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-caption-xs font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="Ver todas las transformaciones disponibles"
                       >
                         ?
@@ -334,7 +334,7 @@ function emptyVariables(): SiteVariablesPayload {
                         class="absolute right-0 top-7 z-10 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg"
                       >
                         <p
-                          class="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400"
+                          class="mb-2 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
                         >
                           Tipos de transformación
                         </p>
@@ -519,7 +519,7 @@ function emptyVariables(): SiteVariablesPayload {
                     />
                   </div>
                 </div>
-                <p class="text-[10px] text-slate-400">
+                <p class="text-caption-xs text-slate-400">
                   Fórmula:
                   <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usá
                   divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
@@ -556,7 +556,7 @@ function emptyVariables(): SiteVariablesPayload {
                 <div
                   class="mt-3 rounded-lg border border-[rgba(13,175,189,0.15)] bg-white px-3 py-2 shadow-sm"
                 >
-                  <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Resultado proyectado en gráfico
                   </p>
                   <p class="mt-1 text-xl font-semibold text-primary-container">

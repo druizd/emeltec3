@@ -19,13 +19,13 @@ import {
   template: `
     <div class="space-y-3">
       <div class="flex items-center justify-between gap-3">
-        <p class="text-[11px] font-semibold text-slate-400">
+        <p class="text-caption-xs font-semibold text-slate-400">
           {{ equipos().length }} equipos registrados
         </p>
         <button
           type="button"
           (click)="openForm()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-[12px] font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-[rgba(13,175,189,0.14)]"
         >
           <span class="material-symbols-outlined text-[16px]">add</span>
           Registrar equipo
@@ -54,32 +54,32 @@ import {
               <thead>
                 <tr class="border-b border-slate-100 bg-slate-50">
                   <th
-                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Equipo
                   </th>
                   <th
-                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Fabricante / Modelo
                   </th>
                   <th
-                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     N° Serie
                   </th>
                   <th
-                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Compra
                   </th>
                   <th
-                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Garantía
                   </th>
                   <th
-                    class="px-3 py-2 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                    class="px-3 py-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                   >
                     Estado
                   </th>
@@ -92,17 +92,17 @@ import {
                     <td class="px-3 py-2 font-semibold text-slate-800">{{ eq.nombre }}</td>
                     <td class="px-3 py-2 text-slate-600">
                       <span class="font-semibold">{{ eq.fabricante || '—' }}</span>
-                      <span class="block text-[11px] text-slate-400">{{ eq.modelo || '—' }}</span>
+                      <span class="block text-caption-xs text-slate-400">{{ eq.modelo || '—' }}</span>
                     </td>
-                    <td class="px-3 py-2 font-mono text-[11px] text-slate-500">
+                    <td class="px-3 py-2 font-mono text-caption-xs text-slate-500">
                       {{ eq.serie || '—' }}
                     </td>
-                    <td class="px-3 py-2 font-mono text-[11px] text-slate-500">
+                    <td class="px-3 py-2 font-mono text-caption-xs text-slate-500">
                       {{ eq.fecha_compra || '—' }}
                     </td>
                     <td
                       [class]="
-                        'px-3 py-2 font-mono text-[11px] ' + garantiaClass(eq.garantia_hasta)
+                        'px-3 py-2 font-mono text-caption-xs ' + garantiaClass(eq.garantia_hasta)
                       "
                     >
                       {{ eq.garantia_hasta || '—' }}
@@ -110,7 +110,7 @@ import {
                     <td class="px-3 py-2">
                       <span
                         [class]="
-                          'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-bold ' +
+                          'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-caption-xs font-bold ' +
                           estadoClass(eq.estado)
                         "
                       >
@@ -147,7 +147,7 @@ import {
       }
 
       @if (error()) {
-        <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+        <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-caption text-red-700">
           {{ error() }}
         </div>
       }
@@ -177,7 +177,7 @@ import {
           </div>
           <div class="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-2">
             <label
-              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="col-span-2 grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Nombre
               <input
@@ -185,44 +185,44 @@ import {
                 [ngModel]="form().nombre"
                 (ngModelChange)="updateForm('nombre', $event)"
                 placeholder="Ej. Caudalímetro principal"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label
-              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Fabricante
               <input
                 type="text"
                 [ngModel]="form().fabricante"
                 (ngModelChange)="updateForm('fabricante', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label
-              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Modelo
               <input
                 type="text"
                 [ngModel]="form().modelo"
                 (ngModelChange)="updateForm('modelo', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label
-              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="col-span-2 grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               N° Serie
               <input
                 type="text"
                 [ngModel]="form().serie"
                 (ngModelChange)="updateForm('serie', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label
-              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Fecha compra
               <input
@@ -230,11 +230,11 @@ import {
                 min="2000-01-01"
                 [ngModel]="form().fecha_compra"
                 (ngModelChange)="updateForm('fecha_compra', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label
-              class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Garantía hasta
               <input
@@ -242,17 +242,17 @@ import {
                 min="2000-01-01"
                 [ngModel]="form().garantia_hasta"
                 (ngModelChange)="updateForm('garantia_hasta', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-[rgba(13,175,189,0.35)]"
               />
             </label>
             <label
-              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="col-span-2 grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Estado
               <select
                 [ngModel]="form().estado"
                 (ngModelChange)="updateForm('estado', $event)"
-                class="h-9 rounded border border-slate-200 px-2 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
               >
                 <option value="operativo">Operativo</option>
                 <option value="en_mantencion">En mantención</option>
@@ -260,14 +260,14 @@ import {
               </select>
             </label>
             <label
-              class="col-span-2 grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
+              class="col-span-2 grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
             >
               Notas
               <textarea
                 rows="3"
                 [ngModel]="form().notas"
                 (ngModelChange)="updateForm('notas', $event)"
-                class="rounded border border-slate-200 px-2 py-1.5 text-[13px] outline-none focus:border-[rgba(13,175,189,0.35)]"
+                class="rounded border border-slate-200 px-2 py-1.5 text-body-sm outline-none focus:border-[rgba(13,175,189,0.35)]"
               ></textarea>
             </label>
           </div>
