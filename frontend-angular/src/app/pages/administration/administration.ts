@@ -25,6 +25,7 @@ import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
 import { AdminPaginationComponent } from './components/admin-pagination';
 import { AdminFormActionsComponent } from './components/admin-form-actions';
+import { AdminSectionShellComponent } from './components/admin-section-shell';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -306,6 +307,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     KpiCardComponent,
     AdminPaginationComponent,
     AdminFormActionsComponent,
+    AdminSectionShellComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -451,12 +453,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </section>
             } @else {
               @if (activeSection() === 'empresas') {
-                <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-semibold text-slate-900">Empresas padre</h2>
-                  </div>
-
-                  <div class="space-y-5 p-6">
+                <app-admin-section-shell title="Empresas padre">
                     <form
                       (submit)="submitCompany($event)"
                       class="editor-panel grid gap-4 lg:grid-cols-3"
@@ -601,17 +598,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         (pageChange)="setPage('empresas', $event)"
                       ></app-admin-pagination>
                     </div>
-                  </div>
-                </section>
+                </app-admin-section-shell>
               }
 
               @if (activeSection() === 'subempresas') {
-                <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-semibold text-slate-900">Subempresas</h2>
-                  </div>
-
-                  <div class="space-y-5 p-6">
+                <app-admin-section-shell title="Subempresas">
                     <form
                       (submit)="submitSubCompany($event)"
                       class="editor-panel grid gap-4 lg:grid-cols-3"
@@ -758,17 +749,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         (pageChange)="setPage('subempresas', $event)"
                       ></app-admin-pagination>
                     </div>
-                  </div>
-                </section>
+                </app-admin-section-shell>
               }
 
               @if (activeSection() === 'sitios') {
-                <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-semibold text-slate-900">Sitios</h2>
-                  </div>
-
-                  <div class="space-y-5 p-6">
+                <app-admin-section-shell title="Sitios">
                     <form
                       (submit)="submitSite($event)"
                       class="editor-panel grid gap-4 lg:grid-cols-4"
@@ -1001,17 +986,11 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         (pageChange)="setPage('sitios', $event)"
                       ></app-admin-pagination>
                     </div>
-                  </div>
-                </section>
+                </app-admin-section-shell>
               }
 
               @if (activeSection() === 'equipos') {
-                <section class="rounded-lg border border-slate-200 bg-white shadow-sm">
-                  <div class="border-b border-slate-200 px-6 py-4">
-                    <h2 class="text-lg font-semibold text-slate-900">Equipos detectados</h2>
-                  </div>
-
-                  <div class="space-y-5 p-6">
+                <app-admin-section-shell title="Equipos detectados">
                     <div class="table-card">
                       <div class="table-toolbar">
                         <div>
@@ -1083,8 +1062,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         (pageChange)="setPage('equipos', $event)"
                       ></app-admin-pagination>
                     </div>
-                  </div>
-                </section>
+                </app-admin-section-shell>
               }
             }
           </main>
