@@ -229,7 +229,9 @@ interface RealtimeChartPoint {
                 class="overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4 shadow-sm"
               >
                 <div class="mb-3 flex items-center justify-between">
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  <p
+                    class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600"
+                  >
                     Configurar horarios
                   </p>
                   <div
@@ -270,7 +272,8 @@ interface RealtimeChartPoint {
                   style="grid-template-columns: 8px 1fr 82px 82px"
                 >
                   <span></span>
-                  <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  <span
+                    class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                     >Nombre</span
                   >
                   <span
@@ -318,7 +321,9 @@ interface RealtimeChartPoint {
               @for (turno of turnosReal(); track turno.nombre; let i = $index) {
                 @if (turno.esTotal) {
                   <div class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-caption-xs text-slate-400">{{ turno.horario }}</p>
@@ -360,7 +365,9 @@ interface RealtimeChartPoint {
                   </div>
                 } @else {
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-60">
-                    <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-caption-xs text-slate-400">{{ turno.horario }}</p>

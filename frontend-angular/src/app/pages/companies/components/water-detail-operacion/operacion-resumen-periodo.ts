@@ -489,7 +489,9 @@ interface IncidenciaPeriodo {
                 <!-- Contenido -->
                 <div class="min-w-0 flex-1">
                   <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
-                  <p class="mt-0.5 font-mono text-caption-xs text-slate-400">{{ alerta.fechaHora }}</p>
+                  <p class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                    {{ alerta.fechaHora }}
+                  </p>
                 </div>
                 <!-- Estado -->
                 <span

@@ -93,11 +93,15 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 
                 <!-- Custom dates -->
                 <div class="border-t border-slate-100 px-3 pb-3 pt-2.5 space-y-2">
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <p
+                    class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-400"
+                  >
                     Personalizado
                   </p>
                   <div class="space-y-1.5">
-                    <label class="flex items-center gap-2 text-caption-xs font-semibold text-slate-500">
+                    <label
+                      class="flex items-center gap-2 text-caption-xs font-semibold text-slate-500"
+                    >
                       <span class="w-9 shrink-0">Desde</span>
                       <input
                         type="datetime-local"
@@ -106,7 +110,9 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                         class="h-8 flex-1 rounded-lg border border-slate-200 bg-slate-50 px-2 font-mono text-caption-xs text-slate-700 outline-none focus:border-[rgba(13,175,189,0.55)] focus:bg-white focus:ring-1 focus:ring-[rgba(13,175,189,0.20)]"
                       />
                     </label>
-                    <label class="flex items-center gap-2 text-caption-xs font-semibold text-slate-500">
+                    <label
+                      class="flex items-center gap-2 text-caption-xs font-semibold text-slate-500"
+                    >
                       <span class="w-9 shrink-0">Hasta</span>
                       <input
                         type="datetime-local"
@@ -581,10 +587,14 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           <div
             class="mx-5 mt-3 overflow-hidden rounded-xl border border-[rgba(13,175,189,0.25)] bg-[rgba(13,175,189,0.08)] p-4"
           >
-            <p class="mb-2.5 text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+            <p
+              class="mb-2.5 text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600"
+            >
               Período de jornada
             </p>
-            <div class="flex flex-wrap items-center gap-3 text-caption font-semibold text-slate-600">
+            <div
+              class="flex flex-wrap items-center gap-3 text-caption font-semibold text-slate-600"
+            >
               <label class="flex items-center gap-2">
                 <span class="text-slate-400">Inicio</span>
                 <input

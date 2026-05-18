@@ -556,7 +556,9 @@ function emptyVariables(): SiteVariablesPayload {
                 <div
                   class="mt-3 rounded-lg border border-[rgba(13,175,189,0.15)] bg-white px-3 py-2 shadow-sm"
                 >
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p
+                    class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                  >
                     Resultado proyectado en gráfico
                   </p>
                   <p class="mt-1 text-xl font-semibold text-primary-container">

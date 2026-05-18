@@ -1,6 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -447,7 +455,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   >{{ dialog.icon }}</span
                 >
                 <div class="min-w-0">
-                  <h3 id="admin-confirm-title" class="text-lg font-semibold text-slate-900">{{ dialog.title }}</h3>
+                  <h3 id="admin-confirm-title" class="text-lg font-semibold text-slate-900">
+                    {{ dialog.title }}
+                  </h3>
                   <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>

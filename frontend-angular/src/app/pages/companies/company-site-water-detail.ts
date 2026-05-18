@@ -1,6 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  computed,
+  inject,
+  OnDestroy,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -169,7 +177,6 @@ interface SiteDashboardData {
 type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
 type OperationMode = 'realtime' | 'turnos';
 
-
 @Component({
   selector: 'app-company-site-water-detail',
   standalone: true,
@@ -216,7 +223,9 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
               </div>
 
-              <div class="flex flex-wrap items-center gap-2 text-caption-xs font-bold xl:justify-end">
+              <div
+                class="flex flex-wrap items-center gap-2 text-caption-xs font-bold xl:justify-end"
+              >
                 @for (badge of telemetryStatusBadges(); track badge.title) {
                   <span [class]="telemetryBadgeClass(badge.tone)">
                     <span [class]="telemetryBadgeIconClass(badge.tone)">{{ badge.icon }}</span>
@@ -486,7 +495,9 @@ type OperationMode = 'realtime' | 'turnos';
               <div class="overflow-x-auto">
                 <table class="w-full min-w-[1040px] text-left text-xs">
                   <thead class="bg-slate-50">
-                    <tr class="text-caption-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    <tr
+                      class="text-caption-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
+                    >
                       <th class="px-4 py-3">FECHA</th>
                       <th class="px-4 py-3">CAUDAL</th>
                       <th class="px-4 py-3">NIVEL</th>
@@ -561,7 +572,9 @@ type OperationMode = 'realtime' | 'turnos';
               <article
                 class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
               >
-                <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                <p
+                  class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600"
+                >
                   Enviados
                 </p>
                 <p class="mt-1 text-3xl font-semibold leading-none text-emerald-600">
@@ -584,7 +597,9 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                      <p
+                        class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                      >
                         Último envío aceptado
                       </p>
                     </div>
@@ -603,21 +618,29 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[14px] text-emerald-600"
                         >verified</span
                       >
-                      <p class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                      <p
+                        class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                      >
                         Último envío aceptado
                       </p>
                     </div>
-                    <p class="text-center font-mono text-h5 font-semibold leading-tight text-slate-800">
+                    <p
+                      class="text-center font-mono text-h5 font-semibold leading-tight text-slate-800"
+                    >
                       {{ dgaUltimoEnvioFecha() }}
                     </p>
-                    <span class="truncate font-mono text-caption-xs text-slate-500">{{ comp }}</span>
+                    <span class="truncate font-mono text-caption-xs text-slate-500">{{
+                      comp
+                    }}</span>
                   </article>
                 }
               } @else {
                 <article
                   class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
                 >
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p
+                    class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+                  >
                     Último envío aceptado
                   </p>
                   <p class="text-h5 font-semibold text-slate-400">—</p>
@@ -656,12 +679,10 @@ type OperationMode = 'realtime' | 'turnos';
                     <div
                       class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs shadow-lg"
                     >
-                      <p class="mb-2 font-semibold text-slate-700">
-                        Cómo se calcula
-                      </p>
+                      <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
                       <p class="mb-3 text-slate-500">
-                        enviados ÷ (enviados + rechazados + fallidos) × 100.
-                        Solo se cuentan slots dentro del rango filtrado.
+                        enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
+                        dentro del rango filtrado.
                       </p>
                       <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
                       <ul class="space-y-1.5 text-slate-600">
@@ -694,9 +715,7 @@ type OperationMode = 'realtime' | 'turnos';
                   </details>
                 </div>
                 <p
-                  [class]="
-                    'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text
-                  "
+                  [class]="'mt-1 text-3xl font-semibold leading-none ' + dgaTasaExitoColors().text"
                 >
                   {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                 </p>
@@ -727,7 +746,9 @@ type OperationMode = 'realtime' | 'turnos';
                 <article
                   class="flex flex-1 flex-col rounded-xl border border-[rgba(13,175,189,0.25)] bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                 >
-                  <p class="mb-3 text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p
+                    class="mb-3 text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
+                  >
                     Diagrama del pozo
                   </p>
 
@@ -1377,7 +1398,9 @@ type OperationMode = 'realtime' | 'turnos';
                         class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                       >
                         @for (month of monthlyFlowMonths(); track $index) {
-                          <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
+                          <div
+                            class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
+                          >
                             <div
                               class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-caption-xs font-semibold text-white shadow-lg group-hover:block"
                             >
@@ -1434,7 +1457,9 @@ type OperationMode = 'realtime' | 'turnos';
                   </div>
                 </article>
 
-                <article class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <article
+                  class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+                >
                   <p class="mb-2 text-sm font-semibold text-slate-700">Acciones Rápidas</p>
                   <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                     @for (action of quickActions; track action.title) {
@@ -1567,7 +1592,9 @@ type OperationMode = 'realtime' | 'turnos';
                                 [style.background]="getDgaStatusColor(report.estado)"
                               ></span>
                               {{ report.estado }}
-                              <span class="material-symbols-outlined text-[13px]">chevron_right</span>
+                              <span class="material-symbols-outlined text-[13px]"
+                                >chevron_right</span
+                              >
                             </button>
                             @if (
                               report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
@@ -1689,7 +1716,9 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[20px]">calendar_month</span>
                 </span>
                 <div>
-                  <h2 id="dga-date-filter-title" class="text-lg font-semibold text-slate-800">Filtrar por Período</h2>
+                  <h2 id="dga-date-filter-title" class="text-lg font-semibold text-slate-800">
+                    Filtrar por Período
+                  </h2>
                   <p class="text-xs font-semibold text-slate-400">Registros DGA</p>
                 </div>
               </div>
@@ -1706,7 +1735,9 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left: presets + months -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -1862,7 +1893,9 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[20px]">download</span>
                 </span>
                 <div>
-                  <h2 id="download-modal-title" class="text-lg font-semibold text-slate-800">Exportar Datos</h2>
+                  <h2 id="download-modal-title" class="text-lg font-semibold text-slate-800">
+                    Exportar Datos
+                  </h2>
                   @if (siteContext(); as ctx) {
                     <p class="text-xs font-semibold text-slate-400">
                       {{ getSiteName(ctx) }}
@@ -1883,7 +1916,9 @@ type OperationMode = 'realtime' | 'turnos';
             <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
               <!-- Left panel: presets + month selector -->
               <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Períodos rápidos
                 </p>
                 <div class="grid gap-0.5">
@@ -1986,7 +2021,9 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <!-- Data types -->
-                <p class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Datos a incluir
                 </p>
                 <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
@@ -2006,7 +2043,9 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <!-- Format -->
-                <p class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <p
+                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
                   Formato de archivo
                 </p>
                 <div class="flex gap-2">
@@ -2098,7 +2137,9 @@ type OperationMode = 'realtime' | 'turnos';
                   <span class="material-symbols-outlined text-[18px]">description</span>
                 </span>
                 <div>
-                  <h2 id="dga-report-modal-title" class="text-base font-semibold text-slate-800">Reporte DGA</h2>
+                  <h2 id="dga-report-modal-title" class="text-base font-semibold text-slate-800">
+                    Reporte DGA
+                  </h2>
                   <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
                     Formato oficial · período a exportar
                   </p>
@@ -2115,7 +2156,9 @@ type OperationMode = 'realtime' | 'turnos';
 
             <!-- Presets rápidos -->
             <div class="px-5 pt-4">
-              <p class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+              <p
+                class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+              >
                 Período rápido
               </p>
               <div class="grid grid-cols-3 gap-1.5">
@@ -2137,7 +2180,9 @@ type OperationMode = 'realtime' | 'turnos';
 
             <!-- Meses -->
             <div class="px-5 pt-4">
-              <p class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+              <p
+                class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+              >
                 Meses {{ 'de ' + (dgaReportDateFrom() || '2026').slice(0, 4) }}
               </p>
               <div class="grid grid-cols-6 gap-1.5">
@@ -2285,7 +2330,10 @@ type OperationMode = 'realtime' | 'turnos';
             aria-labelledby="dga-report-detail-title"
           >
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
-              <h2 id="dga-report-detail-title" class="text-xl font-semibold uppercase tracking-wide text-slate-800">
+              <h2
+                id="dga-report-detail-title"
+                class="text-xl font-semibold uppercase tracking-wide text-slate-800"
+              >
                 Seguimiento de envío
               </h2>
               <button
@@ -2358,7 +2406,9 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[22px]">send</span>
                     </span>
                     <div>
-                      <p class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400">
+                      <p
+                        class="text-caption-xs font-semibold uppercase tracking-wide text-slate-400"
+                      >
                         Envío a DGA
                       </p>
                       <p class="text-sm font-semibold text-slate-800">
@@ -2498,7 +2548,6 @@ type OperationMode = 'realtime' | 'turnos';
         animation: dga-shine 5.8s ease-in-out infinite;
         pointer-events: none;
       }
-
     `,
   ],
 })
@@ -2612,11 +2661,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
     const t = this.dgaTasaExito();
     if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
-    if (t >= 100) return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
-    if (t >= 90) return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+    if (t >= 100)
+      return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
+    if (t >= 90)
+      return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
     if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
     if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
-    if (t >= 40) return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
+    if (t >= 40)
+      return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
     return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
   });
 
@@ -3428,9 +3480,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         : new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
       const to = this.dgaDateTo() ? this.toChileEndIso(this.dgaDateTo()) : new Date().toISOString();
       // Lee de dato_dga (pipeline nuevo) — trae estatus real + comprobante SNIA.
-      const rows = await firstValueFrom(
-        this.dgaService.consultarDatoBySite(siteId, from, to),
-      );
+      const rows = await firstValueFrom(this.dgaService.consultarDatoBySite(siteId, from, to));
       this.dgaReportRows.set(rows.map((r, i) => this.datoDgaToRow(r, i)));
     } catch {
       this.dgaReportRows.set([]);
@@ -3488,7 +3538,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     d.setUTCDate(d.getUTCDate() + 1);
     return new Date(d.getTime() - 1).toISOString();
   }
-
 
   private createDgaReportRow(
     id: string,
