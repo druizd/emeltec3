@@ -131,8 +131,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
             id: site.id,
             name: this.composeName(site),
             companyName: company.nombre || 'Empresa sin nombre',
-            subCompanyName: subCompany.nombre || 'Division sin nombre',
-            type: company.tipo_empresa || 'Instalacion',
+            subCompanyName: subCompany.nombre || 'División sin nombre',
+            type: company.tipo_empresa || 'Instalación',
             location:
               this.pickFirst(site, ['ubicacion', 'sector', 'alias', 'nombre_corto', 'site_code']) ||
               subCompany.nombre ||

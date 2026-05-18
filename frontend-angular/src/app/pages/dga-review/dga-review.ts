@@ -275,9 +275,7 @@ export class DgaReviewComponent {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(
-          'No se pudo cargar la cola: ' + (err?.error?.error?.message ?? err?.message ?? ''),
-        );
+        this.error.set(this.friendlyError(err, 'No se pudo cargar la cola de revisión.'));
         this.loading.set(false);
       },
     });
@@ -293,11 +291,29 @@ export class DgaReviewComponent {
       },
       error: (err) => {
         this.requestingCode.set(false);
-        this.codeMessage.set(
-          'No se pudo enviar el código: ' + (err?.error?.error?.message ?? err?.message ?? ''),
-        );
+        this.codeMessage.set(this.friendlyError(err, 'No se pudo enviar el código.'));
       },
     });
+  }
+
+  /**
+   * Maps backend errors to Spanish copy. Recognises common HTTP statuses;
+   * falls back to the API-provided message only when it is a complete sentence
+   * (starts uppercase, ends with punctuation), otherwise uses the generic
+   * fallback so the user never sees something like "ECONNREFUSED 127.0.0.1".
+   */
+  private friendlyError(err: unknown, fallback: string): string {
+    const e = err as { status?: number; error?: { error?: { message?: string; code?: string } }; message?: string };
+    const apiMessage = e?.error?.error?.message;
+    const status = e?.status;
+    if (status === 0) return 'Sin conexión con el servidor. Revisa tu red y vuelve a intentar.';
+    if (status === 401) return 'Sesión expirada. Inicia sesión nuevamente.';
+    if (status === 403) return 'No tienes permisos para esta acción.';
+    if (status === 404) return 'El recurso solicitado no existe.';
+    if (status === 429) return 'Demasiados intentos. Espera unos segundos y vuelve a intentar.';
+    if (status && status >= 500) return 'Error del servidor. Intenta nuevamente en unos minutos.';
+    if (apiMessage && /^[A-ZÁÉÍÓÚÑ].*[.!?]$/.test(apiMessage)) return apiMessage;
+    return fallback;
   }
 
   private numOrNull(s: string): number | null {
@@ -376,9 +392,7 @@ export class DgaReviewComponent {
           this.error.set('Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.');
           this.twoFactorCode.set('');
         } else {
-          this.error.set(
-            'No se pudo aplicar la acción: ' + (err?.error?.error?.message ?? err?.message ?? ''),
-          );
+          this.error.set(this.friendlyError(err, 'No se pudo aplicar la acción.'));
         }
       },
     });

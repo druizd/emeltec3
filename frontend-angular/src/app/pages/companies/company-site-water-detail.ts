@@ -655,14 +655,17 @@ type OperationMode = 'realtime' | 'turnos';
               <!-- Rechazados: cuenta en rango -->
               <article
                 class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
+                title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
               >
-                <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-400">
+                <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-rose-700">
                   Rechazados
                 </p>
-                <p class="mt-1 text-3xl font-semibold leading-none text-rose-500">
+                <p class="mt-1 text-3xl font-semibold leading-none text-rose-600">
                   {{ dgaCountRechazados() }}
                 </p>
-                <p class="mt-1 text-xs font-semibold text-rose-400">incluye rechazados+fallidos</p>
+                <p class="mt-1 text-xs font-semibold text-rose-700">
+                  Rechazados por SNIA + fallidos antes del envío
+                </p>
               </article>
             </section>
 

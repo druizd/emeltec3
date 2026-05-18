@@ -79,26 +79,29 @@ const COMMON_TRANSFORMS: SiteTypeTransformOption[] = [
   {
     id: 'directo',
     label: 'Directo',
-    description: 'Usa el valor entrante sin modificarlo.',
+    description: 'Usa el valor crudo del equipo tal como llega, sin convertir.',
     enabled: true,
   },
   {
     id: 'lineal',
     label: 'Lineal',
-    description: 'Aplica valor × factor / divisor + offset.',
+    description:
+      'Aplica resultado = raw × factor ÷ divisor + offset. Ejemplo: si el equipo envía 1234 y querés mostrar 12.34, usa divisor = 100.',
     enabled: true,
   },
   {
     id: 'ieee754_32',
-    label: 'IEEE754 32 bits',
-    description: 'Une dos registros Modbus para obtener FLOAT32.',
+    label: 'Coma flotante (2 registros · IEEE754)',
+    description:
+      'Combina dos registros Modbus consecutivos en un decimal IEEE754 (FLOAT32). Si tu equipo invierte el orden de los bytes, cambia el "Orden de registros" a CDAB.',
     enabled: true,
     requiresD2: true,
   },
   {
     id: 'uint32_registros',
-    label: 'D1 * D2',
-    description: 'Combina dos registros Modbus en un entero de 32 bits.',
+    label: 'Entero combinado (2 registros · 32 bits)',
+    description:
+      'Combina dos registros Modbus en un entero de 32 bits: (registro alto × 65 536) + registro bajo. Pensado para totalizadores que no caben en un solo registro.',
     enabled: true,
     requiresD2: true,
   },
@@ -314,7 +317,32 @@ function emptyVariables(): SiteVariablesPayload {
                 </div>
 
                 <div>
-                  <label class="mb-1 block text-xs font-bold text-slate-500">Transformación</label>
+                  <div class="mb-1 flex items-center justify-between gap-2">
+                    <label class="block text-xs font-bold text-slate-500">Transformación</label>
+                    <details class="group relative">
+                      <summary
+                        class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-[11px] font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        aria-label="Ver todas las transformaciones disponibles"
+                      >
+                        ?
+                      </summary>
+                      <div
+                        class="absolute right-0 top-7 z-10 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg"
+                      >
+                        <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.1em] text-slate-400">
+                          Tipos de transformación
+                        </p>
+                        <dl class="space-y-2">
+                          @for (transform of variableTransformOptions(); track transform.id) {
+                            <div>
+                              <dt class="font-semibold text-slate-700">{{ transform.label }}</dt>
+                              <dd class="text-slate-500">{{ transform.description }}</dd>
+                            </div>
+                          }
+                        </dl>
+                      </div>
+                    </details>
+                  </div>
                   <select
                     name="settings-variable-transform"
                     [ngModel]="variableForm().transformacion"

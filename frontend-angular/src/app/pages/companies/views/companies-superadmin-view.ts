@@ -137,6 +137,6 @@ export class CompaniesSuperAdminViewComponent {
       return 'Gestión de usuarios asociados';
     }
 
-    return 'Resumen de la division seleccionada';
+    return 'Resumen de la división seleccionada';
   }
 }

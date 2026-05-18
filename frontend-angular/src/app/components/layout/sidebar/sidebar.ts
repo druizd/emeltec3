@@ -255,7 +255,7 @@ const MODULES = SITE_MODULES;
         >
           <span class="material-symbols-outlined text-[16px]">logout</span>
           @if (!collapsed()) {
-            <span class="text-[12px]">Cerrar sesion</span>
+            <span class="text-[12px]">Cerrar sesión</span>
           }
         </button>
       </div>

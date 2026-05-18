@@ -138,7 +138,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
             Sin contactos registrados
           </p>
           <p class="mt-2 max-w-md text-sm text-slate-400">
-            No hay personas asociadas a {{ selectedLabel || 'esta division' }} por ahora.
+            No hay personas asociadas a {{ selectedLabel || 'esta división' }} por ahora.
           </p>
         </div>
       }

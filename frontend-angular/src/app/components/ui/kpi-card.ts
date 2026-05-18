@@ -59,7 +59,7 @@ export class KpiCardComponent {
   get displayValue(): string {
     return this.value !== undefined && this.value !== null && this.value !== ''
       ? String(this.value)
-      : '--';
+      : 'Sin datos';
   }
 
   cardToneClass(): string {
