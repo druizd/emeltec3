@@ -26,7 +26,7 @@ import { inject } from '@angular/core';
           Error 404
         </p>
         <h1
-          class="mt-2 font-josefin text-3xl font-semibold tracking-[-0.01em] text-on-surface"
+          class="mt-2 font-josefin text-h3 font-semibold tracking-[-0.01em] text-on-surface"
           style="text-wrap: balance;"
         >
           Página no encontrada
@@ -39,7 +39,7 @@ import { inject } from '@angular/core';
         <div class="mt-7 flex flex-col items-stretch gap-2 sm:flex-row sm:justify-center">
           <a
             routerLink="/dashboard"
-            class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[13px] font-semibold text-white transition-all hover:bg-primary-container hover:shadow-[0_6px_18px_rgba(13,175,189,0.25)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            class="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-[13px] font-semibold text-white transition-all hover:bg-primary-container hover:shadow-primary-cta active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             <span class="material-symbols-outlined text-[18px]">grid_view</span>
             Ir al dashboard

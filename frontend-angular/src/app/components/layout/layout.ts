@@ -11,7 +11,7 @@ import { SidebarComponent } from './sidebar/sidebar';
   template: `
     <a
       href="#main-content"
-      class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:flex focus:items-center focus:gap-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white focus:shadow-[0_4px_12px_rgba(13,175,189,0.30)] focus:outline-none focus:ring-2 focus:ring-white"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:flex focus:items-center focus:gap-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white focus:shadow-primary-focus focus:outline-none focus:ring-2 focus:ring-white"
     >
       <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
       Saltar al contenido

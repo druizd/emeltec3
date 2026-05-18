@@ -11,8 +11,8 @@ import { FormsModule } from '@angular/forms';
   template: `
     <div class="admin-table-toolbar">
       <div>
-        <p class="text-sm font-semibold text-slate-800">{{ title() }}</p>
-        <p class="text-xs font-bold text-slate-400">{{ countLabel() }}</p>
+        <p class="text-body-sm font-semibold text-slate-800">{{ title() }}</p>
+        <p class="text-caption font-bold text-slate-400">{{ countLabel() }}</p>
       </div>
       <div class="flex flex-wrap items-center justify-end gap-2">
         <label class="admin-search-control">

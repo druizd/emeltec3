@@ -43,7 +43,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
 
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[680px] text-left text-sm">
+          <table class="w-full min-w-[680px] text-left text-body-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50">
                 <th
@@ -123,7 +123,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
                       <span class="material-symbols-outlined text-3xl text-slate-300"
                         >fact_check</span
                       >
-                      <p class="mt-2 text-sm font-semibold text-slate-400">
+                      <p class="mt-2 text-body-sm font-semibold text-slate-400">
                         Sin registros con estos filtros
                       </p>
                     </td>

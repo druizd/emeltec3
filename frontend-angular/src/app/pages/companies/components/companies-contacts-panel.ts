@@ -26,10 +26,10 @@ import type { ApiResponse, User } from '@emeltec/shared';
     >
       @if (variant !== 'superadmin') {
         <div class="mb-8">
-          <h3 class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">
+          <h3 class="mb-2 text-body-sm font-semibold uppercase tracking-widest text-primary">
             Contactos
           </h3>
-          <p class="text-sm text-slate-400">
+          <p class="text-body-sm text-slate-400">
             Personal asociado a {{ selectedLabel || 'la división seleccionada' }}
           </p>
         </div>
@@ -132,10 +132,10 @@ import type { ApiResponse, User } from '@emeltec/shared';
       } @else {
         <div [class]="getEmptyStateClass()">
           <span class="material-symbols-outlined mb-4 text-5xl text-slate-300">contact_phone</span>
-          <p class="text-sm font-bold uppercase tracking-[0.18em] text-slate-400">
+          <p class="text-body-sm font-bold uppercase tracking-[0.18em] text-slate-400">
             Sin contactos registrados
           </p>
-          <p class="mt-2 max-w-md text-sm text-slate-400">
+          <p class="mt-2 max-w-md text-body-sm text-slate-400">
             No hay personas asociadas a {{ selectedLabel || 'esta división' }} por ahora.
           </p>
         </div>

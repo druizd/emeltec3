@@ -76,7 +76,7 @@ interface Periodo {
       <!-- KPIs principales -->
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article
-          class="rounded-2xl border border-primary-tint-30 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.06),0_4px_12px_rgba(13,175,189,0.08)]"
+          class="rounded-2xl border border-primary-tint-30 bg-white p-5 shadow-primary-banner"
         >
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
@@ -125,7 +125,7 @@ interface Periodo {
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h3 class="text-sm font-semibold text-slate-800">Flujo mensual por instalación</h3>
+              <h3 class="text-body-sm font-semibold text-slate-800">Flujo mensual por instalación</h3>
               <p class="mt-0.5 text-caption-xs text-slate-400">
                 m³/mes · últimos 6 meses · clic en leyenda para ocultar
               </p>
@@ -200,7 +200,7 @@ interface Periodo {
         <!-- Lista de sitios: toggle + proyección por pozo -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-2">
-            <h3 class="text-sm font-semibold text-slate-800">Estado de sitios</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Estado de sitios</h3>
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-caption-xs font-bold text-slate-500"
               >{{ sitiosResumen.length }} sitios</span
             >
@@ -290,7 +290,7 @@ interface Periodo {
         <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
             <div>
-              <h3 class="text-sm font-semibold text-slate-800">Mapa de instalaciones</h3>
+              <h3 class="text-body-sm font-semibold text-slate-800">Mapa de instalaciones</h3>
               <p class="mt-0.5 text-caption-xs text-slate-400">
                 Posición geográfica · clic en marcador para métricas
               </p>
@@ -312,7 +312,7 @@ interface Periodo {
         <!-- Resumen operacional (panel lateral) -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between gap-3">
-            <h3 class="text-sm font-semibold text-slate-800">Resumen operacional</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Resumen operacional</h3>
             <span
               class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
             >
@@ -347,7 +347,7 @@ interface Periodo {
         <!-- Header -->
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <div class="flex-1">
-            <h3 class="text-sm font-semibold text-slate-800">Comparación de períodos por pozo</h3>
+            <h3 class="text-body-sm font-semibold text-slate-800">Comparación de períodos por pozo</h3>
             <p class="mt-0.5 text-caption-xs text-slate-400">
               Período A vs Período B · caudal, nivel y consumo
             </p>

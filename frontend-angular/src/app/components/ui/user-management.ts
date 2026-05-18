@@ -34,7 +34,7 @@ import { formatRutInput } from '../../shared/rut';
               <span class="material-symbols-outlined text-primary-container">person_add</span>
             </div>
             <div>
-              <h2 class="text-lg font-bold text-slate-800">Invitar a un Nuevo Miembro</h2>
+              <h2 class="text-h6 font-bold text-slate-800">Invitar a un Nuevo Miembro</h2>
               <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
                 Jerarquía Real: {{ companyName() }} / {{ subName() }}
               </p>
@@ -44,7 +44,7 @@ import { formatRutInput } from '../../shared/rut';
           @if (status().msg) {
             <div
               [class]="
-                'p-4 rounded-xl mb-6 flex items-center gap-3 font-bold text-xs uppercase tracking-widest transition-all ' +
+                'p-4 rounded-xl mb-6 flex items-center gap-3 font-bold text-caption uppercase tracking-widest transition-all ' +
                 (status().type === 'success'
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-red-50 text-red-600 border border-red-200')
@@ -67,7 +67,7 @@ import { formatRutInput } from '../../shared/rut';
                   required
                   [(ngModel)]="newUser.tipo"
                   name="tipo"
-                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm font-semibold text-primary"
+                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm font-semibold text-primary"
                 >
                   @if (auth.isAdmin() || auth.isSuperAdmin()) {
                     <option value="Admin">Administrador (Control Total {{ companyName() }})</option>
@@ -83,7 +83,7 @@ import { formatRutInput } from '../../shared/rut';
                     >Empresa Asignada</label
                   >
                   <div
-                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
+                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
                   >
                     <span class="material-symbols-outlined text-primary-container text-sm"
                       >domain</span
@@ -97,7 +97,7 @@ import { formatRutInput } from '../../shared/rut';
                     >División Asignada</label
                   >
                   <div
-                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-sm font-semibold flex items-center gap-2 shadow-sm"
+                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold flex items-center gap-2 shadow-sm"
                     [class.text-slate-400]="newUser.tipo === 'Admin'"
                     [class.text-primary-container]="newUser.tipo !== 'Admin'"
                   >
@@ -118,7 +118,7 @@ import { formatRutInput } from '../../shared/rut';
                   required
                   [(ngModel)]="newUser.nombre"
                   name="nombre"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
                   placeholder="Ej. Roberto"
                 />
               </div>
@@ -130,7 +130,7 @@ import { formatRutInput } from '../../shared/rut';
                   required
                   [(ngModel)]="newUser.apellido"
                   name="apellido"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
                   placeholder="Ej. Sánchez"
                 />
               </div>
@@ -145,7 +145,7 @@ import { formatRutInput } from '../../shared/rut';
                   name="rut_usuario"
                   inputmode="text"
                   maxlength="12"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
                   placeholder="12.345.678-9"
                 />
               </div>
@@ -157,7 +157,7 @@ import { formatRutInput } from '../../shared/rut';
                   required
                   [(ngModel)]="newUser.telefono"
                   name="telefono"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
                   placeholder="+56 9 ..."
                 />
               </div>
@@ -170,7 +170,7 @@ import { formatRutInput } from '../../shared/rut';
                   type="email"
                   [(ngModel)]="newUser.email"
                   name="email"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm font-bold"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm font-bold"
                   placeholder="usuario@correo.com"
                 />
               </div>
@@ -182,7 +182,7 @@ import { formatRutInput } from '../../shared/rut';
                   required
                   [(ngModel)]="newUser.cargo"
                   name="cargo"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
                   placeholder="Ej. Encargado de sector de aguas"
                 />
               </div>
@@ -192,7 +192,7 @@ import { formatRutInput } from '../../shared/rut';
               <button
                 type="submit"
                 [disabled]="loading()"
-                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-[0_6px_18px_rgba(13,175,189,0.25)] hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-xs tracking-widest flex items-center gap-2"
+                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
               >
                 <span class="material-symbols-outlined text-lg">mail</span>
                 {{ loading() ? 'Enviando...' : 'Invitar y Enviar Correo' }}
@@ -212,7 +212,7 @@ import { formatRutInput } from '../../shared/rut';
         <div
           class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"
         >
-          <h3 class="text-xs font-semibold text-primary uppercase tracking-widest">
+          <h3 class="text-caption font-semibold text-primary uppercase tracking-widest">
             {{ readOnly ? 'Equipo de ' + subName() : 'Usuarios en ' + subName() }}
           </h3>
           <span
@@ -220,7 +220,7 @@ import { formatRutInput } from '../../shared/rut';
             >{{ users().length }} Usuarios</span
           >
         </div>
-        <table class="w-full text-left text-sm">
+        <table class="w-full text-left text-body-sm">
           <thead class="bg-slate-50/50 border-b border-slate-100">
             <tr>
               <th
@@ -280,7 +280,7 @@ import { formatRutInput } from '../../shared/rut';
                   <span class="material-symbols-outlined text-slate-300 text-4xl mb-2"
                     >group_off</span
                   >
-                  <p class="text-slate-400 font-bold text-sm">Sin usuarios registrados</p>
+                  <p class="text-slate-400 font-bold text-body-sm">Sin usuarios registrados</p>
                 </td>
               </tr>
             }

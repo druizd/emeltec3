@@ -45,7 +45,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
           >
             Último heartbeat
           </p>
-          <p class="mt-0.5 text-2xl font-semibold text-slate-800">{{ heartbeatLabel() }}</p>
+          <p class="mt-0.5 text-h4 font-semibold text-slate-800">{{ heartbeatLabel() }}</p>
           <p class="text-caption-xs text-slate-400">{{ heartbeatFecha() }}</p>
         </article>
 
@@ -60,7 +60,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
           <p class="mt-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Sensores OK
           </p>
-          <p class="mt-0.5 text-2xl font-semibold text-slate-800">
+          <p class="mt-0.5 text-h4 font-semibold text-slate-800">
             {{ countSensores('ok') }} / {{ salud().sensores.length }}
           </p>
           <p class="text-caption-xs text-slate-400">en última lectura</p>
@@ -77,7 +77,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
           <p class="mt-3 text-caption-xs font-semibold uppercase tracking-widest text-amber-500">
             Sensores en alerta
           </p>
-          <p class="mt-0.5 text-2xl font-semibold text-slate-800">
+          <p class="mt-0.5 text-h4 font-semibold text-slate-800">
             {{ countSensores('advertencia') + countSensores('error') }}
           </p>
           <p class="text-caption-xs text-slate-400">advertencia + error</p>
@@ -94,7 +94,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
           <p class="mt-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Gaps (30 días)
           </p>
-          <p class="mt-0.5 text-2xl font-semibold text-slate-800">{{ salud().gaps.length }}</p>
+          <p class="mt-0.5 text-h4 font-semibold text-slate-800">{{ salud().gaps.length }}</p>
           <p class="text-caption-xs text-slate-400">interrupciones ≥ 1 h</p>
         </article>
       </div>
@@ -119,10 +119,10 @@ type Tono = 'ok' | 'advertencia' | 'error';
                     <span
                       [class]="'h-2 w-2 shrink-0 rounded-full ' + sensorDot(sensorTono(s))"
                     ></span>
-                    <span class="text-sm font-semibold text-slate-800">{{ s.alias }}</span>
+                    <span class="text-body-sm font-semibold text-slate-800">{{ s.alias }}</span>
                   </div>
                   <div class="text-right">
-                    <p class="font-mono text-sm font-bold text-slate-700">
+                    <p class="font-mono text-body-sm font-bold text-slate-700">
                       {{ formatSensorValue(s) }}
                     </p>
                     <p class="text-caption-xs text-slate-400">{{ edadLabel(s.edad_seg) }}</p>

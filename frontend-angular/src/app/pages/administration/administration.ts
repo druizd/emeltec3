@@ -348,7 +348,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </p>
             </div>
             <h1
-              class="mt-1.5 font-josefin text-2xl font-semibold tracking-[-0.01em] text-on-surface"
+              class="mt-1.5 font-josefin text-h4 font-semibold tracking-[-0.01em] text-on-surface"
             >
               Administración
             </h1>
@@ -382,7 +382,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               type="button"
               (click)="loadDashboard()"
               [disabled]="loading()"
-              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container hover:shadow-[0_4px_12px_rgba(13,175,189,0.10)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
+              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container hover:shadow-primary-glow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
               aria-label="Actualizar"
             >
               <span
@@ -406,7 +406,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
         @if (pendingDelete(); as pending) {
           <div
-            class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800"
+            class="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-body-sm font-semibold text-amber-800"
             role="status"
             aria-live="polite"
           >
@@ -419,7 +419,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <button
               type="button"
               (click)="undoPendingDelete()"
-              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-caption font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
               <span class="material-symbols-outlined text-[16px]">undo</span>
               Deshacer
@@ -449,8 +449,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   >{{ dialog.icon }}</span
                 >
                 <div class="min-w-0">
-                  <h3 id="admin-confirm-title" class="text-lg font-semibold text-slate-900">{{ dialog.title }}</h3>
-                  <p class="mt-1 text-sm leading-6 text-slate-500">{{ dialog.message }}</p>
+                  <h3 id="admin-confirm-title" class="text-h6 font-semibold text-slate-900">{{ dialog.title }}</h3>
+                  <p class="mt-1 text-body-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>
               <div
@@ -491,7 +491,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
           <main class="min-w-0">
             @if (loading()) {
               <section class="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-                <div class="flex items-center gap-3 text-sm font-bold text-slate-500">
+                <div class="flex items-center gap-3 text-body-sm font-bold text-slate-500">
                   <span
                     class="material-symbols-outlined animate-spin text-[22px] text-primary-container"
                     >progress_activity</span
@@ -517,7 +517,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       ></app-admin-section-header>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Nombre</label>
                       <input
                         required
                         [disabled]="companyFormDisabled()"
@@ -529,7 +529,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">RUT</label>
                       <input
                         required
                         [disabled]="companyFormDisabled()"
@@ -543,7 +543,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Tipo</label>
                       <select
                         name="company-type"
                         [disabled]="companyFormDisabled()"
@@ -587,7 +587,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     ></app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="min-w-[680px] w-full text-left text-sm">
+                      <table class="min-w-[680px] w-full text-left text-body-sm">
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Nombre</th>
@@ -645,7 +645,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       ></app-admin-section-header>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
                         >Empresa padre</label
                       >
                       <select
@@ -663,7 +663,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </select>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Nombre</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Nombre</label>
                       <input
                         required
                         [disabled]="subCompanyFormDisabled()"
@@ -675,7 +675,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">RUT</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">RUT</label>
                       <input
                         required
                         [disabled]="subCompanyFormDisabled()"
@@ -721,7 +721,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     ></app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="min-w-[760px] w-full text-left text-sm">
+                      <table class="min-w-[760px] w-full text-left text-body-sm">
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Nombre</th>
@@ -774,7 +774,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       ></app-admin-section-header>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
                         >Empresa padre</label
                       >
                       <select
@@ -792,7 +792,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </select>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Subempresa</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Subempresa</label>
                       <select
                         required
                         [disabled]="siteFormDisabled()"
@@ -808,7 +808,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </select>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
                         >Tipo de instalacion</label
                       >
                       <select
@@ -824,7 +824,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </select>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Estado</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Estado</label>
                       <select
                         name="site-active"
                         [disabled]="siteFormDisabled()"
@@ -837,7 +837,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </select>
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
                         >Nombre del sitio</label
                       >
                       <input
@@ -851,7 +851,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
                         >Serial del equipo</label
                       >
                       <input
@@ -865,7 +865,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500">Ubicación</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Ubicación</label>
                       <input
                         name="site-location"
                         [disabled]="siteFormDisabled()"
@@ -893,7 +893,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </div>
                     @if (selectedSiteId() && !siteEditMode()) {
                       <div
-                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 lg:col-span-4"
+                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-caption text-slate-500 lg:col-span-4"
                       >
                         {{
                           selectedSite()?.ubicacion
@@ -916,7 +916,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     ></app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="min-w-[680px] w-full text-left text-sm">
+                      <table class="min-w-[680px] w-full text-left text-body-sm">
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Sitio</th>
@@ -940,7 +940,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                   siteTypeLabel(site.tipo_sitio)
                                 }}</span>
                               </td>
-                              <td class="px-4 py-3 font-mono text-xs text-slate-600">
+                              <td class="px-4 py-3 font-mono text-caption text-slate-600">
                                 {{ site.id_serial }}
                               </td>
                               <td class="px-4 py-3 text-slate-500">{{ site.subCompanyName }}</td>
@@ -984,7 +984,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="min-w-[760px] w-full text-left text-sm">
+                      <table class="min-w-[760px] w-full text-left text-body-sm">
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Serial</th>
@@ -996,7 +996,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <tbody class="divide-y divide-slate-100">
                           @for (device of paginatedDevices(); track device.id_serial) {
                             <tr class="bg-white transition-colors hover:bg-slate-50">
-                              <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
+                              <td class="px-4 py-3 font-mono text-caption font-bold text-slate-700">
                                 {{ device.id_serial }}
                               </td>
                               <td class="px-4 py-3 text-slate-500">
@@ -2336,19 +2336,19 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   }
 
   siteTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-xs font-bold';
+    const base = 'rounded-md px-2 py-1 text-caption font-bold';
     return `${base} ${getSiteTypeUi(type).badgeClass}`;
   }
 
   statusBadgeClass(tone: 'success' | 'warning' | 'neutral'): string {
-    const base = 'rounded-md px-2 py-1 text-xs font-bold';
+    const base = 'rounded-md px-2 py-1 text-caption font-bold';
     if (tone === 'success') return `${base} bg-emerald-50 text-emerald-700`;
     if (tone === 'warning') return `${base} bg-amber-50 text-amber-700`;
     return `${base} bg-slate-100 text-slate-500`;
   }
 
   companyTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-xs font-semibold';
+    const base = 'rounded-md px-2 py-1 text-caption font-semibold';
     const normalized = this.normalizeSearchText(type);
     if (normalized.includes('electrico')) return `${base} bg-amber-50 text-amber-700`;
     if (normalized.includes('industrial')) return `${base} bg-indigo-50 text-indigo-700`;
@@ -2409,7 +2409,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   }
 
   statusClass(): string {
-    const base = 'flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-bold';
+    const base = 'flex items-center gap-2 rounded-lg border px-4 py-3 text-body-sm font-bold';
     return this.status().type === 'success'
       ? `${base} border-emerald-200 bg-emerald-50 text-emerald-700`
       : `${base} border-red-200 bg-red-50 text-red-700`;

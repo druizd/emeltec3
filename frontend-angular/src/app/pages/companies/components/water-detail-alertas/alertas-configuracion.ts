@@ -265,7 +265,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             type="text"
             [(ngModel)]="draft.nombre"
             placeholder="Ej: Nivel freático crítico"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
         </div>
 
@@ -278,7 +278,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <input
             type="text"
             [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
         </div>
 
@@ -290,7 +290,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           >
           <select
             [(ngModel)]="draft.condicion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           >
             @for (c of condicionesDisponibles; track c) {
               <option [value]="c">{{ condicionLabel(c) }}</option>
@@ -308,7 +308,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             @if (variables().length > 0) {
               <select
                 [(ngModel)]="draft.variable_key"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               >
                 <option value="" disabled>Selecciona una variable…</option>
                 @for (v of variables(); track v.id) {
@@ -327,7 +327,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="text"
                 [(ngModel)]="draft.variable_key"
                 placeholder="Ej: caudal, nivel_freatico"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
               <p class="mt-1 text-caption-xs text-slate-400">
                 Sin variables registradas en el sitio; ingresa la clave manualmente.
@@ -351,7 +351,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="number"
               step="any"
               [(ngModel)]="draft.umbral_bajo"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
           </div>
         }
@@ -366,7 +366,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_bajo"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
             <div>
@@ -378,7 +378,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_alto"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
           </div>
@@ -434,7 +434,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             min="1"
             max="1440"
             [(ngModel)]="draft.cooldown_minutos"
-            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
           <span class="ml-2 text-caption-xs text-slate-400">tiempo mínimo entre notificaciones</span>
         </div>

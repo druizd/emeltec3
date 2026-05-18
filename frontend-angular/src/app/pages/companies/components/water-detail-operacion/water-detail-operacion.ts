@@ -149,7 +149,7 @@ interface RealtimeChartPoint {
       @if (modo() === 'hoy') {
         <!-- Banner tiempo real -->
         <div
-          class="rounded-2xl border border-primary-tint-25 bg-white p-5 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_4px_12px_rgba(13,175,189,0.06)]"
+          class="rounded-2xl border border-primary-tint-25 bg-white p-5 shadow-primary-banner-soft"
           [attr.aria-busy]="loading()"
         >
           <div class="flex flex-wrap items-center justify-between gap-2">
@@ -235,7 +235,7 @@ interface RealtimeChartPoint {
                     >chevron_left</span
                   >
                 </button>
-                <span class="flex items-center gap-1.5 text-sm font-bold text-slate-700">
+                <span class="flex items-center gap-1.5 text-body-sm font-bold text-slate-700">
                   {{ fechaDiaReal() }}
                   @if (esHoy()) {
                     <span
@@ -425,7 +425,7 @@ interface RealtimeChartPoint {
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-caption-xs text-slate-400">{{ turno.horario }}</p>
-                    <p class="mt-3 text-sm font-bold text-slate-400">No iniciado</p>
+                    <p class="mt-3 text-body-sm font-bold text-slate-400">No iniciado</p>
                   </div>
                 }
               }
@@ -497,7 +497,7 @@ interface RealtimeChartPoint {
         <!-- Sparkline caudal real-time -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between">
-            <h3 class="text-sm font-semibold text-slate-800">
+            <h3 class="text-body-sm font-semibold text-slate-800">
               Caudal en <span class="text-primary-container">Tiempo Real</span>
             </h3>
             <span class="text-caption-xs font-semibold text-slate-400"
@@ -552,12 +552,12 @@ interface RealtimeChartPoint {
 
             @if (selectedRealtimePoint(); as point) {
               <div
-                class="pointer-events-none absolute z-10 min-w-[190px] rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm shadow-xl ring-1 ring-slate-900/5"
+                class="pointer-events-none absolute z-10 min-w-[190px] rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-body-sm shadow-xl ring-1 ring-slate-900/5"
                 [style.left.%]="tooltipLeftPercent(point)"
                 [style.top.%]="tooltipTopPercent(point)"
                 [style.transform]="tooltipTransform(point)"
               >
-                <p class="text-sm font-semibold text-slate-600">{{ point.dateLabel }}</p>
+                <p class="text-body-sm font-semibold text-slate-600">{{ point.dateLabel }}</p>
                 <div class="mt-2 flex items-center gap-2 text-slate-600">
                   <span class="h-2.5 w-2.5 rounded-full bg-[#0DAFBD]"></span>
                   <span class="font-semibold">Caudal (L/s)</span>
@@ -975,7 +975,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   modoClass(m: OperacionModo): string {
     const active = this.modo() === m;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

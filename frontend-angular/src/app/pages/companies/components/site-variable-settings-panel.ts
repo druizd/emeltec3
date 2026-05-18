@@ -167,13 +167,13 @@ function emptyVariables(): SiteVariablesPayload {
               >
                 Configuración del sitio / {{ siteTypeLabel() }}
               </p>
-              <h2 class="truncate text-xl font-semibold leading-none text-slate-800">
+              <h2 class="truncate text-h5 font-semibold leading-none text-slate-800">
                 {{ displaySite().descripcion || 'Instalación' }}
               </h2>
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-500">
+          <div class="flex flex-wrap items-center gap-2 text-caption font-bold text-slate-500">
             <span
               class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3"
             >
@@ -223,7 +223,7 @@ function emptyVariables(): SiteVariablesPayload {
               [style.color]="accentColor"
               >progress_activity</span
             >
-            <p class="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <p class="mt-2 text-caption font-semibold uppercase tracking-[0.16em] text-slate-400">
               Cargando configuración
             </p>
           </div>
@@ -240,10 +240,10 @@ function emptyVariables(): SiteVariablesPayload {
                     >water_drop</span
                   >
                   <div>
-                    <h3 class="text-sm font-semibold text-slate-900">
+                    <h3 class="text-body-sm font-semibold text-slate-900">
                       Configuración manual del pozo
                     </h3>
-                    <p class="text-xs font-semibold text-primary-container">
+                    <p class="text-caption font-semibold text-primary-container">
                       Campos opcionales para proyectar el nivel freático.
                     </p>
                   </div>
@@ -251,7 +251,7 @@ function emptyVariables(): SiteVariablesPayload {
 
                 <div class="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label class="mb-1 block text-xs font-bold text-slate-500"
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
                       >Profundidad total del pozo (m)</label
                     >
                     <input
@@ -265,7 +265,7 @@ function emptyVariables(): SiteVariablesPayload {
                     />
                   </div>
                   <div>
-                    <label class="mb-1 block text-xs font-bold text-slate-500"
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
                       >Distancia del sensor desde superficie (m)</label
                     >
                     <input
@@ -297,15 +297,15 @@ function emptyVariables(): SiteVariablesPayload {
               class="space-y-4 rounded-xl border border-slate-200 bg-white p-4"
             >
               <div>
-                <p class="text-sm font-semibold text-slate-900">Variables del equipo</p>
-                <p class="mt-1 text-xs font-semibold text-slate-400">
+                <p class="text-body-sm font-semibold text-slate-900">Variables del equipo</p>
+                <p class="mt-1 text-caption font-semibold text-slate-400">
                   Se guardan directamente en este sitio, sin seleccionar equipo.
                 </p>
               </div>
 
               <div class="space-y-3">
                 <div>
-                  <label class="mb-1 block text-xs font-bold text-slate-500">Dato original</label>
+                  <label class="mb-1 block text-caption font-bold text-slate-500">Dato original</label>
                   <select
                     required
                     name="settings-variable-key"
@@ -322,7 +322,7 @@ function emptyVariables(): SiteVariablesPayload {
 
                 <div>
                   <div class="mb-1 flex items-center justify-between gap-2">
-                    <label class="block text-xs font-bold text-slate-500">Transformación</label>
+                    <label class="block text-caption font-bold text-slate-500">Transformación</label>
                     <details class="group relative">
                       <summary
                         class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-caption-xs font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -331,7 +331,7 @@ function emptyVariables(): SiteVariablesPayload {
                         ?
                       </summary>
                       <div
-                        class="absolute right-0 top-7 z-10 w-80 rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-lg"
+                        class="absolute right-0 top-7 z-10 w-80 rounded-xl border border-slate-200 bg-white p-3 text-caption shadow-lg"
                       >
                         <p
                           class="mb-2 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
@@ -360,7 +360,7 @@ function emptyVariables(): SiteVariablesPayload {
                     }
                   </select>
                   @if (selectedVariableTransform()?.description) {
-                    <p class="mt-1 text-xs font-semibold text-slate-400">
+                    <p class="mt-1 text-caption font-semibold text-slate-400">
                       {{ selectedVariableTransform()?.description }}
                     </p>
                   }
@@ -369,7 +369,7 @@ function emptyVariables(): SiteVariablesPayload {
                 @if (requiresSecondRegister()) {
                   <div class="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label class="mb-1 block text-xs font-bold text-slate-500"
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
                         >Segundo registro</label
                       >
                       <select
@@ -386,7 +386,7 @@ function emptyVariables(): SiteVariablesPayload {
                     </div>
                     @if (usesRegisterOrder()) {
                       <div>
-                        <label class="mb-1 block text-xs font-bold text-slate-500"
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
                           >Orden de registros</label
                         >
                         <select
@@ -403,13 +403,13 @@ function emptyVariables(): SiteVariablesPayload {
                             <option value="true">Invertido CDAB</option>
                           }
                         </select>
-                        <p class="mt-1 text-xs font-semibold text-slate-400">
+                        <p class="mt-1 text-caption font-semibold text-slate-400">
                           {{ registerOrderHint() }}
                         </p>
                       </div>
                     } @else {
                       <div
-                        class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-xs font-semibold text-primary-container"
+                        class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-caption font-semibold text-primary-container"
                       >
                         Fórmula: {{ variableForm().d1 || 'primer registro' }} *
                         {{ variableForm().d2 || 'segundo registro' }}
@@ -420,7 +420,7 @@ function emptyVariables(): SiteVariablesPayload {
               </div>
 
               <div>
-                <label class="mb-1 block text-xs font-bold text-slate-500">Alias</label>
+                <label class="mb-1 block text-caption font-bold text-slate-500">Alias</label>
                 <input
                   required
                   name="settings-variable-alias"
@@ -432,7 +432,7 @@ function emptyVariables(): SiteVariablesPayload {
               </div>
 
               <div>
-                <label class="mb-1 block text-xs font-bold text-slate-500">Uso en dashboard</label>
+                <label class="mb-1 block text-caption font-bold text-slate-500">Uso en dashboard</label>
                 <select
                   name="settings-variable-role"
                   [ngModel]="variableForm().rol_dashboard"
@@ -444,7 +444,7 @@ function emptyVariables(): SiteVariablesPayload {
                   }
                 </select>
                 @if (selectedVariableRole()?.description) {
-                  <p class="mt-1 text-xs font-semibold text-slate-400">
+                  <p class="mt-1 text-caption font-semibold text-slate-400">
                     {{ selectedVariableRole()?.description }}
                   </p>
                 }
@@ -452,7 +452,7 @@ function emptyVariables(): SiteVariablesPayload {
 
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="mb-1 block text-xs font-bold text-slate-500">Tipo</label>
+                  <label class="mb-1 block text-caption font-bold text-slate-500">Tipo</label>
                   <select
                     name="settings-variable-type"
                     [ngModel]="variableForm().tipo_dato"
@@ -466,7 +466,7 @@ function emptyVariables(): SiteVariablesPayload {
                   </select>
                 </div>
                 <div>
-                  <label class="mb-1 block text-xs font-bold text-slate-500">Unidad</label>
+                  <label class="mb-1 block text-caption font-bold text-slate-500">Unidad</label>
                   <input
                     name="settings-variable-unit"
                     [ngModel]="variableForm().unidad"
@@ -480,7 +480,7 @@ function emptyVariables(): SiteVariablesPayload {
               @if (isLinearTransform()) {
                 <div class="grid grid-cols-3 gap-3">
                   <div>
-                    <label class="mb-1 block text-xs font-bold text-slate-500"
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
                       >Factor multiplicador</label
                     >
                     <input
@@ -494,7 +494,7 @@ function emptyVariables(): SiteVariablesPayload {
                     />
                   </div>
                   <div>
-                    <label class="mb-1 block text-xs font-bold text-slate-500">Divisor</label>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Divisor</label>
                     <input
                       type="number"
                       step="any"
@@ -507,7 +507,7 @@ function emptyVariables(): SiteVariablesPayload {
                     />
                   </div>
                   <div>
-                    <label class="mb-1 block text-xs font-bold text-slate-500">Offset</label>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
                     <input
                       type="number"
                       step="any"
@@ -534,14 +534,14 @@ function emptyVariables(): SiteVariablesPayload {
                     >calculate</span
                   >
                   <h3
-                    class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-container"
+                    class="text-caption font-semibold uppercase tracking-[0.16em] text-primary-container"
                   >
                     Calculadora de prueba (vista previa)
                   </h3>
                 </div>
 
                 <div>
-                  <label class="mb-1 block text-xs font-bold text-slate-500"
+                  <label class="mb-1 block text-caption font-bold text-slate-500"
                     >Valor crudo entrante (en vivo desde el equipo)</label
                   >
                   <input
@@ -559,7 +559,7 @@ function emptyVariables(): SiteVariablesPayload {
                   <p class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Resultado proyectado en gráfico
                   </p>
-                  <p class="mt-1 text-xl font-semibold text-primary-container">
+                  <p class="mt-1 text-h5 font-semibold text-primary-container">
                     {{ previewResultText() }}
                   </p>
                 </div>
@@ -601,20 +601,20 @@ function emptyVariables(): SiteVariablesPayload {
               class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
             >
               <div>
-                <h3 class="text-sm font-semibold text-slate-900">Datos detectados del equipo</h3>
-                <p class="text-xs font-semibold text-slate-400">
+                <h3 class="text-body-sm font-semibold text-slate-900">Datos detectados del equipo</h3>
+                <p class="text-caption font-semibold text-slate-400">
                   REG1, REG2 y similares se asignan manualmente por sitio.
                 </p>
               </div>
-              <p class="text-xs font-semibold text-slate-400">
+              <p class="text-caption font-semibold text-slate-400">
                 {{ siteVariables().variables.length }} variables
               </p>
             </div>
 
             <div class="overflow-x-auto">
-              <table class="w-full min-w-175 text-left text-sm">
+              <table class="w-full min-w-175 text-left text-body-sm">
                 <thead
-                  class="bg-slate-100 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500"
+                  class="bg-slate-100 text-caption font-semibold uppercase tracking-[0.12em] text-slate-500"
                 >
                   <tr>
                     <th class="px-4 py-3">Dato</th>
@@ -629,7 +629,7 @@ function emptyVariables(): SiteVariablesPayload {
                       (click)="prepareVariableMap(variable)"
                       title="Seleccionar variable"
                     >
-                      <td class="px-4 py-3 font-mono text-xs font-bold text-slate-700">
+                      <td class="px-4 py-3 font-mono text-caption font-bold text-slate-700">
                         {{ variable.nombre_dato }}
                       </td>
                       <td class="px-4 py-3 font-bold text-slate-900">
@@ -640,7 +640,7 @@ function emptyVariables(): SiteVariablesPayload {
                           @if (variable.mapping) {
                             <div>
                               <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                              <p class="text-xs text-slate-400">
+                              <p class="text-caption text-slate-400">
                                 {{ displayRole(variable.mapping.rol_dashboard) }} ·
                                 {{ displayTransform(variable.mapping.transformacion) }}
                                 {{ variable.mapping.unidad || '' }}
@@ -658,7 +658,7 @@ function emptyVariables(): SiteVariablesPayload {
                             </button>
                           } @else {
                             <span
-                              class="rounded-md bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500"
+                              class="rounded-md bg-slate-100 px-2 py-1 text-caption font-bold text-slate-500"
                             >
                               Sin alias
                             </span>
@@ -670,7 +670,7 @@ function emptyVariables(): SiteVariablesPayload {
                     <tr class="bg-white">
                       <td
                         colspan="3"
-                        class="px-4 py-8 text-center text-sm font-semibold text-slate-400"
+                        class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
                       >
                         Aún no hay variables detectadas para el serial de este sitio.
                       </td>
@@ -1089,7 +1089,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
   calculatorButtonClass(transformId: string): string {
     const base =
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.1em] transition';
+      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-caption font-semibold uppercase tracking-[0.1em] transition';
     return this.variableForm().transformacion === transformId
       ? `${base} border-primary-tint-35 bg-primary-tint-14 text-primary-container`
       : `${base} border-primary-tint-15 bg-white text-primary-container hover:border-primary-tint-30 hover:bg-primary-tint-08`;
@@ -1164,7 +1164,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   }
 
   statusClass(): string {
-    const base = 'mt-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-bold';
+    const base = 'mt-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-body-sm font-bold';
     return this.status().type === 'success'
       ? `${base} border-emerald-200 bg-emerald-50 text-emerald-700`
       : `${base} border-red-200 bg-red-50 text-red-700`;

@@ -24,7 +24,7 @@ import type { SubCompanyNode } from '@emeltec/shared';
       @if (showReportButton) {
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-md border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-semibold text-[#1E293B] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-all hover:border-[#0DAFBD] hover:text-[#0899A5]"
+          class="inline-flex items-center gap-2 rounded-md border border-[#E2E8F0] bg-white px-4 py-2.5 text-body-sm font-semibold text-[#1E293B] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-all hover:border-[#0DAFBD] hover:text-[#0899A5]"
         >
           <span class="material-symbols-outlined text-lg">download</span>
           Reporte

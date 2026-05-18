@@ -9,7 +9,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
     <div
       class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3"
     >
-      <p class="text-xs font-bold text-slate-400">
+      <p class="text-caption font-bold text-slate-400">
         Mostrando {{ startItem() }}-{{ endItem() }} de {{ total() }}
       </p>
       @if (totalPages() > 1) {

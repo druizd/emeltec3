@@ -38,10 +38,10 @@ interface SiteContext {
                   <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                     {{ typeUi().label }}
                   </p>
-                  <h1 class="truncate text-xl font-semibold text-slate-900">
+                  <h1 class="truncate text-h5 font-semibold text-slate-900">
                     {{ siteName(context) }}
                   </h1>
-                  <p class="truncate text-sm font-semibold text-slate-500">
+                  <p class="truncate text-body-sm font-semibold text-slate-500">
                     {{ context.subCompany.nombre }}
                   </p>
                 </div>
@@ -83,10 +83,10 @@ interface SiteContext {
                           typeUi().icon
                         }}</span>
                       </span>
-                      <h2 class="mt-5 text-2xl font-semibold text-slate-900">
+                      <h2 class="mt-5 text-h4 font-semibold text-slate-900">
                         Dashboard {{ typeUi().label }} proximamente
                       </h2>
-                      <p class="mt-3 text-sm font-semibold leading-6 text-slate-500">
+                      <p class="mt-3 text-body-sm font-semibold leading-6 text-slate-500">
                         La ruta y la configuración de variables ya quedan separadas por tipo de
                         instalacion. Esta vista puede crecer con sus propios graficos, calculos y
                         alertas sin tocar el dashboard de pozo.
@@ -99,7 +99,7 @@ interface SiteContext {
                   @for (item of skeletonCards; track item.label) {
                     <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                       <p
-                        class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-400"
+                        class="flex items-center gap-2 text-caption font-semibold uppercase tracking-[0.12em] text-slate-400"
                       >
                         <span
                           class="material-symbols-outlined text-[16px]"

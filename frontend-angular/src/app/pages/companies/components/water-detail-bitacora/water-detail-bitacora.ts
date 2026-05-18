@@ -44,7 +44,7 @@ interface BitacoraTabItem {
               <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 Bitácora
               </p>
-              <h2 class="truncate text-lg font-semibold leading-tight text-slate-800">
+              <h2 class="truncate text-h6 font-semibold leading-tight text-slate-800">
                 Historial completo del sitio
               </h2>
             </div>
@@ -59,7 +59,7 @@ interface BitacoraTabItem {
               [ngModel]="searchQuery()"
               (ngModelChange)="searchQuery.set($event)"
               placeholder="Buscar en incidencias, documentos, trazabilidad..."
-              class="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
+              class="w-full bg-transparent text-body-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
             />
             @if (searchQuery()) {
               <button
@@ -92,7 +92,7 @@ interface BitacoraTabItem {
           <select
             [ngModel]="activeSection()"
             (ngModelChange)="setSection($event)"
-            class="w-full appearance-none rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none"
+            class="w-full appearance-none rounded-2xl bg-white px-4 py-3 text-body-sm font-bold text-slate-700 focus:outline-none"
           >
             @for (tab of visibleTabs(); track tab.key) {
               <option [value]="tab.key">{{ tab.label }}</option>
@@ -149,7 +149,7 @@ export class WaterDetailBitacoraComponent {
   getTabClass(key: BitacoraSection): string {
     const active = this.activeSection() === key;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-20'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

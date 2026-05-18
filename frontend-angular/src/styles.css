@@ -47,6 +47,20 @@
   --color-primary-tint-40: rgba(13, 175, 189, 0.40);
   --color-primary-tint-55: rgba(13, 175, 189, 0.55);
 
+  /* ─── Brand teal shadows ───
+     Reemplaza 30+ ocurrencias inline shadow-[0_..rgba(13,175,189,X)] con
+     tokens semánticos. Aggregation buckets: variaciones cercanas
+     consolidadas. Composites (banner) ya incluyen ring + drop. */
+  --shadow-primary-soft: 0 1px 4px rgba(13, 175, 189, 0.08);
+  --shadow-primary-glow: 0 4px 10px rgba(13, 175, 189, 0.10);
+  --shadow-primary-glow-md: 0 4px 12px rgba(13, 175, 189, 0.14);
+  --shadow-primary-glow-lg: 0 4px 16px rgba(13, 175, 189, 0.15);
+  --shadow-primary-cta: 0 6px 18px rgba(13, 175, 189, 0.25);
+  --shadow-primary-focus: 0 4px 12px rgba(13, 175, 189, 0.30);
+  --shadow-primary-banner: 0 0 0 1px rgba(13, 175, 189, 0.06), 0 4px 12px rgba(13, 175, 189, 0.08);
+  --shadow-primary-banner-soft: 0 0 0 1px rgba(13, 175, 189, 0.04), 0 4px 12px rgba(13, 175, 189, 0.06);
+  --shadow-slate-rest: 0 2px 6px rgba(15, 23, 42, 0.04);
+
   /* ─── Secondary neutral ─── */
   --color-secondary: #64748b;
   --color-secondary-container: #f8fafc;

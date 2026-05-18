@@ -42,7 +42,7 @@ interface AnalisisTabItem {
               <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 Análisis
               </p>
-              <h2 class="truncate text-lg font-semibold leading-tight text-slate-800">
+              <h2 class="truncate text-h6 font-semibold leading-tight text-slate-800">
                 Salud, calendario y métricas
               </h2>
             </div>
@@ -70,7 +70,7 @@ interface AnalisisTabItem {
           <select
             [ngModel]="activeSection()"
             (ngModelChange)="activeSection.set($event)"
-            class="w-full appearance-none rounded-2xl bg-white px-4 py-3 text-sm font-bold text-slate-700 focus:outline-none"
+            class="w-full appearance-none rounded-2xl bg-white px-4 py-3 text-body-sm font-bold text-slate-700 focus:outline-none"
           >
             @for (tab of tabs; track tab.key) {
               <option [value]="tab.key">{{ tab.label }}</option>
@@ -109,7 +109,7 @@ export class WaterDetailAnalisisComponent {
   tabClass(key: AnalisisSection): string {
     const active = this.activeSection() === key;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
       active
         ? 'bg-accent/10 text-accent-container ring-1 ring-accent/10'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

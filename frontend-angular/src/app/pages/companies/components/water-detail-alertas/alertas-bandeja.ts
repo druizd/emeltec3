@@ -45,7 +45,7 @@ type FiltroEstado = EventoEstado | 'todos';
             >
               {{ stat.label }}
             </p>
-            <p class="mt-0.5 text-2xl font-semibold" [class]="stat.valueClass">{{ stat.valor }}</p>
+            <p class="mt-0.5 text-h4 font-semibold" [class]="stat.valueClass">{{ stat.valor }}</p>
           </div>
         }
       </div>
@@ -226,7 +226,7 @@ type FiltroEstado = EventoEstado | 'todos';
               class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
             >
               <span class="material-symbols-outlined text-4xl text-slate-300">inbox</span>
-              <p class="mt-2 text-sm font-semibold text-slate-400">
+              <p class="mt-2 text-body-sm font-semibold text-slate-400">
                 Bandeja vacía con estos filtros
               </p>
             </div>

@@ -8,10 +8,10 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
   template: `
     <div class="flex items-start justify-between gap-3">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.12em] text-primary-container">
+        <p class="text-caption font-semibold uppercase tracking-[0.12em] text-primary-container">
           {{ selected() ? selectedLabel() : newLabel() }}
         </p>
-        <p class="mt-1 text-sm text-slate-500">
+        <p class="mt-1 text-body-sm text-slate-500">
           {{ selected() ? selectedHint() : newHint() }}
         </p>
       </div>
