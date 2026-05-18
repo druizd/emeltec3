@@ -141,8 +141,11 @@ type Tono = 'ok' | 'advertencia' | 'error';
             Gaps de datos — últimos 30 días
           </h3>
           @if (salud().gaps.length === 0) {
-            <p class="text-caption italic text-emerald-600">
-              ✓ Sin interrupciones detectadas (≥ 1 h).
+            <p class="flex items-center gap-1 text-caption italic text-emerald-600">
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                >check_circle</span
+              >
+              Sin interrupciones detectadas (≥ 1 h).
             </p>
           } @else {
             <ul class="divide-y divide-slate-100">

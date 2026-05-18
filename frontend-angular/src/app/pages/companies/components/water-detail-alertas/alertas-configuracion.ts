@@ -386,6 +386,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="number"
                 step="any"
                 [(ngModel)]="draft.umbral_bajo"
+                (ngModelChange)="resetSimulacion()"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
