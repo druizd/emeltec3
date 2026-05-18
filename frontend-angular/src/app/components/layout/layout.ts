@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './header/header';
 import { SidebarComponent } from './sidebar/sidebar';
+import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
 
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent],
+  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, ShortcutPaletteComponent],
   template: `
     <a
       href="#main-content"
@@ -168,6 +169,9 @@ import { SidebarComponent } from './sidebar/sidebar';
         <img src="/images/emeltechuman.png" alt="Chat" class="h-full w-full object-cover" />
       </button>
     </div>
+
+    <!-- ── Paleta de atajos de teclado (? / ⌘K) ── -->
+    <app-shortcut-palette />
   `,
 })
 export class LayoutComponent {
