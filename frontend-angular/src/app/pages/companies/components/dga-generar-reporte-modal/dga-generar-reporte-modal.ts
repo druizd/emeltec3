@@ -241,9 +241,7 @@ interface PeriodicidadOption {
             </section>
 
             <!-- ====== Informante (pool global) ====== -->
-            <section
-              class="space-y-3 rounded-lg border border-accent/20 bg-accent/5 px-4 py-3"
-            >
+            <section class="space-y-3 rounded-lg border border-accent/20 bg-accent/5 px-4 py-3">
               <div
                 class="flex items-center justify-between text-[10px] uppercase tracking-wider font-semibold text-accent-container"
               >

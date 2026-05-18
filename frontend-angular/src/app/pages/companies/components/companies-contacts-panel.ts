@@ -26,9 +26,7 @@ import type { ApiResponse, User } from '@emeltec/shared';
     >
       @if (variant !== 'superadmin') {
         <div class="mb-8">
-          <h3
-            class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary"
-          >
+          <h3 class="mb-2 text-sm font-semibold uppercase tracking-widest text-primary">
             Contactos
           </h3>
           <p class="text-sm text-slate-400">

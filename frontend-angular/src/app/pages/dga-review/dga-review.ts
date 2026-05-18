@@ -303,7 +303,11 @@ export class DgaReviewComponent {
    * fallback so the user never sees something like "ECONNREFUSED 127.0.0.1".
    */
   private friendlyError(err: unknown, fallback: string): string {
-    const e = err as { status?: number; error?: { error?: { message?: string; code?: string } }; message?: string };
+    const e = err as {
+      status?: number;
+      error?: { error?: { message?: string; code?: string } };
+      message?: string;
+    };
     const apiMessage = e?.error?.error?.message;
     const status = e?.status;
     if (status === 0) return 'Sin conexión con el servidor. Revisa tu red y vuelve a intentar.';
