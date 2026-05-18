@@ -28,9 +28,7 @@ import { formatRutInput } from '../../shared/rut';
       @if (!readOnly) {
         <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
           <div class="flex items-center gap-3 mb-8">
-            <div
-              class="w-10 h-10 bg-primary-tint-10 rounded-xl flex items-center justify-center"
-            >
+            <div class="w-10 h-10 bg-primary-tint-10 rounded-xl flex items-center justify-center">
               <span class="material-symbols-outlined text-primary-container">person_add</span>
             </div>
             <div>

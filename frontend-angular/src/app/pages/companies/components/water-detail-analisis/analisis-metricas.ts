@@ -36,7 +36,9 @@ function dateToUtcIsoEnd(date: string): string {
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-accent">leaderboard</span>
           <div>
-            <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">Rango</p>
+            <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              Rango
+            </p>
             <p class="text-body-sm font-bold text-slate-700">{{ desde() }} → {{ hasta() }}</p>
           </div>
         </div>

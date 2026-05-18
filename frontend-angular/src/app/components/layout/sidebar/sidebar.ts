@@ -111,7 +111,7 @@ const MODULES = SITE_MODULES;
                 type="search"
                 [value]="searchTerm()"
                 (input)="onSearchInput($event)"
-                placeholder="Buscar empresa..."
+                placeholder="Buscar..."
                 class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-caption-xs font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-primary-tint-40 focus:bg-white"
               />
               @if (searchTerm()) {
@@ -288,17 +288,7 @@ export class SidebarComponent implements OnInit {
     return tokens.length ? modules.filter((module) => module.companies.length > 0) : modules;
   });
 
-  showSearch = computed(() => {
-    const modules = this.moduleTree();
-    let total = 0;
-    for (const mod of modules) {
-      total += mod.companies.length;
-      for (const company of mod.companies) {
-        total += company.sites.length;
-      }
-    }
-    return total >= 15;
-  });
+  showSearch = computed(() => true);
 
   /** Visible solo para roles que pueden actuar sobre la cola de revisión DGA. */
   canSeeDgaReview = computed(() => {

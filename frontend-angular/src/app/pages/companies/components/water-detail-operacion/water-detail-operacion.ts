@@ -185,7 +185,9 @@ interface RealtimeChartPoint {
           <div class="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
             @for (m of metricas(); track m.label) {
               <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-                <p class="text-caption-xs font-bold uppercase tracking-widest text-on-surface-muted">
+                <p
+                  class="text-caption-xs font-bold uppercase tracking-widest text-on-surface-muted"
+                >
                   {{ m.label }}
                 </p>
                 <p class="mt-1 font-mono text-h4 font-semibold leading-none text-on-surface">
@@ -274,7 +276,9 @@ interface RealtimeChartPoint {
                 class="overflow-hidden rounded-xl border border-primary-tint-25 bg-primary-tint-08 p-4 shadow-sm"
               >
                 <div class="mb-3 flex items-center justify-between">
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
+                  <p
+                    class="text-caption-xs font-semibold uppercase tracking-[0.12em] text-slate-600"
+                  >
                     Configurar horarios
                   </p>
                   <div
@@ -315,7 +319,8 @@ interface RealtimeChartPoint {
                   style="grid-template-columns: 8px 1fr 82px 82px"
                 >
                   <span></span>
-                  <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  <span
+                    class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                     >Nombre</span
                   >
                   <span
@@ -365,7 +370,9 @@ interface RealtimeChartPoint {
                   <div
                     class="rounded-2xl border border-primary-tint-30 bg-white p-4 shadow-[0_0_0_1px_rgba(13,175,189,0.04),0_2px_8px_rgba(13,175,189,0.06)]"
                   >
-                    <p class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container">
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
+                    >
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-caption-xs text-on-surface-muted">{{ turno.horario }}</p>
@@ -378,10 +385,7 @@ interface RealtimeChartPoint {
                     </div>
                   </div>
                 } @else if (turno.activo) {
-                  <div
-                    class="rounded-2xl border p-4 shadow-sm"
-                    [class]="turnoActivoClass(i)"
-                  >
+                  <div class="rounded-2xl border p-4 shadow-sm" [class]="turnoActivoClass(i)">
                     <div class="flex items-start justify-between gap-1">
                       <div>
                         <p
@@ -390,10 +394,7 @@ interface RealtimeChartPoint {
                         >
                           {{ turno.nombre }}
                         </p>
-                        <p
-                          class="mt-0.5 text-caption-xs"
-                          [class]="turnoActivoSubLabelClass(i)"
-                        >
+                        <p class="mt-0.5 text-caption-xs" [class]="turnoActivoSubLabelClass(i)">
                           {{ turno.horario }}
                         </p>
                       </div>
@@ -421,7 +422,9 @@ interface RealtimeChartPoint {
                   </div>
                 } @else {
                   <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 opacity-60">
-                    <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
                       {{ turno.nombre }}
                     </p>
                     <p class="mt-0.5 text-caption-xs text-slate-400">{{ turno.horario }}</p>
@@ -509,7 +512,8 @@ interface RealtimeChartPoint {
               viewBox="0 0 1120 80"
               class="h-full w-full cursor-crosshair select-none"
               preserveAspectRatio="none"
-              (click)="selectRealtimePoint($event)"
+              (mousemove)="selectRealtimePoint($event)"
+              (mouseleave)="clearRealtimePoint()"
               aria-label="Gráfico de caudal en tiempo real"
             >
               <defs>
@@ -879,6 +883,10 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     this.selectedRealtimeTimestamp.set(closest.timestampMs);
   }
 
+  clearRealtimePoint(): void {
+    this.selectedRealtimeTimestamp.set(null);
+  }
+
   tooltipLeftPercent(point: RealtimeChartPoint): number {
     return Math.min(92, Math.max(8, point.xPct));
   }
@@ -930,8 +938,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
    * of the design system.
    */
   turnoActivoClass(index: number): string {
-    if (index === 0)
-      return 'border-primary-tint-35 bg-primary-tint-10';
+    if (index === 0) return 'border-primary-tint-35 bg-primary-tint-10';
     if (index === 1) return 'border-emerald-200 bg-emerald-50';
     return 'border-slate-200 bg-slate-50';
   }

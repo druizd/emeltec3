@@ -515,9 +515,7 @@ export class BitacoraDocumentosComponent {
 
   filtroBadgeClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
-    return active
-      ? 'bg-primary-tint-14 text-primary-container'
-      : 'bg-slate-100 text-slate-500';
+    return active ? 'bg-primary-tint-14 text-primary-container' : 'bg-slate-100 text-slate-500';
   }
 
   formatBytes(b: number): string {

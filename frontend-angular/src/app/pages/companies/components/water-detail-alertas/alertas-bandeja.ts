@@ -29,7 +29,9 @@ type FiltroEstado = EventoEstado | 'todos';
   template: `
     <div class="space-y-3">
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">Cargando eventos…</p>
+        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">
+          Cargando eventos…
+        </p>
       }
       @if (errorMsg()) {
         <app-inline-error [message]="errorMsg()" />

@@ -232,9 +232,7 @@ function emptyVariables(): SiteVariablesPayload {
         <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
           <div class="space-y-4">
             @if (showPozoConfig && isPozoSite()) {
-              <section
-                class="rounded-xl border border-primary-tint-15 bg-primary-tint-08 p-4"
-              >
+              <section class="rounded-xl border border-primary-tint-15 bg-primary-tint-08 p-4">
                 <div class="mb-4 flex items-start gap-3">
                   <span class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
                     >water_drop</span
@@ -305,7 +303,9 @@ function emptyVariables(): SiteVariablesPayload {
 
               <div class="space-y-3">
                 <div>
-                  <label class="mb-1 block text-caption font-bold text-slate-500">Dato original</label>
+                  <label class="mb-1 block text-caption font-bold text-slate-500"
+                    >Dato original</label
+                  >
                   <select
                     required
                     name="settings-variable-key"
@@ -322,7 +322,9 @@ function emptyVariables(): SiteVariablesPayload {
 
                 <div>
                   <div class="mb-1 flex items-center justify-between gap-2">
-                    <label class="block text-caption font-bold text-slate-500">Transformación</label>
+                    <label class="block text-caption font-bold text-slate-500"
+                      >Transformación</label
+                    >
                     <details class="group relative">
                       <summary
                         class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-caption-xs font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -432,7 +434,9 @@ function emptyVariables(): SiteVariablesPayload {
               </div>
 
               <div>
-                <label class="mb-1 block text-caption font-bold text-slate-500">Uso en dashboard</label>
+                <label class="mb-1 block text-caption font-bold text-slate-500"
+                  >Uso en dashboard</label
+                >
                 <select
                   name="settings-variable-role"
                   [ngModel]="variableForm().rol_dashboard"
@@ -526,9 +530,7 @@ function emptyVariables(): SiteVariablesPayload {
                 </p>
               }
 
-              <div
-                class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3"
-              >
+              <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
                 <div class="mb-3 flex items-center gap-2">
                   <span class="material-symbols-outlined text-[18px] text-primary-container"
                     >calculate</span
@@ -556,7 +558,9 @@ function emptyVariables(): SiteVariablesPayload {
                 <div
                   class="mt-3 rounded-lg border border-primary-tint-15 bg-white px-3 py-2 shadow-sm"
                 >
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p
+                    class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                  >
                     Resultado proyectado en gráfico
                   </p>
                   <p class="mt-1 text-h5 font-semibold text-primary-container">
@@ -601,7 +605,9 @@ function emptyVariables(): SiteVariablesPayload {
               class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3"
             >
               <div>
-                <h3 class="text-body-sm font-semibold text-slate-900">Datos detectados del equipo</h3>
+                <h3 class="text-body-sm font-semibold text-slate-900">
+                  Datos detectados del equipo
+                </h3>
                 <p class="text-caption font-semibold text-slate-400">
                   REG1, REG2 y similares se asignan manualmente por sitio.
                 </p>

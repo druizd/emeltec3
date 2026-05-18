@@ -58,7 +58,9 @@ interface PeriodicidadOption {
       <div
         class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
         role="dialog"
-        cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        aria-modal="true"
         aria-labelledby="dga-generar-reporte-title"
         (click)="onBackdrop($event)"
       >

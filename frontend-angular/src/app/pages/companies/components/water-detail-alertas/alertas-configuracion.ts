@@ -436,7 +436,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             [(ngModel)]="draft.cooldown_minutos"
             class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
-          <span class="ml-2 text-caption-xs text-slate-400">tiempo mínimo entre notificaciones</span>
+          <span class="ml-2 text-caption-xs text-slate-400"
+            >tiempo mínimo entre notificaciones</span
+          >
         </div>
 
         <!-- Días activos -->

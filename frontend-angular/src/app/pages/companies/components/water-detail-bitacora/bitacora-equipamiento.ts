@@ -92,7 +92,9 @@ import {
                     <td class="px-3 py-2 font-semibold text-slate-800">{{ eq.nombre }}</td>
                     <td class="px-3 py-2 text-slate-600">
                       <span class="font-semibold">{{ eq.fabricante || '—' }}</span>
-                      <span class="block text-caption-xs text-slate-400">{{ eq.modelo || '—' }}</span>
+                      <span class="block text-caption-xs text-slate-400">{{
+                        eq.modelo || '—'
+                      }}</span>
                     </td>
                     <td class="px-3 py-2 font-mono text-caption-xs text-slate-500">
                       {{ eq.serie || '—' }}

@@ -210,7 +210,9 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                       <div class="mb-5 flex items-start justify-between gap-3">
                         <div>
                           <h2 class="text-body font-semibold text-slate-800">{{ chart.title }}</h2>
-                          <p class="mt-1 text-caption font-bold text-slate-400">{{ chart.subtitle }}</p>
+                          <p class="mt-1 text-caption font-bold text-slate-400">
+                            {{ chart.subtitle }}
+                          </p>
                         </div>
                         @if (chart.note) {
                           <p class="text-caption font-bold text-slate-400">{{ chart.note }}</p>

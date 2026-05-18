@@ -61,9 +61,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             <div
               [class]="
                 'flex h-9 w-9 items-center justify-center rounded-lg transition-colors ' +
-                (selected
-                  ? 'bg-primary-tint-10'
-                  : 'bg-slate-100 group-hover:bg-primary-tint-10')
+                (selected ? 'bg-primary-tint-10' : 'bg-slate-100 group-hover:bg-primary-tint-10')
               "
             >
               <span

@@ -1,7 +1,15 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
@@ -435,7 +443,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
             <section
               class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
               role="dialog"
-              cdkTrapFocus cdkTrapFocusAutoCapture aria-modal="true"
+              cdkTrapFocus
+              cdkTrapFocusAutoCapture
+              aria-modal="true"
               aria-labelledby="admin-confirm-title"
               (click)="$event.stopPropagation()"
             >
@@ -449,7 +459,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   >{{ dialog.icon }}</span
                 >
                 <div class="min-w-0">
-                  <h3 id="admin-confirm-title" class="text-h6 font-semibold text-slate-900">{{ dialog.title }}</h3>
+                  <h3 id="admin-confirm-title" class="text-h6 font-semibold text-slate-900">
+                    {{ dialog.title }}
+                  </h3>
                   <p class="mt-1 text-body-sm leading-6 text-slate-500">{{ dialog.message }}</p>
                 </div>
               </div>
@@ -792,7 +804,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       </select>
                     </div>
                     <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Subempresa</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Subempresa</label
+                      >
                       <select
                         required
                         [disabled]="siteFormDisabled()"
@@ -865,7 +879,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Ubicación</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Ubicación</label
+                      >
                       <input
                         name="site-location"
                         [disabled]="siteFormDisabled()"
