@@ -70,7 +70,7 @@ interface MetricOption {
     <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       <!-- Site header -->
       <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
-        <div class="vs-module-icon flex h-[38px] w-[38px] shrink-0 items-center justify-center">
+        <div class="vs-module-icon flex h-9.5 w-9.5 shrink-0 items-center justify-center">
           <span class="material-symbols-outlined text-[18px] text-[#6366F1]">factory</span>
         </div>
         <div>
@@ -91,12 +91,12 @@ interface MetricOption {
         </div>
         <div class="ml-auto flex flex-wrap items-center gap-1.5">
           <span class="vs-range-label">Desde</span>
-          <div class="vs-range-chip flex items-center gap-[5px]">
+          <div class="vs-range-chip flex items-center gap-1.25">
             <span class="material-symbols-outlined text-[12px]">calendar_today</span>
             {{ rangeFrom }}
           </div>
           <span class="vs-range-label">Hasta</span>
-          <div class="vs-range-chip flex items-center gap-[5px]">
+          <div class="vs-range-chip flex items-center gap-1.25">
             <span class="material-symbols-outlined text-[12px]">calendar_today</span>
             {{ rangeTo }}
           </div>
@@ -140,7 +140,7 @@ interface MetricOption {
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <div class="vs-metric-toggle flex gap-[2px]">
+              <div class="vs-metric-toggle flex gap-0.5">
                 @for (o of metricOptions; track o.v) {
                   <button
                     class="vs-metric-btn flex items-center gap-1.5"
@@ -152,7 +152,7 @@ interface MetricOption {
                   </button>
                 }
               </div>
-              <button class="vs-ghost-btn inline-flex items-center gap-[5px]">
+              <button class="vs-ghost-btn inline-flex items-center gap-1.25">
                 <span class="material-symbols-outlined text-[13px]">download</span>
                 Exportar
               </button>
@@ -229,7 +229,7 @@ interface MetricOption {
                   </div>
                   <div class="vs-kpi-label truncate">{{ k.label }}</div>
                 </div>
-                <div class="mt-[2px] flex items-baseline gap-1">
+                <div class="mt-0.5 flex items-baseline gap-1">
                   <span class="vs-kpi-value" [style.color]="k.accent">{{ k.value }}</span>
                   @if (k.unit) {
                     <span class="vs-kpi-unit">{{ k.unit }}</span>
@@ -276,7 +276,7 @@ interface MetricOption {
                   <div class="mt-3 grid grid-cols-2 gap-2.5">
                     <div class="vs-stat-card">
                       <div class="vs-stat-label">Temperatura</div>
-                      <div class="mt-1 flex items-baseline gap-[3px]">
+                      <div class="mt-1 flex items-baseline gap-0.75">
                         <span
                           class="vs-stat-value"
                           [style.color]="focus.alerted ? '#B91C1C' : '#1E293B'"
@@ -335,7 +335,7 @@ interface MetricOption {
                     </div>
                     <div class="vs-stat-card">
                       <div class="vs-stat-label">Humedad</div>
-                      <div class="mt-1 flex items-baseline gap-[3px]">
+                      <div class="mt-1 flex items-baseline gap-0.75">
                         <span class="vs-stat-value text-[#1E293B]">{{ focus.h }}</span>
                         <span class="vs-stat-unit">%</span>
                       </div>
@@ -379,7 +379,7 @@ interface MetricOption {
                             {{ groupedSensors()[tap]?.length || 0 }}
                           </span>
                         </div>
-                        <div class="flex flex-col gap-[2px]">
+                        <div class="flex flex-col gap-0.5">
                           @for (s of groupedSensors()[tap] || []; track s.id) {
                             <div
                               class="vs-sensor-row grid cursor-pointer items-center gap-2.5"
@@ -400,7 +400,7 @@ interface MetricOption {
                                 <div class="flex items-center gap-1.5">
                                   <span class="vs-id-chip">{{ s.id }}</span>
                                   @if (s.alerted) {
-                                    <span class="vs-sensor-alert-chip inline-flex items-center gap-[3px]">
+                                    <span class="vs-sensor-alert-chip inline-flex items-center gap-0.75">
                                       <span class="vs-sensor-alert-dot"></span>
                                       ALERTA
                                     </span>
@@ -1615,7 +1615,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return s.alerted ? '#EF4444' : tempColor(s.t);
   }
 
-  private sparkCoords(s: Sensor, width: number, height: number): Array<[number, number]> {
+  private sparkCoords(s: Sensor, width: number, height: number): [number, number][] {
     const points = s.hist;
     if (!points || points.length === 0) return [];
     const min = Math.min(...points);
