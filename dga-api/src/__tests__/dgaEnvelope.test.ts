@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildDgaPayload } from '../domain/submission/dgaEnvelope';
+import { assertRutForDga } from '../shared/rut';
 import type { DgaSubmissionPayload } from '../domain/submission/dgaEnvelope';
 
 const informante = {
@@ -41,6 +42,26 @@ describe('buildDgaPayload — autenticacion', () => {
     expect(auth['rutUsuario']).toBe('20999888-7');
     expect(auth['password']).toBe('9A4PUqd1t4');
     expect(auth['rutEmpresa']).toBe('77555666-7');
+  });
+
+  it('normaliza RUT sin puntos para DGA', () => {
+    const { body } = buildDgaPayload({
+      ...basePayload,
+      informante: {
+        ...informante,
+        rut: '20.999.888-7',
+        rutEmpresa: '77.555.666-7',
+      },
+    });
+    const auth = body['autenticacion'] as Record<string, string>;
+    expect(auth['rutUsuario']).toBe('20999888-7');
+    expect(auth['rutEmpresa']).toBe('77555666-7');
+  });
+
+  it('rechaza un RUT final con puntos', () => {
+    expect(() => assertRutForDga('20.999.888-7', 'rutUsuario')).toThrow(
+      'rutUsuario debe enviarse a DGA sin puntos y con guion',
+    );
   });
 });
 

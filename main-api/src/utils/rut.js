@@ -28,8 +28,15 @@ function formatRutForDga(value) {
   return `${body}-${verifier}`;
 }
 
+function assertRutForDga(value, label) {
+  if (!value || value.includes('.') || !/^\d+-[0-9K]$/.test(value)) {
+    throw new Error(`${label} debe enviarse a DGA sin puntos y con guion`);
+  }
+}
+
 module.exports = {
   cleanRutInput,
   formatRutForStorage,
   formatRutForDga,
+  assertRutForDga,
 };

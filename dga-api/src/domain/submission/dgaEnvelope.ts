@@ -1,4 +1,5 @@
 import type { DgaReport } from '../reports/report.types';
+import { assertRutForDga, formatRutForDga } from '../../shared/rut';
 
 export interface DgaInformante {
   rut: string; // rutUsuario
@@ -44,6 +45,10 @@ export function buildDgaPayload(args: DgaSubmissionPayload): {
   body: Record<string, unknown>;
 } {
   const { fecha, hora, headerTs } = toChile(args.report.timestamp);
+  const rutEmpresa = formatRutForDga(args.informante.rutEmpresa);
+  const rutUsuario = formatRutForDga(args.informante.rut);
+  assertRutForDga(rutEmpresa, 'rutEmpresa');
+  assertRutForDga(rutUsuario, 'rutUsuario');
 
   const headers = {
     codigoObra: args.obraDga,
@@ -53,8 +58,8 @@ export function buildDgaPayload(args: DgaSubmissionPayload): {
   const body = {
     autenticacion: {
       password: args.informante.clave,
-      rutEmpresa: args.informante.rutEmpresa,
-      rutUsuario: args.informante.rut,
+      rutEmpresa,
+      rutUsuario,
     },
     medicionSubterranea: {
       caudal: fmt2(args.report.caudal),

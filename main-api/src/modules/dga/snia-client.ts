@@ -28,6 +28,13 @@
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const rutMod = require('../../utils/rut.js') as {
+  assertRutForDga: (value: string, label: string) => void;
+  formatRutForDga: (value: unknown) => string;
+};
+const { assertRutForDga, formatRutForDga } = rutMod;
+
 /** Marca de texto que reemplaza el password en payloads guardados en audit. */
 const REDACTED = '****';
 
@@ -87,10 +94,13 @@ export function buildSniaPayload(input: SniaSendInput): {
   body: Record<string, unknown>;
   bodyRedacted: Record<string, unknown>;
 } {
-  const rutEmpresa = config.dga.rutEmpresa;
+  const rutEmpresa = formatRutForDga(config.dga.rutEmpresa);
   if (!rutEmpresa) {
     throw new Error('DGA_RUT_EMPRESA no configurado (Centro de Control registrado en DGA)');
   }
+  const rutUsuario = formatRutForDga(input.rutInformante);
+  assertRutForDga(rutEmpresa, 'rutEmpresa');
+  assertRutForDga(rutUsuario, 'rutUsuario');
 
   const caudalStr = input.caudal == null ? null : input.caudal.toFixed(2);
   // Totalizador: entero sin decimales sin separador, máx 15 chars.
@@ -109,7 +119,7 @@ export function buildSniaPayload(input: SniaSendInput): {
     autenticacion: {
       password: input.password,
       rutEmpresa,
-      rutUsuario: input.rutInformante,
+      rutUsuario,
     },
     medicionSubterranea: {
       caudal: caudalStr,

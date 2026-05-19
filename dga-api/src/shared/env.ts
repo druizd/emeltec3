@@ -3,6 +3,7 @@
 // Si falta una variable requerida o tiene un formato inválido, el proceso aborta al arranque.
 import 'dotenv/config';
 import { z } from 'zod';
+import { formatRutForDga } from './rut';
 
 // Entornos soportados por la app.
 const NodeEnv = z.enum(['development', 'test', 'production']).default('development');
@@ -103,7 +104,7 @@ export const config = {
   },
   dga: {
     apiUrl: env.DGA_API_URL,
-    rutEmpresa: env.DGA_RUT_EMPRESA,
+    rutEmpresa: formatRutForDga(env.DGA_RUT_EMPRESA),
   },
 } as const;
 
