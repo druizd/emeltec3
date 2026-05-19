@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { UpdateUserProfilePayload, User } from '@emeltec/shared';
 import { AuthService } from '../../services/auth.service';
@@ -269,12 +269,12 @@ interface EditState {
                   Nuevo
                 </span>
                 <input
+                  #editInput
                   type="text"
                   [ngModel]="edit.value"
                   (ngModelChange)="setEditValue($event)"
                   [attr.inputmode]="edit.field === 'telefono' ? 'tel' : 'text'"
                   class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm font-semibold text-[#1e293b] outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
-                  autofocus
                 />
               </label>
 
@@ -316,6 +316,8 @@ interface EditState {
 export class ProfileComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly userService = inject(UserService);
+
+  @ViewChild('editInput') editInputRef?: ElementRef<HTMLInputElement>;
 
   readonly profile = signal<User | null>(null);
   readonly loading = signal(true);
@@ -416,6 +418,7 @@ export class ProfileComponent implements OnInit {
       value: currentValue,
     });
     this.editError.set('');
+    setTimeout(() => this.editInputRef?.nativeElement.focus(), 0);
   }
 
   setEditValue(value: string): void {
