@@ -11,11 +11,12 @@ import {
 } from '@angular/core';
 import { UserService } from '../../../services/user.service';
 import type { ApiResponse, User } from '@emeltec/shared';
+import { SkeletonComponent } from '../../../components/ui/skeleton';
 
 @Component({
   selector: 'app-companies-contacts-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SkeletonComponent],
   template: `
     <section
       [class]="
@@ -40,16 +41,16 @@ import type { ApiResponse, User } from '@emeltec/shared';
           @for (item of skeletonItems; track item) {
             <div [class]="getCardShellClass()">
               <div class="mb-4 flex items-start gap-3">
-                <div class="skeleton h-10 w-10 rounded-xl"></div>
+                <app-skeleton class="h-10 w-10 rounded-xl" />
                 <div class="space-y-2">
-                  <div class="skeleton h-4 w-28 rounded-full"></div>
-                  <div class="skeleton h-3 w-20 rounded-full"></div>
+                  <app-skeleton class="h-4 w-28 rounded-full" />
+                  <app-skeleton class="h-3 w-20 rounded-full" />
                 </div>
               </div>
               <div class="space-y-2.5">
-                <div class="skeleton h-10 w-full rounded-xl"></div>
-                <div class="skeleton h-10 w-full rounded-xl"></div>
-                <div class="skeleton h-10 w-full rounded-xl"></div>
+                <app-skeleton class="h-10 w-full rounded-xl" />
+                <app-skeleton class="h-10 w-full rounded-xl" />
+                <app-skeleton class="h-10 w-full rounded-xl" />
               </div>
             </div>
           }

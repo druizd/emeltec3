@@ -1,79 +1,118 @@
-import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
+import { SkeletonComponent } from '../../../components/ui/skeleton';
+import { KpiStripSkeletonComponent } from '../../../components/ui/kpi-strip-skeleton';
+import { WellDiagramSkeletonComponent } from '../../../components/ui/well-diagram-skeleton';
+import { ChartSkeletonComponent } from '../../../components/ui/chart-skeleton';
+import { TableSkeletonComponent } from '../../../components/ui/table-skeleton';
 
+/**
+ * Skeleton for company-site-water-detail page during initial load (before siteContext).
+ *
+ * Matches the real page structure: header card (back arrow + title + badges + settings),
+ * tabs row, and active DGA tab content (KPI strip + pozo/chart grid + Registros table).
+ */
 @Component({
   selector: 'app-companies-site-detail-skeleton',
   standalone: true,
-  imports: [CommonModule],
+  imports: [
+    SkeletonComponent,
+    KpiStripSkeletonComponent,
+    WellDiagramSkeletonComponent,
+    ChartSkeletonComponent,
+    TableSkeletonComponent,
+  ],
   template: `
-    <div class="space-y-8 animate-in fade-in duration-500">
-      <div class="flex flex-wrap items-start justify-between gap-6">
-        <div class="flex items-center gap-4">
-          <div class="skeleton h-14 w-14 rounded-2xl"></div>
-          <div class="space-y-3">
-            <div class="skeleton h-8 w-64 rounded-full"></div>
-            <div class="skeleton h-4 w-40 rounded-full"></div>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-3">
-          <div class="skeleton h-14 w-44 rounded-2xl"></div>
-          <div class="skeleton h-14 w-56 rounded-2xl"></div>
-          <div class="skeleton h-14 w-48 rounded-2xl"></div>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <div class="flex gap-3">
-          <div class="skeleton h-12 w-32 rounded-2xl"></div>
-          <div class="skeleton h-12 w-32 rounded-2xl"></div>
-        </div>
-
-        <div class="flex flex-wrap gap-3">
-          <div class="skeleton h-14 w-48 rounded-2xl"></div>
-          <div class="skeleton h-14 w-48 rounded-2xl"></div>
-          <div class="skeleton h-14 w-28 rounded-2xl"></div>
-          <div class="skeleton h-12 w-12 rounded-2xl"></div>
-        </div>
-      </div>
-
-      <div class="h-1.5 rounded-full bg-primary/80"></div>
-
-      <div class="rounded-[36px] border border-slate-200 bg-white p-6 shadow-sm">
-        <div class="space-y-6">
-          <div class="flex gap-4">
-            <div class="skeleton h-10 w-20 rounded-full"></div>
-            <div class="skeleton h-10 w-24 rounded-full"></div>
-          </div>
-
-          <div
-            class="grid grid-cols-1 gap-4 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(360px,1.4fr)]"
-          >
-            <div class="skeleton h-56 rounded-[28px]"></div>
-            <div class="skeleton h-56 rounded-[28px]"></div>
-
-            <div class="rounded-[28px] border border-slate-200 bg-slate-50/60 p-5">
-              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div class="skeleton h-28 rounded-2xl"></div>
-                <div class="skeleton h-28 rounded-2xl"></div>
-                <div class="skeleton h-28 rounded-2xl"></div>
-                <div class="skeleton h-28 rounded-2xl"></div>
-              </div>
+    <div class="mx-auto max-w-[1360px] space-y-3" role="status" aria-label="Cargando sitio">
+      <!-- Header card -->
+      <section
+        class="rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+      >
+        <div
+          class="grid gap-3 border-b border-slate-100 px-3 py-3 xl:grid-cols-[minmax(360px,1fr)_auto] xl:items-center"
+        >
+          <div class="flex min-w-0 items-center gap-3">
+            <app-skeleton class="h-11 w-11 shrink-0 rounded-xl" />
+            <div class="min-w-0 space-y-2">
+              <app-skeleton class="h-4 w-56 rounded" />
+              <app-skeleton class="h-3 w-32 rounded" />
             </div>
           </div>
 
-          <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div class="skeleton h-[360px] rounded-[28px]"></div>
-            <div class="skeleton h-[360px] rounded-[28px]"></div>
-          </div>
-
-          <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
-            <div class="skeleton h-[360px] rounded-[28px]"></div>
-            <div class="skeleton h-[360px] rounded-[28px]"></div>
+          <div class="flex flex-wrap items-center gap-2 xl:justify-end">
+            <app-skeleton class="h-9 w-32 rounded-lg" />
+            <app-skeleton class="h-9 w-36 rounded-lg" />
+            <app-skeleton class="h-8 w-8 rounded-lg" />
           </div>
         </div>
+
+        <!-- Tabs row -->
+        <div class="flex items-center gap-5 px-3 py-3">
+          @for (_ of tabs; track $index) {
+            <app-skeleton class="h-5 w-20 rounded" />
+          }
+        </div>
+      </section>
+
+      <!-- Active tab content (mimics DGA tabpanel) -->
+      <div class="flex flex-col gap-6">
+        <app-kpi-strip-skeleton />
+
+        <section
+          class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)]"
+        >
+          <div class="flex flex-col gap-5">
+            <article
+              class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
+              <app-skeleton class="mb-3 h-3 w-32 rounded" />
+              <app-well-diagram-skeleton />
+            </article>
+          </div>
+
+          <div class="flex flex-col gap-5">
+            <article
+              class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
+              <div class="mb-4 flex items-start justify-between">
+                <app-skeleton class="h-4 w-40 rounded" />
+                <app-skeleton class="h-3 w-24 rounded" />
+              </div>
+              <app-chart-skeleton [bars]="12" [height]="220" />
+            </article>
+
+            <article
+              class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
+              <app-skeleton class="mb-3 h-4 w-32 rounded" />
+              <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                @for (_ of quickActions; track $index) {
+                  <app-skeleton class="h-14 rounded-lg" />
+                }
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- Registros DGA table -->
+        <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div
+            class="flex items-center justify-between border-b border-slate-100 px-4 py-3"
+          >
+            <div class="space-y-2">
+              <app-skeleton class="h-4 w-40 rounded" />
+              <app-skeleton class="h-3 w-56 rounded" />
+            </div>
+            <app-skeleton class="h-9 w-32 rounded-lg" />
+          </div>
+          <div class="p-3">
+            <app-table-skeleton [rows]="6" [columns]="5" [showHeader]="false" />
+          </div>
+        </section>
       </div>
     </div>
   `,
 })
-export class CompaniesSiteDetailSkeletonComponent {}
+export class CompaniesSiteDetailSkeletonComponent {
+  readonly tabs = [0, 1, 2, 3, 4];
+  readonly quickActions = [0, 1, 2, 3];
+}
