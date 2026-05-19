@@ -761,9 +761,9 @@ type OperationMode = 'realtime' | 'turnos';
               </section>
 
               <section
-                class="grid grid-cols-1 gap-3 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
+                class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
               >
-                <div class="flex flex-col gap-3 xl:h-full">
+                <div class="flex flex-col gap-5 xl:h-full">
                   <article
                     class="flex flex-1 flex-col rounded-xl border border-primary-tint-25 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                   >
@@ -1371,7 +1371,7 @@ type OperationMode = 'realtime' | 'turnos';
                   </article>
                 </div>
 
-                <div class="flex flex-col gap-3 xl:h-full">
+                <div class="flex flex-col gap-5 xl:h-full">
                   <article
                     class="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
                   >
