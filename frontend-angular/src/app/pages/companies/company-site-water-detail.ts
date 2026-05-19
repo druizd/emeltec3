@@ -587,7 +587,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
-            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="space-y-8">
+            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-8">
               <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <!-- Enviados: cuenta en rango filtrado -->
                 <article
