@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/joho/godotenv"
+	"golang.org/x/sys/windows/svc"
 
+	"grpc-pipeline/csvprocessor/internal/alertclient"
 	"grpc-pipeline/csvprocessor/internal/config"
 	"grpc-pipeline/csvprocessor/internal/csvreader"
 	"grpc-pipeline/csvprocessor/internal/filemanager"
@@ -17,143 +23,321 @@ import (
 	pb "grpc-pipeline/proto"
 )
 
+var (
+	totalProcessed atomic.Int64
+	totalInserted  atomic.Int64
+	totalFailed    atomic.Int64
+	totalRetryOk   atomic.Int64
+)
+
+type csvService struct{}
+
+func (s *csvService) Execute(
+	_ []string,
+	r <-chan svc.ChangeRequest,
+	status chan<- svc.Status,
+) (bool, uint32) {
+	status <- svc.Status{State: svc.StartPending}
+	go startApp()
+
+	status <- svc.Status{
+		State:   svc.Running,
+		Accepts: svc.AcceptStop | svc.AcceptShutdown,
+	}
+
+	for c := range r {
+		if c.Cmd == svc.Stop || c.Cmd == svc.Shutdown {
+			status <- svc.Status{State: svc.StopPending}
+			return false, 0
+		}
+	}
+
+	return false, 0
+}
+
 func main() {
-	// Carga variables de entorno (soporta ambas rutas de ejecución).
-	_ = godotenv.Load("csvprocessor/.env")
-	_ = godotenv.Load(".env")
-
-	// Carga la configuración general del processor.
-	cfg := config.Load()
-
-	// Asegura que existan las carpetas base necesarias.
-	if err := filemanager.EnsureDirectories(
-		cfg.InputDir,
-		cfg.RawBackupDir,
-		cfg.ProcessedDir,
-		cfg.FailedDir,
-	); err != nil {
-		log.Fatalf("error preparando directorios: %v", err)
-	}
-
-	// Obtiene la lista de archivos encontrados en la carpeta de entrada.
-	files, err := filemanager.ListInputFiles(cfg.InputDir)
+	isService, err := svc.IsWindowsService()
 	if err != nil {
-		log.Fatalf("error listando archivos de entrada: %v", err)
+		log.Fatalf("error detectando modo servicio: %v", err)
 	}
 
-	// Si no hay archivos, termina normal.
-	if len(files) == 0 {
-		log.Println("no se encontraron archivos para procesar")
+	if isService {
+		if err := svc.Run("CsvProcessor", &csvService{}); err != nil {
+			log.Fatalf("servicio fallo: %v", err)
+		}
 		return
 	}
 
-	// Abre una conexión gRPC reutilizable.
+	startApp()
+	select {}
+}
+
+func startApp() {
+	exePath, _ := os.Executable()
+	exeDir := filepath.Dir(exePath)
+
+	_ = godotenv.Load(filepath.Join(exeDir, "csvprocessor", ".env"))
+	_ = godotenv.Load(filepath.Join(exeDir, ".env"))
+
+	cfg := config.Load()
+
+	err := filemanager.EnsureDirectories(
+		cfg.InputDir,
+		cfg.RawBackupDir,
+		cfg.FailedDir,
+	)
+	if err != nil {
+		log.Fatalf("error preparando directorios: %v", err)
+	}
+
 	conn, err := grpcclient.NewConnection(cfg.GRPCAddress)
 	if err != nil {
-		log.Fatalf("no se pudo conectar al servidor gRPC: %v", err)
+		log.Fatalf("gRPC [%s]: %v", cfg.GRPCAddress, err)
 	}
-	defer conn.Close()
-
 	client := pb.NewLogIngestionClient(conn)
 
-	// Procesa cada archivo encontrado.
-	for _, filePath := range files {
-		fileName := filepath.Base(filePath)
-		log.Printf("procesando archivo [%s]", fileName)
+	alerts := alertclient.New(cfg.MainAPIURL, cfg.InternalAPIKey)
 
-		// 1) Saca el id_serial limpio desde el contenido del archivo.
-		idSerial, err := filemanager.ExtractSerialIDFromFile(filePath)
-		if err != nil {
-			log.Printf("error extrayendo id_serial desde [%s]: %v", fileName, err)
+	fileChan := make(chan string, 500)
+	var inProcess sync.Map
 
-			if moveErr := filemanager.MoveToFailed(filePath, cfg.FailedDir); moveErr != nil {
-				log.Printf("error moviendo archivo [%s] a failed: %v", fileName, moveErr)
+	fmt.Printf(
+		"🚀 csvprocessor iniciado | "+
+			"👷 workers: %d | 👀 watch: %dms | 🔁 retry: %ds\n",
+		cfg.NumWorkers,
+		cfg.WatchIntervalMs,
+		cfg.RetryIntervalSec,
+	)
+	fmt.Println("-----------------------------------------------------")
+
+	for i := 0; i < cfg.NumWorkers; i++ {
+		go func(workerID int) {
+			for filePath := range fileChan {
+				processFile(filePath, cfg, client, alerts)
+				inProcess.Delete(filePath)
 			}
-			continue
-		}
+		}(i)
+	}
 
-		// 2) Hace respaldo exacto del archivo original en raw_backup/<id_serial>/
-		if err := filemanager.CopyToBackupBySerial(filePath, cfg.RawBackupDir, idSerial); err != nil {
-			log.Printf("error creando backup de [%s]: %v", fileName, err)
+	go watchInputFiles(cfg, fileChan, &inProcess)
+	go retryFailedFiles(cfg, fileChan, &inProcess)
+	go printStats(cfg)
+	go runArchiver(cfg)
+}
 
-			if moveErr := filemanager.MoveToFailed(filePath, cfg.FailedDir); moveErr != nil {
-				log.Printf("error moviendo archivo [%s] a failed: %v", fileName, moveErr)
+func watchInputFiles(
+	cfg config.Config,
+	fileChan chan<- string,
+	inProcess *sync.Map,
+) {
+	for {
+		files, err := filemanager.ListInputFiles(cfg.InputDir)
+		if err == nil {
+			for _, f := range files {
+				if _, exists := inProcess.LoadOrStore(f, true); !exists {
+					fileChan <- f
+				}
 			}
+		}
+
+		time.Sleep(time.Duration(cfg.WatchIntervalMs) * time.Millisecond)
+	}
+}
+
+func retryFailedFiles(
+	cfg config.Config,
+	fileChan chan<- string,
+	inProcess *sync.Map,
+) {
+	for {
+		time.Sleep(time.Duration(cfg.RetryIntervalSec) * time.Second)
+
+		files, err := filemanager.ListInputFiles(cfg.FailedDir)
+		if err != nil || len(files) == 0 {
 			continue
 		}
 
-		// 3) Lee las filas crudas del archivo.
-		rows, err := csvreader.ReadRows(filePath)
-		if err != nil {
-			log.Printf("error leyendo archivo [%s]: %v", fileName, err)
-
-			if moveErr := filemanager.MoveToFailed(filePath, cfg.FailedDir); moveErr != nil {
-				log.Printf("error moviendo archivo [%s] a failed: %v", fileName, moveErr)
+		fmt.Printf("🔁 reintentando %d archivo(s) de failed_logs...\n", len(files))
+		for _, f := range files {
+			if _, exists := inProcess.LoadOrStore(f, true); !exists {
+				fileChan <- f
 			}
-			continue
 		}
+	}
+}
 
-		// 4) Transforma las filas a registros agrupados.
-		records, err := parser.BuildTelemetryRecords(rows)
-		if err != nil {
-			log.Printf("error transformando archivo [%s]: %v", fileName, err)
+func printStats(cfg config.Config) {
+	for {
+		time.Sleep(time.Duration(cfg.StatsIntervalSec) * time.Second)
 
-			if moveErr := filemanager.MoveToFailed(filePath, cfg.FailedDir); moveErr != nil {
-				log.Printf("error moviendo archivo [%s] a failed: %v", fileName, moveErr)
-			}
-			continue
-		}
+		pending, _ := filemanager.ListInputFiles(cfg.InputDir)
+		failed, _ := filemanager.ListInputFiles(cfg.FailedDir)
 
-		// 5) Crea un contexto con timeout para la llamada gRPC.
-		ctx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(cfg.TimeoutSeconds)*time.Second,
-		)
-
-		// 6) Envía el lote al consumer.
-		resp, err := sender.SendRecords(ctx, client, fileName, records)
-
-		// Libera recursos del contexto.
-		cancel()
-
-		if err != nil {
-			log.Printf("error al enviar archivo [%s] por gRPC: %v", fileName, err)
-
-			if moveErr := filemanager.MoveToFailed(filePath, cfg.FailedDir); moveErr != nil {
-				log.Printf("error moviendo archivo [%s] a failed: %v", fileName, moveErr)
-			}
-			continue
-		}
-
-		// Si el servidor respondió con fallo lógico, el archivo va a failed.
-		if !resp.Ok {
-			log.Printf(
-				"el servidor rechazó el archivo [%s]: inserted=%d duplicates=%d message=%s",
-				fileName,
-				resp.Inserted,
-				resp.Duplicates,
-				resp.Message,
-			)
-
-			if moveErr := filemanager.MoveToFailed(filePath, cfg.FailedDir); moveErr != nil {
-				log.Printf("error moviendo archivo [%s] a failed: %v", fileName, moveErr)
-			}
-			continue
-		}
-
-		// 7) Si todo salió bien, el archivo se mueve a processed.
-		if err := filemanager.MoveToProcessed(filePath, cfg.ProcessedDir); err != nil {
-			log.Printf("archivo [%s] procesado pero no se pudo mover a processed: %v", fileName, err)
-			continue
-		}
-
-		log.Printf(
-			"archivo [%s] procesado correctamente para id_serial [%s]: inserted=%d duplicates=%d message=%s",
-			fileName,
-			idSerial,
-			resp.Inserted,
-			resp.Duplicates,
-			resp.Message,
+		fmt.Printf(
+			"📊 stats | ✅ procesados: %d | "+
+				"📥 insertados: %d | ❌ fallidos: %d | "+
+				"♻️ recuperados: %d | ⏳ pendientes: %d | "+
+				"🧯 failed: %d\n",
+			totalProcessed.Load(),
+			totalInserted.Load(),
+			totalFailed.Load(),
+			totalRetryOk.Load(),
+			len(pending),
+			len(failed),
 		)
 	}
+}
+
+func runArchiver(cfg config.Config) {
+	for {
+		fmt.Println("📦 archiver | revisando backups para comprimir...")
+
+		if err := filemanager.RunArchiver(cfg.RawBackupDir); err != nil {
+			log.Printf("❌ archiver: %v", err)
+		} else {
+			fmt.Println("✅ archiver | revision completada")
+		}
+
+		time.Sleep(time.Hour)
+	}
+}
+
+func processFile(
+	filePath string,
+	cfg config.Config,
+	client pb.LogIngestionClient,
+	alerts *alertclient.Client,
+) {
+	fileName := filepath.Base(filePath)
+	isRetry := filepath.Dir(filePath) == cfg.FailedDir
+	maxTries := 3
+
+	for attempt := 1; attempt <= maxTries; attempt++ {
+		ok, inserted, dur, errMsg := runPipeline(filePath, cfg, client)
+
+		if ok {
+			totalProcessed.Add(1)
+			totalInserted.Add(int64(inserted))
+
+			if isRetry {
+				totalRetryOk.Add(1)
+				filemanager.DeleteFile(filePath)
+				fmt.Printf(
+					"♻️ retry ok %s | attempt %d/%d | "+
+						"records: %d | %dms\n",
+					fileName,
+					attempt,
+					maxTries,
+					inserted,
+					dur.Milliseconds(),
+				)
+			} else {
+				fmt.Printf(
+					"✅ log %s | attempt %d/%d | "+
+						"records: %d | %dms\n",
+					fileName,
+					attempt,
+					maxTries,
+					inserted,
+					dur.Milliseconds(),
+				)
+			}
+
+			return
+		}
+
+		if attempt < maxTries {
+			fmt.Printf(
+				"⚠️ warn %s | attempt %d/%d | "+
+					"%s | reintentando...\n",
+				fileName,
+				attempt,
+				maxTries,
+				errMsg,
+			)
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+
+		totalFailed.Add(1)
+		fmt.Printf(
+			"❌ fail %s | attempt %d/%d | %s\n",
+			fileName,
+			attempt,
+			maxTries,
+			errMsg,
+		)
+
+		if !isRetry {
+			err := filemanager.MoveToFailed(filePath, cfg.FailedDir)
+			if err != nil {
+				log.Printf(
+					"no se pudo mover [%s] a failed_logs: %v",
+					fileName,
+					err,
+				)
+			}
+		}
+
+		go alerts.EnviarAlerta(
+			"error_archivo",
+			map[string]any{
+				"archivo":  fileName,
+				"error":    errMsg,
+				"intentos": maxTries,
+				"carpeta":  "failed_logs",
+			},
+		)
+	}
+}
+
+func runPipeline(
+	filePath string,
+	cfg config.Config,
+	client pb.LogIngestionClient,
+) (bool, int, time.Duration, string) {
+	start := time.Now()
+	fileName := filepath.Base(filePath)
+
+	idSerial, err := filemanager.ExtractSerialIDFromFile(filePath)
+	if err != nil {
+		return false, 0, 0, fmt.Sprintf("id_serial: %v", err)
+	}
+
+	err = filemanager.CopyToBackupBySerial(
+		filePath,
+		cfg.RawBackupDir,
+		idSerial,
+	)
+	if err != nil {
+		return false, 0, 0, fmt.Sprintf("backup: %v", err)
+	}
+
+	rows, err := csvreader.ReadRows(filePath)
+	if err != nil {
+		return false, 0, 0, fmt.Sprintf("lectura: %v", err)
+	}
+
+	records, err := parser.BuildTelemetryRecords(rows)
+	if err != nil {
+		return false, 0, 0, fmt.Sprintf("parse: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Duration(cfg.TimeoutSeconds)*time.Second,
+	)
+	resp, err := sender.SendRecords(ctx, client, fileName, records)
+	cancel()
+
+	if err != nil {
+		return false, 0, 0, fmt.Sprintf("gRPC: %v", err)
+	}
+
+	if !resp.Ok {
+		return false, 0, 0, fmt.Sprintf("consumer: %s", resp.Message)
+	}
+
+	filemanager.DeleteFile(filePath)
+	return true, int(resp.Inserted), time.Since(start), ""
 }
