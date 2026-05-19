@@ -1,7 +1,13 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, finalize, tap } from 'rxjs';
-import type { ApiResponse, CreateUserPayload, User, UserListFilters } from '@emeltec/shared';
+import type {
+  ApiResponse,
+  CreateUserPayload,
+  UpdateUserProfilePayload,
+  User,
+  UserListFilters,
+} from '@emeltec/shared';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -24,6 +30,14 @@ export class UserService {
 
   getUsers(filters: UserListFilters = {}): Observable<ApiResponse<User[]>> {
     return this.http.get<ApiResponse<User[]>>(this.buildUsersUrl(filters));
+  }
+
+  getCurrentUser(): Observable<ApiResponse<User>> {
+    return this.http.get<ApiResponse<User>>('/api/users/me');
+  }
+
+  updateCurrentUser(payload: UpdateUserProfilePayload): Observable<ApiResponse<User>> {
+    return this.http.patch<ApiResponse<User>>('/api/users/me', payload);
   }
 
   createUser(userData: CreateUserPayload): Observable<ApiResponse<User>> {

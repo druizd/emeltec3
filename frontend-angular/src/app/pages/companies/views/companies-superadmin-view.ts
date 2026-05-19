@@ -35,14 +35,6 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
             {{ getActiveSubtitle() }}
           </p>
         </div>
-
-        <button
-          type="button"
-          class="inline-flex items-center gap-2 rounded-md border border-[#E2E8F0] bg-white px-4 py-2.5 text-[13px] font-semibold text-[#1E293B] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-all hover:border-[#0DAFBD] hover:text-[#0899A5]"
-        >
-          <span class="material-symbols-outlined text-lg" aria-hidden="true">download</span>
-          Reporte
-        </button>
       </div>
 
       <app-companies-tab-nav

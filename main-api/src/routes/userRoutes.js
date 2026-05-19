@@ -9,6 +9,10 @@ router.use(authMiddleware.protect);
 // Endpoint para traer las empresas disponibles (filtradas por rol del usuario actual)
 router.get('/empresas', userController.getEmpresas);
 
+// Perfil del usuario autenticado
+router.get('/me', userController.getCurrentUser);
+router.patch('/me', userController.updateCurrentUser);
+
 // Listar usuarios (filtrado por rol en el controller)
 router.get('/', userController.getAllUsers);
 

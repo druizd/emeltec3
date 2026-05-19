@@ -27,7 +27,6 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
         [sitesCount]="sites.length"
         [title]="headerTitle()"
         [subtitle]="headerSubtitle()"
-        [showReportButton]="false"
       />
 
       <app-companies-tab-nav
