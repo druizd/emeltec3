@@ -2,7 +2,7 @@
  * Schemas Zod para módulo DGA — modelo redesign 2026-05-17.
  */
 import { z } from 'zod';
-import { formatRutForStorage } from '../../utils/rut';
+import { formatRutForDga } from '../../utils/rut';
 
 export const Periodicidad = z.enum(['hora', 'dia', 'semana', 'mes']);
 export type Periodicidad = z.infer<typeof Periodicidad>;
@@ -12,7 +12,7 @@ export type DgaTransport = z.infer<typeof DgaTransport>;
 
 const RutPayload = z
   .string()
-  .transform((value) => formatRutForStorage(value))
+  .transform((value) => formatRutForDga(value))
   .refine((value) => value.length > 0, 'rut requerido')
   .refine((value) => value.length <= 20, 'rut maximo 20 caracteres');
 

@@ -44,7 +44,7 @@ import {
 import { requestDgaCode } from './twofactor';
 import type { AuthUser } from '../../shared/permissions';
 import { getPozoDgaConfig } from './repo';
-import { formatRutForStorage } from '../../utils/rut';
+import { formatRutForDga } from '../../utils/rut';
 
 const ExportDirectoParams = z.object({
   site_id: z.string().trim().min(1).max(10),
@@ -126,7 +126,7 @@ export async function deleteInformanteHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   try {
-    const rut = formatRutForStorage(req.params.rut);
+    const rut = formatRutForDga(req.params.rut);
     if (!rut) throw new ValidationError('rut requerido');
     await deleteInformanteService(rut);
     res.json(ok({ deleted: true }, { durationMs: elapsedMs(startedAt) }));

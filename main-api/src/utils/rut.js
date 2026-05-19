@@ -17,7 +17,19 @@ function formatRutForStorage(value) {
   return `${groupedBody}-${verifier}`;
 }
 
+// SNIA / DGA Res. 2170: rutUsuario sin puntos. Formato canónico: NNNNNNNN-D.
+function formatRutForDga(value) {
+  const cleaned = cleanRutInput(value);
+  if (cleaned.length <= 1) return cleaned;
+
+  const body = cleaned.slice(0, -1);
+  const verifier = cleaned.slice(-1);
+
+  return `${body}-${verifier}`;
+}
+
 module.exports = {
   cleanRutInput,
   formatRutForStorage,
+  formatRutForDga,
 };
