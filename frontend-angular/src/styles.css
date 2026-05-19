@@ -138,6 +138,21 @@
   }
 }
 
+@layer components {
+  /* DGA / data table header + cell utilities. Replaces per-cell inline styles. */
+  .dga-table-header {
+    font-family: var(--font-josefin);
+    @apply px-4 py-[9px] text-left text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400;
+  }
+  .dga-table-cell {
+    font-family: var(--font-mono);
+    @apply px-4 py-[9px] text-[12px] text-slate-800;
+  }
+  .dga-table-cell--muted {
+    @apply text-slate-400;
+  }
+}
+
 /* Respect users who request reduced motion: kill decorative loops/pulses globally.
    Status changes still re-render via Angular signals — motion was only ornament.
    Skeletons use Tailwind animate-pulse via <app-skeleton>. */

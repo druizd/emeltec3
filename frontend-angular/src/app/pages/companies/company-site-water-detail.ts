@@ -15,6 +15,7 @@ import { WellDiagramSkeletonComponent } from '../../components/ui/well-diagram-s
 import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
 import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
+import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -203,6 +204,7 @@ type OperationMode = 'realtime' | 'turnos';
     KpiStripSkeletonComponent,
     ChartSkeletonComponent,
     TableSkeletonComponent,
+    WellStatCardComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -751,7 +753,12 @@ type OperationMode = 'realtime' | 'turnos';
                   >
                     {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
                   </p>
-                  <p class="mt-1 text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
+                  <p
+                    [class]="'mt-1 text-caption-xs font-bold uppercase tracking-wider ' + dgaTasaExitoColors().text"
+                  >
+                    {{ dgaTasaExitoLabel() }}
+                  </p>
+                  <p class="text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
                 </article>
 
                 <!-- Rechazados: cuenta en rango -->
@@ -1252,117 +1259,65 @@ type OperationMode = 'realtime' | 'turnos';
                           </svg>
                         </div>
                         <!-- Stats column (derecha) -->
-                        <div class="flex flex-col gap-2" style="flex-shrink:0;width:124px">
-                          <div
-                            style="background:rgba(13,175,189,0.06);border:1px solid rgba(13,175,189,0.2);border-radius:8px;padding:8px 10px"
+                        <div class="flex w-[124px] shrink-0 flex-col gap-2">
+                          <app-well-stat-card
+                            tone="primary"
+                            label="Nv. Freático"
+                            [value]="formatMeters(wellNivelFreatico())"
+                            unit="m"
+                            helper="desde superficie"
+                          />
+                          <app-well-stat-card
+                            tone="neutral"
+                            label="Llenado"
+                            [value]="svgFillPct"
+                            unit="%"
                           >
-                            <p
-                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                            >
-                              Nv. Freático
-                            </p>
-                            <p
-                              style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0DAFBD;line-height:1"
-                            >
-                              {{ formatMeters(wellNivelFreatico())
-                              }}<span style="font-size:11px;color:#64748B;margin-left:2px">m</span>
-                            </p>
-                            <p style="font-size:9px;color:#94A3B8;margin-top:2px">
-                              desde superficie
-                            </p>
-                          </div>
-                          <div
-                            style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
-                          >
-                            <p
-                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                            >
-                              Llenado
-                            </p>
-                            <p
-                              style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#1E293B;line-height:1"
-                            >
-                              {{ svgFillPct }}<span style="font-size:11px;color:#64748B">%</span>
-                            </p>
                             <div
-                              style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
+                              class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200"
                             >
                               <div
+                                class="h-full rounded-full bg-gradient-to-r from-primary-container to-emerald-500"
                                 [style.width.%]="wellFillStylePercent()"
-                                style="height:100%;background:linear-gradient(90deg,#0DAFBD,#22C55E);border-radius:999px"
                               ></div>
                             </div>
-                          </div>
-                          <div
-                            style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
-                          >
-                            <p
-                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                            >
-                              Prof. Total
-                            </p>
-                            <p
-                              style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1"
-                            >
-                              {{ formatMeters(wellTotalDepth()) }} m
-                            </p>
-                          </div>
-                          <div
-                            style="background:#FFF7F0;border:1px solid #FED7AA;border-radius:8px;padding:8px 10px"
-                          >
-                            <p
-                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#F97316;margin-bottom:3px"
-                            >
-                              Sensor
-                            </p>
-                            <p
-                              style="font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:#475569;line-height:1"
-                            >
-                              {{ formatMeters(wellSensorDepth()) }} m
-                            </p>
-                          </div>
+                          </app-well-stat-card>
+                          <app-well-stat-card
+                            tone="neutral"
+                            size="md"
+                            label="Prof. Total"
+                            [value]="formatMeters(wellTotalDepth()) + ' m'"
+                          />
+                          <app-well-stat-card
+                            tone="orange"
+                            size="md"
+                            label="Sensor"
+                            [value]="formatMeters(wellSensorDepth()) + ' m'"
+                          />
                           @if (wellSignalPercent() !== null) {
-                            <div
-                              style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:8px;padding:8px 10px"
+                            <app-well-stat-card
+                              tone="blue"
+                              label="% Señal"
+                              [value]="wellSignalPercent() ?? ''"
+                              unit="%"
                             >
-                              <p
-                                style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#0369A1;margin-bottom:3px"
-                              >
-                                % Señal
-                              </p>
-                              <p
-                                style="font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:#0284C7;line-height:1"
-                              >
-                                {{ wellSignalPercent()
-                                }}<span style="font-size:11px;color:#64748B">%</span>
-                              </p>
                               <div
-                                style="margin-top:5px;height:4px;background:#E2E8F0;border-radius:999px;overflow:hidden"
+                                class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200"
                               >
                                 <div
+                                  class="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
                                   [style.width.%]="wellSignalPercent()"
-                                  style="height:100%;background:linear-gradient(90deg,#0284C7,#22C55E);border-radius:999px"
                                 ></div>
                               </div>
-                            </div>
+                            </app-well-stat-card>
                           }
-                          <div
-                            style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:8px 10px"
-                          >
-                            <p
-                              style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:3px"
-                            >
-                              Último dato recibido
-                            </p>
-                            <p
-                              style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:#1E293B;line-height:1"
-                            >
-                              {{ latestDeviceTimeLabel() }}
-                            </p>
-                            <p style="font-size:9px;color:#94A3B8;margin-top:3px">
-                              {{ latestDeviceDateLabel() }}
-                            </p>
-                          </div>
+                          <app-well-stat-card
+                            tone="neutral"
+                            size="sm"
+                            label="Último dato recibido"
+                            [value]="latestDeviceTimeLabel()"
+                            [helper]="latestDeviceDateLabel()"
+                          />
                         </div>
                       </div>
                     }
@@ -1528,6 +1483,11 @@ type OperationMode = 'realtime' | 'turnos';
                           <p class="text-caption font-medium text-slate-400">
                             {{ action.subtitle }}
                           </p>
+                          @if (quickActionDisabled(action)) {
+                            <p class="mt-1 text-caption-xs italic text-amber-600">
+                              {{ quickActionTitle(action) }}
+                            </p>
+                          }
                         </button>
                       }
                     </div>
@@ -1568,8 +1528,8 @@ type OperationMode = 'realtime' | 'turnos';
                     </div>
                   } @else {
                   <table class="w-full min-w-[960px] text-left text-body-sm">
-                    <thead style="background:#F8FAFC">
-                      <tr style="border-bottom:1px solid #F1F5F9">
+                    <thead class="bg-slate-50">
+                      <tr class="border-b border-slate-100">
                         @for (
                           h of [
                             'Fecha',
@@ -1580,40 +1540,23 @@ type OperationMode = 'realtime' | 'turnos';
                           ];
                           track h
                         ) {
-                          <th
-                            class="px-4 py-[9px] text-left"
-                            style="font-family:'Josefin Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#94A3B8"
-                          >
-                            {{ h }}
-                          </th>
+                          <th class="dga-table-header">{{ h }}</th>
                         }
                       </tr>
                     </thead>
                     <tbody>
                       @for (report of paginatedDgaReports(); track report.id) {
-                        <tr style="border-bottom:1px solid #F1F5F9">
-                          <td
-                            class="px-4 py-[9px]"
-                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#94A3B8"
-                          >
+                        <tr class="border-b border-slate-100">
+                          <td class="dga-table-cell dga-table-cell--muted">
                             {{ report.fecha }}
                           </td>
-                          <td
-                            class="px-4 py-[9px]"
-                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
-                          >
+                          <td class="dga-table-cell">
                             {{ formatDgaNumber(report.nivelFreatico) }}
                           </td>
-                          <td
-                            class="px-4 py-[9px]"
-                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
-                          >
+                          <td class="dga-table-cell">
                             {{ formatDgaNumber(report.caudal) }}
                           </td>
-                          <td
-                            class="px-4 py-[9px]"
-                            style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#1E293B"
-                          >
+                          <td class="dga-table-cell">
                             {{ formatDgaInteger(report.totalizador) }}
                           </td>
                           <td class="px-4 py-3">
@@ -1660,8 +1603,7 @@ type OperationMode = 'realtime' | 'turnos';
                                 report.estado === 'Revisar'
                               ) {
                                 <p
-                                  class="max-w-[320px] truncate text-caption-xs font-medium text-slate-500"
-                                  [title]="report.respuesta"
+                                  class="max-w-[420px] text-caption-xs font-medium leading-snug text-slate-500"
                                 >
                                   {{ report.respuesta }}
                                 </p>
@@ -2758,6 +2700,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (t >= 40)
       return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
     return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
+  });
+
+  /** Label de acción para Tasa de éxito. Reduce dependencia del color (a11y). */
+  dgaTasaExitoLabel = computed<string>(() => {
+    const t = this.dgaTasaExito();
+    if (t === null) return 'Sin datos';
+    if (t >= 100) return 'Sin rechazos';
+    if (t >= 90) return 'Alerta leve';
+    if (t >= 75) return 'Revisar config';
+    if (t >= 60) return 'Atención requerida';
+    if (t >= 40) return 'Bloqueo probable';
+    return 'Falla persistente';
   });
 
   /** Formato corto fecha+hora del último envío (Chile UTC-4). */
