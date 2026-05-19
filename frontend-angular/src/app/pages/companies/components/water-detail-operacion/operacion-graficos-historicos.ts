@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import * as XLSX from 'xlsx';
 import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
+import { ChartSkeletonComponent } from '../../../../components/ui/chart-skeleton';
 
 interface LineChart {
   polyline: string;
@@ -22,7 +23,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 @Component({
   selector: 'app-operacion-graficos-historicos',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ChartSkeletonComponent],
   template: `
     <div class="space-y-3">
       <!-- Gráficos de tendencia: Nivel Freático + Caudal (rango compartido) -->
@@ -378,12 +379,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         </div>
         <div class="h-44 w-full">
           @if (mensualLoading()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
-              <span class="material-symbols-outlined mr-1.5 animate-spin text-[16px]"
-                >progress_activity</span
-              >
-              Cargando flujo mensual...
-            </div>
+            <app-chart-skeleton [bars]="12" [height]="160" />
           } @else if (mensualEmpty()) {
             <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
               Sin datos de totalizador para este sitio en los últimos 12 meses.
@@ -475,12 +471,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         </div>
         <div class="h-44 w-full">
           @if (diarioLoading()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
-              <span class="material-symbols-outlined mr-1.5 animate-spin text-[16px]"
-                >progress_activity</span
-              >
-              Cargando flujo diario...
-            </div>
+            <app-chart-skeleton [bars]="30" [height]="160" />
           } @else if (diarioEmpty()) {
             <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
               Sin datos de totalizador para este sitio en los últimos 30 días.
@@ -631,12 +622,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
 
         <div class="h-44 w-full px-5 pt-4">
           @if (turno7Loading()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
-              <span class="material-symbols-outlined mr-1.5 animate-spin text-[16px]"
-                >progress_activity</span
-              >
-              Cargando resumen jornada...
-            </div>
+            <app-chart-skeleton [bars]="14" [height]="160" />
           } @else if (turno7Empty()) {
             <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
               Sin datos de jornada para este sitio en los últimos 30 días.
