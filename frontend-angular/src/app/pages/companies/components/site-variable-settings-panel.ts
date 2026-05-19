@@ -27,6 +27,7 @@ import {
   VariableMapping,
 } from '../../../services/administration.service';
 import { getSiteTypeUi } from '../../../shared/site-type-ui';
+import { SkeletonComponent } from '../../../components/ui/skeleton';
 
 interface SettingsStatus {
   type: 'success' | 'error' | '';
@@ -148,7 +149,7 @@ function emptyVariables(): SiteVariablesPayload {
 @Component({
   selector: 'app-site-variable-settings-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonComponent],
   template: `
     <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div class="border-b border-slate-100 px-4 py-3">
@@ -216,16 +217,22 @@ function emptyVariables(): SiteVariablesPayload {
       </div>
 
       @if (loading()) {
-        <div class="flex min-h-90 items-center justify-center bg-slate-50/60">
-          <div class="text-center">
-            <span
-              class="material-symbols-outlined animate-spin text-[34px]"
-              [style.color]="accentColor"
-              >progress_activity</span
-            >
-            <p class="mt-2 text-caption font-semibold uppercase tracking-[0.16em] text-slate-400">
-              Cargando configuración
-            </p>
+        <div class="grid gap-5 p-4 xl:grid-cols-[430px_minmax(0,1fr)]">
+          <div class="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+            <app-skeleton class="h-4 w-32 rounded" />
+            @for (_ of [0, 1, 2, 3, 4]; track $index) {
+              <app-skeleton class="h-10 w-full rounded-lg" />
+            }
+          </div>
+          <div class="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
+            <app-skeleton class="h-4 w-40 rounded" />
+            @for (_ of [0, 1, 2, 3, 4, 5]; track $index) {
+              <div class="grid grid-cols-[1fr_1fr_60px] items-center gap-3">
+                <app-skeleton class="h-8 rounded-lg" />
+                <app-skeleton class="h-8 rounded-lg" />
+                <app-skeleton class="h-8 rounded-lg" />
+              </div>
+            }
           </div>
         </div>
       } @else {

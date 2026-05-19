@@ -12,6 +12,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+import { SkeletonComponent } from '../../../../components/ui/skeleton';
 import {
   DocumentoRow,
   DocumentoService,
@@ -53,7 +54,7 @@ const TIPOS: DocumentoTipo[] = [
   selector: 'app-bitacora-documentos',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent],
+  imports: [CommonModule, FormsModule, InlineErrorComponent, SkeletonComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -239,11 +240,15 @@ const TIPOS: DocumentoTipo[] = [
             </thead>
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
-                <tr>
-                  <td colspan="5" class="px-4 py-10 text-center text-caption text-slate-400">
-                    Cargando documentos…
-                  </td>
-                </tr>
+                @for (_ of [0, 1, 2, 3, 4]; track $index) {
+                  <tr>
+                    @for (__ of [0, 1, 2, 3, 4]; track $index) {
+                      <td class="px-4 py-3">
+                        <app-skeleton class="h-3 w-full rounded" />
+                      </td>
+                    }
+                  </tr>
+                }
               } @else {
                 @for (doc of documentosFiltrados(); track doc.id) {
                   <tr class="group hover:bg-slate-50/60">
