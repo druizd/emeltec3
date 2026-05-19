@@ -11,6 +11,10 @@ import {
   signal,
 } from '@angular/core';
 import { InlineErrorComponent } from '../../components/ui/inline-error';
+import { WellDiagramSkeletonComponent } from '../../components/ui/well-diagram-skeleton';
+import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
+import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
+import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -195,6 +199,10 @@ type OperationMode = 'realtime' | 'turnos';
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
     InlineErrorComponent,
+    WellDiagramSkeletonComponent,
+    KpiStripSkeletonComponent,
+    ChartSkeletonComponent,
+    TableSkeletonComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -588,6 +596,9 @@ type OperationMode = 'realtime' | 'turnos';
             </section>
           } @else if (activeDetailTab() === 'dga') {
             <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-6">
+              @if (dgaLoading()) {
+                <app-kpi-strip-skeleton />
+              } @else {
               <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <!-- Enviados: cuenta en rango filtrado -->
                 <article
@@ -759,6 +770,7 @@ type OperationMode = 'realtime' | 'turnos';
                   </p>
                 </article>
               </section>
+              }
 
               <section
                 class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
@@ -774,21 +786,7 @@ type OperationMode = 'realtime' | 'turnos';
                     </p>
 
                     @if (dashboardLoading()) {
-                      <div
-                        class="flex min-h-[360px] items-center justify-center rounded-lg border border-slate-100 bg-slate-50"
-                      >
-                        <div class="text-center">
-                          <span
-                            class="material-symbols-outlined animate-spin text-[32px] text-primary-container"
-                            >progress_activity</span
-                          >
-                          <p
-                            class="mt-2 text-caption font-semibold uppercase tracking-[0.16em] text-slate-400"
-                          >
-                            Cargando datos del pozo
-                          </p>
-                        </div>
-                      </div>
+                      <app-well-diagram-skeleton />
                     } @else {
                       <div class="flex gap-3 items-start">
                         <!-- SVG Well Diagram (flex:1) -->
@@ -1407,6 +1405,11 @@ type OperationMode = 'realtime' | 'turnos';
                       </div>
                     </div>
 
+                    @if (monthlyCountersLoading()) {
+                      <div class="mt-5">
+                        <app-chart-skeleton [bars]="12" [height]="250" />
+                      </div>
+                    } @else {
                     <div class="mt-5 grid grid-cols-[58px_minmax(0,1fr)] gap-2">
                       <div
                         class="grid h-[250px] grid-rows-5 text-right text-caption font-semibold text-slate-400"
@@ -1485,6 +1488,7 @@ type OperationMode = 'realtime' | 'turnos';
                         </div>
                       }
                     </div>
+                    }
                   </article>
 
                   <article
@@ -1558,6 +1562,11 @@ type OperationMode = 'realtime' | 'turnos';
                 </div>
 
                 <div class="overflow-x-auto">
+                  @if (dgaLoading()) {
+                    <div class="p-3">
+                      <app-table-skeleton [rows]="6" [columns]="5" [showHeader]="false" />
+                    </div>
+                  } @else {
                   <table class="w-full min-w-[960px] text-left text-body-sm">
                     <thead style="background:#F8FAFC">
                       <tr style="border-bottom:1px solid #F1F5F9">
@@ -1672,6 +1681,7 @@ type OperationMode = 'realtime' | 'turnos';
                       }
                     </tbody>
                   </table>
+                  }
                 </div>
 
                 <div
