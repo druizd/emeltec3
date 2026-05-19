@@ -11,6 +11,8 @@ export interface User {
   cargo?: string | null;
   empresa_id?: string | null;
   sub_empresa_id?: string | null;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
 }
 
 export interface CreateUserPayload {
@@ -23,6 +25,14 @@ export interface CreateUserPayload {
   cargo?: string | null;
   empresa_id?: string | null;
   sub_empresa_id?: string | null;
+}
+
+export interface UpdateUserProfilePayload {
+  nombre?: string;
+  apellido?: string | null;
+  rut_usuario?: string | null;
+  telefono?: string | null;
+  cargo?: string | null;
 }
 
 export interface UserListFilters {

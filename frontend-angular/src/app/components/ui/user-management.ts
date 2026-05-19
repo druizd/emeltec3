@@ -42,16 +42,40 @@ import { formatRutInput } from '../../shared/rut';
           @if (status().msg) {
             <div
               [class]="
-                'p-4 rounded-xl mb-6 flex items-center gap-3 font-bold text-caption uppercase tracking-widest transition-all ' +
+                'p-4 rounded-xl mb-6 flex items-start gap-3 transition-all ' +
                 (status().type === 'success'
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-red-50 text-red-600 border border-red-200')
+                  : 'bg-red-50 text-red-700 border border-red-200')
               "
+              role="status"
+              [attr.aria-live]="status().type === 'error' ? 'assertive' : 'polite'"
             >
-              <span class="material-symbols-outlined">{{
+              <span class="material-symbols-outlined mt-0.5">{{
                 status().type === 'success' ? 'check_circle' : 'error'
               }}</span>
-              <span>{{ status().msg }}</span>
+              <div class="flex-1 min-w-0">
+                <p
+                  class="font-bold text-caption uppercase tracking-widest"
+                  [class.text-emerald-700]="status().type === 'success'"
+                  [class.text-red-700]="status().type === 'error'"
+                >
+                  {{ status().type === 'success' ? 'Registro confirmado' : 'No se pudo registrar' }}
+                </p>
+                <p class="mt-1 text-body-sm font-semibold break-words">{{ status().msg }}</p>
+                @if (status().type === 'error') {
+                  <p class="mt-1 text-caption text-red-600">
+                    Revisa los datos e intenta nuevamente.
+                  </p>
+                }
+              </div>
+              <button
+                type="button"
+                (click)="dismissStatus()"
+                class="shrink-0 rounded-md p-1 text-current/70 hover:bg-black/5 transition-colors"
+                aria-label="Cerrar mensaje"
+              >
+                <span class="material-symbols-outlined text-base">close</span>
+              </button>
             </div>
           }
 
@@ -354,7 +378,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.inputSubEmpresaId.set(this.subEmpresaId);
   }
 
-  resetForm() {
+  clearForm() {
     this.newUser = {
       nombre: '',
       apellido: '',
@@ -366,6 +390,10 @@ export class UserManagementComponent implements OnInit, OnChanges {
       empresa_id: this.empresaId,
       sub_empresa_id: this.subEmpresaId,
     };
+  }
+
+  resetForm() {
+    this.clearForm();
     this.status.set({ type: '', msg: '' });
   }
 
@@ -383,6 +411,8 @@ export class UserManagementComponent implements OnInit, OnChanges {
     if (this.readOnly) return; // Double protection
 
     this.loading.set(true);
+    this.status.set({ type: '', msg: '' });
+    const submittedEmail = this.newUser.email.trim();
     const data = {
       ...this.newUser,
       empresa_id: this.empresaId,
@@ -394,17 +424,34 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.userService.createUser(data).subscribe({
       next: (res: ApiResponse<User>) => {
         if (res.ok) {
-          this.status.set({ type: 'success', msg: 'Invitación enviada.' });
+          this.clearForm();
+          this.status.set({
+            type: 'success',
+            msg: `Invitación enviada correctamente a ${submittedEmail}.`,
+          });
           this.loadUsers();
-          this.resetForm();
+        } else {
+          this.status.set({
+            type: 'error',
+            msg: res.error || 'No fue posible registrar al usuario.',
+          });
         }
         this.loading.set(false);
       },
-      error: () => {
-        this.status.set({ type: 'error', msg: 'Error al crear.' });
+      error: (err) => {
+        const detail =
+          err?.error?.error ||
+          err?.error?.message ||
+          err?.message ||
+          'No se pudo enviar la invitación. Verifica tu conexión e intenta nuevamente.';
+        this.status.set({ type: 'error', msg: detail });
         this.loading.set(false);
       },
     });
+  }
+
+  dismissStatus() {
+    this.status.set({ type: '', msg: '' });
   }
 
   deleteUser(id: string) {

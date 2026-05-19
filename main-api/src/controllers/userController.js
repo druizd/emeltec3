@@ -4,6 +4,29 @@ const crypto = require('crypto');
 const emailService = require('../services/emailService');
 const { formatRutForStorage } = require('../utils/rut');
 
+const USER_PROFILE_SELECT = `
+  SELECT u.id,
+         u.nombre,
+         COALESCE(u.apellido, '') AS apellido,
+         u.rut_usuario,
+         u.email,
+         u.telefono,
+         u.cargo,
+         u.tipo,
+         u.empresa_id,
+         u.sub_empresa_id,
+         e.nombre AS empresa_nombre,
+         se.nombre AS sub_empresa_nombre
+  FROM usuario u
+  LEFT JOIN empresa e ON e.id = u.empresa_id
+  LEFT JOIN sub_empresa se ON se.id = u.sub_empresa_id
+`;
+
+async function getUserProfileById(userId) {
+  const { rows } = await db.query(`${USER_PROFILE_SELECT} WHERE u.id = $1`, [userId]);
+  return rows[0] || null;
+}
+
 exports.getEmpresas = async (req, res, next) => {
   try {
     const { tipo, empresa_id } = req.user;
@@ -84,6 +107,70 @@ exports.getAllUsers = async (req, res, next) => {
 
     const { rows } = await db.query(query, params);
     res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getCurrentUser = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
+    }
+
+    const profile = await getUserProfileById(userId);
+    if (!profile) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+
+    res.json({ ok: true, data: profile });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateCurrentUser = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
+      return res.status(400).json({ ok: false, error: 'El correo no se puede editar.' });
+    }
+
+    const allowed = ['nombre', 'apellido', 'rut_usuario', 'telefono', 'cargo'];
+    const updates = [];
+    const values = [];
+
+    for (const field of allowed) {
+      if (!Object.prototype.hasOwnProperty.call(req.body, field)) continue;
+
+      let value = req.body[field];
+      if (typeof value === 'string') value = value.trim();
+      if (field === 'nombre' && !value) {
+        return res.status(400).json({ ok: false, error: 'El nombre es requerido.' });
+      }
+      if (field === 'rut_usuario') value = value ? formatRutForStorage(value) : null;
+      if (field !== 'nombre' && value === '') value = null;
+
+      values.push(value);
+      updates.push(`${field} = $${values.length}`);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ ok: false, error: 'No hay datos para actualizar.' });
+    }
+
+    values.push(userId);
+    await db.query(
+      `UPDATE usuario SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${values.length}`,
+      values,
+    );
+
+    const profile = await getUserProfileById(userId);
+    res.json({ ok: true, data: profile });
   } catch (err) {
     next(err);
   }

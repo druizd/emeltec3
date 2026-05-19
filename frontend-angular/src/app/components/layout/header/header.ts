@@ -85,6 +85,7 @@ import { ShortcutService } from '../../../services/shortcut.service';
                 <div class="py-1">
                   <button
                     type="button"
+                    (click)="goToProfile()"
                     class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
                   >
                     <span class="material-symbols-outlined text-[16px] text-slate-400">person</span>
@@ -103,7 +104,7 @@ import { ShortcutService } from '../../../services/shortcut.service';
                 <div class="border-t border-[#E2E8F0] py-1">
                   <button
                     type="button"
-                    (click)="auth.logout()"
+                    (click)="logout()"
                     class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
                   >
                     <span class="material-symbols-outlined text-[16px]">logout</span>
@@ -145,6 +146,16 @@ export class HeaderComponent implements OnInit {
 
   toggleUserMenu(): void {
     this.userMenuOpen.update((v) => !v);
+  }
+
+  goToProfile(): void {
+    this.userMenuOpen.set(false);
+    this.router.navigate(['/profile']);
+  }
+
+  logout(): void {
+    this.userMenuOpen.set(false);
+    this.auth.logout();
   }
 
   isDashboard(): boolean {

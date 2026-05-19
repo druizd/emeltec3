@@ -27,7 +27,6 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
             ? sites.length + ' sitios registrados'
             : 'Resumen de la división'
         "
-        [showReportButton]="false"
       />
 
       <app-companies-tab-nav

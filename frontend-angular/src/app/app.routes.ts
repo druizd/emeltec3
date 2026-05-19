@@ -91,6 +91,10 @@ export const routes: Routes = [
           import('./pages/dashboard/dashboard').then((m) => m.DashboardComponent),
       },
       {
+        path: 'profile',
+        loadComponent: () => import('./pages/profile/profile').then((m) => m.ProfileComponent),
+      },
+      {
         path: 'administration',
         canActivate: [roleGuard('SuperAdmin')],
         loadComponent: () =>

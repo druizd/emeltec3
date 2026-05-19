@@ -59,6 +59,15 @@ export class AuthService {
     this.userSignal.set(userData);
   }
 
+  updateUser(userData: Partial<User>): void {
+    const current = this.userSignal();
+    if (!current) return;
+
+    const next = { ...current, ...userData };
+    localStorage.setItem('user_data', JSON.stringify(next));
+    this.userSignal.set(next);
+  }
+
   logout(): void {
     localStorage.removeItem('jwt_token');
     localStorage.removeItem('user_data');
