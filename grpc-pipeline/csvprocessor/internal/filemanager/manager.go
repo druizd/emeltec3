@@ -8,25 +8,21 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
-// EnsureDirectories crea las carpetas necesarias si no existen.
 func EnsureDirectories(dirs ...string) error {
 	for _, dir := range dirs {
 		if strings.TrimSpace(dir) == "" {
-			return fmt.Errorf("directorio vacío en configuración")
+			return fmt.Errorf("directorio vacio en configuracion")
 		}
-
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("no se pudo crear el directorio [%s]: %w", dir, err)
 		}
 	}
-
 	return nil
 }
 
-// ListInputFiles devuelve la lista de archivos regulares encontrados en una carpeta.
-// Filtra solo archivos con extensiones típicas de logs/CSV.
 func ListInputFiles(inputDir string) ([]string, error) {
 	entries, err := os.ReadDir(inputDir)
 	if err != nil {
@@ -39,10 +35,8 @@ func ListInputFiles(inputDir string) ([]string, error) {
 		if entry.IsDir() {
 			continue
 		}
-
 		name := entry.Name()
 		ext := strings.ToLower(filepath.Ext(name))
-
 		if ext == ".csv" || ext == ".log" || ext == ".txt" {
 			files = append(files, filepath.Join(inputDir, name))
 		}
@@ -52,15 +46,6 @@ func ListInputFiles(inputDir string) ([]string, error) {
 	return files, nil
 }
 
-// ExtractSerialIDFromFile lee el archivo crudo y trata de obtener el primer id_serial válido.
-// Ejemplo:
-//
-//	151.21.49.121--1.AI23  -> 151.21.49.121
-//
-// Ignora:
-// - líneas vacías
-// - [Data]
-// - encabezado Tagname,TimeStamp,Value,DataQuality
 func ExtractSerialIDFromFile(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -76,8 +61,8 @@ func ExtractSerialIDFromFile(filePath string) (string, error) {
 		if line == "" || line == "[Data]" {
 			continue
 		}
-
-		if strings.EqualFold(line, "Tagname,TimeStamp,Value,DataQuality") {
+		if strings.EqualFold(line, "Tagname,TimeStamp,Value,DataQuality") ||
+			strings.EqualFold(line, "Tagname;TimeStamp;Value;DataQuality") {
 			continue
 		}
 
@@ -104,14 +89,13 @@ func ExtractSerialIDFromFile(filePath string) (string, error) {
 	return "", fmt.Errorf("no se pudo extraer id_serial desde [%s]", filePath)
 }
 
-// CopyToBackupBySerial crea un respaldo exacto del archivo original dentro de:
-// raw_backup/<id_serial>/<nombre_archivo>
 func CopyToBackupBySerial(sourcePath, backupRootDir, idSerial string) error {
 	if strings.TrimSpace(idSerial) == "" {
-		return fmt.Errorf("id_serial vacío para backup")
+		return fmt.Errorf("id_serial vacio para backup")
 	}
 
-	targetDir := filepath.Join(backupRootDir, idSerial)
+	year, week := time.Now().ISOWeek()
+	targetDir := filepath.Join(backupRootDir, idSerial, fmt.Sprintf("%d-W%02d", year, week))
 
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return fmt.Errorf("no se pudo crear el directorio backup [%s]: %w", targetDir, err)
@@ -138,20 +122,16 @@ func CopyToBackupBySerial(sourcePath, backupRootDir, idSerial string) error {
 	return nil
 }
 
-// MoveToProcessed mueve un archivo a la carpeta de procesados.
 func MoveToProcessed(sourcePath, processedDir string) error {
 	targetPath := filepath.Join(processedDir, filepath.Base(sourcePath))
 	return moveFile(sourcePath, targetPath)
 }
 
-// MoveToFailed mueve un archivo a la carpeta de fallidos.
 func MoveToFailed(sourcePath, failedDir string) error {
 	targetPath := filepath.Join(failedDir, filepath.Base(sourcePath))
 	return moveFile(sourcePath, targetPath)
 }
 
-// moveFile mueve un archivo a una ruta nueva.
-// Primero intenta renombrar; si falla por cruce de volumen, copia y luego elimina.
 func moveFile(sourcePath, targetPath string) error {
 	if _, err := os.Stat(targetPath); err == nil {
 		if err := os.Remove(targetPath); err != nil {
@@ -186,14 +166,14 @@ func moveFile(sourcePath, targetPath string) error {
 	return nil
 }
 
-// parseSerialIDFromTagname extrae el id_serial limpio desde el tagname.
-// Ejemplo:
-//
-//	151.21.49.121--1.AI23 -> 151.21.49.121
+func DeleteFile(filePath string) {
+	_ = os.Remove(filePath)
+}
+
 func parseSerialIDFromTagname(tag string) (string, error) {
 	lastDot := strings.LastIndex(tag, ".")
 	if lastDot == -1 {
-		return "", fmt.Errorf("tagname inválido: %s", tag)
+		return "", fmt.Errorf("tagname invalido: %s", tag)
 	}
 
 	left := tag[:lastDot]
@@ -201,7 +181,7 @@ func parseSerialIDFromTagname(tag string) (string, error) {
 	idSerial = strings.TrimSpace(idSerial)
 
 	if idSerial == "" {
-		return "", fmt.Errorf("id_serial vacío en tagname: %s", tag)
+		return "", fmt.Errorf("id_serial vacio en tagname: %s", tag)
 	}
 
 	return idSerial, nil
