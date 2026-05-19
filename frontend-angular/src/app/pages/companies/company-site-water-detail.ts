@@ -587,7 +587,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
-            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-9">
+            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-6">
               <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <!-- Enviados: cuenta en rango filtrado -->
                 <article
@@ -669,25 +669,30 @@ type OperationMode = 'realtime' | 'turnos';
                   </article>
                 }
 
-                <!-- Tasa éxito: card neutral + stripe izquierdo dinámico. Color en valor. -->
+                <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
                 <article
-                  class="relative overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-3 pl-5 text-center shadow-sm"
+                  [class]="
+                    'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
+                    dgaTasaExitoColors().border +
+                    ' ' +
+                    dgaTasaExitoColors().bg
+                  "
                 >
-                  <span
-                    aria-hidden="true"
-                    [class]="
-                      'absolute inset-y-0 left-0 w-1 ' + dgaTasaExitoColors().stripe
-                    "
-                  ></span>
                   <div class="flex items-start justify-between">
                     <p
-                      class="flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
+                      [class]="
+                        'flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
+                        dgaTasaExitoColors().text
+                      "
                     >
                       Tasa de éxito
                     </p>
                     <details class="group relative">
                       <summary
-                        class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        [class]="
+                          'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
+                          dgaTasaExitoColors().text
+                        "
                         aria-label="Ver leyenda de la tasa de éxito"
                       >
                         <span class="material-symbols-outlined text-[14px]">help_outline</span>
@@ -2731,15 +2736,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
    * - <40% red
    * - null (sin denominador) → slate.
    */
-  dgaTasaExitoColors = computed<{ text: string; stripe: string }>(() => {
+  dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
     const t = this.dgaTasaExito();
-    if (t === null) return { text: 'text-slate-400', stripe: 'bg-slate-300' };
-    if (t >= 100) return { text: 'text-emerald-600', stripe: 'bg-emerald-500' };
-    if (t >= 90) return { text: 'text-emerald-500', stripe: 'bg-emerald-400' };
-    if (t >= 75) return { text: 'text-lime-600', stripe: 'bg-lime-500' };
-    if (t >= 60) return { text: 'text-amber-600', stripe: 'bg-amber-500' };
-    if (t >= 40) return { text: 'text-orange-600', stripe: 'bg-orange-500' };
-    return { text: 'text-rose-600', stripe: 'bg-rose-500' };
+    if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
+    if (t >= 100)
+      return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
+    if (t >= 90)
+      return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
+    if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
+    if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
+    if (t >= 40)
+      return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
+    return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
   });
 
   /** Formato corto fecha+hora del último envío (Chile UTC-4). */
