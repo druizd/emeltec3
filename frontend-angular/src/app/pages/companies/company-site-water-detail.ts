@@ -587,7 +587,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
-            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-8">
+            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-9">
               <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
                 <!-- Enviados: cuenta en rango filtrado -->
                 <article
@@ -646,7 +646,7 @@ type OperationMode = 'realtime' | 'turnos';
                         </p>
                       </div>
                       <p
-                        class="text-center font-mono text-h5 font-semibold leading-tight text-slate-800"
+                        class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
                       >
                         {{ dgaUltimoEnvioFecha() }}
                       </p>
@@ -664,38 +664,33 @@ type OperationMode = 'realtime' | 'turnos';
                     >
                       Último envío aceptado
                     </p>
-                    <p class="text-h5 font-semibold text-slate-400">—</p>
+                    <p class="font-mono text-h4 font-semibold leading-tight text-slate-400">—</p>
                     <span class="text-caption-xs italic text-slate-400">sin envíos aún</span>
                   </article>
                 }
 
-                <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
+                <!-- Tasa éxito: card neutral + stripe izquierdo dinámico. Color en valor. -->
                 <article
-                  [class]="
-                    'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
-                    dgaTasaExitoColors().border +
-                    ' ' +
-                    dgaTasaExitoColors().bg
-                  "
+                  class="relative overflow-hidden rounded-xl border border-slate-200 bg-white px-4 py-3 pl-5 text-center shadow-sm"
                 >
+                  <span
+                    aria-hidden="true"
+                    [class]="
+                      'absolute inset-y-0 left-0 w-1 ' + dgaTasaExitoColors().stripe
+                    "
+                  ></span>
                   <div class="flex items-start justify-between">
                     <p
-                      [class]="
-                        'flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
-                        dgaTasaExitoColors().text
-                      "
+                      class="flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] text-slate-500"
                     >
                       Tasa de éxito
                     </p>
                     <details class="group relative">
                       <summary
-                        [class]="
-                          'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-caption-xs font-bold hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
-                          dgaTasaExitoColors().text
-                        "
+                        class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="Ver leyenda de la tasa de éxito"
                       >
-                        ?
+                        <span class="material-symbols-outlined text-[14px]">help_outline</span>
                       </summary>
                       <div
                         class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-caption shadow-lg"
@@ -1608,40 +1603,54 @@ type OperationMode = 'realtime' | 'turnos';
                             {{ formatDgaInteger(report.totalizador) }}
                           </td>
                           <td class="px-4 py-3">
-                            <div class="inline-flex items-center gap-2">
-                              <button
-                                type="button"
-                                (click)="openDgaReportDetail(report)"
-                                class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
-                                [style.background]="getDgaStatusBg(report.estado)"
-                                [style.border-color]="getDgaStatusBorder(report.estado)"
-                                [style.color]="getDgaStatusColor(report.estado)"
-                              >
-                                <span
-                                  class="h-[5px] w-[5px] rounded-full"
-                                  [style.background]="getDgaStatusColor(report.estado)"
-                                ></span>
-                                {{ report.estado }}
-                                <span class="material-symbols-outlined text-[13px]"
-                                  >chevron_right</span
+                            <div class="flex flex-col gap-1">
+                              <div class="inline-flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  (click)="openDgaReportDetail(report)"
+                                  class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
+                                  [style.background]="getDgaStatusBg(report.estado)"
+                                  [style.border-color]="getDgaStatusBorder(report.estado)"
+                                  [style.color]="getDgaStatusColor(report.estado)"
                                 >
-                              </button>
-                              @if (
-                                report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
-                                as snia
-                              ) {
-                                <a
-                                  [href]="snia"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  (click)="$event.stopPropagation()"
-                                  [title]="'Ver comprobante en SNIA: ' + report.comprobante"
-                                  class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
-                                >
-                                  <span class="material-symbols-outlined text-[14px]"
-                                    >receipt_long</span
+                                  <span
+                                    class="h-[5px] w-[5px] rounded-full"
+                                    [style.background]="getDgaStatusColor(report.estado)"
+                                  ></span>
+                                  {{ report.estado }}
+                                  <span class="material-symbols-outlined text-[13px]"
+                                    >chevron_right</span
                                   >
-                                </a>
+                                </button>
+                                @if (
+                                  report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
+                                  as snia
+                                ) {
+                                  <a
+                                    [href]="snia"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    (click)="$event.stopPropagation()"
+                                    [title]="'Ver comprobante en SNIA: ' + report.comprobante"
+                                    class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
+                                  >
+                                    <span class="material-symbols-outlined text-[14px]"
+                                      >receipt_long</span
+                                    >
+                                  </a>
+                                }
+                              </div>
+                              @if (
+                                report.estado === 'Rechazado' ||
+                                report.estado === 'Fallido' ||
+                                report.estado === 'Revisar'
+                              ) {
+                                <p
+                                  class="max-w-[320px] truncate text-caption-xs font-medium text-slate-500"
+                                  [title]="report.respuesta"
+                                >
+                                  {{ report.respuesta }}
+                                </p>
                               }
                             </div>
                           </td>
@@ -2722,18 +2731,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
    * - <40% red
    * - null (sin denominador) → slate.
    */
-  dgaTasaExitoColors = computed<{ text: string; border: string; bg: string }>(() => {
+  dgaTasaExitoColors = computed<{ text: string; stripe: string }>(() => {
     const t = this.dgaTasaExito();
-    if (t === null) return { text: 'text-slate-400', border: 'border-slate-200', bg: 'bg-white' };
-    if (t >= 100)
-      return { text: 'text-emerald-600', border: 'border-emerald-300', bg: 'bg-emerald-50' };
-    if (t >= 90)
-      return { text: 'text-emerald-500', border: 'border-emerald-200', bg: 'bg-emerald-50' };
-    if (t >= 75) return { text: 'text-lime-600', border: 'border-lime-200', bg: 'bg-lime-50' };
-    if (t >= 60) return { text: 'text-amber-600', border: 'border-amber-200', bg: 'bg-amber-50' };
-    if (t >= 40)
-      return { text: 'text-orange-600', border: 'border-orange-200', bg: 'bg-orange-50' };
-    return { text: 'text-rose-600', border: 'border-rose-300', bg: 'bg-rose-50' };
+    if (t === null) return { text: 'text-slate-400', stripe: 'bg-slate-300' };
+    if (t >= 100) return { text: 'text-emerald-600', stripe: 'bg-emerald-500' };
+    if (t >= 90) return { text: 'text-emerald-500', stripe: 'bg-emerald-400' };
+    if (t >= 75) return { text: 'text-lime-600', stripe: 'bg-lime-500' };
+    if (t >= 60) return { text: 'text-amber-600', stripe: 'bg-amber-500' };
+    if (t >= 40) return { text: 'text-orange-600', stripe: 'bg-orange-500' };
+    return { text: 'text-rose-600', stripe: 'bg-rose-500' };
   });
 
   /** Formato corto fecha+hora del último envío (Chile UTC-4). */
