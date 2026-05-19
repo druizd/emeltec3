@@ -18,6 +18,7 @@ import { AdministrationService } from '../../../../services/administration.servi
 import { CompanyService } from '../../../../services/company.service';
 import type { SiteDashboardHistoryEntry, VariableMapping } from '@emeltec/shared';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 
 interface SimulationResultRow {
   timestamp: string;
@@ -88,7 +89,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
   selector: 'app-alertas-configuracion',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent],
+  imports: [CommonModule, FormsModule, InlineErrorComponent, TableSkeletonComponent],
   template: `
     <div class="space-y-3">
       <!-- Header -->
@@ -111,7 +112,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
       <!-- Loading / error -->
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">Cargando reglas…</p>
+        <app-table-skeleton [rows]="4" [columns]="4" [showHeader]="false" />
       }
       @if (errorMsg()) {
         <app-inline-error [message]="errorMsg()" />
