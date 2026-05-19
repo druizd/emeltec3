@@ -25,6 +25,7 @@ import {
 } from '../../../../services/incidencia.service';
 import { UserService } from '../../../../services/user.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 
 interface DraftIncidencia {
   titulo: string;
@@ -65,7 +66,7 @@ function emptyDraft(): DraftIncidencia {
   selector: 'app-bitacora-incidencias',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent],
+  imports: [CommonModule, FormsModule, InlineErrorComponent, TableSkeletonComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -147,9 +148,7 @@ function emptyDraft(): DraftIncidencia {
       }
 
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">
-          Cargando incidencias…
-        </p>
+        <app-table-skeleton [rows]="4" [columns]="4" [showHeader]="false" />
       }
 
       <!-- Lista -->

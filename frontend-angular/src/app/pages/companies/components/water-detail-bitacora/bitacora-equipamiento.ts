@@ -11,11 +11,12 @@ import {
   type EquipoEstado,
   type SitioEquipo,
 } from '../../../../services/bitacora-sitio.service';
+import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 
 @Component({
   selector: 'app-bitacora-equipamiento',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TableSkeletonComponent],
   template: `
     <div class="space-y-3">
       <div class="flex items-center justify-between gap-3">
@@ -33,11 +34,7 @@ import {
       </div>
 
       @if (loading()) {
-        <div
-          class="rounded-2xl border border-slate-200 bg-white p-8 text-center text-body-sm text-slate-400"
-        >
-          Cargando equipos…
-        </div>
+        <app-table-skeleton [rows]="4" [columns]="4" [showHeader]="false" />
       } @else if (equipos().length === 0) {
         <div
           class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-body-sm text-slate-500"

@@ -13,6 +13,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DgaReviewActionPayload, DgaReviewSlot, DgaService } from '../../services/dga.service';
+import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 
 interface RowEdit {
   caudal: string;
@@ -24,7 +25,7 @@ interface RowEdit {
 @Component({
   selector: 'app-dga-review',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TableSkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="mx-auto max-w-6xl p-6 space-y-4">
@@ -96,7 +97,7 @@ interface RowEdit {
 
       <!-- Tabla -->
       @if (loading()) {
-        <div class="text-body-sm text-slate-500">Cargando…</div>
+        <app-table-skeleton [rows]="6" [columns]="6" />
       } @else if (slots().length === 0) {
         <div
           class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center text-emerald-800"

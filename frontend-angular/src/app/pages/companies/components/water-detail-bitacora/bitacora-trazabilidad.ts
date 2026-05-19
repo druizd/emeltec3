@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+import { SkeletonComponent } from '../../../../components/ui/skeleton';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -22,7 +23,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
   selector: 'app-bitacora-trazabilidad',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, InlineErrorComponent],
+  imports: [CommonModule, InlineErrorComponent, SkeletonComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -75,11 +76,15 @@ type RecursoFiltro = AuditTargetType | 'todos';
             </thead>
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
-                <tr>
-                  <td colspan="5" class="px-4 py-10 text-center text-caption text-slate-400">
-                    Cargando bitácora…
-                  </td>
-                </tr>
+                @for (_ of [0, 1, 2, 3, 4]; track $index) {
+                  <tr>
+                    @for (__ of [0, 1, 2, 3, 4]; track $index) {
+                      <td class="px-4 py-3">
+                        <app-skeleton class="h-3 w-full rounded" />
+                      </td>
+                    }
+                  </tr>
+                }
               } @else {
                 @for (entry of entradas(); track entry.id) {
                   <tr class="hover:bg-slate-50/60">

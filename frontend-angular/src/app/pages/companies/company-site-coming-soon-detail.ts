@@ -5,6 +5,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 import { CompanyService } from '../../services/company.service';
 import { getSiteTypeUi, normalizeSiteType } from '../../shared/site-type-ui';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import { SkeletonComponent } from '../../components/ui/skeleton';
 
 interface SiteContext {
   company: CompanyNode;
@@ -15,7 +16,7 @@ interface SiteContext {
 @Component({
   selector: 'app-company-site-coming-soon-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, SiteVariableSettingsPanelComponent],
+  imports: [CommonModule, RouterLink, SiteVariableSettingsPanelComponent, SkeletonComponent],
   template: `
     <div class="min-h-full bg-[#f4f7fa] px-4 pb-8 pt-4 text-slate-700 md:px-6">
       @if (siteContext(); as context) {
@@ -119,13 +120,11 @@ interface SiteContext {
           }
         </div>
       } @else {
-        <div class="grid min-h-[420px] place-items-center">
-          <span
-            class="material-symbols-outlined animate-spin text-[34px]"
-            [style.color]="accentColor()"
-          >
-            progress_activity
-          </span>
+        <div class="mx-auto flex max-w-[640px] flex-col items-center gap-4 px-6 py-16">
+          <app-skeleton class="h-16 w-16 rounded-2xl" />
+          <app-skeleton class="h-6 w-64 rounded-md" />
+          <app-skeleton class="h-3 w-80 rounded" />
+          <app-skeleton class="h-3 w-72 rounded" />
         </div>
       }
     </div>

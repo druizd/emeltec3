@@ -38,6 +38,8 @@ import { AdminFormActionsComponent } from './components/admin-form-actions';
 import { AdminSectionShellComponent } from './components/admin-section-shell';
 import { AdminSectionHeaderComponent } from './components/admin-section-header';
 import { AdminTableToolbarComponent } from './components/admin-table-toolbar';
+import { SkeletonComponent } from '../../components/ui/skeleton';
+import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
 type StatusType = 'success' | 'error' | '';
@@ -337,6 +339,8 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     AdminSectionShellComponent,
     AdminSectionHeaderComponent,
     AdminTableToolbarComponent,
+    SkeletonComponent,
+    TableSkeletonComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -502,14 +506,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
 
           <main class="min-w-0">
             @if (loading()) {
-              <section class="rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
-                <div class="flex items-center gap-3 text-body-sm font-bold text-slate-500">
-                  <span
-                    class="material-symbols-outlined animate-spin text-[22px] text-primary-container"
-                    >progress_activity</span
-                  >
-                  Cargando administracion
+              <section class="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <app-skeleton class="h-5 w-48 rounded" />
+                <div class="flex flex-wrap gap-3">
+                  <app-skeleton class="h-10 w-40 rounded-lg" />
+                  <app-skeleton class="h-10 w-32 rounded-lg" />
+                  <app-skeleton class="h-10 w-28 rounded-lg" />
                 </div>
+                <app-table-skeleton [rows]="6" [columns]="5" />
               </section>
             } @else {
               @if (activeSection() === 'empresas') {

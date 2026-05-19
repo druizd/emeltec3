@@ -6,6 +6,8 @@ import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from 
 import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
+import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
 
 interface SiteContext {
   company: CompanyNode;
@@ -42,6 +44,8 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
     RouterLink,
     KpiCardComponent,
     SiteVariableSettingsPanelComponent,
+    KpiStripSkeletonComponent,
+    ChartSkeletonComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f4f7fa] pb-8 text-slate-700">
@@ -289,10 +293,11 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
           </section>
         </main>
       } @else {
-        <div class="grid min-h-[420px] place-items-center">
-          <span class="material-symbols-outlined animate-spin text-[34px] text-orange-500"
-            >progress_activity</span
-          >
+        <div class="mx-auto max-w-[1540px] space-y-6 px-6 py-6">
+          <app-kpi-strip-skeleton />
+          <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <app-chart-skeleton [bars]="14" [height]="220" />
+          </div>
         </div>
       }
     </div>

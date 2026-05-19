@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AnalisisService, type MetricasData } from '../../../../services/analisis.service';
+import { SkeletonComponent } from '../../../../components/ui/skeleton';
 
 function chileMonthStartDate(): string {
   const d = new Date(Date.now() - 4 * 3600 * 1000);
@@ -27,7 +28,7 @@ function dateToUtcIsoEnd(date: string): string {
 @Component({
   selector: 'app-analisis-metricas',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonComponent],
   template: `
     <div class="space-y-3">
       <header
@@ -130,11 +131,15 @@ function dateToUtcIsoEnd(date: string): string {
             </thead>
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
-                <tr>
-                  <td colspan="7" class="px-3 py-6 text-center text-body-sm text-slate-400">
-                    Calculando…
-                  </td>
-                </tr>
+                @for (_ of [0, 1, 2, 3]; track $index) {
+                  <tr>
+                    @for (__ of [0, 1, 2, 3, 4, 5, 6]; track $index) {
+                      <td class="px-3 py-3">
+                        <app-skeleton class="h-3 w-full rounded" />
+                      </td>
+                    }
+                  </tr>
+                }
               } @else if (data().variables.length === 0) {
                 <tr>
                   <td colspan="7" class="px-3 py-6 text-center text-body-sm italic text-slate-400">

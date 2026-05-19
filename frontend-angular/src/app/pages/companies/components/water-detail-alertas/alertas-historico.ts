@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { AlertaService, AlertaSeveridad, EventoRow } from '../../../../services/alerta.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+import { SkeletonComponent } from '../../../../components/ui/skeleton';
 
 type HistoricoFiltro = 'todos' | AlertaSeveridad;
 
@@ -17,7 +18,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
   selector: 'app-alertas-historico',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, InlineErrorComponent],
+  imports: [CommonModule, InlineErrorComponent, SkeletonComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -80,11 +81,15 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
             </thead>
             <tbody class="divide-y divide-slate-100">
               @if (loading()) {
-                <tr>
-                  <td colspan="7" class="px-4 py-10 text-center text-caption text-slate-400">
-                    Cargando histórico…
-                  </td>
-                </tr>
+                @for (_ of [0, 1, 2, 3, 4]; track $index) {
+                  <tr>
+                    @for (__ of [0, 1, 2, 3, 4, 5, 6]; track $index) {
+                      <td class="px-4 py-3">
+                        <app-skeleton class="h-3 w-full rounded" />
+                      </td>
+                    }
+                  </tr>
+                }
               } @else {
                 @for (ev of historialFiltrado(); track ev.id) {
                   <tr class="group hover:bg-slate-50/60">

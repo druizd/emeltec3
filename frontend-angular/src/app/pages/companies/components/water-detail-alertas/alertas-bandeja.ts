@@ -18,6 +18,7 @@ import {
 } from '../../../../services/alerta.service';
 import { UserService } from '../../../../services/user.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
+import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 
 type FiltroEstado = EventoEstado | 'todos';
 
@@ -25,13 +26,11 @@ type FiltroEstado = EventoEstado | 'todos';
   selector: 'app-alertas-bandeja',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent],
+  imports: [CommonModule, FormsModule, InlineErrorComponent, TableSkeletonComponent],
   template: `
     <div class="space-y-3">
       @if (loading()) {
-        <p class="rounded-xl bg-slate-50 px-4 py-3 text-caption text-slate-500">
-          Cargando eventos…
-        </p>
+        <app-table-skeleton [rows]="5" [columns]="4" [showHeader]="false" />
       }
       @if (errorMsg()) {
         <app-inline-error [message]="errorMsg()" />
