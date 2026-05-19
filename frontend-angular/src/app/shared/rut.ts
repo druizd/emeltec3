@@ -16,3 +16,10 @@ export function formatRutInput(value: string | null | undefined): string {
 
   return `${groupedBody}-${verifier}`;
 }
+
+export function formatRutDgaInput(value: string | null | undefined): string {
+  const cleaned = cleanRutInput(value);
+  if (cleaned.length <= 1) return cleaned;
+
+  return `${cleaned.slice(0, -1)}-${cleaned.slice(-1)}`;
+}

@@ -38,7 +38,7 @@ import {
   PatchPozoDgaConfigPayload,
   PozoDgaConfig,
 } from '../../../../services/dga.service';
-import { formatRutInput } from '../../../../shared/rut';
+import { formatRutDgaInput } from '../../../../shared/rut';
 
 const LIVE_REFRESH_MS = 10_000;
 
@@ -738,18 +738,18 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
   // ============ Informante ============
 
   updateNewInfRut(value: string): void {
-    this.newInfRut.set(formatRutInput(value));
+    this.newInfRut.set(formatRutDgaInput(value));
   }
 
   guardarInformante(): void {
-    const rut = formatRutInput(this.newInfRut());
+    const rut = formatRutDgaInput(this.newInfRut());
     if (!rut) return;
     const clave = this.newInfClave();
     const referencia = this.newInfReferencia().trim() || null;
 
     // Backend exige clave si el RUT es nuevo. Pre-validamos contra el pool
     // local para dar feedback inmediato sin esperar el 409.
-    const rutExisteEnPool = this.informantes().some((i) => i.rut === rut);
+    const rutExisteEnPool = this.informantes().some((i) => formatRutDgaInput(i.rut) === rut);
     if (!rutExisteEnPool && !clave) {
       this.informanteError.set(
         `RUT ${rut} no está en el pool. Ingresá la clave SNIA para crearlo.`,

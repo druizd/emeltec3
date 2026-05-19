@@ -5,6 +5,10 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const rutMod = require('../utils/rut.js') as { formatRutForDga: (value: unknown) => string };
+const { formatRutForDga } = rutMod;
+
 const NodeEnv = z.enum(['development', 'test', 'production']).default('development');
 
 const Schema = z.object({
@@ -142,7 +146,7 @@ export const config = {
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,
     apiUrl: env.DGA_API_URL,
-    rutEmpresa: env.DGA_RUT_EMPRESA,
+    rutEmpresa: env.DGA_RUT_EMPRESA ? formatRutForDga(env.DGA_RUT_EMPRESA) : undefined,
     submissionEnabled: env.ENABLE_DGA_SUBMISSION_WORKER,
   },
 } as const;
