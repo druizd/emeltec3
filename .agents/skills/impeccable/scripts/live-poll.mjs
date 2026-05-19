@@ -75,7 +75,9 @@ Options:
     const fileIdx = args.indexOf('--file');
     const filePath = fileIdx !== -1 && fileIdx + 1 < args.length ? args[fileIdx + 1] : undefined;
     // Message is any remaining positional arg that isn't a flag
-    const message = args.find((a, i) => i > replyIdx + 2 && !a.startsWith('--') && i !== fileIdx + 1) || undefined;
+    const message =
+      args.find((a, i) => i > replyIdx + 2 && !a.startsWith('--') && i !== fileIdx + 1) ||
+      undefined;
 
     if (!id) {
       console.error('Usage: npx impeccable poll --reply <id> <status> [--file path] [message]');
@@ -101,7 +103,7 @@ Options:
   // fetch enforces a 300s headers timeout, so we loop in slices under that
   // ceiling and keep re-polling until we get a real event or the user's
   // total timeout runs out.
-  const timeoutArg = args.find(a => a.startsWith('--timeout='));
+  const timeoutArg = args.find((a) => a.startsWith('--timeout='));
   const totalTimeout = timeoutArg ? parseInt(timeoutArg.split('=')[1], 10) : 600000;
 
   const deadline = Date.now() + totalTimeout;
@@ -140,18 +142,23 @@ Options:
     if (event.type === 'accept' || event.type === 'discard') {
       const __dirname = path.dirname(fileURLToPath(import.meta.url));
       const acceptScript = path.join(__dirname, 'live-accept.mjs');
-      const scriptArgs = event.type === 'discard'
-        ? ['--id', event.id, '--discard']
-        : ['--id', event.id, '--variant', event.variantId];
-      if (event.type === 'accept' && event.paramValues && Object.keys(event.paramValues).length > 0) {
+      const scriptArgs =
+        event.type === 'discard'
+          ? ['--id', event.id, '--discard']
+          : ['--id', event.id, '--variant', event.variantId];
+      if (
+        event.type === 'accept' &&
+        event.paramValues &&
+        Object.keys(event.paramValues).length > 0
+      ) {
         scriptArgs.push('--param-values', JSON.stringify(event.paramValues));
       }
       try {
-        const out = execFileSync(
-          'node',
-          [acceptScript, ...scriptArgs],
-          { encoding: 'utf-8', cwd: process.cwd(), timeout: 30_000 }
-        );
+        const out = execFileSync('node', [acceptScript, ...scriptArgs], {
+          encoding: 'utf-8',
+          cwd: process.cwd(),
+          timeout: 30_000,
+        });
         event._acceptResult = JSON.parse(out.trim());
       } catch (err) {
         event._acceptResult = { handled: false, mode: 'error', error: err.message };
@@ -170,7 +177,11 @@ Options:
         event._completionAck = { ok: false, error: err.message };
       }
       if (!event._completionAck) {
-        event._completionAck = completionAckForAcceptResult(event.id, completionType, event._acceptResult);
+        event._completionAck = completionAckForAcceptResult(
+          event.id,
+          completionType,
+          event._acceptResult,
+        );
       }
     }
 
@@ -178,7 +189,11 @@ Options:
     // JSON but skips nested fields. One line is enough — the full checklist
     // is in reference/live.md.
     if (event._acceptResult?.carbonize === true) {
-      process.stderr.write('\n⚠ Carbonize cleanup REQUIRED before next poll. After cleanup, run live-complete.mjs --id ' + event.id + '. See reference/live.md "Required after accept".\n\n');
+      process.stderr.write(
+        '\n⚠ Carbonize cleanup REQUIRED before next poll. After cleanup, run live-complete.mjs --id ' +
+          event.id +
+          '. See reference/live.md "Required after accept".\n\n',
+      );
     }
 
     // Print the event as JSON — the agent reads this from stdout

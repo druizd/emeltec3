@@ -13,11 +13,7 @@ import { SkeletonComponent } from './skeleton';
   imports: [SkeletonComponent],
   host: { class: 'block' },
   template: `
-    <div
-      class="flex flex-col gap-2"
-      role="status"
-      [attr.aria-label]="'Cargando gráfico'"
-    >
+    <div class="flex flex-col gap-2" role="status" [attr.aria-label]="'Cargando gráfico'">
       <div class="grid grid-cols-[42px_minmax(0,1fr)] gap-2">
         <!-- Y axis labels -->
         <div class="flex flex-col justify-between py-1">
@@ -32,10 +28,7 @@ import { SkeletonComponent } from './skeleton';
           [style.height.px]="height"
         >
           @for (h of barHeights; track $index) {
-            <app-skeleton
-              class="flex-1 rounded-t-sm"
-              [style.height.%]="h"
-            ></app-skeleton>
+            <app-skeleton class="flex-1 rounded-t-sm" [style.height.%]="h"></app-skeleton>
           }
         </div>
       </div>
@@ -58,6 +51,9 @@ export class ChartSkeletonComponent {
   private readonly heightPattern = [55, 78, 42, 90, 63, 71, 38, 84, 50, 66, 73, 45];
 
   get barHeights(): number[] {
-    return Array.from({ length: this.bars }, (_, i) => this.heightPattern[i % this.heightPattern.length]);
+    return Array.from(
+      { length: this.bars },
+      (_, i) => this.heightPattern[i % this.heightPattern.length],
+    );
   }
 }

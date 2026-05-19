@@ -57,9 +57,7 @@ import { TableSkeletonComponent } from '../../../components/ui/table-skeleton';
       <div class="flex flex-col gap-6">
         <app-kpi-strip-skeleton />
 
-        <section
-          class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)]"
-        >
+        <section class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)]">
           <div class="flex flex-col gap-5">
             <article
               class="flex flex-1 flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
@@ -80,9 +78,7 @@ import { TableSkeletonComponent } from '../../../components/ui/table-skeleton';
               <app-chart-skeleton [bars]="12" [height]="220" />
             </article>
 
-            <article
-              class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-            >
+            <article class="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
               <app-skeleton class="mb-3 h-4 w-32 rounded" />
               <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                 @for (_ of quickActions; track $index) {
@@ -95,9 +91,7 @@ import { TableSkeletonComponent } from '../../../components/ui/table-skeleton';
 
         <!-- Registros DGA table -->
         <section class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div
-            class="flex items-center justify-between border-b border-slate-100 px-4 py-3"
-          >
+          <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
             <div class="space-y-2">
               <app-skeleton class="h-4 w-40 rounded" />
               <app-skeleton class="h-3 w-56 rounded" />

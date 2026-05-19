@@ -23,7 +23,10 @@ function parseFrontmatter(md) {
 
   let end = -1;
   for (let i = 1; i < lines.length; i++) {
-    if (lines[i].trim() === '---') { end = i; break; }
+    if (lines[i].trim() === '---') {
+      end = i;
+      break;
+    }
   }
   if (end === -1) return { frontmatter: null, body: md };
 
@@ -202,10 +205,19 @@ function collectParagraphs(lines) {
   };
   for (const raw of lines) {
     const trimmed = raw.trim();
-    if (trimmed === '') { flush(); continue; }
+    if (trimmed === '') {
+      flush();
+      continue;
+    }
     // Horizontal rules (---, ***) and headings/bullets end a paragraph.
-    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed)) { flush(); continue; }
-    if (raw.startsWith('#') || raw.match(/^[-*]\s/)) { flush(); continue; }
+    if (/^(?:-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+      flush();
+      continue;
+    }
+    if (raw.startsWith('#') || raw.match(/^[-*]\s/)) {
+      flush();
+      continue;
+    }
     buf.push(trimmed);
   }
   flush();
@@ -292,7 +304,10 @@ function extractNamedRules(lines) {
   for (const b of collectBullets(lines)) {
     const mm = b.match(/^\*\*([^*]+?)\*\*\s*(.+)$/);
     if (!mm) continue;
-    const nameRaw = mm[1].replace(/[.:]\s*$/, '').replace(/["“”]/g, '').trim();
+    const nameRaw = mm[1]
+      .replace(/[.:]\s*$/, '')
+      .replace(/["“”]/g, '')
+      .trim();
     if (!/^The\b.+\b(Rule|Fallback|Principle)$/i.test(nameRaw)) continue;
     if (seen.has(nameRaw.toLowerCase())) continue;
     seen.add(nameRaw.toLowerCase());
@@ -319,9 +334,7 @@ function extractOverview(section) {
 
   // Philosophy paragraphs: everything that isn't a rule header or key-char block
   const paragraphs = collectParagraphs(section.lines).filter(
-    (p) =>
-      !p.startsWith('**Creative North Star') &&
-      !p.startsWith('**Key Characteristics')
+    (p) => !p.startsWith('**Creative North Star') && !p.startsWith('**Key Characteristics'),
   );
 
   return {
@@ -481,9 +494,7 @@ function parseStitchInlineGroups(lines) {
   for (const line of lines) {
     if (!/^\s*[-*]\s/.test(line)) continue;
     const trimmed = line.replace(/^\s*[-*]\s+/, '').trim();
-    const m = trimmed.match(
-      /^\*\*([A-Z][a-zA-Z]+)\s*\(([^)]+)\):\*\*\s*(.*)$/
-    );
+    const m = trimmed.match(/^\*\*([A-Z][a-zA-Z]+)\s*\(([^)]+)\):\*\*\s*(.*)$/);
     if (m) {
       const role = m[1];
       const color = buildColor(role, m[2], m[3]);
@@ -527,11 +538,13 @@ function extractTypography(section) {
 
   // Character paragraph — either a **Character:** label, or fall back to the
   // first free paragraph under the section header (Stitch style).
-  const characterMatch = text.match(/\*\*Character:\*\*\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|\n###|\n##|$)/);
+  const characterMatch = text.match(
+    /\*\*Character:\*\*\s*([^\n]+(?:\n[^\n]+)*?)(?=\n\n|\n###|\n##|$)/,
+  );
   let character = characterMatch ? characterMatch[1].replace(/\n/g, ' ').trim() : null;
   if (!character) {
     const paragraphs = collectParagraphs(section.lines).filter(
-      (p) => !/^\*\*[\w\s/&]+Font/i.test(p) && !/^\*\*[\w\s/&]+\([^)]+\)/.test(p)
+      (p) => !/^\*\*[\w\s/&]+Font/i.test(p) && !/^\*\*[\w\s/&]+\([^)]+\)/.test(p),
     );
     if (paragraphs.length) character = paragraphs[0];
   }
@@ -637,8 +650,7 @@ function extractInlineShadows(text) {
         .replace(/^(?:a|an|the)\s+/i, '')
         .trim();
       if (stripped) {
-        name =
-          stripped.charAt(0).toUpperCase() + stripped.slice(1) + ' shadow';
+        name = stripped.charAt(0).toUpperCase() + stripped.slice(1) + ' shadow';
       }
     }
     out.push({
@@ -659,8 +671,7 @@ function parseShadowBullet(bullet) {
   if (!m) return null;
   const rawValue = m[2].replace(/^box-shadow:\s*/i, '').trim();
   const looksLikeShadow =
-    /box-shadow|rgba?\(|\bpx\b|\brem\b|^-?\d+\s/i.test(rawValue) &&
-    /\d/.test(rawValue);
+    /box-shadow|rgba?\(|\bpx\b|\brem\b|^-?\d+\s/i.test(rawValue) && /\d/.test(rawValue);
   if (!looksLikeShadow) return null;
   const name = stripBold(m[1]).trim();
   return {
@@ -692,7 +703,11 @@ function extractComponents(section) {
         const value = stripBold(m[2]).trim();
         // Heuristic: "Primary", "Secondary", "Hover", "Focus" etc are variants;
         // "Shape", "Background", "Padding" are properties.
-        if (/^(primary|secondary|tertiary|ghost|hover|focus|active|disabled|default|error|selected|unselected|state)$/i.test(key.split(/[\s/]/)[0])) {
+        if (
+          /^(primary|secondary|tertiary|ghost|hover|focus|active|disabled|default|error|selected|unselected|state)$/i.test(
+            key.split(/[\s/]/)[0],
+          )
+        ) {
           variants.push({ name: key, description: value });
         } else {
           properties[key.toLowerCase()] = value;

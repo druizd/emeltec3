@@ -45,7 +45,10 @@ export class ShortcutService {
   readonly visibleBindings = computed<ShortcutBinding[]>(() => {
     const user = this.auth.user();
     if (!user) return [];
-    return this.bindings.filter((b) => !b.roles || b.roles.includes(user.tipo as 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente'));
+    return this.bindings.filter(
+      (b) =>
+        !b.roles || b.roles.includes(user.tipo as 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente'),
+    );
   });
 
   private leadIn: 'g' | null = null;

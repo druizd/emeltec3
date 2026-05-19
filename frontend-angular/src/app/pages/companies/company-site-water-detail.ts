@@ -597,186 +597,200 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
             </section>
           } @else if (activeDetailTab() === 'dga') {
-            <div role="tabpanel" id="tabpanel-dga" aria-labelledby="tab-dga" class="flex flex-col gap-6">
+            <div
+              role="tabpanel"
+              id="tabpanel-dga"
+              aria-labelledby="tab-dga"
+              class="flex flex-col gap-6"
+            >
               @if (dgaLoading()) {
                 <app-kpi-strip-skeleton />
               } @else {
-              <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
-                <!-- Enviados: cuenta en rango filtrado -->
-                <article
-                  class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
-                >
-                  <p
-                    class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600"
+                <section class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  <!-- Enviados: cuenta en rango filtrado -->
+                  <article
+                    class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
                   >
-                    Enviados
-                  </p>
-                  <p class="mt-1 text-h3 font-semibold leading-none text-emerald-600">
-                    {{ dgaCountEnviados() }}
-                  </p>
-                  <p class="mt-1 text-caption font-semibold text-emerald-500">en rango filtrado</p>
-                </article>
-
-                <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
-                @if (dgaUltimoEnvio()?.comprobante; as comp) {
-                  @if (comprobanteUrl(comp); as url) {
-                    <a
-                      [href]="url"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      [title]="'Abrir comprobante en SNIA · ' + comp"
-                      class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600"
                     >
-                      <div class="flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-[14px] text-emerald-600"
-                          >verified</span
-                        >
-                        <p
-                          class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                        >
-                          Último envío aceptado
-                        </p>
-                      </div>
-                      <p
-                        class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
+                      Enviados
+                    </p>
+                    <p class="mt-1 text-h3 font-semibold leading-none text-emerald-600">
+                      {{ dgaCountEnviados() }}
+                    </p>
+                    <p class="mt-1 text-caption font-semibold text-emerald-500">
+                      en rango filtrado
+                    </p>
+                  </article>
+
+                  <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
+                  @if (dgaUltimoEnvio()?.comprobante; as comp) {
+                    @if (comprobanteUrl(comp); as url) {
+                      <a
+                        [href]="url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        [title]="'Abrir comprobante en SNIA · ' + comp"
+                        class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
                       >
-                        {{ dgaUltimoEnvioFecha() }}
-                      </p>
-                    </a>
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-[14px] text-emerald-600"
+                            >verified</span
+                          >
+                          <p
+                            class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                          >
+                            Último envío aceptado
+                          </p>
+                        </div>
+                        <p
+                          class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
+                        >
+                          {{ dgaUltimoEnvioFecha() }}
+                        </p>
+                      </a>
+                    } @else {
+                      <article
+                        class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm"
+                        [title]="'Carga el número de obra para habilitar el link SNIA · ' + comp"
+                      >
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-[14px] text-emerald-600"
+                            >verified</span
+                          >
+                          <p
+                            class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                          >
+                            Último envío aceptado
+                          </p>
+                        </div>
+                        <p
+                          class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
+                        >
+                          {{ dgaUltimoEnvioFecha() }}
+                        </p>
+                        <span class="truncate font-mono text-caption-xs text-slate-500">{{
+                          comp
+                        }}</span>
+                      </article>
+                    }
                   } @else {
                     <article
-                      class="flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm"
-                      [title]="'Carga el número de obra para habilitar el link SNIA · ' + comp"
+                      class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
                     >
-                      <div class="flex items-center gap-1.5">
-                        <span class="material-symbols-outlined text-[14px] text-emerald-600"
-                          >verified</span
-                        >
-                        <p
-                          class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                        >
-                          Último envío aceptado
-                        </p>
-                      </div>
                       <p
-                        class="text-center font-mono text-h4 font-semibold leading-tight text-slate-800"
+                        class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
                       >
-                        {{ dgaUltimoEnvioFecha() }}
+                        Último envío aceptado
                       </p>
-                      <span class="truncate font-mono text-caption-xs text-slate-500">{{
-                        comp
-                      }}</span>
+                      <p class="font-mono text-h4 font-semibold leading-tight text-slate-400">—</p>
+                      <span class="text-caption-xs italic text-slate-400">sin envíos aún</span>
                     </article>
                   }
-                } @else {
-                  <article
-                    class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
-                  >
-                    <p
-                      class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                    >
-                      Último envío aceptado
-                    </p>
-                    <p class="font-mono text-h4 font-semibold leading-tight text-slate-400">—</p>
-                    <span class="text-caption-xs italic text-slate-400">sin envíos aún</span>
-                  </article>
-                }
 
-                <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
-                <article
-                  [class]="
-                    'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
-                    dgaTasaExitoColors().border +
-                    ' ' +
-                    dgaTasaExitoColors().bg
-                  "
-                >
-                  <div class="flex items-start justify-between">
+                  <!-- Tasa éxito: enviados / (enviados + rechazados + fallidos). Color dinamico. -->
+                  <article
+                    [class]="
+                      'relative rounded-xl border px-4 py-3 text-center shadow-sm ' +
+                      dgaTasaExitoColors().border +
+                      ' ' +
+                      dgaTasaExitoColors().bg
+                    "
+                  >
+                    <div class="flex items-start justify-between">
+                      <p
+                        [class]="
+                          'flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
+                          dgaTasaExitoColors().text
+                        "
+                      >
+                        Tasa de éxito
+                      </p>
+                      <details class="group relative">
+                        <summary
+                          [class]="
+                            'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
+                            dgaTasaExitoColors().text
+                          "
+                          aria-label="Ver leyenda de la tasa de éxito"
+                        >
+                          <span class="material-symbols-outlined text-[14px]">help_outline</span>
+                        </summary>
+                        <div
+                          class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-caption shadow-lg"
+                        >
+                          <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
+                          <p class="mb-3 text-slate-500">
+                            enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan
+                            slots dentro del rango filtrado.
+                          </p>
+                          <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
+                          <ul class="space-y-1.5 text-slate-600">
+                            <li class="flex items-center gap-2">
+                              <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
+                              100 %: sin rechazos
+                            </li>
+                            <li class="flex items-center gap-2">
+                              <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                              90–99 %: alerta leve
+                            </li>
+                            <li class="flex items-center gap-2">
+                              <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>
+                              75–89 %: revisar configuración
+                            </li>
+                            <li class="flex items-center gap-2">
+                              <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
+                              60–74 %: atención requerida
+                            </li>
+                            <li class="flex items-center gap-2">
+                              <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
+                              40–59 %: bloqueo probable
+                            </li>
+                            <li class="flex items-center gap-2">
+                              <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
+                              &lt; 40 %: falla persistente
+                            </li>
+                          </ul>
+                        </div>
+                      </details>
+                    </div>
                     <p
                       [class]="
-                        'flex-1 text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
+                        'mt-1 text-h3 font-semibold leading-none ' + dgaTasaExitoColors().text
+                      "
+                    >
+                      {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
+                    </p>
+                    <p
+                      [class]="
+                        'mt-1 text-caption-xs font-bold uppercase tracking-wider ' +
                         dgaTasaExitoColors().text
                       "
                     >
-                      Tasa de éxito
+                      {{ dgaTasaExitoLabel() }}
                     </p>
-                    <details class="group relative">
-                      <summary
-                        [class]="
-                          'flex h-5 w-5 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ' +
-                          dgaTasaExitoColors().text
-                        "
-                        aria-label="Ver leyenda de la tasa de éxito"
-                      >
-                        <span class="material-symbols-outlined text-[14px]">help_outline</span>
-                      </summary>
-                      <div
-                        class="absolute right-0 top-7 z-10 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-caption shadow-lg"
-                      >
-                        <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
-                        <p class="mb-3 text-slate-500">
-                          enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
-                          dentro del rango filtrado.
-                        </p>
-                        <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
-                        <ul class="space-y-1.5 text-slate-600">
-                          <li class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>
-                            100 %: sin rechazos
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
-                            90–99 %: alerta leve
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-lime-500"></span>
-                            75–89 %: revisar configuración
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>
-                            60–74 %: atención requerida
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-orange-500"></span>
-                            40–59 %: bloqueo probable
-                          </li>
-                          <li class="flex items-center gap-2">
-                            <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                            &lt; 40 %: falla persistente
-                          </li>
-                        </ul>
-                      </div>
-                    </details>
-                  </div>
-                  <p
-                    [class]="'mt-1 text-h3 font-semibold leading-none ' + dgaTasaExitoColors().text"
-                  >
-                    {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
-                  </p>
-                  <p
-                    [class]="'mt-1 text-caption-xs font-bold uppercase tracking-wider ' + dgaTasaExitoColors().text"
-                  >
-                    {{ dgaTasaExitoLabel() }}
-                  </p>
-                  <p class="text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
-                </article>
+                    <p class="text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
+                  </article>
 
-                <!-- Rechazados: cuenta en rango -->
-                <article
-                  class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
-                  title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
-                >
-                  <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
-                    Rechazados
-                  </p>
-                  <p class="mt-1 text-h3 font-semibold leading-none text-rose-600">
-                    {{ dgaCountRechazados() }}
-                  </p>
-                  <p class="mt-1 text-caption font-semibold text-rose-700">
-                    Rechazados por SNIA + fallidos antes del envío
-                  </p>
-                </article>
-              </section>
+                  <!-- Rechazados: cuenta en rango -->
+                  <article
+                    class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
+                    title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
+                  >
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700"
+                    >
+                      Rechazados
+                    </p>
+                    <p class="mt-1 text-h3 font-semibold leading-none text-rose-600">
+                      {{ dgaCountRechazados() }}
+                    </p>
+                    <p class="mt-1 text-caption font-semibold text-rose-700">
+                      Rechazados por SNIA + fallidos antes del envío
+                    </p>
+                  </article>
+                </section>
               }
 
               <section
@@ -1273,9 +1287,7 @@ type OperationMode = 'realtime' | 'turnos';
                             [value]="svgFillPct"
                             unit="%"
                           >
-                            <div
-                              class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200"
-                            >
+                            <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
                               <div
                                 class="h-full rounded-full bg-gradient-to-r from-primary-container to-emerald-500"
                                 [style.width.%]="wellFillStylePercent()"
@@ -1301,9 +1313,7 @@ type OperationMode = 'realtime' | 'turnos';
                               [value]="wellSignalPercent() ?? ''"
                               unit="%"
                             >
-                              <div
-                                class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200"
-                              >
+                              <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
                                 <div
                                   class="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
                                   [style.width.%]="wellSignalPercent()"
@@ -1365,84 +1375,85 @@ type OperationMode = 'realtime' | 'turnos';
                         <app-chart-skeleton [bars]="12" [height]="250" />
                       </div>
                     } @else {
-                    <div class="mt-5 grid grid-cols-[58px_minmax(0,1fr)] gap-2">
-                      <div
-                        class="grid h-[250px] grid-rows-5 text-right text-caption font-semibold text-slate-400"
-                      >
-                        @for (tick of monthlyFlowTicks(); track $index) {
-                          <span>{{ tick }}</span>
-                        }
-                      </div>
-
-                      <div class="relative h-[250px] border-b border-l border-slate-200">
-                        <div class="absolute inset-0 grid grid-rows-4">
-                          <span class="border-t border-slate-200"></span>
-                          <span class="border-t border-slate-200"></span>
-                          <span class="border-t border-slate-200"></span>
-                          <span class="border-t border-slate-200"></span>
-                        </div>
-
+                      <div class="mt-5 grid grid-cols-[58px_minmax(0,1fr)] gap-2">
                         <div
-                          class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
+                          class="grid h-[250px] grid-rows-5 text-right text-caption font-semibold text-slate-400"
                         >
-                          @for (month of monthlyFlowMonths(); track $index) {
-                            <div
-                              class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
-                            >
-                              <div
-                                class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-caption-xs font-semibold text-white shadow-lg group-hover:block"
-                              >
-                                <div class="font-bold">{{ month.label }}</div>
-                                <div class="font-mono">
-                                  {{ formatMonthlyFlowValue(month.value) }} {{ monthlyFlowUnit() }}
-                                </div>
-                                @if (month.proyeccion) {
-                                  <div class="font-mono text-slate-300">
-                                    proy. {{ formatMonthlyFlowValue(month.proyeccion) }}
-                                    {{ monthlyFlowUnit() }}
-                                  </div>
-                                }
-                                <div
-                                  class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-800"
-                                ></div>
-                              </div>
-                              <div
-                                class="mx-auto flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t"
-                                [style.height.%]="
-                                  month.proyeccion && month.proyeccion > month.value
-                                    ? getMonthlyFlowHeight(month.proyeccion)
-                                    : getMonthlyFlowHeight(month.value)
-                                "
-                              >
-                                @if (month.proyeccion && month.proyeccion > month.value) {
-                                  <div
-                                    class="w-full bg-[#5874c8]/30"
-                                    [style.height.%]="getMonthlyFlowProjectionExtra(month)"
-                                  ></div>
-                                }
-                                <div
-                                  class="w-full bg-[#5874c8] shadow-sm transition-opacity group-hover:opacity-85"
-                                  [style.flex]="'1 1 auto'"
-                                ></div>
-                              </div>
-                            </div>
+                          @for (tick of monthlyFlowTicks(); track $index) {
+                            <span>{{ tick }}</span>
                           }
                         </div>
-                      </div>
-                    </div>
 
-                    <div
-                      class="ml-[66px] mt-2 flex h-10 justify-between gap-2 px-2 text-caption-xs font-bold text-slate-400"
-                    >
-                      @for (month of monthlyFlowMonths(); track $index) {
-                        <div class="relative h-full min-w-0 flex-1">
-                          <span
-                            class="absolute right-1/2 top-1 origin-top-right -rotate-45 whitespace-nowrap"
-                            >{{ month.label }}</span
+                        <div class="relative h-[250px] border-b border-l border-slate-200">
+                          <div class="absolute inset-0 grid grid-rows-4">
+                            <span class="border-t border-slate-200"></span>
+                            <span class="border-t border-slate-200"></span>
+                            <span class="border-t border-slate-200"></span>
+                            <span class="border-t border-slate-200"></span>
+                          </div>
+
+                          <div
+                            class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                           >
+                            @for (month of monthlyFlowMonths(); track $index) {
+                              <div
+                                class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
+                              >
+                                <div
+                                  class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-caption-xs font-semibold text-white shadow-lg group-hover:block"
+                                >
+                                  <div class="font-bold">{{ month.label }}</div>
+                                  <div class="font-mono">
+                                    {{ formatMonthlyFlowValue(month.value) }}
+                                    {{ monthlyFlowUnit() }}
+                                  </div>
+                                  @if (month.proyeccion) {
+                                    <div class="font-mono text-slate-300">
+                                      proy. {{ formatMonthlyFlowValue(month.proyeccion) }}
+                                      {{ monthlyFlowUnit() }}
+                                    </div>
+                                  }
+                                  <div
+                                    class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-slate-800"
+                                  ></div>
+                                </div>
+                                <div
+                                  class="mx-auto flex w-full max-w-[28px] flex-col justify-end overflow-hidden rounded-t"
+                                  [style.height.%]="
+                                    month.proyeccion && month.proyeccion > month.value
+                                      ? getMonthlyFlowHeight(month.proyeccion)
+                                      : getMonthlyFlowHeight(month.value)
+                                  "
+                                >
+                                  @if (month.proyeccion && month.proyeccion > month.value) {
+                                    <div
+                                      class="w-full bg-[#5874c8]/30"
+                                      [style.height.%]="getMonthlyFlowProjectionExtra(month)"
+                                    ></div>
+                                  }
+                                  <div
+                                    class="w-full bg-[#5874c8] shadow-sm transition-opacity group-hover:opacity-85"
+                                    [style.flex]="'1 1 auto'"
+                                  ></div>
+                                </div>
+                              </div>
+                            }
+                          </div>
                         </div>
-                      }
-                    </div>
+                      </div>
+
+                      <div
+                        class="ml-[66px] mt-2 flex h-10 justify-between gap-2 px-2 text-caption-xs font-bold text-slate-400"
+                      >
+                        @for (month of monthlyFlowMonths(); track $index) {
+                          <div class="relative h-full min-w-0 flex-1">
+                            <span
+                              class="absolute right-1/2 top-1 origin-top-right -rotate-45 whitespace-nowrap"
+                              >{{ month.label }}</span
+                            >
+                          </div>
+                        }
+                      </div>
                     }
                   </article>
 
@@ -1527,102 +1538,103 @@ type OperationMode = 'realtime' | 'turnos';
                       <app-table-skeleton [rows]="6" [columns]="5" [showHeader]="false" />
                     </div>
                   } @else {
-                  <table class="w-full min-w-[960px] text-left text-body-sm">
-                    <thead class="bg-slate-50">
-                      <tr class="border-b border-slate-100">
-                        @for (
-                          h of [
-                            'Fecha',
-                            'Nv. Freático [m]',
-                            'Caudal [l/s]',
-                            'Totalizador [m³]',
-                            'Estado',
-                          ];
-                          track h
-                        ) {
-                          <th class="dga-table-header">{{ h }}</th>
-                        }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (report of paginatedDgaReports(); track report.id) {
+                    <table class="w-full min-w-[960px] text-left text-body-sm">
+                      <thead class="bg-slate-50">
                         <tr class="border-b border-slate-100">
-                          <td class="dga-table-cell dga-table-cell--muted">
-                            {{ report.fecha }}
-                          </td>
-                          <td class="dga-table-cell">
-                            {{ formatDgaNumber(report.nivelFreatico) }}
-                          </td>
-                          <td class="dga-table-cell">
-                            {{ formatDgaNumber(report.caudal) }}
-                          </td>
-                          <td class="dga-table-cell">
-                            {{ formatDgaInteger(report.totalizador) }}
-                          </td>
-                          <td class="px-4 py-3">
-                            <div class="flex flex-col gap-1">
-                              <div class="inline-flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  (click)="openDgaReportDetail(report)"
-                                  class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
-                                  [style.background]="getDgaStatusBg(report.estado)"
-                                  [style.border-color]="getDgaStatusBorder(report.estado)"
-                                  [style.color]="getDgaStatusColor(report.estado)"
-                                >
-                                  <span
-                                    class="h-[5px] w-[5px] rounded-full"
-                                    [style.background]="getDgaStatusColor(report.estado)"
-                                  ></span>
-                                  {{ report.estado }}
-                                  <span class="material-symbols-outlined text-[13px]"
-                                    >chevron_right</span
+                          @for (
+                            h of [
+                              'Fecha',
+                              'Nv. Freático [m]',
+                              'Caudal [l/s]',
+                              'Totalizador [m³]',
+                              'Estado',
+                            ];
+                            track h
+                          ) {
+                            <th class="dga-table-header">{{ h }}</th>
+                          }
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (report of paginatedDgaReports(); track report.id) {
+                          <tr class="border-b border-slate-100">
+                            <td class="dga-table-cell dga-table-cell--muted">
+                              {{ report.fecha }}
+                            </td>
+                            <td class="dga-table-cell">
+                              {{ formatDgaNumber(report.nivelFreatico) }}
+                            </td>
+                            <td class="dga-table-cell">
+                              {{ formatDgaNumber(report.caudal) }}
+                            </td>
+                            <td class="dga-table-cell">
+                              {{ formatDgaInteger(report.totalizador) }}
+                            </td>
+                            <td class="px-4 py-3">
+                              <div class="flex flex-col gap-1">
+                                <div class="inline-flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    (click)="openDgaReportDetail(report)"
+                                    class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
+                                    [style.background]="getDgaStatusBg(report.estado)"
+                                    [style.border-color]="getDgaStatusBorder(report.estado)"
+                                    [style.color]="getDgaStatusColor(report.estado)"
                                   >
-                                </button>
-                                @if (
-                                  report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
-                                  as snia
-                                ) {
-                                  <a
-                                    [href]="snia"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    (click)="$event.stopPropagation()"
-                                    [title]="'Ver comprobante en SNIA: ' + report.comprobante"
-                                    class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
-                                  >
-                                    <span class="material-symbols-outlined text-[14px]"
-                                      >receipt_long</span
+                                    <span
+                                      class="h-[5px] w-[5px] rounded-full"
+                                      [style.background]="getDgaStatusColor(report.estado)"
+                                    ></span>
+                                    {{ report.estado }}
+                                    <span class="material-symbols-outlined text-[13px]"
+                                      >chevron_right</span
                                     >
-                                  </a>
+                                  </button>
+                                  @if (
+                                    report.estado === 'Enviado' &&
+                                      comprobanteUrl(report.comprobante);
+                                    as snia
+                                  ) {
+                                    <a
+                                      [href]="snia"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      (click)="$event.stopPropagation()"
+                                      [title]="'Ver comprobante en SNIA: ' + report.comprobante"
+                                      class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
+                                    >
+                                      <span class="material-symbols-outlined text-[14px]"
+                                        >receipt_long</span
+                                      >
+                                    </a>
+                                  }
+                                </div>
+                                @if (
+                                  report.estado === 'Rechazado' ||
+                                  report.estado === 'Fallido' ||
+                                  report.estado === 'Revisar'
+                                ) {
+                                  <p
+                                    class="max-w-[420px] text-caption-xs font-medium leading-snug text-slate-500"
+                                  >
+                                    {{ report.respuesta }}
+                                  </p>
                                 }
                               </div>
-                              @if (
-                                report.estado === 'Rechazado' ||
-                                report.estado === 'Fallido' ||
-                                report.estado === 'Revisar'
-                              ) {
-                                <p
-                                  class="max-w-[420px] text-caption-xs font-medium leading-snug text-slate-500"
-                                >
-                                  {{ report.respuesta }}
-                                </p>
-                              }
-                            </div>
-                          </td>
-                        </tr>
-                      } @empty {
-                        <tr>
-                          <td
-                            colspan="5"
-                            class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
-                          >
-                            Sin registros para el periodo seleccionado.
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td
+                              colspan="5"
+                              class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
+                            >
+                              Sin registros para el periodo seleccionado.
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
                   }
                 </div>
 

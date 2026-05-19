@@ -337,7 +337,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               </select>
               @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
                 <p class="mt-1 flex items-center gap-1 text-caption-xs text-amber-600">
-                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">warning</span>
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                    >warning</span
+                  >
                   "{{ draft.variable_key }}" no está en las variables registradas del sitio.
                 </p>
               }
@@ -497,7 +499,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 <span class="material-symbols-outlined text-[18px] text-primary-container"
                   >science</span
                 >
-                <p class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container">
+                <p
+                  class="text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
+                >
                   Vista previa con datos reales
                 </p>
               </div>
@@ -517,8 +521,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               </button>
             </header>
             <p class="text-caption-xs text-on-surface-muted">
-              Evalúa la condición contra las últimas 500 lecturas del sitio. Read-only — no
-              guarda nada ni dispara notificaciones.
+              Evalúa la condición contra las últimas 500 lecturas del sitio. Read-only — no guarda
+              nada ni dispara notificaciones.
             </p>
             @if (simulationError()) {
               <app-inline-error [message]="simulationError()" />
@@ -578,9 +582,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                             <span
                               class="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 font-bold text-rose-700"
                             >
-                              <span
-                                class="material-symbols-outlined text-[12px]"
-                                aria-hidden="true"
+                              <span class="material-symbols-outlined text-[12px]" aria-hidden="true"
                                 >warning</span
                               >
                               dispara

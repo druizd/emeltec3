@@ -8,7 +8,13 @@ import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, HeaderComponent, SidebarComponent, ShortcutPaletteComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    HeaderComponent,
+    SidebarComponent,
+    ShortcutPaletteComponent,
+  ],
   template: `
     <a
       href="#main-content"

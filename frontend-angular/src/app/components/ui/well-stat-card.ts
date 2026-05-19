@@ -20,8 +20,7 @@ export type WellStatTone = 'primary' | 'neutral' | 'orange' | 'blue';
         {{ label }}
       </p>
       <p [class]="valueClass()" style="font-family: var(--font-mono); line-height: 1;">
-        {{ value
-        }}<span class="ml-0.5 text-[11px] font-semibold text-slate-500">{{ unit }}</span>
+        {{ value }}<span class="ml-0.5 text-[11px] font-semibold text-slate-500">{{ unit }}</span>
       </p>
       @if (helper) {
         <p class="mt-0.5 text-[9px] font-medium text-slate-400">{{ helper }}</p>

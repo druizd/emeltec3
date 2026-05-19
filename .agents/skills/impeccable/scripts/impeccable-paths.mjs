@@ -14,10 +14,7 @@ export function getDesignSidecarPath(cwd = process.cwd()) {
 }
 
 export function getDesignSidecarCandidates(cwd = process.cwd(), contextDir = cwd) {
-  const candidates = [
-    getDesignSidecarPath(cwd),
-    path.join(cwd, 'DESIGN.json'),
-  ];
+  const candidates = [getDesignSidecarPath(cwd), path.join(cwd, 'DESIGN.json')];
   const contextLegacy = path.join(contextDir, 'DESIGN.json');
   if (!candidates.includes(contextLegacy)) candidates.push(contextLegacy);
   return candidates;
@@ -81,7 +78,9 @@ export function writeLiveServerInfo(cwd = process.cwd(), info) {
 
 export function removeLiveServerInfo(cwd = process.cwd()) {
   for (const filePath of [getLiveServerPath(cwd), getLegacyLiveServerPath(cwd)]) {
-    try { fs.unlinkSync(filePath); } catch {}
+    try {
+      fs.unlinkSync(filePath);
+    } catch {}
   }
 }
 

@@ -21,9 +21,7 @@ import { SkeletonComponent } from './skeleton';
       aria-label="Cargando tabla"
     >
       @if (showHeader) {
-        <div
-          class="flex items-center gap-4 border-b border-slate-100 bg-slate-50 px-4 py-3"
-        >
+        <div class="flex items-center gap-4 border-b border-slate-100 bg-slate-50 px-4 py-3">
           @for (_ of columnIndices; track $index) {
             <app-skeleton
               class="h-2.5 rounded"
@@ -34,9 +32,7 @@ import { SkeletonComponent } from './skeleton';
       }
 
       @for (_ of rowIndices; track $index) {
-        <div
-          class="flex items-center gap-4 border-b border-slate-50 px-4 py-3 last:border-b-0"
-        >
+        <div class="flex items-center gap-4 border-b border-slate-50 px-4 py-3 last:border-b-0">
           @for (__ of columnIndices; track $index) {
             <app-skeleton
               class="h-3 rounded"
