@@ -1143,29 +1143,21 @@ exports.getDetectedDevices = async (req, res, next) => {
 
     const { rows } = await db.query(
       `
-      WITH latest AS (
-        SELECT
+      WITH last_row AS (
+        SELECT DISTINCT ON (id_serial)
           id_serial,
-          COUNT(*)::int AS total_registros,
-          MAX(COALESCE(received_at, time)) AS ultimo_registro
+          time,
+          COALESCE(received_at, time) AS ultimo_registro,
+          data
         FROM equipo
-        GROUP BY id_serial
-        ORDER BY MAX(COALESCE(received_at, time)) DESC
-        LIMIT $1
-      ),
-      detected_keys AS (
-        SELECT e.id_serial, COUNT(DISTINCT kv.key)::int AS total_datos
-        FROM equipo e
-        JOIN latest l ON l.id_serial = e.id_serial
-        CROSS JOIN LATERAL jsonb_each(COALESCE(e.data, '{}'::jsonb)) AS kv(key, value)
-        GROUP BY e.id_serial
+        ORDER BY id_serial, time DESC
       )
       SELECT
-        l.id_serial,
-        l.total_registros,
-        COALESCE(dk.total_datos, 0)::int AS total_datos,
-        l.ultimo_registro AS ultimo_registro_raw,
-        ${utcTimestampSql('l.ultimo_registro')} AS ultimo_registro,
+        lr.id_serial,
+        0::int AS total_registros,
+        (SELECT COUNT(*)::int FROM jsonb_object_keys(COALESCE(lr.data, '{}'::jsonb))) AS total_datos,
+        lr.ultimo_registro AS ultimo_registro_raw,
+        ${utcTimestampSql('lr.ultimo_registro')} AS ultimo_registro,
         s.id AS sitio_id,
         s.descripcion AS sitio_descripcion,
         s.tipo_sitio,
@@ -1174,12 +1166,12 @@ exports.getDetectedDevices = async (req, res, next) => {
         e.nombre AS empresa_nombre,
         s.sub_empresa_id,
         se.nombre AS sub_empresa_nombre
-      FROM latest l
-      LEFT JOIN detected_keys dk ON dk.id_serial = l.id_serial
-      LEFT JOIN sitio s ON s.id_serial = l.id_serial
+      FROM last_row lr
+      LEFT JOIN sitio s ON s.id_serial = lr.id_serial
       LEFT JOIN empresa e ON e.id = s.empresa_id
       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
-      ORDER BY l.ultimo_registro DESC
+      ORDER BY lr.ultimo_registro DESC
+      LIMIT $1
       `,
       params,
     );
