@@ -163,6 +163,23 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  db-migrate:
+    image: timescale/timescaledb:latest-pg16
+    container_name: emeltec-db-migrate
+    environment:
+      PGHOST: timescaledb
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./scripts:/scripts:ro
+    command: psql -f /scripts/db-migrations.sql
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: 'no'
+
   csvconsumer:
     build:
       context: ./grpc-pipeline
