@@ -135,6 +135,24 @@ const httpServer = app.listen(config.port, () => {
       console.warn('[main-api] No se pudo iniciar contadores worker:', err.message);
     }
   }
+
+  // Cache warmer TS (precalienta dashboard-history en Redis cada 50s).
+  try {
+    const cacheWarmerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'sites',
+      'cacheWarmer',
+    );
+    const { startCacheWarmerWorker } = require(cacheWarmerPath);
+    startCacheWarmerWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar cache warmer worker:', err.message);
+    }
+  }
 });
 
 // Inicia el servidor gRPC en paralelo para clientes internos o servicio a servicio.
