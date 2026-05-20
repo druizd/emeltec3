@@ -4,19 +4,21 @@
 // Flujo general:
 //   csvprocessor (Windows, Go) --gRPC--> csvconsumer (Linux, Rust) --SQL--> PostgreSQL
 //
-// Servicios expuestos (ver proto/logpipeline.proto):
-//   - Ping        → health check simple
-//   - SendRecords → recibe lote de TelemetryRecord y los persiste
+// Modos de inserción (gestionados por flush_task en segundo plano):
+//   Normal: lotes de BATCH_NORMAL (3) registros, flush cada FLUSH_SECS (3) segundos.
+//   Bulk:   cuando la cola supera BULK_THRESHOLD (10), lotes de BATCH_BULK (100).
+//
+// send_records encola y responde inmediatamente; la inserción real es async.
 
+use std::collections::VecDeque;
 use std::env;
 use std::sync::Arc;
 
+use tokio::sync::Mutex;
+use tokio::time::Duration;
 use tokio_postgres::{Client, NoTls};
 use tonic::{transport::Server, Request, Response, Status};
 
-// Módulo generado en tiempo de build a partir de logpipeline.proto.
-// build.rs invoca tonic-build, que escribe el código en OUT_DIR y
-// `include_proto!` lo trae a este árbol con el nombre del paquete proto.
 pub mod logpipeline {
     tonic::include_proto!("logpipeline");
 }
@@ -24,7 +26,15 @@ pub mod logpipeline {
 use logpipeline::log_ingestion_server::{LogIngestion, LogIngestionServer};
 use logpipeline::{PingRequest, PingResponse, SendRecordsRequest, SendRecordsResponse};
 
-// Lee una variable de entorno. Si está vacía o no existe, devuelve `default`.
+// (fecha, hora, id_serial, data)
+type RecordTuple = (String, String, String, String);
+type SharedQueue = Arc<Mutex<VecDeque<RecordTuple>>>;
+
+const BATCH_NORMAL: usize = 3;
+const BATCH_BULK: usize = 100;
+const BULK_THRESHOLD: usize = 10;
+const FLUSH_SECS: u64 = 3;
+
 fn get_env(key: &str, default: &str) -> String {
     match env::var(key) {
         Ok(v) if !v.is_empty() => v,
@@ -32,16 +42,12 @@ fn get_env(key: &str, default: &str) -> String {
     }
 }
 
-// Abre la conexión a PostgreSQL usando variables de entorno (DB_HOST/PORT/...).
-// tokio_postgres separa el `Client` (handle de queries) del `Connection`
-// (driver del socket): el Connection debe correr en su propia task con
-// `tokio::spawn` o las queries se quedan colgadas.
 async fn connect_db() -> Result<Arc<Client>, Box<dyn std::error::Error>> {
     let host = get_env("DB_HOST", "host.docker.internal");
     let port = get_env("DB_PORT", "5433");
     let name = get_env("DB_NAME", "db_infra");
     let user = get_env("DB_USER", "admin_infra");
-    let password = get_env("DB_PASSWORD", "Infra2026Secure!");
+    let password = get_env("DB_PASSWORD", "");
 
     let conn_str = format!(
         "host={} port={} dbname={} user={} password={} sslmode=disable",
@@ -50,7 +56,6 @@ async fn connect_db() -> Result<Arc<Client>, Box<dyn std::error::Error>> {
 
     let (client, connection) = tokio_postgres::connect(&conn_str, NoTls).await?;
 
-    // Driver del socket: lee/escribe sobre el TCP en segundo plano.
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             eprintln!("conexión PostgreSQL terminada: {}", e);
@@ -61,18 +66,100 @@ async fn connect_db() -> Result<Arc<Client>, Box<dyn std::error::Error>> {
     Ok(Arc::new(client))
 }
 
-// Estado compartido por todas las llamadas gRPC.
-// `Arc<Client>` permite clonar refs baratas; tokio_postgres::Client
-// es Send+Sync y serializa internamente las queries por pipeline.
-pub struct ConsumerService {
-    client: Arc<Client>,
+// Inserta un lote en una sola transacción usando multi-row INSERT.
+// Un round-trip a PostgreSQL por lote completo.
+async fn insert_batch(client: &Client, batch: &[RecordTuple]) -> Result<u64, tokio_postgres::Error> {
+    client.execute("BEGIN", &[]).await?;
+
+    let mut param_strs: Vec<&str> = Vec::with_capacity(batch.len() * 4);
+    for (fecha, hora, id_serial, data) in batch {
+        param_strs.push(fecha);
+        param_strs.push(hora);
+        param_strs.push(id_serial);
+        param_strs.push(data);
+    }
+
+    let mut query = String::from("INSERT INTO equipo (time, id_serial, data) VALUES ");
+    for i in 0..batch.len() {
+        let b = i * 4;
+        if i > 0 {
+            query.push_str(", ");
+        }
+        query.push_str(&format!(
+            "((${}  || ' ' || ${})::timestamptz AT TIME ZONE 'UTC', ${}, ${}::text::jsonb)",
+            b + 1, b + 2, b + 3, b + 4
+        ));
+    }
+
+    let params: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = param_strs
+        .iter()
+        .map(|s| s as &(dyn tokio_postgres::types::ToSql + Sync))
+        .collect();
+
+    match client.execute(&query[..], &params[..]).await {
+        Ok(n) => {
+            client.execute("COMMIT", &[]).await?;
+            Ok(n)
+        }
+        Err(e) => {
+            let _ = client.execute("ROLLBACK", &[]).await;
+            Err(e)
+        }
+    }
 }
 
-// Implementación del trait generado por tonic-build a partir del
-// `service LogIngestion` del .proto. Cada `rpc` se vuelve un método async.
+// Tarea de fondo: desencola y persiste cada FLUSH_SECS segundos.
+//
+// Modo normal (cola <= BULK_THRESHOLD):
+//   Extrae hasta BATCH_NORMAL registros y los inserta. Si hay menos de
+//   BATCH_NORMAL en la cola, los envía igual (no espera más).
+//
+// Modo bulk (cola > BULK_THRESHOLD):
+//   Extrae hasta BATCH_BULK registros por iteración hasta vaciar la cola.
+//   Útil cuando hay muchos archivos acumulados: drena más rápido.
+async fn flush_task(client: Arc<Client>, queue: SharedQueue) {
+    let mut ticker = tokio::time::interval(Duration::from_secs(FLUSH_SECS));
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    loop {
+        ticker.tick().await;
+
+        loop {
+            let batch: Vec<RecordTuple> = {
+                let mut q = queue.lock().await;
+                let pending = q.len();
+                if pending == 0 {
+                    break;
+                }
+
+                let batch_size = if pending > BULK_THRESHOLD {
+                    BATCH_BULK
+                } else {
+                    BATCH_NORMAL
+                };
+
+                let take = batch_size.min(pending);
+                q.drain(..take).collect()
+            };
+
+            if batch.is_empty() {
+                break;
+            }
+
+            match insert_batch(&client, &batch).await {
+                Ok(n) => eprintln!("flush: {} registros insertados", n),
+                Err(e) => eprintln!("flush error: {}", e),
+            }
+        }
+    }
+}
+
+pub struct ConsumerService {
+    queue: SharedQueue,
+}
+
 #[tonic::async_trait]
 impl LogIngestion for ConsumerService {
-    // Health check: el processor lo usa para validar conectividad.
     async fn ping(
         &self,
         _req: Request<PingRequest>,
@@ -83,18 +170,16 @@ impl LogIngestion for ConsumerService {
         }))
     }
 
-    // Recibe un lote y lo inserta fila por fila en la tabla `equipo`.
+    // Valida y encola los registros. Responde inmediatamente sin esperar
+    // la inserción en DB (que ocurre en flush_task cada FLUSH_SECS segundos).
     async fn send_records(
         &self,
         req: Request<SendRecordsRequest>,
     ) -> Result<Response<SendRecordsResponse>, Status> {
-        // `into_inner()` extrae el mensaje del envoltorio gRPC (que también
-        // contiene metadata, deadlines, etc.).
         let req = req.into_inner();
         let filename = req.filename;
         let records = req.records;
 
-        // Lote vacío: respondemos ok=true con mensaje informativo (paridad con la versión Go).
         if records.is_empty() {
             return Ok(Response::new(SendRecordsResponse {
                 ok: true,
@@ -104,9 +189,6 @@ impl LogIngestion for ConsumerService {
             }));
         }
 
-        // Validación mínima de cada registro. Al primer fallo, cortamos
-        // el lote y devolvemos ok=true con el mensaje (no es error gRPC,
-        // es resultado de negocio — mismo contrato que el Go original).
         for (i, r) in records.iter().enumerate() {
             let bad = if r.id_serial.trim().is_empty() {
                 Some(format!("registro {} sin id_serial", i))
@@ -129,70 +211,50 @@ impl LogIngestion for ConsumerService {
             }
         }
 
-        // Contadores del lote. `duplicates` queda en 0 porque el INSERT
-        // actual no maneja ON CONFLICT (replica el comportamiento Go).
-        let mut inserted: i32 = 0;
-        let duplicates: i32 = 0;
-
-        // Inserción fila por fila. El INSERT concatena fecha y hora,
-        // los castea a `timestamptz` interpretándolos como UTC, y deja
-        // el campo `data` como JSONB (`$4::text::jsonb` fuerza el tipo
-        // del parámetro a `text` para que tokio_postgres pueda serializar
-        // un String — sin el doble cast, prepare detecta jsonb y falla).
-        for record in &records {
-            let res = self
-                .client
-                .execute(
-                    "INSERT INTO equipo (time, id_serial, data) VALUES (($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC', $3, $4::text::jsonb)",
-                    &[&record.fecha, &record.hora, &record.id_serial, &record.data],
-                )
-                .await;
-
-            match res {
-                Ok(_) => inserted += 1,
-                Err(e) => {
-                    // Error de BD: lo logueamos y respondemos con Status::internal.
-                    // El cliente recibe un error gRPC (no un response con ok=false).
-                    eprintln!("error procesando lote [{}]: {}", filename, e);
-                    return Err(Status::internal(
-                        "error insertando registros en PostgreSQL",
-                    ));
-                }
+        let count = records.len() as i32;
+        let pending_after = {
+            let mut q = self.queue.lock().await;
+            for r in records {
+                q.push_back((r.fecha, r.hora, r.id_serial, r.data));
             }
-        }
+            q.len()
+        };
 
-        let message = format!("lote [{}] procesado correctamente", filename);
+        let mode = if pending_after > BULK_THRESHOLD { "bulk" } else { "normal" };
         eprintln!(
-            "lote recibido desde archivo [{}]: insertados={} duplicados={}",
-            filename, inserted, duplicates
+            "lote encolado [{}]: {} registros | cola={} modo={}",
+            filename, count, pending_after, mode
         );
 
         Ok(Response::new(SendRecordsResponse {
             ok: true,
-            inserted,
-            duplicates,
-            message,
+            inserted: count,
+            duplicates: 0,
+            message: format!("lote [{}] encolado (modo {})", filename, mode),
         }))
     }
 }
 
-// Entrypoint. `#[tokio::main]` arranca el runtime async multi-thread.
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Carga opcional de un .env local (útil corriendo fuera de Docker).
     let _ = dotenvy::from_filename("csvconsumer/.env");
 
     let grpc_port = get_env("GRPC_PORT", "50051");
-    // Bind a 0.0.0.0 (IPv4 wildcard) para que clientes Windows
-    // alcancen el servidor sin depender de IPv6 dual-stack.
     let addr: std::net::SocketAddr = format!("0.0.0.0:{}", grpc_port).parse()?;
 
     let client = connect_db().await?;
-    let service = ConsumerService { client };
+    let queue: SharedQueue = Arc::new(Mutex::new(VecDeque::new()));
 
-    eprintln!("🚀 csvconsumer escuchando en puerto {}", grpc_port);
+    // Lanzar tarea de fondo antes de aceptar conexiones gRPC.
+    tokio::spawn(flush_task(Arc::clone(&client), Arc::clone(&queue)));
 
-    // Levanta el servidor tonic y queda bloqueado hasta que reciba SIGTERM/SIGINT.
+    let service = ConsumerService { queue };
+
+    eprintln!(
+        "🚀 csvconsumer escuchando en puerto {} | normal={}r bulk={}r threshold={} flush={}s",
+        grpc_port, BATCH_NORMAL, BATCH_BULK, BULK_THRESHOLD, FLUSH_SECS
+    );
+
     Server::builder()
         .add_service(LogIngestionServer::new(service))
         .serve(addr)
