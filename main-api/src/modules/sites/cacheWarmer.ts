@@ -28,7 +28,7 @@ async function warmAll(): Promise<void> {
   const serials = await getActiveSiteSerials();
   for (const serial of serials) {
     try {
-      await getDashboardHistory(serial, HISTORY_LIMIT);
+      await getDashboardHistory(serial, HISTORY_LIMIT, { forceRefresh: true });
     } catch (err) {
       logger.warn({ serial, err }, 'cache_warmer: error calentando sitio');
     }

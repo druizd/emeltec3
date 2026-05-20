@@ -71,9 +71,10 @@ export async function getLatestEquipoForSerial(serialId: string): Promise<Latest
 export async function getDashboardHistory(
   serialId: string,
   limit: number,
+  { forceRefresh = false } = {},
 ): Promise<HistoryEquipoRow[]> {
   const cacheKey = `sites:history:${serialId}:${limit}`;
-  if (cache.enabled) {
+  if (cache.enabled && !forceRefresh) {
     const cached = await cache.get(cacheKey);
     if (cached) {
       try {
