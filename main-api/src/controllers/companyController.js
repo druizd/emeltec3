@@ -1531,20 +1531,18 @@ exports.getSiteVariables = async (req, res, next) => {
     const detectedRes = await db.query(
       `
       SELECT
-        latest.nombre_dato,
-        latest.valor_dato,
-        ${utcTimestampSql('latest.time')} AS timestamp_completo
+        kv.key  AS nombre_dato,
+        kv.value AS valor_dato,
+        ${utcTimestampSql('lr.time')} AS timestamp_completo
       FROM (
-        SELECT DISTINCT ON (kv.key)
-          kv.key AS nombre_dato,
-          kv.value AS valor_dato,
-          lr.time
-        FROM equipo lr
-        CROSS JOIN LATERAL jsonb_each(lr.data) AS kv(key, value)
-        WHERE lr.id_serial = $1
-        ORDER BY kv.key, lr.time DESC
-      ) latest
-      ORDER BY latest.nombre_dato ASC
+        SELECT time, data
+        FROM equipo
+        WHERE id_serial = $1
+        ORDER BY time DESC
+        LIMIT 1
+      ) lr
+      CROSS JOIN LATERAL jsonb_each(lr.data) AS kv(key, value)
+      ORDER BY kv.key ASC
       `,
       [site.id_serial],
     );
