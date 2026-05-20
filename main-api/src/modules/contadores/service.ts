@@ -423,15 +423,16 @@ export async function computeJornadasForVariable(opts: {
     ? new Date(lastDay.getTime() + DAY_MS + finMs)
     : new Date(lastDay.getTime() + finMs);
 
+  // equipo_1min es un continuous aggregate de TimescaleDB (1 minuto por id_serial).
+  // materialized_only=false permite que datos recientes (< 1 min) se lean de la tabla raw.
   const result = await query<{ time: string; data: Record<string, unknown> }>(
     `
-    SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
-    FROM equipo
+    SELECT bucket AS time, data
+    FROM equipo_1min
     WHERE id_serial = $1
-      AND time >= $2::timestamptz
-      AND time <  $3::timestamptz
-    GROUP BY 1
-    ORDER BY 1 ASC
+      AND bucket >= $2::timestamptz
+      AND bucket <  $3::timestamptz
+    ORDER BY bucket ASC
     `,
     [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
     { label: 'contadores__jornada_rows' },
