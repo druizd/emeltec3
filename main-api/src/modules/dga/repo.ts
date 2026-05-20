@@ -181,7 +181,7 @@ export async function patchPozoDgaConfig(
        WHERE sitio_id = $1
    RETURNING ${POZO_DGA_COLS}`,
     values,
-    { name: 'dga__patch_pozo_dga_config' },
+    { label: 'dga__patch_pozo_dga_config' },
   );
   return r.rows[0] ?? null;
 }

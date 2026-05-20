@@ -188,7 +188,7 @@ export async function patchEquipo(
        WHERE id = $1
    RETURNING ${EQUIPO_COLS}`,
     values,
-    { name: 'bitacora__patch_equipo' },
+    { label: 'bitacora__patch_equipo' },
   );
   return r.rows[0] ?? null;
 }
