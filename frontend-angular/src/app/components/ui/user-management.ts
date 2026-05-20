@@ -23,7 +23,7 @@ import { formatRutInput } from '../../shared/rut';
   template: `
     <div class="space-y-6 animate-in fade-in duration-300">
       <!-- ═══════════════════════════════════════════════════ -->
-      <!-- Formulario de invitación: solo si NO es readOnly -->
+      <!-- Formulario de registro: solo si NO es readOnly -->
       <!-- ═══════════════════════════════════════════════════ -->
       @if (!readOnly) {
         <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
@@ -32,7 +32,7 @@ import { formatRutInput } from '../../shared/rut';
               <span class="material-symbols-outlined text-primary-container">person_add</span>
             </div>
             <div>
-              <h2 class="text-h6 font-bold text-slate-800">Invitar a un Nuevo Miembro</h2>
+              <h2 class="text-h6 font-bold text-slate-800">Registrar nuevo miembro</h2>
               <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
                 Jerarquía Real: {{ companyName() }} / {{ subName() }}
               </p>
@@ -79,7 +79,7 @@ import { formatRutInput } from '../../shared/rut';
             </div>
           }
 
-          <form (submit)="saveUser()" class="space-y-8">
+          <form (submit)="saveUser($event)" class="space-y-8">
             <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
               <div class="space-y-1.5">
                 <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
@@ -216,8 +216,8 @@ import { formatRutInput } from '../../shared/rut';
                 [disabled]="loading()"
                 class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
               >
-                <span class="material-symbols-outlined text-lg">mail</span>
-                {{ loading() ? 'Enviando...' : 'Invitar y Enviar Correo' }}
+                <span class="material-symbols-outlined text-lg">person_add</span>
+                {{ loading() ? 'Guardando...' : 'Crear usuario' }}
               </button>
             </div>
           </form>
@@ -407,18 +407,19 @@ export class UserManagementComponent implements OnInit, OnChanges {
     }
   }
 
-  saveUser() {
+  saveUser(event?: Event) {
+    event?.preventDefault();
     if (this.readOnly) return; // Double protection
 
     this.loading.set(true);
     this.status.set({ type: '', msg: '' });
     const submittedEmail = this.newUser.email.trim();
+
     const data = {
       ...this.newUser,
       empresa_id: this.empresaId,
       sub_empresa_id:
         this.newUser.tipo === 'Admin' && !this.auth.isGerente() ? '' : this.subEmpresaId,
-      password: Math.random().toString(36).slice(-8),
     };
 
     this.userService.createUser(data).subscribe({
@@ -427,7 +428,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
           this.clearForm();
           this.status.set({
             type: 'success',
-            msg: `Invitación enviada correctamente a ${submittedEmail}.`,
+            msg: `Usuario creado correctamente para ${submittedEmail}.`,
           });
           this.loadUsers();
         } else {
@@ -443,7 +444,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
           err?.error?.error ||
           err?.error?.message ||
           err?.message ||
-          'No se pudo enviar la invitación. Verifica tu conexión e intenta nuevamente.';
+          'No se pudo crear el usuario. Verifica tu conexion e intenta nuevamente.';
         this.status.set({ type: 'error', msg: detail });
         this.loading.set(false);
       },

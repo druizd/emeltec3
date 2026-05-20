@@ -12,6 +12,8 @@ router.get('/empresas', userController.getEmpresas);
 // Perfil del usuario autenticado
 router.get('/me', userController.getCurrentUser);
 router.patch('/me', userController.updateCurrentUser);
+router.patch('/me/password', userController.updateCurrentPassword);
+router.patch('/me/security', userController.updateCurrentSecurity);
 
 // Listar usuarios (filtrado por rol en el controller)
 router.get('/', userController.getAllUsers);
