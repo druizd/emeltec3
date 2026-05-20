@@ -433,8 +433,11 @@ export async function computeJornadasForVariable(opts: {
   if (cache.enabled) {
     const cached = await cache.get(cacheKey);
     if (cached) {
-      try { rows = JSON.parse(cached) as JornadaRow[]; }
-      catch { rows = []; }
+      try {
+        rows = JSON.parse(cached) as JornadaRow[];
+      } catch {
+        rows = [];
+      }
     } else {
       const result = await query<JornadaRow>(
         `

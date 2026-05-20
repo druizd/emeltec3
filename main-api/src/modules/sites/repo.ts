@@ -76,7 +76,11 @@ export async function getDashboardHistory(
   if (cache.enabled) {
     const cached = await cache.get(cacheKey);
     if (cached) {
-      try { return JSON.parse(cached) as HistoryEquipoRow[]; } catch { /* ignore */ }
+      try {
+        return JSON.parse(cached) as HistoryEquipoRow[];
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -115,7 +119,11 @@ export async function getDashboardHistoryRange(
   if (cache.enabled) {
     const cached = await cache.get(cacheKey);
     if (cached) {
-      try { return JSON.parse(cached) as HistoryEquipoRow[]; } catch { /* ignore */ }
+      try {
+        return JSON.parse(cached) as HistoryEquipoRow[];
+      } catch {
+        /* ignore */
+      }
     }
   }
 
