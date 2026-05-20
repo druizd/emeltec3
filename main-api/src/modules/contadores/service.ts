@@ -12,6 +12,9 @@
  */
 import { logger } from '../../config/logger';
 import { query } from '../../config/dbHelpers';
+import { cache } from '../../config/redis';
+
+const JORNADA_CACHE_TTL_S = 300;
 import { applyMappingTransform } from '../sites/transforms';
 import { getPozoConfigBySiteId } from '../sites/repo';
 import type { PozoConfig, RegMap } from '../sites/types';
@@ -423,19 +426,50 @@ export async function computeJornadasForVariable(opts: {
     ? new Date(lastDay.getTime() + DAY_MS + finMs)
     : new Date(lastDay.getTime() + finMs);
 
-  const result = await query<{ time: string; data: Record<string, unknown> }>(
-    `
-    SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
-    FROM equipo
-    WHERE id_serial = $1
-      AND time >= $2::timestamptz
-      AND time <  $3::timestamptz
-    GROUP BY 1
-    ORDER BY 1 ASC
-    `,
-    [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
-    { label: 'contadores__jornada_rows' },
-  );
+  const cacheKey = `contadores:jornada:${idSerial}:${queryStart.toISOString()}:${queryEnd.toISOString()}`;
+  type JornadaRow = { time: string; data: Record<string, unknown> };
+  let rows: JornadaRow[];
+
+  if (cache.enabled) {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      try { rows = JSON.parse(cached) as JornadaRow[]; }
+      catch { rows = []; }
+    } else {
+      const result = await query<JornadaRow>(
+        `
+        SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
+        FROM equipo
+        WHERE id_serial = $1
+          AND time >= $2::timestamptz
+          AND time <  $3::timestamptz
+        GROUP BY 1
+        ORDER BY 1 ASC
+        `,
+        [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
+        { label: 'contadores__jornada_rows' },
+      );
+      rows = result.rows;
+      await cache.set(cacheKey, JSON.stringify(rows), JORNADA_CACHE_TTL_S);
+    }
+  } else {
+    const result = await query<JornadaRow>(
+      `
+      SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
+      FROM equipo
+      WHERE id_serial = $1
+        AND time >= $2::timestamptz
+        AND time <  $3::timestamptz
+      GROUP BY 1
+      ORDER BY 1 ASC
+      `,
+      [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
+      { label: 'contadores__jornada_rows' },
+    );
+    rows = result.rows;
+  }
+
+  const result = { rows };
 
   const dayIndex = new Map<string, number>();
   days.forEach((d, i) => dayIndex.set(getDayRangeChile(d).diaIso, i));

@@ -2,7 +2,11 @@
  * Repositorio del módulo sites: sitio, pozo_config, reg_map + last/history equipo.
  */
 import { query } from '../../config/dbHelpers';
+import { cache } from '../../config/redis';
 import type { HistoryEquipoRow, LatestEquipoRow, PozoConfig, RegMap, Site } from './types';
+
+const HISTORY_TTL_S = 60;
+const HISTORY_RANGE_TTL_S = 300;
 
 const SITE_COLUMNS =
   'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
@@ -68,8 +72,14 @@ export async function getDashboardHistory(
   serialId: string,
   limit: number,
 ): Promise<HistoryEquipoRow[]> {
-  // Uso de time_bucket de TimescaleDB para agrupar por minuto: más rápido que
-  // DISTINCT ON sobre date_trunc porque aprovecha la organización por chunks.
+  const cacheKey = `sites:history:${serialId}:${limit}`;
+  if (cache.enabled) {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      try { return JSON.parse(cached) as HistoryEquipoRow[]; } catch { /* ignore */ }
+    }
+  }
+
   const result = await query<HistoryEquipoRow>(
     `
     SELECT time, received_at, id_serial, data
@@ -89,6 +99,10 @@ export async function getDashboardHistory(
     [serialId, limit],
     { label: 'sites__dashboard_history' },
   );
+
+  if (cache.enabled) {
+    await cache.set(cacheKey, JSON.stringify(result.rows), HISTORY_TTL_S);
+  }
   return result.rows;
 }
 
@@ -97,6 +111,14 @@ export async function getDashboardHistoryRange(
   fromUtc: string,
   toUtc: string,
 ): Promise<HistoryEquipoRow[]> {
+  const cacheKey = `sites:history:range:${serialId}:${fromUtc}:${toUtc}`;
+  if (cache.enabled) {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      try { return JSON.parse(cached) as HistoryEquipoRow[]; } catch { /* ignore */ }
+    }
+  }
+
   const result = await query<HistoryEquipoRow>(
     `
     SELECT time, received_at, id_serial, data
@@ -117,5 +139,9 @@ export async function getDashboardHistoryRange(
     [serialId, fromUtc, toUtc],
     { label: 'sites__dashboard_history_range' },
   );
+
+  if (cache.enabled) {
+    await cache.set(cacheKey, JSON.stringify(result.rows), HISTORY_RANGE_TTL_S);
+  }
   return result.rows;
 }
