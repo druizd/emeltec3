@@ -330,6 +330,18 @@ export async function getDailySeries(opts: {
 }): Promise<ContadorDiarioPoint[]> {
   const { sitioId, rol, dias } = opts;
 
+  const cacheKey = `contadores:diarios:${sitioId}:${rol}:${dias}`;
+  if (cache.enabled) {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached) as ContadorDiarioPoint[];
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
   const counters = await listCounterVariablesForSite(sitioId);
   const counter = counters.find((c) => c.rol === rol && c.id_serial);
   if (!counter || !counter.id_serial) return emptyDailySeries(dias);
@@ -356,7 +368,7 @@ export async function getDailySeries(opts: {
     end,
   });
 
-  return days.map((dayStart) => {
+  const series = days.map((dayStart) => {
     const diaIso = getDayRangeChile(dayStart).diaIso;
     const r = deltasByDay.get(diaIso);
     return {
@@ -368,6 +380,11 @@ export async function getDailySeries(opts: {
       resets_detectados: r?.resets_detectados ?? 0,
     };
   });
+
+  if (cache.enabled) {
+    await cache.set(cacheKey, JSON.stringify(series), JORNADA_CACHE_TTL_S);
+  }
+  return series;
 }
 
 function emptyDailySeries(dias: number): ContadorDiarioPoint[] {

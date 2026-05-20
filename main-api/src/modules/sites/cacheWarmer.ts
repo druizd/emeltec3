@@ -11,7 +11,7 @@ import { query } from '../../config/dbHelpers';
 import { getDashboardHistory } from './repo';
 
 const INTERVAL_MS = 50_000;
-const HISTORY_LIMIT = 2200;
+const HISTORY_LIMITS = [500, 2200];
 const WORKER_ENABLED =
   String(process.env.ENABLE_CACHE_WARMER_WORKER ?? 'true').toLowerCase() === 'true';
 
@@ -27,10 +27,12 @@ async function getActiveSiteSerials(): Promise<string[]> {
 async function warmAll(): Promise<void> {
   const serials = await getActiveSiteSerials();
   for (const serial of serials) {
-    try {
-      await getDashboardHistory(serial, HISTORY_LIMIT, { forceRefresh: true });
-    } catch (err) {
-      logger.warn({ serial, err }, 'cache_warmer: error calentando sitio');
+    for (const limit of HISTORY_LIMITS) {
+      try {
+        await getDashboardHistory(serial, limit, { forceRefresh: true });
+      } catch (err) {
+        logger.warn({ serial, limit, err }, 'cache_warmer: error calentando sitio');
+      }
     }
   }
   logger.debug({ count: serials.length }, 'cache_warmer: ciclo completado');
