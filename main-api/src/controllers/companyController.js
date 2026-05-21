@@ -1478,8 +1478,11 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
 
       await client.query('CLOSE history_export_cursor');
       await client.query('COMMIT');
-      gz.end();
-      return once(gz, 'finish').then(() => res.end());
+      return new Promise((resolve, reject) => {
+        gz.on('finish', resolve);
+        gz.on('error', reject);
+        gz.end();
+      });
     } catch (streamErr) {
       if (client) {
         try {
