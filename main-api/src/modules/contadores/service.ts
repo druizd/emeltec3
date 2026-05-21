@@ -232,7 +232,7 @@ export async function computeDailyDeltasForVariable(opts: {
 
   const result = await query<{ time: string; data: Record<string, unknown> }>(
     `
-    SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
+    SELECT time_bucket('5 minutes', time) AS time, last(data, time) AS data
     FROM equipo
     WHERE id_serial = $1
       AND time >= $2::timestamptz
