@@ -1418,7 +1418,14 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     ]);
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
-    const mappings = mappingsRes.rows || [];
+    const allMappings = mappingsRes.rows || [];
+    const exportRoles = new Set(fields);
+    const mappings = allMappings.filter((m) => {
+      const rol = m.rol_dashboard || 'generico';
+      if (exportRoles.has(rol)) return true;
+      if (exportRoles.has('nivel_freatico') && m.transformacion === 'nivel_freatico') return true;
+      return false;
+    });
     const delimiter = ';';
     const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
 
@@ -1428,7 +1435,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     res.setHeader('Content-Encoding', 'gzip');
     res.setHeader('Cache-Control', 'no-store');
 
-    const gz = zlib.createGzip();
+    const gz = zlib.createGzip({ level: 1 });
     gz.pipe(res);
 
     let client;
