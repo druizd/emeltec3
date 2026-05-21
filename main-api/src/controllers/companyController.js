@@ -1461,7 +1461,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       );
 
       while (true) {
-        const batch = await client.query('FETCH 5000 FROM history_export_cursor');
+        const batch = await client.query('FETCH 50000 FROM history_export_cursor');
         if (batch.rows.length === 0) break;
 
         const lines = batch.rows.map((rawRow) => {
