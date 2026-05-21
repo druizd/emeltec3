@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const zlib = require('zlib');
 const { once } = require('events');
 const db = require('../config/db');
 const {
@@ -1424,7 +1425,11 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     const filename = exportFileName(site, from, to, 'csv');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Encoding', 'gzip');
     res.setHeader('Cache-Control', 'no-store');
+
+    const gz = zlib.createGzip();
+    gz.pipe(res);
 
     let client;
     try {
@@ -1449,14 +1454,14 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         [site.id_serial, from, to],
       );
 
-      await writeResponseChunk(res, '\uFEFF');
+      await writeResponseChunk(gz, '\uFEFF');
       await writeResponseChunk(
-        res,
+        gz,
         `${header.map((value) => csvCell(value, delimiter)).join(delimiter)}\n`,
       );
 
       while (true) {
-        const batch = await client.query('FETCH 1000 FROM history_export_cursor');
+        const batch = await client.query('FETCH 5000 FROM history_export_cursor');
         if (batch.rows.length === 0) break;
 
         const lines = batch.rows.map((rawRow) => {
@@ -1468,12 +1473,13 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
             .map((value) => csvCell(value, delimiter))
             .join(delimiter);
         });
-        await writeResponseChunk(res, lines.join('\n') + '\n');
+        await writeResponseChunk(gz, lines.join('\n') + '\n');
       }
 
       await client.query('CLOSE history_export_cursor');
       await client.query('COMMIT');
-      return res.end();
+      gz.end();
+      return once(gz, 'finish').then(() => res.end());
     } catch (streamErr) {
       if (client) {
         try {
@@ -1485,6 +1491,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         throw streamErr;
       }
 
+      gz.destroy(streamErr);
       return res.destroy(streamErr);
     } finally {
       if (client) client.release();
