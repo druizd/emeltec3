@@ -1433,21 +1433,18 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       await client.query(
         `
         DECLARE history_export_cursor NO SCROLL CURSOR FOR
-        SELECT time, received_at, id_serial, data, timestamp_completo
-        FROM (
-          SELECT DISTINCT ON (date_trunc('minute', time))
-            time,
-            received_at,
-            id_serial,
-            data,
-            ${utcTimestampSql('time')} AS timestamp_completo
-          FROM equipo
-          WHERE id_serial = $1
-            AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          ORDER BY date_trunc('minute', time) ASC, time DESC
-        ) latest_by_minute
-        ORDER BY time ASC
+        SELECT
+          last(time, time)        AS time,
+          last(received_at, time) AS received_at,
+          last(id_serial, time)   AS id_serial,
+          last(data, time)        AS data,
+          ${utcTimestampSql('last(time, time)')} AS timestamp_completo
+        FROM equipo
+        WHERE id_serial = $1
+          AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        GROUP BY time_bucket('1 minute', time)
+        ORDER BY 1 ASC
         `,
         [site.id_serial, from, to],
       );
@@ -1462,16 +1459,16 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         const batch = await client.query('FETCH 1000 FROM history_export_cursor');
         if (batch.rows.length === 0) break;
 
-        for (const rawRow of batch.rows) {
+        const lines = batch.rows.map((rawRow) => {
           const row = mapHistoricalDashboardRow({ row: rawRow, site, mappings, pozoConfig });
           const fecha = row.timestamp
             ? formatChileTimestamp(row.timestamp) || row.fecha
             : row.fecha;
-          const line = [fecha, ...fields.map((field) => csvValue(row[field]))]
+          return [fecha, ...fields.map((field) => csvValue(row[field]))]
             .map((value) => csvCell(value, delimiter))
             .join(delimiter);
-          await writeResponseChunk(res, `${line}\n`);
-        }
+        });
+        await writeResponseChunk(res, lines.join('\n') + '\n');
       }
 
       await client.query('CLOSE history_export_cursor');
