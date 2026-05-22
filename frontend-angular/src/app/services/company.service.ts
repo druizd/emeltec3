@@ -101,9 +101,15 @@ export class CompanyService {
   getSiteDashboardHistory(
     siteId: string,
     limit = 500,
+    options: { from?: string; to?: string } = {},
   ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    if (options.from) params.set('from', options.from);
+    if (options.to) params.set('to', options.to);
+    params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
-      `/api/companies/sites/${siteId}/dashboard-history?limit=${limit}&t=${Date.now()}`,
+      `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,
     );
   }
 
@@ -171,7 +177,13 @@ export class CompanyService {
 
   downloadSiteDashboardHistory(
     siteId: string,
-    options: { from: string; to: string; fields: string[]; format: 'csv' },
+    options: {
+      from: string;
+      to: string;
+      fields: string[];
+      format: 'csv';
+      granularity?: '1m' | '5m' | '1h' | '1d' | '1mo';
+    },
   ): Observable<HttpResponse<Blob>> {
     return this.http.get(`/api/companies/sites/${siteId}/dashboard-history/export`, {
       observe: 'response',
@@ -181,6 +193,7 @@ export class CompanyService {
         to: options.to,
         fields: options.fields.join(','),
         format: options.format,
+        granularity: options.granularity || '1m',
         t: String(Date.now()),
       },
     });

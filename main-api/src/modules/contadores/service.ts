@@ -148,17 +148,17 @@ export async function computeMonthDeltaForVariable(opts: {
 }): Promise<MonthDeltaResult> {
   const { idSerial, mapping, pozoConfig, start, end } = opts;
 
-  // Usamos time_bucket de 1 minuto: bajo riesgo de perder eventos cortos y
-  // reduce ~60x el volumen vs leer toda la cruda.
+  // Lee desde cagg equipo_1min (bucket = 1 min, data = last(data, time) ya
+  // pre-agregado). Equivalente a la query previa sobre equipo raw pero sin
+  // decompress + sin agregacion on-the-fly.
   const result = await query<{ time: string; data: Record<string, unknown> }>(
     `
-    SELECT time_bucket('1 minute', time) AS time, last(data, time) AS data
-    FROM equipo
+    SELECT bucket AS time, data
+    FROM equipo_1min
     WHERE id_serial = $1
-      AND time >= $2::timestamptz
-      AND time <  $3::timestamptz
-    GROUP BY 1
-    ORDER BY 1 ASC
+      AND bucket >= $2::timestamptz
+      AND bucket <  $3::timestamptz
+    ORDER BY bucket ASC
     `,
     [idSerial, start.toISOString(), end.toISOString()],
     { label: 'contadores__month_rows' },
@@ -232,13 +232,12 @@ export async function computeDailyDeltasForVariable(opts: {
 
   const result = await query<{ time: string; data: Record<string, unknown> }>(
     `
-    SELECT time_bucket('5 minutes', time) AS time, last(data, time) AS data
-    FROM equipo
+    SELECT bucket AS time, data
+    FROM equipo_5min
     WHERE id_serial = $1
-      AND time >= $2::timestamptz
-      AND time <  $3::timestamptz
-    GROUP BY 1
-    ORDER BY 1 ASC
+      AND bucket >= $2::timestamptz
+      AND bucket <  $3::timestamptz
+    ORDER BY bucket ASC
     `,
     [idSerial, start.toISOString(), end.toISOString()],
     { label: 'contadores__day_rows' },
@@ -458,13 +457,12 @@ export async function computeJornadasForVariable(opts: {
     } else {
       const result = await query<JornadaRow>(
         `
-        SELECT time_bucket('5 minutes', time) AS time, last(data, time) AS data
-        FROM equipo
+        SELECT bucket AS time, data
+        FROM equipo_5min
         WHERE id_serial = $1
-          AND time >= $2::timestamptz
-          AND time <  $3::timestamptz
-        GROUP BY 1
-        ORDER BY 1 ASC
+          AND bucket >= $2::timestamptz
+          AND bucket <  $3::timestamptz
+        ORDER BY bucket ASC
         `,
         [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
         { label: 'contadores__jornada_rows' },
@@ -475,13 +473,12 @@ export async function computeJornadasForVariable(opts: {
   } else {
     const result = await query<JornadaRow>(
       `
-      SELECT time_bucket('5 minutes', time) AS time, last(data, time) AS data
-      FROM equipo
+      SELECT bucket AS time, data
+      FROM equipo_5min
       WHERE id_serial = $1
-        AND time >= $2::timestamptz
-        AND time <  $3::timestamptz
-      GROUP BY 1
-      ORDER BY 1 ASC
+        AND bucket >= $2::timestamptz
+        AND bucket <  $3::timestamptz
+      ORDER BY bucket ASC
       `,
       [idSerial, queryStart.toISOString(), queryEnd.toISOString()],
       { label: 'contadores__jornada_rows' },
