@@ -2,7 +2,7 @@ import { Component, HostListener, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService, UserRole } from '../../../services/auth.service';
 import { ShortcutService } from '../../../services/shortcut.service';
 
 @Component({
@@ -48,7 +48,68 @@ import { ShortcutService } from '../../../services/shortcut.service';
           >
             <span class="material-symbols-outlined text-[16px]">keyboard</span>
           </button>
-          @if (auth.isSuperAdmin()) {
+          @if (auth.canSwitchView()) {
+            <div class="relative" data-menu="view-as">
+              <button
+                type="button"
+                (click)="toggleViewAsMenu()"
+                [class.text-amber-600]="auth.isViewingAs()"
+                [class.bg-amber-50]="auth.isViewingAs()"
+                class="flex h-[30px] items-center gap-1 rounded-md px-2 text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                aria-label="Ver como otro rol"
+                title="Ver como otro rol"
+                [attr.aria-expanded]="viewAsMenuOpen()"
+              >
+                <span class="material-symbols-outlined text-[16px]">visibility</span>
+                @if (auth.isViewingAs()) {
+                  <span class="text-[10px] font-bold uppercase tracking-wide">
+                    {{ auth.viewAsRole() }}
+                  </span>
+                }
+              </button>
+
+              @if (viewAsMenuOpen()) {
+                <div
+                  class="absolute right-0 top-full z-50 mt-1.5 w-56 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+                >
+                  <div class="border-b border-[#E2E8F0] px-4 py-2.5">
+                    <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
+                      Ver como
+                    </p>
+                  </div>
+                  <div class="py-1">
+                    @for (role of viewAsOptions; track role.value) {
+                      <button
+                        type="button"
+                        (click)="selectViewAs(role.value)"
+                        class="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                      >
+                        <span class="flex items-center gap-2.5">
+                          <span class="material-symbols-outlined text-[16px] text-slate-400">
+                            {{ role.icon }}
+                          </span>
+                          {{ role.label }}
+                        </span>
+                        @if (isActiveViewOption(role.value)) {
+                          <span class="material-symbols-outlined text-[16px] text-[#0DAFBD]">
+                            check
+                          </span>
+                        }
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+
+            <button
+              (click)="router.navigate(['/administration'])"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              aria-label="Administración"
+            >
+              <span class="material-symbols-outlined text-[16px]">settings</span>
+            </button>
+          } @else if (auth.isSuperAdmin()) {
             <button
               (click)="router.navigate(['/administration'])"
               class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
@@ -59,7 +120,7 @@ import { ShortcutService } from '../../../services/shortcut.service';
           }
 
           <!-- Avatar + dropdown de usuario -->
-          <div class="relative">
+          <div class="relative" data-menu="user">
             <button
               type="button"
               (click)="toggleUserMenu()"
@@ -126,6 +187,14 @@ export class HeaderComponent implements OnInit {
 
   private currentUrl = signal(this.router.url);
   readonly userMenuOpen = signal(false);
+  readonly viewAsMenuOpen = signal(false);
+
+  readonly viewAsOptions: { value: UserRole; label: string; icon: string }[] = [
+    { value: 'SuperAdmin', label: 'Mi rol (SuperAdmin)', icon: 'shield_person' },
+    { value: 'Admin', label: 'Admin', icon: 'admin_panel_settings' },
+    { value: 'Gerente', label: 'Gerente', icon: 'manage_accounts' },
+    { value: 'Cliente', label: 'Cliente', icon: 'person' },
+  ];
 
   ngOnInit(): void {
     this.router.events
@@ -133,19 +202,41 @@ export class HeaderComponent implements OnInit {
       .subscribe((e) => {
         this.currentUrl.set(e.urlAfterRedirects || e.url);
         this.userMenuOpen.set(false);
+        this.viewAsMenuOpen.set(false);
       });
   }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
-    if (!target.closest('.relative')) {
-      this.userMenuOpen.set(false);
-    }
+    const menu = target.closest('[data-menu]')?.getAttribute('data-menu');
+    if (menu !== 'user') this.userMenuOpen.set(false);
+    if (menu !== 'view-as') this.viewAsMenuOpen.set(false);
   }
 
   toggleUserMenu(): void {
     this.userMenuOpen.update((v) => !v);
+    this.viewAsMenuOpen.set(false);
+  }
+
+  toggleViewAsMenu(): void {
+    this.viewAsMenuOpen.update((v) => !v);
+    this.userMenuOpen.set(false);
+  }
+
+  selectViewAs(role: UserRole): void {
+    if (role === 'SuperAdmin') {
+      this.auth.clearViewAs();
+    } else {
+      this.auth.setViewAs(role);
+    }
+    this.viewAsMenuOpen.set(false);
+  }
+
+  isActiveViewOption(role: UserRole): boolean {
+    const viewAs = this.auth.viewAsRole();
+    if (viewAs === null) return role === 'SuperAdmin';
+    return role === viewAs;
   }
 
   goToProfile(): void {
