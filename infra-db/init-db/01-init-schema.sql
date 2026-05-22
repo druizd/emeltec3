@@ -43,6 +43,15 @@ CREATE TABLE IF NOT EXISTS usuario (
     password_hash  VARCHAR(255),
     otp_hash       VARCHAR(255),
     otp_expires_at TIMESTAMPTZ,
+    failed_logins   INTEGER      NOT NULL DEFAULT 0,
+    locked_until    TIMESTAMPTZ,
+    last_login_at   TIMESTAMPTZ,
+    last_login_ip   VARCHAR(45),
+    otp_requests_count        INTEGER      NOT NULL DEFAULT 0,
+    otp_requests_window_start TIMESTAMPTZ,
+    auth_mode              VARCHAR(20)   NOT NULL DEFAULT 'password' CHECK (auth_mode IN ('password', 'otp', 'password_otp')),
+    password_set_at        TIMESTAMPTZ,
+    activated_at           TIMESTAMPTZ,
     created_at     TIMESTAMPTZ   DEFAULT NOW(),
     updated_at     TIMESTAMPTZ   DEFAULT NOW()
 );
@@ -201,6 +210,7 @@ CREATE INDEX IF NOT EXISTS idx_equipo_data_gin    ON equipo USING GIN (data);
 CREATE INDEX IF NOT EXISTS idx_sitio_empresa      ON sitio (empresa_id);
 CREATE INDEX IF NOT EXISTS idx_sitio_sub_empresa  ON sitio (sub_empresa_id);
 CREATE INDEX IF NOT EXISTS idx_usuario_empresa    ON usuario (empresa_id);
+CREATE INDEX IF NOT EXISTS idx_usuario_locked_until ON usuario (locked_until) WHERE locked_until IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_regmap_sitio       ON reg_map (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_pozo_config_sitio  ON pozo_config (sitio_id);
 CREATE INDEX IF NOT EXISTS idx_alertas_empresa    ON alertas (empresa_id);

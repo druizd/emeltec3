@@ -1,4 +1,5 @@
 export type UserRole = 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente';
+export type AuthMode = 'password' | 'otp' | 'password_otp';
 
 export interface User {
   id: string;
@@ -13,6 +14,11 @@ export interface User {
   sub_empresa_id?: string | null;
   empresa_nombre?: string | null;
   sub_empresa_nombre?: string | null;
+  last_login_at?: string | null;
+  activated_at?: string | null;
+  has_password?: boolean;
+  auth_mode?: AuthMode | null;
+  password_set_at?: string | null;
 }
 
 export interface CreateUserPayload {
@@ -33,6 +39,15 @@ export interface UpdateUserProfilePayload {
   rut_usuario?: string | null;
   telefono?: string | null;
   cargo?: string | null;
+}
+
+export interface UpdateUserSecurityPayload {
+  auth_mode: AuthMode;
+}
+
+export interface UpdateUserPasswordPayload {
+  current_password?: string;
+  new_password: string;
 }
 
 export interface UserListFilters {

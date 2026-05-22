@@ -2,12 +2,15 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { UpdateUserProfilePayload, User } from '@emeltec/shared';
+import type { AuthMode, UpdateUserProfilePayload, User } from '@emeltec/shared';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { formatRutInput } from '../../shared/rut';
 
+type AccountTab = 'users' | 'profile' | 'password';
+type SecurityMode = AuthMode;
 type EditableProfileField = 'nombre' | 'apellido' | 'rut_usuario' | 'telefono' | 'cargo';
+const USERS_PAGE_SIZE = 20;
 
 interface ProfileRow {
   label: string;
@@ -30,36 +33,44 @@ interface EditState {
   imports: [CommonModule, FormsModule],
   template: `
     <section class="min-h-full bg-[#F0F2F5] px-5 py-5">
-      <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p
-            class="mb-1 flex items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-primary"
-          >
-            <span class="material-symbols-outlined text-[15px]">account_circle</span>
-            Cuenta
-          </p>
-          <h1
-            class="text-h4 font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
-            style="font-family: 'Josefin Sans', sans-serif"
-          >
-            Mi perfil
-          </h1>
-          <p class="mt-0.5 text-body-sm text-[#94a3b8]">
-            Información personal asociada a tu sesión.
-          </p>
-        </div>
-
-        @if (loading()) {
-          <span
-            class="inline-flex items-center gap-1.5 text-caption-xs font-semibold text-[#94a3b8]"
-          >
-            <span class="material-symbols-outlined animate-spin text-[14px]"
-              >progress_activity</span
-            >
-            Cargando perfil
-          </span>
-        }
+      <div class="mb-5">
+        <p
+          class="mb-1 flex items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-primary"
+        >
+          <span class="material-symbols-outlined text-[15px]">account_circle</span>
+          Cuenta
+        </p>
+        <h1
+          class="text-h4 font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
+          style="font-family: 'Josefin Sans', sans-serif"
+        >
+          Cuenta
+        </h1>
+        <p class="mt-0.5 text-body-sm text-[#94a3b8]">
+          Perfil, seguridad y monitoreo de usuarios registrados.
+        </p>
       </div>
+
+      <nav
+        class="mb-5 flex flex-wrap items-center gap-3 border-b border-[#dbe4ee] pb-4"
+        aria-label="Secciones de cuenta"
+      >
+        @for (tab of tabs; track tab.key) {
+          <button
+            type="button"
+            (click)="activeTab.set(tab.key)"
+            class="inline-flex h-12 items-center gap-2 rounded-2xl border px-5 text-body-sm font-bold transition-all"
+            [ngClass]="
+              activeTab() === tab.key
+                ? 'border-primary-tint-35 bg-white text-primary shadow-[0_8px_24px_rgba(13,175,189,0.12)]'
+                : 'border-transparent text-[#8b9bb4] hover:bg-white'
+            "
+          >
+            <span class="material-symbols-outlined text-[22px]">{{ tab.icon }}</span>
+            {{ tab.label }}
+          </button>
+        }
+      </nav>
 
       @if (errorMsg()) {
         <div
@@ -71,7 +82,262 @@ interface EditState {
         </div>
       }
 
-      @if (displayUser(); as user) {
+      @if (activeTab() === 'users') {
+        <section
+          class="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+        >
+          <div
+            class="flex flex-col gap-4 border-b border-[#e2e8f0] px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+          >
+            <div>
+              <h2 class="text-body font-bold text-[#1e293b]">Usuarios</h2>
+              <p class="text-caption text-[#94a3b8]">Registro, empresa y primer ingreso.</p>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label class="relative block min-w-0 sm:w-[320px]">
+                <span
+                  class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#94a3b8]"
+                  >search</span
+                >
+                <input
+                  type="search"
+                  [ngModel]="userSearch()"
+                  (ngModelChange)="setUserSearch($event)"
+                  class="h-10 w-full rounded-lg border border-[#dbe4ee] bg-slate-50 pl-10 pr-3 text-body-sm font-semibold text-[#1e293b] outline-none transition-colors placeholder:text-[#94a3b8] focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  placeholder="Buscar usuario, correo o empresa"
+                  aria-label="Buscar usuario"
+                />
+              </label>
+
+              @if (usersLoading()) {
+                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                  >Cargando</span
+                >
+              }
+            </div>
+          </div>
+
+          @if (deleteError()) {
+            <div
+              class="mx-5 mt-4 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+              role="alert"
+            >
+              <span class="material-symbols-outlined text-[17px]">error</span>
+              {{ deleteError() }}
+            </div>
+          }
+
+          @if (!auth.canViewUsers()) {
+            <div class="px-5 py-10 text-center text-body-sm text-[#64748b]">
+              Tu perfil no tiene permisos para ver el listado de usuarios.
+            </div>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[900px] text-left text-body-sm">
+                <thead class="border-b border-[#e2e8f0] bg-slate-50">
+                  <tr>
+                    <th
+                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    >
+                      Usuario
+                    </th>
+                    <th
+                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    >
+                      Correo
+                    </th>
+                    <th
+                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    >
+                      Empresa / Sub empresa
+                    </th>
+                    <th
+                      class="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    >
+                      Estado
+                    </th>
+                    <th class="w-12 px-3 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-[#edf2f7]">
+                  @for (user of pagedUsers(); track user.id) {
+                    <tr class="group transition-colors hover:bg-slate-50/70">
+                      <td class="px-5 py-4">
+                        <p class="font-bold text-[#1e293b]">{{ fullName(user) }}</p>
+                      </td>
+                      <td class="px-5 py-4 text-[#64748b]">{{ user.email }}</td>
+                      <td class="px-5 py-4 text-[#64748b]">
+                        <p class="font-semibold text-[#475569]">
+                          {{ displayValue(user.empresa_nombre, 'Por verse') }}
+                        </p>
+                        <p class="mt-0.5 text-caption text-[#94a3b8]">
+                          {{ displayValue(user.sub_empresa_nombre, 'Sin sub empresa') }}
+                        </p>
+                      </td>
+                      <td class="px-5 py-4 text-right">
+                        <span
+                          class="inline-flex h-2.5 w-2.5 rounded-full ring-4"
+                          [class.bg-emerald-500]="hasLoggedIn(user)"
+                          [class.ring-emerald-100]="hasLoggedIn(user)"
+                          [class.bg-slate-400]="!hasLoggedIn(user)"
+                          [class.ring-slate-100]="!hasLoggedIn(user)"
+                          [attr.aria-label]="
+                            hasLoggedIn(user)
+                              ? 'Primer ingreso realizado'
+                              : 'Primer ingreso pendiente'
+                          "
+                          [attr.title]="
+                            hasLoggedIn(user)
+                              ? 'Primer ingreso realizado'
+                              : 'Primer ingreso pendiente'
+                          "
+                        ></span>
+                      </td>
+                      <td class="px-3 py-4 text-right">
+                        @if (canDeleteUser(user)) {
+                          <button
+                            type="button"
+                            (click)="openDeleteUser(user)"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#94a3b8] opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-200 group-hover:opacity-100"
+                            aria-label="Eliminar usuario"
+                            title="Eliminar usuario"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        }
+                      </td>
+                    </tr>
+                  }
+
+                  @if (filteredUsers().length === 0) {
+                    <tr>
+                      <td colspan="5" class="px-5 py-10 text-center text-[#94a3b8]">
+                        No hay usuarios para mostrar.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            @if (filteredUsers().length > 0) {
+              <div
+                class="flex flex-col gap-3 border-t border-[#e2e8f0] px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <p class="text-caption font-semibold text-[#94a3b8]">
+                  {{ usersPageStart() }}-{{ usersPageEnd() }} de {{ filteredUsers().length }}
+                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    (click)="goToUsersPage(currentUsersPage() - 1)"
+                    [disabled]="currentUsersPage() === 1"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-[#64748b] transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Pagina anterior"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+                  </button>
+
+                  @for (page of visibleUserPages(); track page) {
+                    <button
+                      type="button"
+                      (click)="goToUsersPage(page)"
+                      class="h-8 min-w-8 rounded-lg border px-2 text-caption font-bold transition-colors"
+                      [ngClass]="
+                        page === currentUsersPage()
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-[#dbe4ee] text-[#64748b] hover:bg-slate-50'
+                      "
+                    >
+                      {{ page }}
+                    </button>
+                  }
+
+                  <button
+                    type="button"
+                    (click)="goToUsersPage(currentUsersPage() + 1)"
+                    [disabled]="currentUsersPage() === totalUserPages()"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-[#64748b] transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Pagina siguiente"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+                  </button>
+                </div>
+              </div>
+            }
+          }
+        </section>
+      }
+
+      @if (deleteTarget(); as user) {
+        <div
+          class="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          (click)="closeDeleteUser()"
+        >
+          <section
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="border-b border-[#e2e8f0] px-5 py-4">
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600"
+                >
+                  <span class="material-symbols-outlined text-[21px]">delete</span>
+                </span>
+                <div>
+                  <h2 class="text-body font-bold text-[#1e293b]">Eliminar usuario</h2>
+                  <p class="text-caption text-[#94a3b8]">Esta accion elimina el registro.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="px-5 py-5">
+              <p class="text-body-sm text-[#64748b]">
+                Confirma si realmente quieres eliminar a
+                <strong class="font-bold text-[#1e293b]">{{ fullName(user) }}</strong
+                >.
+              </p>
+              <p class="mt-2 break-words text-caption font-semibold text-[#94a3b8]">
+                {{ user.email }}
+              </p>
+              @if (deleteError()) {
+                <p
+                  class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+                >
+                  {{ deleteError() }}
+                </p>
+              }
+            </div>
+
+            <div
+              class="flex items-center justify-end gap-2 border-t border-[#e2e8f0] bg-slate-50 px-5 py-4"
+            >
+              <button
+                type="button"
+                (click)="closeDeleteUser()"
+                [disabled]="deleteSaving()"
+                class="h-9 rounded-lg border border-[#e2e8f0] bg-white px-4 text-body-sm font-semibold text-[#64748b] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="confirmDeleteUser()"
+                [disabled]="deleteSaving()"
+                class="h-9 rounded-lg bg-rose-600 px-4 text-body-sm font-bold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {{ deleteSaving() ? 'Eliminando...' : 'Eliminar' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+
+      @if (activeTab() === 'profile' && displayUser(); as user) {
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(260px,340px)_1fr]">
           <section
             class="rounded-xl border border-[#e2e8f0] bg-white px-5 py-5 shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
@@ -114,7 +380,6 @@ interface EditState {
                   type="button"
                   (click)="openEdit(row)"
                   [disabled]="!row.field"
-                  [attr.aria-label]="row.field ? 'Editar ' + row.label : row.label"
                   class="group min-w-0 rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 text-left transition-all hover:border-primary-tint-35 hover:bg-primary-tint-08/40 hover:shadow-[0_4px_14px_rgba(13,175,189,0.10)] disabled:cursor-default disabled:hover:border-[#e2e8f0] disabled:hover:bg-white disabled:hover:shadow-none"
                 >
                   <div class="mb-2 flex items-center justify-between gap-2">
@@ -169,60 +434,196 @@ interface EditState {
               }
             </div>
           </section>
+        </div>
+      }
 
+      @if (activeTab() === 'password' && displayUser(); as user) {
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
           <section
-            class="rounded-xl border border-primary-tint-25 bg-primary-tint-08/50 shadow-[0_1px_4px_rgba(15,23,42,0.04)] xl:col-span-2"
+            class="rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
           >
-            <div
-              class="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div class="flex min-w-0 items-start gap-3">
-                <div
-                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-[0_1px_4px_rgba(15,23,42,0.06)]"
+            <div class="border-b border-[#e2e8f0] px-5 py-4">
+              <h2 class="text-body font-bold text-[#1e293b]">
+                {{ user.has_password ? 'Cambiar contraseña' : 'Crear contraseña' }}
+              </h2>
+              <p class="text-caption text-[#94a3b8]">
+                La contraseña permite iniciar sesión sin pedir código inicial.
+              </p>
+            </div>
+            <form class="space-y-4 p-5" (submit)="savePassword($event)">
+              @if (user.has_password) {
+                <label class="grid gap-1.5">
+                  <span
+                    class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                  >
+                    Contraseña actual
+                  </span>
+                  <input
+                    type="password"
+                    [ngModel]="currentPassword()"
+                    (ngModelChange)="currentPassword.set($event)"
+                    name="currentPassword"
+                    class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                  />
+                </label>
+              }
+              <label class="grid gap-1.5">
+                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                  Nueva contraseña
+                </span>
+                <input
+                  type="password"
+                  minlength="8"
+                  [ngModel]="newPassword()"
+                  (ngModelChange)="newPassword.set($event)"
+                  name="newPassword"
+                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                />
+              </label>
+              <label class="grid gap-1.5">
+                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                  Confirmar contraseña
+                </span>
+                <input
+                  type="password"
+                  [ngModel]="confirmPassword()"
+                  (ngModelChange)="confirmPassword.set($event)"
+                  name="confirmPassword"
+                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                />
+              </label>
+
+              @if (passwordMsg()) {
+                <p
+                  class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-caption font-bold text-emerald-700"
                 >
-                  <span class="material-symbols-outlined text-[20px]">shield_lock</span>
-                </div>
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="text-body font-bold text-[#1e293b]">Contraseña y seguridad</h2>
-                    <span
-                      class="rounded-md border border-primary-tint-25 bg-white px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-primary"
-                    >
-                      Pendiente
-                    </span>
-                  </div>
-                  <p class="mt-1 text-body-sm text-[#64748b]">
-                    Correo de recuperación:
-                    <span class="font-semibold text-[#1e293b]">{{ user.email }}</span>
-                  </p>
-                </div>
-              </div>
+                  {{ passwordMsg() }}
+                </p>
+              }
+              @if (passwordError()) {
+                <p
+                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+                >
+                  {{ passwordError() }}
+                </p>
+              }
 
               <button
-                type="button"
-                disabled
-                class="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-primary-tint-25 bg-white px-4 text-body-sm font-bold text-[#94a3b8] opacity-70"
+                type="submit"
+                [disabled]="passwordSaving() || !canSavePassword(user)"
+                class="h-10 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                <span class="material-symbols-outlined text-[17px]">lock_reset</span>
-                Cambiar contraseña
+                {{ passwordSaving() ? 'Guardando...' : 'Guardar contraseña' }}
               </button>
+            </form>
+          </section>
+
+          <section
+            class="rounded-xl border border-primary-tint-25 bg-primary-tint-08/50 p-5 shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
+          >
+            <h2 class="text-body font-bold text-[#1e293b]">Métodos de inicio</h2>
+            <p class="mt-1 text-caption text-[#64748b]">
+              Debe quedar al menos un método activo para no bloquear la cuenta.
+            </p>
+
+            <div class="mt-5 grid gap-3">
+              <label
+                class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-all"
+                [ngClass]="
+                  securityMode() === 'password'
+                    ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
+                    : 'border-primary-tint-20 bg-white hover:border-primary-tint-35'
+                "
+                [class.opacity-50]="!user.has_password"
+              >
+                <input
+                  type="radio"
+                  name="securityMode"
+                  class="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  [checked]="securityMode() === 'password'"
+                  [disabled]="!user.has_password"
+                  (change)="setAuthMode('password')"
+                />
+                <span>
+                  <span class="block text-body-sm font-bold text-[#1e293b]">Solo contraseña</span>
+                  <span class="text-caption text-[#64748b]"
+                    >Ingreso directo con tu contraseña.</span
+                  >
+                </span>
+              </label>
+
+              <label
+                class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-all"
+                [ngClass]="
+                  securityMode() === 'otp'
+                    ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
+                    : 'border-primary-tint-20 bg-white hover:border-primary-tint-35'
+                "
+              >
+                <input
+                  type="radio"
+                  name="securityMode"
+                  class="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  [checked]="securityMode() === 'otp'"
+                  (change)="setAuthMode('otp')"
+                />
+                <span>
+                  <span class="block text-body-sm font-bold text-[#1e293b]">Solo código OTP</span>
+                  <span class="text-caption text-[#64748b]">Enviaremos un código a tu correo.</span>
+                </span>
+              </label>
+
+              <label
+                class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-all"
+                [ngClass]="
+                  securityMode() === 'password_otp'
+                    ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
+                    : 'border-primary-tint-20 bg-white hover:border-primary-tint-35'
+                "
+                [class.opacity-50]="!user.has_password"
+              >
+                <input
+                  type="radio"
+                  name="securityMode"
+                  class="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  [checked]="securityMode() === 'password_otp'"
+                  [disabled]="!user.has_password"
+                  (change)="setAuthMode('password_otp')"
+                />
+                <span>
+                  <span class="block text-body-sm font-bold text-[#1e293b]">Contraseña + OTP</span>
+                  <span class="text-caption text-[#64748b]">
+                    Primero contraseña, luego código por correo.
+                  </span>
+                </span>
+              </label>
             </div>
+
+            @if (securityMsg()) {
+              <p
+                class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-caption font-bold text-emerald-700"
+              >
+                {{ securityMsg() }}
+              </p>
+            }
+            @if (securityError()) {
+              <p
+                class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+              >
+                {{ securityError() }}
+              </p>
+            }
+
+            <button
+              type="button"
+              (click)="saveSecurity()"
+              [disabled]="securitySaving()"
+              class="mt-5 h-10 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {{ securitySaving() ? 'Guardando...' : 'Guardar métodos' }}
+            </button>
           </section>
         </div>
-      } @else {
-        <section
-          class="rounded-xl border border-[#e2e8f0] bg-white px-8 py-12 text-center shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
-        >
-          <div
-            class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100"
-          >
-            <span class="material-symbols-outlined text-[24px] text-[#94a3b8]">person_off</span>
-          </div>
-          <h2 class="text-h6 font-bold text-[#1e293b]">Perfil no disponible</h2>
-          <p class="mt-1 text-body-sm text-[#64748b]">
-            No se pudo cargar información de la sesión actual.
-          </p>
-        </section>
       }
 
       @if (editState(); as edit) {
@@ -314,30 +715,94 @@ interface EditState {
   `,
 })
 export class ProfileComponent implements OnInit {
-  private readonly auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   private readonly userService = inject(UserService);
 
   @ViewChild('editInput') editInputRef?: ElementRef<HTMLInputElement>;
 
+  readonly tabs: { key: AccountTab; label: string; icon: string }[] = [
+    { key: 'profile', label: 'Mi perfil', icon: 'person' },
+    { key: 'password', label: 'Contraseña', icon: 'shield_lock' },
+    { key: 'users', label: 'Usuarios', icon: 'groups' },
+  ];
+
+  readonly activeTab = signal<AccountTab>('profile');
   readonly profile = signal<User | null>(null);
+  readonly users = signal<User[]>([]);
+  readonly userSearch = signal('');
+  readonly usersPage = signal(1);
   readonly loading = signal(true);
+  readonly usersLoading = signal(false);
   readonly errorMsg = signal('');
+  readonly deleteTarget = signal<User | null>(null);
+  readonly deleteSaving = signal(false);
+  readonly deleteError = signal('');
   readonly editState = signal<EditState | null>(null);
   readonly editSaving = signal(false);
   readonly editError = signal('');
+
+  readonly currentPassword = signal('');
+  readonly newPassword = signal('');
+  readonly confirmPassword = signal('');
+  readonly passwordSaving = signal(false);
+  readonly passwordMsg = signal('');
+  readonly passwordError = signal('');
+  readonly securityMode = signal<SecurityMode>('password');
+  readonly securitySaving = signal(false);
+  readonly securityMsg = signal('');
+  readonly securityError = signal('');
+
   readonly displayUser = computed(() => this.profile() ?? this.auth.user());
+
+  readonly filteredUsers = computed(() => {
+    const query = this.normalizeUserSearch(this.userSearch());
+    if (!query) return this.users();
+
+    return this.users().filter((user) =>
+      this.normalizeUserSearch(
+        [this.fullName(user), user.email, user.empresa_nombre, user.sub_empresa_nombre, user.cargo]
+          .filter(Boolean)
+          .join(' '),
+      ).includes(query),
+    );
+  });
+
+  readonly totalUserPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredUsers().length / USERS_PAGE_SIZE)),
+  );
+
+  readonly currentUsersPage = computed(() =>
+    Math.min(Math.max(this.usersPage(), 1), this.totalUserPages()),
+  );
+
+  readonly pagedUsers = computed(() => {
+    const start = (this.currentUsersPage() - 1) * USERS_PAGE_SIZE;
+    return this.filteredUsers().slice(start, start + USERS_PAGE_SIZE);
+  });
+
+  readonly usersPageStart = computed(() => {
+    if (this.filteredUsers().length === 0) return 0;
+    return (this.currentUsersPage() - 1) * USERS_PAGE_SIZE + 1;
+  });
+
+  readonly usersPageEnd = computed(() =>
+    Math.min(this.currentUsersPage() * USERS_PAGE_SIZE, this.filteredUsers().length),
+  );
+
+  readonly visibleUserPages = computed(() => {
+    const total = this.totalUserPages();
+    const current = this.currentUsersPage();
+    const start = Math.max(1, Math.min(current - 2, total - 4));
+    const end = Math.min(total, start + 4);
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  });
 
   readonly personalRows = computed<ProfileRow[]>(() => {
     const user = this.displayUser();
     if (!user) return [];
 
     return [
-      {
-        label: 'Nombre',
-        value: this.displayValue(user.nombre),
-        icon: 'badge',
-        field: 'nombre',
-      },
+      { label: 'Nombre', value: this.displayValue(user.nombre), icon: 'badge', field: 'nombre' },
       {
         label: 'Apellido',
         value: this.displayValue(user.apellido, 'No registrado'),
@@ -362,12 +827,7 @@ export class ProfileComponent implements OnInit {
         icon: 'work',
         field: 'cargo',
       },
-      {
-        label: 'Correo',
-        value: this.displayValue(user.email),
-        icon: 'mail',
-        locked: true,
-      },
+      { label: 'Correo', value: this.displayValue(user.email), icon: 'mail', locked: true },
     ];
   });
 
@@ -390,13 +850,18 @@ export class ProfileComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.loadProfile();
+    this.loadUsers();
+  }
+
+  loadProfile(): void {
     this.profile.set(this.auth.user());
     this.loading.set(true);
     this.errorMsg.set('');
 
     this.userService.getCurrentUser().subscribe({
       next: (res) => {
-        if (res.ok) this.profile.set(res.data);
+        if (res.ok) this.setProfile(res.data);
         this.loading.set(false);
       },
       error: (err: HttpErrorResponse) => {
@@ -408,15 +873,82 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  loadUsers(): void {
+    if (!this.auth.canViewUsers()) return;
+    this.usersLoading.set(true);
+    this.userService.getUsers().subscribe({
+      next: (res) => {
+        this.users.set(res.ok ? res.data : []);
+        this.goToUsersPage(this.currentUsersPage());
+        this.usersLoading.set(false);
+      },
+      error: () => {
+        this.users.set([]);
+        this.usersLoading.set(false);
+      },
+    });
+  }
+
+  setUserSearch(value: string): void {
+    this.userSearch.set(value);
+    this.usersPage.set(1);
+  }
+
+  goToUsersPage(page: number): void {
+    this.usersPage.set(Math.min(Math.max(page, 1), this.totalUserPages()));
+  }
+
+  canDeleteUser(user: User): boolean {
+    const role = this.auth.user()?.tipo;
+    return (
+      user.id !== this.auth.user()?.id &&
+      (role === 'SuperAdmin' || role === 'Admin' || role === 'Gerente')
+    );
+  }
+
+  openDeleteUser(user: User): void {
+    if (!this.canDeleteUser(user)) return;
+    this.deleteTarget.set(user);
+    this.deleteError.set('');
+  }
+
+  closeDeleteUser(): void {
+    if (this.deleteSaving()) return;
+    this.deleteTarget.set(null);
+    this.deleteError.set('');
+  }
+
+  confirmDeleteUser(): void {
+    const user = this.deleteTarget();
+    if (!user || !this.canDeleteUser(user)) return;
+
+    this.deleteSaving.set(true);
+    this.deleteError.set('');
+
+    this.userService.deleteUser(user.id).subscribe({
+      next: (res) => {
+        if (res.ok) {
+          this.users.set(this.users().filter((item) => item.id !== user.id));
+          this.deleteTarget.set(null);
+          this.goToUsersPage(this.currentUsersPage());
+        } else {
+          this.deleteError.set(res.error ?? res.message ?? 'No se pudo eliminar el usuario.');
+        }
+        this.deleteSaving.set(false);
+      },
+      error: (err: HttpErrorResponse) => {
+        this.deleteSaving.set(false);
+        this.deleteError.set(
+          err.error?.error ?? err.error?.message ?? 'No se pudo eliminar el usuario.',
+        );
+      },
+    });
+  }
+
   openEdit(row: ProfileRow): void {
     if (!row.field) return;
     const currentValue = this.editableValue(row.field);
-    this.editState.set({
-      field: row.field,
-      label: row.label,
-      currentValue,
-      value: currentValue,
-    });
+    this.editState.set({ field: row.field, label: row.label, currentValue, value: currentValue });
     this.editError.set('');
     setTimeout(() => this.editInputRef?.nativeElement.focus(), 0);
   }
@@ -424,7 +956,6 @@ export class ProfileComponent implements OnInit {
   setEditValue(value: string): void {
     const edit = this.editState();
     if (!edit) return;
-
     this.editState.set({
       ...edit,
       value: edit.field === 'rut_usuario' ? formatRutInput(value) : value,
@@ -443,12 +974,8 @@ export class ProfileComponent implements OnInit {
 
     const value = edit.value.trim();
     const payload: UpdateUserProfilePayload = {};
-
-    if (edit.field === 'nombre') {
-      payload.nombre = value;
-    } else {
-      payload[edit.field] = value || null;
-    }
+    if (edit.field === 'nombre') payload.nombre = value;
+    else payload[edit.field] = value || null;
 
     this.editSaving.set(true);
     this.editError.set('');
@@ -456,8 +983,7 @@ export class ProfileComponent implements OnInit {
     this.userService.updateCurrentUser(payload).subscribe({
       next: (res) => {
         if (res.ok) {
-          this.profile.set(res.data);
-          this.auth.updateUser(res.data);
+          this.setProfile(res.data);
           this.editState.set(null);
         }
         this.editSaving.set(false);
@@ -471,10 +997,95 @@ export class ProfileComponent implements OnInit {
     });
   }
 
+  savePassword(event: Event): void {
+    event.preventDefault();
+    const user = this.displayUser();
+    if (!user || !this.canSavePassword(user)) return;
+
+    this.passwordSaving.set(true);
+    this.passwordMsg.set('');
+    this.passwordError.set('');
+
+    this.userService
+      .updateCurrentPassword({
+        current_password: this.currentPassword(),
+        new_password: this.newPassword(),
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.ok) {
+            this.setProfile(res.data);
+            this.currentPassword.set('');
+            this.newPassword.set('');
+            this.confirmPassword.set('');
+            this.passwordMsg.set('Contraseña actualizada.');
+          }
+          this.passwordSaving.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.passwordSaving.set(false);
+          this.passwordError.set(
+            err.error?.error ?? err.error?.message ?? 'No se pudo guardar la contraseña.',
+          );
+        },
+      });
+  }
+
+  saveSecurity(): void {
+    const user = this.displayUser();
+    const authMode = this.securityMode();
+
+    if (!user) return;
+    if (['password', 'password_otp'].includes(authMode) && !user.has_password) {
+      this.securityMsg.set('');
+      this.securityError.set('Crea una contraseña antes de activar este método.');
+      return;
+    }
+
+    this.securitySaving.set(true);
+    this.securityMsg.set('');
+    this.securityError.set('');
+
+    this.userService
+      .updateCurrentSecurity({
+        auth_mode: authMode,
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.ok) {
+            this.setProfile(res.data);
+            this.securityMsg.set('Métodos actualizados.');
+          }
+          this.securitySaving.set(false);
+        },
+        error: (err: HttpErrorResponse) => {
+          this.securitySaving.set(false);
+          this.securityError.set(
+            err.error?.error ?? err.error?.message ?? 'No se pudieron guardar los métodos.',
+          );
+        },
+      });
+  }
+
+  setAuthMode(mode: SecurityMode): void {
+    this.securityMode.set(mode);
+  }
+
   canSaveEdit(edit: EditState): boolean {
     const value = edit.value.trim();
     if (edit.field === 'nombre' && !value) return false;
     return value !== edit.currentValue.trim();
+  }
+
+  canSavePassword(user: User): boolean {
+    if (this.newPassword().length < 8) return false;
+    if (this.newPassword() !== this.confirmPassword()) return false;
+    if (user.has_password && !this.currentPassword()) return false;
+    return true;
+  }
+
+  hasLoggedIn(user: User): boolean {
+    return Boolean(user.activated_at);
   }
 
   fullName(user: User): string {
@@ -496,10 +1107,23 @@ export class ProfileComponent implements OnInit {
     return text || fallback;
   }
 
+  private normalizeUserSearch(value: string | null | undefined): string {
+    return String(value ?? '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+  }
+
+  private setProfile(user: User): void {
+    this.profile.set(user);
+    this.auth.updateUser(user);
+    this.securityMode.set(user.auth_mode ?? (user.has_password ? 'password' : 'otp'));
+  }
+
   private editableValue(field: EditableProfileField): string {
     const user = this.displayUser();
     if (!user) return '';
-
     return this.displayValue(user[field], '');
   }
 }

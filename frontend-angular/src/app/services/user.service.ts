@@ -4,7 +4,9 @@ import { Observable, finalize, tap } from 'rxjs';
 import type {
   ApiResponse,
   CreateUserPayload,
+  UpdateUserPasswordPayload,
   UpdateUserProfilePayload,
+  UpdateUserSecurityPayload,
   User,
   UserListFilters,
 } from '@emeltec/shared';
@@ -38,6 +40,14 @@ export class UserService {
 
   updateCurrentUser(payload: UpdateUserProfilePayload): Observable<ApiResponse<User>> {
     return this.http.patch<ApiResponse<User>>('/api/users/me', payload);
+  }
+
+  updateCurrentPassword(payload: UpdateUserPasswordPayload): Observable<ApiResponse<User>> {
+    return this.http.patch<ApiResponse<User>>('/api/users/me/password', payload);
+  }
+
+  updateCurrentSecurity(payload: UpdateUserSecurityPayload): Observable<ApiResponse<User>> {
+    return this.http.patch<ApiResponse<User>>('/api/users/me/security', payload);
   }
 
   createUser(userData: CreateUserPayload): Observable<ApiResponse<User>> {

@@ -11,7 +11,10 @@ async function seed() {
       ALTER TABLE usuario 
       ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
       ADD COLUMN IF NOT EXISTS otp_hash VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ;
+      ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS auth_mode VARCHAR(20) NOT NULL DEFAULT 'password',
+      ADD COLUMN IF NOT EXISTS password_set_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ;
     `);
     console.log('Columna password_hash verificada en usuario.');
 
@@ -28,13 +31,21 @@ async function seed() {
     // 4. Inyectar Usuarios base (Con ON CONFLICT para reiniciar contraseñas si existen)
     await db.query(
       `
-      INSERT INTO usuario (id, nombre, apellido, email, tipo, empresa_id, password_hash)
+      INSERT INTO usuario (
+        id, nombre, apellido, email, tipo, empresa_id, password_hash,
+        auth_mode, password_set_at, activated_at
+      )
       VALUES 
-        ($1, 'Jefe', 'Maestro', 'superadmin@gmail.com', 'SuperAdmin', NULL, $4),
-        ($2, 'Administrador', 'Empresarial', 'admin@gmail.com', 'Admin', 'E100', $4),
-        ($3, 'Observador', 'Visual', 'cliente@gmail.com', 'Cliente', 'E100', $4)
+        ($1, 'Jefe', 'Maestro', 'superadmin@gmail.com', 'SuperAdmin', NULL, $4, 'password', NOW(), NOW()),
+        ($2, 'Administrador', 'Empresarial', 'admin@gmail.com', 'Admin', 'E100', $4, 'password', NOW(), NOW()),
+        ($3, 'Observador', 'Visual', 'cliente@gmail.com', 'Cliente', 'E100', $4, 'password', NOW(), NOW())
       ON CONFLICT (email) 
-      DO UPDATE SET password_hash = EXCLUDED.password_hash, tipo = EXCLUDED.tipo;
+      DO UPDATE SET
+        password_hash = EXCLUDED.password_hash,
+        tipo = EXCLUDED.tipo,
+        auth_mode = 'password',
+        password_set_at = COALESCE(usuario.password_set_at, NOW()),
+        activated_at = COALESCE(usuario.activated_at, NOW());
     `,
       [superAdminId, adminId, clienteId, hashedPassword],
     );
