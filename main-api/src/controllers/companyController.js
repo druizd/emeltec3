@@ -178,18 +178,16 @@ function parseHistoryExportFields(value) {
 }
 
 const HISTORY_EXPORT_GRANULARITY = {
-  '1m':  { view: 'equipo_1min',   monthRollup: false },
-  '5m':  { view: 'equipo_5min',   monthRollup: false },
-  '1h':  { view: 'equipo_hourly', monthRollup: false },
-  '1d':  { view: 'equipo_daily',  monthRollup: false },
-  '1mo': { view: 'equipo_daily',  monthRollup: true  },
+  '1m': { view: 'equipo_1min', monthRollup: false },
+  '5m': { view: 'equipo_5min', monthRollup: false },
+  '1h': { view: 'equipo_hourly', monthRollup: false },
+  '1d': { view: 'equipo_daily', monthRollup: false },
+  '1mo': { view: 'equipo_daily', monthRollup: true },
 };
 
 function parseHistoryExportGranularity(value) {
   const key = cleanString(value).toLowerCase();
-  return Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key)
-    ? key
-    : '1m';
+  return Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key) ? key : '1m';
 }
 
 function csvCell(value, delimiter = ';') {
