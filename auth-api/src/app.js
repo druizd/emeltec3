@@ -20,31 +20,31 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Rate-limit global del namespace /api/auth (defensa en profundidad).
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
+  windowMs: 60 * 1000,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { ok: false, message: 'Demasiados intentos. Espera 15 minutos.' },
+  message: { ok: false, message: 'Demasiados intentos. Espera 1 minuto.' },
 });
 
 // Rate-limit estricto solicitud de OTP — defiende anti-enumeración + spray.
 // Complementa al límite per-email persistido en usuario.otp_requests_count.
 const otpRequestLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 60 * 1000,
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { ok: false, message: 'Demasiadas solicitudes de código. Espera 15 minutos.' },
+  message: { ok: false, message: 'Demasiadas solicitudes de codigo. Espera 1 minuto.' },
 });
 
 // Rate-limit estricto login — defiende contra brute-force distribuido por IP.
-// El lockout per-account (5 fallos → 15min) opera en authController.
+// El lockout per-account (5 fallos -> 1min) opera en authController.
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
+  windowMs: 60 * 1000,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { ok: false, message: 'Demasiados intentos de login. Espera 15 minutos.' },
+  message: { ok: false, message: 'Demasiados intentos de login. Espera 1 minuto.' },
 });
 
 app.use('/api/health', healthRoutes);

@@ -42,10 +42,10 @@ export class AuthService {
     return tipo === 'SuperAdmin' || tipo === 'Admin';
   });
 
-  /** SuperAdmin, Admin y Gerente pueden ver la lista de usuarios (Gerente solo lectura) */
+  /** Solo SuperAdmin puede ver el listado de usuarios */
   readonly canViewUsers = computed(() => {
     const tipo = this.effectiveRole();
-    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Gerente';
+    return tipo === 'SuperAdmin';
   });
 
   /** Solo SuperAdmin y Admin pueden crear/editar/eliminar */

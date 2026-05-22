@@ -32,8 +32,8 @@ interface EditState {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <section class="min-h-full bg-[#F0F2F5] px-5 py-5">
-      <div class="mb-5">
+    <section class="min-h-full bg-[#F0F2F5] px-5 py-4">
+      <div class="mb-3">
         <p
           class="mb-1 flex items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-primary"
         >
@@ -52,21 +52,21 @@ interface EditState {
       </div>
 
       <nav
-        class="mb-5 flex flex-wrap items-center gap-3 border-b border-[#dbe4ee] pb-4"
+        class="mb-4 flex flex-wrap items-center gap-3 border-b border-[#dbe4ee] pb-3"
         aria-label="Secciones de cuenta"
       >
-        @for (tab of tabs; track tab.key) {
+        @for (tab of visibleTabs(); track tab.key) {
           <button
             type="button"
-            (click)="activeTab.set(tab.key)"
-            class="inline-flex h-12 items-center gap-2 rounded-2xl border px-5 text-body-sm font-bold transition-all"
+            (click)="selectTab(tab.key)"
+            class="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-body-sm font-bold transition-all"
             [ngClass]="
               activeTab() === tab.key
                 ? 'border-primary-tint-35 bg-white text-primary shadow-[0_8px_24px_rgba(13,175,189,0.12)]'
                 : 'border-transparent text-[#8b9bb4] hover:bg-white'
             "
           >
-            <span class="material-symbols-outlined text-[22px]">{{ tab.icon }}</span>
+            <span class="material-symbols-outlined text-[21px]">{{ tab.icon }}</span>
             {{ tab.label }}
           </button>
         }
@@ -82,7 +82,7 @@ interface EditState {
         </div>
       }
 
-      @if (activeTab() === 'users') {
+      @if (activeTab() === 'users' && auth.canViewUsers()) {
         <section
           class="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
         >
@@ -337,6 +337,59 @@ interface EditState {
         </div>
       }
 
+      @if (passwordConfirmOpen()) {
+        <div
+          class="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          (click)="closePasswordConfirm()"
+        >
+          <section
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="border-b border-[#e2e8f0] px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-tint-10 text-primary"
+                >
+                  <span class="material-symbols-outlined text-[22px]">shield_lock</span>
+                </div>
+                <div>
+                  <h2 class="text-body font-bold text-[#1e293b]">Confirmar cambio</h2>
+                  <p class="text-caption text-[#94a3b8]">Tu proximo inicio usara esta clave.</p>
+                </div>
+              </div>
+            </div>
+            <div class="px-5 py-5">
+              <p class="text-body-sm leading-6 text-[#64748b]">
+                Estas seguro de cambiar tu contrasena?
+              </p>
+            </div>
+            <div
+              class="flex items-center justify-end gap-2 border-t border-[#e2e8f0] bg-slate-50 px-5 py-4"
+            >
+              <button
+                type="button"
+                (click)="closePasswordConfirm()"
+                [disabled]="passwordSaving()"
+                class="h-9 rounded-lg border border-[#e2e8f0] bg-white px-4 text-body-sm font-semibold text-[#64748b] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="confirmPasswordChange()"
+                [disabled]="passwordSaving()"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {{ passwordSaving() ? 'Guardando...' : 'Confirmar' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+
       @if (activeTab() === 'profile' && displayUser(); as user) {
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(260px,340px)_1fr]">
           <section
@@ -438,11 +491,13 @@ interface EditState {
       }
 
       @if (activeTab() === 'password' && displayUser(); as user) {
-        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+        <div
+          class="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)]"
+        >
           <section
-            class="rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+            class="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
           >
-            <div class="border-b border-[#e2e8f0] px-5 py-4">
+            <div class="border-b border-[#e2e8f0] px-4 py-3">
               <h2 class="text-body font-bold text-[#1e293b]">
                 {{ user.has_password ? 'Cambiar contraseña' : 'Crear contraseña' }}
               </h2>
@@ -450,59 +505,138 @@ interface EditState {
                 La contraseña permite iniciar sesión sin pedir código inicial.
               </p>
             </div>
-            <form class="space-y-4 p-5" (submit)="savePassword($event)">
+            @if (passwordMsg()) {
+              <div class="border-b border-emerald-100 bg-emerald-50 px-4 py-2">
+                <p class="flex items-center gap-2 text-caption font-bold text-emerald-700">
+                  <span class="material-symbols-outlined text-[17px]">check_circle</span>
+                  {{ passwordMsg() }}
+                </p>
+              </div>
+            }
+            <form class="space-y-3 p-4" (submit)="savePassword($event)">
               @if (user.has_password) {
-                <label class="grid gap-1.5">
+                <label class="grid gap-1">
                   <span
                     class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
                   >
                     Contraseña actual
                   </span>
-                  <input
-                    type="password"
-                    [ngModel]="currentPassword()"
-                    (ngModelChange)="currentPassword.set($event)"
-                    name="currentPassword"
-                    class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
-                  />
+                  <div class="relative">
+                    <span
+                      class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary"
+                      >lock</span
+                    >
+                    <input
+                      [type]="showCurrentPassword() ? 'text' : 'password'"
+                      [ngModel]="currentPassword()"
+                      (ngModelChange)="currentPassword.set($event)"
+                      name="currentPassword"
+                      class="h-9 w-full rounded-lg border border-[#cbd5e1] bg-white pl-9 pr-10 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                    />
+                    <button
+                      type="button"
+                      (click)="showCurrentPassword.set(!showCurrentPassword())"
+                      class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
+                      [attr.aria-label]="
+                        showCurrentPassword() ? 'Ocultar contrasena actual' : 'Ver contrasena actual'
+                      "
+                    >
+                      <span class="material-symbols-outlined text-[17px]">
+                        {{ showCurrentPassword() ? 'visibility_off' : 'visibility' }}
+                      </span>
+                    </button>
+                  </div>
                 </label>
               }
-              <label class="grid gap-1.5">
+              <label class="grid gap-1">
                 <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
                   Nueva contraseña
                 </span>
-                <input
-                  type="password"
-                  minlength="8"
-                  [ngModel]="newPassword()"
-                  (ngModelChange)="newPassword.set($event)"
-                  name="newPassword"
-                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
-                />
+                <div class="relative">
+                  <span
+                    class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary"
+                    >lock</span
+                  >
+                  <input
+                    [type]="showNewPassword() ? 'text' : 'password'"
+                    minlength="8"
+                    [ngModel]="newPassword()"
+                    (ngModelChange)="newPassword.set($event)"
+                    name="newPassword"
+                    class="h-9 w-full rounded-lg border border-[#cbd5e1] bg-white pl-9 pr-10 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                  />
+                  <button
+                    type="button"
+                    (click)="showNewPassword.set(!showNewPassword())"
+                    class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
+                    [attr.aria-label]="
+                      showNewPassword() ? 'Ocultar nueva contrasena' : 'Ver nueva contrasena'
+                    "
+                  >
+                    <span class="material-symbols-outlined text-[17px]">
+                      {{ showNewPassword() ? 'visibility_off' : 'visibility' }}
+                    </span>
+                  </button>
+                </div>
               </label>
-              <label class="grid gap-1.5">
+              <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                <div class="mb-1.5 flex items-center justify-between gap-3">
+                  <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                    Seguridad
+                  </span>
+                  <span class="text-caption font-bold text-[#64748b]">{{ passwordStrengthLabel() }}</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  @for (bar of [1, 2, 3, 4]; track bar) {
+                    <span
+                      class="h-1.5 rounded-full"
+                      [ngClass]="bar <= profilePasswordStrength() ? passwordStrengthColor() : 'bg-slate-200'"
+                    ></span>
+                  }
+                </div>
+              </div>
+              <label class="grid gap-1">
                 <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
                   Confirmar contraseña
                 </span>
-                <input
-                  type="password"
-                  [ngModel]="confirmPassword()"
-                  (ngModelChange)="confirmPassword.set($event)"
-                  name="confirmPassword"
-                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
-                />
+                <div class="relative">
+                  <span
+                    class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[16px] text-primary"
+                    >lock</span
+                  >
+                  <input
+                    [type]="showConfirmPassword() ? 'text' : 'password'"
+                    [ngModel]="confirmPassword()"
+                    (ngModelChange)="confirmPassword.set($event)"
+                    name="confirmPassword"
+                    class="h-9 w-full rounded-lg border bg-white pl-9 pr-10 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                    [style.border-color]="
+                      confirmPassword() && !profilePasswordsMatch() ? '#fecaca' : '#cbd5e1'
+                    "
+                  />
+                  <button
+                    type="button"
+                    (click)="showConfirmPassword.set(!showConfirmPassword())"
+                    class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
+                    [attr.aria-label]="
+                      showConfirmPassword() ? 'Ocultar confirmacion' : 'Ver confirmacion'
+                    "
+                  >
+                    <span class="material-symbols-outlined text-[17px]">
+                      {{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}
+                    </span>
+                  </button>
+                </div>
+                <p class="min-h-[16px] text-caption font-bold leading-4 text-rose-600">
+                  @if (confirmPassword() && !profilePasswordsMatch()) {
+                    Las contrasenas no coinciden.
+                  }
+                </p>
               </label>
 
-              @if (passwordMsg()) {
-                <p
-                  class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-caption font-bold text-emerald-700"
-                >
-                  {{ passwordMsg() }}
-                </p>
-              }
               @if (passwordError()) {
                 <p
-                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-caption font-bold text-rose-700"
                 >
                   {{ passwordError() }}
                 </p>
@@ -511,24 +645,24 @@ interface EditState {
               <button
                 type="submit"
                 [disabled]="passwordSaving() || !canSavePassword(user)"
-                class="h-10 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {{ passwordSaving() ? 'Guardando...' : 'Guardar contraseña' }}
+                {{ passwordSaving() ? 'Guardando...' : user.has_password ? 'Cambiar contraseña' : 'Crear contraseña' }}
               </button>
             </form>
           </section>
 
           <section
-            class="rounded-xl border border-primary-tint-25 bg-primary-tint-08/50 p-5 shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
+            class="h-fit rounded-xl border border-primary-tint-25 bg-primary-tint-08/50 p-4 shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
           >
             <h2 class="text-body font-bold text-[#1e293b]">Métodos de inicio</h2>
             <p class="mt-1 text-caption text-[#64748b]">
               Debe quedar al menos un método activo para no bloquear la cuenta.
             </p>
 
-            <div class="mt-5 grid gap-3">
+            <div class="mt-3 grid gap-2.5">
               <label
-                class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-all"
+                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-all"
                 [ngClass]="
                   securityMode() === 'password'
                     ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
@@ -553,7 +687,7 @@ interface EditState {
               </label>
 
               <label
-                class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-all"
+                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-all"
                 [ngClass]="
                   securityMode() === 'otp'
                     ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
@@ -574,7 +708,7 @@ interface EditState {
               </label>
 
               <label
-                class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-all"
+                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-all"
                 [ngClass]="
                   securityMode() === 'password_otp'
                     ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
@@ -601,14 +735,14 @@ interface EditState {
 
             @if (securityMsg()) {
               <p
-                class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-caption font-bold text-emerald-700"
+                class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700"
               >
                 {{ securityMsg() }}
               </p>
             }
             @if (securityError()) {
               <p
-                class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+                class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-caption font-bold text-rose-700"
               >
                 {{ securityError() }}
               </p>
@@ -618,7 +752,7 @@ interface EditState {
               type="button"
               (click)="saveSecurity()"
               [disabled]="securitySaving()"
-              class="mt-5 h-10 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
+              class="mt-3 h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
             >
               {{ securitySaving() ? 'Guardando...' : 'Guardar métodos' }}
             </button>
@@ -726,6 +860,10 @@ export class ProfileComponent implements OnInit {
     { key: 'users', label: 'Usuarios', icon: 'groups' },
   ];
 
+  readonly visibleTabs = computed(() =>
+    this.auth.canViewUsers() ? this.tabs : this.tabs.filter((tab) => tab.key !== 'users'),
+  );
+
   readonly activeTab = signal<AccountTab>('profile');
   readonly profile = signal<User | null>(null);
   readonly users = signal<User[]>([]);
@@ -744,9 +882,17 @@ export class ProfileComponent implements OnInit {
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
   readonly confirmPassword = signal('');
+  readonly showCurrentPassword = signal(false);
+  readonly showNewPassword = signal(false);
+  readonly showConfirmPassword = signal(false);
+  readonly passwordConfirmOpen = signal(false);
   readonly passwordSaving = signal(false);
   readonly passwordMsg = signal('');
   readonly passwordError = signal('');
+  readonly profilePasswordStrength = computed(() => this.scorePassword(this.newPassword()));
+  readonly profilePasswordsMatch = computed(
+    () => !this.confirmPassword() || this.newPassword() === this.confirmPassword(),
+  );
   readonly securityMode = signal<SecurityMode>('password');
   readonly securitySaving = signal(false);
   readonly securityMsg = signal('');
@@ -854,6 +1000,15 @@ export class ProfileComponent implements OnInit {
     this.loadUsers();
   }
 
+  selectTab(tab: AccountTab): void {
+    if (tab === 'users' && !this.auth.canViewUsers()) {
+      this.activeTab.set('profile');
+      return;
+    }
+
+    this.activeTab.set(tab);
+  }
+
   loadProfile(): void {
     this.profile.set(this.auth.user());
     this.loading.set(true);
@@ -874,7 +1029,12 @@ export class ProfileComponent implements OnInit {
   }
 
   loadUsers(): void {
-    if (!this.auth.canViewUsers()) return;
+    if (!this.auth.canViewUsers()) {
+      this.users.set([]);
+      if (this.activeTab() === 'users') this.activeTab.set('profile');
+      return;
+    }
+
     this.usersLoading.set(true);
     this.userService.getUsers().subscribe({
       next: (res) => {
@@ -899,11 +1059,7 @@ export class ProfileComponent implements OnInit {
   }
 
   canDeleteUser(user: User): boolean {
-    const role = this.auth.user()?.tipo;
-    return (
-      user.id !== this.auth.user()?.id &&
-      (role === 'SuperAdmin' || role === 'Admin' || role === 'Gerente')
-    );
+    return user.id !== this.auth.user()?.id && this.auth.isSuperAdmin();
   }
 
   openDeleteUser(user: User): void {
@@ -1000,7 +1156,28 @@ export class ProfileComponent implements OnInit {
   savePassword(event: Event): void {
     event.preventDefault();
     const user = this.displayUser();
-    if (!user || !this.canSavePassword(user)) return;
+    if (!user) return;
+    if (!this.canSavePassword(user)) {
+      this.passwordMsg.set('');
+      this.passwordError.set(this.getPasswordValidationMessage(user));
+      return;
+    }
+
+    this.passwordError.set('');
+    this.passwordConfirmOpen.set(true);
+  }
+
+  closePasswordConfirm(): void {
+    if (this.passwordSaving()) return;
+    this.passwordConfirmOpen.set(false);
+  }
+
+  confirmPasswordChange(): void {
+    const user = this.displayUser();
+    if (!user || !this.canSavePassword(user)) {
+      this.passwordConfirmOpen.set(false);
+      return;
+    }
 
     this.passwordSaving.set(true);
     this.passwordMsg.set('');
@@ -1018,12 +1195,17 @@ export class ProfileComponent implements OnInit {
             this.currentPassword.set('');
             this.newPassword.set('');
             this.confirmPassword.set('');
+            this.showCurrentPassword.set(false);
+            this.showNewPassword.set(false);
+            this.showConfirmPassword.set(false);
+            this.passwordConfirmOpen.set(false);
             this.passwordMsg.set('Contraseña actualizada.');
           }
           this.passwordSaving.set(false);
         },
         error: (err: HttpErrorResponse) => {
           this.passwordSaving.set(false);
+          this.passwordConfirmOpen.set(false);
           this.passwordError.set(
             err.error?.error ?? err.error?.message ?? 'No se pudo guardar la contraseña.',
           );
@@ -1079,9 +1261,20 @@ export class ProfileComponent implements OnInit {
 
   canSavePassword(user: User): boolean {
     if (this.newPassword().length < 8) return false;
+    if (this.profilePasswordStrength() < 2) return false;
     if (this.newPassword() !== this.confirmPassword()) return false;
     if (user.has_password && !this.currentPassword()) return false;
     return true;
+  }
+
+  passwordStrengthLabel(): string {
+    return ['Muy debil', 'Debil', 'Media', 'Buena', 'Fuerte'][this.profilePasswordStrength()];
+  }
+
+  passwordStrengthColor(): string {
+    return ['bg-rose-400', 'bg-orange-400', 'bg-amber-400', 'bg-teal-400', 'bg-emerald-500'][
+      this.profilePasswordStrength()
+    ];
   }
 
   hasLoggedIn(user: User): boolean {
@@ -1113,6 +1306,28 @@ export class ProfileComponent implements OnInit {
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase()
       .trim();
+  }
+
+  private getPasswordValidationMessage(user: User): string {
+    if (user.has_password && !this.currentPassword()) return 'Ingresa tu contraseña actual.';
+    if (this.newPassword().length < 8) return 'La nueva contraseña debe tener al menos 8 caracteres.';
+    if (this.profilePasswordStrength() < 2)
+      return 'Usa una contraseña con mayusculas, numeros o simbolos.';
+    if (this.newPassword() !== this.confirmPassword()) return 'Las contraseñas no coinciden.';
+    return 'Revisa los datos antes de continuar.';
+  }
+
+  private scorePassword(value: string): number {
+    if (!value) return 0;
+
+    let score = 0;
+    if (value.length >= 8) score += 1;
+    if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score += 1;
+    if (/\d/.test(value)) score += 1;
+    if (/[^A-Za-z0-9]/.test(value)) score += 1;
+    if (value.length >= 12 && score < 4) score += 1;
+
+    return Math.min(score, 4);
   }
 
   private setProfile(user: User): void {
