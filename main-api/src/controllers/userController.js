@@ -16,9 +16,7 @@ const USER_PROFILE_SELECT = `
          u.sub_empresa_id,
          u.last_login_at,
          u.activated_at,
-         u.password_login_enabled,
-         u.otp_login_enabled,
-         u.two_factor_enabled,
+         u.auth_mode,
          u.password_set_at,
          (u.password_hash IS NOT NULL) AS has_password,
          e.nombre AS empresa_nombre,
@@ -91,9 +89,7 @@ exports.getAllUsers = async (req, res, next) => {
              u.sub_empresa_id,
              u.last_login_at,
              u.activated_at,
-             u.password_login_enabled,
-             u.otp_login_enabled,
-             u.two_factor_enabled,
+             u.auth_mode,
              u.password_set_at,
              (u.password_hash IS NOT NULL) AS has_password,
              e.nombre AS empresa_nombre,
@@ -218,12 +214,12 @@ exports.updateCurrentPassword = async (req, res, next) => {
         .json({ ok: false, error: 'La contraseña debe tener al menos 8 caracteres.' });
     }
 
-    const { rows } = await db.query(
-      'SELECT password_hash, password_login_enabled FROM usuario WHERE id = $1',
-      [userId],
-    );
+    const { rows } = await db.query('SELECT password_hash, auth_mode FROM usuario WHERE id = $1', [
+      userId,
+    ]);
     const currentHash = rows[0]?.password_hash || null;
-    const currentPasswordRequired = currentHash && rows[0]?.password_login_enabled;
+    const currentPasswordRequired =
+      currentHash && ['password', 'password_otp'].includes(rows[0]?.auth_mode);
 
     if (currentPasswordRequired) {
       const matches = await bcrypt.compare(String(current_password || ''), currentHash);
@@ -237,7 +233,10 @@ exports.updateCurrentPassword = async (req, res, next) => {
       `UPDATE usuario
        SET password_hash = $1,
            password_set_at = NOW(),
-           password_login_enabled = true,
+           auth_mode = CASE
+             WHEN auth_mode IN ('password', 'password_otp') THEN auth_mode
+             ELSE 'password'
+           END,
            activated_at = COALESCE(activated_at, NOW()),
            updated_at = NOW()
        WHERE id = $2`,
@@ -258,53 +257,28 @@ exports.updateCurrentSecurity = async (req, res, next) => {
       return res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
     }
 
-    const { rows } = await db.query(
-      `SELECT password_hash, password_login_enabled, otp_login_enabled, two_factor_enabled
-       FROM usuario WHERE id = $1`,
-      [userId],
-    );
+    const { rows } = await db.query('SELECT password_hash, auth_mode FROM usuario WHERE id = $1', [
+      userId,
+    ]);
     const current = rows[0];
     if (!current) return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
 
-    const passwordLogin =
-      req.body.password_login_enabled === undefined
-        ? current.password_login_enabled
-        : Boolean(req.body.password_login_enabled);
-    const otpLogin =
-      req.body.otp_login_enabled === undefined
-        ? current.otp_login_enabled
-        : Boolean(req.body.otp_login_enabled);
-    const twoFactor =
-      req.body.two_factor_enabled === undefined
-        ? current.two_factor_enabled
-        : Boolean(req.body.two_factor_enabled);
-
-    if (!passwordLogin && !otpLogin) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'Debe quedar al menos un método de inicio activo.' });
+    const authMode = req.body.auth_mode || current.auth_mode;
+    if (!['password', 'otp', 'password_otp'].includes(authMode)) {
+      return res.status(400).json({ ok: false, error: 'Metodo de inicio no valido.' });
     }
-    if (passwordLogin && !current.password_hash) {
+    if (['password', 'password_otp'].includes(authMode) && !current.password_hash) {
       return res.status(400).json({
         ok: false,
         error: 'Crea una contraseña antes de activar el ingreso con contraseña.',
       });
     }
-    if (twoFactor && (!passwordLogin || !current.password_hash)) {
-      return res.status(400).json({
-        ok: false,
-        error: 'El 2FA requiere una contraseña activa.',
-      });
-    }
-
     await db.query(
       `UPDATE usuario
-       SET password_login_enabled = $1,
-           otp_login_enabled = $2,
-           two_factor_enabled = $3,
+       SET auth_mode = $1,
            updated_at = NOW()
-       WHERE id = $4`,
-      [passwordLogin, otpLogin, twoFactor, userId],
+       WHERE id = $2`,
+      [authMode, userId],
     );
 
     const profile = await getUserProfileById(userId);
@@ -370,10 +344,10 @@ exports.createUser = async (req, res, next) => {
     const { rows } = await db.query(
       `INSERT INTO usuario (
          id, nombre, apellido, rut_usuario, email, telefono, cargo, tipo,
-         empresa_id, sub_empresa_id, password_login_enabled, otp_login_enabled, two_factor_enabled
+         empresa_id, sub_empresa_id, auth_mode
        )
        VALUES (
-         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,false,false,false
+         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'password'
        )
        RETURNING id`,
       [

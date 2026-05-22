@@ -12,9 +12,7 @@ async function seed() {
       ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
       ADD COLUMN IF NOT EXISTS otp_hash VARCHAR(255),
       ADD COLUMN IF NOT EXISTS otp_expires_at TIMESTAMPTZ,
-      ADD COLUMN IF NOT EXISTS password_login_enabled BOOLEAN NOT NULL DEFAULT false,
-      ADD COLUMN IF NOT EXISTS otp_login_enabled BOOLEAN NOT NULL DEFAULT true,
-      ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS auth_mode VARCHAR(20) NOT NULL DEFAULT 'password',
       ADD COLUMN IF NOT EXISTS password_set_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ;
     `);
@@ -35,19 +33,17 @@ async function seed() {
       `
       INSERT INTO usuario (
         id, nombre, apellido, email, tipo, empresa_id, password_hash,
-        password_login_enabled, otp_login_enabled, two_factor_enabled, password_set_at, activated_at
+        auth_mode, password_set_at, activated_at
       )
       VALUES 
-        ($1, 'Jefe', 'Maestro', 'superadmin@gmail.com', 'SuperAdmin', NULL, $4, true, false, false, NOW(), NOW()),
-        ($2, 'Administrador', 'Empresarial', 'admin@gmail.com', 'Admin', 'E100', $4, true, false, false, NOW(), NOW()),
-        ($3, 'Observador', 'Visual', 'cliente@gmail.com', 'Cliente', 'E100', $4, true, false, false, NOW(), NOW())
+        ($1, 'Jefe', 'Maestro', 'superadmin@gmail.com', 'SuperAdmin', NULL, $4, 'password', NOW(), NOW()),
+        ($2, 'Administrador', 'Empresarial', 'admin@gmail.com', 'Admin', 'E100', $4, 'password', NOW(), NOW()),
+        ($3, 'Observador', 'Visual', 'cliente@gmail.com', 'Cliente', 'E100', $4, 'password', NOW(), NOW())
       ON CONFLICT (email) 
       DO UPDATE SET
         password_hash = EXCLUDED.password_hash,
         tipo = EXCLUDED.tipo,
-        password_login_enabled = true,
-        otp_login_enabled = false,
-        two_factor_enabled = false,
+        auth_mode = 'password',
         password_set_at = COALESCE(usuario.password_set_at, NOW()),
         activated_at = COALESCE(usuario.activated_at, NOW());
     `,

@@ -47,9 +47,7 @@ async function seed() {
     await db.query(`
       ALTER TABLE usuario
       ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS password_login_enabled BOOLEAN NOT NULL DEFAULT false,
-      ADD COLUMN IF NOT EXISTS otp_login_enabled BOOLEAN NOT NULL DEFAULT true,
-      ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN NOT NULL DEFAULT false,
+      ADD COLUMN IF NOT EXISTS auth_mode VARCHAR(20) NOT NULL DEFAULT 'password',
       ADD COLUMN IF NOT EXISTS password_set_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ
     `);
@@ -302,19 +300,17 @@ async function seed() {
         `
         INSERT INTO usuario (
           id, nombre, apellido, email, telefono, cargo, tipo, empresa_id, sub_empresa_id,
-          password_hash, password_login_enabled, otp_login_enabled, two_factor_enabled,
+          password_hash, auth_mode,
           password_set_at, activated_at
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,true,false,false,NOW(),NOW())
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'password',NOW(),NOW())
         ON CONFLICT (email) DO UPDATE SET
           nombre = EXCLUDED.nombre, apellido = EXCLUDED.apellido,
           telefono = EXCLUDED.telefono, cargo = EXCLUDED.cargo,
           tipo = EXCLUDED.tipo, empresa_id = EXCLUDED.empresa_id,
           sub_empresa_id = EXCLUDED.sub_empresa_id,
           password_hash = EXCLUDED.password_hash,
-          password_login_enabled = true,
-          otp_login_enabled = false,
-          two_factor_enabled = false,
+          auth_mode = 'password',
           password_set_at = COALESCE(usuario.password_set_at, NOW()),
           activated_at = COALESCE(usuario.activated_at, NOW()),
           updated_at = NOW()

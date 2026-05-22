@@ -2,13 +2,13 @@ import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { UpdateUserProfilePayload, User } from '@emeltec/shared';
+import type { AuthMode, UpdateUserProfilePayload, User } from '@emeltec/shared';
 import { AuthService } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { formatRutInput } from '../../shared/rut';
 
 type AccountTab = 'users' | 'profile' | 'password';
-type SecurityMode = 'password' | 'otp' | 'password_otp';
+type SecurityMode = AuthMode;
 type EditableProfileField = 'nombre' | 'apellido' | 'rut_usuario' | 'telefono' | 'cargo';
 const USERS_PAGE_SIZE = 20;
 
@@ -747,16 +747,10 @@ export class ProfileComponent implements OnInit {
   readonly passwordSaving = signal(false);
   readonly passwordMsg = signal('');
   readonly passwordError = signal('');
-  readonly otpLogin = signal(true);
-  readonly passwordLogin = signal(false);
-  readonly twoFactor = signal(false);
+  readonly securityMode = signal<SecurityMode>('password');
   readonly securitySaving = signal(false);
   readonly securityMsg = signal('');
   readonly securityError = signal('');
-  readonly securityMode = computed<SecurityMode>(() => {
-    if (this.twoFactor()) return 'password_otp';
-    return this.passwordLogin() ? 'password' : 'otp';
-  });
 
   readonly displayUser = computed(() => this.profile() ?? this.auth.user());
 
@@ -1038,12 +1032,15 @@ export class ProfileComponent implements OnInit {
   }
 
   saveSecurity(): void {
-    if (!this.otpLogin() && !this.passwordLogin()) {
+    const user = this.displayUser();
+    const authMode = this.securityMode();
+
+    if (!user) return;
+    if (['password', 'password_otp'].includes(authMode) && !user.has_password) {
       this.securityMsg.set('');
-      this.securityError.set('Debe quedar al menos un metodo activo.');
+      this.securityError.set('Crea una contraseña antes de activar este método.');
       return;
     }
-    if (!this.passwordLogin()) this.twoFactor.set(false);
 
     this.securitySaving.set(true);
     this.securityMsg.set('');
@@ -1051,9 +1048,7 @@ export class ProfileComponent implements OnInit {
 
     this.userService
       .updateCurrentSecurity({
-        otp_login_enabled: this.otpLogin(),
-        password_login_enabled: this.passwordLogin(),
-        two_factor_enabled: this.twoFactor(),
+        auth_mode: authMode,
       })
       .subscribe({
         next: (res) => {
@@ -1073,9 +1068,7 @@ export class ProfileComponent implements OnInit {
   }
 
   setAuthMode(mode: SecurityMode): void {
-    this.passwordLogin.set(mode !== 'otp');
-    this.otpLogin.set(mode === 'otp');
-    this.twoFactor.set(mode === 'password_otp');
+    this.securityMode.set(mode);
   }
 
   canSaveEdit(edit: EditState): boolean {
@@ -1125,11 +1118,7 @@ export class ProfileComponent implements OnInit {
   private setProfile(user: User): void {
     this.profile.set(user);
     this.auth.updateUser(user);
-    const passwordEnabled = user.password_login_enabled ?? Boolean(user.has_password);
-    const twoFactorEnabled = user.two_factor_enabled ?? false;
-    this.passwordLogin.set(passwordEnabled);
-    this.twoFactor.set(twoFactorEnabled);
-    this.otpLogin.set(passwordEnabled ? false : (user.otp_login_enabled ?? true));
+    this.securityMode.set(user.auth_mode ?? (user.has_password ? 'password' : 'otp'));
   }
 
   private editableValue(field: EditableProfileField): string {

@@ -13,6 +13,18 @@ const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const OTP_RATE_LIMIT_MAX = 3;
 const OTP_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 
+function allowsPasswordLogin(user) {
+  return user.auth_mode === 'password' || user.auth_mode === 'password_otp';
+}
+
+function allowsOtpLogin(user) {
+  return user.auth_mode === 'otp';
+}
+
+function requiresMfa(user) {
+  return user.auth_mode === 'password_otp';
+}
+
 async function leerRespuestaJson(res) {
   const text = await res.text();
   if (!text) return {};
@@ -154,7 +166,7 @@ async function findAuthUserByEmail(email) {
   const { rows } = await db.query(
     `SELECT id, nombre, apellido, email, tipo, empresa_id, sub_empresa_id,
             password_hash, otp_hash, otp_expires_at, failed_logins, locked_until,
-            password_login_enabled, otp_login_enabled, two_factor_enabled,
+            auth_mode,
             activated_at, otp_requests_count, otp_requests_window_start
      FROM usuario WHERE email = $1`,
     [email],
@@ -195,7 +207,7 @@ async function ensureNotLocked(req, user, res) {
 }
 
 async function issueOtp(req, user, minutes, { ignorePreference = false, action } = {}) {
-  if (!ignorePreference && !user.otp_login_enabled) {
+  if (!ignorePreference && !allowsOtpLogin(user)) {
     const err = new Error('Ingreso con codigo OTP desactivado.');
     err.status = 403;
     throw err;
@@ -313,7 +325,7 @@ exports.startLogin = async (req, res, next) => {
       });
     }
 
-    if (user.password_login_enabled && user.password_hash) {
+    if (allowsPasswordLogin(user) && user.password_hash) {
       return res.json({
         ok: true,
         flow: 'password',
@@ -321,7 +333,7 @@ exports.startLogin = async (req, res, next) => {
       });
     }
 
-    if (user.otp_login_enabled) {
+    if (allowsOtpLogin(user)) {
       const { expiresAt } = await issueOtp(req, user, DEFAULT_OTP_MINS, {
         action: 'login.otp_code_sent',
       });
@@ -422,9 +434,7 @@ exports.completeSetup = async (req, res, next) => {
       `UPDATE usuario
        SET password_hash = $1,
            password_set_at = NOW(),
-           password_login_enabled = true,
-           otp_login_enabled = false,
-           two_factor_enabled = false,
+           auth_mode = 'password',
            activated_at = NOW(),
            otp_hash = NULL,
            otp_expires_at = NULL,
@@ -478,14 +488,14 @@ exports.login = async (req, res, next) => {
     let authMethod = loginMode;
 
     if (loginMode === 'password') {
-      if (!user.password_login_enabled || !user.password_hash) {
+      if (!allowsPasswordLogin(user) || !user.password_hash) {
         return res.status(403).json({ ok: false, error: 'Ingreso con contrasena desactivado.' });
       }
 
       authenticated = await bcrypt.compare(credential, user.password_hash);
       authMethod = 'password';
 
-      if (authenticated && user.two_factor_enabled) {
+      if (authenticated && requiresMfa(user)) {
         return sendMfaChallenge(req, res, user);
       }
     } else if (loginMode === 'mfa') {
@@ -501,22 +511,22 @@ exports.login = async (req, res, next) => {
       authenticated = await verifyOtpCredential(user, credential);
       authMethod = 'password_otp';
     } else if (loginMode === 'otp') {
-      if (!user.otp_login_enabled) {
+      if (!allowsOtpLogin(user)) {
         return res.status(403).json({ ok: false, error: 'Ingreso con codigo OTP desactivado.' });
       }
 
       authenticated = await verifyOtpCredential(user, credential);
       authMethod = 'otp';
     } else {
-      if (user.otp_login_enabled) {
+      if (allowsOtpLogin(user)) {
         authenticated = await verifyOtpCredential(user, credential);
         if (authenticated) authMethod = 'otp';
       }
 
-      if (!authenticated && user.password_login_enabled && user.password_hash) {
+      if (!authenticated && allowsPasswordLogin(user) && user.password_hash) {
         authenticated = await bcrypt.compare(credential, user.password_hash);
         authMethod = 'password';
-        if (authenticated && user.two_factor_enabled) {
+        if (authenticated && requiresMfa(user)) {
           return sendMfaChallenge(req, res, user);
         }
       }

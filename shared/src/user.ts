@@ -1,4 +1,5 @@
 export type UserRole = 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente';
+export type AuthMode = 'password' | 'otp' | 'password_otp';
 
 export interface User {
   id: string;
@@ -16,9 +17,7 @@ export interface User {
   last_login_at?: string | null;
   activated_at?: string | null;
   has_password?: boolean;
-  password_login_enabled?: boolean;
-  otp_login_enabled?: boolean;
-  two_factor_enabled?: boolean;
+  auth_mode?: AuthMode | null;
   password_set_at?: string | null;
 }
 
@@ -43,9 +42,7 @@ export interface UpdateUserProfilePayload {
 }
 
 export interface UpdateUserSecurityPayload {
-  password_login_enabled?: boolean;
-  otp_login_enabled?: boolean;
-  two_factor_enabled?: boolean;
+  auth_mode: AuthMode;
 }
 
 export interface UpdateUserPasswordPayload {
