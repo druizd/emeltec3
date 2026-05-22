@@ -157,13 +157,13 @@ CREATE INDEX IF NOT EXISTS idx_equipo_daily_serial_bucket
 -- Comments
 -- ============================================================
 
-COMMENT ON MATERIALIZED VIEW equipo_1min IS
+COMMENT ON VIEW equipo_1min IS
     'Cagg 1-min con last(data, time) + count(*). Para dashboard-history, CSV export y sites latest-by-minute. Refresh cada 1 min, end_offset 2 min.';
-COMMENT ON MATERIALIZED VIEW equipo_5min IS
+COMMENT ON VIEW equipo_5min IS
     'Cagg 5-min con last(data, time) + count(*). Para contadores/jornadas y gap analysis 30 dias. Refresh cada 5 min.';
-COMMENT ON MATERIALIZED VIEW equipo_hourly IS
+COMMENT ON VIEW equipo_hourly IS
     'Cagg 1-hora con last(data, time) + count(*). Para DGA telemetria horaria y vistas medias. Refresh cada 30 min.';
-COMMENT ON MATERIALIZED VIEW equipo_daily IS
+COMMENT ON VIEW equipo_daily IS
     'Cagg 1-dia con last(data, time) + count(*). Para DGA diario y exports largos (meses/anios). Refresh cada 6 h. Reemplaza al cagg count-only previo.';
 
 -- ============================================================
