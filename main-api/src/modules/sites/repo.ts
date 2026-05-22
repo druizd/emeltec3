@@ -87,18 +87,10 @@ export async function getDashboardHistory(
 
   const result = await query<HistoryEquipoRow>(
     `
-    SELECT time, received_at, id_serial, data
-    FROM (
-      SELECT DISTINCT ON (time_bucket('1 minute', time))
-        time,
-        received_at,
-        id_serial,
-        data
-      FROM equipo
-      WHERE id_serial = $1
-      ORDER BY time_bucket('1 minute', time) DESC, time DESC
-    ) latest_by_minute
-    ORDER BY time DESC
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM equipo_1min
+    WHERE id_serial = $1
+    ORDER BY bucket DESC
     LIMIT $2
     `,
     [serialId, limit],
@@ -130,20 +122,12 @@ export async function getDashboardHistoryRange(
 
   const result = await query<HistoryEquipoRow>(
     `
-    SELECT time, received_at, id_serial, data
-    FROM (
-      SELECT DISTINCT ON (time_bucket('1 minute', time))
-        time,
-        received_at,
-        id_serial,
-        data
-      FROM equipo
-      WHERE id_serial = $1
-        AND time >= $2::timestamptz
-        AND time <  $3::timestamptz
-      ORDER BY time_bucket('1 minute', time) DESC, time DESC
-    ) latest_by_minute
-    ORDER BY time DESC
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM equipo_1min
+    WHERE id_serial = $1
+      AND bucket >= $2::timestamptz
+      AND bucket <  $3::timestamptz
+    ORDER BY bucket DESC
     `,
     [serialId, fromUtc, toUtc],
     { label: 'sites__dashboard_history_range' },

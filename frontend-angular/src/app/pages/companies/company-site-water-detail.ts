@@ -465,7 +465,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <input
                       type="date"
                       min="2020-01-01"
-                      [value]="historyDateFrom()"
+                      [value]="historyDateFromInput()"
                       (input)="setHistoryDateFrom($event)"
                       class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
@@ -475,23 +475,18 @@ type OperationMode = 'realtime' | 'turnos';
                     <input
                       type="date"
                       min="2020-01-01"
-                      [value]="historyDateTo()"
+                      [value]="historyDateToInput()"
                       (input)="setHistoryDateTo($event)"
                       class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                     />
                   </label>
-                  <label class="grid gap-1">
-                    <span>Registros</span>
-                    <select
-                      [value]="historyRecordLimit()"
-                      (change)="setHistoryRecordLimit($event)"
-                      class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
-                    >
-                      @for (limit of historyRecordLimitOptions; track limit) {
-                        <option [value]="limit">{{ limit }}</option>
-                      }
-                    </select>
-                  </label>
+                  <button
+                    type="button"
+                    (click)="confirmHistoryDateRange()"
+                    class="h-9 rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-4 text-caption-xs font-semibold uppercase tracking-wide text-primary-container transition-colors hover:bg-primary-tint-15"
+                  >
+                    Confirmar
+                  </button>
                   <button
                     type="button"
                     (click)="clearHistoryFilters()"
@@ -500,6 +495,11 @@ type OperationMode = 'realtime' | 'turnos';
                     Limpiar
                   </button>
                 </div>
+                @if (historyDateRangeError()) {
+                  <p class="mt-2 text-caption font-semibold text-rose-500">
+                    {{ historyDateRangeError() }}
+                  </p>
+                }
               </div>
 
               <div
@@ -2067,6 +2067,29 @@ type OperationMode = 'realtime' | 'turnos';
                   }
                 </div>
 
+                <!-- Granularity -->
+                <p
+                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                >
+                  Granularidad
+                </p>
+                <div class="mb-5 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+                  @for (gran of downloadGranularityOptions; track gran.id) {
+                    <button
+                      type="button"
+                      (click)="downloadGranularity.set(gran.id)"
+                      [title]="gran.hint"
+                      [class]="
+                        downloadGranularity() === gran.id
+                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-2 py-2 text-center text-caption font-bold text-primary-container transition-all'
+                          : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                      "
+                    >
+                      {{ gran.label }}
+                    </button>
+                  }
+                </div>
+
                 <!-- Format -->
                 <p
                   class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
@@ -2640,6 +2663,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyPage = signal(1);
   historyDateFrom = signal('');
   historyDateTo = signal('');
+  /** Input state for date pickers (no aplica hasta Confirmar). */
+  historyDateFromInput = signal('');
+  historyDateToInput = signal('');
+  historyDateRangeError = signal('');
   historyRecordLimit = signal(500);
   hoveredRealtimePointIndex = signal<number | null>(null);
   dgaDateFilterOpen = signal(false);
@@ -2656,6 +2683,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   downloadDateTo = signal('');
   downloadFormat = signal<'xlsx' | 'csv'>('csv');
   downloadSelectedTypes = signal<string[]>(['caudal', 'nivel', 'totalizador', 'nivel_freatico']);
+  downloadGranularity = signal<'1m' | '5m' | '1h' | '1d' | '1mo'>('1m');
   downloadBusy = signal(false);
   downloadError = signal('');
   dgaSelectedPreset = signal<string | null>(null);
@@ -3167,6 +3195,18 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { id: 'nivel', label: 'Nivel', unit: 'm' },
     { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
     { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
+  ];
+
+  readonly downloadGranularityOptions: {
+    id: '1m' | '5m' | '1h' | '1d' | '1mo';
+    label: string;
+    hint: string;
+  }[] = [
+    { id: '1m', label: '1 minuto', hint: 'Detalle máximo' },
+    { id: '5m', label: '5 minutos', hint: 'Recomendado < 30 días' },
+    { id: '1h', label: '1 hora', hint: 'Recomendado < 1 año' },
+    { id: '1d', label: '1 día', hint: 'Resumen diario' },
+    { id: '1mo', label: '1 mes', hint: 'Resumen mensual' },
   ];
 
   readonly historyMockRows: HistoricalTelemetryRow[] = [
@@ -3832,6 +3872,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.settingsPanelOpen.set(false);
     this.historyPanelOpen.set(true);
     this.historyPage.set(1);
+    const monthStart = chileMonthStart();
+    const today = chileToday();
+    this.historyDateFrom.set(monthStart);
+    this.historyDateTo.set(today);
+    this.historyDateFromInput.set(monthStart);
+    this.historyDateToInput.set(today);
+    this.historyDateRangeError.set('');
+    const siteId = this.currentSiteId();
+    if (siteId) this.startHistoryPolling(siteId);
   }
 
   closeHistoryView(): void {
@@ -3842,6 +3891,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.downloadSelectedMonths.set([]);
     this.downloadError.set('');
     this.downloadFormat.set('csv');
+    this.downloadGranularity.set('1m');
     this.applyDownloadPreset('last30');
     this.downloadModalOpen.set(true);
   }
@@ -3951,6 +4001,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         to,
         fields,
         format: 'csv',
+        granularity: this.downloadGranularity(),
       })
       .subscribe({
         next: (response) => {
@@ -4103,26 +4154,56 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   setHistoryDateFrom(event: Event): void {
-    this.historyDateFrom.set((event.target as HTMLInputElement).value);
-    this.historyPage.set(1);
+    this.historyDateFromInput.set((event.target as HTMLInputElement).value);
+    this.historyDateRangeError.set('');
   }
 
   setHistoryDateTo(event: Event): void {
-    this.historyDateTo.set((event.target as HTMLInputElement).value);
-    this.historyPage.set(1);
+    this.historyDateToInput.set((event.target as HTMLInputElement).value);
+    this.historyDateRangeError.set('');
   }
 
-  setHistoryRecordLimit(event: Event): void {
-    const parsed = Number((event.target as HTMLSelectElement).value);
-    this.historyRecordLimit.set(this.historyRecordLimitOptions.includes(parsed) ? parsed : 500);
+  confirmHistoryDateRange(): void {
+    const from = this.historyDateFromInput();
+    const to = this.historyDateToInput();
+    if (!from || !to) {
+      this.historyDateRangeError.set('Selecciona ambas fechas.');
+      return;
+    }
+    const fromMs = Date.parse(`${from}T00:00:00Z`);
+    const toMs = Date.parse(`${to}T00:00:00Z`);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) {
+      this.historyDateRangeError.set('Fechas invalidas.');
+      return;
+    }
+    if (fromMs > toMs) {
+      this.historyDateRangeError.set('La fecha desde no puede ser mayor que hasta.');
+      return;
+    }
+    const days = Math.floor((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
+    if (days > 93) {
+      this.historyDateRangeError.set('Rango maximo: 3 meses (93 dias).');
+      return;
+    }
+    this.historyDateRangeError.set('');
+    this.historyDateFrom.set(from);
+    this.historyDateTo.set(to);
     this.historyPage.set(1);
+    const siteId = this.currentSiteId();
+    if (siteId) this.startHistoryPolling(siteId);
   }
 
   clearHistoryFilters(): void {
-    this.historyDateFrom.set('');
-    this.historyDateTo.set('');
-    this.historyRecordLimit.set(500);
+    const monthStart = chileMonthStart();
+    const today = chileToday();
+    this.historyDateFrom.set(monthStart);
+    this.historyDateTo.set(today);
+    this.historyDateFromInput.set(monthStart);
+    this.historyDateToInput.set(today);
+    this.historyDateRangeError.set('');
     this.historyPage.set(1);
+    const siteId = this.currentSiteId();
+    if (siteId) this.startHistoryPolling(siteId);
   }
 
   openDgaDateFilter(): void {
@@ -4444,15 +4525,23 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
     this.historyPollingSub = timer(0, 60000)
       .pipe(
-        switchMap(() =>
-          this.companyService.getSiteDashboardHistory(siteId, this.historyFetchLimit).pipe(
-            catchError(() => {
-              this.historyError.set('No fue posible cargar datos historicos.');
-              this.historyLoading.set(false);
-              return of(null);
-            }),
-          ),
-        ),
+        switchMap(() => {
+          const from = this.historyDateFrom();
+          const to = this.historyDateTo();
+          const useRange = Boolean(from && to);
+          return this.companyService
+            .getSiteDashboardHistory(siteId, useRange ? 200000 : this.historyFetchLimit, {
+              from: useRange ? from : undefined,
+              to: useRange ? to : undefined,
+            })
+            .pipe(
+              catchError(() => {
+                this.historyError.set('No fue posible cargar datos historicos.');
+                this.historyLoading.set(false);
+                return of(null);
+              }),
+            );
+        }),
       )
       .subscribe((res: any) => {
         if (!res) return;
