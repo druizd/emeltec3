@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import type { ApiResponse, User } from '@emeltec/shared';
@@ -46,9 +46,24 @@ export class LoginComponent {
   readonly otpCode = signal('');
   readonly setupToken = signal('');
   readonly mfaChallengeToken = signal('');
+  readonly showPassword = signal(false);
+  readonly showConfirmPassword = signal(false);
   readonly successMsg = signal<string | null>(null);
   readonly errorMsg = signal<string | null>(null);
   readonly isSubmitting = signal(false);
+  readonly passwordStrength = computed(() => this.scorePassword(this.password()));
+  readonly passwordsMatch = computed(
+    () => !this.confirmPassword() || this.password() === this.confirmPassword(),
+  );
+  readonly canSubmitCurrentStep = computed(() => {
+    if (this.isSubmitting()) return false;
+    if (this.step() === 'setup_password') return this.canStartSetup();
+    if (this.step() === 'password') return this.password().length > 0;
+    if (this.step() === 'setup_otp' || this.step() === 'otp' || this.step() === 'mfa') {
+      return this.otpCode().trim().length === 6;
+    }
+    return this.email().trim().length > 0;
+  });
 
   get title(): string {
     return (
@@ -67,7 +82,7 @@ export class LoginComponent {
     return (
       {
         email: 'El sistema revisara el metodo configurado para tu cuenta.',
-        setup_password: 'Crea tu contrasena inicial. Luego enviaremos un codigo OTP.',
+        setup_password: 'Ingresa una contrasena para iniciar sesion.',
         setup_otp: 'Escribe el codigo enviado para activar la cuenta.',
         password: 'Usa la contrasena configurada para este correo.',
         otp: 'Revisa tu correo y escribe el codigo de un solo uso.',
@@ -91,6 +106,12 @@ export class LoginComponent {
 
   handleSubmit(event: Event): void {
     event.preventDefault();
+    if (!this.canSubmitCurrentStep()) {
+      if (this.step() === 'setup_password' && this.password() !== this.confirmPassword()) {
+        this.errorMsg.set('Las contrasenas no coinciden.');
+      }
+      return;
+    }
     const actions: Record<LoginStep, () => void> = {
       email: () => this.startLogin(),
       setup_password: () => this.startSetup(),
@@ -110,7 +131,19 @@ export class LoginComponent {
     this.otpCode.set('');
     this.setupToken.set('');
     this.mfaChallengeToken.set('');
+    this.showPassword.set(false);
+    this.showConfirmPassword.set(false);
     this.step.set('email');
+  }
+
+  get strengthLabel(): string {
+    return ['Muy debil', 'Debil', 'Media', 'Buena', 'Fuerte'][this.passwordStrength()];
+  }
+
+  get strengthColor(): string {
+    return ['bg-rose-400', 'bg-orange-400', 'bg-amber-400', 'bg-teal-400', 'bg-emerald-500'][
+      this.passwordStrength()
+    ];
   }
 
   private startLogin(): void {
@@ -149,6 +182,28 @@ export class LoginComponent {
       },
       'No se pudo enviar el codigo de activacion.',
     );
+  }
+
+  private canStartSetup(): boolean {
+    return (
+      this.password().length >= 8 &&
+      this.passwordStrength() >= 2 &&
+      this.confirmPassword().length > 0 &&
+      this.password() === this.confirmPassword()
+    );
+  }
+
+  private scorePassword(value: string): number {
+    if (!value) return 0;
+
+    let score = 0;
+    if (value.length >= 8) score += 1;
+    if (/[a-z]/.test(value) && /[A-Z]/.test(value)) score += 1;
+    if (/\d/.test(value)) score += 1;
+    if (/[^A-Za-z0-9]/.test(value)) score += 1;
+    if (value.length >= 12 && score < 4) score += 1;
+
+    return Math.min(score, 4);
   }
 
   private completeSetup(): void {

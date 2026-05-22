@@ -43,7 +43,7 @@
     </section>
 
     <section
-      class="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-5 py-8 sm:px-8 lg:px-10"
+      class="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-5 py-5 sm:px-8 sm:py-6 lg:px-10 lg:py-5"
     >
       <div
         class="absolute inset-0 -z-40"
@@ -55,13 +55,13 @@
 
       <div class="relative z-10 w-full max-w-[400px]">
         <div
-          class="mb-5 overflow-hidden rounded-xl border border-white/70 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)] lg:hidden"
+          class="mb-4 overflow-hidden rounded-xl border border-white/70 bg-white shadow-[0_18px_44px_rgba(15,23,42,0.08)] lg:hidden"
         >
           <div
-            class="h-36 bg-cover bg-[center_right_20%]"
+            class="h-28 bg-cover bg-[center_right_20%]"
             style="background-image: url('/images/login-field-hero-polished.png')"
           ></div>
-          <div class="border-t border-slate-100 px-5 py-4">
+          <div class="border-t border-slate-100 px-5 py-3">
             <img
               src="/images/emeltec-logo.webp"
               alt="Emeltec"
@@ -71,7 +71,7 @@
         </div>
 
         <div
-          class="relative rounded-2xl bg-white/90 p-7 backdrop-blur-md"
+          class="relative rounded-2xl bg-white/90 p-5 backdrop-blur-md sm:p-6"
           style="
             box-shadow:
               0 0 0 1px rgba(13, 175, 189, 0.13),
@@ -81,7 +81,7 @@
           "
         >
           <div
-            class="absolute inset-x-8 top-0 h-[2px] rounded-full"
+            class="absolute inset-x-6 top-0 h-[2px] rounded-full"
             style="
               background: linear-gradient(
                 90deg,
@@ -94,8 +94,8 @@
             "
           ></div>
 
-          <div class="mb-6 border-b border-[rgba(13,175,189,0.08)] pb-5">
-            <div class="mb-5 flex items-center gap-2">
+          <div class="mb-4 border-b border-[rgba(13,175,189,0.08)] pb-4">
+            <div class="mb-4 flex items-center gap-2">
               @for (dot of [1, 2, 3]; track dot) {
                 <span
                   class="h-1.5 rounded-full transition-all"
@@ -117,14 +117,14 @@
               </span>
             </div>
 
-            <h2 class="text-[1.55rem] font-semibold leading-tight text-slate-900">{{ title }}</h2>
-            <p class="mt-1.5 text-[13px] leading-5 text-slate-400">{{ subtitle }}</p>
+            <h2 class="text-[1.42rem] font-semibold leading-tight text-slate-900">{{ title }}</h2>
+            <p class="mt-1 text-[12px] leading-4 text-slate-400">{{ subtitle }}</p>
           </div>
 
           @if (errorMsg()) {
             <div
               role="alert"
-              class="mb-5 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-[13px] font-semibold text-red-600"
+              class="mb-3 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-600"
             >
               <span class="material-symbols-outlined text-[18px]">error</span>
               <p>{{ errorMsg() }}</p>
@@ -133,15 +133,15 @@
 
           @if (successMsg()) {
             <div
-              class="mb-5 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[13px] font-semibold text-emerald-700"
+              class="mb-3 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-semibold text-emerald-700"
             >
               <span class="material-symbols-outlined text-[18px]">check_circle</span>
               <p>{{ successMsg() }}</p>
             </div>
           }
 
-          <form (submit)="handleSubmit($event)" class="space-y-4">
-            <div class="space-y-1.5">
+          <form (submit)="handleSubmit($event)" class="space-y-3">
+            <div class="space-y-1">
               <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                 Correo registrado
               </label>
@@ -154,7 +154,7 @@
                   type="email"
                   required
                   [readonly]="step() !== 'email'"
-                  class="h-11 w-full rounded-xl border bg-white pl-10 pr-4 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20 read-only:cursor-not-allowed read-only:bg-slate-50 read-only:text-slate-500"
+                  class="h-10 w-full rounded-lg border bg-white pl-10 pr-4 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20 read-only:cursor-not-allowed read-only:bg-slate-50 read-only:text-slate-500"
                   style="border-color: rgba(13, 175, 189, 0.2)"
                   placeholder="usuario@correo.com"
                   [ngModel]="email()"
@@ -165,17 +165,16 @@
             </div>
 
             @if (step() === 'setup_password') {
-              <div class="rounded-xl border border-primary-tint-20 bg-primary-tint-08/40 px-4 py-3">
+              <div class="rounded-lg border border-primary-tint-20 bg-primary-tint-08/40 px-3 py-2">
                 <p class="text-[12px] font-bold text-slate-800">Cuenta nueva</p>
-                <p class="mt-1 text-[12px] leading-5 text-slate-500">
-                  Esta cuenta fue creada por un administrador. Define una contrasena y confirma el
-                  codigo enviado al correo.
+                <p class="mt-0.5 text-[12px] leading-4 text-slate-500">
+                  Ingresa una contrasena para iniciar sesion.
                 </p>
               </div>
             }
 
             @if (step() === 'setup_password' || step() === 'password') {
-              <div class="space-y-1.5">
+              <div class="space-y-1">
                 <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   {{ step() === 'password' ? 'Contrasena' : 'Nueva contrasena' }}
                 </label>
@@ -185,35 +184,92 @@
                     >lock</span
                   >
                   <input
-                    type="password"
+                    [type]="showPassword() ? 'text' : 'password'"
                     required
                     minlength="8"
-                    class="h-11 w-full rounded-xl border bg-white pl-10 pr-4 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                    class="h-10 w-full rounded-lg border bg-white pl-10 pr-11 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                     style="border-color: rgba(13, 175, 189, 0.2)"
                     placeholder="Minimo 8 caracteres"
                     [ngModel]="password()"
                     (ngModelChange)="password.set($event)"
                     name="password"
                   />
+                  <button
+                    type="button"
+                    (click)="showPassword.set(!showPassword())"
+                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#0dafbd]"
+                    [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Ver contrasena'"
+                  >
+                    <span class="material-symbols-outlined text-[18px]">
+                      {{ showPassword() ? 'visibility_off' : 'visibility' }}
+                    </span>
+                  </button>
                 </div>
               </div>
             }
 
             @if (step() === 'setup_password') {
-              <div class="space-y-1.5">
+              <div class="space-y-1.5 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                <div class="flex items-center justify-between gap-3">
+                  <span
+                    class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400"
+                  >
+                    Seguridad
+                  </span>
+                  <span class="text-[11px] font-bold text-slate-600">{{ strengthLabel }}</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                  @for (bar of [1, 2, 3, 4]; track bar) {
+                    <span
+                      class="h-1.5 rounded-full transition-colors"
+                      [ngClass]="bar <= passwordStrength() ? strengthColor : 'bg-slate-200'"
+                    ></span>
+                  }
+                </div>
+                <p class="text-[11px] leading-3 text-slate-500">
+                  Usa minimo 8 caracteres. Mejora con mayusculas, numeros y simbolos.
+                </p>
+              </div>
+
+              <div class="space-y-1">
                 <label class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                   Confirmar contrasena
                 </label>
-                <input
-                  type="password"
-                  required
-                  minlength="8"
-                  class="h-11 w-full rounded-xl border bg-white px-4 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
-                  style="border-color: rgba(13, 175, 189, 0.2)"
-                  [ngModel]="confirmPassword()"
-                  (ngModelChange)="confirmPassword.set($event)"
-                  name="confirmPassword"
-                />
+                <div class="relative">
+                  <span
+                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#0dafbd]/70"
+                    >lock</span
+                  >
+                  <input
+                    [type]="showConfirmPassword() ? 'text' : 'password'"
+                    required
+                    minlength="8"
+                    class="h-10 w-full rounded-lg border bg-white pl-10 pr-11 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                    [style.border-color]="
+                      confirmPassword() && !passwordsMatch() ? '#fecaca' : 'rgba(13, 175, 189, 0.2)'
+                    "
+                    [ngModel]="confirmPassword()"
+                    (ngModelChange)="confirmPassword.set($event)"
+                    name="confirmPassword"
+                  />
+                  <button
+                    type="button"
+                    (click)="showConfirmPassword.set(!showConfirmPassword())"
+                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#0dafbd]"
+                    [attr.aria-label]="
+                      showConfirmPassword() ? 'Ocultar confirmacion' : 'Ver confirmacion'
+                    "
+                  >
+                    <span class="material-symbols-outlined text-[18px]">
+                      {{ showConfirmPassword() ? 'visibility_off' : 'visibility' }}
+                    </span>
+                  </button>
+                </div>
+                <p class="min-h-[15px] text-[11px] font-semibold leading-[15px] text-red-600">
+                  @if (confirmPassword() && !passwordsMatch()) {
+                    Las contrasenas no coinciden.
+                  }
+                </p>
               </div>
             }
 
@@ -238,8 +294,8 @@
 
             <button
               type="submit"
-              [disabled]="isSubmitting()"
-              class="relative flex h-11 w-full items-center justify-center gap-2 overflow-hidden rounded-xl text-[13px] font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              [disabled]="!canSubmitCurrentStep()"
+              class="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-lg text-[13px] font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               style="
                 background: linear-gradient(135deg, #0dafbd 0%, #0899a5 60%, #04606a 100%);
                 box-shadow: 0 6px 20px rgba(13, 175, 189, 0.3);
@@ -259,7 +315,7 @@
               <button
                 type="button"
                 (click)="goBack()"
-                class="flex h-10 w-full items-center justify-center gap-2 rounded-xl text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]"
                 style="
                   border: 1px solid rgba(13, 175, 189, 0.13);
                   background: rgba(13, 175, 189, 0.03);
@@ -272,7 +328,7 @@
           </form>
         </div>
 
-        <div class="mt-5 flex items-center justify-center gap-3">
+        <div class="mt-4 flex items-center justify-center gap-3">
           <span class="h-px w-8 bg-gradient-to-r from-transparent to-slate-300"></span>
           <p class="text-[10px] font-semibold tracking-[0.32em] text-slate-400">
             EMELTEC HUB · {{ currentYear }}

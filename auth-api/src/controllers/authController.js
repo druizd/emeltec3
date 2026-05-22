@@ -9,9 +9,9 @@ const DEFAULT_OTP_MINS = 30;
 const MAX_OTP_MINS = 1440;
 const BCRYPT_COST = 12;
 const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
-const OTP_RATE_LIMIT_MAX = 3;
-const OTP_RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const LOCKOUT_DURATION_MS = 60 * 1000;
+const OTP_RATE_LIMIT_MAX = 5;
+const OTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
 function allowsPasswordLogin(user) {
   return user.auth_mode === 'password' || user.auth_mode === 'password_otp';
@@ -187,7 +187,25 @@ async function rejectUnknownEmail(req, email, res) {
 }
 
 async function ensureNotLocked(req, user, res) {
-  if (!user.locked_until || new Date(user.locked_until) <= new Date()) return false;
+  if (!user.locked_until) return false;
+
+  const now = new Date();
+  const lockedUntil = new Date(user.locked_until);
+  if (lockedUntil <= now) {
+    await db.query('UPDATE usuario SET failed_logins = 0, locked_until = NULL WHERE email = $1', [
+      user.email,
+    ]);
+    return false;
+  }
+
+  const maxLockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
+  const effectiveLockedUntil = lockedUntil > maxLockedUntil ? maxLockedUntil : lockedUntil;
+  if (effectiveLockedUntil.getTime() !== lockedUntil.getTime()) {
+    await db.query('UPDATE usuario SET locked_until = $1 WHERE email = $2', [
+      effectiveLockedUntil,
+      user.email,
+    ]);
+  }
 
   await audit.record({
     req,
@@ -196,12 +214,12 @@ async function ensureNotLocked(req, user, res) {
     actorEmail: user.email,
     actorTipo: user.tipo,
     statusCode: 423,
-    metadata: { reason: 'account_locked', until: user.locked_until },
+    metadata: { reason: 'account_locked', until: effectiveLockedUntil },
   });
 
   res.status(423).json({
     ok: false,
-    error: 'Cuenta temporalmente bloqueada por multiples intentos fallidos. Intenta mas tarde.',
+    error: 'Cuenta bloqueada por multiples intentos fallidos. Intenta nuevamente en 1 minuto.',
   });
   return true;
 }
@@ -231,8 +249,9 @@ async function issueOtp(req, user, minutes, { ignorePreference = false, action }
       metadata: { count: currentCount, window_start: windowStart },
     });
 
+    const retryMinutes = Math.ceil(OTP_RATE_LIMIT_WINDOW_MS / 60000);
     const err = new Error(
-      `Demasiadas solicitudes. Reintenta en ${Math.ceil(OTP_RATE_LIMIT_WINDOW_MS / 60000)} minutos.`,
+      `Demasiadas solicitudes. Reintenta en ${retryMinutes} ${retryMinutes === 1 ? 'minuto' : 'minutos'}.`,
     );
     err.status = 429;
     throw err;
