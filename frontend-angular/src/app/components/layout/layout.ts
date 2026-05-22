@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './header/header';
 import { SidebarComponent } from './sidebar/sidebar';
+import { ViewAsBannerComponent } from './view-as-banner/view-as-banner';
 import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
 
 @Component({
@@ -13,6 +14,7 @@ import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
     RouterOutlet,
     HeaderComponent,
     SidebarComponent,
+    ViewAsBannerComponent,
     ShortcutPaletteComponent,
   ],
   template: `
@@ -31,6 +33,7 @@ import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
       <app-sidebar></app-sidebar>
 
       <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <app-view-as-banner></app-view-as-banner>
         <app-header></app-header>
         <main
           id="main-content"

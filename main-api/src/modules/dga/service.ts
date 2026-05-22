@@ -7,6 +7,7 @@
  *   - Descarga directa CSV desde equipo.
  */
 import { ConflictError, NotFoundError } from '../../shared/errors';
+import { cache } from '../../config/redis';
 import { encryptClave } from './crypto';
 import {
   acceptReviewSlotWithValues,
@@ -234,7 +235,22 @@ export async function getDatoDgaBySite(
   desde: string,
   hasta: string,
 ): Promise<DatoDgaRow[]> {
-  return queryDatoDgaBySite(siteId, desde, hasta);
+  const cacheKey = `dga:dato:${siteId}:${desde}:${hasta}`;
+  if (cache.enabled) {
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      try {
+        return JSON.parse(cached) as DatoDgaRow[];
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  const rows = await queryDatoDgaBySite(siteId, desde, hasta);
+  if (cache.enabled) {
+    await cache.set(cacheKey, JSON.stringify(rows), 300);
+  }
+  return rows;
 }
 
 /**

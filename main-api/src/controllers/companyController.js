@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const zlib = require('zlib');
 const { once } = require('events');
 const db = require('../config/db');
 const {
@@ -1417,14 +1418,25 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     ]);
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
-    const mappings = mappingsRes.rows || [];
+    const allMappings = mappingsRes.rows || [];
+    const exportRoles = new Set(fields);
+    const mappings = allMappings.filter((m) => {
+      const rol = m.rol_dashboard || 'generico';
+      if (exportRoles.has(rol)) return true;
+      if (exportRoles.has('nivel_freatico') && m.transformacion === 'nivel_freatico') return true;
+      return false;
+    });
     const delimiter = ';';
     const header = ['Fecha', ...fields.map((field) => HISTORY_EXPORT_FIELDS[field])];
 
     const filename = exportFileName(site, from, to, 'csv');
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Encoding', 'gzip');
     res.setHeader('Cache-Control', 'no-store');
+
+    const gz = zlib.createGzip({ level: 1 });
+    gz.pipe(res);
 
     let client;
     try {
@@ -1433,50 +1445,51 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       await client.query(
         `
         DECLARE history_export_cursor NO SCROLL CURSOR FOR
-        SELECT time, received_at, id_serial, data, timestamp_completo
-        FROM (
-          SELECT DISTINCT ON (date_trunc('minute', time))
-            time,
-            received_at,
-            id_serial,
-            data,
-            ${utcTimestampSql('time')} AS timestamp_completo
-          FROM equipo
-          WHERE id_serial = $1
-            AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          ORDER BY date_trunc('minute', time) ASC, time DESC
-        ) latest_by_minute
-        ORDER BY time ASC
+        SELECT
+          last(time, time)        AS time,
+          last(received_at, time) AS received_at,
+          last(id_serial, time)   AS id_serial,
+          last(data, time)        AS data,
+          ${utcTimestampSql('last(time, time)')} AS timestamp_completo
+        FROM equipo
+        WHERE id_serial = $1
+          AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        GROUP BY time_bucket('1 minute', time)
+        ORDER BY 1 ASC
         `,
         [site.id_serial, from, to],
       );
 
-      await writeResponseChunk(res, '\uFEFF');
+      await writeResponseChunk(gz, '\uFEFF');
       await writeResponseChunk(
-        res,
+        gz,
         `${header.map((value) => csvCell(value, delimiter)).join(delimiter)}\n`,
       );
 
       while (true) {
-        const batch = await client.query('FETCH 1000 FROM history_export_cursor');
+        const batch = await client.query('FETCH 50000 FROM history_export_cursor');
         if (batch.rows.length === 0) break;
 
-        for (const rawRow of batch.rows) {
+        const lines = batch.rows.map((rawRow) => {
           const row = mapHistoricalDashboardRow({ row: rawRow, site, mappings, pozoConfig });
           const fecha = row.timestamp
             ? formatChileTimestamp(row.timestamp) || row.fecha
             : row.fecha;
-          const line = [fecha, ...fields.map((field) => csvValue(row[field]))]
+          return [fecha, ...fields.map((field) => csvValue(row[field]))]
             .map((value) => csvCell(value, delimiter))
             .join(delimiter);
-          await writeResponseChunk(res, `${line}\n`);
-        }
+        });
+        await writeResponseChunk(gz, lines.join('\n') + '\n');
       }
 
       await client.query('CLOSE history_export_cursor');
       await client.query('COMMIT');
-      return res.end();
+      return new Promise((resolve, reject) => {
+        gz.on('finish', resolve);
+        gz.on('error', reject);
+        gz.end();
+      });
     } catch (streamErr) {
       if (client) {
         try {
@@ -1488,6 +1501,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
         throw streamErr;
       }
 
+      gz.destroy(streamErr);
       return res.destroy(streamErr);
     } finally {
       if (client) client.release();

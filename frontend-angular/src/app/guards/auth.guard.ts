@@ -48,8 +48,8 @@ export const roleGuard = (...allowedRoles: string[]): CanActivateFn => {
 
     if (auth.loading()) return false;
 
-    const user = auth.user();
-    if (!user || !allowedRoles.includes(user.tipo)) {
+    const role = auth.effectiveRole();
+    if (!role || !allowedRoles.includes(role)) {
       router.navigate(['/dashboard']);
       return false;
     }

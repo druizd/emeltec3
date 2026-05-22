@@ -244,52 +244,76 @@ SELECT add_compression_policy('equipo',
 );
 
 -- -------------------------------------------
--- Continuous Aggregates (día, semana, mes, año)
+-- Continuous Aggregates con DATA (last + count) — ver migracion
+-- 2026-05-22-equipo-data-caggs.sql para detalle de uso por endpoint.
+--
+-- Cada cagg agrega: bucket, id_serial, last(data, time),
+-- last(received_at, time), count(*) AS samples.
 -- -------------------------------------------
 
--- Por día (refresca cada 1h)
+-- 1 min — dashboard history, CSV export, sites latest-by-minute
+CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_1min
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 minute', time) AS bucket, id_serial,
+    last(data, time) AS data, last(received_at, time) AS received_at,
+    count(*) AS samples
+FROM equipo GROUP BY bucket, id_serial
+WITH NO DATA;
+
+SELECT add_continuous_aggregate_policy('equipo_1min',
+    start_offset => INTERVAL '7 days', end_offset => INTERVAL '2 minutes',
+    schedule_interval => INTERVAL '1 minute', if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS idx_equipo_1min_serial_bucket
+    ON equipo_1min (id_serial, bucket DESC);
+
+-- 5 min — contadores/jornadas, gap analysis 30 dias
+CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_5min
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('5 minutes', time) AS bucket, id_serial,
+    last(data, time) AS data, last(received_at, time) AS received_at,
+    count(*) AS samples
+FROM equipo GROUP BY bucket, id_serial
+WITH NO DATA;
+
+SELECT add_continuous_aggregate_policy('equipo_5min',
+    start_offset => INTERVAL '30 days', end_offset => INTERVAL '10 minutes',
+    schedule_interval => INTERVAL '5 minutes', if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS idx_equipo_5min_serial_bucket
+    ON equipo_5min (id_serial, bucket DESC);
+
+-- 1 hora — DGA telemetria horaria, vistas medias
+CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_hourly
+WITH (timescaledb.continuous) AS
+SELECT time_bucket('1 hour', time) AS bucket, id_serial,
+    last(data, time) AS data, last(received_at, time) AS received_at,
+    count(*) AS samples
+FROM equipo GROUP BY bucket, id_serial
+WITH NO DATA;
+
+SELECT add_continuous_aggregate_policy('equipo_hourly',
+    start_offset => INTERVAL '90 days', end_offset => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '30 minutes', if_not_exists => TRUE);
+
+CREATE INDEX IF NOT EXISTS idx_equipo_hourly_serial_bucket
+    ON equipo_hourly (id_serial, bucket DESC);
+
+-- 1 dia — DGA diario, exports largos (meses/anios)
 CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_daily
 WITH (timescaledb.continuous) AS
-SELECT time_bucket('1 day', time) AS bucket, id_serial, COUNT(*) AS total_registros
+SELECT time_bucket('1 day', time) AS bucket, id_serial,
+    last(data, time) AS data, last(received_at, time) AS received_at,
+    count(*) AS samples
 FROM equipo GROUP BY bucket, id_serial
 WITH NO DATA;
 
 SELECT add_continuous_aggregate_policy('equipo_daily',
-    start_offset => INTERVAL '3 days', end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour', if_not_exists => TRUE);
+    start_offset => INTERVAL '3 years', end_offset => INTERVAL '1 day',
+    schedule_interval => INTERVAL '6 hours', if_not_exists => TRUE);
 
--- Por semana (refresca cada 3h)
-CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_weekly
-WITH (timescaledb.continuous) AS
-SELECT time_bucket('1 week', time) AS bucket, id_serial, COUNT(*) AS total_registros
-FROM equipo GROUP BY bucket, id_serial
-WITH NO DATA;
-
-SELECT add_continuous_aggregate_policy('equipo_weekly',
-    start_offset => INTERVAL '3 weeks', end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '3 hours', if_not_exists => TRUE);
-
--- Por mes (refresca cada 12h)
-CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_monthly
-WITH (timescaledb.continuous) AS
-SELECT time_bucket('1 month', time) AS bucket, id_serial, COUNT(*) AS total_registros
-FROM equipo GROUP BY bucket, id_serial
-WITH NO DATA;
-
-SELECT add_continuous_aggregate_policy('equipo_monthly',
-    start_offset => INTERVAL '3 months', end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '12 hours', if_not_exists => TRUE);
-
--- Por año (refresca cada 1d)
-CREATE MATERIALIZED VIEW IF NOT EXISTS equipo_yearly
-WITH (timescaledb.continuous) AS
-SELECT time_bucket('1 year', time) AS bucket, id_serial, COUNT(*) AS total_registros
-FROM equipo GROUP BY bucket, id_serial
-WITH NO DATA;
-
-SELECT add_continuous_aggregate_policy('equipo_yearly',
-    start_offset => INTERVAL '26 months', end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 day', if_not_exists => TRUE);
+CREATE INDEX IF NOT EXISTS idx_equipo_daily_serial_bucket
+    ON equipo_daily (id_serial, bucket DESC);
 
 -- -------------------------------------------
 -- Datos de prueba
