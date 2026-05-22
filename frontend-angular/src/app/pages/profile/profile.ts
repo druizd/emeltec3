@@ -538,7 +538,9 @@ interface EditState {
                       (click)="showCurrentPassword.set(!showCurrentPassword())"
                       class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
                       [attr.aria-label]="
-                        showCurrentPassword() ? 'Ocultar contrasena actual' : 'Ver contrasena actual'
+                        showCurrentPassword()
+                          ? 'Ocultar contrasena actual'
+                          : 'Ver contrasena actual'
                       "
                     >
                       <span class="material-symbols-outlined text-[17px]">
@@ -581,16 +583,22 @@ interface EditState {
               </label>
               <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
                 <div class="mb-1.5 flex items-center justify-between gap-3">
-                  <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                  <span
+                    class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                  >
                     Seguridad
                   </span>
-                  <span class="text-caption font-bold text-[#64748b]">{{ passwordStrengthLabel() }}</span>
+                  <span class="text-caption font-bold text-[#64748b]">{{
+                    passwordStrengthLabel()
+                  }}</span>
                 </div>
                 <div class="grid grid-cols-4 gap-1.5">
                   @for (bar of [1, 2, 3, 4]; track bar) {
                     <span
                       class="h-1.5 rounded-full"
-                      [ngClass]="bar <= profilePasswordStrength() ? passwordStrengthColor() : 'bg-slate-200'"
+                      [ngClass]="
+                        bar <= profilePasswordStrength() ? passwordStrengthColor() : 'bg-slate-200'
+                      "
                     ></span>
                   }
                 </div>
@@ -647,7 +655,13 @@ interface EditState {
                 [disabled]="passwordSaving() || !canSavePassword(user)"
                 class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                {{ passwordSaving() ? 'Guardando...' : user.has_password ? 'Cambiar contraseña' : 'Crear contraseña' }}
+                {{
+                  passwordSaving()
+                    ? 'Guardando...'
+                    : user.has_password
+                      ? 'Cambiar contraseña'
+                      : 'Crear contraseña'
+                }}
               </button>
             </form>
           </section>
@@ -1310,7 +1324,8 @@ export class ProfileComponent implements OnInit {
 
   private getPasswordValidationMessage(user: User): string {
     if (user.has_password && !this.currentPassword()) return 'Ingresa tu contraseña actual.';
-    if (this.newPassword().length < 8) return 'La nueva contraseña debe tener al menos 8 caracteres.';
+    if (this.newPassword().length < 8)
+      return 'La nueva contraseña debe tener al menos 8 caracteres.';
     if (this.profilePasswordStrength() < 2)
       return 'Usa una contraseña con mayusculas, numeros o simbolos.';
     if (this.newPassword() !== this.confirmPassword()) return 'Las contraseñas no coinciden.';
