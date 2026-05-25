@@ -2955,7 +2955,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const start = (this.historyPage() - 1) * this.historyPageSize;
     return this.historyFilteredRows().slice(start, start + this.historyPageSize);
   });
-  historyTotalRows = computed(() => this.historyServerTotalRows() ?? this.historyFilteredRows().length);
+  historyTotalRows = computed(
+    () => this.historyServerTotalRows() ?? this.historyFilteredRows().length,
+  );
   currentHistoryPageCount = computed(() => this.paginatedHistoryRows().length);
   historyTotalPages = computed(() =>
     Math.max(1, Math.ceil(this.historyTotalRows() / this.historyPageSize)),
