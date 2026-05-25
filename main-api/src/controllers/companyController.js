@@ -57,6 +57,12 @@ function parseLimit(value, fallback = 100, max = 500) {
   return Math.min(parsed, max);
 }
 
+function parsePage(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 1;
+  return Math.floor(parsed);
+}
+
 function parseDateOnly(value) {
   const cleaned = cleanString(value);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return null;
@@ -191,13 +197,8 @@ function parseHistoryExportGranularity(value) {
   return Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key) ? key : '1m';
 }
 
-function parseDashboardHistoryGranularity(value, useRange, days) {
-  const key = cleanString(value).toLowerCase();
-  if (Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key)) return key;
-  if (!useRange) return '1m';
-  if (days <= 2) return '1m';
-  if (days <= 31) return '5m';
-  return '1h';
+function dashboardHistoryGranularity() {
+  return '1m';
 }
 
 function historyRollupExpression(granConfig) {
@@ -1307,7 +1308,9 @@ exports.getSiteDashboardData = async (req, res, next) => {
 exports.getSiteDashboardHistory = async (req, res, next) => {
   try {
     const siteId = normalizeId(req.params.siteId);
-    const limit = parseLimit(req.query.limit, 500, 200000);
+    const limit = parseLimit(req.query.limit, 50, 500);
+    const page = parsePage(req.query.page);
+    const offset = (page - 1) * limit;
     const from = parseDateOnly(req.query.from);
     const to = parseDateOnly(req.query.to);
     const site = await getSiteById(siteId);
@@ -1332,11 +1335,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       }
     }
 
-    const granularity = parseDashboardHistoryGranularity(
-      req.query.granularity,
-      useRange,
-      rangeDays,
-    );
+    const granularity = dashboardHistoryGranularity();
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
     const rangeRollupExpr = historyRollupExpression(granConfig);
 
@@ -1355,7 +1354,11 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           rows: [],
           pagination: {
             limit,
+            page,
             page_size: 50,
+            total: 0,
+            total_pages: 1,
+            has_more: false,
             granularity,
             source: granConfig.view,
           },
@@ -1364,6 +1367,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       });
     }
 
+    const rangeParams = [site.id_serial, from, to, limit, offset];
     const historyQuery = useRange
       ? db.query(
           rangeRollupExpr
@@ -1381,6 +1385,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             GROUP BY 1
             ORDER BY 1 DESC
             LIMIT $4
+            OFFSET $5
             `
             : `
             SELECT
@@ -1395,8 +1400,9 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
             ORDER BY bucket DESC
             LIMIT $4
+            OFFSET $5
             `,
-          [site.id_serial, from, to, limit],
+          rangeParams,
         )
       : db.query(
           `
@@ -1410,19 +1416,54 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           WHERE id_serial = $1
           ORDER BY bucket DESC
           LIMIT $2
+          OFFSET $3
           `,
-          [site.id_serial, limit],
+          [site.id_serial, limit, offset],
         );
 
-    let [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
+    const countQuery = useRange
+      ? db.query(
+          rangeRollupExpr
+            ? `
+            SELECT count(*)::int AS total
+            FROM (
+              SELECT 1
+              FROM ${granConfig.view}
+              WHERE id_serial = $1
+                AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+                AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              GROUP BY ${rangeRollupExpr}
+            ) buckets
+            `
+            : `
+            SELECT count(*)::int AS total
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+              AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            `,
+          [site.id_serial, from, to],
+        )
+      : db.query(
+          `
+          SELECT count(*)::int AS total
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+          `,
+          [site.id_serial],
+        );
+
+    let [pozoConfigRes, mappingsRes, historyRes, countRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
       db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
         siteId,
       ]),
       historyQuery,
+      countQuery,
     ]);
 
     let historySource = granConfig.view;
+    let totalRows = Number(countRes.rows[0]?.total || 0);
     if (useRange && historyRes.rows.length === 0) {
       historyRes = await db.query(
         `
@@ -1439,10 +1480,12 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         GROUP BY 1
         ORDER BY 1 DESC
         LIMIT $5
+        OFFSET $6
         `,
-        [site.id_serial, from, to, granConfig.bucketInterval, limit],
+        [site.id_serial, from, to, granConfig.bucketInterval, limit, offset],
       );
       historySource = 'equipo';
+      totalRows = offset + historyRes.rows.length + (historyRes.rows.length === limit ? 1 : 0);
     }
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
@@ -1465,7 +1508,11 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         rows,
         pagination: {
           limit,
+          page,
           page_size: 50,
+          total: totalRows,
+          total_pages: Math.max(1, Math.ceil(totalRows / limit)),
+          has_more: offset + rows.length < totalRows,
           granularity,
           source: historySource,
         },

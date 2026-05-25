@@ -2633,7 +2633,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
-  private readonly historyFetchLimit = 500;
 
   siteContext = signal<SiteContext | null>(null);
   loading = signal(true);
@@ -2664,6 +2663,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyLoading = signal(true);
   historyError = signal('');
   historyRows = signal<HistoricalTelemetryRow[]>([]);
+  historyServerTotalRows = signal<number | null>(null);
   historyPage = signal(1);
   historyDateFrom = signal('');
   historyDateTo = signal('');
@@ -2934,6 +2934,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return this.historyLoading() ? [] : this.historyMockRows;
   });
   historyFilteredRows = computed(() => {
+    if (this.historyServerTotalRows() !== null) return this.historySourceRows();
+
     const from = this.parseDateInputMs(this.historyDateFrom(), 'start');
     const to = this.parseDateInputMs(this.historyDateTo(), 'end');
 
@@ -2948,10 +2950,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       .slice(0, this.historyRecordLimit());
   });
   paginatedHistoryRows = computed(() => {
+    if (this.historyServerTotalRows() !== null) return this.historyFilteredRows();
+
     const start = (this.historyPage() - 1) * this.historyPageSize;
     return this.historyFilteredRows().slice(start, start + this.historyPageSize);
   });
-  historyTotalRows = computed(() => this.historyFilteredRows().length);
+  historyTotalRows = computed(
+    () => this.historyServerTotalRows() ?? this.historyFilteredRows().length,
+  );
   currentHistoryPageCount = computed(() => this.paginatedHistoryRows().length);
   historyTotalPages = computed(() =>
     Math.max(1, Math.ceil(this.historyTotalRows() / this.historyPageSize)),
@@ -4371,10 +4377,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   previousHistoryPage(): void {
     this.historyPage.set(Math.max(1, this.historyPage() - 1));
+    this.refreshHistoryPage();
   }
 
   nextHistoryPage(): void {
     this.historyPage.set(Math.min(this.historyTotalPages(), this.historyPage() + 1));
+    this.refreshHistoryPage();
+  }
+
+  private refreshHistoryPage(): void {
+    const siteId = this.currentSiteId();
+    if (siteId) this.startHistoryPolling(siteId);
   }
 
   getDetailTabClass(tab: DetailTab): string {
@@ -4534,12 +4547,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           const from = this.historyDateFrom();
           const to = this.historyDateTo();
           const useRange = Boolean(from && to);
-          const granularity = useRange ? this.historyGranularityForRange(from, to) : '1m';
           return this.companyService
-            .getSiteDashboardHistory(siteId, useRange ? 200000 : this.historyFetchLimit, {
+            .getSiteDashboardHistory(siteId, this.historyPageSize, {
               from: useRange ? from : undefined,
               to: useRange ? to : undefined,
-              granularity,
+              granularity: '1m',
+              page: this.historyPage(),
             })
             .pipe(
               catchError(() => {
@@ -4554,11 +4567,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         if (!res) return;
 
         const apiRows = this.extractHistoryApiRows(res);
+        const totalRows = Number(res?.data?.pagination?.total);
         const mappedRows = apiRows
           .map((row, index) => this.mapHistoryApiRow(row, index))
           .filter((row): row is HistoricalTelemetryRow => row !== null);
 
         this.historyRows.set(mappedRows);
+        this.historyServerTotalRows.set(Number.isFinite(totalRows) ? totalRows : null);
         this.historyError.set('');
         this.historyLoading.set(false);
 
@@ -4566,17 +4581,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           this.historyPage.set(this.historyTotalPages());
         }
       });
-  }
-
-  private historyGranularityForRange(from: string, to: string): HistoryGranularity {
-    const fromMs = Date.parse(`${from}T00:00:00Z`);
-    const toMs = Date.parse(`${to}T00:00:00Z`);
-    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return '1m';
-
-    const days = Math.floor((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
-    if (days <= 2) return '1m';
-    if (days <= 31) return '5m';
-    return '1h';
   }
 
   private extractHistoryApiRows(res: any): HistoricalTelemetryApiRow[] {
