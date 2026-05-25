@@ -82,7 +82,7 @@ interface MetricOption {
           <span class="material-symbols-outlined text-[18px] text-[#6366F1]">factory</span>
         </div>
         <div>
-          <div class="vs-site-title">Ventisqueros · Planta Castro</div>
+          <div class="vs-site-title">Ventisqueros · Planta Chinquihue</div>
           <div class="vs-site-subtitle">
             Variables de Proceso · {{ sensors().length }} sensores THM activos
           </div>
