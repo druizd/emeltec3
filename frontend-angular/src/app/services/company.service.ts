@@ -103,10 +103,11 @@ export class CompanyService {
   getSiteDashboardHistory(
     siteId: string,
     limit = 500,
-    options: { from?: string; to?: string; granularity?: HistoryGranularity } = {},
+    options: { from?: string; to?: string; granularity?: HistoryGranularity; page?: number } = {},
   ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
+    if (options.page) params.set('page', String(options.page));
     if (options.from) params.set('from', options.from);
     if (options.to) params.set('to', options.to);
     if (options.granularity) params.set('granularity', options.granularity);
