@@ -19,7 +19,11 @@ import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
-import { CompanyService, ContadorMensualPoint } from '../../services/company.service';
+import {
+  CompanyService,
+  type ContadorMensualPoint,
+  type HistoryGranularity,
+} from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
 import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
@@ -2073,7 +2077,7 @@ type OperationMode = 'realtime' | 'turnos';
                 >
                   Granularidad
                 </p>
-                <div class="mb-5 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+                <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
                   @for (gran of downloadGranularityOptions; track gran.id) {
                     <button
                       type="button"
@@ -2683,7 +2687,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   downloadDateTo = signal('');
   downloadFormat = signal<'xlsx' | 'csv'>('csv');
   downloadSelectedTypes = signal<string[]>(['caudal', 'nivel', 'totalizador', 'nivel_freatico']);
-  downloadGranularity = signal<'1m' | '5m' | '1h' | '1d' | '1mo'>('1m');
+  downloadGranularity = signal<HistoryGranularity>('1m');
   downloadBusy = signal(false);
   downloadError = signal('');
   dgaSelectedPreset = signal<string | null>(null);
@@ -3198,7 +3202,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   ];
 
   readonly downloadGranularityOptions: {
-    id: '1m' | '5m' | '1h' | '1d' | '1mo';
+    id: HistoryGranularity;
     label: string;
     hint: string;
   }[] = [
@@ -3206,7 +3210,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { id: '5m', label: '5 minutos', hint: 'Recomendado < 30 días' },
     { id: '1h', label: '1 hora', hint: 'Recomendado < 1 año' },
     { id: '1d', label: '1 día', hint: 'Resumen diario' },
-    { id: '1mo', label: '1 mes', hint: 'Resumen mensual' },
+    { id: '1w', label: '7 días', hint: 'Resumen semanal' },
+    { id: '1mo', label: '30 días', hint: 'Resumen mensual' },
   ];
 
   readonly historyMockRows: HistoricalTelemetryRow[] = [
@@ -4529,10 +4534,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           const from = this.historyDateFrom();
           const to = this.historyDateTo();
           const useRange = Boolean(from && to);
+          const granularity = useRange ? this.historyGranularityForRange(from, to) : '1m';
           return this.companyService
             .getSiteDashboardHistory(siteId, useRange ? 200000 : this.historyFetchLimit, {
               from: useRange ? from : undefined,
               to: useRange ? to : undefined,
+              granularity,
             })
             .pipe(
               catchError(() => {
@@ -4559,6 +4566,17 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           this.historyPage.set(this.historyTotalPages());
         }
       });
+  }
+
+  private historyGranularityForRange(from: string, to: string): HistoryGranularity {
+    const fromMs = Date.parse(`${from}T00:00:00Z`);
+    const toMs = Date.parse(`${to}T00:00:00Z`);
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return '1m';
+
+    const days = Math.floor((toMs - fromMs) / (24 * 60 * 60 * 1000)) + 1;
+    if (days <= 2) return '1m';
+    if (days <= 31) return '5m';
+    return '1h';
   }
 
   private extractHistoryApiRows(res: any): HistoricalTelemetryApiRow[] {

@@ -66,9 +66,36 @@ export async function findLatestReferenceTimestamp(serialId: string): Promise<st
 export async function findAvailableKeys(serialId: string): Promise<string[]> {
   const result = await query<{ nombre_dato: string }>(
     `
-    SELECT DISTINCT jsonb_object_keys(data) AS nombre_dato
-    FROM equipo
-    WHERE id_serial = $1
+    WITH mapped AS (
+      SELECT rm.d1 AS nombre_dato
+      FROM sitio s
+      JOIN reg_map rm ON rm.sitio_id = s.id
+      WHERE s.id_serial = $1
+        AND rm.d1 IS NOT NULL
+      UNION
+      SELECT rm.d2 AS nombre_dato
+      FROM sitio s
+      JOIN reg_map rm ON rm.sitio_id = s.id
+      WHERE s.id_serial = $1
+        AND rm.d2 IS NOT NULL
+    ),
+    latest AS (
+      SELECT data
+      FROM equipo
+      WHERE id_serial = $1
+      ORDER BY time DESC
+      LIMIT 1
+    ),
+    latest_keys AS (
+      SELECT jsonb_object_keys(data) AS nombre_dato
+      FROM latest
+    )
+    SELECT nombre_dato
+    FROM (
+      SELECT nombre_dato FROM mapped
+      UNION
+      SELECT nombre_dato FROM latest_keys
+    ) keys
     ORDER BY nombre_dato ASC
     `,
     [serialId],
@@ -132,23 +159,21 @@ export async function findOnlineValues(
   const sql = `
     SELECT
       latest.id_serial,
-      latest.nombre_dato,
-      latest.valor_dato,
+      kv.key   AS nombre_dato,
+      kv.value AS valor_dato,
       ${chileDateSql('latest.time')} AS fecha,
       ${chileTimeSql('latest.time')} AS hora
     FROM (
-      SELECT DISTINCT ON (kv.key)
-        lr.id_serial,
-        kv.key   AS nombre_dato,
-        kv.value AS valor_dato,
-        lr.time
+      SELECT id_serial, time, data
       FROM equipo lr
-      CROSS JOIN LATERAL jsonb_each(lr.data) AS kv(key, value)
       WHERE lr.id_serial = $1
-      ${keyWhere}
-      ORDER BY kv.key, lr.time DESC
+      ORDER BY lr.time DESC
+      LIMIT 1
     ) latest
-    ORDER BY latest.nombre_dato ASC
+    CROSS JOIN LATERAL jsonb_each(latest.data) AS kv(key, value)
+    WHERE TRUE
+    ${keyWhere}
+    ORDER BY kv.key ASC
   `;
 
   const result = await query<OnlineRow>(sql, values, { label: 'telemetry__online' });

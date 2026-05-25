@@ -178,16 +178,30 @@ function parseHistoryExportFields(value) {
 }
 
 const HISTORY_EXPORT_GRANULARITY = {
-  '1m': { view: 'equipo_1min', monthRollup: false },
-  '5m': { view: 'equipo_5min', monthRollup: false },
-  '1h': { view: 'equipo_hourly', monthRollup: false },
-  '1d': { view: 'equipo_daily', monthRollup: false },
-  '1mo': { view: 'equipo_daily', monthRollup: true },
+  '1m': { view: 'equipo_1min', bucketInterval: '1 minute' },
+  '5m': { view: 'equipo_5min', bucketInterval: '5 minutes' },
+  '1h': { view: 'equipo_hourly', bucketInterval: '1 hour' },
+  '1d': { view: 'equipo_daily', bucketInterval: '1 day' },
+  '1w': { view: 'equipo_daily', bucketInterval: '7 days', rollupInterval: '7 days' },
+  '1mo': { view: 'equipo_daily', bucketInterval: '30 days', rollupInterval: '30 days' },
 };
 
 function parseHistoryExportGranularity(value) {
   const key = cleanString(value).toLowerCase();
   return Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key) ? key : '1m';
+}
+
+function parseDashboardHistoryGranularity(value, useRange, days) {
+  const key = cleanString(value).toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(HISTORY_EXPORT_GRANULARITY, key)) return key;
+  if (!useRange) return '1m';
+  if (days <= 2) return '1m';
+  if (days <= 31) return '5m';
+  return '1h';
+}
+
+function historyRollupExpression(granConfig) {
+  return granConfig.rollupInterval ? `time_bucket('${granConfig.rollupInterval}', bucket)` : null;
 }
 
 function csvCell(value, delimiter = ';') {
@@ -1307,15 +1321,24 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
     }
 
     const useRange = Boolean(from && to);
+    let rangeDays = 0;
     if (useRange) {
-      const days = countInclusiveDays(from, to);
-      if (days <= 0) {
+      rangeDays = countInclusiveDays(from, to);
+      if (rangeDays <= 0) {
         return badRequest(res, 'La fecha desde no puede ser mayor que la fecha hasta.');
       }
-      if (days > 93) {
+      if (rangeDays > 93) {
         return badRequest(res, 'El rango maximo es de 3 meses (93 dias).');
       }
     }
+
+    const granularity = parseDashboardHistoryGranularity(
+      req.query.granularity,
+      useRange,
+      rangeDays,
+    );
+    const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
+    const rangeRollupExpr = historyRollupExpression(granConfig);
 
     if (!site.activo) {
       return res.json({
@@ -1333,6 +1356,8 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           pagination: {
             limit,
             page_size: 50,
+            granularity,
+            source: granConfig.view,
           },
           message: 'Sitio inactivo. Se debe mostrar maqueta en frontend.',
         },
@@ -1341,20 +1366,37 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
 
     const historyQuery = useRange
       ? db.query(
-          `
-          SELECT
-            bucket AS time,
-            received_at,
-            id_serial,
-            data,
-            ${utcTimestampSql('bucket')} AS timestamp_completo
-          FROM equipo_1min
-          WHERE id_serial = $1
-            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          ORDER BY bucket DESC
-          `,
-          [site.id_serial, from, to],
+          rangeRollupExpr
+            ? `
+            SELECT
+              ${rangeRollupExpr}          AS time,
+              last(received_at, bucket)   AS received_at,
+              last(id_serial, bucket)     AS id_serial,
+              last(data, bucket)          AS data,
+              ${utcTimestampSql(rangeRollupExpr)} AS timestamp_completo
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+              AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            GROUP BY 1
+            ORDER BY 1 DESC
+            LIMIT $4
+            `
+            : `
+            SELECT
+              bucket AS time,
+              received_at,
+              id_serial,
+              data,
+              ${utcTimestampSql('bucket')} AS timestamp_completo
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+              AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            ORDER BY bucket DESC
+            LIMIT $4
+            `,
+          [site.id_serial, from, to, limit],
         )
       : db.query(
           `
@@ -1364,7 +1406,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             id_serial,
             data,
             ${utcTimestampSql('bucket')} AS timestamp_completo
-          FROM equipo_1min
+          FROM ${granConfig.view}
           WHERE id_serial = $1
           ORDER BY bucket DESC
           LIMIT $2
@@ -1372,13 +1414,36 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           [site.id_serial, limit],
         );
 
-    const [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
+    let [pozoConfigRes, mappingsRes, historyRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
       db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
         siteId,
       ]),
       historyQuery,
     ]);
+
+    let historySource = granConfig.view;
+    if (useRange && historyRes.rows.length === 0) {
+      historyRes = await db.query(
+        `
+        SELECT
+          time_bucket($4::interval, time) AS time,
+          last(received_at, time)         AS received_at,
+          last(id_serial, time)           AS id_serial,
+          last(data, time)                AS data,
+          ${utcTimestampSql('time_bucket($4::interval, time)')} AS timestamp_completo
+        FROM equipo
+        WHERE id_serial = $1
+          AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        GROUP BY 1
+        ORDER BY 1 DESC
+        LIMIT $5
+        `,
+        [site.id_serial, from, to, granConfig.bucketInterval, limit],
+      );
+      historySource = 'equipo';
+    }
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
     const mappings = mappingsRes.rows || [];
@@ -1401,6 +1466,8 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         pagination: {
           limit,
           page_size: 50,
+          granularity,
+          source: historySource,
         },
       },
     });
@@ -1423,6 +1490,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     const fields = parseHistoryExportFields(req.query.fields);
     const granularity = parseHistoryExportGranularity(req.query.granularity);
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
+    const exportRollupExpr = historyRollupExpression(granConfig);
 
     if (!site) {
       return notFound(res, 'Sitio no encontrado.');
@@ -1485,23 +1553,51 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     try {
       client = await db.connect();
       await client.query('BEGIN');
-      const cursorSql = granConfig.monthRollup
+      const caggHasRows = await client.query(
+        `
+        SELECT 1
+        FROM ${granConfig.view}
+        WHERE id_serial = $1
+          AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND bucket < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        LIMIT 1
+        `,
+        [site.id_serial, from, to],
+      );
+      const useRawFallback = caggHasRows.rows.length === 0;
+      const cursorSql = useRawFallback
         ? `
           DECLARE history_export_cursor NO SCROLL CURSOR FOR
           SELECT
-            date_trunc('month', bucket) AS time,
+            time_bucket($4::interval, time) AS time,
+            last(received_at, time)         AS received_at,
+            last(id_serial, time)           AS id_serial,
+            last(data, time)                AS data,
+            ${utcTimestampSql('time_bucket($4::interval, time)')} AS timestamp_completo
+          FROM equipo
+          WHERE id_serial = $1
+            AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          GROUP BY 1
+          ORDER BY 1 ASC
+        `
+        : exportRollupExpr
+          ? `
+          DECLARE history_export_cursor NO SCROLL CURSOR FOR
+          SELECT
+            ${exportRollupExpr}          AS time,
             last(received_at, bucket)   AS received_at,
             last(id_serial, bucket)     AS id_serial,
             last(data, bucket)          AS data,
-            ${utcTimestampSql("date_trunc('month', bucket)")} AS timestamp_completo
+            ${utcTimestampSql(exportRollupExpr)} AS timestamp_completo
           FROM ${granConfig.view}
           WHERE id_serial = $1
             AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
             AND bucket < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          GROUP BY date_trunc('month', bucket)
+          GROUP BY 1
           ORDER BY 1 ASC
         `
-        : `
+          : `
           DECLARE history_export_cursor NO SCROLL CURSOR FOR
           SELECT
             bucket       AS time,
@@ -1516,7 +1612,12 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
           ORDER BY 1 ASC
         `;
 
-      await client.query(cursorSql, [site.id_serial, from, to]);
+      await client.query(
+        cursorSql,
+        useRawFallback
+          ? [site.id_serial, from, to, granConfig.bucketInterval]
+          : [site.id_serial, from, to],
+      );
 
       await writeResponseChunk(gz, '\uFEFF');
       await writeResponseChunk(

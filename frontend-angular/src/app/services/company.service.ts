@@ -55,6 +55,8 @@ export interface SiteOperacionConfig {
   updated_at: string;
 }
 
+export type HistoryGranularity = '1m' | '5m' | '1h' | '1d' | '1w' | '1mo';
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -101,12 +103,13 @@ export class CompanyService {
   getSiteDashboardHistory(
     siteId: string,
     limit = 500,
-    options: { from?: string; to?: string } = {},
+    options: { from?: string; to?: string; granularity?: HistoryGranularity } = {},
   ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
     if (options.from) params.set('from', options.from);
     if (options.to) params.set('to', options.to);
+    if (options.granularity) params.set('granularity', options.granularity);
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
       `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,
@@ -182,7 +185,7 @@ export class CompanyService {
       to: string;
       fields: string[];
       format: 'csv';
-      granularity?: '1m' | '5m' | '1h' | '1d' | '1mo';
+      granularity?: HistoryGranularity;
     },
   ): Observable<HttpResponse<Blob>> {
     return this.http.get(`/api/companies/sites/${siteId}/dashboard-history/export`, {
