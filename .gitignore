@@ -2,12 +2,15 @@
 
 # Compiled output
 /dist
+**/dist
 /tmp
 /out-tsc
 /bazel-out
 
 # Node
 /node_modules
+**/node_modules
+.pnpm-store/
 npm-debug.log
 yarn-error.log
 
@@ -52,4 +55,3 @@ Thumbs.db
 sbom.json
 trivy-report.json
 gitleaks-report.json
-

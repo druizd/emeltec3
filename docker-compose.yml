@@ -67,6 +67,7 @@ services:
       CSVCONSUMER_HOST: csvconsumer
       CSVCONSUMER_PORT: 50051
       AUTH_API_URL: http://auth-api:3001
+      DGA_API_INTERNAL_URL: http://dga-api:3002
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -160,6 +161,8 @@ services:
       main-api:
         condition: service_healthy
       auth-api:
+        condition: service_healthy
+      dga-api:
         condition: service_healthy
     restart: unless-stopped
 
