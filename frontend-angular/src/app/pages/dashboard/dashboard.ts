@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
+import { dashboardRouteForSite } from '../../shared/site-type-ui';
 import type { ApiResponse, CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 const WELCOME_DISMISSED_KEY = 'emeltec-welcome-dismissed';
@@ -17,6 +18,7 @@ interface InstallationCard {
   /** Minutos desde última lectura, o null si no hay timestamp. */
   ageMinutes: number | null;
   status: 'online' | 'recent' | 'offline' | 'pending';
+  route: string[];
 }
 
 /** Chunk de items por tick para lazy loading incremental. */
@@ -60,6 +62,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private lazyTimer: ReturnType<typeof setTimeout> | null = null;
 
+  constructor() {
+    effect(() => {
+      const tree = this.companyService.visibleHierarchy();
+      if (this.loading()) return;
+      this.applyInstallations(tree);
+    });
+  }
+
   ngOnInit(): void {
     this.loadInstallations();
     // Read once on mount. localStorage may throw in incognito / sandboxed
@@ -92,13 +102,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     this.companyService.fetchHierarchy().subscribe({
       next: (res: ApiResponse<CompanyNode[]>) => {
-        const list = res.ok ? this.flattenInstallations(res.data || []) : [];
-        this.installations.set(list);
         this.loading.set(false);
-        // Primer chunk visible inmediatamente para que el usuario vea algo.
-        this.visibleCount.set(Math.min(LAZY_CHUNK_SIZE, list.length));
-        if (list.length > LAZY_CHUNK_SIZE) {
-          this.scheduleNextChunk();
+        if (!res.ok) {
+          this.installations.set([]);
         }
       },
       error: () => {
@@ -128,9 +134,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
+  private applyInstallations(tree: CompanyNode[]): void {
+    const list = this.flattenInstallations(tree);
+    this.stopLazyRender();
+    this.installations.set(list);
+    this.visibleCount.set(Math.min(LAZY_CHUNK_SIZE, list.length));
+
+    if (list.length > LAZY_CHUNK_SIZE) {
+      this.scheduleNextChunk();
+    }
+  }
+
   openInstallation(installation: InstallationCard): void {
     if (!installation.id) return;
-    this.router.navigate(['/companies', installation.id, 'water']);
+    this.router.navigate(installation.route);
   }
 
   getStatusLabel(status: InstallationCard['status']): string {
@@ -172,6 +189,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               'Sin referencia',
             ageMinutes: ageMin,
             status: this.statusFromAge(ageMin),
+            route: dashboardRouteForSite(site),
           };
         }),
       ),

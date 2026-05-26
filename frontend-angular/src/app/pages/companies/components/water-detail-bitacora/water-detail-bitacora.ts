@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../../services/auth.service';
 import { BitacoraAuditLogComponent } from './bitacora-trazabilidad';
@@ -137,13 +137,23 @@ export class WaterDetailBitacoraComponent {
       visible: this.isInternal(),
     },
     { key: 'incidencias', label: 'Incidencias', icon: 'history', visible: true },
-    { key: 'trazabilidad', label: 'Trazabilidad', icon: 'fact_check', visible: true },
+    { key: 'trazabilidad', label: 'Trazabilidad', icon: 'fact_check', visible: this.isInternal() },
   ]);
 
   readonly visibleTabs = computed(() => this.tabs().filter((t) => t.visible));
 
-  setSection(section: BitacoraSection): void {
-    this.activeSection.set(section);
+  constructor() {
+    effect(() => {
+      if (!this.visibleTabs().some((tab) => tab.key === this.activeSection())) {
+        this.activeSection.set(this.visibleTabs()[0]?.key ?? 'ficha');
+      }
+    });
+  }
+
+  setSection(section: string): void {
+    const next = section as BitacoraSection;
+    const visible = this.visibleTabs().some((tab) => tab.key === next);
+    this.activeSection.set(visible ? next : (this.visibleTabs()[0]?.key ?? 'ficha'));
   }
 
   getTabClass(key: BitacoraSection): string {

@@ -14,7 +14,13 @@ import {
   siteTypeMatchesModule,
   siteTypesForModule,
 } from '../../shared/site-type-ui';
-import type { ApiResponse, CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import type {
+  ApiResponse,
+  CompanyNode,
+  SiteRecord,
+  SubCompanyNode,
+  UserRole,
+} from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies',
@@ -40,6 +46,14 @@ export class CompaniesComponent implements OnInit {
 
   constructor() {
     effect(() => {
+      const role = this.auth.effectiveRole();
+      const allowedTabs = this.allowedTabsForRole(role);
+      if (!allowedTabs.includes(this.activeTab())) {
+        this.activeTab.set(allowedTabs[0]);
+      }
+    });
+
+    effect(() => {
       const selectedId = this.companyService.selectedSubCompanyId();
       const moduleKey = this.companyService.selectedSiteModuleKey();
       const typeFilter = this.companyService.selectedSiteTypeFilter();
@@ -52,15 +66,16 @@ export class CompaniesComponent implements OnInit {
   ngOnInit(): void {
     this.companyService.fetchHierarchy().subscribe((res: ApiResponse<CompanyNode[]>) => {
       if (res.ok) {
-        if (res.data.length > 0 && !this.companyService.selectedSubCompanyId()) {
-          const firstMatch = this.findFirstSubCompanyWithSite(res.data);
+        const tree = this.companyService.visibleHierarchy();
+        if (tree.length > 0 && !this.companyService.selectedSubCompanyId()) {
+          const firstMatch = this.findFirstSubCompanyWithSite(tree);
           if (firstMatch) {
             const moduleKey = getSiteTypeUi(firstMatch.site.tipo_sitio).moduleKey;
             this.companyService.selectedSubCompanyId.set(firstMatch.subCompany.id);
             this.companyService.selectedSiteModuleKey.set(moduleKey);
             this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(moduleKey));
           } else {
-            const firstSub = res.data[0].subCompanies?.[0];
+            const firstSub = tree[0].subCompanies?.[0];
             if (firstSub) {
               this.companyService.selectedSubCompanyId.set(firstSub.id);
             }
@@ -77,7 +92,7 @@ export class CompaniesComponent implements OnInit {
   ): void {
     this.loading.set(true);
 
-    const tree = this.companyService.hierarchy();
+    const tree = this.companyService.visibleHierarchy();
     for (const comp of tree) {
       const sub = comp.subCompanies?.find((s) => s.id === id);
       if (sub) {
@@ -89,7 +104,8 @@ export class CompaniesComponent implements OnInit {
     this.companyService.getSites(id).subscribe({
       next: (json: ApiResponse<SiteRecord[]>) => {
         if (json.ok) {
-          this.sites.set(this.filterSitesBySelection(json.data, moduleKey, typeFilter));
+          const previewScopedSites = this.filterSitesByPreviewScope(id, json.data);
+          this.sites.set(this.filterSitesBySelection(previewScopedSites, moduleKey, typeFilter));
         }
         this.loading.set(false);
       },
@@ -98,7 +114,8 @@ export class CompaniesComponent implements OnInit {
   }
 
   setActiveTab(tab: string): void {
-    this.activeTab.set(tab);
+    const allowedTabs = this.allowedTabsForRole(this.auth.effectiveRole());
+    this.activeTab.set(allowedTabs.includes(tab) ? tab : allowedTabs[0]);
   }
 
   openSite(site: SiteRecord): void {
@@ -126,6 +143,18 @@ export class CompaniesComponent implements OnInit {
     return sites;
   }
 
+  private filterSitesByPreviewScope(subCompanyId: string, sites: SiteRecord[]): SiteRecord[] {
+    const visibleSubCompany = this.companyService
+      .visibleHierarchy()
+      .flatMap((company) => company.subCompanies || [])
+      .find((subCompany) => subCompany.id === subCompanyId);
+
+    const visibleSiteIds = new Set((visibleSubCompany?.sites || []).map((site) => site.id));
+    if (!visibleSiteIds.size) return sites;
+
+    return sites.filter((site) => visibleSiteIds.has(site.id));
+  }
+
   private findFirstSubCompanyWithSite(
     tree: CompanyNode[],
   ): { subCompany: SubCompanyNode; site: SiteRecord } | null {
@@ -139,5 +168,10 @@ export class CompaniesComponent implements OnInit {
     }
 
     return null;
+  }
+
+  private allowedTabsForRole(role: UserRole | null): string[] {
+    if (role === 'Cliente') return ['general', 'instalaciones'];
+    return ['general', 'instalaciones', 'contactos', 'usuarios'];
   }
 }

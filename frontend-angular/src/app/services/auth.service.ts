@@ -6,12 +6,24 @@ export type { User, UserRole };
 
 const VIEW_AS_STORAGE_KEY = 'view_as_role';
 
+export type PreviewRole = Exclude<UserRole, 'SuperAdmin'>;
+
+export interface ViewAsContext {
+  role: PreviewRole;
+  companyId?: string;
+  companyName?: string;
+  subCompanyId?: string;
+  subCompanyName?: string;
+  siteId?: string;
+  siteName?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private userSignal = signal<User | null>(null);
   private tokenSignal = signal<string | null>(null);
   private loadingSignal = signal<boolean>(true);
-  private viewAsRoleSignal = signal<UserRole | null>(null);
+  private viewAsContextSignal = signal<ViewAsContext | null>(null);
 
   readonly user = this.userSignal.asReadonly();
   readonly token = this.tokenSignal.asReadonly();
@@ -21,20 +33,51 @@ export class AuthService {
   /** Rol real del usuario logueado (nunca cambia por view-as) */
   readonly realRole = computed<UserRole | null>(() => this.userSignal()?.tipo ?? null);
   /** Rol simulado activo (null si no hay view-as) */
-  readonly viewAsRole = this.viewAsRoleSignal.asReadonly();
+  readonly viewAsContext = this.viewAsContextSignal.asReadonly();
+  readonly viewAsRole = computed<UserRole | null>(() => this.viewAsContextSignal()?.role ?? null);
   /** Rol efectivo: simulado si existe, sino el real. Lo consumen los computeds de permisos */
   readonly effectiveRole = computed<UserRole | null>(
-    () => this.viewAsRoleSignal() ?? this.realRole(),
+    () => this.viewAsContextSignal()?.role ?? this.realRole(),
   );
   /** True si el usuario está actualmente viendo la app como otro rol */
-  readonly isViewingAs = computed(() => this.viewAsRoleSignal() !== null);
+  readonly isViewingAs = computed(() => this.viewAsContextSignal() !== null);
   /** Solo SuperAdmin real puede activar el switcher */
   readonly canSwitchView = computed(() => this.realRole() === 'SuperAdmin');
+
+  readonly viewAsScopeLabel = computed(() => {
+    const context = this.viewAsContextSignal();
+    if (!context) return '';
+
+    const parts = [context.companyName, context.subCompanyName, context.siteName].filter(
+      (part): part is string => Boolean(part?.trim()),
+    );
+
+    return parts.join(' / ');
+  });
 
   readonly isSuperAdmin = computed(() => this.effectiveRole() === 'SuperAdmin');
   readonly isAdmin = computed(() => this.effectiveRole() === 'Admin');
   readonly isGerente = computed(() => this.effectiveRole() === 'Gerente');
   readonly isCliente = computed(() => this.effectiveRole() === 'Cliente');
+
+  readonly canAccessAdministration = computed(() => this.effectiveRole() === 'SuperAdmin');
+
+  readonly canReviewDga = computed(() => {
+    const tipo = this.effectiveRole();
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
+  });
+
+  readonly canEditSiteSettings = computed(() => {
+    const tipo = this.effectiveRole();
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
+  });
+
+  readonly canManageAlerts = computed(() => {
+    const tipo = this.effectiveRole();
+    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Gerente';
+  });
+
+  readonly canViewAdvancedAnalysis = computed(() => this.effectiveRole() === 'SuperAdmin');
 
   /** SuperAdmin o Admin pueden gestionar usuarios y editar datos */
   readonly canManageUsers = computed(() => {
@@ -64,9 +107,9 @@ export class AuthService {
     if (storedToken && storedUser) {
       this.tokenSignal.set(storedToken);
       this.userSignal.set(JSON.parse(storedUser));
-      const storedViewAs = sessionStorage.getItem(VIEW_AS_STORAGE_KEY) as UserRole | null;
+      const storedViewAs = this.parseStoredViewAs(sessionStorage.getItem(VIEW_AS_STORAGE_KEY));
       if (storedViewAs && this.realRole() === 'SuperAdmin') {
-        this.viewAsRoleSignal.set(storedViewAs);
+        this.viewAsContextSignal.set(storedViewAs);
       }
     }
     this.loadingSignal.set(false);
@@ -78,7 +121,7 @@ export class AuthService {
     sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
     this.tokenSignal.set(tokenStr);
     this.userSignal.set(userData);
-    this.viewAsRoleSignal.set(null);
+    this.viewAsContextSignal.set(null);
   }
 
   updateUser(userData: Partial<User>): void {
@@ -96,7 +139,7 @@ export class AuthService {
     sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
     this.tokenSignal.set(null);
     this.userSignal.set(null);
-    this.viewAsRoleSignal.set(null);
+    this.viewAsContextSignal.set(null);
     this.router.navigate(['/login']);
   }
 
@@ -111,15 +154,41 @@ export class AuthService {
       this.clearViewAs();
       return;
     }
-    sessionStorage.setItem(VIEW_AS_STORAGE_KEY, role);
-    this.viewAsRoleSignal.set(role);
+    this.setViewAsContext({ role });
+  }
+
+  /** Activa la preview contextual: Admin=empresa, Gerente=subempresa, Cliente=sitio. */
+  setViewAsContext(context: ViewAsContext): void {
+    if (this.realRole() !== 'SuperAdmin') return;
+
+    sessionStorage.setItem(VIEW_AS_STORAGE_KEY, JSON.stringify(context));
+    this.viewAsContextSignal.set(context);
     this.router.navigate(['/dashboard']);
   }
 
   /** Desactiva la simulación y vuelve al rol real */
   clearViewAs(): void {
     sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
-    this.viewAsRoleSignal.set(null);
+    this.viewAsContextSignal.set(null);
     this.router.navigate(['/dashboard']);
+  }
+
+  private parseStoredViewAs(value: string | null): ViewAsContext | null {
+    if (!value) return null;
+
+    try {
+      const parsed = JSON.parse(value) as Partial<Omit<ViewAsContext, 'role'>> & {
+        role?: string;
+      };
+      if (parsed?.role && parsed.role !== 'SuperAdmin') {
+        return { ...parsed, role: parsed.role as PreviewRole };
+      }
+    } catch {
+      if (value !== 'SuperAdmin') {
+        return { role: value as PreviewRole };
+      }
+    }
+
+    return null;
   }
 }

@@ -16,6 +16,7 @@ import {
   EventoEstado,
   EventoRow,
 } from '../../../../services/alerta.service';
+import { AuthService } from '../../../../services/auth.service';
 import { UserService } from '../../../../services/user.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
@@ -139,7 +140,7 @@ type FiltroEstado = EventoEstado | 'todos';
                   </div>
 
                   <!-- Selector de asignación inline -->
-                  @if (asignandoId() === ev.id) {
+                  @if (canOperateAlerts() && asignandoId() === ev.id) {
                     <div
                       class="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-3 py-2"
                     >
@@ -171,7 +172,7 @@ type FiltroEstado = EventoEstado | 'todos';
                   }
 
                   <!-- Acciones -->
-                  @if (ev.estado !== 'resuelta' && asignandoId() !== ev.id) {
+                  @if (canOperateAlerts() && ev.estado !== 'resuelta' && asignandoId() !== ev.id) {
                     <div class="mt-3 flex flex-wrap gap-2">
                       @if (ev.estado === 'activa') {
                         <button
@@ -240,6 +241,7 @@ type FiltroEstado = EventoEstado | 'todos';
 export class AlertasBandejaComponent {
   private readonly alertaService = inject(AlertaService);
   private readonly userService = inject(UserService);
+  private readonly auth = inject(AuthService);
 
   readonly sitioId = input<string>('');
   readonly empresaId = input<string>('');
@@ -251,6 +253,7 @@ export class AlertasBandejaComponent {
   readonly errorMsg = signal<string | null>(null);
   readonly asignandoId = signal<number | null>(null);
   readonly usuariosEmpresa = signal<User[]>([]);
+  readonly canOperateAlerts = this.auth.canManageAlerts;
 
   asignadoSeleccionado = '';
 
@@ -269,7 +272,11 @@ export class AlertasBandejaComponent {
     });
     effect(() => {
       const eid = this.empresaId();
-      if (eid) this.cargarUsuarios(eid);
+      if (eid && this.canOperateAlerts()) {
+        this.cargarUsuarios(eid);
+      } else {
+        this.usuariosEmpresa.set([]);
+      }
     });
   }
 
@@ -344,6 +351,7 @@ export class AlertasBandejaComponent {
   });
 
   reconocer(ev: EventoRow): void {
+    if (!this.canOperateAlerts()) return;
     this.actuando.set(true);
     this.alertaService.reconocerEvento(ev.id).subscribe({
       next: (updated) => this.aplicarUpdate(updated),
@@ -353,6 +361,7 @@ export class AlertasBandejaComponent {
   }
 
   iniciarAsignar(ev: EventoRow): void {
+    if (!this.canOperateAlerts()) return;
     this.asignadoSeleccionado = ev.asignado_a || '';
     this.asignandoId.set(ev.id);
   }
@@ -363,6 +372,7 @@ export class AlertasBandejaComponent {
   }
 
   confirmarAsignar(ev: EventoRow): void {
+    if (!this.canOperateAlerts()) return;
     if (!this.asignadoSeleccionado) return;
     this.actuando.set(true);
     this.alertaService.asignarEvento(ev.id, this.asignadoSeleccionado).subscribe({
@@ -376,6 +386,7 @@ export class AlertasBandejaComponent {
   }
 
   resolver(ev: EventoRow): void {
+    if (!this.canOperateAlerts()) return;
     if (!confirm(`¿Marcar como resuelta la alerta "${ev.alerta_nombre || ev.variable_key}"?`))
       return;
     this.actuando.set(true);
@@ -391,6 +402,7 @@ export class AlertasBandejaComponent {
   }
 
   vincularIncidencia(ev: EventoRow): void {
+    if (!this.canOperateAlerts()) return;
     const inc = prompt('Código de incidencia (ej. INC-0018):', ev.incidencia_id || '');
     if (!inc || !inc.trim()) return;
     this.actuando.set(true);

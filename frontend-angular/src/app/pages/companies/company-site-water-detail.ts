@@ -2627,9 +2627,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly dgaService = inject(DgaService);
   private readonly httpClient = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  readonly isSuperAdmin = this.authService.isSuperAdmin;
-  readonly isAdmin = this.authService.isAdmin;
-  readonly canEditSiteSettings = computed(() => this.isAdmin() || this.isSuperAdmin());
+  readonly isSuperAdmin = this.authService.canViewAdvancedAnalysis;
+  readonly canEditSiteSettings = this.authService.canEditSiteSettings;
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;

@@ -1,7 +1,16 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AlertaService } from '../../../../services/alerta.service';
+import { AuthService } from '../../../../services/auth.service';
 import { AlertasBandejaComponent } from './alertas-bandeja';
 import { AlertasConfiguracionComponent } from './alertas-configuracion';
 import { AlertasHistoricoComponent } from './alertas-historico';
@@ -27,7 +36,6 @@ interface AlertasTabItem {
   ],
   template: `
     <section class="space-y-3">
-      <!-- Header -->
       <header class="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div class="flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
@@ -41,11 +49,10 @@ interface AlertasTabItem {
                 Alertas
               </p>
               <h2 class="truncate text-h6 font-semibold leading-tight text-slate-800">
-                Gestión de alertas del sitio
+                {{ canManageAlerts() ? 'Gestión de alertas del sitio' : 'Alertas del sitio' }}
               </h2>
             </div>
           </div>
-          <!-- Badge activas -->
           @if (activasCount() > 0) {
             <span
               class="hidden shrink-0 items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-caption-xs font-bold text-rose-600 sm:inline-flex"
@@ -57,11 +64,10 @@ interface AlertasTabItem {
         </div>
       </header>
 
-      <!-- Sub-tabs (desktop) / dropdown (mobile) -->
       <nav class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="hidden flex-wrap items-center gap-1 px-2 py-2 md:flex">
-          @for (tab of tabs; track tab.key) {
-            <button type="button" (click)="activeSection.set(tab.key)" [class]="tabClass(tab.key)">
+          @for (tab of tabs(); track tab.key) {
+            <button type="button" (click)="setSection(tab.key)" [class]="tabClass(tab.key)">
               <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
               <span>{{ tab.label }}</span>
             </button>
@@ -70,20 +76,19 @@ interface AlertasTabItem {
         <div class="md:hidden">
           <select
             [ngModel]="activeSection()"
-            (ngModelChange)="activeSection.set($event)"
+            (ngModelChange)="setSection($event)"
             class="w-full appearance-none rounded-2xl bg-white px-4 py-3 text-body-sm font-bold text-slate-700 focus:outline-none"
           >
-            @for (tab of tabs; track tab.key) {
+            @for (tab of tabs(); track tab.key) {
               <option [value]="tab.key">{{ tab.label }}</option>
             }
           </select>
         </div>
       </nav>
 
-      <!-- Section content -->
       @if (activeSection() === 'bandeja') {
         <app-alertas-bandeja [sitioId]="sitioId()" [empresaId]="empresaId()" />
-      } @else if (activeSection() === 'configuracion') {
+      } @else if (activeSection() === 'configuracion' && canManageAlerts()) {
         <app-alertas-configuracion [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'historico') {
         <app-alertas-historico [sitioId]="sitioId()" />
@@ -93,23 +98,39 @@ interface AlertasTabItem {
 })
 export class WaterDetailAlertasComponent {
   private readonly alertaService = inject(AlertaService);
+  private readonly auth = inject(AuthService);
 
   readonly sitioId = input<string>('');
   readonly empresaId = input<string>('');
   readonly activeSection = signal<AlertasSection>('bandeja');
   readonly activasCount = signal(0);
+  readonly canManageAlerts = this.auth.canManageAlerts;
 
-  readonly tabs: AlertasTabItem[] = [
+  readonly tabs = computed<AlertasTabItem[]>(() => [
     { key: 'bandeja', label: 'Bandeja activa', icon: 'inbox' },
-    { key: 'configuracion', label: 'Configuración', icon: 'tune' },
+    ...(this.canManageAlerts()
+      ? [{ key: 'configuracion' as const, label: 'Configuración', icon: 'tune' }]
+      : []),
     { key: 'historico', label: 'Histórico', icon: 'history' },
-  ];
+  ]);
 
   constructor() {
     effect(() => {
       const sid = this.sitioId();
       if (sid) this.cargarResumen();
     });
+
+    effect(() => {
+      if (this.activeSection() === 'configuracion' && !this.canManageAlerts()) {
+        this.activeSection.set('bandeja');
+      }
+    });
+  }
+
+  setSection(section: string): void {
+    const next = section as AlertasSection;
+    const available = this.tabs().some((tab) => tab.key === next);
+    this.activeSection.set(available ? next : 'bandeja');
   }
 
   private cargarResumen(): void {

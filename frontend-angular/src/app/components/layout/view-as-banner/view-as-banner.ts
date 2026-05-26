@@ -17,11 +17,14 @@ import { AuthService } from '../../../services/auth.service';
         <div class="flex items-center gap-2">
           <span class="material-symbols-outlined text-[16px] text-amber-700">visibility</span>
           <span>
-            Viendo como
+            Vista previa:
             <strong class="font-bold uppercase tracking-wide">{{ auth.viewAsRole() }}</strong>
+            @if (auth.viewAsScopeLabel()) {
+              <span> de {{ auth.viewAsScopeLabel() }}</span>
+            }
             &middot;
             <span class="text-amber-800/80">
-              Tu rol real es <strong>{{ auth.realRole() }}</strong>
+              Tu sesion real es <strong>{{ auth.realRole() }}</strong>
             </span>
           </span>
         </div>
