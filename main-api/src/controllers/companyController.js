@@ -1264,6 +1264,7 @@ exports.getDetectedDevices = async (req, res, next) => {
         SELECT DISTINCT ON (id_serial)
           id_serial,
           time,
+          received_at,
           COALESCE(received_at, time) AS ultimo_registro,
           data
         FROM equipo
@@ -1273,8 +1274,16 @@ exports.getDetectedDevices = async (req, res, next) => {
         lr.id_serial,
         0::int AS total_registros,
         (SELECT COUNT(*)::int FROM jsonb_object_keys(COALESCE(lr.data, '{}'::jsonb))) AS total_datos,
+        lr.time AS ultima_medicion_raw,
+        lr.received_at AS ultima_llegada_raw,
         lr.ultimo_registro AS ultimo_registro_raw,
+        ${utcTimestampSql('lr.time')} AS ultima_medicion,
+        ${utcTimestampSql('lr.received_at')} AS ultima_llegada,
         ${utcTimestampSql('lr.ultimo_registro')} AS ultimo_registro,
+        CASE
+          WHEN lr.received_at IS NULL THEN NULL
+          ELSE ROUND(EXTRACT(EPOCH FROM (lr.time - lr.received_at)))::int
+        END AS desfase_segundos,
         s.id AS sitio_id,
         s.descripcion AS sitio_descripcion,
         s.tipo_sitio,
@@ -1293,11 +1302,19 @@ exports.getDetectedDevices = async (req, res, next) => {
       params,
     );
 
-    const data = rows.map(({ ultimo_registro_raw, ...row }) => ({
-      ...row,
-      total_datos: Number(row.total_datos || 0),
-      ultimo_registro_local: formatChileTimestamp(ultimo_registro_raw),
-    }));
+    const data = rows.map(
+      ({ ultimo_registro_raw, ultima_medicion_raw, ultima_llegada_raw, ...row }) => ({
+        ...row,
+        total_datos: Number(row.total_datos || 0),
+        desfase_segundos:
+          row.desfase_segundos === undefined || row.desfase_segundos === null
+            ? null
+            : Number(row.desfase_segundos),
+        ultima_medicion_local: formatChileTimestamp(ultima_medicion_raw),
+        ultima_llegada_local: formatChileTimestamp(ultima_llegada_raw),
+        ultimo_registro_local: formatChileTimestamp(ultimo_registro_raw),
+      }),
+    );
 
     res.json({ ok: true, count: data.length, data });
   } catch (err) {
