@@ -44,6 +44,9 @@ const CONTACT_COLUMNS = `
 const SITE_TYPES = new Set(SITE_TYPE_IDS);
 const VARIABLE_ROLES = new Set(VARIABLE_ROLE_IDS);
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
+const DASHBOARD_DATA_CACHE_TTL_MS = 15_000;
+const dashboardDataCache = new Map();
+const dashboardDataInflight = new Map();
 
 function badRequest(res, message) {
   return res.status(400).json({ ok: false, error: message, message });
@@ -162,6 +165,34 @@ function parseOptionalNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function freshUtcTimestamp() {
+  return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function dashboardDataCacheKey(siteId) {
+  return normalizeId(siteId);
+}
+
+function getCachedDashboardData(cacheKey) {
+  const cached = dashboardDataCache.get(cacheKey);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    dashboardDataCache.delete(cacheKey);
+    return null;
+  }
+  return {
+    ...cached.data,
+    server_time: freshUtcTimestamp(),
+  };
+}
+
+function setCachedDashboardData(cacheKey, data) {
+  dashboardDataCache.set(cacheKey, {
+    data,
+    expiresAt: Date.now() + DASHBOARD_DATA_CACHE_TTL_MS,
+  });
+}
+
 function isSuperAdmin(user) {
   return user?.tipo === 'SuperAdmin';
 }
@@ -220,11 +251,8 @@ function parseHistoryExportFields(value) {
 
 const HISTORY_EXPORT_GRANULARITY = {
   '1m': { view: 'equipo_1min', bucketInterval: '1 minute' },
-  '5m': { view: 'equipo_5min', bucketInterval: '5 minutes' },
   '1h': { view: 'equipo_hourly', bucketInterval: '1 hour' },
   '1d': { view: 'equipo_daily', bucketInterval: '1 day' },
-  '1w': { view: 'equipo_daily', bucketInterval: '7 days', rollupInterval: '7 days' },
-  '1mo': { view: 'equipo_daily', bucketInterval: '30 days', rollupInterval: '30 days' },
 };
 
 function parseHistoryExportGranularity(value) {
@@ -234,10 +262,6 @@ function parseHistoryExportGranularity(value) {
 
 function dashboardHistoryGranularity() {
   return '1m';
-}
-
-function historyRollupExpression(granConfig) {
-  return granConfig.rollupInterval ? `time_bucket('${granConfig.rollupInterval}', bucket)` : null;
 }
 
 function csvCell(value, delimiter = ';') {
@@ -328,6 +352,70 @@ async function getPozoConfigBySiteId(siteId) {
     [siteId],
   );
   return rows[0] || null;
+}
+
+const LATEST_EQUIPO_COLUMNS = `
+        time,
+        received_at,
+        id_serial,
+        data,
+        ${utcTimestampSql('time')} AS timestamp_completo`;
+
+// Sin bound de time, TimescaleDB enumera todos los chunks del hypertable en el
+// plan -> planning ~1.5s. Primero intentamos la ventana corta (cubre 99% de
+// los pozos activos); si el equipo lleva mas tiempo sin reportar, usamos el
+// cagg equipo_daily para localizar el ultimo bucket y leer solo ese chunk.
+async function loadLatestEquipoSample(idSerial) {
+  if (!idSerial) return null;
+
+  const recent = await db.query(
+    `SELECT${LATEST_EQUIPO_COLUMNS}
+       FROM equipo
+      WHERE id_serial = $1
+        AND time >= NOW() - INTERVAL '7 days'
+      ORDER BY time DESC
+      LIMIT 1`,
+    [idSerial],
+  );
+  if (recent.rows[0]) return recent.rows[0];
+
+  const lastBucket = await db.query(
+    `SELECT bucket
+       FROM equipo_daily
+      WHERE id_serial = $1
+      ORDER BY bucket DESC
+      LIMIT 1`,
+    [idSerial],
+  );
+  const bucket = lastBucket.rows[0]?.bucket;
+  if (!bucket) return null;
+
+  const fallback = await db.query(
+    `SELECT${LATEST_EQUIPO_COLUMNS}
+       FROM equipo
+      WHERE id_serial = $1
+        AND time >= $2
+        AND time <  $2 + INTERVAL '1 day'
+      ORDER BY time DESC
+      LIMIT 1`,
+    [idSerial, bucket],
+  );
+  return fallback.rows[0] || null;
+}
+
+async function loadSiteDashboardData(siteId, site) {
+  const [pozoConfigRes, mappingsRes, latest] = await Promise.all([
+    db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+    db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+    loadLatestEquipoSample(site.id_serial),
+  ]);
+
+  return buildSiteDashboardData({
+    site,
+    pozoConfig: pozoConfigRes.rows[0] || null,
+    mappings: mappingsRes.rows,
+    latest,
+  });
 }
 
 async function attachPozoConfigsToSites(sites) {
@@ -1211,17 +1299,27 @@ exports.getDetectedDevices = async (req, res, next) => {
         SELECT DISTINCT ON (id_serial)
           id_serial,
           time,
+          received_at,
           COALESCE(received_at, time) AS ultimo_registro,
           data
         FROM equipo
+        WHERE time >= NOW() - INTERVAL '30 days'
         ORDER BY id_serial, time DESC
       )
       SELECT
         lr.id_serial,
         0::int AS total_registros,
         (SELECT COUNT(*)::int FROM jsonb_object_keys(COALESCE(lr.data, '{}'::jsonb))) AS total_datos,
+        lr.time AS ultima_medicion_raw,
+        lr.received_at AS ultima_llegada_raw,
         lr.ultimo_registro AS ultimo_registro_raw,
+        ${utcTimestampSql('lr.time')} AS ultima_medicion,
+        ${utcTimestampSql('lr.received_at')} AS ultima_llegada,
         ${utcTimestampSql('lr.ultimo_registro')} AS ultimo_registro,
+        CASE
+          WHEN lr.received_at IS NULL THEN NULL
+          ELSE ROUND(EXTRACT(EPOCH FROM (lr.time - lr.received_at)))::int
+        END AS desfase_segundos,
         s.id AS sitio_id,
         s.descripcion AS sitio_descripcion,
         s.tipo_sitio,
@@ -1240,11 +1338,19 @@ exports.getDetectedDevices = async (req, res, next) => {
       params,
     );
 
-    const data = rows.map(({ ultimo_registro_raw, ...row }) => ({
-      ...row,
-      total_datos: Number(row.total_datos || 0),
-      ultimo_registro_local: formatChileTimestamp(ultimo_registro_raw),
-    }));
+    const data = rows.map(
+      ({ ultimo_registro_raw, ultima_medicion_raw, ultima_llegada_raw, ...row }) => ({
+        ...row,
+        total_datos: Number(row.total_datos || 0),
+        desfase_segundos:
+          row.desfase_segundos === undefined || row.desfase_segundos === null
+            ? null
+            : Number(row.desfase_segundos),
+        ultima_medicion_local: formatChileTimestamp(ultima_medicion_raw),
+        ultima_llegada_local: formatChileTimestamp(ultima_llegada_raw),
+        ultimo_registro_local: formatChileTimestamp(ultimo_registro_raw),
+      }),
+    );
 
     res.json({ ok: true, count: data.length, data });
   } catch (err) {
@@ -1297,40 +1403,23 @@ exports.getSiteDashboardData = async (req, res, next) => {
       return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
     }
 
-    const [pozoConfigRes, mappingsRes, latestRes] = await Promise.all([
-      db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
-      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
-        siteId,
-      ]),
-      db.query(
-        `
-        SELECT
-          time,
-          received_at,
-          id_serial,
-          data,
-          ${utcTimestampSql('time')} AS timestamp_completo
-        FROM equipo
-        WHERE id_serial = $1
-        ORDER BY time DESC
-        LIMIT 1
-        `,
-        [site.id_serial],
-      ),
-    ]);
+    const cacheKey = dashboardDataCacheKey(siteId);
+    const cachedData = getCachedDashboardData(cacheKey);
+    if (cachedData) {
+      return res.json({ ok: true, data: cachedData });
+    }
 
-    const pozoConfig = pozoConfigRes.rows[0] || null;
-    const latest = latestRes.rows[0] || null;
+    let dataPromise = dashboardDataInflight.get(cacheKey);
+    if (!dataPromise) {
+      dataPromise = loadSiteDashboardData(siteId, site).finally(() => {
+        dashboardDataInflight.delete(cacheKey);
+      });
+      dashboardDataInflight.set(cacheKey, dataPromise);
+    }
 
-    return res.json({
-      ok: true,
-      data: buildSiteDashboardData({
-        site,
-        pozoConfig,
-        mappings: mappingsRes.rows,
-        latest,
-      }),
-    });
+    const data = await dataPromise;
+    setCachedDashboardData(cacheKey, data);
+    return res.json({ ok: true, data: { ...data, server_time: freshUtcTimestamp() } });
   } catch (err) {
     next(err);
   }
@@ -1372,7 +1461,6 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
 
     const granularity = dashboardHistoryGranularity();
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
-    const rangeRollupExpr = historyRollupExpression(granConfig);
 
     if (!site.activo) {
       return res.json({
@@ -1405,24 +1493,30 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
     const rangeParams = [site.id_serial, from, to, limit, offset];
     const historyQuery = useRange
       ? db.query(
-          rangeRollupExpr
-            ? `
-            SELECT
-              ${rangeRollupExpr}          AS time,
-              last(received_at, bucket)   AS received_at,
-              last(id_serial, bucket)     AS id_serial,
-              last(data, bucket)          AS data,
-              ${utcTimestampSql(rangeRollupExpr)} AS timestamp_completo
+          `
+          WITH latest_cagg AS (
+            SELECT max(bucket) AS max_bucket
             FROM ${granConfig.view}
             WHERE id_serial = $1
               AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
               AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          ),
+          recent_raw AS (
+            SELECT
+              time_bucket($6::interval, e.time) AS time,
+              last(e.received_at, e.time)       AS received_at,
+              last(e.id_serial, e.time)         AS id_serial,
+              last(e.data, e.time)              AS data,
+              ${utcTimestampSql('time_bucket($6::interval, e.time)')} AS timestamp_completo
+            FROM equipo e
+            CROSS JOIN latest_cagg lc
+            WHERE e.id_serial = $1
+              AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $6::interval)
             GROUP BY 1
-            ORDER BY 1 DESC
-            LIMIT $4
-            OFFSET $5
-            `
-            : `
+          ),
+          materialized AS (
             SELECT
               bucket AS time,
               received_at,
@@ -1433,59 +1527,136 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             WHERE id_serial = $1
               AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
               AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            ORDER BY bucket DESC
-            LIMIT $4
-            OFFSET $5
-            `,
-          rangeParams,
-        )
-      : db.query(
-          `
+          )
           SELECT
-            bucket AS time,
+            time,
             received_at,
             id_serial,
             data,
-            ${utcTimestampSql('bucket')} AS timestamp_completo
-          FROM ${granConfig.view}
-          WHERE id_serial = $1
-          ORDER BY bucket DESC
+            timestamp_completo
+          FROM (
+            SELECT * FROM recent_raw
+            UNION ALL
+            SELECT * FROM materialized
+          ) history
+          ORDER BY time DESC
+          LIMIT $4
+          OFFSET $5
+          `,
+          [...rangeParams, granConfig.bucketInterval],
+        )
+      : db.query(
+          `
+          WITH latest_cagg AS (
+            SELECT max(bucket) AS max_bucket
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+          ),
+          recent_raw AS (
+            SELECT
+              time_bucket($4::interval, e.time) AS time,
+              last(e.received_at, e.time)       AS received_at,
+              last(e.id_serial, e.time)         AS id_serial,
+              last(e.data, e.time)              AS data,
+              ${utcTimestampSql('time_bucket($4::interval, e.time)')} AS timestamp_completo
+            FROM equipo e
+            CROSS JOIN latest_cagg lc
+            WHERE e.id_serial = $1
+              AND e.time >= COALESCE(lc.max_bucket + $4::interval, now() - INTERVAL '2 hours')
+            GROUP BY 1
+          ),
+          materialized AS (
+            SELECT
+              bucket AS time,
+              received_at,
+              id_serial,
+              data,
+              ${utcTimestampSql('bucket')} AS timestamp_completo
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+          )
+          SELECT
+            time,
+            received_at,
+            id_serial,
+            data,
+            timestamp_completo
+          FROM (
+            SELECT * FROM recent_raw
+            UNION ALL
+            SELECT * FROM materialized
+          ) history
+          ORDER BY time DESC
           LIMIT $2
           OFFSET $3
           `,
-          [site.id_serial, limit, offset],
+          [site.id_serial, limit, offset, granConfig.bucketInterval],
         );
 
     const countQuery = useRange
       ? db.query(
-          rangeRollupExpr
-            ? `
-            SELECT count(*)::int AS total
-            FROM (
-              SELECT 1
-              FROM ${granConfig.view}
-              WHERE id_serial = $1
-                AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-                AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-              GROUP BY ${rangeRollupExpr}
-            ) buckets
-            `
-            : `
-            SELECT count(*)::int AS total
+          `
+          WITH latest_cagg AS (
+            SELECT max(bucket) AS max_bucket
             FROM ${granConfig.view}
             WHERE id_serial = $1
               AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
               AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            `,
-          [site.id_serial, from, to],
+          ),
+          recent_raw AS (
+            SELECT time_bucket($4::interval, e.time) AS time
+            FROM equipo e
+            CROSS JOIN latest_cagg lc
+            WHERE e.id_serial = $1
+              AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $4::interval)
+            GROUP BY 1
+          ),
+          materialized AS (
+            SELECT bucket AS time
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+              AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+              AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          )
+          SELECT count(*)::int AS total
+          FROM (
+            SELECT time FROM recent_raw
+            UNION ALL
+            SELECT time FROM materialized
+          ) history
+          `,
+          [site.id_serial, from, to, granConfig.bucketInterval],
         )
       : db.query(
           `
+          WITH latest_cagg AS (
+            SELECT max(bucket) AS max_bucket
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+          ),
+          recent_raw AS (
+            SELECT time_bucket($2::interval, e.time) AS time
+            FROM equipo e
+            CROSS JOIN latest_cagg lc
+            WHERE e.id_serial = $1
+              AND e.time >= COALESCE(lc.max_bucket + $2::interval, now() - INTERVAL '2 hours')
+            GROUP BY 1
+          ),
+          materialized AS (
+            SELECT bucket AS time
+            FROM ${granConfig.view}
+            WHERE id_serial = $1
+          )
           SELECT count(*)::int AS total
-          FROM ${granConfig.view}
-          WHERE id_serial = $1
+          FROM (
+            SELECT time FROM recent_raw
+            UNION ALL
+            SELECT time FROM materialized
+          ) history
           `,
-          [site.id_serial],
+          [site.id_serial, granConfig.bucketInterval],
         );
 
     let [pozoConfigRes, mappingsRes, historyRes, countRes] = await Promise.all([
@@ -1572,7 +1743,6 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     const fields = parseHistoryExportFields(req.query.fields);
     const granularity = parseHistoryExportGranularity(req.query.granularity);
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
-    const exportRollupExpr = historyRollupExpression(granConfig);
 
     if (!site) {
       return notFound(res, 'Sitio no encontrado.');
@@ -1635,70 +1805,22 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
     try {
       client = await db.connect();
       await client.query('BEGIN');
-      const caggHasRows = await client.query(
+      await client.query(
         `
-        SELECT 1
+        DECLARE history_export_cursor NO SCROLL CURSOR FOR
+        SELECT
+          bucket AS time,
+          received_at,
+          id_serial,
+          data,
+          ${utcTimestampSql('bucket')} AS timestamp_completo
         FROM ${granConfig.view}
         WHERE id_serial = $1
           AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
           AND bucket < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-        LIMIT 1
+        ORDER BY bucket ASC
         `,
         [site.id_serial, from, to],
-      );
-      const useRawFallback = caggHasRows.rows.length === 0;
-      const cursorSql = useRawFallback
-        ? `
-          DECLARE history_export_cursor NO SCROLL CURSOR FOR
-          SELECT
-            time_bucket($4::interval, time) AS time,
-            last(received_at, time)         AS received_at,
-            last(id_serial, time)           AS id_serial,
-            last(data, time)                AS data,
-            ${utcTimestampSql('time_bucket($4::interval, time)')} AS timestamp_completo
-          FROM equipo
-          WHERE id_serial = $1
-            AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND time < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          GROUP BY 1
-          ORDER BY 1 ASC
-        `
-        : exportRollupExpr
-          ? `
-          DECLARE history_export_cursor NO SCROLL CURSOR FOR
-          SELECT
-            ${exportRollupExpr}          AS time,
-            last(received_at, bucket)   AS received_at,
-            last(id_serial, bucket)     AS id_serial,
-            last(data, bucket)          AS data,
-            ${utcTimestampSql(exportRollupExpr)} AS timestamp_completo
-          FROM ${granConfig.view}
-          WHERE id_serial = $1
-            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND bucket < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          GROUP BY 1
-          ORDER BY 1 ASC
-        `
-          : `
-          DECLARE history_export_cursor NO SCROLL CURSOR FOR
-          SELECT
-            bucket       AS time,
-            received_at,
-            id_serial,
-            data,
-            ${utcTimestampSql('bucket')} AS timestamp_completo
-          FROM ${granConfig.view}
-          WHERE id_serial = $1
-            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-            AND bucket < (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          ORDER BY 1 ASC
-        `;
-
-      await client.query(
-        cursorSql,
-        useRawFallback
-          ? [site.id_serial, from, to, granConfig.bucketInterval]
-          : [site.id_serial, from, to],
       );
 
       await writeResponseChunk(gz, '\uFEFF');
@@ -2125,6 +2247,9 @@ exports.createOperationalContact = async (req, res, next) => {
     }
     if (nombre.length > 12 || apellido.length > 12) {
       return badRequest(res, 'nombre y apellido deben tener maximo 12 caracteres.');
+    }
+    if ((email && email.length > 35) || cargo.length > 35) {
+      return badRequest(res, 'correo y cargo deben tener maximo 35 caracteres.');
     }
     if (!email && !telefono) {
       return badRequest(res, 'Debe indicar telefono o correo del contacto.');

@@ -191,6 +191,7 @@ const CONTACT_TYPES = [
                 [(ngModel)]="form.email"
                 name="email"
                 type="email"
+                maxlength="35"
                 class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                 placeholder="contacto@empresa.cl"
               />
@@ -206,6 +207,7 @@ const CONTACT_TYPES = [
                 required
                 [(ngModel)]="form.cargo"
                 name="cargo"
+                maxlength="35"
                 class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                 placeholder="Ej. Responsable de reportes DGA"
               />
@@ -342,6 +344,65 @@ const CONTACT_TYPES = [
           </p>
         </div>
       }
+
+      @if (pendingDeleteContact()) {
+        <div
+          class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-contact-title"
+        >
+          <div
+            class="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.22)]"
+          >
+            <div class="flex items-start gap-4">
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600"
+              >
+                <span class="material-symbols-outlined text-[22px]">delete</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h3 id="delete-contact-title" class="text-h6 font-bold text-slate-900">
+                  Eliminar contacto
+                </h3>
+                <p class="mt-1 text-body-sm leading-5 text-slate-500">
+                  Se eliminara el registro operativo de
+                  <span class="font-bold text-slate-800">
+                    {{ fullContactName(pendingDeleteContact()!) }}
+                  </span>
+                  en {{ selectedLabel || 'esta division' }}.
+                </p>
+              </div>
+            </div>
+
+            <div
+              class="mt-5 rounded-xl border border-rose-100 bg-rose-50/70 px-4 py-3 text-caption font-semibold text-rose-700"
+            >
+              Esta accion no elimina usuarios registrados, solo este contacto operativo.
+            </div>
+
+            <div class="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                (click)="cancelDeleteContact()"
+                [disabled]="deleting()"
+                class="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-caption font-bold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="confirmDeleteContact()"
+                [disabled]="deleting()"
+                class="inline-flex h-9 items-center gap-2 rounded-lg bg-rose-600 px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+                {{ deleting() ? 'Eliminando...' : 'Eliminar contacto' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     </section>
   `,
 })
@@ -361,8 +422,10 @@ export class CompaniesContactsPanelComponent implements OnChanges {
   readonly availableUsers = signal<User[]>([]);
   readonly loading = signal(false);
   readonly saving = signal(false);
+  readonly deleting = signal(false);
   readonly status = signal('');
   readonly statusType = signal<'success' | 'error'>('success');
+  readonly pendingDeleteContact = signal<OperationalContact | null>(null);
   readonly skeletonItems = Array.from({ length: 3 }, (_, index) => index);
   readonly contactTypes = CONTACT_TYPES;
 
@@ -429,9 +492,9 @@ export class CompaniesContactsPanelComponent implements OnChanges {
 
     this.form.nombre = (user.nombre || '').slice(0, 12);
     this.form.apellido = (user.apellido || '').slice(0, 12);
-    this.form.email = user.email || '';
+    this.form.email = (user.email || '').slice(0, 35);
     this.form.telefonoDigits = this.extractPhoneDigits(user.telefono || '');
-    this.form.cargo = user.cargo || this.form.cargo;
+    this.form.cargo = (user.cargo || this.form.cargo).slice(0, 35);
   }
 
   updatePhoneDigits(value: string): void {
@@ -443,6 +506,10 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     if (!this.canManageContacts()) return;
     if (!/^\d{9}$/.test(this.form.telefonoDigits)) {
       this.setStatus('El telefono debe tener 9 digitos despues de +56', 'error');
+      return;
+    }
+    if (this.form.email.trim().length > 35 || this.form.cargo.trim().length > 35) {
+      this.setStatus('Correo y cargo deben tener maximo 35 caracteres', 'error');
       return;
     }
 
@@ -480,14 +547,30 @@ export class CompaniesContactsPanelComponent implements OnChanges {
 
   deleteContact(contact: OperationalContact): void {
     if (!this.canManageContacts()) return;
-    if (!confirm(`Eliminar contacto ${this.fullContactName(contact)}?`)) return;
+    this.pendingDeleteContact.set(contact);
+  }
 
+  cancelDeleteContact(): void {
+    if (this.deleting()) return;
+    this.pendingDeleteContact.set(null);
+  }
+
+  confirmDeleteContact(): void {
+    const contact = this.pendingDeleteContact();
+    if (!contact || !this.canManageContacts()) return;
+
+    this.deleting.set(true);
     this.companyService.deleteOperationalContact(contact.id).subscribe({
       next: () => {
-        this.setStatus('Contacto eliminado', 'success');
+        this.pendingDeleteContact.set(null);
+        this.setStatus('Contacto eliminado correctamente', 'success');
         this.loadContacts();
+        this.deleting.set(false);
       },
-      error: () => this.setStatus('No se pudo eliminar', 'error'),
+      error: () => {
+        this.setStatus('No se pudo eliminar', 'error');
+        this.deleting.set(false);
+      },
     });
   }
 

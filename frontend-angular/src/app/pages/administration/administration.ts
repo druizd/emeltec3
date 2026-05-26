@@ -1004,11 +1004,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="min-w-[760px] w-full text-left text-body-sm">
+                      <table class="min-w-[1080px] w-full text-left text-body-sm">
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Ultimo registro</th>
+                            <th class="px-4 py-3">Registro</th>
+                            <th class="px-4 py-3">Desfase</th>
                             <th class="px-4 py-3 text-right">Cantidad de datos</th>
                             <th class="px-4 py-3">Sitio</th>
                           </tr>
@@ -1019,8 +1020,32 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               <td class="px-4 py-3 font-mono text-caption font-bold text-slate-700">
                                 {{ device.id_serial }}
                               </td>
-                              <td class="px-4 py-3 text-slate-500">
-                                {{ deviceLastSeenLabel(device) }}
+                              <td class="px-4 py-3">
+                                <div class="device-time-stack">
+                                  <div class="device-time-row">
+                                    <span class="device-time-label">Medición</span>
+                                    <span class="device-time-value">{{
+                                      deviceMeasurementLabel(device)
+                                    }}</span>
+                                  </div>
+                                  <div class="device-time-row">
+                                    <span class="device-time-label">Llegada BD</span>
+                                    <span class="device-time-value">{{
+                                      deviceArrivalLabel(device)
+                                    }}</span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td class="px-4 py-3">
+                                <span
+                                  [class]="deviceClockSkewBadgeClass(device)"
+                                  [title]="deviceClockSkewTitle(device)"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">{{
+                                    deviceClockSkewIcon(device)
+                                  }}</span>
+                                  {{ deviceClockSkewLabel(device) }}
+                                </span>
                               </td>
                               <td class="px-4 py-3 text-right font-bold text-slate-700">
                                 {{ deviceDataCountLabel(device) }}
@@ -1166,6 +1191,73 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
         letter-spacing: 0.08em;
         text-transform: uppercase;
         color: var(--color-on-surface-muted);
+      }
+
+      .device-time-stack {
+        display: grid;
+        gap: 4px;
+        min-width: 220px;
+      }
+
+      .device-time-row {
+        display: grid;
+        grid-template-columns: 74px minmax(0, 1fr);
+        align-items: baseline;
+        gap: 10px;
+      }
+
+      .device-time-label {
+        font-family: var(--font-josefin);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--color-on-surface-muted);
+      }
+
+      .device-time-value {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-on-surface);
+        white-space: nowrap;
+      }
+
+      .device-skew-badge {
+        display: inline-flex;
+        min-height: 28px;
+        align-items: center;
+        gap: 6px;
+        border-radius: 9999px;
+        border: 1px solid transparent;
+        padding: 4px 9px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .device-skew-ok {
+        border-color: rgba(34, 197, 94, 0.25);
+        background: rgba(34, 197, 94, 0.1);
+        color: #16a34a;
+      }
+
+      .device-skew-warning {
+        border-color: rgba(251, 191, 36, 0.3);
+        background: rgba(251, 191, 36, 0.12);
+        color: #b45309;
+      }
+
+      .device-skew-danger {
+        border-color: rgba(248, 113, 113, 0.3);
+        background: rgba(248, 113, 113, 0.1);
+        color: #dc2626;
+      }
+
+      .device-skew-neutral {
+        border-color: var(--color-outline-variant);
+        background: var(--color-surface-subtle);
+        color: var(--color-on-surface-variant);
       }
 
       /* Buttons --------------------------------------------------- */
@@ -1396,6 +1488,11 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         device.id_serial,
         device.ultimo_registro,
         device.ultimo_registro_local || '',
+        device.ultima_medicion || '',
+        device.ultima_medicion_local || '',
+        device.ultima_llegada || '',
+        device.ultima_llegada_local || '',
+        this.deviceClockSkewLabel(device),
         String(this.deviceDataCount(device)),
         String(device.total_registros),
         device.sitio_descripcion || '',
@@ -2388,6 +2485,51 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return `${count} ${count === 1 ? 'dato' : 'datos'}`;
   }
 
+  deviceMeasurementLabel(device: DetectedDevice): string {
+    return (
+      this.deviceDateLabel(device.ultima_medicion_local, device.ultima_medicion) ||
+      this.deviceLastSeenLabel(device)
+    );
+  }
+
+  deviceArrivalLabel(device: DetectedDevice): string {
+    return (
+      this.deviceDateLabel(device.ultima_llegada_local, device.ultima_llegada) ||
+      this.deviceLastSeenLabel(device)
+    );
+  }
+
+  deviceClockSkewLabel(device: DetectedDevice): string {
+    const seconds = this.deviceClockSkewSeconds(device);
+    if (seconds === null) return 'Sin llegada';
+    if (seconds === 0) return 'Sin desfase';
+
+    const absLabel = this.formatDurationLabel(Math.abs(seconds));
+    if (seconds > 0) return `Adelantado ${absLabel}`;
+    if (Math.abs(seconds) >= 86400) return 'Carga histórica';
+    return `Llegada +${absLabel}`;
+  }
+
+  deviceClockSkewTitle(device: DetectedDevice): string {
+    return [
+      `Medición: ${this.deviceMeasurementLabel(device)}`,
+      `Llegada BD: ${this.deviceArrivalLabel(device)}`,
+      `Estado: ${this.deviceClockSkewLabel(device)}`,
+    ].join(' | ');
+  }
+
+  deviceClockSkewIcon(device: DetectedDevice): string {
+    const tone = this.deviceClockSkewTone(device);
+    if (tone === 'danger') return 'error';
+    if (tone === 'warning') return 'schedule';
+    if (tone === 'ok') return 'check_circle';
+    return 'history';
+  }
+
+  deviceClockSkewBadgeClass(device: DetectedDevice): string {
+    return `device-skew-badge device-skew-${this.deviceClockSkewTone(device)}`;
+  }
+
   deviceLastSeenLabel(device: DetectedDevice): string {
     if (device.ultimo_registro_local)
       return this.readableDeviceDateTime(device.ultimo_registro_local);
@@ -2407,6 +2549,74 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     })
       .format(date)
       .replace(',', '');
+  }
+
+  private deviceClockSkewSeconds(device: DetectedDevice): number | null {
+    if (device.desfase_segundos !== undefined && device.desfase_segundos !== null) {
+      const direct = Number(device.desfase_segundos);
+      if (Number.isFinite(direct)) return Math.round(direct);
+    }
+
+    const measuredMs = this.deviceTimestampMs(device.ultima_medicion);
+    const receivedMs = this.deviceTimestampMs(device.ultima_llegada);
+    if (measuredMs === null || receivedMs === null) return null;
+    return Math.round((measuredMs - receivedMs) / 1000);
+  }
+
+  private deviceClockSkewTone(device: DetectedDevice): 'ok' | 'warning' | 'danger' | 'neutral' {
+    const seconds = this.deviceClockSkewSeconds(device);
+    if (seconds === null) return 'neutral';
+    if (seconds < -86400) return 'neutral';
+    if (seconds > 120) return 'danger';
+    if (seconds > 30 || seconds < -600) return 'warning';
+    return 'ok';
+  }
+
+  private deviceDateLabel(localValue?: string | null, utcValue?: string | null): string | null {
+    if (localValue) return this.readableDeviceDateTime(localValue);
+
+    const date = utcValue ? new Date(utcValue) : null;
+    if (!date || Number.isNaN(date.getTime())) return null;
+
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'Etc/GMT+4',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+      .format(date)
+      .replace(',', '');
+  }
+
+  private deviceTimestampMs(value?: string | null): number | null {
+    if (!value) return null;
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  private formatDurationLabel(totalSeconds: number): string {
+    const seconds = Math.max(0, Math.round(totalSeconds));
+    if (seconds < 60) return `${seconds}s`;
+
+    const minutes = Math.floor(seconds / 60);
+    const restSeconds = seconds % 60;
+    if (minutes < 60) {
+      return restSeconds ? `${minutes}m ${restSeconds}s` : `${minutes}m`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const restMinutes = minutes % 60;
+    if (hours < 24) {
+      return restMinutes ? `${hours}h ${restMinutes}m` : `${hours}h`;
+    }
+
+    const days = Math.floor(hours / 24);
+    const restHours = hours % 24;
+    return restHours ? `${days}d ${restHours}h` : `${days}d`;
   }
 
   private readableDeviceDateTime(value: string): string {

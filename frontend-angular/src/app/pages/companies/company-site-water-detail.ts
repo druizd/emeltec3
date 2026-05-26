@@ -2077,7 +2077,7 @@ type OperationMode = 'realtime' | 'turnos';
                 >
                   Granularidad
                 </p>
-                <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-6">
+                <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
                   @for (gran of downloadGranularityOptions; track gran.id) {
                     <button
                       type="button"
@@ -2092,6 +2092,12 @@ type OperationMode = 'realtime' | 'turnos';
                       {{ gran.label }}
                     </button>
                   }
+                </div>
+                <div
+                  class="mb-5 mt-3 flex items-start gap-2 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2.5 text-caption font-semibold text-primary-container"
+                >
+                  <span class="material-symbols-outlined mt-0.5 text-[16px]">schedule</span>
+                  <span>{{ downloadWorkloadLabel() }}</span>
                 </div>
 
                 <!-- Format -->
@@ -2902,6 +2908,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (!f || !t) return 0;
     return Math.round((+new Date(t) - +new Date(f)) / 86400000) + 1;
   });
+  downloadWorkloadLabel = computed(() => {
+    if (this.downloadBusy()) {
+      return 'Generando archivo. Si el rango es largo, puede tardar unos minutos.';
+    }
+    if (this.downloadGranularity() !== '1m' || this.downloadDaysCount() < 30) {
+      return 'Exportación directa desde datos procesados.';
+    }
+    return 'Rangos largos minuto a minuto pueden tardar unos minutos. Mantén esta pestaña abierta.';
+  });
   dgaModalDaysCount = computed(() => {
     const f = this.dgaDateFrom();
     const t = this.dgaDateTo();
@@ -3212,11 +3227,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     hint: string;
   }[] = [
     { id: '1m', label: '1 minuto', hint: 'Detalle máximo' },
-    { id: '5m', label: '5 minutos', hint: 'Recomendado < 30 días' },
-    { id: '1h', label: '1 hora', hint: 'Recomendado < 1 año' },
+    { id: '1h', label: '1 hora', hint: 'Resumen por hora' },
     { id: '1d', label: '1 día', hint: 'Resumen diario' },
-    { id: '1w', label: '7 días', hint: 'Resumen semanal' },
-    { id: '1mo', label: '30 días', hint: 'Resumen mensual' },
   ];
 
   readonly historyMockRows: HistoricalTelemetryRow[] = [

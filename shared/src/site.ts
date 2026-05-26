@@ -41,6 +41,11 @@ export interface DetectedDevice {
   total_datos?: number;
   ultimo_registro: string;
   ultimo_registro_local?: string | null;
+  ultima_medicion?: string | null;
+  ultima_medicion_local?: string | null;
+  ultima_llegada?: string | null;
+  ultima_llegada_local?: string | null;
+  desfase_segundos?: number | null;
   sitio_id?: string | null;
   sitio_descripcion?: string | null;
   empresa_id?: string | null;

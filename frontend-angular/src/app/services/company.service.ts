@@ -59,7 +59,7 @@ export interface SiteOperacionConfig {
   updated_at: string;
 }
 
-export type HistoryGranularity = '1m' | '5m' | '1h' | '1d' | '1w' | '1mo';
+export type HistoryGranularity = '1m' | '1h' | '1d';
 
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
