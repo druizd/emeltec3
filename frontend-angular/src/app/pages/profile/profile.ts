@@ -34,12 +34,6 @@ interface EditState {
   template: `
     <section class="min-h-full bg-[#F0F2F5] px-5 py-4">
       <div class="mb-3">
-        <p
-          class="mb-1 flex items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-primary"
-        >
-          <span class="material-symbols-outlined text-[15px]">account_circle</span>
-          Cuenta
-        </p>
         <h1
           class="text-h4 font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
           style="font-family: 'Josefin Sans', sans-serif"

@@ -227,87 +227,133 @@ import { formatRutInput } from '../../shared/rut';
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- Tabla de usuarios: siempre visible                 -->
       <!-- ═══════════════════════════════════════════════════ -->
-      <div
-        class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden"
-        [class.mt-8]="!readOnly"
-      >
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div
-          class="px-8 py-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center"
+          class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-6 py-5"
         >
-          <h3 class="text-caption font-semibold text-primary uppercase tracking-widest">
-            {{ readOnly ? 'Equipo de ' + subName() : 'Usuarios en ' + subName() }}
-          </h3>
+          <div class="min-w-[240px] flex-1">
+            <h3 class="text-caption font-semibold text-primary uppercase tracking-widest">
+              {{ readOnly ? 'Equipo de ' + subName() : 'Usuarios en ' + subName() }}
+            </h3>
+            <label class="mt-3 block max-w-sm">
+              <span class="sr-only">Buscar usuario por nombre, correo o alcance</span>
+              <span class="relative block">
+                <span
+                  class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-slate-300"
+                  >search</span
+                >
+                <input
+                  type="search"
+                  [ngModel]="userSearch()"
+                  (ngModelChange)="setUserSearch($event)"
+                  placeholder="Buscar nombre, correo o empresa..."
+                  class="h-9 w-full rounded-lg border border-[#E2E8F0] bg-white pl-9 pr-3 text-caption font-semibold text-[#1E293B] outline-none transition-colors placeholder:text-slate-400 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                />
+              </span>
+            </label>
+          </div>
           <span
-            class="px-3 py-1 bg-primary-tint-14 text-primary-container rounded-full text-[10px] font-semibold"
-            >{{ users().length }} Usuarios</span
+            class="shrink-0 rounded-full bg-primary-tint-14 px-3 py-1 text-[10px] font-semibold text-primary-container"
+            >{{ filteredUsers().length }} Usuarios</span
           >
         </div>
-        <table class="w-full text-left text-body-sm">
-          <thead class="bg-slate-50/50 border-b border-slate-100">
-            <tr>
-              <th
-                class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
-              >
-                Nombre
-              </th>
-              <th
-                class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
-              >
-                Email
-              </th>
-              <th
-                class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
-              >
-                Rol
-              </th>
-              @if (!readOnly) {
-                <th
-                  class="px-8 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px] text-right"
-                >
-                  Acción
-                </th>
-              }
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-slate-100">
-            @for (user of users(); track user.id) {
-              <tr class="hover:bg-slate-50/30 transition-colors">
-                <td class="px-8 py-4 font-bold text-slate-700">
-                  {{ user.nombre }} {{ user.apellido }}
-                </td>
-                <td class="px-8 py-4 text-slate-500">{{ user.email }}</td>
-                <td class="px-8 py-4">
-                  <span
-                    [class]="
-                      'px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-tight ' +
-                      getRoleBadge(user.tipo)
-                    "
-                  >
-                    {{ user.tipo }}
-                  </span>
-                </td>
-                @if (!readOnly) {
-                  <td class="px-8 py-4 text-right text-slate-300">
-                    <button (click)="deleteUser(user.id)" class="hover:text-red-500 transition-all">
-                      <span class="material-symbols-outlined text-lg">delete</span>
-                    </button>
-                  </td>
-                }
-              </tr>
-            }
-
-            @if (users().length === 0) {
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[760px] text-left text-body-sm">
+            <thead class="bg-slate-50/50 border-b border-slate-100">
               <tr>
-                <td [attr.colspan]="readOnly ? 3 : 4" class="px-8 py-12 text-center">
-                  <span class="material-symbols-outlined text-slate-300 text-4xl mb-2"
-                    >group_off</span
-                  >
-                  <p class="text-slate-400 font-bold text-body-sm">Sin usuarios registrados</p>
-                </td>
+                <th
+                  class="px-6 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+                >
+                  Nombre
+                </th>
+                <th
+                  class="px-6 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+                >
+                  Email
+                </th>
+                <th
+                  class="px-6 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+                >
+                  Rol
+                </th>
+                <th
+                  class="px-6 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+                >
+                  Alcance
+                </th>
               </tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              @for (user of paginatedUsers(); track user.id) {
+                <tr class="hover:bg-slate-50/30 transition-colors">
+                  <td class="px-6 py-4 font-bold text-slate-700">
+                    {{ user.nombre }} {{ user.apellido }}
+                  </td>
+                  <td class="px-6 py-4 text-slate-500">{{ user.email }}</td>
+                  <td class="px-6 py-4">
+                    <span
+                      [class]="
+                        'px-3 py-1 rounded-full text-[10px] font-semibold uppercase tracking-tight ' +
+                        getRoleBadge(user.tipo)
+                      "
+                    >
+                      {{ user.tipo }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 text-slate-500">
+                    <span class="block text-caption font-semibold text-slate-700">
+                      {{ getUserScopeLabel(user) }}
+                    </span>
+                  </td>
+                </tr>
+              }
+
+              @if (filteredUsers().length === 0) {
+                <tr>
+                  <td colspan="4" class="px-6 py-10 text-center">
+                    <span class="material-symbols-outlined text-slate-300 text-4xl mb-2"
+                      >group_off</span
+                    >
+                    <p class="text-slate-400 font-bold text-body-sm">Sin usuarios registrados</p>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (filteredUsers().length > pageSize) {
+          <div
+            class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/60 px-6 py-4"
+          >
+            <p class="text-caption font-semibold text-slate-500">
+              Mostrando {{ pageRange().start }}-{{ pageRange().end }} de
+              {{ filteredUsers().length }} usuarios
+            </p>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="previousUserPage()"
+                [disabled]="userPage() === 1"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-40 hover:text-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Pagina anterior"
+              >
+                <span class="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              <span class="min-w-16 text-center text-caption font-bold text-slate-600">
+                {{ userPage() }} / {{ totalUserPages() }}
+              </span>
+              <button
+                type="button"
+                (click)="nextUserPage()"
+                [disabled]="userPage() === totalUserPages()"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-40 hover:text-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Pagina siguiente"
+              >
+                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -324,9 +370,41 @@ export class UserManagementComponent implements OnInit, OnChanges {
   inputEmpresaId = signal('');
   inputSubEmpresaId = signal('');
 
-  users = this.userService.users;
+  users = signal<User[]>([]);
+  userSearch = signal('');
+  userPage = signal(1);
   loading = signal(false);
   status = signal({ type: '', msg: '' });
+  readonly pageSize = 10;
+
+  filteredUsers = computed(() => {
+    const query = this.normalizeSearch(this.userSearch());
+    const users = this.sortUsersByRole(this.users());
+
+    if (!query) return users;
+
+    return users.filter((user) => this.getUserSearchText(user).includes(query));
+  });
+
+  totalUserPages = computed(() =>
+    Math.max(1, Math.ceil(this.filteredUsers().length / this.pageSize)),
+  );
+
+  paginatedUsers = computed(() => {
+    const page = Math.min(this.userPage(), this.totalUserPages());
+    const start = (page - 1) * this.pageSize;
+    return this.filteredUsers().slice(start, start + this.pageSize);
+  });
+
+  pageRange = computed(() => {
+    const total = this.filteredUsers().length;
+    if (total === 0) return { start: 0, end: 0 };
+
+    const page = Math.min(this.userPage(), this.totalUserPages());
+    const start = (page - 1) * this.pageSize + 1;
+    const end = Math.min(start + this.pageSize - 1, total);
+    return { start, end };
+  });
 
   companyName = computed(() => {
     const tree = this.companyService.hierarchy();
@@ -369,6 +447,8 @@ export class UserManagementComponent implements OnInit, OnChanges {
     if (changes['subEmpresaId'] || changes['empresaId']) {
       this.updateInputs();
       this.resetForm();
+      this.userSearch.set('');
+      this.userPage.set(1);
       this.loadUsers();
     }
   }
@@ -401,10 +481,26 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.newUser.rut_usuario = formatRutInput(value);
   }
 
+  setUserSearch(value: string) {
+    this.userSearch.set(value || '');
+    this.userPage.set(1);
+  }
+
   loadUsers() {
-    if (this.subEmpresaId) {
-      this.userService.fetchUsers({ sub_empresa_id: this.subEmpresaId }).subscribe();
+    if (this.empresaId) {
+      this.userService.getUsers({ empresa_id: this.empresaId }).subscribe({
+        next: (res) => {
+          const users = res.ok ? (res.data ?? []) : [];
+          this.users.set(this.filterUsersForCurrentScope(users));
+          this.userPage.set(1);
+        },
+        error: () => this.users.set([]),
+      });
+      return;
     }
+
+    this.users.set([]);
+    this.userPage.set(1);
   }
 
   saveUser(event?: Event) {
@@ -455,6 +551,14 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.status.set({ type: '', msg: '' });
   }
 
+  previousUserPage() {
+    this.userPage.set(Math.max(1, this.userPage() - 1));
+  }
+
+  nextUserPage() {
+    this.userPage.set(Math.min(this.totalUserPages(), this.userPage() + 1));
+  }
+
   deleteUser(id: string) {
     if (this.readOnly) return; // Double protection
 
@@ -476,5 +580,61 @@ export class UserManagementComponent implements OnInit, OnChanges {
       default:
         return 'bg-slate-100 text-slate-600';
     }
+  }
+
+  getUserScopeLabel(user: User): string {
+    if (user.tipo === 'SuperAdmin') return 'Toda la plataforma';
+    const company = user.empresa_nombre || this.companyName();
+    const subCompany = user.sub_empresa_nombre || (user.sub_empresa_id ? this.subName() : '');
+    return subCompany ? `${company} / ${subCompany}` : company;
+  }
+
+  private filterUsersForCurrentScope(users: User[]): User[] {
+    if (!this.subEmpresaId) return users;
+
+    return users.filter((user) => {
+      if (user.tipo === 'Admin' && user.empresa_id === this.empresaId) return true;
+      return user.sub_empresa_id === this.subEmpresaId;
+    });
+  }
+
+  private sortUsersByRole(users: User[]): User[] {
+    const order: Record<string, number> = {
+      SuperAdmin: 0,
+      Admin: 1,
+      Gerente: 2,
+      Cliente: 3,
+    };
+
+    return [...users].sort((a, b) => {
+      const byRole = (order[a.tipo] ?? 99) - (order[b.tipo] ?? 99);
+      if (byRole !== 0) return byRole;
+      return `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`, 'es');
+    });
+  }
+
+  private getUserSearchText(user: User): string {
+    return this.normalizeSearch(
+      [
+        user.nombre,
+        user.apellido,
+        user.email,
+        user.tipo,
+        user.cargo,
+        user.empresa_nombre,
+        user.sub_empresa_nombre,
+        this.getUserScopeLabel(user),
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
+  }
+
+  private normalizeSearch(value: string): string {
+    return (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
   }
 }

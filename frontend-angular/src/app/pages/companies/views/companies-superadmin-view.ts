@@ -4,6 +4,7 @@ import { UserManagementComponent } from '../../../components/ui/user-management'
 import { CompaniesContactsPanelComponent } from '../components/companies-contacts-panel';
 import { CompaniesGeneralPanelComponent } from '../components/companies-general-panel';
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
+import { CompaniesPageHeaderComponent } from '../components/companies-page-header';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
 import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
@@ -12,6 +13,7 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
   standalone: true,
   imports: [
     CommonModule,
+    CompaniesPageHeaderComponent,
     CompaniesTabNavComponent,
     CompaniesGeneralPanelComponent,
     CompaniesInstallationsPanelComponent,
@@ -20,22 +22,12 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
   ],
   template: `
     <div class="min-h-full bg-[#F0F2F5] px-5 pb-8 pt-6 md:px-7 xl:px-8">
-      <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div class="space-y-1.5">
-          <p class="text-[10px] font-bold uppercase tracking-[0.1em] text-[#94A3B8]">
-            {{ selectedSubCompany?.nombre || 'División seleccionada' }}
-          </p>
-          <h1
-            class="text-[22px] font-bold leading-tight tracking-[0.03em] text-[#1E293B]"
-            style="font-family: 'Josefin Sans', sans-serif;"
-          >
-            {{ getActiveTitle() }}
-          </h1>
-          <p class="text-[13px] text-[#64748B]">
-            {{ getActiveSubtitle() }}
-          </p>
-        </div>
-      </div>
+      <app-companies-page-header
+        [selectedSubCompany]="selectedSubCompany"
+        [sitesCount]="sites.length"
+        [title]="getActiveTitle()"
+        [subtitle]="getActiveSubtitle()"
+      />
 
       <app-companies-tab-nav
         [tabs]="tabs"
@@ -97,7 +89,7 @@ export class CompaniesSuperAdminViewComponent {
     { key: 'general', label: 'General', icon: 'info' },
     { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
     { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
-    { key: 'usuarios', label: 'Gestión Usuarios', icon: 'person_add' },
+    { key: 'usuarios', label: 'Gestión usuarios', icon: 'person_add' },
   ];
 
   getActiveTitle(): string {
@@ -122,7 +114,7 @@ export class CompaniesSuperAdminViewComponent {
     }
 
     if (this.activeTab === 'contactos') {
-      return `${this.contactsCount} usuarios registrados`;
+      return `${this.contactsCount} contactos operativos`;
     }
 
     if (this.activeTab === 'usuarios') {

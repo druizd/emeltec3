@@ -1,22 +1,41 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  inject,
-  Input,
-  OnChanges,
-  Output,
-  signal,
-  SimpleChanges,
-} from '@angular/core';
-import { UserService } from '../../../services/user.service';
-import type { ApiResponse, User } from '@emeltec/shared';
+import { Component, EventEmitter, inject, Input, OnChanges, Output, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../../../components/ui/skeleton';
+import { AuthService } from '../../../services/auth.service';
+import { CompanyService } from '../../../services/company.service';
+import { UserService } from '../../../services/user.service';
+import type {
+  ApiResponse,
+  CreateOperationalContactPayload,
+  OperationalContact,
+  User,
+} from '@emeltec/shared';
+
+interface ContactForm {
+  usuario_id: string;
+  tipo_contacto: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefonoDigits: string;
+  cargo: string;
+  notas: string;
+}
+
+const CONTACT_TYPES = [
+  'Reporte DGA',
+  'Responsable',
+  'Emergencia',
+  'Mantencion',
+  'Operacion',
+  'Comercial',
+];
 
 @Component({
   selector: 'app-companies-contacts-panel',
   standalone: true,
-  imports: [CommonModule, SkeletonComponent],
+  imports: [CommonModule, FormsModule, SkeletonComponent],
   template: `
     <section
       [class]="
@@ -31,9 +50,179 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
             Contactos
           </h3>
           <p class="text-body-sm text-slate-400">
-            Personal asociado a {{ selectedLabel || 'la división seleccionada' }}
+            Personal operativo asociado a {{ selectedLabel || 'la division seleccionada' }}
           </p>
         </div>
+      }
+
+      @if (canManageContacts()) {
+        <form
+          (submit)="saveContact($event)"
+          class="mb-5 rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+        >
+          <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-caption-xs font-bold uppercase tracking-[0.14em] text-primary">
+                Agregar contacto operativo
+              </p>
+              <p class="mt-1 text-caption leading-snug text-slate-400">
+                Usa el mismo formulario para usuarios registrados o contactos externos sin acceso.
+              </p>
+            </div>
+            @if (status()) {
+              <p
+                [class]="
+                  'rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wide ' +
+                  (statusType() === 'success'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-rose-50 text-rose-700')
+                "
+              >
+                {{ status() }}
+              </p>
+            }
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <label class="block xl:col-span-2">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Usuario vinculado
+              </span>
+              <select
+                [(ngModel)]="form.usuario_id"
+                name="usuario_id"
+                (ngModelChange)="onUserSelected($event)"
+                class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+              >
+                <option value="">Contacto externo / sin cuenta</option>
+                @for (user of availableUsers(); track user.id) {
+                  <option [value]="user.id">{{ userLabel(user) }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="block">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Tipo
+              </span>
+              <select
+                required
+                [(ngModel)]="form.tipo_contacto"
+                name="tipo_contacto"
+                class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+              >
+                @for (type of contactTypes; track type) {
+                  <option [value]="type">{{ type }}</option>
+                }
+              </select>
+            </label>
+
+            <label class="block">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Telefono
+              </span>
+              <div
+                class="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] focus-within:border-primary-tint-40 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-tint-20"
+              >
+                <span
+                  class="flex w-16 items-center justify-center border-r border-[#E2E8F0] bg-white text-body-sm font-bold text-primary-container"
+                >
+                  +56
+                </span>
+                <input
+                  required
+                  [ngModel]="form.telefonoDigits"
+                  (ngModelChange)="updatePhoneDigits($event)"
+                  name="telefonoDigits"
+                  inputmode="numeric"
+                  maxlength="9"
+                  pattern="[0-9]{9}"
+                  class="h-full min-w-0 flex-1 bg-transparent px-3 text-body-sm font-semibold text-[#1E293B] outline-none"
+                  placeholder="9 digitos"
+                />
+              </div>
+            </label>
+
+            <label class="block">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Nombre
+              </span>
+              <input
+                required
+                [(ngModel)]="form.nombre"
+                name="nombre"
+                maxlength="12"
+                class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                placeholder="Nombre"
+              />
+            </label>
+
+            <label class="block">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Apellido
+              </span>
+              <input
+                required
+                [(ngModel)]="form.apellido"
+                name="apellido"
+                maxlength="12"
+                class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                placeholder="Apellido"
+              />
+            </label>
+
+            <label class="block">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Correo
+              </span>
+              <input
+                [(ngModel)]="form.email"
+                name="email"
+                type="email"
+                class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                placeholder="contacto@empresa.cl"
+              />
+            </label>
+
+            <label class="block md:col-span-2">
+              <span
+                class="mb-1 block text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400"
+              >
+                Cargo / responsabilidad
+              </span>
+              <input
+                required
+                [(ngModel)]="form.cargo"
+                name="cargo"
+                class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                placeholder="Ej. Responsable de reportes DGA"
+              />
+            </label>
+          </div>
+
+          <div class="mt-4 flex justify-end">
+            <button
+              type="submit"
+              [disabled]="saving()"
+              class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              <span class="material-symbols-outlined text-[16px]">add_call</span>
+              {{ saving() ? 'Guardando...' : 'Guardar contacto' }}
+            </button>
+          </div>
+        </form>
       }
 
       @if (loading()) {
@@ -57,9 +246,9 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
         </div>
       } @else if (contacts().length > 0) {
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          @for (contact of contacts(); track contact.id ?? contact.email) {
+          @for (contact of contacts(); track contact.id) {
             <article [class]="getContactCardClass()">
-              <div class="mb-4 flex items-start gap-3">
+              <div class="mb-4 flex items-start justify-between gap-3">
                 <div class="flex min-w-0 items-center gap-3">
                   <div
                     class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0dafbd] to-[#0899a5] text-[11px] font-semibold text-white shadow-sm"
@@ -69,28 +258,39 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
 
                   <div class="min-w-0">
                     <h4 class="truncate text-[14px] font-semibold text-slate-800">
-                      {{ getContactName(contact) }}
+                      {{ fullContactName(contact) }}
                     </h4>
                     <p class="truncate text-[11px] font-semibold text-primary-container">
-                      {{ getContactRole(contact) }}
+                      {{ contact.tipo_contacto }}
                     </p>
                   </div>
                 </div>
+
+                @if (canManageContacts()) {
+                  <button
+                    type="button"
+                    (click)="deleteContact(contact)"
+                    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500"
+                    aria-label="Eliminar contacto"
+                  >
+                    <span class="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                }
               </div>
 
               <div class="space-y-2.5">
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
-                    >badge</span
-                  >
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container">
+                    badge
+                  </span>
                   <div class="min-w-0">
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Cargo
                     </p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
-                      {{ getContactPosition(contact) }}
+                      {{ contact.cargo }}
                     </p>
                   </div>
                 </div>
@@ -98,15 +298,15 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
-                    >call</span
-                  >
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container">
+                    call
+                  </span>
                   <div class="min-w-0">
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                      Teléfono
+                      Telefono
                     </p>
                     <p class="break-words text-[13px] font-semibold text-slate-700">
-                      {{ getContactPhone(contact) }}
+                      {{ contact.telefono || 'Sin telefono registrado' }}
                     </p>
                   </div>
                 </div>
@@ -114,15 +314,15 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
-                    >mail</span
-                  >
+                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container">
+                    mail
+                  </span>
                   <div class="min-w-0">
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Correo
                     </p>
                     <p class="break-all text-[13px] font-semibold text-slate-700">
-                      {{ getContactEmail(contact) }}
+                      {{ contact.email || 'Sin correo registrado' }}
                     </p>
                   </div>
                 </div>
@@ -134,10 +334,11 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
         <div [class]="getEmptyStateClass()">
           <span class="material-symbols-outlined mb-4 text-5xl text-slate-300">contact_phone</span>
           <p class="text-body-sm font-bold uppercase tracking-[0.18em] text-slate-400">
-            Sin contactos registrados
+            Sin contactos operativos
           </p>
-          <p class="mt-2 max-w-md text-body-sm text-slate-400">
-            No hay personas asociadas a {{ selectedLabel || 'esta división' }} por ahora.
+          <p class="mx-auto mt-2 max-w-md text-body-sm text-slate-400">
+            Agrega responsables DGA, emergencias o personas clave para
+            {{ selectedLabel || 'esta division' }}.
           </p>
         </div>
       }
@@ -146,6 +347,8 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
 })
 export class CompaniesContactsPanelComponent implements OnChanges {
   private readonly userService = inject(UserService);
+  private readonly companyService = inject(CompanyService);
+  private readonly auth = inject(AuthService);
 
   @Input() empresaId = '';
   @Input() subEmpresaId = '';
@@ -154,77 +357,152 @@ export class CompaniesContactsPanelComponent implements OnChanges {
 
   @Output() contactsCountChange = new EventEmitter<number>();
 
-  readonly contacts = signal<User[]>([]);
+  readonly contacts = signal<OperationalContact[]>([]);
+  readonly availableUsers = signal<User[]>([]);
   readonly loading = signal(false);
+  readonly saving = signal(false);
+  readonly status = signal('');
+  readonly statusType = signal<'success' | 'error'>('success');
   readonly skeletonItems = Array.from({ length: 3 }, (_, index) => index);
+  readonly contactTypes = CONTACT_TYPES;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['empresaId'] || changes['subEmpresaId']) {
-      this.loadContacts();
-    }
+  form: ContactForm = this.emptyForm();
+
+  ngOnChanges(): void {
+    this.loadContacts();
+    this.loadAvailableUsers();
+  }
+
+  canManageContacts(): boolean {
+    return !this.auth.isCliente();
   }
 
   loadContacts(): void {
-    const filters = this.empresaId ? { empresa_id: this.empresaId } : null;
-
-    if (!filters) {
+    if (!this.empresaId) {
       this.contacts.set([]);
       this.contactsCountChange.emit(0);
       return;
     }
 
     this.loading.set(true);
-    this.userService.getUsers(filters).subscribe({
-      next: (res: ApiResponse<User[]>) => {
-        const users: User[] = res?.ok ? (res.data ?? []) : [];
-        const filteredUsers = this.subEmpresaId
-          ? users.filter(
-              (user) => user.sub_empresa_id === this.subEmpresaId || !user.sub_empresa_id,
-            )
-          : users;
+    this.companyService
+      .getOperationalContacts({
+        empresa_id: this.empresaId,
+        sub_empresa_id: this.subEmpresaId,
+      })
+      .subscribe({
+        next: (res: ApiResponse<OperationalContact[]>) => {
+          const contacts = res.ok ? (res.data ?? []) : [];
+          this.contacts.set(contacts);
+          this.contactsCountChange.emit(contacts.length);
+          this.loading.set(false);
+        },
+        error: () => {
+          this.contacts.set([]);
+          this.contactsCountChange.emit(0);
+          this.loading.set(false);
+        },
+      });
+  }
 
-        this.contacts.set(filteredUsers);
-        this.contactsCountChange.emit(filteredUsers.length);
-        this.loading.set(false);
+  loadAvailableUsers(): void {
+    if (!this.empresaId || !this.canManageContacts()) {
+      this.availableUsers.set([]);
+      return;
+    }
+
+    this.userService.getUsers({ empresa_id: this.empresaId }).subscribe({
+      next: (res) => {
+        const users = res.ok ? (res.data ?? []) : [];
+        this.availableUsers.set(this.filterUsersForScope(users));
       },
-      error: () => {
-        this.contacts.set([]);
-        this.contactsCountChange.emit(0);
-        this.loading.set(false);
+      error: () => this.availableUsers.set([]),
+    });
+  }
+
+  onUserSelected(userId: string): void {
+    const user = this.availableUsers().find((item) => item.id === userId);
+    if (!user) {
+      this.form.usuario_id = '';
+      return;
+    }
+
+    this.form.nombre = (user.nombre || '').slice(0, 12);
+    this.form.apellido = (user.apellido || '').slice(0, 12);
+    this.form.email = user.email || '';
+    this.form.telefonoDigits = this.extractPhoneDigits(user.telefono || '');
+    this.form.cargo = user.cargo || this.form.cargo;
+  }
+
+  updatePhoneDigits(value: string): void {
+    this.form.telefonoDigits = value.replace(/\D/g, '').slice(0, 9);
+  }
+
+  saveContact(event: Event): void {
+    event.preventDefault();
+    if (!this.canManageContacts()) return;
+    if (!/^\d{9}$/.test(this.form.telefonoDigits)) {
+      this.setStatus('El telefono debe tener 9 digitos despues de +56', 'error');
+      return;
+    }
+
+    const payload: CreateOperationalContactPayload = {
+      empresa_id: this.empresaId,
+      sub_empresa_id: this.subEmpresaId,
+      usuario_id: this.form.usuario_id || null,
+      nombre: this.form.nombre.trim(),
+      apellido: this.form.apellido.trim(),
+      email: this.form.email.trim() || null,
+      telefono: this.form.telefonoDigits ? `+56 ${this.form.telefonoDigits}` : null,
+      cargo: this.form.cargo.trim(),
+      tipo_contacto: this.form.tipo_contacto,
+      notas: this.form.notas.trim() || null,
+    };
+
+    this.saving.set(true);
+    this.companyService.createOperationalContact(payload).subscribe({
+      next: (res) => {
+        if (res.ok) {
+          this.form = this.emptyForm();
+          this.setStatus('Contacto correctamente agregado', 'success');
+          this.loadContacts();
+        } else {
+          this.setStatus(res.error || 'No se pudo guardar', 'error');
+        }
+        this.saving.set(false);
+      },
+      error: (err) => {
+        this.setStatus(err?.error?.error || 'No se pudo guardar', 'error');
+        this.saving.set(false);
       },
     });
   }
 
-  getContactName(contact: User): string {
-    const firstName = contact?.nombre?.trim?.() || '';
-    const lastName = contact?.apellido?.trim?.() || '';
-    const fullName = `${firstName} ${lastName}`.trim();
+  deleteContact(contact: OperationalContact): void {
+    if (!this.canManageContacts()) return;
+    if (!confirm(`Eliminar contacto ${this.fullContactName(contact)}?`)) return;
 
-    return fullName || 'Sin nombre';
+    this.companyService.deleteOperationalContact(contact.id).subscribe({
+      next: () => {
+        this.setStatus('Contacto eliminado', 'success');
+        this.loadContacts();
+      },
+      error: () => this.setStatus('No se pudo eliminar', 'error'),
+    });
   }
 
-  getContactPosition(contact: User): string {
-    return contact?.cargo?.trim?.() || 'Cargo no asignado';
+  userLabel(user: User): string {
+    const name = `${user.nombre || ''} ${user.apellido || ''}`.trim() || user.email;
+    return `${name} - ${user.tipo}`;
   }
 
-  getContactPhone(contact: User): string {
-    return contact?.telefono?.trim?.() || 'Sin numero registrado';
+  getContactInitials(contact: OperationalContact): string {
+    const parts = this.fullContactName(contact).split(/\s+/).filter(Boolean);
+    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '') || 'C').toUpperCase();
   }
 
-  getContactEmail(contact: User): string {
-    return contact?.email?.trim?.() || 'Sin correo registrado';
-  }
-
-  getContactRole(contact: User): string {
-    return contact?.tipo?.trim?.() || 'Usuario';
-  }
-
-  getContactInitials(contact: User): string {
-    const first = contact?.nombre?.charAt?.(0) ?? '';
-    const last = contact?.apellido?.charAt?.(0) ?? '';
-    const initials = `${first}${last}`.trim();
-
-    return (initials || first || 'U').toUpperCase();
+  fullContactName(contact: OperationalContact): string {
+    return `${contact.nombre || ''} ${contact.apellido || ''}`.trim() || 'Sin nombre';
   }
 
   getContactCardClass(): string {
@@ -249,5 +527,36 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     }
 
     return 'rounded-3xl border-2 border-dashed border-slate-200 bg-slate-50 py-16 text-center';
+  }
+
+  private filterUsersForScope(users: User[]): User[] {
+    if (!this.subEmpresaId) return users;
+
+    return users.filter(
+      (user) => user.sub_empresa_id === this.subEmpresaId || !user.sub_empresa_id,
+    );
+  }
+
+  private setStatus(message: string, type: 'success' | 'error'): void {
+    this.status.set(message);
+    this.statusType.set(type);
+  }
+
+  private emptyForm(): ContactForm {
+    return {
+      usuario_id: '',
+      tipo_contacto: 'Reporte DGA',
+      nombre: '',
+      apellido: '',
+      email: '',
+      telefonoDigits: '',
+      cargo: '',
+      notas: '',
+    };
+  }
+
+  private extractPhoneDigits(value: string): string {
+    const digits = value.replace(/\D/g, '');
+    return digits.startsWith('56') ? digits.slice(2, 11) : digits.slice(0, 9);
   }
 }

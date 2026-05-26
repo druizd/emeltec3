@@ -32,6 +32,50 @@ export interface CompanyNode {
   subCompanies: SubCompanyNode[];
 }
 
+export type OperationalContactType =
+  | 'Responsable'
+  | 'Reporte DGA'
+  | 'Emergencia'
+  | 'Mantencion'
+  | 'Operacion'
+  | 'Comercial'
+  | string;
+
+export interface OperationalContact {
+  id: string;
+  empresa_id: string;
+  sub_empresa_id: string;
+  sitio_id?: string | null;
+  usuario_id?: string | null;
+  nombre: string;
+  apellido?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  cargo: string;
+  tipo_contacto: OperationalContactType;
+  notas?: string | null;
+  empresa_nombre?: string | null;
+  sub_empresa_nombre?: string | null;
+  sitio_nombre?: string | null;
+  usuario_tipo?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CreateOperationalContactPayload {
+  empresa_id: string;
+  sub_empresa_id: string;
+  sitio_id?: string | null;
+  usuario_id?: string | null;
+  nombre: string;
+  apellido?: string | null;
+  email?: string | null;
+  telefono?: string | null;
+  cargo: string;
+  tipo_contacto: OperationalContactType;
+  notas?: string | null;
+}
+
 export interface CreateCompanyPayload {
   nombre: string;
   rut: string;

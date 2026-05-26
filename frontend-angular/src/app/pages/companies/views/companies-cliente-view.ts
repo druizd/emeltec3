@@ -32,6 +32,7 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
       <app-companies-tab-nav
         [tabs]="tabs"
         [activeTab]="activeTab"
+        variant="superadmin"
         (activeTabChange)="activeTabChange.emit($event)"
       />
 
@@ -43,6 +44,8 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
         <app-companies-installations-panel
           [sites]="sites"
           [loading]="loading"
+          [contextLabel]="selectedSubCompany?.nombre || ''"
+          variant="superadmin"
           (siteSelected)="siteSelected.emit($event)"
         />
       }

@@ -21,6 +21,26 @@ const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS =
   'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
+const CONTACT_COLUMNS = `
+  co.id::text,
+  co.empresa_id,
+  co.sub_empresa_id,
+  co.sitio_id,
+  co.usuario_id,
+  co.nombre,
+  co.apellido,
+  co.email,
+  co.telefono,
+  co.cargo,
+  co.tipo_contacto,
+  co.notas,
+  co.created_at,
+  co.updated_at,
+  u.tipo AS usuario_tipo,
+  e.nombre AS empresa_nombre,
+  se.nombre AS sub_empresa_nombre,
+  s.descripcion AS sitio_nombre
+`;
 const SITE_TYPES = new Set(SITE_TYPE_IDS);
 const VARIABLE_ROLES = new Set(VARIABLE_ROLE_IDS);
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
@@ -159,6 +179,21 @@ function canReadSite(user, site) {
     return user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id;
   }
   return false;
+}
+
+function canReadTenantScope(user, scope) {
+  if (!user || !scope) return false;
+  if (user.tipo === 'SuperAdmin') return true;
+  if (user.tipo === 'Admin') return user.empresa_id === scope.empresa_id;
+  if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
+    return user.empresa_id === scope.empresa_id && user.sub_empresa_id === scope.sub_empresa_id;
+  }
+  return false;
+}
+
+function canMutateOperationalContacts(user, scope) {
+  if (!user || user.tipo === 'Cliente') return false;
+  return canReadTenantScope(user, scope);
 }
 
 function utcTimestampSql(column) {
@@ -1999,6 +2034,205 @@ exports.deleteSiteVariableMap = async (req, res, next) => {
     }
 
     res.json({ ok: true, message: 'Mapeo eliminado correctamente.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/companies/contacts
+ * Lista la agenda operacional del alcance visible para el usuario.
+ */
+exports.listOperationalContacts = async (req, res, next) => {
+  try {
+    const { tipo, empresa_id: userEmpresaId, sub_empresa_id: userSubEmpresaId } = req.user;
+    const queryEmpresaId = normalizeId(req.query.empresa_id || '');
+    const querySubEmpresaId = normalizeId(req.query.sub_empresa_id || '');
+
+    const conditions = [];
+    const params = [];
+
+    if (tipo === 'SuperAdmin') {
+      if (queryEmpresaId) {
+        params.push(queryEmpresaId);
+        conditions.push(`co.empresa_id = $${params.length}`);
+      }
+      if (querySubEmpresaId) {
+        params.push(querySubEmpresaId);
+        conditions.push(`co.sub_empresa_id = $${params.length}`);
+      }
+    } else if (tipo === 'Admin') {
+      params.push(userEmpresaId);
+      conditions.push(`co.empresa_id = $${params.length}`);
+      if (querySubEmpresaId) {
+        params.push(querySubEmpresaId);
+        conditions.push(`co.sub_empresa_id = $${params.length}`);
+      }
+    } else if (tipo === 'Gerente' || tipo === 'Cliente') {
+      if (!userEmpresaId || !userSubEmpresaId) {
+        return res.json({ ok: true, data: [] });
+      }
+      params.push(userEmpresaId);
+      conditions.push(`co.empresa_id = $${params.length}`);
+      params.push(userSubEmpresaId);
+      conditions.push(`co.sub_empresa_id = $${params.length}`);
+    } else {
+      return forbidden(res, 'No tiene permisos para ver contactos.');
+    }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const { rows } = await db.query(
+      `SELECT ${CONTACT_COLUMNS}
+         FROM contacto_operativo co
+         LEFT JOIN usuario u ON u.id = co.usuario_id
+         LEFT JOIN empresa e ON e.id = co.empresa_id
+         LEFT JOIN sub_empresa se ON se.id = co.sub_empresa_id
+         LEFT JOIN sitio s ON s.id = co.sitio_id
+        ${where}
+        ORDER BY co.tipo_contacto ASC, co.nombre ASC`,
+      params,
+    );
+
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/companies/contacts
+ * Crea un contacto operativo. Puede vincular usuario existente o ser externo.
+ */
+exports.createOperationalContact = async (req, res, next) => {
+  try {
+    const empresaId = normalizeId(req.body.empresa_id);
+    const subEmpresaId = normalizeId(req.body.sub_empresa_id);
+    const sitioId = req.body.sitio_id ? normalizeId(req.body.sitio_id) : null;
+    const usuarioId = req.body.usuario_id ? normalizeId(req.body.usuario_id) : null;
+    const nombre = cleanString(req.body.nombre);
+    const apellido = cleanString(req.body.apellido);
+    const email = nullableString(req.body.email);
+    const telefono = nullableString(req.body.telefono);
+    const cargo = cleanString(req.body.cargo);
+    const tipoContacto = cleanString(req.body.tipo_contacto) || 'Operacion';
+    const notas = nullableString(req.body.notas);
+
+    if (!empresaId || !subEmpresaId) {
+      return badRequest(res, 'empresa_id y sub_empresa_id son requeridos.');
+    }
+    if (!nombre || !apellido || !cargo || !tipoContacto) {
+      return badRequest(res, 'nombre, apellido, cargo y tipo_contacto son requeridos.');
+    }
+    if (nombre.length > 12 || apellido.length > 12) {
+      return badRequest(res, 'nombre y apellido deben tener maximo 12 caracteres.');
+    }
+    if (!email && !telefono) {
+      return badRequest(res, 'Debe indicar telefono o correo del contacto.');
+    }
+    if (telefono && !/^\+56\s?\d{9}$/.test(telefono)) {
+      return badRequest(res, 'El telefono debe usar formato +56 y 9 digitos.');
+    }
+    if (
+      !canMutateOperationalContacts(req.user, {
+        empresa_id: empresaId,
+        sub_empresa_id: subEmpresaId,
+      })
+    ) {
+      return forbidden(res, 'No tiene permisos para crear contactos en este alcance.');
+    }
+
+    const { rows: subRows } = await db.query(
+      'SELECT id FROM sub_empresa WHERE id = $1 AND empresa_id = $2',
+      [subEmpresaId, empresaId],
+    );
+    if (!subRows.length) {
+      return badRequest(res, 'La division no pertenece a la empresa indicada.');
+    }
+
+    if (sitioId) {
+      const { rows: siteRows } = await db.query(
+        'SELECT id FROM sitio WHERE id = $1 AND empresa_id = $2 AND sub_empresa_id = $3',
+        [sitioId, empresaId, subEmpresaId],
+      );
+      if (!siteRows.length) {
+        return badRequest(res, 'El sitio no pertenece a la division indicada.');
+      }
+    }
+
+    if (usuarioId) {
+      const { rows: userRows } = await db.query(
+        `SELECT id FROM usuario
+          WHERE id = $1
+            AND empresa_id = $2
+            AND (sub_empresa_id = $3 OR sub_empresa_id IS NULL)`,
+        [usuarioId, empresaId, subEmpresaId],
+      );
+      if (!userRows.length) {
+        return badRequest(res, 'El usuario vinculado no pertenece a este alcance.');
+      }
+    }
+
+    const { rows } = await db.query(
+      `INSERT INTO contacto_operativo (
+         empresa_id, sub_empresa_id, sitio_id, usuario_id, nombre, apellido, email,
+         telefono, cargo, tipo_contacto, notas, created_by
+       )
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING id::text`,
+      [
+        empresaId,
+        subEmpresaId,
+        sitioId,
+        usuarioId,
+        nombre,
+        apellido,
+        email,
+        telefono,
+        cargo,
+        tipoContacto,
+        notas,
+        req.user?.id || null,
+      ],
+    );
+
+    const created = await db.query(
+      `SELECT ${CONTACT_COLUMNS}
+         FROM contacto_operativo co
+         LEFT JOIN usuario u ON u.id = co.usuario_id
+         LEFT JOIN empresa e ON e.id = co.empresa_id
+         LEFT JOIN sub_empresa se ON se.id = co.sub_empresa_id
+         LEFT JOIN sitio s ON s.id = co.sitio_id
+        WHERE co.id = $1`,
+      [rows[0].id],
+    );
+
+    res.status(201).json({ ok: true, data: created.rows[0] });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * DELETE /api/companies/contacts/:contactId
+ */
+exports.deleteOperationalContact = async (req, res, next) => {
+  try {
+    const contactId = cleanString(req.params.contactId);
+    const { rows } = await db.query(
+      'SELECT id, empresa_id, sub_empresa_id FROM contacto_operativo WHERE id = $1',
+      [contactId],
+    );
+    const contact = rows[0];
+    if (!contact) {
+      return notFound(res, 'Contacto no encontrado.');
+    }
+
+    if (!canMutateOperationalContacts(req.user, contact)) {
+      return forbidden(res, 'No tiene permisos para eliminar este contacto.');
+    }
+
+    await db.query('DELETE FROM contacto_operativo WHERE id = $1', [contactId]);
+    res.json({ ok: true, message: 'Contacto eliminado correctamente.' });
   } catch (err) {
     next(err);
   }

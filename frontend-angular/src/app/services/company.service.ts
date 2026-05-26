@@ -1,10 +1,14 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { AuthService } from './auth.service';
+import type { ViewAsContext } from './auth.service';
 import type {
   ApiResponse,
   Company,
   CompanyNode,
+  CreateOperationalContactPayload,
+  OperationalContact,
   SiteRecord,
   SiteDashboardData,
   SiteDashboardHistoryEntry,
@@ -60,9 +64,13 @@ export type HistoryGranularity = '1m' | '5m' | '1h' | '1d' | '1w' | '1mo';
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
+  private auth = inject(AuthService);
 
   companies = signal<Company[]>([]);
   hierarchy = signal<CompanyNode[]>([]);
+  visibleHierarchy = computed<CompanyNode[]>(() =>
+    this.applyPreviewScope(this.hierarchy(), this.auth.viewAsContext()),
+  );
   selectedSubCompanyId = signal<string | null>(null);
   selectedSiteModuleKey = signal<string | null>(null);
   selectedSiteTypeFilter = signal<string[] | null>(null);
@@ -92,6 +100,30 @@ export class CompanyService {
 
   getSites(id: string): Observable<ApiResponse<SiteRecord[]>> {
     return this.http.get<ApiResponse<SiteRecord[]>>(`/api/companies/${id}/sites`);
+  }
+
+  getOperationalContacts(filters: {
+    empresa_id?: string;
+    sub_empresa_id?: string;
+  }): Observable<ApiResponse<OperationalContact[]>> {
+    const params = new URLSearchParams();
+    if (filters.empresa_id) params.set('empresa_id', filters.empresa_id);
+    if (filters.sub_empresa_id) params.set('sub_empresa_id', filters.sub_empresa_id);
+    return this.http.get<ApiResponse<OperationalContact[]>>(
+      `/api/companies/contacts?${params.toString()}`,
+    );
+  }
+
+  createOperationalContact(
+    payload: CreateOperationalContactPayload,
+  ): Observable<ApiResponse<OperationalContact>> {
+    return this.http.post<ApiResponse<OperationalContact>>('/api/companies/contacts', payload);
+  }
+
+  deleteOperationalContact(contactId: string): Observable<ApiResponse<unknown>> {
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/companies/contacts/${encodeURIComponent(contactId)}`,
+    );
   }
 
   getSiteDashboardData(siteId: string): Observable<ApiResponse<SiteDashboardData>> {
@@ -201,5 +233,54 @@ export class CompanyService {
         t: String(Date.now()),
       },
     });
+  }
+
+  private applyPreviewScope(tree: CompanyNode[], context: ViewAsContext | null): CompanyNode[] {
+    if (!context || this.auth.realRole() !== 'SuperAdmin') {
+      return tree;
+    }
+
+    if (context.role === 'Admin') {
+      return context.companyId ? tree.filter((company) => company.id === context.companyId) : tree;
+    }
+
+    if (context.role === 'Gerente') {
+      return this.scopeToSubCompany(tree, context.subCompanyId);
+    }
+
+    if (context.role === 'Cliente') {
+      return this.scopeToSite(tree, context.siteId);
+    }
+
+    return tree;
+  }
+
+  private scopeToSubCompany(tree: CompanyNode[], subCompanyId?: string): CompanyNode[] {
+    if (!subCompanyId) return tree;
+
+    return tree
+      .map((company) => ({
+        ...company,
+        subCompanies: (company.subCompanies || []).filter((subCompany) => {
+          return subCompany.id === subCompanyId;
+        }),
+      }))
+      .filter((company) => company.subCompanies.length > 0);
+  }
+
+  private scopeToSite(tree: CompanyNode[], siteId?: string): CompanyNode[] {
+    if (!siteId) return tree;
+
+    return tree
+      .map((company) => ({
+        ...company,
+        subCompanies: (company.subCompanies || [])
+          .map((subCompany) => ({
+            ...subCompany,
+            sites: (subCompany.sites || []).filter((site) => site.id === siteId),
+          }))
+          .filter((subCompany) => subCompany.sites.length > 0),
+      }))
+      .filter((company) => company.subCompanies.length > 0);
   }
 }

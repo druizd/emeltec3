@@ -94,7 +94,7 @@ const MODULES = SITE_MODULES;
               <p class="truncate text-caption font-semibold leading-tight text-[#1e293b]">
                 {{ auth.user()?.nombre || 'Usuario' }}
               </p>
-              <p class="text-caption-xs text-[#94a3b8]">{{ auth.user()?.tipo || 'Rol' }}</p>
+              <p class="text-caption-xs text-[#94a3b8]">{{ roleLabel() }}</p>
             </div>
           </div>
         </div>
@@ -274,7 +274,7 @@ export class SidebarComponent implements OnInit {
   activeSiteId = this.companyService.selectedSubCompanyId;
 
   moduleTree = computed<ModuleDef[]>(() => {
-    const tree = this.companyService.hierarchy();
+    const tree = this.companyService.visibleHierarchy();
     const tokens = this.getSearchTokens(this.searchTerm());
 
     const modules = MODULES.map((def) => {
@@ -285,15 +285,38 @@ export class SidebarComponent implements OnInit {
       return { ...def, companies };
     });
 
-    return tokens.length ? modules.filter((module) => module.companies.length > 0) : modules;
+    if (tokens.length) {
+      return modules.filter((module) => module.companies.length > 0);
+    }
+
+    return this.auth.isSuperAdmin()
+      ? modules
+      : modules.filter((module) => module.companies.length > 0);
   });
 
-  showSearch = computed(() => true);
+  showSearch = computed(() => {
+    const tree = this.companyService.visibleHierarchy();
+    const totalCompanies = tree.length;
+    const totalSubCompanies = tree.reduce(
+      (count, company) => count + (company.subCompanies?.length || 0),
+      0,
+    );
+    const totalSites = tree.reduce(
+      (count, company) =>
+        count +
+        (company.subCompanies || []).reduce(
+          (siteCount, sub) => siteCount + (sub.sites?.length || 0),
+          0,
+        ),
+      0,
+    );
+
+    return totalCompanies + totalSubCompanies + totalSites >= 10;
+  });
 
   /** Visible solo para roles que pueden actuar sobre la cola de revisión DGA. */
   canSeeDgaReview = computed(() => {
-    const tipo = this.auth.user()?.tipo;
-    return tipo === 'SuperAdmin' || tipo === 'Admin';
+    return this.auth.canReviewDga();
   });
 
   hasSearchResults = computed(() => {
@@ -391,6 +414,16 @@ export class SidebarComponent implements OnInit {
     const first = user.nombre?.charAt(0) ?? '';
     const last = user.apellido?.charAt(0) ?? '';
     return `${first}${last}`.trim().toUpperCase() || user.nombre.substring(0, 2).toUpperCase();
+  }
+
+  roleLabel(): string {
+    const effectiveRole = this.auth.effectiveRole();
+    if (!effectiveRole) return 'Rol';
+    if (this.auth.isViewingAs()) {
+      const scope = this.auth.viewAsScopeLabel();
+      return scope ? `Vista ${effectiveRole} · ${scope}` : `Vista ${effectiveRole}`;
+    }
+    return effectiveRole;
   }
 
   private initializeSelection(): void {

@@ -27,7 +27,7 @@ import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
     </a>
 
     <div
-      class="flex h-dvh overflow-hidden bg-[#f0f2f5]"
+      class="fixed inset-0 flex overflow-hidden bg-[#f0f2f5]"
       style="font-family: 'DM Sans', 'Josefin Sans', sans-serif;"
     >
       <app-sidebar></app-sidebar>
