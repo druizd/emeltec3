@@ -354,32 +354,67 @@ async function getPozoConfigBySiteId(siteId) {
   return rows[0] || null;
 }
 
-async function loadSiteDashboardData(siteId, site) {
-  const [pozoConfigRes, mappingsRes, latestRes] = await Promise.all([
-    db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
-    db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
-    db.query(
-      `
-      SELECT
+const LATEST_EQUIPO_COLUMNS = `
         time,
         received_at,
         id_serial,
         data,
-        ${utcTimestampSql('time')} AS timestamp_completo
-      FROM equipo
+        ${utcTimestampSql('time')} AS timestamp_completo`;
+
+// Sin bound de time, TimescaleDB enumera todos los chunks del hypertable en el
+// plan -> planning ~1.5s. Primero intentamos la ventana corta (cubre 99% de
+// los pozos activos); si el equipo lleva mas tiempo sin reportar, usamos el
+// cagg equipo_daily para localizar el ultimo bucket y leer solo ese chunk.
+async function loadLatestEquipoSample(idSerial) {
+  if (!idSerial) return null;
+
+  const recent = await db.query(
+    `SELECT${LATEST_EQUIPO_COLUMNS}
+       FROM equipo
       WHERE id_serial = $1
+        AND time >= NOW() - INTERVAL '7 days'
       ORDER BY time DESC
-      LIMIT 1
-      `,
-      [site.id_serial],
-    ),
+      LIMIT 1`,
+    [idSerial],
+  );
+  if (recent.rows[0]) return recent.rows[0];
+
+  const lastBucket = await db.query(
+    `SELECT bucket
+       FROM equipo_daily
+      WHERE id_serial = $1
+      ORDER BY bucket DESC
+      LIMIT 1`,
+    [idSerial],
+  );
+  const bucket = lastBucket.rows[0]?.bucket;
+  if (!bucket) return null;
+
+  const fallback = await db.query(
+    `SELECT${LATEST_EQUIPO_COLUMNS}
+       FROM equipo
+      WHERE id_serial = $1
+        AND time >= $2
+        AND time <  $2 + INTERVAL '1 day'
+      ORDER BY time DESC
+      LIMIT 1`,
+    [idSerial, bucket],
+  );
+  return fallback.rows[0] || null;
+}
+
+async function loadSiteDashboardData(siteId, site) {
+  const [pozoConfigRes, mappingsRes, latest] = await Promise.all([
+    db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+    db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
+    loadLatestEquipoSample(site.id_serial),
   ]);
 
   return buildSiteDashboardData({
     site,
     pozoConfig: pozoConfigRes.rows[0] || null,
     mappings: mappingsRes.rows,
-    latest: latestRes.rows[0] || null,
+    latest,
   });
 }
 
@@ -1268,6 +1303,7 @@ exports.getDetectedDevices = async (req, res, next) => {
           COALESCE(received_at, time) AS ultimo_registro,
           data
         FROM equipo
+        WHERE time >= NOW() - INTERVAL '30 days'
         ORDER BY id_serial, time DESC
       )
       SELECT
