@@ -25,16 +25,51 @@ const icons = {
 
 const SERVICE_META = {
   api: { label: 'Main API', role: 'Capa publica REST', icon: 'server', path: '/api/v1' },
-  auth: { label: 'Auth Service', role: 'JWT · OAuth2 · Sesiones', icon: 'shield-check', path: '/auth' },
-  database: { label: 'Database', role: 'PostgreSQL primaria', icon: 'database', path: 'pg-primary' },
-  pipeline: { label: 'Pipeline gRPC', role: 'Ingesta de telemetria', icon: 'git-branch', path: ':50051' },
-  dga: { label: 'DGA Reporter', role: 'Envios a DGA · Ministerio', icon: 'radio-tower', path: 'dga.ready' },
+  auth: {
+    label: 'Auth Service',
+    role: 'JWT · OAuth2 · Sesiones',
+    icon: 'shield-check',
+    path: '/auth',
+  },
+  database: {
+    label: 'Database',
+    role: 'PostgreSQL primaria',
+    icon: 'database',
+    path: 'pg-primary',
+  },
+  pipeline: {
+    label: 'Pipeline gRPC',
+    role: 'Ingesta de telemetria',
+    icon: 'git-branch',
+    path: ':50051',
+  },
+  dga: {
+    label: 'DGA Reporter',
+    role: 'Envios a DGA · Ministerio',
+    icon: 'radio-tower',
+    path: 'dga.ready',
+  },
 };
 
 const STATUS_TONE = {
-  online: { label: 'Operativo', color: 'var(--color-success)', bg: 'var(--color-success-bg)', border: 'var(--color-success-border)' },
-  degraded: { label: 'Degradado', color: 'var(--color-warning)', bg: 'var(--color-warning-bg)', border: 'var(--color-warning-border)' },
-  offline: { label: 'Caido', color: 'var(--color-danger)', bg: 'var(--color-danger-bg)', border: 'var(--color-danger-border)' },
+  online: {
+    label: 'Operativo',
+    color: 'var(--color-success)',
+    bg: 'var(--color-success-bg)',
+    border: 'var(--color-success-border)',
+  },
+  degraded: {
+    label: 'Degradado',
+    color: 'var(--color-warning)',
+    bg: 'var(--color-warning-bg)',
+    border: 'var(--color-warning-border)',
+  },
+  offline: {
+    label: 'Caido',
+    color: 'var(--color-danger)',
+    bg: 'var(--color-danger-bg)',
+    border: 'var(--color-danger-border)',
+  },
 };
 
 const root = document.getElementById('root');
@@ -272,7 +307,11 @@ function render() {
         </div>
       </div>
       <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
-        ${Object.entries(services).map(([id, data]) => serviceCard(id, data)).join('') || emptyState()}
+        ${
+          Object.entries(services)
+            .map(([id, data]) => serviceCard(id, data))
+            .join('') || emptyState()
+        }
       </section>
       ${rawPayload()}
     </main>
