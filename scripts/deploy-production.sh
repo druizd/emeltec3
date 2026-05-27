@@ -59,7 +59,7 @@ docker compose -f "$COMPOSE_FILE" up -d --wait timescaledb
 echo "Waiting for database to accept connections..."
 for i in $(seq 1 30); do
   if docker compose -f "$COMPOSE_FILE" exec -T timescaledb \
-       pg_isready -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" >/dev/null 2>&1; then
+       pg_isready -h localhost -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" >/dev/null 2>&1; then
     echo "Database ready."
     break
   fi
@@ -76,7 +76,7 @@ if [ -d infra-db/migrations ]; then
     [ -e "$migration" ] || continue
     echo "Applying $migration..."
     docker compose -f "$COMPOSE_FILE" exec -T timescaledb \
-      psql -v ON_ERROR_STOP=1 -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" < "$migration"
+      psql -v ON_ERROR_STOP=1 -h localhost -U "$MIGRATION_DB_USER" -d "$MIGRATION_DB_NAME" < "$migration"
   done
 fi
 
