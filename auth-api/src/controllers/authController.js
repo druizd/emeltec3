@@ -8,8 +8,20 @@ const audit = require('../services/auditLog');
 const DEFAULT_OTP_MINS = 30;
 const MAX_OTP_MINS = 1440;
 const BCRYPT_COST = 12;
-const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATION_MS = 60 * 1000;
+const LOCKOUT_TIERS_MS = [
+  { threshold: 5,  durationMs: 1 * 60 * 1000 },
+  { threshold: 10, durationMs: 5 * 60 * 1000 },
+  { threshold: 15, durationMs: 30 * 60 * 1000 },
+  { threshold: 20, durationMs: 24 * 60 * 60 * 1000 },
+];
+
+function getLockoutDuration(failedLogins) {
+  let durationMs = 0;
+  for (const tier of LOCKOUT_TIERS_MS) {
+    if (failedLogins >= tier.threshold) durationMs = tier.durationMs;
+  }
+  return durationMs;
+}
 const OTP_RATE_LIMIT_MAX = 5;
 const OTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
@@ -59,7 +71,7 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
 }
 
 function clientIp(req) {
-  return (req.ip || req.headers['x-forwarded-for'] || '').toString().slice(0, 45) || null;
+  return (req.ip || '').toString().slice(0, 45) || null;
 }
 
 function makeOtpCode() {
@@ -131,8 +143,9 @@ async function finishLogin(req, res, user, authMethod) {
 
 async function recordFailedLogin(req, user, email) {
   const newFailed = (user.failed_logins || 0) + 1;
-  const shouldLock = newFailed >= LOCKOUT_THRESHOLD;
-  const lockedUntil = shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null;
+  const lockDurationMs = getLockoutDuration(newFailed);
+  const shouldLock = lockDurationMs > 0;
+  const lockedUntil = shouldLock ? new Date(Date.now() + lockDurationMs) : null;
 
   await db.query(
     `UPDATE usuario
@@ -198,15 +211,6 @@ async function ensureNotLocked(req, user, res) {
     return false;
   }
 
-  const maxLockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
-  const effectiveLockedUntil = lockedUntil > maxLockedUntil ? maxLockedUntil : lockedUntil;
-  if (effectiveLockedUntil.getTime() !== lockedUntil.getTime()) {
-    await db.query('UPDATE usuario SET locked_until = $1 WHERE email = $2', [
-      effectiveLockedUntil,
-      user.email,
-    ]);
-  }
-
   await audit.record({
     req,
     action: 'login.blocked',
@@ -214,12 +218,14 @@ async function ensureNotLocked(req, user, res) {
     actorEmail: user.email,
     actorTipo: user.tipo,
     statusCode: 423,
-    metadata: { reason: 'account_locked', until: effectiveLockedUntil },
+    metadata: { reason: 'account_locked', until: lockedUntil },
   });
 
+  const remainingMs = lockedUntil.getTime() - now.getTime();
+  const remainingMin = Math.ceil(remainingMs / 60000);
   res.status(423).json({
     ok: false,
-    error: 'Cuenta bloqueada por multiples intentos fallidos. Intenta nuevamente en 1 minuto.',
+    error: `Cuenta bloqueada. Intenta nuevamente en ${remainingMin} ${remainingMin === 1 ? 'minuto' : 'minutos'}.`,
   });
   return true;
 }
@@ -427,7 +433,7 @@ exports.completeSetup = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(setup_token, jwtSecret);
+      decoded = jwt.verify(setup_token, jwtSecret, { algorithms: ['HS256'] });
       if (decoded.email !== email || decoded.purpose !== 'account_setup') throw new Error();
     } catch {
       return res
@@ -519,7 +525,7 @@ exports.login = async (req, res, next) => {
       }
     } else if (loginMode === 'mfa') {
       try {
-        const decoded = jwt.verify(challenge_token || '', jwtSecret);
+        const decoded = jwt.verify(challenge_token || '', jwtSecret, { algorithms: ['HS256'] });
         if (decoded.email !== user.email || decoded.purpose !== 'mfa') {
           throw new Error('invalid challenge');
         }
@@ -586,11 +592,11 @@ exports.requestCode = async (req, res, next) => {
         req,
         action: 'otp.request.unknown_email',
         actorEmail: email,
-        statusCode: 403,
+        statusCode: 200,
       });
-      return res.status(403).json({
-        ok: false,
-        error: 'Este correo no ha sido autorizado en el sistema. Contacte a su administrador.',
+      return res.json({
+        ok: true,
+        message: `Codigo enviado exitosamente. Valido por ${minutes} minutos.`,
       });
     }
     if (await ensureNotLocked(req, usr, res)) return;

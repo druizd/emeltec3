@@ -38,7 +38,7 @@ services:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-db
     ports:
-      - '${POSTGRES_HOST_PORT:-5433}:5432'
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432'
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -57,7 +57,7 @@ services:
     build: ./main-api
     container_name: emeltec-api
     ports:
-      - '${MAIN_API_HOST_PORT:-3000}:3000'
+      - '127.0.0.1:${MAIN_API_HOST_PORT:-3000}:3000'
     env_file:
       - ./.env
     environment:
@@ -93,7 +93,7 @@ services:
     build: ./dga-api
     container_name: emeltec-dga-api
     ports:
-      - '${DGA_API_HOST_PORT:-3002}:3002'
+      - '127.0.0.1:${DGA_API_HOST_PORT:-3002}:3002'
     env_file:
       - ./.env
     environment:
@@ -120,7 +120,7 @@ services:
     build: ./auth-api
     container_name: emeltec-auth
     ports:
-      - '${AUTH_API_HOST_PORT:-3001}:3001'
+      - '127.0.0.1:${AUTH_API_HOST_PORT:-3001}:3001'
     env_file:
       - ./.env
     environment:
@@ -172,7 +172,7 @@ services:
       dockerfile: csvconsumer-rust.Dockerfile
     container_name: emeltec-csvconsumer
     ports:
-      - '${CSVCONSUMER_HOST_PORT:-50051}:50051'
+      - '127.0.0.1:${CSVCONSUMER_HOST_PORT:-50051}:50051'
     environment:
       <<: *db-env
       GRPC_PORT: 50051
