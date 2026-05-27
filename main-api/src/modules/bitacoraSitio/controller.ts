@@ -20,6 +20,19 @@ async function assertSiteAccess(siteId: string, user: AuthUser | undefined): Pro
   requireSiteAccess(user, rows[0]);
 }
 
+async function assertEquipoAccess(equipoId: number, user: AuthUser | undefined): Promise<void> {
+  const { rows } = await query<{ sitio_id: string; empresa_id: string; sub_empresa_id: string }>(
+    `SELECT se.sitio_id, s.empresa_id, s.sub_empresa_id
+       FROM sitio_equipo se
+       JOIN sitio s ON s.id = se.sitio_id
+      WHERE se.id = $1`,
+    [equipoId],
+    { name: 'bitacora__get_equipo_scope' },
+  );
+  if (!rows[0]) throw new NotFoundError('Equipo no encontrado');
+  requireSiteAccess(user, rows[0]);
+}
+
 // ============================================================================
 // Ficha
 // ============================================================================
@@ -122,6 +135,8 @@ export async function patchEquipoHandler(
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) throw new ValidationError('id inválido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertEquipoAccess(id, user);
     const parsed = PatchEquipoPayload.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
@@ -143,6 +158,8 @@ export async function deleteEquipoHandler(
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) throw new ValidationError('id inválido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertEquipoAccess(id, user);
     const okDelete = await deleteEquipo(id);
     if (!okDelete) throw new NotFoundError('Equipo no encontrado');
     res.json(ok({ deleted: true }, { durationMs: elapsedMs(startedAt) }));

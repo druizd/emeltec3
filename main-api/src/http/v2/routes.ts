@@ -48,6 +48,33 @@ const { auditMutations } = require('../../services/auditLog') as {
   ) => import('express').RequestHandler;
 };
 
+const auditBitacoraMutations = auditMutations((req) => {
+  const path = req.path;
+  // PATCH /sites/:siteId/bitacora/ficha
+  const fichaMatch = /^\/sites\/([^/]+)\/bitacora\/ficha$/.exec(path);
+  if (req.method === 'PATCH' && fichaMatch) {
+    return { action: 'bitacora.ficha.patch', targetType: 'ficha', targetId: fichaMatch[1] ?? '' };
+  }
+  // PATCH /sites/bitacora/equipos/:id
+  const equipoPatchMatch = /^\/sites\/bitacora\/equipos\/([^/]+)$/.exec(path);
+  if (req.method === 'PATCH' && equipoPatchMatch) {
+    return {
+      action: 'bitacora.equipo.patch',
+      targetType: 'sitio_equipo',
+      targetId: equipoPatchMatch[1] ?? '',
+    };
+  }
+  // DELETE /sites/bitacora/equipos/:id
+  if (req.method === 'DELETE' && equipoPatchMatch) {
+    return {
+      action: 'bitacora.equipo.delete',
+      targetType: 'sitio_equipo',
+      targetId: equipoPatchMatch[1] ?? '',
+    };
+  }
+  return { action: `bitacora.${req.method.toLowerCase()}.unknown` };
+});
+
 const auditDgaMutations = auditMutations((req) => {
   const path = req.path;
   // PATCH /dga/sites/:siteId/pozo-config
@@ -217,11 +244,11 @@ router.get('/sites/:siteId/analisis/salud', protect, getSaludHandler);
 router.get('/sites/:siteId/analisis/metricas', protect, getMetricasHandler);
 
 router.get('/sites/:siteId/bitacora/ficha', protect, getFichaHandler);
-router.patch('/sites/:siteId/bitacora/ficha', protect, patchFichaHandler);
+router.patch('/sites/:siteId/bitacora/ficha', protect, auditBitacoraMutations, patchFichaHandler);
 router.get('/sites/:siteId/bitacora/equipos', protect, listEquiposHandler);
 router.post('/sites/:siteId/bitacora/equipos', protect, createEquipoHandler);
-router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
-router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
+router.patch('/sites/bitacora/equipos/:id', protect, auditBitacoraMutations, patchEquipoHandler);
+router.delete('/sites/bitacora/equipos/:id', protect, auditBitacoraMutations, deleteEquipoHandler);
 
 // Mediciones (Detalle de Registros + CSV)
 router.get('/dga/dato', protect, queryDatoDgaHandler);

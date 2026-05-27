@@ -93,6 +93,10 @@ async function pingDga() {
   }
 }
 
+function sanitizePing({ status, response_time_ms }) {
+  return response_time_ms !== undefined ? { status, response_time_ms } : { status };
+}
+
 exports.getStatus = async (req, res) => {
   const [database, pipeline, auth, dga] = await Promise.all([
     pingDatabase(),
@@ -102,15 +106,11 @@ exports.getStatus = async (req, res) => {
   ]);
 
   const services = {
-    api: {
-      status: 'online',
-      uptime_s: Math.floor(process.uptime()),
-      environment: process.env.NODE_ENV || 'development',
-    },
-    auth,
-    database,
-    pipeline,
-    dga,
+    api: { status: 'online', uptime_s: Math.floor(process.uptime()) },
+    auth: sanitizePing(auth),
+    database: sanitizePing(database),
+    pipeline: sanitizePing(pipeline),
+    dga: sanitizePing(dga),
   };
 
   const allOk = Object.values(services).every((s) => s.status === 'online');
