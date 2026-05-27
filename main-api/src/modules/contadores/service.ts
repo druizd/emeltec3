@@ -209,13 +209,10 @@ export async function computeMonthDeltaForVariable(opts: {
   let valorFin: number | null = null;
   let ultimoDato: string | null = null;
 
-  if (prevResult.rows.length > 0 && !isZeroPayload(prevResult.rows[0].data, mapping)) {
+  const prevRow = prevResult.rows[0];
+  if (prevRow && !isZeroPayload(prevRow.data, mapping)) {
     try {
-      const raw = applyMappingTransform({
-        rawData: prevResult.rows[0].data,
-        mapping,
-        pozoConfig,
-      });
+      const raw = applyMappingTransform({ rawData: prevRow.data, mapping, pozoConfig });
       const seed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
       if (Number.isFinite(seed) && seed > 0) {
         prev = seed;
