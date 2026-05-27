@@ -30,7 +30,6 @@ export function errorHandler(
     return;
   }
 
-  const message = error instanceof Error ? error.message : 'Error desconocido';
   logger.error({ err: error, requestId: req.requestId }, '[http] excepción no controlada');
-  res.status(500).json(envErr('INTERNAL_ERROR', message, req.requestId));
+  res.status(500).json(envErr('INTERNAL_ERROR', 'Error interno del servidor', req.requestId));
 }

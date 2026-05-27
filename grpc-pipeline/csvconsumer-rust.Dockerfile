@@ -21,6 +21,8 @@ RUN apt-get update \
 
 COPY --from=builder /app/csvconsumer-rust/target/release/csvconsumer /usr/local/bin/csvconsumer
 
+USER nobody
+
 EXPOSE 50051
 
 CMD ["csvconsumer"]

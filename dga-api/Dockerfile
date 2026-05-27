@@ -18,5 +18,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist ./dist
+RUN chown -R node:node /app
+USER node
 EXPOSE 3002
 CMD ["node", "dist/main.js"]

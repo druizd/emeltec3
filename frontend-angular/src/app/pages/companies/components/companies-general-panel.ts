@@ -704,6 +704,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   private map: any = null;
   private mapMarkers: any[] = [];
+  private L: any = null;
   private viewReady = false;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -894,32 +895,21 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   }
 
   private async loadLeaflet(): Promise<any> {
-    if ((window as any).L) return (window as any).L;
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => resolve((window as any).L);
-      document.body.appendChild(script);
-    });
+    const m = await import('leaflet');
+    return m.default ?? m;
   }
 
   private async initMap(): Promise<void> {
     if (!this.mapContainer || this.map) return;
-    const L = await this.loadLeaflet();
+    this.L = await this.loadLeaflet();
     if (!this.mapContainer || this.map) return; // guard against re-entry after await
 
-    this.map = L.map(this.mapContainer.nativeElement, {
+    this.map = this.L.map(this.mapContainer.nativeElement, {
       scrollWheelZoom: false,
       zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 18,
     }).addTo(this.map);
@@ -928,9 +918,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   }
 
   private updateMarkers(): void {
-    if (!this.map) return;
-    const L: any = (window as any).L;
-    if (!L) return;
+    if (!this.map || !this.L) return;
+    const L: any = this.L;
 
     this.mapMarkers.forEach((m) => m.remove());
     this.mapMarkers = [];
