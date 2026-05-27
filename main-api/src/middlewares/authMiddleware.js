@@ -15,7 +15,7 @@ exports.protect = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded; // { id, email, tipo, empresa_id }
     next();
   } catch (error) {

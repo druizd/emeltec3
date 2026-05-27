@@ -4,23 +4,11 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
-import { NotFoundError, ValidationError } from '../../shared/errors';
+import { ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { z } from 'zod';
 import { getDailySeries, getJornadaSeries, getMonthlySeries } from './service';
 import { COUNTER_ROLES } from './types';
-import { query } from '../../config/dbHelpers';
-import { requireSiteAccess, type AuthUser } from '../../shared/permissions';
-
-async function assertSiteAccess(siteId: string, user: AuthUser | undefined): Promise<void> {
-  const { rows } = await query<{ empresa_id: string; sub_empresa_id: string }>(
-    'SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1',
-    [siteId],
-    { name: 'contadores__get_site_scope' },
-  );
-  if (!rows[0]) throw new NotFoundError('Sitio no encontrado');
-  requireSiteAccess(user, rows[0]);
-}
 
 const HHMM = z.string().regex(/^\d{2}:\d{2}$/, 'formato HH:MM esperado');
 
@@ -50,8 +38,6 @@ export async function getMonthlySeriesHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
-    const user = (req as Request & { user?: AuthUser }).user;
-    await assertSiteAccess(siteId, user);
     const parsed = SeriesQuery.safeParse(req.query);
     if (!parsed.success) {
       throw new ValidationError('Parametros invalidos', { details: parsed.error.issues });
@@ -81,8 +67,6 @@ export async function getDailySeriesHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
-    const user = (req as Request & { user?: AuthUser }).user;
-    await assertSiteAccess(siteId, user);
     const parsed = DailySeriesQuery.safeParse(req.query);
     if (!parsed.success) {
       throw new ValidationError('Parametros invalidos', { details: parsed.error.issues });
@@ -112,8 +96,6 @@ export async function getJornadaSeriesHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
-    const user = (req as Request & { user?: AuthUser }).user;
-    await assertSiteAccess(siteId, user);
     const parsed = JornadaSeriesQuery.safeParse(req.query);
     if (!parsed.success) {
       throw new ValidationError('Parametros invalidos', { details: parsed.error.issues });

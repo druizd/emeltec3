@@ -17,13 +17,10 @@ RUN cargo build --release
 FROM --platform=linux/amd64 debian:bookworm-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system app \
-    && useradd --system --gid app --no-create-home app
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/csvconsumer-rust/target/release/csvconsumer /usr/local/bin/csvconsumer
 
-USER app
 EXPOSE 50051
 
 CMD ["csvconsumer"]

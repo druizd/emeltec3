@@ -20,14 +20,12 @@
     "@angular/platform-browser": "^21.2.12",
     "@angular/router": "^21.2.12",
     "chart.js": "^4.5.1",
-    "leaflet": "^1.9.4",
     "ng2-charts": "^10.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "@types/leaflet": "^1.9.19",
     "@angular/build": "^21.2.10",
     "@angular/cli": "^21.2.10",
     "@angular/compiler-cli": "^21.2.12",
