@@ -21,8 +21,7 @@ RUN apt-get update \
 
 COPY --from=builder /app/csvconsumer-rust/target/release/csvconsumer /usr/local/bin/csvconsumer
 
-RUN useradd -r -u 65534 -g nogroup csvconsumer
-USER csvconsumer
+USER nobody
 
 EXPOSE 50051
 
