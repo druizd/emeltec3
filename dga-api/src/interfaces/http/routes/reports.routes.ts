@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { getReportsBySite } from '../../../application/reports/getReportsBySite.usecase';
+import { getSiteById } from '../../../infrastructure/db/sites.repo';
 import type { ReportQuery, DgaReport } from '../../../domain/reports/report.types';
 import { paginated } from '../../../shared/envelope';
-import { ValidationError } from '../../../shared/errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../../../shared/errors';
 import { authProtect } from '../middlewares/auth';
 
 export const reportsRouter = Router();
@@ -46,9 +47,17 @@ reportsRouter.get('/sites/:sitioId/reports', authProtect, async (req, res, next)
     const parsed = QuerySchema.safeParse(req.query);
     if (!parsed.success) throw new ValidationError('Parámetros inválidos', parsed.error.issues);
 
+    const sitioId = String(req.params['sitioId']);
+    const site = await getSiteById(sitioId);
+    if (!site) throw new NotFoundError('Sitio no encontrado');
+    const auth = req.auth!;
+    if (auth.tipo !== 'SuperAdmin' && site.empresaId !== auth.empresaId) {
+      throw new ForbiddenError('Sin acceso a este sitio');
+    }
+
     const { from, to, page, pageSize } = parsed.data;
     const query: ReportQuery = {
-      sitioId: String(req.params['sitioId']),
+      sitioId,
       page,
       pageSize,
     };

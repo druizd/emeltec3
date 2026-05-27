@@ -895,7 +895,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   }
 
   private async loadLeaflet(): Promise<any> {
-    return import('leaflet');
+    const m = await import('leaflet');
+    return m.default ?? m;
   }
 
   private async initMap(): Promise<void> {

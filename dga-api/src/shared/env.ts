@@ -17,7 +17,13 @@ const BoolFlag = z
 const Schema = z.object({
   NODE_ENV: NodeEnv,
   PORT: z.coerce.number().int().positive().default(3002),
-  CORS_ORIGIN: z.string().default('*'),
+  CORS_ORIGIN: z
+    .string()
+    .default('*')
+    .refine(
+      (v) => process.env['NODE_ENV'] !== 'production' || v !== '*',
+      'CORS_ORIGIN no puede ser "*" en producción',
+    ),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   DB_HOST: z.string().min(1).default('localhost'),

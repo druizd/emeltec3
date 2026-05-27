@@ -8,6 +8,17 @@ import { config } from './env';
 const options: LoggerOptions = {
   level: config.logLevel,
   base: { service: 'dga-api', env: config.nodeEnv },
+  redact: {
+    paths: [
+      '*.password',
+      '*.clave',
+      '*.clave_informante',
+      '*.token',
+      'req.headers.authorization',
+      'autenticacion.password',
+    ],
+    censor: '[REDACTED]',
+  },
 };
 
 // Modo dev: salida formateada para humanos.

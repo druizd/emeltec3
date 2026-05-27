@@ -1,6 +1,7 @@
 // Middlewares de autenticación:
 //  - `authProtect`: valida un JWT en `Authorization: Bearer ...` (usado por endpoints de usuario).
 //  - `requireInternalKey`: valida una API key fija en `x-internal-api-key` (usado por jobs/herramientas internas).
+import { timingSafeEqual } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../../../shared/env';
@@ -31,7 +32,7 @@ export function authProtect(req: Request, _res: Response, next: NextFunction): v
   }
   const token = header.slice('Bearer '.length).trim();
   try {
-    const decoded = jwt.verify(token, config.auth.jwtSecret) as AuthPayload;
+    const decoded = jwt.verify(token, config.auth.jwtSecret, { algorithms: ['HS256'] }) as AuthPayload;
     req.auth = decoded;
     next();
   } catch (err) {
@@ -45,7 +46,10 @@ export function authProtect(req: Request, _res: Response, next: NextFunction): v
 export function requireInternalKey(req: Request, _res: Response, next: NextFunction): void {
   const expected = config.auth.internalApiKey;
   if (!expected) return next(new UnauthorizedError('INTERNAL_API_KEY no configurado'));
-  const provided = req.header('x-internal-api-key');
-  if (provided !== expected) return next(new UnauthorizedError('API key inválida'));
+  const provided = req.header('x-internal-api-key') ?? '';
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const providedBuf = Buffer.alloc(expectedBuf.length);
+  providedBuf.write(provided, 'utf8');
+  if (!timingSafeEqual(expectedBuf, providedBuf)) return next(new UnauthorizedError('API key inválida'));
   next();
 }
