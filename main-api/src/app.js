@@ -22,15 +22,15 @@ const auditLogRoutes = require('./routes/auditLogRoutes');
 const internalRoutes = require('./routes/internalRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 const { auditMutations } = require('./services/auditLog');
+const envConfig = require('./config/env');
 
 const app = express();
 
 // Capa basica de seguridad HTTP.
 app.use(helmet());
 
-const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',').map((o) => o.trim());
+const allowedOrigins = envConfig.corsOrigin.split(',').map((o) => o.trim());
 
-// CORS queda abierto por defecto en desarrollo, pero acepta lista blanca por variable de entorno.
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -42,25 +42,25 @@ app.use(
   }),
 );
 
-// Limite global opcional para evitar abuso simple de la API.
-// RATE_LIMIT_MAX=0 o RATE_LIMIT_WINDOW_MS=0 lo deshabilita.
-const rateLimitWindowMs = Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '3600000', 10);
-const rateLimitMax = Number.parseInt(process.env.RATE_LIMIT_MAX || '5000', 10);
+// Rate limit global. Se aplica siempre; valores mínimos garantizados.
+const rateLimitWindowMs = Math.max(
+  60_000,
+  Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '3600000', 10),
+);
+const rateLimitMax = Math.max(100, Number.parseInt(process.env.RATE_LIMIT_MAX || '5000', 10));
 
-if (rateLimitWindowMs > 0 && rateLimitMax > 0) {
-  const globalLimiter = rateLimit({
-    windowMs: rateLimitWindowMs,
-    max: rateLimitMax,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: {
-      ok: false,
-      message: 'Demasiadas solicitudes. Intenta nuevamente en unos momentos.',
-    },
-  });
+const globalLimiter = rateLimit({
+  windowMs: rateLimitWindowMs,
+  max: rateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    ok: false,
+    message: 'Demasiadas solicitudes. Intenta nuevamente en unos momentos.',
+  },
+});
 
-  app.use('/api/', globalLimiter);
-}
+app.use('/api/', globalLimiter);
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 

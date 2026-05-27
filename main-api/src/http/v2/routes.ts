@@ -2,7 +2,8 @@
  * Router HTTP v2. Se monta bajo /api/v2 desde app.js (o app.ts cuando exista).
  */
 import { Router } from 'express';
-import { protect } from '../../middlewares/auth';
+import rateLimit from 'express-rate-limit';
+import { authorizeRoles, protect } from '../../middlewares/auth';
 import {
   getHistoryHandler,
   getKeysHandler,
@@ -46,6 +47,33 @@ const { auditMutations } = require('../../services/auditLog') as {
     },
   ) => import('express').RequestHandler;
 };
+
+const auditBitacoraMutations = auditMutations((req) => {
+  const path = req.path;
+  // PATCH /sites/:siteId/bitacora/ficha
+  const fichaMatch = /^\/sites\/([^/]+)\/bitacora\/ficha$/.exec(path);
+  if (req.method === 'PATCH' && fichaMatch) {
+    return { action: 'bitacora.ficha.patch', targetType: 'ficha', targetId: fichaMatch[1] ?? '' };
+  }
+  // PATCH /sites/bitacora/equipos/:id
+  const equipoPatchMatch = /^\/sites\/bitacora\/equipos\/([^/]+)$/.exec(path);
+  if (req.method === 'PATCH' && equipoPatchMatch) {
+    return {
+      action: 'bitacora.equipo.patch',
+      targetType: 'sitio_equipo',
+      targetId: equipoPatchMatch[1] ?? '',
+    };
+  }
+  // DELETE /sites/bitacora/equipos/:id
+  if (req.method === 'DELETE' && equipoPatchMatch) {
+    return {
+      action: 'bitacora.equipo.delete',
+      targetType: 'sitio_equipo',
+      targetId: equipoPatchMatch[1] ?? '',
+    };
+  }
+  return { action: `bitacora.${req.method.toLowerCase()}.unknown` };
+});
 
 const auditDgaMutations = auditMutations((req) => {
   const path = req.path;
@@ -133,28 +161,42 @@ router.get('/health/live', liveness);
 router.get('/health/ready', readiness);
 router.get('/metrics', prometheusMetrics);
 
-router.get('/telemetry', getHistoryHandler);
-router.get('/telemetry/latest', getLatestHandler);
-router.get('/telemetry/online', getOnlineHandler);
-router.get('/telemetry/preset', getPresetHandler);
-router.get('/telemetry/keys', getKeysHandler);
+router.get('/telemetry', protect, getHistoryHandler);
+router.get('/telemetry/latest', protect, getLatestHandler);
+router.get('/telemetry/online', protect, getOnlineHandler);
+router.get('/telemetry/preset', protect, getPresetHandler);
+router.get('/telemetry/keys', protect, getKeysHandler);
 
 router.get('/sites/:siteId/dashboard-data', protect, getDashboardDataHandler);
 router.get('/sites/:siteId/dashboard-history', protect, getDashboardHistoryHandler);
 router.get('/companies/tree', protect, getHierarchyTreeHandler);
 
-router.post('/auth/login', loginHandler);
-router.post('/auth/request-code', requestCodeHandler);
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, error: 'Demasiados intentos. Espera 15 minutos.' },
+});
+
+router.post('/auth/login', authLimiter, loginHandler);
+router.post('/auth/request-code', authLimiter, requestCodeHandler);
 
 // =====================================================================
 // DGA — modelo redesign 2026-05-17.
 // =====================================================================
 
-// Informantes (pool global). Rotación de clave exige 2FA.
-router.get('/dga/informantes', protect, listInformantesHandler);
+// Informantes (pool global). Solo Admin/SuperAdmin. Rotación de clave exige 2FA.
+router.get(
+  '/dga/informantes',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  listInformantesHandler,
+);
 router.post(
   '/dga/informantes',
   protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
   require2faIfPasswordChange,
   auditDgaMutations,
   upsertInformanteHandler,
@@ -162,6 +204,7 @@ router.post(
 router.patch(
   '/dga/informantes/:rut',
   protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
   require2faIfPasswordChange,
   auditDgaMutations,
   upsertInformanteHandler,
@@ -169,6 +212,7 @@ router.patch(
 router.delete(
   '/dga/informantes/:rut',
   protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   deleteInformanteHandler,
@@ -205,11 +249,11 @@ router.get('/sites/:siteId/analisis/salud', protect, getSaludHandler);
 router.get('/sites/:siteId/analisis/metricas', protect, getMetricasHandler);
 
 router.get('/sites/:siteId/bitacora/ficha', protect, getFichaHandler);
-router.patch('/sites/:siteId/bitacora/ficha', protect, patchFichaHandler);
+router.patch('/sites/:siteId/bitacora/ficha', protect, auditBitacoraMutations, patchFichaHandler);
 router.get('/sites/:siteId/bitacora/equipos', protect, listEquiposHandler);
 router.post('/sites/:siteId/bitacora/equipos', protect, createEquipoHandler);
-router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
-router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
+router.patch('/sites/bitacora/equipos/:id', protect, auditBitacoraMutations, patchEquipoHandler);
+router.delete('/sites/bitacora/equipos/:id', protect, auditBitacoraMutations, deleteEquipoHandler);
 
 // Mediciones (Detalle de Registros + CSV)
 router.get('/dga/dato', protect, queryDatoDgaHandler);
@@ -220,10 +264,16 @@ router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
 router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
 
 // Review queue (acceso para Admin/SuperAdmin solo).
-router.get('/dga/review-queue', protect, listReviewQueueHandler);
+router.get(
+  '/dga/review-queue',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  listReviewQueueHandler,
+);
 router.post(
   '/dga/review-queue/action',
   protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   reviewSlotActionHandler,

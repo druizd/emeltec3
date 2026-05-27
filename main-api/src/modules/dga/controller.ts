@@ -20,6 +20,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
 import { UnauthorizedError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
+import { query } from '../../config/dbHelpers';
+import { requireSiteAccess, type AuthUser } from '../../shared/permissions';
 import { z } from 'zod';
 import {
   ListReviewQueueParams,
@@ -42,9 +44,18 @@ import {
   upsertInformanteService,
 } from './service';
 import { requestDgaCode } from './twofactor';
-import type { AuthUser } from '../../shared/permissions';
 import { getPozoDgaConfig } from './repo';
 import { formatRutForDga } from '../../utils/rut';
+
+async function assertSiteAccess(siteId: string, user: AuthUser | undefined): Promise<void> {
+  const { rows } = await query<{ empresa_id: string; sub_empresa_id: string }>(
+    'SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1',
+    [siteId],
+    { name: 'dga__get_site_scope' },
+  );
+  if (!rows[0]) throw new ValidationError(`Sitio ${siteId} no encontrado`);
+  requireSiteAccess(user, rows[0]);
+}
 
 const ExportDirectoParams = z.object({
   site_id: z.string().trim().min(1).max(10),
@@ -148,6 +159,8 @@ export async function getPozoDgaConfigHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const row = await getPozoDgaConfig(siteId);
     res.json(ok(row, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -164,6 +177,8 @@ export async function patchPozoDgaConfigHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const parsed = PatchPozoDgaConfigPayload.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
@@ -184,6 +199,8 @@ export async function getUltimoEnvioHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const row = await getUltimoEnvio(siteId);
     res.json(ok(row, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -200,6 +217,8 @@ export async function getDgaLivePreviewHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const preview = await getDgaLivePreview(siteId);
     res.json(ok(preview, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -262,6 +281,8 @@ export async function queryDatoDgaHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(parsed.data.site_id, user);
     const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
     res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -279,6 +300,8 @@ export async function exportDgaDirectoCsvHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(parsed.data.site_id, user);
     const rows = await getDatoDgaDirectoFromEquipo(
       parsed.data.site_id,
       parsed.data.desde,
@@ -305,6 +328,8 @@ export async function exportDatoDgaCsvHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(parsed.data.site_id, user);
     const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
     const csv = toCsv(rows);
     const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;
