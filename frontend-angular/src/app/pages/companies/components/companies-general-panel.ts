@@ -703,6 +703,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly DIAS_TRANSCURRIDOS = 11;
 
   private map: any = null;
+  private _L: any = null;
   private mapMarkers: any[] = [];
   private viewReady = false;
 
@@ -894,24 +895,13 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   }
 
   private async loadLeaflet(): Promise<any> {
-    if ((window as any).L) return (window as any).L;
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-
-    return new Promise((resolve) => {
-      const script = document.createElement('script');
-      script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = () => resolve((window as any).L);
-      document.body.appendChild(script);
-    });
+    return import('leaflet');
   }
 
   private async initMap(): Promise<void> {
     if (!this.mapContainer || this.map) return;
-    const L = await this.loadLeaflet();
+    this._L = await this.loadLeaflet();
+    const L = this._L;
     if (!this.mapContainer || this.map) return; // guard against re-entry after await
 
     this.map = L.map(this.mapContainer.nativeElement, {
@@ -929,7 +919,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   private updateMarkers(): void {
     if (!this.map) return;
-    const L: any = (window as any).L;
+    const L: any = this._L;
     if (!L) return;
 
     this.mapMarkers.forEach((m) => m.remove());

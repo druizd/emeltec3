@@ -177,18 +177,23 @@ export class AuthService {
     if (!value) return null;
 
     try {
-      const parsed = JSON.parse(value) as Partial<Omit<ViewAsContext, 'role'>> & {
-        role?: string;
+      const parsed: unknown = JSON.parse(value);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+      const obj = parsed as Record<string, unknown>;
+      const role = obj['role'];
+      const validRoles: ReadonlyArray<PreviewRole> = ['Admin', 'Gerente', 'Cliente'];
+      if (typeof role !== 'string' || !(validRoles as string[]).includes(role)) return null;
+      return {
+        role: role as PreviewRole,
+        ...(typeof obj['companyId'] === 'string' && { companyId: obj['companyId'] }),
+        ...(typeof obj['companyName'] === 'string' && { companyName: obj['companyName'] }),
+        ...(typeof obj['subCompanyId'] === 'string' && { subCompanyId: obj['subCompanyId'] }),
+        ...(typeof obj['subCompanyName'] === 'string' && { subCompanyName: obj['subCompanyName'] }),
+        ...(typeof obj['siteId'] === 'string' && { siteId: obj['siteId'] }),
+        ...(typeof obj['siteName'] === 'string' && { siteName: obj['siteName'] }),
       };
-      if (parsed?.role && parsed.role !== 'SuperAdmin') {
-        return { ...parsed, role: parsed.role as PreviewRole };
-      }
     } catch {
-      if (value !== 'SuperAdmin') {
-        return { role: value as PreviewRole };
-      }
+      return null;
     }
-
-    return null;
   }
 }
