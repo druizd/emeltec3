@@ -134,6 +134,21 @@ export function lastNMonths(n: number, ref: Date = new Date()): Date[] {
 }
 
 /**
+ * Detecta payload Modbus fallido: el(los) registro(s) crudos del mapping
+ * llegan exactamente en 0. Firma tipica de timeout/retransmision corrupta.
+ * Un totalizador real en operacion no llega a 0 (y si fuera reemplazo real
+ * de sensor, lo capta el threshold relativo posterior).
+ */
+function isZeroPayload(rawData: unknown, mapping: RegMap): boolean {
+  if (!rawData || typeof rawData !== 'object') return false;
+  const data = rawData as Record<string, unknown>;
+  const d1 = Number(data[mapping.d1]);
+  if (d1 !== 0) return false;
+  if (!mapping.d2) return true;
+  return Number(data[mapping.d2]) === 0;
+}
+
+/**
  * Itera filas de `equipo` del mes en orden cronologico ascendente, aplica la
  * transformacion configurada y suma los segmentos positivos (manejando resets).
  *
@@ -164,6 +179,27 @@ export async function computeMonthDeltaForVariable(opts: {
     { label: 'contadores__month_rows' },
   );
 
+  // Continuidad cross-month: lee la ultima muestra valida estrictamente
+  // anterior al mes para sembrar `prev` y `segmentBase`. Asi el delta cubre
+  // el consumo ocurrido en el gap entre la ultima lectura del mes anterior y
+  // la primera del mes actual (que de otra forma se pierde porque
+  // valor_inicio se setea con la primera lectura del mes).
+  // Ventana acotada a 7 dias para no enlazar tras paradas largas o
+  // reemplazos de sensor.
+  const prevResult = await query<{ data: Record<string, unknown> }>(
+    `
+    SELECT data
+    FROM equipo_1min
+    WHERE id_serial = $1
+      AND bucket >= ($2::timestamptz - INTERVAL '7 days')
+      AND bucket <  $2::timestamptz
+    ORDER BY bucket DESC
+    LIMIT 1
+    `,
+    [idSerial, start.toISOString()],
+    { label: 'contadores__prev_month_last' },
+  );
+
   let valorInicio: number | null = null;
   let prev: number | null = null;
   let segmentBase: number | null = null;
@@ -173,7 +209,29 @@ export async function computeMonthDeltaForVariable(opts: {
   let valorFin: number | null = null;
   let ultimoDato: string | null = null;
 
+  if (prevResult.rows.length > 0 && !isZeroPayload(prevResult.rows[0].data, mapping)) {
+    try {
+      const raw = applyMappingTransform({
+        rawData: prevResult.rows[0].data,
+        mapping,
+        pozoConfig,
+      });
+      const seed = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
+      if (Number.isFinite(seed) && seed > 0) {
+        prev = seed;
+        segmentBase = seed;
+      }
+    } catch {
+      // sin seed; el mes arranca limpio.
+    }
+  }
+
   for (const row of result.rows) {
+    // Glitch explicito: payload Modbus con d1=0 (y d2=0 si aplica) — firma
+    // tipica de transmision fallida. Descarta antes de transformar para no
+    // depender de heuristica relativa cuando prev aun es null.
+    if (isZeroPayload(row.data, mapping)) continue;
+
     let v: number | null = null;
     try {
       const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
@@ -184,13 +242,9 @@ export async function computeMonthDeltaForVariable(opts: {
     }
     if (v === null) continue;
 
-    // Glitch de transmision: muestra con caida catastrofica (>95% del valor
-    // previo) suele ser un payload Modbus fallido — el sensor reporta 0 o un
-    // valor anomalo y el siguiente minuto vuelve al rango normal. Si lo
-    // tratamos como reset real, sumamos el segmento anterior y lo volvemos a
-    // sumar al crecer desde 0 → doble conteo de cientos de miles de m3.
-    // Descarta la muestra sin tocar prev/segmento; el siguiente bucket valido
-    // compara contra el ultimo valor sano.
+    // Heuristica relativa: caida catastrofica (>95%) que no fue capturada por
+    // el check de payload cero. Cubre payloads con valores absurdos (p.ej.
+    // float NaN reencodeado como un numero pequeno) que no son exactamente 0.
     if (prev !== null && prev > 0 && v < prev * 0.05) continue;
 
     muestras++;
