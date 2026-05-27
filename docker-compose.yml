@@ -66,6 +66,7 @@ services:
       PORT: 3000
       CSVCONSUMER_HOST: csvconsumer
       CSVCONSUMER_PORT: 50051
+      CSVCONSUMER_API_KEY: ${GRPC_API_KEY}
       AUTH_API_URL: http://auth-api:3001
       DGA_API_INTERNAL_URL: http://dga-api:3002
     depends_on:
@@ -176,6 +177,7 @@ services:
     environment:
       <<: *db-env
       GRPC_PORT: 50051
+      GRPC_API_KEY: ${GRPC_API_KEY}
     depends_on:
       timescaledb:
         condition: service_healthy

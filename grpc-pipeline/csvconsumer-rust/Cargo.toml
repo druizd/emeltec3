@@ -21,6 +21,10 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tokio-postgres = "0.7"
 # dotenvy        — carga variables desde un archivo .env opcional al arrancar.
 dotenvy = "0.15"
+# chrono         — validación de formato fecha/hora antes de encolar (V-095).
+chrono = { version = "0.4", features = ["std"], default-features = false }
+# serde_json     — validación de JSON antes de encolar (V-094).
+serde_json = "1"
 
 [build-dependencies]
 # tonic-build — generador de código a partir de archivos .proto.

@@ -82,7 +82,10 @@ data      JSONB         -- variables del equipo para ese segundo
 | `DB_PORT`     | `5433`                 | Puerto de PostgreSQL             |
 | `DB_NAME`     | `db_infra`             | Base de datos                    |
 | `DB_USER`     | `admin_infra`          | Usuario                          |
-| `DB_PASSWORD` | `Infra2026Secure!`     | Contraseña                       |
+| `DB_PASSWORD` | `CHANGE_ME_STRONG_PASSWORD` | Contraseña (nunca dejar vacío en producción) |
+| `DB_SSLMODE`  | `disable`              | sslmode PostgreSQL — usar `require` fuera de red Docker privada |
+| `GRPC_API_KEY`| _(vacío)_              | API key para auth gRPC (`x-api-key` en metadata) — configurar en producción |
+| `GRPC_BIND_HOST`| `0.0.0.0`            | Bind address del servidor gRPC   |
 
 ---
 
