@@ -7,28 +7,14 @@ const authRoutes = require('./routes/authRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 
-const { requireEnv } = require('./config/requireEnv');
-
 const app = express();
 
 // Detrás de reverse proxy (nginx). Para que req.ip sea el origen real (Ley 21.663
 // requiere bitácora con IP del actor) habilitamos confianza solo en 1 hop.
 app.set('trust proxy', 1);
 
-const _allowedOrigins = requireEnv('CORS_ORIGIN')
-  .split(',')
-  .map((o) => o.trim());
 app.use(helmet());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || _allowedOrigins.includes('*') || _allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      callback(new Error(`Origen no permitido por CORS: ${origin}`));
-    },
-  }),
-);
+app.use(cors());
 app.use(express.json());
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 

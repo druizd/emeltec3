@@ -703,8 +703,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly DIAS_TRANSCURRIDOS = 11;
 
   private map: any = null;
-  private _L: any = null;
   private mapMarkers: any[] = [];
+  private L: any = null;
   private viewReady = false;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -901,16 +901,15 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   private async initMap(): Promise<void> {
     if (!this.mapContainer || this.map) return;
-    this._L = await this.loadLeaflet();
-    const L = this._L;
+    this.L = await this.loadLeaflet();
     if (!this.mapContainer || this.map) return; // guard against re-entry after await
 
-    this.map = L.map(this.mapContainer.nativeElement, {
+    this.map = this.L.map(this.mapContainer.nativeElement, {
       scrollWheelZoom: false,
       zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    this.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       maxZoom: 18,
     }).addTo(this.map);
@@ -919,9 +918,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   }
 
   private updateMarkers(): void {
-    if (!this.map) return;
-    const L: any = this._L;
-    if (!L) return;
+    if (!this.map || !this.L) return;
+    const L: any = this.L;
 
     this.mapMarkers.forEach((m) => m.remove());
     this.mapMarkers = [];

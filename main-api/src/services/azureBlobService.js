@@ -69,9 +69,6 @@ function ensureConfigured(res) {
 }
 
 function buildBlobPath(sitioId, originalName) {
-  if (!sitioId || /[./\\]|\0/.test(sitioId)) {
-    throw new Error('sitioId inválido para blob path');
-  }
   const ext = (originalName.match(/\.[^.]+$/) || [''])[0].toLowerCase();
   const safeBase = originalName
     .replace(ext, '')

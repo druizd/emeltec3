@@ -13,14 +13,13 @@ const {
   getAvailableKeys,
   getOnlineValues,
 } = require('../controllers/dataController');
-const { protect } = require('../middlewares/authMiddleware');
 
-router.post('/', protect, insertData);
-router.get('/', protect, getData);
-router.get('/latest', protect, getLatest);
-router.get('/online', protect, getOnlineValues);
-router.get('/range', protect, getByRange);
-router.get('/preset', protect, getByPreset);
-router.get('/keys', protect, getAvailableKeys);
+router.post('/', insertData);
+router.get('/', getData);
+router.get('/latest', getLatest);
+router.get('/online', getOnlineValues);
+router.get('/range', getByRange);
+router.get('/preset', getByPreset);
+router.get('/keys', getAvailableKeys);
 
 module.exports = router;

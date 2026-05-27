@@ -32,51 +32,39 @@ async function record({
   statusCode = null,
   metadata = null,
 }) {
-  const payloadHash = payload
-    ? crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
-    : null;
-  const ip = (req && (req.ip || '')).toString().slice(0, 45);
-  const userAgent = (
-    req && req.headers && req.headers['user-agent'] ? req.headers['user-agent'] : ''
-  )
-    .toString()
-    .slice(0, 255);
-
-  const insertArgs = [
-    actorId,
-    actorEmail,
-    actorTipo,
-    action,
-    targetType,
-    targetId,
-    payloadHash,
-    ip || null,
-    userAgent || null,
-    statusCode,
-    metadata ? JSON.stringify(metadata) : null,
-  ];
-
   try {
+    const payloadHash = payload
+      ? crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
+      : null;
+    const ip = (req && (req.ip || req.headers['x-forwarded-for'] || '')).toString().slice(0, 45);
+    const userAgent = (
+      req && req.headers && req.headers['user-agent'] ? req.headers['user-agent'] : ''
+    )
+      .toString()
+      .slice(0, 255);
+
     await db.query(
       `INSERT INTO audit_log
         (actor_id, actor_email, actor_tipo, action, target_type, target_id,
          payload_hash, ip, user_agent, status_code, metadata)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      insertArgs,
+      [
+        actorId,
+        actorEmail,
+        actorTipo,
+        action,
+        targetType,
+        targetId,
+        payloadHash,
+        ip || null,
+        userAgent || null,
+        statusCode,
+        metadata ? JSON.stringify(metadata) : null,
+      ],
     );
-  } catch (_err) {
-    await new Promise((r) => setTimeout(r, 200));
-    try {
-      await db.query(
-        `INSERT INTO audit_log
-          (actor_id, actor_email, actor_tipo, action, target_type, target_id,
-           payload_hash, ip, user_agent, status_code, metadata)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-        insertArgs,
-      );
-    } catch (retryErr) {
-      console.error('[audit] No se pudo registrar evento', action, retryErr.message);
-    }
+  } catch (err) {
+    // No interrumpir el flujo del request si la bitácora falla.
+    console.error('[audit] No se pudo registrar evento', action, err.message);
   }
 }
 

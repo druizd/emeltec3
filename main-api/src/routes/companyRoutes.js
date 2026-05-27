@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
-const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
+const { protect } = require('../middlewares/authMiddleware');
 
 // Lazy require del controller TS compilado de contadores (puede no estar
 // disponible en dev sin build). Se monta solo si carga.
@@ -32,9 +32,9 @@ try {
 router.use(protect);
 
 router.get('/', companyController.getAllCompanies);
-router.post('/', authorizeRoles('SuperAdmin'), companyController.createCompany);
-router.patch('/:companyId', authorizeRoles('SuperAdmin'), companyController.updateCompany);
-router.delete('/:companyId', authorizeRoles('SuperAdmin'), companyController.deleteCompany);
+router.post('/', companyController.createCompany);
+router.patch('/:companyId', companyController.updateCompany);
+router.delete('/:companyId', companyController.deleteCompany);
 router.get('/tree', companyController.getHierarchyTree);
 router.get('/detected-devices', companyController.getDetectedDevices);
 router.get('/site-type-catalog', companyController.getSiteTypeCatalog);
@@ -42,28 +42,12 @@ router.get('/contacts', companyController.listOperationalContacts);
 router.post('/contacts', companyController.createOperationalContact);
 router.delete('/contacts/:contactId', companyController.deleteOperationalContact);
 
-router.post(
-  '/:companyId/sub-companies',
-  authorizeRoles('SuperAdmin'),
-  companyController.createSubCompany,
-);
-router.patch(
-  '/:companyId/sub-companies/:subCompanyId',
-  authorizeRoles('SuperAdmin'),
-  companyController.updateSubCompany,
-);
-router.delete(
-  '/:companyId/sub-companies/:subCompanyId',
-  authorizeRoles('SuperAdmin'),
-  companyController.deleteSubCompany,
-);
-router.post(
-  '/:companyId/sub-companies/:subCompanyId/sites',
-  authorizeRoles('SuperAdmin'),
-  companyController.createSite,
-);
-router.patch('/sites/:siteId', authorizeRoles('SuperAdmin'), companyController.updateSite);
-router.delete('/sites/:siteId', authorizeRoles('SuperAdmin'), companyController.deleteSite);
+router.post('/:companyId/sub-companies', companyController.createSubCompany);
+router.patch('/:companyId/sub-companies/:subCompanyId', companyController.updateSubCompany);
+router.delete('/:companyId/sub-companies/:subCompanyId', companyController.deleteSubCompany);
+router.post('/:companyId/sub-companies/:subCompanyId/sites', companyController.createSite);
+router.patch('/sites/:siteId', companyController.updateSite);
+router.delete('/sites/:siteId', companyController.deleteSite);
 router.get('/sites/:siteId/pozo-config', companyController.getSitePozoConfig);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
 if (contadoresController) {
