@@ -239,10 +239,12 @@ export async function computeMonthDeltaForVariable(opts: {
     }
     if (v === null) continue;
 
-    // Heuristica relativa: caida catastrofica (>95%) que no fue capturada por
-    // el check de payload cero. Cubre payloads con valores absurdos (p.ej.
-    // float NaN reencodeado como un numero pequeno) que no son exactamente 0.
-    if (prev !== null && prev > 0 && v < prev * 0.05) continue;
+    // Cualquier muestra menor que el ultimo prev es ruido/jitter del sensor
+    // o glitch parcial — el totalizador fisico no retrocede. Descarta sin
+    // tocar prev/segmento. Si en el futuro un sitio realmente reemplaza el
+    // medidor (totalizador a 0), recomputar manualmente o detectar via
+    // configuracion explicita por sitio, no via heuristica de bajada.
+    if (prev !== null && v < prev) continue;
 
     muestras++;
     ultimoDato = row.time;
@@ -250,12 +252,6 @@ export async function computeMonthDeltaForVariable(opts: {
     if (valorInicio === null) valorInicio = v;
     if (segmentBase === null) segmentBase = v;
 
-    if (prev !== null && v < prev) {
-      // reset real: cierra el segmento anterior y abre uno nuevo.
-      suma += prev - segmentBase;
-      segmentBase = v;
-      resets++;
-    }
     prev = v;
     valorFin = v;
   }
@@ -318,6 +314,8 @@ export async function computeDailyDeltasForVariable(opts: {
   const byDay = new Map<string, DayAccum>();
 
   for (const row of result.rows) {
+    if (isZeroPayload(row.data, mapping)) continue;
+
     let v: number | null = null;
     try {
       const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
@@ -344,15 +342,13 @@ export async function computeDailyDeltasForVariable(opts: {
       byDay.set(dayKey, acc);
     }
 
+    // Totalizador monotonico: dip == jitter/glitch parcial, descarta.
+    if (acc.prev !== null && v < acc.prev) continue;
+
     acc.muestras++;
     acc.ultimoDato = row.time;
     if (acc.valorInicio === null) acc.valorInicio = v;
     if (acc.segmentBase === null) acc.segmentBase = v;
-    if (acc.prev !== null && v < acc.prev) {
-      acc.suma += acc.prev - acc.segmentBase;
-      acc.segmentBase = v;
-      acc.resets++;
-    }
     acc.prev = v;
     acc.valorFin = v;
   }
@@ -565,6 +561,8 @@ export async function computeJornadasForVariable(opts: {
   const accs: (DayAccum | null)[] = days.map(() => null);
 
   for (const row of result.rows) {
+    if (isZeroPayload(row.data, mapping)) continue;
+
     let v: number | null = null;
     try {
       const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
@@ -599,15 +597,14 @@ export async function computeJornadasForVariable(opts: {
       };
       accs[idx] = acc;
     }
+
+    // Totalizador monotonico: dip == jitter/glitch parcial, descarta.
+    if (acc.prev !== null && v < acc.prev) continue;
+
     acc.muestras++;
     acc.ultimoDato = row.time;
     if (acc.valorInicio === null) acc.valorInicio = v;
     if (acc.segmentBase === null) acc.segmentBase = v;
-    if (acc.prev !== null && v < acc.prev) {
-      acc.suma += acc.prev - acc.segmentBase;
-      acc.segmentBase = v;
-      acc.resets++;
-    }
     acc.prev = v;
     acc.valorFin = v;
   }
