@@ -405,10 +405,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         bind_host, grpc_port, BATCH_NORMAL, BATCH_BULK, BULK_THRESHOLD, FLUSH_SECS, MAX_QUEUE_SIZE
     );
 
-    // V-090: límite de 4 MB por mensaje gRPC entrante
     Server::builder()
-        .max_decoding_message_size(4 * 1024 * 1024)
-        .add_service(LogIngestionServer::new(service))
+        .add_service(LogIngestionServer::new(service).max_decoding_message_size(4 * 1024 * 1024))
         .serve(addr)
         .await?;
 
