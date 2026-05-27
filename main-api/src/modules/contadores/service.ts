@@ -183,6 +183,16 @@ export async function computeMonthDeltaForVariable(opts: {
       v = null;
     }
     if (v === null) continue;
+
+    // Glitch de transmision: muestra con caida catastrofica (>95% del valor
+    // previo) suele ser un payload Modbus fallido — el sensor reporta 0 o un
+    // valor anomalo y el siguiente minuto vuelve al rango normal. Si lo
+    // tratamos como reset real, sumamos el segmento anterior y lo volvemos a
+    // sumar al crecer desde 0 → doble conteo de cientos de miles de m3.
+    // Descarta la muestra sin tocar prev/segmento; el siguiente bucket valido
+    // compara contra el ultimo valor sano.
+    if (prev !== null && prev > 0 && v < prev * 0.05) continue;
+
     muestras++;
     ultimoDato = row.time;
 
@@ -190,7 +200,7 @@ export async function computeMonthDeltaForVariable(opts: {
     if (segmentBase === null) segmentBase = v;
 
     if (prev !== null && v < prev) {
-      // reset: cierra el segmento anterior y abre uno nuevo.
+      // reset real: cierra el segmento anterior y abre uno nuevo.
       suma += prev - segmentBase;
       segmentBase = v;
       resets++;
