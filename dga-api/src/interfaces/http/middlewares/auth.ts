@@ -32,7 +32,9 @@ export function authProtect(req: Request, _res: Response, next: NextFunction): v
   }
   const token = header.slice('Bearer '.length).trim();
   try {
-    const decoded = jwt.verify(token, config.auth.jwtSecret, { algorithms: ['HS256'] }) as AuthPayload;
+    const decoded = jwt.verify(token, config.auth.jwtSecret, {
+      algorithms: ['HS256'],
+    }) as AuthPayload;
     req.auth = decoded;
     next();
   } catch (err) {
@@ -50,6 +52,7 @@ export function requireInternalKey(req: Request, _res: Response, next: NextFunct
   const expectedBuf = Buffer.from(expected, 'utf8');
   const providedBuf = Buffer.alloc(expectedBuf.length);
   providedBuf.write(provided, 'utf8');
-  if (!timingSafeEqual(expectedBuf, providedBuf)) return next(new UnauthorizedError('API key inválida'));
+  if (!timingSafeEqual(expectedBuf, providedBuf))
+    return next(new UnauthorizedError('API key inválida'));
   next();
 }
