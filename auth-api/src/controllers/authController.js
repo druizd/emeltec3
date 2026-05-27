@@ -9,7 +9,7 @@ const DEFAULT_OTP_MINS = 30;
 const MAX_OTP_MINS = 1440;
 const BCRYPT_COST = 12;
 const LOCKOUT_TIERS_MS = [
-  { threshold: 5,  durationMs: 1 * 60 * 1000 },
+  { threshold: 5, durationMs: 1 * 60 * 1000 },
   { threshold: 10, durationMs: 5 * 60 * 1000 },
   { threshold: 15, durationMs: 30 * 60 * 1000 },
   { threshold: 20, durationMs: 24 * 60 * 60 * 1000 },

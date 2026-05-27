@@ -42,10 +42,26 @@ router.get('/contacts', companyController.listOperationalContacts);
 router.post('/contacts', companyController.createOperationalContact);
 router.delete('/contacts/:contactId', companyController.deleteOperationalContact);
 
-router.post('/:companyId/sub-companies', authorizeRoles('SuperAdmin'), companyController.createSubCompany);
-router.patch('/:companyId/sub-companies/:subCompanyId', authorizeRoles('SuperAdmin'), companyController.updateSubCompany);
-router.delete('/:companyId/sub-companies/:subCompanyId', authorizeRoles('SuperAdmin'), companyController.deleteSubCompany);
-router.post('/:companyId/sub-companies/:subCompanyId/sites', authorizeRoles('SuperAdmin'), companyController.createSite);
+router.post(
+  '/:companyId/sub-companies',
+  authorizeRoles('SuperAdmin'),
+  companyController.createSubCompany,
+);
+router.patch(
+  '/:companyId/sub-companies/:subCompanyId',
+  authorizeRoles('SuperAdmin'),
+  companyController.updateSubCompany,
+);
+router.delete(
+  '/:companyId/sub-companies/:subCompanyId',
+  authorizeRoles('SuperAdmin'),
+  companyController.deleteSubCompany,
+);
+router.post(
+  '/:companyId/sub-companies/:subCompanyId/sites',
+  authorizeRoles('SuperAdmin'),
+  companyController.createSite,
+);
 router.patch('/sites/:siteId', authorizeRoles('SuperAdmin'), companyController.updateSite);
 router.delete('/sites/:siteId', authorizeRoles('SuperAdmin'), companyController.deleteSite);
 router.get('/sites/:siteId/pozo-config', companyController.getSitePozoConfig);

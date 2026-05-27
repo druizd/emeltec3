@@ -15,7 +15,9 @@ const app = express();
 // requiere bitácora con IP del actor) habilitamos confianza solo en 1 hop.
 app.set('trust proxy', 1);
 
-const _allowedOrigins = requireEnv('CORS_ORIGIN').split(',').map((o) => o.trim());
+const _allowedOrigins = requireEnv('CORS_ORIGIN')
+  .split(',')
+  .map((o) => o.trim());
 app.use(helmet());
 app.use(
   cors({

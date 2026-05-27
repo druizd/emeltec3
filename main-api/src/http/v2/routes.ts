@@ -187,7 +187,12 @@ router.post('/auth/request-code', authLimiter, requestCodeHandler);
 // =====================================================================
 
 // Informantes (pool global). Solo Admin/SuperAdmin. Rotación de clave exige 2FA.
-router.get('/dga/informantes', protect, authorizeRoles('SuperAdmin', 'Admin'), listInformantesHandler);
+router.get(
+  '/dga/informantes',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  listInformantesHandler,
+);
 router.post(
   '/dga/informantes',
   protect,
@@ -259,7 +264,12 @@ router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
 router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
 
 // Review queue (acceso para Admin/SuperAdmin solo).
-router.get('/dga/review-queue', protect, authorizeRoles('SuperAdmin', 'Admin'), listReviewQueueHandler);
+router.get(
+  '/dga/review-queue',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  listReviewQueueHandler,
+);
 router.post(
   '/dga/review-queue/action',
   protect,

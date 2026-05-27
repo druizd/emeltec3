@@ -43,7 +43,10 @@ app.use(
 );
 
 // Rate limit global. Se aplica siempre; valores mínimos garantizados.
-const rateLimitWindowMs = Math.max(60_000, Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '3600000', 10));
+const rateLimitWindowMs = Math.max(
+  60_000,
+  Number.parseInt(process.env.RATE_LIMIT_WINDOW_MS || '3600000', 10),
+);
 const rateLimitMax = Math.max(100, Number.parseInt(process.env.RATE_LIMIT_MAX || '5000', 10));
 
 const globalLimiter = rateLimit({

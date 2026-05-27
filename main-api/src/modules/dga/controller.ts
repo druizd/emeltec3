@@ -44,7 +44,6 @@ import {
   upsertInformanteService,
 } from './service';
 import { requestDgaCode } from './twofactor';
-import type { AuthUser } from '../../shared/permissions';
 import { getPozoDgaConfig } from './repo';
 import { formatRutForDga } from '../../utils/rut';
 
