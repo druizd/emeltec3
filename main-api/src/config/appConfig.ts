@@ -15,7 +15,10 @@ const Schema = z.object({
   NODE_ENV: NodeEnv,
   PORT: z.coerce.number().int().positive().default(3000),
   GRPC_PORT: z.coerce.number().int().positive().default(50051),
-  CORS_ORIGIN: z.string().default('*'),
+  CORS_ORIGIN: z.string().default('*').refine(
+    (v) => process.env['NODE_ENV'] !== 'production' || v !== '*',
+    'CORS_ORIGIN no puede ser "*" en producción',
+  ),
 
   DB_HOST: z.string().min(1).default('localhost'),
   DB_PORT: z.coerce.number().int().positive().default(5432),

@@ -28,7 +28,7 @@ export function protect(req: Request, _res: Response, next: NextFunction): void 
     return;
   }
   try {
-    const decoded = jwt.verify(token, config.auth.jwtSecret) as JwtPayload;
+    const decoded = jwt.verify(token, config.auth.jwtSecret, { algorithms: ['HS256'] }) as JwtPayload;
     (req as Request & { user?: AuthUser }).user = decoded as AuthUser;
     next();
   } catch {
