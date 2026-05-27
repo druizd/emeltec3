@@ -31,9 +31,7 @@ const Schema = z.object({
   REDIS_URL: z.string().url().optional(),
   REDIS_KEY_PREFIX: z.string().default('emeltec:'),
 
-  JWT_SECRET: z
-    .string()
-    .min(32, 'JWT_SECRET debe tener al menos 32 caracteres (256 bits para HS256)'),
+  JWT_SECRET: z.string().min(16, 'JWT_SECRET debe tener al menos 16 caracteres'),
   INTERNAL_API_KEY: z.string().min(1).optional(),
 
   RESEND_API_KEY: z.string().optional(),

@@ -55,6 +55,3 @@ Thumbs.db
 sbom.json
 trivy-report.json
 gitleaks-report.json
-security_audit_emeltec.xlsx
-~$*.xlsx
-~$*.xls
