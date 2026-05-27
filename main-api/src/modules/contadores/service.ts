@@ -137,7 +137,7 @@ export function lastNMonths(n: number, ref: Date = new Date()): Date[] {
  * Detecta payload Modbus fallido: el(los) registro(s) crudos del mapping
  * llegan exactamente en 0. Firma tipica de timeout/retransmision corrupta.
  * Un totalizador real en operacion no llega a 0 (y si fuera reemplazo real
- * de sensor, lo capta el threshold relativo posterior).
+ * de sensor, lo capta el lookahead posterior).
  */
 function isZeroPayload(rawData: unknown, mapping: RegMap): boolean {
   if (!rawData || typeof rawData !== 'object') return false;
@@ -146,6 +146,93 @@ function isZeroPayload(rawData: unknown, mapping: RegMap): boolean {
   if (d1 !== 0) return false;
   if (!mapping.d2) return true;
   return Number(data[mapping.d2]) === 0;
+}
+
+interface CounterSample {
+  time: string;
+  v: number;
+}
+
+/**
+ * Muestras consecutivas que un dip debe sostener (en monotonia ascendente
+ * desde el punto bajo) para confirmarse como reset real del totalizador en
+ * lugar de glitch parcial transitorio. 10 = 10 minutos asumiendo bucket 1 min.
+ */
+const RESET_CONFIRM_SAMPLES = 10;
+
+/**
+ * Extrae muestras limpias (time, v) desde las filas crudas: descarta payloads
+ * cero y aplica la transformacion del mapping. Centraliza el preprocessing
+ * que comparten todas las funciones de calculo de delta.
+ */
+function extractCounterSamples(
+  rows: { time: string; data: Record<string, unknown> }[],
+  mapping: RegMap,
+  pozoConfig: PozoConfig | null,
+): CounterSample[] {
+  const out: CounterSample[] = [];
+  for (const row of rows) {
+    if (isZeroPayload(row.data, mapping)) continue;
+    let v: number | null = null;
+    try {
+      const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
+      v = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
+      if (!Number.isFinite(v)) v = null;
+    } catch {
+      v = null;
+    }
+    if (v === null) continue;
+    out.push({ time: row.time, v });
+  }
+  return out;
+}
+
+/**
+ * Filtra glitches transientes via lookahead. Cuando una muestra cae bajo el
+ * ultimo valor valido, mira las siguientes `k` muestras:
+ *   - si la cuenta se recupera (>= lastValid) dentro del lookahead → glitch
+ *     transitorio, descarta la muestra original.
+ *   - si la cuenta se mantiene baja Y monotonica ascendente desde el dip por
+ *     `k` muestras consecutivas → reset real confirmado, la muestra pasa al
+ *     algoritmo de segmentos que la procesara como reset (cierra segmento
+ *     anterior, abre uno nuevo desde el valor bajo).
+ *   - si la cuenta cae aun mas (no monotonica) → glitch chaotico, descarta.
+ *
+ * Asi distinguimos reemplazo real de sensor (cuenta arranca de 0 y crece)
+ * de glitches puntuales (cuenta vuelve al rango normal en 1-2 muestras).
+ */
+function filterTransientDips(
+  samples: CounterSample[],
+  k: number,
+  initialLastValid: number | null = null,
+): CounterSample[] {
+  const out: CounterSample[] = [];
+  let lastValid: number | null = initialLastValid;
+  for (let i = 0; i < samples.length; i++) {
+    const cur = samples[i]!;
+    if (lastValid !== null && cur.v < lastValid) {
+      let confirmed = 1;
+      let lastLow = cur.v;
+      let isReset = true;
+      for (let j = i + 1; j < Math.min(i + k, samples.length); j++) {
+        const next = samples[j]!.v;
+        if (next >= lastValid) {
+          isReset = false;
+          break;
+        }
+        if (next < lastLow) {
+          isReset = false;
+          break;
+        }
+        lastLow = next;
+        confirmed++;
+      }
+      if (!isReset || confirmed < k) continue;
+    }
+    out.push(cur);
+    lastValid = cur.v;
+  }
+  return out;
 }
 
 /**
@@ -223,35 +310,25 @@ export async function computeMonthDeltaForVariable(opts: {
     }
   }
 
-  for (const row of result.rows) {
-    // Glitch explicito: payload Modbus con d1=0 (y d2=0 si aplica) — firma
-    // tipica de transmision fallida. Descarta antes de transformar para no
-    // depender de heuristica relativa cuando prev aun es null.
-    if (isZeroPayload(row.data, mapping)) continue;
+  // Pasa el seed cross-month como initialLastValid para que el filtro pueda
+  // disambiguar glitches que caen en la primera muestra del mes (si fuese
+  // un glitch puntual quedaria como nuevo "valorInicio" sin baseline previa).
+  const samples = extractCounterSamples(result.rows, mapping, pozoConfig);
+  const cleanSamples = filterTransientDips(samples, RESET_CONFIRM_SAMPLES, prev);
 
-    let v: number | null = null;
-    try {
-      const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
-      v = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
-      if (!Number.isFinite(v)) v = null;
-    } catch {
-      v = null;
-    }
-    if (v === null) continue;
-
-    // Cualquier muestra menor que el ultimo prev es ruido/jitter del sensor
-    // o glitch parcial — el totalizador fisico no retrocede. Descarta sin
-    // tocar prev/segmento. Si en el futuro un sitio realmente reemplaza el
-    // medidor (totalizador a 0), recomputar manualmente o detectar via
-    // configuracion explicita por sitio, no via heuristica de bajada.
-    if (prev !== null && v < prev) continue;
-
+  for (const { time, v } of cleanSamples) {
     muestras++;
-    ultimoDato = row.time;
-
+    ultimoDato = time;
     if (valorInicio === null) valorInicio = v;
     if (segmentBase === null) segmentBase = v;
 
+    if (prev !== null && v < prev) {
+      // Reset real confirmado por filterTransientDips: cierra segmento previo
+      // y abre uno nuevo desde el valor post-reset.
+      suma += prev - segmentBase;
+      segmentBase = v;
+      resets++;
+    }
     prev = v;
     valorFin = v;
   }
@@ -313,20 +390,11 @@ export async function computeDailyDeltasForVariable(opts: {
   }
   const byDay = new Map<string, DayAccum>();
 
-  for (const row of result.rows) {
-    if (isZeroPayload(row.data, mapping)) continue;
+  const samples = extractCounterSamples(result.rows, mapping, pozoConfig);
+  const cleanSamples = filterTransientDips(samples, RESET_CONFIRM_SAMPLES);
 
-    let v: number | null = null;
-    try {
-      const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
-      v = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
-      if (!Number.isFinite(v)) v = null;
-    } catch {
-      v = null;
-    }
-    if (v === null) continue;
-
-    const dayKey = chileDayKey(new Date(row.time));
+  for (const { time, v } of cleanSamples) {
+    const dayKey = chileDayKey(new Date(time));
     let acc = byDay.get(dayKey);
     if (!acc) {
       acc = {
@@ -342,13 +410,15 @@ export async function computeDailyDeltasForVariable(opts: {
       byDay.set(dayKey, acc);
     }
 
-    // Totalizador monotonico: dip == jitter/glitch parcial, descarta.
-    if (acc.prev !== null && v < acc.prev) continue;
-
     acc.muestras++;
-    acc.ultimoDato = row.time;
+    acc.ultimoDato = time;
     if (acc.valorInicio === null) acc.valorInicio = v;
     if (acc.segmentBase === null) acc.segmentBase = v;
+    if (acc.prev !== null && v < acc.prev) {
+      acc.suma += acc.prev - acc.segmentBase;
+      acc.segmentBase = v;
+      acc.resets++;
+    }
     acc.prev = v;
     acc.valorFin = v;
   }
@@ -560,20 +630,11 @@ export async function computeJornadasForVariable(opts: {
   }
   const accs: (DayAccum | null)[] = days.map(() => null);
 
-  for (const row of result.rows) {
-    if (isZeroPayload(row.data, mapping)) continue;
+  const samples = extractCounterSamples(result.rows, mapping, pozoConfig);
+  const cleanSamples = filterTransientDips(samples, RESET_CONFIRM_SAMPLES);
 
-    let v: number | null = null;
-    try {
-      const raw = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
-      v = typeof raw === 'number' && Number.isFinite(raw) ? raw : Number(raw);
-      if (!Number.isFinite(v)) v = null;
-    } catch {
-      v = null;
-    }
-    if (v === null) continue;
-
-    const rowMs = new Date(row.time).getTime();
+  for (const { time, v } of cleanSamples) {
+    const rowMs = new Date(time).getTime();
     // Shift por -startMin para que cada jornada comience al inicio de su dia
     // Chile virtual. Despues verificamos que el elapsed sea < jornadaLenMs.
     const shiftedDayKey = chileDayKey(new Date(rowMs - startMs));
@@ -598,13 +659,15 @@ export async function computeJornadasForVariable(opts: {
       accs[idx] = acc;
     }
 
-    // Totalizador monotonico: dip == jitter/glitch parcial, descarta.
-    if (acc.prev !== null && v < acc.prev) continue;
-
     acc.muestras++;
-    acc.ultimoDato = row.time;
+    acc.ultimoDato = time;
     if (acc.valorInicio === null) acc.valorInicio = v;
     if (acc.segmentBase === null) acc.segmentBase = v;
+    if (acc.prev !== null && v < acc.prev) {
+      acc.suma += acc.prev - acc.segmentBase;
+      acc.segmentBase = v;
+      acc.resets++;
+    }
     acc.prev = v;
     acc.valorFin = v;
   }
