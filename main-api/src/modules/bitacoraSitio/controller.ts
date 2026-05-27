@@ -7,6 +7,18 @@ import { NotFoundError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { deleteEquipo, getFicha, insertEquipo, listEquipos, patchEquipo, patchFicha } from './repo';
 import { CreateEquipoPayload, FichaPayload, PatchEquipoPayload } from './schema';
+import { query } from '../../config/dbHelpers';
+import { requireSiteAccess, type AuthUser } from '../../shared/permissions';
+
+async function assertSiteAccess(siteId: string, user: AuthUser | undefined): Promise<void> {
+  const { rows } = await query<{ empresa_id: string; sub_empresa_id: string }>(
+    'SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1',
+    [siteId],
+    { name: 'bitacora__get_site_scope' },
+  );
+  if (!rows[0]) throw new NotFoundError('Sitio no encontrado');
+  requireSiteAccess(user, rows[0]);
+}
 
 // ============================================================================
 // Ficha
@@ -21,6 +33,8 @@ export async function getFichaHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const f = await getFicha(siteId);
     res.json(ok(f, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -37,6 +51,8 @@ export async function patchFichaHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const parsed = FichaPayload.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
@@ -66,6 +82,8 @@ export async function listEquiposHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const rows = await listEquipos(siteId);
     res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -82,6 +100,8 @@ export async function createEquipoHandler(
   try {
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
+    const user = (req as Request & { user?: AuthUser }).user;
+    await assertSiteAccess(siteId, user);
     const parsed = CreateEquipoPayload.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
