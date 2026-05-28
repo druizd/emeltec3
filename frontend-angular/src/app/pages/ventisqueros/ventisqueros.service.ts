@@ -52,28 +52,31 @@ export class VentisquerosService {
     if (this.currentSiteId) this.fetch(this.currentSiteId);
   }
 
-  private fetch(_siteId: string): void {
-    // TODO: conectar endpoints reales de Emeltec Cloud cuando estén disponibles.
-    // Esperado:
-    //   GET /api/cold-room/${siteId}/sensors      -> ApiEnvelope<Sensor[]>
-    //   GET /api/cold-room/${siteId}/concentrator -> ApiEnvelope<ConcentratorState>
-    //
-    // this.loadingSubject.next(true);
-    // this.http
-    //   .get<ApiEnvelope<Sensor[]>>(`/api/cold-room/${_siteId}/sensors?t=${Date.now()}`)
-    //   .subscribe({
-    //     next: (res) => {
-    //       if (res.ok) this.sensorsSubject.next(res.data);
-    //       this.lastUpdateSubject.next(new Date());
-    //       this.errorSubject.next(null);
-    //     },
-    //     error: (err) => this.errorSubject.next(err?.message ?? 'Error al cargar sensores'),
-    //     complete: () => this.loadingSubject.next(false),
-    //   });
-    // this.http
-    //   .get<ApiEnvelope<ConcentratorState>>(`/api/cold-room/${_siteId}/concentrator?t=${Date.now()}`)
-    //   .subscribe({
-    //     next: (res) => { if (res.ok) this.concentratorSubject.next(res.data); },
-    //   });
+  private fetch(siteId: string): void {
+    this.loadingSubject.next(true);
+    this.http
+      .get<ApiEnvelope<Sensor[]>>(`/api/cold-room/${siteId}/sensors?t=${Date.now()}`)
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.sensorsSubject.next(res.data);
+          this.lastUpdateSubject.next(new Date());
+          this.errorSubject.next(null);
+          this.loadingSubject.next(false);
+        },
+        error: (err) => {
+          this.errorSubject.next(err?.message ?? 'Error al cargar sensores');
+          this.loadingSubject.next(false);
+        },
+      });
+    this.http
+      .get<ApiEnvelope<ConcentratorState>>(`/api/cold-room/${siteId}/concentrator?t=${Date.now()}`)
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.concentratorSubject.next(res.data);
+        },
+        error: () => {
+          // El error del listado principal ya quedó capturado.
+        },
+      });
   }
 }

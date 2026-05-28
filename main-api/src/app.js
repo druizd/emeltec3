@@ -20,6 +20,7 @@ const incidenciaRoutes = require('./routes/incidenciaRoutes');
 const documentoRoutes = require('./routes/documentoRoutes');
 const auditLogRoutes = require('./routes/auditLogRoutes');
 const internalRoutes = require('./routes/internalRoutes');
+const coldRoomRoutes = require('./routes/coldRoomRoutes');
 const errorMiddleware = require('./middlewares/errorMiddleware');
 const { auditMutations } = require('./services/auditLog');
 
@@ -101,6 +102,8 @@ app.use('/api/companies', auditMutations(auditResolver), companyRoutes);
 app.use('/api/alertas', auditMutations(auditResolver));
 app.use('/api/eventos', auditMutations(auditResolver));
 app.use('/api', alertaRoutes);
+
+app.use('/api/cold-room', coldRoomRoutes);
 
 app.use('/api/incidencias', auditMutations(auditResolver), incidenciaRoutes);
 app.use('/api/documentos', auditMutations(auditResolver), documentoRoutes);
