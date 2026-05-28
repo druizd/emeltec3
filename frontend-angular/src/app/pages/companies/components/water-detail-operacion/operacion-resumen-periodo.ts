@@ -1208,6 +1208,10 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   ngOnInit(): void {
     const siteId = this.resolveSiteId();
     if (!siteId) return;
+
+    // Lazy-trigger contadores: solo se necesitan en esta tab. Idempotente.
+    this.state.ensureContadoresPolling(siteId);
+
     combineLatest([this.fechaDesde$, this.fechaHasta$])
       .pipe(
         debounceTime(300),

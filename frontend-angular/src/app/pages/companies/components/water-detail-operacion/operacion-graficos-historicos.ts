@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import * as XLSX from 'xlsx';
 import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
@@ -700,13 +700,20 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
     </div>
   `,
 })
-export class OperacionGraficosHistoricosComponent {
+export class OperacionGraficosHistoricosComponent implements OnInit {
   private readonly state = inject(WaterOperacionStateService);
   private readonly route = inject(ActivatedRoute);
 
   readonly jornadaInicio = this.state.jornadaInicio;
   readonly jornadaFin = this.state.jornadaFin;
   readonly jornadaSettingsOpen = signal(false);
+
+  ngOnInit(): void {
+    // Lazy-trigger contadores: solo se necesitan en esta tab. Idempotente —
+    // no re-fetchea si ya están polleando para este siteId.
+    const siteId = this.resolveSiteId();
+    if (siteId) this.state.ensureContadoresPolling(siteId);
+  }
 
   // Estos signals viven en el state (los pollea el parent), asi que al cambiar
   // de pestaña no se re-fetchea.

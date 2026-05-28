@@ -149,6 +149,34 @@ export class CompanyService {
     );
   }
 
+  /**
+   * Endpoint bundle para el primer paint de Operación: dashboard + history
+   * en 1 round-trip + dedupe de queries pozo_config / reg_map del backend.
+   * Solo cubre el caso realtime (sin range). Para navegación por día usar
+   * `getSiteDashboardData` + `getSiteDashboardHistory` por separado.
+   */
+  getSiteOperacionBundle(
+    siteId: string,
+    limit = 2200,
+  ): Observable<
+    ApiResponse<{
+      dashboard: SiteDashboardData;
+      history: { rows: SiteDashboardHistoryEntry[] };
+      server_time: string;
+    }>
+  > {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.set('t', String(Date.now()));
+    return this.http.get<
+      ApiResponse<{
+        dashboard: SiteDashboardData;
+        history: { rows: SiteDashboardHistoryEntry[] };
+        server_time: string;
+      }>
+    >(`/api/companies/sites/${siteId}/operacion-bundle?${params.toString()}`);
+  }
+
   getSiteMonthlyCounters(
     siteId: string,
     options: { rol?: string; meses?: number } = {},

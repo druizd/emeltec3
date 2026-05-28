@@ -1752,6 +1752,187 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
 };
 
 /**
+ * GET /api/companies/sites/:siteId/operacion-bundle
+ *
+ * Endpoint optimizado para el primer paint de la vista Operación. Empaqueta
+ * dashboard + history (rama realtime, sin range) en una sola respuesta y
+ * deduplica las queries `pozo_config` + `reg_map` que ambos endpoints sueltos
+ * repiten.
+ *
+ * Saving por request: 3 DB queries menos (vs llamar dashboard-data +
+ * dashboard-history por separado) + 1 round-trip HTTP. Reusa la cache de
+ * dashboard-data (TTL 30s) para el dashboard payload.
+ *
+ * Query params:
+ *   limit (opcional, default 500, max 3500): cantidad de buckets recientes.
+ *
+ * NO acepta range from/to — para queries por día seguir usando
+ * dashboard-history directo.
+ */
+exports.getSiteOperacionBundle = async (req, res, next) => {
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+
+    if (!site) {
+      return notFound(res, 'Sitio no encontrado.');
+    }
+
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
+    }
+
+    const limit = parseLimit(req.query.limit, 500, 3500);
+    const granularity = dashboardHistoryGranularity();
+    const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
+
+    if (!site.activo) {
+      return res.json({
+        ok: true,
+        data: {
+          dashboard: buildSiteDashboardData({
+            site,
+            pozoConfig: null,
+            mappings: [],
+            latest: null,
+          }),
+          history: {
+            site: {
+              id: site.id,
+              descripcion: site.descripcion,
+              id_serial: site.id_serial,
+              tipo_sitio: site.tipo_sitio,
+              activo: site.activo,
+            },
+            rows: [],
+            pagination: {
+              limit,
+              page: 1,
+              page_size: 50,
+              total: 0,
+              total_pages: 1,
+              has_more: false,
+              granularity,
+              source: granConfig.view,
+            },
+          },
+          server_time: freshUtcTimestamp(),
+        },
+      });
+    }
+
+    // 4 queries paralelas. pozo_config + reg_map se comparten entre dashboard
+    // y la transformación de filas históricas → 1 fetch por cada.
+    const [pozoConfigRes, mappingsRes, latest, historyRes] = await Promise.all([
+      db.query(
+        `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
+           FROM pozo_config pc
+           JOIN sitio s ON s.id = pc.sitio_id
+          WHERE pc.sitio_id = $1
+            AND s.tipo_sitio = 'pozo'`,
+        [siteId],
+      ),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+        siteId,
+      ]),
+      loadLatestEquipoSample(site.id_serial),
+      db.query(
+        `
+        WITH latest_cagg AS (
+          SELECT max(bucket) AS max_bucket
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= now() - INTERVAL '48 hours'
+        ),
+        recent_raw AS (
+          SELECT
+            time_bucket($4::interval, e.time) AS time,
+            last(e.received_at, e.time)       AS received_at,
+            last(e.id_serial, e.time)         AS id_serial,
+            last(e.data, e.time)              AS data,
+            ${utcTimestampSql('time_bucket($4::interval, e.time)')} AS timestamp_completo
+          FROM equipo e
+          CROSS JOIN latest_cagg lc
+          WHERE e.id_serial = $1
+            AND e.time >= COALESCE(lc.max_bucket + $4::interval, now() - INTERVAL '2 hours')
+          GROUP BY 1
+        ),
+        materialized AS (
+          SELECT
+            bucket AS time,
+            received_at,
+            id_serial,
+            data,
+            ${utcTimestampSql('bucket')} AS timestamp_completo
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= now() - INTERVAL '48 hours'
+        )
+        SELECT
+          time,
+          received_at,
+          id_serial,
+          data,
+          timestamp_completo
+        FROM (
+          SELECT * FROM recent_raw
+          UNION ALL
+          SELECT * FROM materialized
+        ) history
+        ORDER BY time DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [site.id_serial, limit, 0, granConfig.bucketInterval],
+      ),
+    ]);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+
+    const dashboardData = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
+
+    // Refresca cache de dashboard-data para que el siguiente poll de 60s del
+    // realtime tab encuentre warm cache (TTL 30s).
+    setCachedDashboardData(dashboardDataCacheKey(siteId), dashboardData);
+
+    const historyRows = historyRes.rows.map((row) =>
+      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }),
+    );
+
+    return res.json({
+      ok: true,
+      data: {
+        dashboard: { ...dashboardData, server_time: freshUtcTimestamp() },
+        history: {
+          site: {
+            id: site.id,
+            descripcion: site.descripcion,
+            id_serial: site.id_serial,
+            tipo_sitio: site.tipo_sitio,
+            activo: site.activo,
+          },
+          rows: historyRows,
+          pagination: {
+            limit,
+            page: 1,
+            page_size: 50,
+            total: null,
+            total_pages: 1,
+            has_more: false,
+            granularity,
+            source: granConfig.view,
+          },
+        },
+        server_time: freshUtcTimestamp(),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * GET /api/companies/sites/:siteId/dashboard-history/export
  * Exporta historico transformado en CSV, filtrando por sitio y rango local America/Santiago.
  */

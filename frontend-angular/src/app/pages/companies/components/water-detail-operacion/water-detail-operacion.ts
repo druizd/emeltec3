@@ -840,18 +840,30 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     // Polling combina:
     //  - timer 60s (refresh periódico cuando estás en hoy operativo)
     //  - selectedDayKey$ (re-fetch al cambiar de día con flechas)
-    // Si día seleccionado == hoy operativo → sin range (rama realtime backend,
-    // ventana 48h, sin count, devuelve últimos N buckets).
-    // Si día != hoy → rango (día-1, día+1) para cubrir Turno 3 cross-midnight
-    // que arrastra muestras al día siguiente del seleccionado.
+    //
+    // Si día seleccionado == hoy operativo → 1 request al endpoint bundle
+    // (dashboard + history + dedupe pozo_config / reg_map en el backend, cache
+    // 30s + bound 48h, sin count).
+    // Si día != hoy → 2 requests (dashboard sin cambio + history con range
+    // día-1, día+1 para cubrir Turno 3 cross-midnight).
     this.pollingSub = combineLatest([timer(0, 60000), this.selectedDayKey$])
       .pipe(
         switchMap(([, dayKey]) => {
           const isToday = dayKey === this.currentJornadaDayKey();
           this.loading.set(true);
-          const range: { from?: string; to?: string } = isToday
-            ? {}
-            : { from: this.addDayKey(dayKey, -1), to: this.addDayKey(dayKey, 1) };
+
+          if (isToday) {
+            return this.companyService.getSiteOperacionBundle(siteId, this.historyLimit).pipe(
+              catchError((err) => {
+                console.error('No fue posible cargar operación del pozo', err);
+                this.loadError.set('No fue posible cargar datos de operación.');
+                this.loading.set(false);
+                return of(null);
+              }),
+            );
+          }
+
+          const range = { from: this.addDayKey(dayKey, -1), to: this.addDayKey(dayKey, 1) };
           return forkJoin({
             dashboard: this.companyService.getSiteDashboardData(siteId),
             history: this.companyService.getSiteDashboardHistory(
@@ -871,9 +883,17 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
       )
       .subscribe((res) => {
         if (!res) return;
-
-        this.dashboardData.set(res.dashboard?.data || null);
-        this.historyRows.set(this.mapHistoryRows(res.history));
+        // El bundle devuelve { ok, data: { dashboard, history: { rows } } }.
+        // Las llamadas separadas devuelven res.dashboard.data y res.history.data.rows.
+        // Detectamos forma del payload por shape.
+        if ('data' in res && res.data && 'dashboard' in res.data) {
+          const bundle = res.data;
+          this.dashboardData.set(bundle.dashboard || null);
+          this.historyRows.set(this.mapHistoryRows({ data: bundle.history }));
+        } else if ('dashboard' in res) {
+          this.dashboardData.set(res.dashboard?.data || null);
+          this.historyRows.set(this.mapHistoryRows(res.history));
+        }
         this.loadError.set('');
         this.loading.set(false);
       });

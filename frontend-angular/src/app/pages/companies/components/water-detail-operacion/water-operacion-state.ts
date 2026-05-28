@@ -94,11 +94,17 @@ export class WaterOperacionStateService {
   private jornadaSub: Subscription | null = null;
   private configSaveSub: Subscription | null = null;
   private activeSiteId: string | null = null;
+  private countersSiteId: string | null = null;
 
   // toObservable solo se permite en contexto de inyeccion — captura en field init.
   private readonly jornadaInicio$ = toObservable(this.jornadaInicio);
   private readonly jornadaFin$ = toObservable(this.jornadaFin);
 
+  /**
+   * Arranca polling de config + turnos. Liviano: 1 GET inicial + save loop on
+   * change. SIEMPRE necesario en Operacion (incluso para la tab Hoy que usa
+   * los horarios de turno para calcular las cards). Idempotente por siteId.
+   */
   startCountersPolling(siteId: string): void {
     if (!siteId || this.activeSiteId === siteId) return;
     this.stopCountersPolling();
@@ -106,6 +112,19 @@ export class WaterOperacionStateService {
 
     this.hydrateOperacionConfig(siteId);
     this.startConfigSaveLoop(siteId);
+  }
+
+  /**
+   * Arranca polling de contadores mensual/diario/jornada. Cold path pesado
+   * (~1s c/u sin cache). Solo se necesita cuando el operador está en la tab
+   * Resumen por Periodo o Gráficos Históricos — la tab Hoy no los usa. Por
+   * eso disparamos lazy desde el componente cuando cambia modo. Idempotente
+   * por siteId: re-llamar no re-fetchea.
+   */
+  ensureContadoresPolling(siteId: string): void {
+    if (!siteId || this.countersSiteId === siteId) return;
+    this.stopContadoresPolling();
+    this.countersSiteId = siteId;
 
     this.monthlyCountersLoading.set(true);
     this.monthlySub = timer(0, 10 * 60_000)
@@ -156,13 +175,18 @@ export class WaterOperacionStateService {
       });
   }
 
-  stopCountersPolling(): void {
+  private stopContadoresPolling(): void {
     this.monthlySub?.unsubscribe();
     this.dailySub?.unsubscribe();
     this.jornadaSub?.unsubscribe();
     this.monthlySub = null;
     this.dailySub = null;
     this.jornadaSub = null;
+    this.countersSiteId = null;
+  }
+
+  stopCountersPolling(): void {
+    this.stopContadoresPolling();
     this.activeSiteId = null;
     this.configHydrated = false;
   }
