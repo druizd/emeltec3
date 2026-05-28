@@ -5,6 +5,7 @@ diario y por jornada de variables tipo contador/totalizador (rol_dashboard
 ∈ `totalizador`, `energia`, `volumen`). Vigente desde 2026-05-27.
 
 Fuentes: `main-api/src/modules/contadores/service.ts` —
+
 - `computeMonthDeltaForVariable` → delta mensual.
 - `computeDailyDeltasForVariable` → delta diario.
 - `computeJornadaDeltasForVariable` → delta por jornada (turno operativo).
@@ -20,6 +21,7 @@ total desde la instalación del medidor). Para mostrar consumo por periodo
 necesitamos calcular `delta = valor_fin_periodo - valor_inicio_periodo`.
 
 Complicaciones reales:
+
 1. **Glitches de transmisión Modbus**: el sensor reporta `(0, 0)` cuando
    hay timeout o payload corrupto. Si se interpretara como lectura real,
    el algoritmo creería que el contador retrocedió y duplicaría el
@@ -57,6 +59,7 @@ Aplica un lookahead de `RESET_CONFIRM_SAMPLES = 10` muestras para
 distinguir glitch transitorio de reset real.
 
 Para cada muestra `cur` con `cur.v < lastValid`:
+
 - Mira las próximas `k - 1` muestras.
 - **Si alguna `next.v >= lastValid`** → el contador se recuperó, el dip
   era glitch puntual. Descarta `cur`.
@@ -72,6 +75,7 @@ final del periodo anterior — ver Etapa 3 (continuidad cross-month).
 ### Etapa 3: Algoritmo de segmentos
 
 Procesa la lista limpia de muestras. Estado:
+
 - `valorInicio` — primera muestra del periodo.
 - `valorFin` — última muestra procesada.
 - `segmentBase` — valor en que arrancó el segmento actual.
@@ -79,12 +83,14 @@ Procesa la lista limpia de muestras. Estado:
 - `suma` — acumulador de deltas cerrados.
 
 Para cada muestra:
+
 - Si es la primera, set `valorInicio`, `segmentBase`.
 - Si `v < prev` (reset confirmado por filtro) → cierra segmento:
   `suma += prev - segmentBase`, `segmentBase = v`, `resets++`.
 - `prev = v`, `valorFin = v`.
 
 Al terminar el periodo:
+
 - Cierra el último segmento: `suma += valorFin - segmentBase`.
 - `delta = max(0, suma)` (negativos imposibles tras filtro).
 
@@ -120,6 +126,7 @@ Ventana de 7 días: si el sensor estuvo offline más tiempo, no se siembra
 Caso de uso: técnico reemplaza el caudalímetro de S042 a las 10:34.
 
 Sample timeline (cada 1 min):
+
 ```
 10:33  v = 540,500   ← normal
 10:34  v = 0         ← post-reemplazo, sensor nuevo arranca de 0
@@ -132,6 +139,7 @@ Sample timeline (cada 1 min):
 ```
 
 Filtro Etapa 2 en sample 10:34:
+
 - `lastValid = 540,500`, `cur.v = 0` → 0 < 540500, entra al lookahead.
 - Inspecciona samples 10:35..10:43 (9 más, total k=10).
 - Todas < 540500 (siguen siendo 3, 7, 12, ...).
@@ -139,6 +147,7 @@ Filtro Etapa 2 en sample 10:34:
 - `confirmed = 10 >= k` → **reset confirmado**, pasa sample 10:34.
 
 Etapa 3 procesa sample 10:34:
+
 - `prev = 540,500` (último valor pre-reset), `v = 0`.
 - `v < prev` → reset → `suma += 540,500 - segmentBase`.
 - `segmentBase = 0`, `prev = 0`, `resets++`.
@@ -200,6 +209,7 @@ ORDER BY mes ASC;"
 ### Recompute puntual
 
 Para un sitio (ej. tras corregir un mapping):
+
 ```bash
 docker exec emeltec-api node /app/scripts/backfill-contadores-mensuales.js \
   --sitio=S042 --meses=12
@@ -237,6 +247,7 @@ LIMIT 50;
 ```
 
 Resultados esperables:
+
 - `diff` cerca de 0 con `resets_detectados = 0` → sano.
 - `diff` ≈ 1-10 m³ con `resets = 0` → recuperación cross-month legítima.
 - `diff` grande con `resets > 0` → revisar si el reset es real o si el

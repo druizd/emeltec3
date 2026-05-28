@@ -65,6 +65,80 @@ const SITE_TYPE_CATALOG = {
     ],
     transforms: [...COMMON_TRANSFORMS],
   },
+  vertiente: {
+    id: 'vertiente',
+    label: 'Vertiente',
+    roles: [
+      {
+        id: 'nivel',
+        label: 'Nivel',
+        unitHint: 'm',
+        description: 'Nivel o altura de agua reportada por la vertiente.',
+      },
+      {
+        id: 'caudal',
+        label: 'Caudal',
+        unitHint: 'L/s',
+        description: 'Flujo instantaneo de la vertiente.',
+      },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado o caudal totalizado.',
+      },
+      {
+        id: 'seÃ±al',
+        label: 'SeÃ±al',
+        unitHint: '%',
+        description: 'Intensidad de seÃ±al del equipo de telemetria.',
+      },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar sin uso especial en dashboard.',
+      },
+    ],
+    transforms: [...COMMON_TRANSFORMS],
+  },
+  canal: {
+    id: 'canal',
+    label: 'Canal',
+    roles: [
+      {
+        id: 'nivel',
+        label: 'Nivel',
+        unitHint: 'm',
+        description: 'Nivel o altura de lamina de agua del canal.',
+      },
+      {
+        id: 'caudal',
+        label: 'Caudal',
+        unitHint: 'L/s',
+        description: 'Flujo instantaneo del canal.',
+      },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado o caudal totalizado.',
+      },
+      {
+        id: 'seÃ±al',
+        label: 'SeÃ±al',
+        unitHint: '%',
+        description: 'Intensidad de seÃ±al del equipo de telemetria.',
+      },
+      {
+        id: 'generico',
+        label: 'Generico',
+        unitHint: '',
+        description: 'Variable auxiliar sin uso especial en dashboard.',
+      },
+    ],
+    transforms: [...COMMON_TRANSFORMS],
+  },
   electrico: {
     id: 'electrico',
     label: 'Electrico',

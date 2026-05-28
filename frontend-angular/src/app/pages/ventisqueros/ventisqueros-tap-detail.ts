@@ -65,9 +65,7 @@ type DetailTab = 'resumen' | 'configuracion';
           </span>
         </div>
         <div class="min-w-0">
-          <div class="tap-title truncate">
-            {{ siteName() }} · {{ tapId() }}
-          </div>
+          <div class="tap-title truncate">{{ siteName() }} · {{ tapId() }}</div>
           <div class="mt-0.5 text-[11px] text-slate-400">
             @if (isConcentrator()) {
               Concentrador maestro · redundancia y alertas
@@ -124,9 +122,12 @@ type DetailTab = 'resumen' | 'configuracion';
               <div class="flex items-center gap-3 min-w-0">
                 <div
                   class="flex h-10 w-10 items-center justify-center rounded-xl"
-                  [style.background]="concentrator().alerted ? 'rgba(239,68,68,0.12)' : tapColor() + '1A'"
+                  [style.background]="
+                    concentrator().alerted ? 'rgba(239,68,68,0.12)' : tapColor() + '1A'
+                  "
                   [style.border]="
-                    '1px solid ' + (concentrator().alerted ? 'rgba(239,68,68,0.35)' : tapColor() + '40')
+                    '1px solid ' +
+                    (concentrator().alerted ? 'rgba(239,68,68,0.35)' : tapColor() + '40')
                   "
                 >
                   <span
@@ -168,12 +169,16 @@ type DetailTab = 'resumen' | 'configuracion';
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">TEMP PROMEDIO</div>
-                <div class="kpi-value text-slate-800">{{ backupStats().avgT }}<span class="kpi-unit">°C</span></div>
+                <div class="kpi-value text-slate-800">
+                  {{ backupStats().avgT }}<span class="kpi-unit">°C</span>
+                </div>
                 <div class="kpi-sub">lectura redundante</div>
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">HUMEDAD PROM.</div>
-                <div class="kpi-value text-slate-800">{{ backupStats().avgH }}<span class="kpi-unit">%</span></div>
+                <div class="kpi-value text-slate-800">
+                  {{ backupStats().avgH }}<span class="kpi-unit">%</span>
+                </div>
                 <div class="kpi-sub">HR promedio</div>
               </div>
               <div
@@ -213,12 +218,17 @@ type DetailTab = 'resumen' | 'configuracion';
                     <div
                       class="h-2.5 w-2.5 shrink-0 rounded-full"
                       [style.background]="tempColor(b.t)"
-                      [style.box-shadow]="b.alertaFisica ? '0 0 0 4px rgba(239,68,68,0.20)' : 'none'"
+                      [style.box-shadow]="
+                        b.alertaFisica ? '0 0 0 4px rgba(239,68,68,0.20)' : 'none'
+                      "
                     ></div>
                   </div>
                   <div class="flex items-baseline gap-3">
                     <div>
-                      <div class="sensor-metric-val" [style.color]="b.alertaFisica ? '#B91C1C' : '#1E293B'">
+                      <div
+                        class="sensor-metric-val"
+                        [style.color]="b.alertaFisica ? '#B91C1C' : '#1E293B'"
+                      >
                         {{ fmtTemp(b.t) }}
                       </div>
                       <div class="sensor-metric-lbl">T° respaldo</div>
@@ -244,7 +254,9 @@ type DetailTab = 'resumen' | 'configuracion';
                 <div
                   class="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center"
                 >
-                  <span class="material-symbols-outlined text-[28px] text-slate-300">sensors_off</span>
+                  <span class="material-symbols-outlined text-[28px] text-slate-300"
+                    >sensors_off</span
+                  >
                   <div class="mt-2 text-[13px] font-semibold text-slate-500">
                     Sin lectura redundante disponible
                   </div>
@@ -278,12 +290,16 @@ type DetailTab = 'resumen' | 'configuracion';
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">TEMP PROMEDIO</div>
-                <div class="kpi-value text-slate-800">{{ stats().avgT }}<span class="kpi-unit">°C</span></div>
+                <div class="kpi-value text-slate-800">
+                  {{ stats().avgT }}<span class="kpi-unit">°C</span>
+                </div>
                 <div class="kpi-sub">últimos {{ stats().count }} sensores</div>
               </div>
               <div class="kpi-card">
                 <div class="kpi-label">HUMEDAD PROM.</div>
-                <div class="kpi-value text-slate-800">{{ stats().avgH }}<span class="kpi-unit">%</span></div>
+                <div class="kpi-value text-slate-800">
+                  {{ stats().avgH }}<span class="kpi-unit">%</span>
+                </div>
                 <div class="kpi-sub">HR media del TAP</div>
               </div>
               <div
@@ -291,10 +307,7 @@ type DetailTab = 'resumen' | 'configuracion';
                 [style.border-color]="stats().alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
               >
                 <div class="kpi-label">ALERTAS</div>
-                <div
-                  class="kpi-value"
-                  [style.color]="stats().alerts > 0 ? '#DC2626' : '#15803D'"
-                >
+                <div class="kpi-value" [style.color]="stats().alerts > 0 ? '#DC2626' : '#15803D'">
                   {{ stats().alerts }}
                 </div>
                 <div class="kpi-sub">
@@ -306,10 +319,7 @@ type DetailTab = 'resumen' | 'configuracion';
             <!-- Grid sensores -->
             <div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               @for (s of sensors(); track s.id) {
-                <div
-                  class="sensor-card flex flex-col gap-3"
-                  [class.sensor-card--alert]="s.alerted"
-                >
+                <div class="sensor-card flex flex-col gap-3" [class.sensor-card--alert]="s.alerted">
                   <div class="flex items-start justify-between gap-2">
                     <div class="min-w-0">
                       <div class="flex items-center gap-1.5">
@@ -328,7 +338,10 @@ type DetailTab = 'resumen' | 'configuracion';
                   </div>
                   <div class="flex items-baseline gap-3">
                     <div>
-                      <div class="sensor-metric-val" [style.color]="s.alerted ? '#B91C1C' : '#1E293B'">
+                      <div
+                        class="sensor-metric-val"
+                        [style.color]="s.alerted ? '#B91C1C' : '#1E293B'"
+                      >
                         {{ fmtTemp(s.t) }}
                       </div>
                       <div class="sensor-metric-lbl">temperatura</div>
@@ -354,7 +367,9 @@ type DetailTab = 'resumen' | 'configuracion';
                 <div
                   class="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center"
                 >
-                  <span class="material-symbols-outlined text-[28px] text-slate-300">sensors_off</span>
+                  <span class="material-symbols-outlined text-[28px] text-slate-300"
+                    >sensors_off</span
+                  >
                   <div class="mt-2 text-[13px] font-semibold text-slate-500">
                     Sin sensores en {{ tapId() }}
                   </div>
@@ -368,7 +383,9 @@ type DetailTab = 'resumen' | 'configuracion';
                 <div class="mb-3 flex items-center justify-between">
                   <div>
                     <h3 class="tap-h3">Histórico de temperatura</h3>
-                    <p class="mt-0.5 text-[11.5px] text-slate-500">Últimas 24 lecturas por sensor</p>
+                    <p class="mt-0.5 text-[11.5px] text-slate-500">
+                      Últimas 24 lecturas por sensor
+                    </p>
                   </div>
                 </div>
                 <div class="h-[260px]">
@@ -436,7 +453,9 @@ type DetailTab = 'resumen' | 'configuracion';
         border-bottom: 2px solid transparent;
         cursor: pointer;
         color: #64748b;
-        transition: color 0.12s ease, border-color 0.12s ease;
+        transition:
+          color 0.12s ease,
+          border-color 0.12s ease;
       }
       .tap-tab-btn--active {
         color: #0284c7;
@@ -481,7 +500,7 @@ type DetailTab = 'resumen' | 'configuracion';
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
       }
       .sensor-card--alert {
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.04), #ffffff 70%);
       }
       .sensor-id-chip {
@@ -499,7 +518,7 @@ type DetailTab = 'resumen' | 'configuracion';
         font-size: 9.5px;
         font-weight: 600;
         letter-spacing: 0.04em;
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         border: 1px solid rgba(239, 68, 68, 0.25);
         color: #b91c1c;
         border-radius: 4px;

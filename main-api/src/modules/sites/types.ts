@@ -4,6 +4,8 @@
 
 export type SiteType =
   | 'pozo'
+  | 'vertiente'
+  | 'canal'
   | 'electrico'
   | 'proceso'
   | 'riles'
