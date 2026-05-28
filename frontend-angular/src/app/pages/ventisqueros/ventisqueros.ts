@@ -5,20 +5,24 @@ import {
   OnDestroy,
   OnInit,
   computed,
+  effect,
+  inject,
+  input,
   signal,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { VentisquerosFloorMapComponent } from './ventisqueros-floor-map';
 import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-panel';
 import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
+import { VentisquerosService } from './ventisqueros.service';
 import {
-  AlertMode,
+  ConcentratorState,
   MetricKey,
   Sensor,
   TAPS,
   TAP_COLORS,
   TapKey,
-  buildLiveData,
   fmtHum,
   fmtTemp,
   humColor,
@@ -78,13 +82,20 @@ interface MetricOption {
     <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       <!-- Site header -->
       <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
+        <a
+          routerLink="/companies"
+          class="vs-back-btn flex h-9 w-9 shrink-0 items-center justify-center"
+          aria-label="Volver a instalaciones"
+        >
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </a>
         <div class="vs-module-icon flex h-9.5 w-9.5 shrink-0 items-center justify-center">
-          <span class="material-symbols-outlined text-[18px] text-[#6366F1]">factory</span>
+          <span class="material-symbols-outlined text-[18px] text-[#6366F1]">ac_unit</span>
         </div>
         <div>
-          <div class="vs-site-title">Ventisqueros · Planta Chinquihue</div>
+          <div class="vs-site-title">{{ siteTitle() }}</div>
           <div class="vs-site-subtitle">
-            Variables de Proceso · {{ sensors().length }} sensores THM activos
+            Cámara frío · {{ sensors().length }} sensores THM activos
           </div>
         </div>
         <div class="ml-3 flex gap-1.5">
@@ -130,8 +141,11 @@ interface MetricOption {
         <div class="flex-1"></div>
         <div class="flex items-center gap-2">
           <span class="vs-live-indicator">
-            <span class="vs-live-indicator-dot"></span>
-            En vivo · hace 0:32
+            <span
+              class="vs-live-indicator-dot"
+              [style.background]="serviceError() ? '#EF4444' : '#22C55E'"
+            ></span>
+            {{ liveLabel() }}
           </span>
         </div>
       </div>
@@ -162,6 +176,66 @@ interface MetricOption {
                 <span class="material-symbols-outlined text-[13px]">download</span>
                 Exportar
               </button>
+            </div>
+          </div>
+
+          @if (serviceError()) {
+            <div class="vs-error-banner mb-3 flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[16px] text-rose-600">error</span>
+              <div class="min-w-0 flex-1">
+                <div class="text-[12.5px] font-semibold text-rose-700">
+                  No se pudo cargar la lectura más reciente
+                </div>
+                <div class="text-[11.5px] text-rose-600 opacity-80">{{ serviceError() }}</div>
+              </div>
+              <button class="vs-error-retry" (click)="onRetry()">Reintentar</button>
+            </div>
+          }
+
+          <!-- Concentrador TAP 1 -->
+          <div class="mb-3">
+            <div
+              class="vs-concentrator-card flex items-center gap-3"
+              [class.vs-concentrator-card--alert]="concentrator().alerted"
+            >
+              <div
+                class="vs-concentrator-icon flex h-9 w-9 items-center justify-center"
+                [style.background]="concentrator().alerted ? 'rgba(239,68,68,0.12)' : tapColors['TAP 1'] + '1A'"
+                [style.border]="
+                  '1px solid ' +
+                  (concentrator().alerted ? 'rgba(239,68,68,0.35)' : tapColors['TAP 1'] + '40')
+                "
+              >
+                <span
+                  class="material-symbols-outlined text-[18px]"
+                  [style.color]="concentrator().alerted ? '#DC2626' : tapColors['TAP 1']"
+                >
+                  {{ concentrator().alerted ? 'gpp_maybe' : 'hub' }}
+                </span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="vs-concentrator-title">TAP 1 · Concentrador maestro</div>
+                <div class="vs-concentrator-sub">
+                  {{ concentrator().alerted ? 'Alerta de redundancia activa' : 'Operación normal · sin alertas' }}
+                  @if (concentrator().lastSeen) {
+                    · última transmisión {{ concentrator().lastSeen }}
+                  }
+                </div>
+              </div>
+              <span
+                class="vs-concentrator-state"
+                [style.background]="concentrator().alerted ? '#FEF2F2' : '#F0FDF4'"
+                [style.color]="concentrator().alerted ? '#B91C1C' : '#15803D'"
+                [style.border-color]="
+                  concentrator().alerted ? 'rgba(239,68,68,0.30)' : 'rgba(34,197,94,0.30)'
+                "
+              >
+                <span
+                  class="vs-concentrator-dot"
+                  [style.background]="concentrator().alerted ? '#EF4444' : '#22C55E'"
+                ></span>
+                {{ concentrator().alerted ? 'EN ALERTA' : 'OK' }}
+              </span>
             </div>
           </div>
 
@@ -250,14 +324,33 @@ interface MetricOption {
 
           <!-- Map + sensor rail -->
           <div class="vs-map-grid grid gap-3">
-            <app-ventisqueros-floor-map
-              [sensors]="sensors()"
-              [metric]="metric()"
-              [selectedId]="selectedId()"
-              [hiddenSensors]="hiddenSensors()"
-              [hasAlerts]="alerts().length > 0"
-              (selectSensor)="selectedId.set($event)"
-            ></app-ventisqueros-floor-map>
+            <div class="relative min-w-0">
+              <app-ventisqueros-floor-map
+                [sensors]="sensors()"
+                [metric]="metric()"
+                [selectedId]="selectedId()"
+                [hiddenSensors]="hiddenSensors()"
+                [hasAlerts]="alerts().length > 0"
+                (selectSensor)="selectedId.set($event)"
+              ></app-ventisqueros-floor-map>
+              @if (sensors().length === 0) {
+                <div class="vs-empty-overlay">
+                  <span class="material-symbols-outlined text-[28px] text-slate-400">
+                    sensors_off
+                  </span>
+                  <div class="vs-empty-title">Sin lecturas disponibles</div>
+                  <div class="vs-empty-sub">
+                    @if (isLoading()) {
+                      Cargando equipos…
+                    } @else if (serviceError()) {
+                      Fallo de conexión con los equipos
+                    } @else {
+                      Esperando primera transmisión de TAP 2 · 3 · 4
+                    }
+                  </div>
+                </div>
+              }
+            </div>
 
             <!-- Sensor rail -->
             <div class="vs-rail flex h-full min-w-0 shrink-0 flex-col gap-3 overflow-hidden">
@@ -368,7 +461,7 @@ interface MetricOption {
             @for (t of tapAggregates(); track t.tap) {
               <button
                 type="button"
-                [routerLink]="['/ventisqueros/tap', t.tap.replace(' ', '-')]"
+                [routerLink]="['/companies', siteId(), 'cold-room', 'tap', t.tap.replace(' ', '-')]"
                 class="vs-tap-summary group flex w-full cursor-pointer flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
                 [style.border-color]="t.alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
                 [style.box-shadow]="
@@ -508,8 +601,19 @@ interface MetricOption {
       }
       .vs-module-icon {
         border-radius: 9px;
-        background: rgba(99, 102, 241, 0.1);
-        border: 1px solid rgba(99, 102, 241, 0.25);
+        background: rgba(2, 132, 199, 0.1);
+        border: 1px solid rgba(2, 132, 199, 0.25);
+      }
+      .vs-back-btn {
+        border-radius: 8px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        transition: background 0.12s ease, color 0.12s ease;
+      }
+      .vs-back-btn:hover {
+        background: #f8fafc;
+        color: #0899a5;
       }
       .vs-site-title {
         font-family: var(--font-josefin);
@@ -953,6 +1057,99 @@ interface MetricOption {
         background: #f8fafc;
       }
 
+      /* Concentrador TAP 1 */
+      .vs-concentrator-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 14px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      }
+      .vs-concentrator-card--alert {
+        background: linear-gradient(90deg, rgba(239, 68, 68, 0.06), #ffffff 70%);
+        border-color: rgba(239, 68, 68, 0.30);
+      }
+      .vs-concentrator-icon {
+        border-radius: 9px;
+      }
+      .vs-concentrator-title {
+        font-family: var(--font-josefin);
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .vs-concentrator-sub {
+        font-size: 11.5px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+      .vs-concentrator-state {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+      }
+      .vs-concentrator-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+
+      /* Error banner */
+      .vs-error-banner {
+        background: #fef2f2;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 10px;
+        padding: 8px 12px;
+      }
+      .vs-error-retry {
+        background: #ef4444;
+        border: none;
+        border-radius: 6px;
+        padding: 5px 10px;
+        color: #fff;
+        font-family: var(--font-body);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .vs-error-retry:hover {
+        background: #dc2626;
+      }
+
+      /* Empty state */
+      .vs-empty-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(2px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border-radius: 14px;
+        pointer-events: none;
+      }
+      .vs-empty-title {
+        font-family: var(--font-josefin);
+        font-size: 14px;
+        font-weight: 600;
+        color: #475569;
+        letter-spacing: 0.02em;
+      }
+      .vs-empty-sub {
+        font-size: 11.5px;
+        color: #94a3b8;
+      }
+
       @media (prefers-reduced-motion: reduce) {
         .vs-alert-icon-pulse,
         .vs-sensor-alert-dot,
@@ -964,10 +1161,21 @@ interface MetricOption {
   ],
 })
 export class VentisquerosComponent implements OnInit, OnDestroy {
-  readonly alertMode = signal<AlertMode>('multi');
-  readonly refreshSeed = signal(0);
+  private readonly service = inject(VentisquerosService);
+
+  readonly siteId = input.required<string>();
+  readonly siteName = input<string>('');
+  readonly companyName = input<string>('');
+
+  readonly siteTitle = computed(() => {
+    const name = this.siteName().trim();
+    const company = this.companyName().trim();
+    if (company && name) return `${company} · ${name}`;
+    return name || company || 'Cámara frío';
+  });
+
   readonly metric = signal<MetricKey>('T');
-  readonly selectedId = signal<string>('STH-13');
+  readonly selectedId = signal<string | null>(null);
   readonly now = signal<number>(Date.now());
   readonly hiddenSensors = signal<Set<string>>(new Set<string>());
   readonly activeTab = signal<TabKey>('general');
@@ -983,11 +1191,17 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     { v: 'A', icon: 'gpp_maybe', label: 'Alertas' },
   ];
 
-  readonly sensors = computed<Sensor[]>(() => {
-    // refreshSeed is read so the signal recomputes on demand
-    this.refreshSeed();
-    return buildLiveData(this.alertMode());
+  readonly sensors = toSignal(this.service.sensors$, { initialValue: [] as Sensor[] });
+  readonly concentrator = toSignal(this.service.concentrator$, {
+    initialValue: { alerted: false, lastSeen: null } as ConcentratorState,
   });
+  readonly lastUpdate = toSignal(this.service.lastUpdate$, {
+    initialValue: null as Date | null,
+  });
+  readonly serviceError = toSignal(this.service.error$, {
+    initialValue: null as string | null,
+  });
+  readonly isLoading = toSignal(this.service.loading$, { initialValue: false });
 
   readonly alerts = computed(() => this.sensors().filter((s) => s.alerted));
   readonly alertSnippet = computed(() => this.alerts().slice(0, 2));
@@ -1004,21 +1218,25 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly focusSensor = computed(() => this.sensors().find((s) => s.id === this.selectedId()));
 
   readonly stats = computed(() => {
-    const ts = this.sensors().map((s) => s.t);
-    const hs = this.sensors().map((s) => s.h);
+    const list = this.sensors();
+    const ts = list.map((s) => s.t);
+    const hs = list.map((s) => s.h);
     const alerts = this.alerts();
-    const maxDev = this.sensors().reduce<{ sensor: Sensor | null; dev: number }>(
+    const maxDev = list.reduce<{ sensor: Sensor | null; dev: number }>(
       (best, s) => {
-        const dev = Math.abs(s.t - s.baseT);
+        // Sin baseline desde backend aún: comparar con promedio del TAP.
+        const peers = list.filter((p) => p.tap === s.tap);
+        const peerAvg = peers.reduce((a, b) => a + b.t, 0) / Math.max(peers.length, 1);
+        const dev = Math.abs(s.t - peerAvg);
         return dev > best.dev ? { sensor: s, dev } : best;
       },
       { sensor: null, dev: 0 },
     );
     return {
-      active: this.sensors().length,
-      total: this.sensors().length,
-      avgT: (ts.reduce((a, b) => a + b, 0) / ts.length).toFixed(1),
-      avgH: Math.round(hs.reduce((a, b) => a + b, 0) / hs.length),
+      active: list.length,
+      total: list.length,
+      avgT: list.length ? (ts.reduce((a, b) => a + b, 0) / ts.length).toFixed(1) : '—',
+      avgH: list.length ? Math.round(hs.reduce((a, b) => a + b, 0) / hs.length) : 0,
       alerts,
       maxDev,
     };
@@ -1121,6 +1339,16 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }),
   );
 
+  readonly liveLabel = computed(() => {
+    if (this.serviceError()) return 'Sin conexión · reintentando';
+    const last = this.lastUpdate();
+    if (!last) return this.isLoading() ? 'Cargando…' : 'Esperando primera lectura';
+    const diff = Math.max(0, Math.floor((this.now() - last.getTime()) / 1000));
+    if (diff < 60) return `En vivo · hace ${diff}s`;
+    const mins = Math.floor(diff / 60);
+    return `En vivo · hace ${mins}m`;
+  });
+
   readonly nowLabel = computed(() => {
     const d = new Date(this.now());
     const day = String(d.getDate()).padStart(2, '0');
@@ -1145,6 +1373,13 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
+  constructor() {
+    effect(() => {
+      const id = this.siteId();
+      if (id) this.service.startPolling(id);
+    });
+  }
+
   ngOnInit(): void {
     this.intervalId = setInterval(() => this.now.set(Date.now()), 1000);
   }
@@ -1153,6 +1388,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
     }
+    this.service.stopPolling();
   }
 
   fmtTemp = fmtTemp;
@@ -1164,6 +1400,10 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     if (this.selectedId() === s.id) return 'rgba(13,175,189,0.07)';
     if (s.alerted) return 'rgba(239,68,68,0.04)';
     return 'transparent';
+  }
+
+  onRetry(): void {
+    this.service.refresh();
   }
 
   rowBorder(s: Sensor): string {

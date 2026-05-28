@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, inject } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { VentisquerosService } from './ventisqueros.service';
 import {
-  SENSORS_BASE,
+  Sensor,
   TAP_COLORS,
   TapKey,
   TAPS,
@@ -26,7 +27,7 @@ import {
       >
         <button
           type="button"
-          routerLink="/ventisqueros"
+          [routerLink]="backLink()"
           class="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-slate-500 transition-colors hover:text-primary-container"
         >
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -45,7 +46,7 @@ import {
             class="font-bold text-slate-800"
             style="font-family: 'Josefin Sans'; font-size: 16px; letter-spacing: 0.02em;"
           >
-            Ventisqueros · {{ tapId() }}
+            {{ tapId() }}
           </div>
           <div class="mt-0.5 text-[11px] text-slate-400">
             Concentrador · {{ sensors().length }} sensores THM
@@ -90,7 +91,7 @@ import {
                 class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5"
               >
                 <div class="flex items-center gap-2.5">
-                  <span class="h-2 w-2 rounded-full" [style.background]="tempColor(s.baseT)"></span>
+                  <span class="h-2 w-2 rounded-full" [style.background]="tempColor(s.t)"></span>
                   <div class="text-left">
                     <div class="font-mono text-[11px] font-semibold text-slate-600">
                       {{ s.id }}
@@ -100,10 +101,10 @@ import {
                 </div>
                 <div class="text-right">
                   <div class="font-mono text-[13px] font-bold text-slate-800">
-                    {{ fmtTemp(s.baseT) }}
+                    {{ fmtTemp(s.t) }}
                   </div>
                   <div class="font-mono text-[10.5px] text-slate-500">
-                    {{ fmtHum(s.baseH) }}
+                    {{ fmtHum(s.h) }}
                   </div>
                 </div>
               </div>
@@ -111,7 +112,7 @@ import {
           </div>
           <button
             type="button"
-            routerLink="/ventisqueros"
+            [routerLink]="backLink()"
             class="mt-6 inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-4 py-2 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
           >
             <span class="material-symbols-outlined text-[14px]">map</span>
@@ -122,20 +123,25 @@ import {
     </div>
   `,
 })
-export class VentisquerosTapDetailComponent {
+export class VentisquerosTapDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly service = inject(VentisquerosService);
 
   private readonly params = toSignal(this.route.paramMap, {
     initialValue: this.route.snapshot.paramMap,
   });
+
+  readonly siteId = computed(() => this.params().get('siteId') || '');
+
+  readonly backLink = computed(() => ['/companies', this.siteId(), 'cold-room']);
 
   readonly tapId = computed<TapKey>(() => {
     const raw = this.params().get('tapId') || '';
     const decoded = decodeURIComponent(raw).toUpperCase().replace(/-/g, ' ').trim();
     const match = TAPS.find((t) => t === decoded || t.replace(' ', '-') === decoded);
     if (!match) {
-      this.router.navigate(['/ventisqueros']);
+      this.router.navigate(this.backLink());
       return TAPS[0];
     }
     return match;
@@ -143,7 +149,23 @@ export class VentisquerosTapDetailComponent {
 
   readonly tapColor = computed(() => TAP_COLORS[this.tapId()]);
 
-  readonly sensors = computed(() => SENSORS_BASE.filter((s) => s.tap === this.tapId()));
+  private readonly allSensors = toSignal(this.service.sensors$, {
+    initialValue: [] as Sensor[],
+  });
+  readonly sensors = computed(() => this.allSensors().filter((s) => s.tap === this.tapId()));
+
+  ngOnInit(): void {
+    const id = this.siteId();
+    if (!id) {
+      this.router.navigate(['/companies']);
+      return;
+    }
+    this.service.startPolling(id);
+  }
+
+  ngOnDestroy(): void {
+    this.service.stopPolling();
+  }
 
   fmtTemp = fmtTemp;
   fmtHum = fmtHum;

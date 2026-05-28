@@ -91,7 +91,7 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
             <span class="material-symbols-outlined text-[11px]">schedule</span>
             hace 32 s
           </span>
-          <span class="vs-focus-base">Base: {{ fmtTemp(f.baseT) }}</span>
+          <span class="vs-focus-base">HR {{ f.h }}%</span>
         </div>
       </div>
     }

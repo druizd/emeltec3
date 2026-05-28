@@ -46,10 +46,16 @@ export const routes: Routes = [
       },
       {
         path: 'companies/:siteId/cold-room',
-        data: { siteType: 'camara_frio' },
         loadComponent: () =>
-          import('./pages/companies/company-site-coming-soon-detail').then(
-            (m) => m.CompanySiteComingSoonDetailComponent,
+          import('./pages/companies/company-site-cold-room-detail').then(
+            (m) => m.CompanySiteColdRoomDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/cold-room/tap/:tapId',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros-tap-detail').then(
+            (m) => m.VentisquerosTapDetailComponent,
           ),
       },
       {
@@ -66,18 +72,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/companies/company-site-coming-soon-detail').then(
             (m) => m.CompanySiteComingSoonDetailComponent,
-          ),
-      },
-      {
-        path: 'ventisqueros',
-        loadComponent: () =>
-          import('./pages/ventisqueros/ventisqueros').then((m) => m.VentisquerosComponent),
-      },
-      {
-        path: 'ventisqueros/tap/:tapId',
-        loadComponent: () =>
-          import('./pages/ventisqueros/ventisqueros-tap-detail').then(
-            (m) => m.VentisquerosTapDetailComponent,
           ),
       },
       {
