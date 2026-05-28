@@ -1452,7 +1452,11 @@ exports.getSiteDashboardData = async (req, res, next) => {
 exports.getSiteDashboardHistory = async (req, res, next) => {
   try {
     const siteId = normalizeId(req.params.siteId);
-    const limit = parseLimit(req.query.limit, 50, 500);
+    // Max bumped a 3500 para cubrir queries de "navegación de día" que piden
+    // ~2200 buckets (2 días @ 1min para incluir Turno 3 cross-midnight). Para
+    // queries con range, el WHERE bucket BETWEEN ya acota el scan; el LIMIT
+    // solo limita el output.
+    const limit = parseLimit(req.query.limit, 50, 3500);
     const page = parsePage(req.query.page);
     const offset = (page - 1) * limit;
     const from = parseDateOnly(req.query.from);

@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
+import { catchError, combineLatest, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { CompanyService } from '../../../../services/company.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 import { OperacionGraficosHistoricosComponent } from './operacion-graficos-historicos';
@@ -619,6 +620,14 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   private readonly nowTick = signal(Date.now());
   private nowTickSub?: Subscription;
 
+  // Observable de selectedDayKey para acoplar al fetch de history: cuando el
+  // operador cambia de día con las flechas debemos re-fetchear historicos con
+  // el rango correcto (no quedarnos con la ventana realtime de ~36h).
+  // toObservable requiere injection context → capturado en field init.
+  // Wrap en computed para defer la lectura del field `selectedDayKey` (que se
+  // inicializa más abajo) hasta el momento de subscripción.
+  private readonly selectedDayKey$ = toObservable(computed(() => this.selectedDayKey()));
+
   readonly latestTelemetryDate = computed(() => {
     const latest = this.dashboardData()?.ultima_lectura;
     const raw = latest?.timestamp_completo || latest?.time || latest?.received_at || '';
@@ -828,12 +837,28 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
 
   private startPolling(siteId: string): void {
     this.loading.set(true);
-    this.pollingSub = timer(0, 60000)
+    // Polling combina:
+    //  - timer 60s (refresh periódico cuando estás en hoy operativo)
+    //  - selectedDayKey$ (re-fetch al cambiar de día con flechas)
+    // Si día seleccionado == hoy operativo → sin range (rama realtime backend,
+    // ventana 48h, sin count, devuelve últimos N buckets).
+    // Si día != hoy → rango (día-1, día+1) para cubrir Turno 3 cross-midnight
+    // que arrastra muestras al día siguiente del seleccionado.
+    this.pollingSub = combineLatest([timer(0, 60000), this.selectedDayKey$])
       .pipe(
-        switchMap(() =>
-          forkJoin({
+        switchMap(([, dayKey]) => {
+          const isToday = dayKey === this.currentJornadaDayKey();
+          this.loading.set(true);
+          const range: { from?: string; to?: string } = isToday
+            ? {}
+            : { from: this.addDayKey(dayKey, -1), to: this.addDayKey(dayKey, 1) };
+          return forkJoin({
             dashboard: this.companyService.getSiteDashboardData(siteId),
-            history: this.companyService.getSiteDashboardHistory(siteId, this.historyLimit),
+            history: this.companyService.getSiteDashboardHistory(
+              siteId,
+              this.historyLimit,
+              range,
+            ),
           }).pipe(
             catchError((err) => {
               console.error('No fue posible cargar operación del pozo', err);
@@ -841,8 +866,8 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
               this.loading.set(false);
               return of(null);
             }),
-          ),
-        ),
+          );
+        }),
       )
       .subscribe((res) => {
         if (!res) return;
