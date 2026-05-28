@@ -18,15 +18,15 @@ import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
 import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
 import {
-  ConcentratorState,
   MetricKey,
   Sensor,
-  TAPS,
-  TAP_COLORS,
   TapKey,
+  buildTapColors,
+  buildTapKeys,
   fmtHum,
   fmtTemp,
   humColor,
+  tapKeyFor,
   tempColor,
 } from './ventisqueros-data';
 
@@ -82,77 +82,54 @@ interface MetricOption {
   template: `
     <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       @if (!embedded()) {
-        <!-- Site header -->
-        <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
-          <a
-            routerLink="/companies"
-            class="vs-back-btn flex h-9 w-9 shrink-0 items-center justify-center"
-            aria-label="Volver a instalaciones"
-          >
-            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-          </a>
-          <div class="vs-module-icon flex h-9.5 w-9.5 shrink-0 items-center justify-center">
-            <span class="material-symbols-outlined text-[18px] text-[#6366F1]">ac_unit</span>
-          </div>
-          <div>
-            <div class="vs-site-title">{{ siteTitle() }}</div>
-            <div class="vs-site-subtitle">
-              Cámara frío · {{ sensors().length }} sensores THM activos
-            </div>
-          </div>
-          <div class="ml-3 flex gap-1.5">
-            <div class="vs-chip-live flex items-center gap-1">
-              <span class="vs-chip-live-dot"></span>
-              En vivo
-            </div>
-            <div class="vs-chip-time flex items-center gap-1">
-              <span class="material-symbols-outlined text-[10px]">schedule</span>
-              {{ nowLabel() }}
-            </div>
-          </div>
-          <div class="ml-auto flex flex-wrap items-center gap-1.5">
-            <span class="vs-range-label">Desde</span>
-            <div class="vs-range-chip flex items-center gap-1.25">
-              <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-              {{ rangeFrom }}
-            </div>
-            <span class="vs-range-label">Hasta</span>
-            <div class="vs-range-chip flex items-center gap-1.25">
-              <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-              {{ rangeTo }}
-            </div>
-            <button class="vs-apply-btn">Aplicar</button>
+      <!-- Site header -->
+      <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
+        <a
+          routerLink="/companies"
+          class="vs-back-btn flex h-9 w-9 shrink-0 items-center justify-center"
+          aria-label="Volver a instalaciones"
+        >
+          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+        </a>
+        <div class="vs-module-icon flex h-9.5 w-9.5 shrink-0 items-center justify-center">
+          <span class="material-symbols-outlined text-[18px] text-[#6366F1]">ac_unit</span>
+        </div>
+        <div>
+          <div class="vs-site-title">{{ siteTitle() }}</div>
+          <div class="vs-site-subtitle">
+            Cámara frío · {{ sensors().length }} sensores THM activos
           </div>
         </div>
+      </div>
       }
 
       @if (view() === 'full') {
-        <!-- Sub-tabs -->
-        <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
-          @for (t of subTabs(); track t.key) {
-            <button
-              class="vs-tab-btn flex items-center gap-1.5"
-              [class.vs-tab-btn--active]="activeTab() === t.key"
-              (click)="activeTab.set(t.key)"
-            >
-              <span class="material-symbols-outlined text-[13px]">{{ t.icon }}</span>
-              {{ t.label }}
-              @if (t.badge) {
-                <span class="vs-tab-badge">{{ t.badge }}</span>
-              }
-            </button>
-          }
-          <div class="flex-1"></div>
-          <div class="flex items-center gap-2">
-            <span class="vs-live-indicator">
-              <span
-                class="vs-live-indicator-dot"
-                [style.background]="serviceError() ? '#EF4444' : '#22C55E'"
-              ></span>
-              {{ liveLabel() }}
-            </span>
-          </div>
+      <!-- Sub-tabs -->
+      <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
+        @for (t of subTabs(); track t.key) {
+          <button
+            class="vs-tab-btn flex items-center gap-1.5"
+            [class.vs-tab-btn--active]="activeTab() === t.key"
+            (click)="activeTab.set(t.key)"
+          >
+            <span class="material-symbols-outlined text-[13px]">{{ t.icon }}</span>
+            {{ t.label }}
+            @if (t.badge) {
+              <span class="vs-tab-badge">{{ t.badge }}</span>
+            }
+          </button>
+        }
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-2">
+          <span class="vs-live-indicator">
+            <span
+              class="vs-live-indicator-dot"
+              [style.background]="serviceError() ? '#EF4444' : '#22C55E'"
+            ></span>
+            {{ liveLabel() }}
+          </span>
         </div>
+      </div>
       }
 
       <!-- Scrollable content -->
@@ -237,47 +214,31 @@ interface MetricOption {
             </div>
           }
 
-          <!-- KPI strip -->
-          <div class="vs-kpi-grid mb-3.5 grid gap-2.5">
-            @for (k of kpis(); track k.label) {
+          <!-- KPI strip: hero + meta inline -->
+          <div class="vs-kpi-strip mb-5 flex flex-wrap items-end gap-6">
+            <div class="vs-kpi-hero">
               <div
-                class="vs-kpi-card relative overflow-hidden"
-                [class.vs-kpi-card--highlight]="k.highlight"
-                [style.background]="
-                  k.highlight
-                    ? 'linear-gradient(135deg, ' + k.accentBg + ' 0%, #FFFFFF 75%)'
-                    : '#FFFFFF'
-                "
-                [style.border-color]="k.highlight ? k.accent + '55' : '#E2E8F0'"
-                [style.box-shadow]="
-                  k.highlight
-                    ? '0 0 0 1px ' + k.accent + '1A, 0 2px 10px rgba(15,23,42,0.05)'
-                    : '0 1px 2px rgba(15,23,42,0.04)'
-                "
+                class="vs-kpi-hero-value"
+                [style.color]="alerts().length ? '#DC2626' : '#0DAFBD'"
               >
-                <div class="flex items-center gap-1.5">
-                  <div
-                    class="vs-kpi-icon flex shrink-0 items-center justify-center"
-                    [style.background]="k.accentBg"
-                    [style.border-color]="k.accent + '33'"
-                  >
-                    <span class="material-symbols-outlined text-[12px]" [style.color]="k.accent">{{
-                      k.icon
-                    }}</span>
-                  </div>
-                  <div class="vs-kpi-label truncate">{{ k.label }}</div>
-                </div>
-                <div class="mt-0.5 flex items-baseline gap-1">
-                  <span class="vs-kpi-value" [style.color]="k.accent">{{ k.value }}</span>
-                  @if (k.unit) {
-                    <span class="vs-kpi-unit">{{ k.unit }}</span>
-                  }
-                </div>
-                @if (k.sub) {
-                  <div class="vs-kpi-sub">{{ k.sub }}</div>
-                }
+                {{ alerts().length || stats().active }}
               </div>
-            }
+              <div class="vs-kpi-hero-label">
+                {{ alerts().length === 1 ? 'alerta activa' : alerts().length ? 'alertas activas' : 'sensores activos' }}
+              </div>
+            </div>
+            <div class="vs-kpi-meta flex flex-wrap items-baseline gap-x-5 gap-y-1">
+              <span>Temp prom <strong>{{ stats().avgT }}°C</strong></span>
+              <span>HR prom <strong>{{ stats().avgH }}%</strong></span>
+              @if (stats().maxDev.sensor; as devSensor) {
+                <span>
+                  Mayor desv
+                  <strong>±{{ stats().maxDev.dev.toFixed(1) }}°C</strong>
+                  ({{ devSensor.id }})
+                </span>
+              }
+              <span>Última lectura <strong>{{ liveLabel() }}</strong></span>
+            </div>
           </div>
 
           <!-- Map + sensor rail -->
@@ -303,7 +264,7 @@ interface MetricOption {
                     } @else if (serviceError()) {
                       Fallo de conexión con los equipos
                     } @else {
-                      Esperando primera transmisión de TAP 2 · 3 · 4
+                      Esperando primera transmisión de los equipos
                     }
                   </div>
                 </div>
@@ -318,11 +279,11 @@ interface MetricOption {
                 <div class="vs-tap-panel-head flex items-center justify-between">
                   <div class="vs-tap-panel-title">TAP</div>
                   <span class="vs-tap-panel-meta">
-                    {{ sensors().length }} sensores · {{ taps.length }} TAP
+                    {{ sensors().length }} sensores · {{ taps().length }} TAP
                   </span>
                 </div>
                 <div class="flex-1 overflow-y-auto overflow-x-hidden pr-1">
-                  @for (tap of taps; track tap) {
+                  @for (tap of taps(); track tap) {
                     @if ((groupedSensors()[tap] || []).length > 0) {
                       <div class="mb-2">
                         <div class="vs-tap-group-head flex items-center justify-between">
@@ -387,8 +348,8 @@ interface MetricOption {
             class="mt-3.5 block"
             [sensors]="sensors()"
             [hidden]="hiddenSensors()"
-            [taps]="taps"
-            [tapColors]="tapColors"
+            [taps]="taps()"
+            [tapColors]="tapColors()"
             (hiddenChange)="hiddenSensors.set($event)"
           ></app-ventisqueros-visibility-panel>
         }
@@ -399,7 +360,7 @@ interface MetricOption {
             <div>
               <h2 class="vs-h1 text-slate-800">Concentradores TAP</h2>
               <p class="mt-1 text-[12px] text-slate-500">
-                {{ taps.length }} instalaciones · {{ sensors().length }} sensores THM · click para
+                {{ taps().length }} instalaciones · {{ sensors().length }} sensores THM · click para
                 ver detalle
               </p>
             </div>
@@ -435,15 +396,13 @@ interface MetricOption {
                       [style.background]="t.color + '1A'"
                       [style.border]="'1px solid ' + t.color + '40'"
                     >
-                      <span class="material-symbols-outlined text-[18px]" [style.color]="t.color">{{
-                        t.count === 0 ? 'hub' : 'memory'
-                      }}</span>
+                      <span class="material-symbols-outlined text-[18px]" [style.color]="t.color">memory</span>
                     </div>
                     <div class="min-w-0">
                       <h3 class="vs-tap-summary-title truncate text-slate-800">{{ t.tap }}</h3>
                       <p class="truncate text-[11px] text-slate-400">
                         @if (t.count === 0) {
-                          Concentrador maestro
+                          Sin lectura
                         } @else {
                           {{ t.count }} {{ t.count === 1 ? 'sensor' : 'sensores' }} THM
                         }
@@ -484,11 +443,10 @@ interface MetricOption {
                 <div class="mt-3 flex items-center justify-between">
                   @if (t.count === 0) {
                     <span
-                      class="inline-flex items-center gap-1.5 text-[11px] font-medium"
-                      [style.color]="t.color"
+                      class="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-400"
                     >
-                      <span class="material-symbols-outlined text-[12px]">hub</span>
-                      Hub · {{ sensors().length }} sensores
+                      <span class="material-symbols-outlined text-[12px]">sensors_off</span>
+                      Sin transmisión
                     </span>
                   } @else if (t.alerts > 0) {
                     <span
@@ -567,9 +525,7 @@ interface MetricOption {
         background: #ffffff;
         border: 1px solid #e2e8f0;
         color: #475569;
-        transition:
-          background 0.12s ease,
-          color 0.12s ease;
+        transition: background 0.12s ease, color 0.12s ease;
       }
       .vs-back-btn:hover {
         background: #f8fafc;
@@ -774,7 +730,7 @@ interface MetricOption {
         background: #ef4444;
       }
       .vs-alert-title {
-        font-family: var(--font-josefin);
+        font-family: var(--font-body);
         font-size: 13px;
         font-weight: 600;
         color: #991b1b;
@@ -823,42 +779,38 @@ interface MetricOption {
         background: #dc2626;
       }
 
-      /* KPI strip */
-      .vs-kpi-grid {
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      /* KPI strip: hero + meta inline */
+      .vs-kpi-strip {
+        padding-left: 2px;
       }
-      .vs-kpi-card {
-        border-radius: 12px;
-        padding: 12px 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        min-width: 0;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-      }
-      .vs-kpi-icon {
-        width: 22px;
-        height: 22px;
-        border-radius: 6px;
-        border: 1px solid transparent;
-      }
-      .vs-kpi-value {
+      .vs-kpi-hero-value {
         font-family: var(--font-mono);
-        font-size: 22px;
+        font-size: 44px;
         font-weight: 600;
-        line-height: 1;
+        line-height: 0.95;
         font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
       }
-      .vs-kpi-unit {
-        font-family: var(--font-mono);
-        font-size: 12px;
-        color: #64748b;
-      }
-      .vs-kpi-sub {
+      .vs-kpi-hero-label {
+        font-family: var(--font-body);
         font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
         color: #94a3b8;
-        margin-top: 2px;
+        margin-top: 6px;
+      }
+      .vs-kpi-meta {
+        font-family: var(--font-body);
+        font-size: 12.5px;
+        color: #64748b;
+        padding-bottom: 4px;
+      }
+      .vs-kpi-meta strong {
+        font-family: var(--font-mono);
+        font-weight: 600;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
       }
 
       /* Map + rail */
@@ -883,7 +835,7 @@ interface MetricOption {
         padding: 0 4px 4px;
       }
       .vs-tap-panel-title {
-        font-family: var(--font-josefin);
+        font-family: var(--font-body);
         font-size: 12px;
         font-weight: 600;
         color: #1e293b;
@@ -1085,30 +1037,18 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly embedded = input<boolean>(false);
   readonly view = input<'full' | 'general' | 'taps' | 'eventos' | 'contacts'>('full');
 
-  readonly tapSiteMap = computed<Record<TapKey, string | null>>(() => {
+  readonly tapSiteMap = computed<Record<TapKey, string>>(() => {
     const sites = this.coldRoomSites();
-    const map: Record<TapKey, string | null> = {
-      'TAP 1': null,
-      'TAP 2': null,
-      'TAP 3': null,
-      'TAP 4': null,
-    };
-    for (const site of sites) {
-      const desc = (site.descripcion || '').toUpperCase().replace(/-/g, ' ').trim();
-      for (const key of TAPS) {
-        if (desc.includes(key)) {
-          map[key] = site.id;
-          break;
-        }
-      }
-    }
+    const map: Record<TapKey, string> = {};
+    sites.forEach((site, i) => {
+      map[tapKeyFor(i)] = site.id;
+    });
     return map;
   });
 
   tapRouterLink(tap: TapKey): string[] {
-    const tapSiteId = this.tapSiteMap()[tap];
-    if (tapSiteId) return ['/companies', tapSiteId, 'cold-room'];
-    return ['/companies', this.siteId(), 'tap', tap.replace(' ', '-')];
+    const tapSiteId = this.tapSiteMap()[tap] ?? this.siteId();
+    return ['/companies', tapSiteId, 'tap', tap.replace(' ', '-')];
   }
 
   readonly siteTitle = computed(() => {
@@ -1130,11 +1070,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly hiddenSensors = signal<Set<string>>(new Set<string>());
   readonly activeTab = signal<TabKey>('general');
 
-  readonly taps = TAPS;
-  readonly tapColors = TAP_COLORS;
-  readonly rangeFrom = '01-05-2026';
-  readonly rangeTo = '02-05-2026';
-
+  readonly taps = computed<TapKey[]>(() => {
+    const sites = this.coldRoomSites();
+    return buildTapKeys(Math.max(sites.length, 1));
+  });
+  readonly tapColors = computed<Record<TapKey, string>>(() => {
+    const sites = this.coldRoomSites();
+    return buildTapColors(Math.max(sites.length, 1));
+  });
   readonly metricOptions: MetricOption[] = [
     { v: 'T', icon: 'thermostat', label: 'Temperatura' },
     { v: 'H', icon: 'water_drop', label: 'Humedad' },
@@ -1142,9 +1085,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   ];
 
   readonly sensors = toSignal(this.service.sensors$, { initialValue: [] as Sensor[] });
-  readonly concentrator = toSignal(this.service.concentrator$, {
-    initialValue: { alerted: false, lastSeen: null } as ConcentratorState,
-  });
   readonly lastUpdate = toSignal(this.service.lastUpdate$, {
     initialValue: null as Date | null,
   });
@@ -1270,14 +1210,16 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     { key: 'contacts', icon: 'group', label: 'Contactos' },
   ]);
 
-  readonly tapAggregates = computed<TapAggregate[]>(() =>
-    TAPS.map((tap) => {
+  readonly tapAggregates = computed<TapAggregate[]>(() => {
+    const taps = this.taps();
+    const colors = this.tapColors();
+    return taps.map((tap) => {
       const sensors = this.sensors().filter((s) => s.tap === tap);
       const ts = sensors.map((s) => s.t);
       const hs = sensors.map((s) => s.h);
       return {
         tap,
-        color: TAP_COLORS[tap],
+        color: colors[tap],
         count: sensors.length,
         alerts: sensors.filter((s) => s.alerted).length,
         avgT: sensors.length ? (ts.reduce((a, b) => a + b, 0) / ts.length).toFixed(1) : '—',
@@ -1286,8 +1228,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         maxT: sensors.length ? Math.max(...ts).toFixed(1) : '—',
         sensors,
       };
-    }),
-  );
+    });
+  });
 
   readonly liveLabel = computed(() => {
     if (this.serviceError()) return 'Sin conexión · reintentando';
@@ -1299,39 +1241,13 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return `En vivo · hace ${mins}m`;
   });
 
-  readonly nowLabel = computed(() => {
-    const d = new Date(this.now());
-    const day = String(d.getDate()).padStart(2, '0');
-    const months = [
-      'ene',
-      'feb',
-      'mar',
-      'abr',
-      'may',
-      'jun',
-      'jul',
-      'ago',
-      'sep',
-      'oct',
-      'nov',
-      'dic',
-    ];
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}, ${hh}:${mm}`;
-  });
-
   private intervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     effect(() => {
       const sites = this.coldRoomSites();
-      const map = this.tapSiteMap();
       if (sites.length > 0) {
-        const specs = sites.map((s) => {
-          const tap = (Object.keys(map) as TapKey[]).find((k) => map[k] === s.id) ?? null;
-          return { siteId: s.id, tap };
-        });
+        const specs = sites.map((s, i) => ({ siteId: s.id, tap: tapKeyFor(i) }));
         this.service.startPolling(specs);
         return;
       }

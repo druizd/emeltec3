@@ -2,6 +2,10 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { formatRutForStorage } = require('../utils/rut');
+const emailService = require('../services/emailService');
+
+const WELCOME_OTP_MINUTES = 60 * 24; // 24h para activar la cuenta
+
 
 const USER_PROFILE_SELECT = `
   SELECT u.id,
@@ -366,9 +370,47 @@ exports.createUser = async (req, res, next) => {
 
     const created = await getUserProfileById(rows[0].id);
 
+    // OTP de bienvenida: el nuevo usuario lo usa para su primer ingreso.
+    // Se guarda hasheado y expira en WELCOME_OTP_MINUTES.
+    const otpCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+    const otpExpiresAt = new Date(Date.now() + WELCOME_OTP_MINUTES * 60 * 1000);
+    try {
+      await db.query(
+        'UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE id = $3',
+        [otpHash, otpExpiresAt, rows[0].id],
+      );
+    } catch (otpErr) {
+      console.error('[createUser] Error guardando OTP bienvenida:', otpErr.message);
+    }
+
+    // Disparar correos en paralelo, sin bloquear la respuesta ni romper la creación
+    // si el proveedor falla. Se loguea cualquier error.
+    Promise.allSettled([
+      emailService.sendWelcomeEmail(
+        email,
+        `${nombre} ${apellido}`.trim(),
+        otpCode,
+        WELCOME_OTP_MINUTES,
+      ),
+      currentUser.email
+        ? emailService.sendNewUserNotificationToAdmin(
+            currentUser.email,
+            `${currentUser.nombre || ''} ${currentUser.apellido || ''}`.trim(),
+            { nombre: `${nombre} ${apellido}`.trim(), email, tipo },
+          )
+        : Promise.resolve(null),
+    ]).then((results) => {
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error(`[createUser] correo ${i} fallo:`, r.reason?.message || r.reason);
+        }
+      });
+    });
+
     res.status(201).json({
       ok: true,
-      message: `Usuario ${nombre} ${apellido} creado. La cuenta se activara en su primer ingreso.`,
+      message: `Usuario ${nombre} ${apellido} creado. Se envio un correo con el codigo de acceso.`,
       data: created,
     });
   } catch (err) {

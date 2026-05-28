@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, Subscription, forkJoin, interval, of, startWith } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { BehaviorSubject, Observable, forkJoin, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import type {
   ApiResponse,
@@ -10,8 +11,8 @@ import type {
 } from '@emeltec/shared';
 import { AdministrationService } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
-import type { ConcentratorState, Sensor, SensorBackup, TapKey } from './ventisqueros-data';
-import { TAPS } from './ventisqueros-data';
+import type { Sensor, TapKey } from './ventisqueros-data';
+import { tapKeyFor } from './ventisqueros-data';
 
 export interface SitePollSpec {
   siteId: string;
@@ -19,6 +20,7 @@ export interface SitePollSpec {
 }
 
 const POLL_MS = 30_000;
+const MAX_BACKOFF_MULTIPLIER = 8;
 const DEFAULT_AREA = 'Sensor';
 const DEFAULT_CX = 533;
 const DEFAULT_CY = 400;
@@ -58,11 +60,7 @@ function readBoolean(value: unknown): boolean {
   return false;
 }
 
-function getCoord(
-  mapping: VariableMapping | undefined,
-  key: 'cx' | 'cy' | 'r',
-  fallback: number,
-): number {
+function getCoord(mapping: VariableMapping | undefined, key: 'cx' | 'cy' | 'r', fallback: number): number {
   const params = (mapping?.parametros || {}) as Record<string, unknown>;
   const n = readNumber(params[key]);
   return n ?? fallback;
@@ -81,36 +79,27 @@ export class VentisquerosService {
   private adminService = inject(AdministrationService);
 
   private sensorsSubject = new BehaviorSubject<Sensor[]>([]);
-  private backupSubject = new BehaviorSubject<SensorBackup[]>([]);
-  private concentratorSubject = new BehaviorSubject<ConcentratorState>({
-    alerted: false,
-    lastSeen: null,
-  });
   private lastUpdateSubject = new BehaviorSubject<Date | null>(null);
   private loadingSubject = new BehaviorSubject<boolean>(false);
   private errorSubject = new BehaviorSubject<string | null>(null);
 
   readonly sensors$: Observable<Sensor[]> = this.sensorsSubject.asObservable();
-  readonly backup$: Observable<SensorBackup[]> = this.backupSubject.asObservable();
-  readonly concentrator$: Observable<ConcentratorState> = this.concentratorSubject.asObservable();
   readonly lastUpdate$: Observable<Date | null> = this.lastUpdateSubject.asObservable();
   readonly loading$: Observable<boolean> = this.loadingSubject.asObservable();
   readonly error$: Observable<string | null> = this.errorSubject.asObservable();
 
-  private pollSub: Subscription | null = null;
   private currentKey: string | null = null;
   private currentSites: SitePollSpec[] = [];
   private mappingsBySite = new Map<string, VariableMapping[]>();
+  private consecutiveErrors = 0;
+  private nextPollTimer: ReturnType<typeof setTimeout> | null = null;
 
   startPolling(sites: SitePollSpec[] | string): void {
     const normalized: SitePollSpec[] = Array.isArray(sites)
       ? sites
       : [{ siteId: sites, tap: null }];
-    const key = normalized
-      .map((s) => `${s.siteId}:${s.tap ?? ''}`)
-      .sort()
-      .join('|');
-    if (this.currentKey === key && this.pollSub) return;
+    const key = normalized.map((s) => `${s.siteId}:${s.tap ?? ''}`).sort().join('|');
+    if (this.currentKey === key && this.currentSites.length > 0) return;
     this.stopPolling();
     this.currentKey = key;
     this.currentSites = normalized;
@@ -124,20 +113,26 @@ export class VentisquerosService {
   }
 
   private startInterval(sites: SitePollSpec[]): void {
-    this.pollSub = interval(POLL_MS)
-      .pipe(startWith(0))
-      .subscribe(() => this.fetchDashboards(sites));
+    this.consecutiveErrors = 0;
+    this.scheduleNextPoll(sites, 0);
+  }
+
+  private scheduleNextPoll(sites: SitePollSpec[], delayMs: number): void {
+    if (this.nextPollTimer) clearTimeout(this.nextPollTimer);
+    this.nextPollTimer = setTimeout(() => this.fetchDashboards(sites), delayMs);
+  }
+
+  private nextPollDelay(): number {
+    if (this.consecutiveErrors === 0) return POLL_MS;
+    const multiplier = Math.min(2 ** this.consecutiveErrors, MAX_BACKOFF_MULTIPLIER);
+    return POLL_MS * multiplier;
   }
 
   private loadMappings(sites: SitePollSpec[]): Observable<void> {
     const reqs = sites.map((s) =>
-      this.adminService
-        .getSiteVariables(s.siteId)
-        .pipe(
-          catchError(() =>
-            of<ApiResponse<SiteVariablesPayload>>({ ok: false, data: null as never }),
-          ),
-        ),
+      this.adminService.getSiteVariables(s.siteId).pipe(
+        catchError(() => of<ApiResponse<SiteVariablesPayload>>({ ok: false, data: null as never })),
+      ),
     );
     return forkJoin(reqs).pipe(
       switchMap((results) => {
@@ -152,34 +147,50 @@ export class VentisquerosService {
   }
 
   stopPolling(): void {
-    this.pollSub?.unsubscribe();
-    this.pollSub = null;
+    if (this.nextPollTimer) {
+      clearTimeout(this.nextPollTimer);
+      this.nextPollTimer = null;
+    }
     this.currentKey = null;
     this.currentSites = [];
+    this.consecutiveErrors = 0;
+  }
+
+  refreshNow(): void {
+    if (this.currentSites.length === 0) return;
+    this.consecutiveErrors = 0;
+    this.scheduleNextPoll(this.currentSites, 0);
   }
 
   refresh(): void {
-    if (this.currentSites.length > 0) this.fetchDashboards(this.currentSites);
+    this.refreshNow();
   }
 
   private fetchDashboards(sites: SitePollSpec[]): void {
     this.loadingSubject.next(true);
+    let authFailed = false;
     const reqs = sites.map((s) =>
-      this.companyService
-        .getSiteDashboardData(s.siteId)
-        .pipe(
-          catchError(() =>
-            of<ApiResponse<SiteDashboardData>>({ ok: false, data: {} as SiteDashboardData }),
-          ),
-        ),
+      this.companyService.getSiteDashboardData(s.siteId).pipe(
+        catchError((err: HttpErrorResponse) => {
+          if (err?.status === 401) authFailed = true;
+          return of<ApiResponse<SiteDashboardData>>({
+            ok: false,
+            data: {} as SiteDashboardData,
+            error: this.describeHttpError(err),
+          } as ApiResponse<SiteDashboardData>);
+        }),
+      ),
     );
 
     forkJoin(reqs).subscribe({
       next: (results) => {
+        if (authFailed) {
+          this.errorSubject.next('Sesión expirada. Iniciá sesión nuevamente.');
+          this.loadingSubject.next(false);
+          this.stopPolling();
+          return;
+        }
         const sensors: Sensor[] = [];
-        const backup: SensorBackup[] = [];
-        let lastSeen: string | null = null;
-        let anyAlerta = false;
 
         results.forEach((res, i) => {
           const spec = sites[i];
@@ -189,56 +200,69 @@ export class VentisquerosService {
           const mappingByAlias = new Map<string, VariableMapping>();
           mappings.forEach((m) => mappingByAlias.set(m.alias.toUpperCase(), m));
 
-          if (spec.tap === 'TAP 1') {
-            // TAP 1 envía T/H + ALERTA boolean por sensor (canal redundante).
-            const backupBySensor = this.groupVariables(variables, mappingByAlias);
-            for (const [sensorId, entry] of backupBySensor) {
-              backup.push({
-                id: sensorId,
-                area: entry.area,
-                t: entry.t ?? 0,
-                h: entry.h ?? 0,
-                alertaFisica: entry.alerta,
-                hist: [],
-              });
-              if (entry.alerta) anyAlerta = true;
-            }
-            const ls =
-              res.data.ultima_lectura?.timestamp_completo || res.data.ultima_lectura?.time || null;
-            if (ls) lastSeen = ls;
-          } else {
-            // TAPs 2-4: sensores THM con coordenadas en plano.
-            const grouped = this.groupVariables(variables, mappingByAlias);
-            for (const [sensorId, entry] of grouped) {
-              if (entry.t === null && entry.h === null) continue;
-              sensors.push({
-                id: sensorId,
-                tap: spec.tap ?? 'TAP 2',
-                area: entry.area,
-                cx: entry.cx,
-                cy: entry.cy,
-                r: entry.r,
-                t: entry.t ?? 0,
-                h: entry.h ?? 0,
-                alerted: false,
-                hist: [],
-              });
-            }
+          const tapLabel: TapKey = spec.tap ?? tapKeyFor(i);
+          const grouped = this.groupVariables(variables, mappingByAlias);
+          for (const [sensorId, entry] of grouped) {
+            if (entry.t === null && entry.h === null) continue;
+            sensors.push({
+              id: sensorId,
+              tap: tapLabel,
+              area: entry.area,
+              cx: entry.cx,
+              cy: entry.cy,
+              r: entry.r,
+              t: entry.t ?? 0,
+              h: entry.h ?? 0,
+              alerted: entry.alerta,
+              hist: [],
+            });
           }
         });
 
-        this.sensorsSubject.next(sensors);
-        this.backupSubject.next(backup);
-        this.concentratorSubject.next({ alerted: anyAlerta, lastSeen });
-        this.lastUpdateSubject.next(new Date());
-        this.errorSubject.next(null);
+        const anyFailed = results.some((r) => !r.ok);
+        if (anyFailed && results.every((r) => !r.ok)) {
+          this.consecutiveErrors++;
+          const firstError = results.find((r) => !r.ok)?.error;
+          this.errorSubject.next(
+            firstError || 'No se pudo cargar la lectura. Reintentando con backoff.',
+          );
+        } else {
+          this.consecutiveErrors = 0;
+          this.errorSubject.next(null);
+          this.sensorsSubject.next(sensors);
+          this.lastUpdateSubject.next(new Date());
+        }
         this.loadingSubject.next(false);
+
+        if (this.currentSites.length > 0) {
+          this.scheduleNextPoll(this.currentSites, this.nextPollDelay());
+        }
       },
       error: (err) => {
-        this.errorSubject.next(err?.message ?? 'Error al cargar lecturas cold-room');
+        this.consecutiveErrors++;
+        this.errorSubject.next(this.describeHttpError(err));
         this.loadingSubject.next(false);
+        if (this.currentSites.length > 0) {
+          this.scheduleNextPoll(this.currentSites, this.nextPollDelay());
+        }
       },
     });
+  }
+
+  private describeHttpError(err: unknown): string {
+    if (err && typeof err === 'object') {
+      const status = (err as { status?: number }).status;
+      if (status === 401) return 'Sesión expirada. Iniciá sesión nuevamente.';
+      if (status === 403) return 'Sin permisos para ver este sitio.';
+      if (status === 404) return 'Sitio no encontrado.';
+      if (status === 429) return 'Demasiadas solicitudes. Reintentando con backoff.';
+      if (typeof status === 'number' && status >= 500) {
+        return 'Servidor no disponible. Reintentando con backoff.';
+      }
+      const message = (err as { message?: string }).message;
+      if (message) return message;
+    }
+    return 'Sin conexión con el servidor.';
   }
 
   private groupVariables(
@@ -246,27 +270,11 @@ export class VentisquerosService {
     mappingByAlias: Map<string, VariableMapping>,
   ): Map<
     string,
-    {
-      t: number | null;
-      h: number | null;
-      alerta: boolean;
-      area: string;
-      cx: number;
-      cy: number;
-      r: number;
-    }
+    { t: number | null; h: number | null; alerta: boolean; area: string; cx: number; cy: number; r: number }
   > {
     const out = new Map<
       string,
-      {
-        t: number | null;
-        h: number | null;
-        alerta: boolean;
-        area: string;
-        cx: number;
-        cy: number;
-        r: number;
-      }
+      { t: number | null; h: number | null; alerta: boolean; area: string; cx: number; cy: number; r: number }
     >();
     for (const v of variables) {
       const parts = parseAlias(v.alias);
@@ -291,6 +299,3 @@ export class VentisquerosService {
     return out;
   }
 }
-
-// Re-export para uso interno donde sea necesario.
-export const VENTISQUEROS_TAPS = TAPS;

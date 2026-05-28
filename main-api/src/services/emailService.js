@@ -7,22 +7,36 @@ const FROM_ADDRESS = process.env.RESEND_FROM || 'Emeltec - Panel Industrial <nor
 const ACCESS_URL = process.env.FRONTEND_URL || 'https://cloud.emeltec.cl/login';
 
 const LOGO_CID = 'emeltec-logo';
-const LOGO_PATH = path.join(
-  __dirname,
-  '..',
-  '..',
-  '..',
-  'frontend-angular',
-  'public',
-  'images',
-  'emeltec-logo.png',
-);
+const LOGO_CANDIDATES = [
+  process.env.EMAIL_LOGO_PATH,
+  path.join(__dirname, '..', '..', 'assets', 'emeltec-logo.png'),
+  path.join(
+    __dirname,
+    '..',
+    '..',
+    '..',
+    'frontend-angular',
+    'public',
+    'images',
+    'emeltec-logo.png',
+  ),
+].filter(Boolean);
 
 let logoBuffer = null;
-try {
-  logoBuffer = fs.readFileSync(LOGO_PATH);
-} catch (err) {
-  console.warn('[emailService] Logo no encontrado en', LOGO_PATH, '-', err.message);
+let logoResolvedPath = null;
+for (const candidate of LOGO_CANDIDATES) {
+  try {
+    logoBuffer = fs.readFileSync(candidate);
+    logoResolvedPath = candidate;
+    break;
+  } catch {
+    // probar siguiente candidato
+  }
+}
+if (logoBuffer) {
+  console.log('[emailService] Logo cargado desde', logoResolvedPath);
+} else {
+  console.warn('[emailService] Logo no encontrado en candidatos:', LOGO_CANDIDATES);
 }
 
 function resolveAccessHost() {

@@ -2,7 +2,7 @@ export const PLANO_W = 1066.6667;
 export const PLANO_H = 800;
 
 export type MetricKey = 'T' | 'H' | 'A';
-export type TapKey = 'TAP 1' | 'TAP 2' | 'TAP 3' | 'TAP 4';
+export type TapKey = string;
 
 export interface SensorBase {
   id: string;
@@ -20,29 +20,44 @@ export interface Sensor extends SensorBase {
   alerted: boolean;
 }
 
-export interface ConcentratorState {
-  alerted: boolean;
-  lastSeen: string | null;
+const TAP_COLOR_PALETTE = [
+  '#0DAFBD',
+  '#0EA5E9',
+  '#6366F1',
+  '#8B5CF6',
+  '#22C55E',
+  '#F59E0B',
+  '#F97316',
+  '#EC4899',
+];
+
+export function tapKeyFor(index: number): TapKey {
+  return `TAP ${index + 1}`;
 }
 
-export interface SensorBackup {
-  id: string;
-  area: string;
-  t: number;
-  h: number;
-  alertaFisica: boolean;
-  hist: number[];
+export function tapColorFor(index: number): string {
+  return TAP_COLOR_PALETTE[index % TAP_COLOR_PALETTE.length];
 }
 
-export const TAPS: TapKey[] = ['TAP 1', 'TAP 2', 'TAP 3', 'TAP 4'];
+export function buildTapKeys(count: number): TapKey[] {
+  return Array.from({ length: count }, (_, i) => tapKeyFor(i));
+}
 
-// Concentrador maestro (TAP 1) + 3 TAPs de sensores THM.
-export const TAP_COLORS: Record<TapKey, string> = {
-  'TAP 1': '#0DAFBD',
-  'TAP 2': '#0EA5E9',
-  'TAP 3': '#6366F1',
-  'TAP 4': '#8B5CF6',
-};
+export function buildTapColors(count: number): Record<TapKey, string> {
+  const out: Record<TapKey, string> = {};
+  for (let i = 0; i < count; i++) {
+    out[tapKeyFor(i)] = tapColorFor(i);
+  }
+  return out;
+}
+
+export function tapIndexFromKey(key: TapKey | null | undefined): number {
+  if (!key) return 0;
+  const match = key.match(/(\d+)/);
+  if (!match) return 0;
+  const n = Number(match[1]);
+  return Number.isFinite(n) && n > 0 ? n - 1 : 0;
+}
 
 // Escala invertida: -40°C es objetivo (teal "safe"), más caliente = peor.
 const TEMP_STOPS: Array<[number, [number, number, number]]> = [

@@ -20,15 +20,14 @@ import { CompanyService } from '../../services/company.service';
 import { SiteVariableSettingsPanelComponent } from '../companies/components/site-variable-settings-panel';
 import { VentisquerosService } from './ventisqueros.service';
 import {
-  ConcentratorState,
   Sensor,
-  SensorBackup,
-  TAPS,
-  TAP_COLORS,
   TapKey,
   fmtHum,
   fmtTemp,
   humColor,
+  tapColorFor,
+  tapIndexFromKey,
+  tapKeyFor,
   tempColor,
 } from './ventisqueros-data';
 
@@ -52,33 +51,29 @@ type DetailTab = 'resumen' | 'configuracion';
           type="button"
           [routerLink]="backLink()"
           class="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E2E8F0] bg-white text-slate-500 transition-colors hover:text-sky-600"
+          aria-label="Volver a instalaciones"
         >
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_back</span>
         </button>
         <div
           class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg"
           [style.background]="tapColor() + '1A'"
           [style.border]="'1px solid ' + tapColor() + '40'"
         >
-          <span class="material-symbols-outlined text-[18px]" [style.color]="tapColor()">
-            {{ isConcentrator() ? 'hub' : 'memory' }}
-          </span>
+          <span class="material-symbols-outlined text-[18px]" [style.color]="tapColor()">memory</span>
         </div>
         <div class="min-w-0">
-          <div class="tap-title truncate">{{ siteName() }} · {{ tapId() }}</div>
+          <div class="tap-title truncate">
+            {{ siteName() }} · {{ tapId() }}
+          </div>
           <div class="mt-0.5 text-[11px] text-slate-400">
-            @if (isConcentrator()) {
-              Concentrador maestro · redundancia y alertas
-            } @else {
-              {{ sensors().length }} sensores THM
-            }
+            {{ sensors().length }} sensores THM
           </div>
         </div>
         <span
-          class="ml-3 flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium"
-          [style.background]="serviceError() ? '#FEF2F2' : '#F0FDF4'"
-          [style.border-color]="serviceError() ? 'rgba(239,68,68,0.30)' : '#bbf7d0'"
-          [style.color]="serviceError() ? '#B91C1C' : '#16a34a'"
+          class="ml-auto flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
+          [style.color]="serviceError() ? '#B91C1C' : '#64748B'"
+          [title]="liveLabel()"
         >
           <span
             class="inline-block h-1.5 w-1.5 rounded-full"
@@ -86,314 +81,172 @@ type DetailTab = 'resumen' | 'configuracion';
           ></span>
           {{ liveLabel() }}
         </span>
-      </div>
-
-      <!-- Sub-tabs -->
-      <div class="tap-tabs-bar flex shrink-0 items-center gap-0">
         <button
           type="button"
-          class="tap-tab-btn flex items-center gap-1.5"
-          [class.tap-tab-btn--active]="tab() === 'resumen'"
-          (click)="tab.set('resumen')"
+          class="ml-2 flex h-9 items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 text-[12px] font-medium text-slate-600 transition-colors hover:text-sky-600"
+          [class.tap-config-btn--active]="tab() === 'configuracion'"
+          (click)="tab.set(tab() === 'configuracion' ? 'resumen' : 'configuracion')"
+          [title]="tab() === 'configuracion' ? 'Volver al resumen' : 'Configurar variables'"
+          [attr.aria-pressed]="tab() === 'configuracion'"
+          [attr.aria-label]="tab() === 'configuracion' ? 'Volver al resumen' : 'Configurar variables'"
         >
-          <span class="material-symbols-outlined text-[13px]">dashboard</span>
-          Resumen
-        </button>
-        <button
-          type="button"
-          class="tap-tab-btn flex items-center gap-1.5"
-          [class.tap-tab-btn--active]="tab() === 'configuracion'"
-          (click)="tab.set('configuracion')"
-        >
-          <span class="material-symbols-outlined text-[13px]">tune</span>
-          Configuración
+          <span class="material-symbols-outlined text-[16px]" aria-hidden="true">
+            {{ tab() === 'configuracion' ? 'arrow_back' : 'tune' }}
+          </span>
+          {{ tab() === 'configuracion' ? 'Resumen' : 'Configurar' }}
         </button>
       </div>
 
       <!-- Content -->
       <div class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
         @if (tab() === 'resumen') {
-          @if (isConcentrator()) {
-            <!-- TAP 1 concentrador: redundancia THM + alertas físicas -->
-            <div
-              class="mb-4 flex items-center justify-between gap-3 rounded-2xl border bg-white px-5 py-4 shadow-sm"
-              [style.border-color]="concentrator().alerted ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
-            >
-              <div class="flex items-center gap-3 min-w-0">
+            <!-- KPI strip -->
+            <div class="kpi-strip mb-7 flex flex-wrap items-end gap-8">
+              <div class="kpi-hero">
                 <div
-                  class="flex h-10 w-10 items-center justify-center rounded-xl"
-                  [style.background]="
-                    concentrator().alerted ? 'rgba(239,68,68,0.12)' : tapColor() + '1A'
-                  "
-                  [style.border]="
-                    '1px solid ' +
-                    (concentrator().alerted ? 'rgba(239,68,68,0.35)' : tapColor() + '40')
-                  "
+                  class="kpi-hero-value"
+                  [style.color]="stats().alerts > 0 ? '#DC2626' : tapColor()"
                 >
-                  <span
-                    class="material-symbols-outlined text-[20px]"
-                    [style.color]="concentrator().alerted ? '#DC2626' : tapColor()"
-                  >
-                    {{ concentrator().alerted ? 'gpp_maybe' : 'hub' }}
-                  </span>
+                  {{ stats().alerts > 0 ? stats().alerts : stats().count }}
                 </div>
-                <div class="min-w-0">
-                  <h2 class="tap-h3">Estado del concentrador maestro</h2>
-                  <p class="text-[11.5px] text-slate-500 mt-0.5 truncate">
-                    Redundancia THM · {{ backup().length }} sensores con lectura física
-                  </p>
+                <div class="kpi-hero-label">
+                  {{ stats().alerts === 1 ? 'sensor en alerta' : stats().alerts > 0 ? 'sensores en alerta' : 'sensores en operación' }}
                 </div>
               </div>
-              <span
-                class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[11px] font-semibold uppercase tracking-widest"
-                [style.background]="concentrator().alerted ? '#FEF2F2' : '#F0FDF4'"
-                [style.color]="concentrator().alerted ? '#B91C1C' : '#15803D'"
-                [style.border-color]="
-                  concentrator().alerted ? 'rgba(239,68,68,0.30)' : 'rgba(34,197,94,0.30)'
-                "
-              >
-                <span
-                  class="h-2 w-2 rounded-full"
-                  [style.background]="concentrator().alerted ? '#EF4444' : '#22C55E'"
-                ></span>
-                {{ concentrator().alerted ? 'EN ALERTA' : 'OK' }}
-              </span>
-            </div>
-
-            <!-- KPIs backup -->
-            <div class="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div class="kpi-card">
-                <div class="kpi-label">SENSORES BACKUP</div>
-                <div class="kpi-value" [style.color]="tapColor()">{{ backupStats().count }}</div>
-                <div class="kpi-sub">canal redundante TAP 1</div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-label">TEMP PROMEDIO</div>
-                <div class="kpi-value text-slate-800">
-                  {{ backupStats().avgT }}<span class="kpi-unit">°C</span>
-                </div>
-                <div class="kpi-sub">lectura redundante</div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-label">HUMEDAD PROM.</div>
-                <div class="kpi-value text-slate-800">
-                  {{ backupStats().avgH }}<span class="kpi-unit">%</span>
-                </div>
-                <div class="kpi-sub">HR promedio</div>
-              </div>
-              <div
-                class="kpi-card"
-                [style.border-color]="backupStats().alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
-              >
-                <div class="kpi-label">ALERTAS FÍSICAS</div>
-                <div
-                  class="kpi-value"
-                  [style.color]="backupStats().alerts > 0 ? '#DC2626' : '#15803D'"
-                >
-                  {{ backupStats().alerts }}
-                </div>
-                <div class="kpi-sub">
-                  {{ backupStats().alerts > 0 ? 'contactos secos activos' : 'sin alertas físicas' }}
-                </div>
+              <div class="kpi-meta flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                <span>Temp prom <strong>{{ stats().avgT }}°C</strong></span>
+                <span>HR prom <strong>{{ stats().avgH }}%</strong></span>
+                <span class="kpi-meta-tap">{{ tapId() }}</span>
               </div>
             </div>
 
-            <!-- Grid sensores backup -->
-            <div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              @for (b of backup(); track b.id) {
-                <div
-                  class="sensor-card flex flex-col gap-3"
-                  [class.sensor-card--alert]="b.alertaFisica"
-                >
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
-                      <div class="flex items-center gap-1.5">
-                        <span class="sensor-id-chip">{{ b.id }}</span>
-                        @if (b.alertaFisica) {
-                          <span class="sensor-alert-chip">ALERTA FÍSICA</span>
-                        }
+            <!-- Alertas destacadas -->
+            @if (alertedSensors().length > 0) {
+              <section class="mb-6">
+                <h3 class="section-title mb-2 text-rose-700">
+                  Sensores en alerta
+                  <span class="section-count">{{ alertedSensors().length }}</span>
+                </h3>
+                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  @for (s of alertedSensors(); track s.id) {
+                    <article class="alert-card">
+                      <div class="flex items-start justify-between gap-2">
+                        <div class="min-w-0">
+                          <div class="flex items-center gap-1.5">
+                            <span class="sensor-id-chip">{{ s.id }}</span>
+                            <span class="sensor-alert-chip">ALERTA</span>
+                          </div>
+                          <div class="sensor-area mt-1.5 truncate">{{ s.area }}</div>
+                        </div>
+                        <div
+                          class="h-2.5 w-2.5 shrink-0 rounded-full"
+                          [style.background]="tempColor(s.t)"
+                          [style.box-shadow]="'0 0 0 4px rgba(239,68,68,0.20)'"
+                        ></div>
                       </div>
-                      <div class="sensor-area mt-1.5 truncate">{{ b.area }}</div>
-                    </div>
-                    <div
-                      class="h-2.5 w-2.5 shrink-0 rounded-full"
-                      [style.background]="tempColor(b.t)"
-                      [style.box-shadow]="
-                        b.alertaFisica ? '0 0 0 4px rgba(239,68,68,0.20)' : 'none'
-                      "
-                    ></div>
-                  </div>
-                  <div class="flex items-baseline gap-3">
-                    <div>
-                      <div
-                        class="sensor-metric-val"
-                        [style.color]="b.alertaFisica ? '#B91C1C' : '#1E293B'"
-                      >
-                        {{ fmtTemp(b.t) }}
+                      <div class="mt-3 flex items-baseline gap-4">
+                        <div>
+                          <div class="sensor-metric-val text-rose-700">{{ fmtTemp(s.t) }}</div>
+                          <div class="sensor-metric-lbl">temperatura</div>
+                        </div>
+                        <div>
+                          <div class="sensor-metric-val text-slate-700">{{ fmtHum(s.h) }}</div>
+                          <div class="sensor-metric-lbl">humedad</div>
+                        </div>
                       </div>
-                      <div class="sensor-metric-lbl">T° respaldo</div>
-                    </div>
-                    <div>
-                      <div class="sensor-metric-val text-slate-700">{{ fmtHum(b.h) }}</div>
-                      <div class="sensor-metric-lbl">HR respaldo</div>
-                    </div>
-                  </div>
-                  <svg viewBox="0 0 120 32" class="h-8 w-full">
-                    <path
-                      [attr.d]="sparkPath(b.hist)"
-                      fill="none"
-                      [attr.stroke]="tempColor(b.t)"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
+                      <svg viewBox="0 0 120 32" class="mt-2 h-8 w-full">
+                        <path
+                          [attr.d]="sparkPath(s.hist)"
+                          fill="none"
+                          [attr.stroke]="tempColor(s.t)"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </article>
+                  }
                 </div>
-              }
-              @if (backup().length === 0) {
-                <div
-                  class="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center"
-                >
-                  <span class="material-symbols-outlined text-[28px] text-slate-300"
-                    >sensors_off</span
-                  >
-                  <div class="mt-2 text-[13px] font-semibold text-slate-500">
-                    Sin lectura redundante disponible
-                  </div>
-                </div>
-              }
-            </div>
-
-            <!-- Histórico chart backup -->
-            @if (backup().length > 0) {
-              <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="mb-3 flex items-center justify-between">
-                  <div>
-                    <h3 class="tap-h3">Histórico de temperatura (canal redundante)</h3>
-                    <p class="mt-0.5 text-[11.5px] text-slate-500">
-                      Últimas 24 lecturas por sensor desde TAP 1
-                    </p>
-                  </div>
-                </div>
-                <div class="h-[260px]">
-                  <canvas #chartCanvas></canvas>
-                </div>
-              </div>
+              </section>
             }
-          } @else {
-            <!-- KPIs -->
-            <div class="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <div class="kpi-card">
-                <div class="kpi-label">SENSORES</div>
-                <div class="kpi-value" [style.color]="tapColor()">{{ stats().count }}</div>
-                <div class="kpi-sub">activos en {{ tapId() }}</div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-label">TEMP PROMEDIO</div>
-                <div class="kpi-value text-slate-800">
-                  {{ stats().avgT }}<span class="kpi-unit">°C</span>
-                </div>
-                <div class="kpi-sub">últimos {{ stats().count }} sensores</div>
-              </div>
-              <div class="kpi-card">
-                <div class="kpi-label">HUMEDAD PROM.</div>
-                <div class="kpi-value text-slate-800">
-                  {{ stats().avgH }}<span class="kpi-unit">%</span>
-                </div>
-                <div class="kpi-sub">HR media del TAP</div>
-              </div>
-              <div
-                class="kpi-card"
-                [style.border-color]="stats().alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
-              >
-                <div class="kpi-label">ALERTAS</div>
-                <div class="kpi-value" [style.color]="stats().alerts > 0 ? '#DC2626' : '#15803D'">
-                  {{ stats().alerts }}
-                </div>
-                <div class="kpi-sub">
-                  {{ stats().alerts > 0 ? 'sensores fuera de rango' : 'todos en rango' }}
-                </div>
-              </div>
-            </div>
 
-            <!-- Grid sensores -->
-            <div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              @for (s of sensors(); track s.id) {
-                <div class="sensor-card flex flex-col gap-3" [class.sensor-card--alert]="s.alerted">
-                  <div class="flex items-start justify-between gap-2">
-                    <div class="min-w-0">
-                      <div class="flex items-center gap-1.5">
-                        <span class="sensor-id-chip">{{ s.id }}</span>
-                        @if (s.alerted) {
-                          <span class="sensor-alert-chip">ALERTA</span>
-                        }
-                      </div>
-                      <div class="sensor-area mt-1.5 truncate">{{ s.area }}</div>
-                    </div>
-                    <div
-                      class="h-2.5 w-2.5 shrink-0 rounded-full"
-                      [style.background]="tempColor(s.t)"
-                      [style.box-shadow]="s.alerted ? '0 0 0 4px rgba(239,68,68,0.20)' : 'none'"
-                    ></div>
+            <!-- Operación normal: lista densa -->
+            <section class="mb-6">
+              <h3 class="section-title mb-2">
+                Operación normal
+                <span class="section-count">{{ normalSensors().length }}</span>
+              </h3>
+              @if (normalSensors().length > 0) {
+                <div class="sensor-table" role="table" aria-label="Sensores en operación normal">
+                  <div class="sensor-table-head" role="row">
+                    <span role="columnheader">Sensor</span>
+                    <span role="columnheader">Ubicación</span>
+                    <span class="text-right" role="columnheader">Temp</span>
+                    <span class="text-right" role="columnheader">HR</span>
+                    <span role="columnheader">Tendencia 24h</span>
                   </div>
-                  <div class="flex items-baseline gap-3">
-                    <div>
-                      <div
-                        class="sensor-metric-val"
-                        [style.color]="s.alerted ? '#B91C1C' : '#1E293B'"
-                      >
-                        {{ fmtTemp(s.t) }}
-                      </div>
-                      <div class="sensor-metric-lbl">temperatura</div>
+                  @for (s of normalSensors(); track s.id) {
+                    <div class="sensor-row" [title]="s.area" role="row">
+                      <span class="sensor-id-chip" role="cell">{{ s.id }}</span>
+                      <span class="sensor-row-area truncate" role="cell">{{ s.area }}</span>
+                      <span class="sensor-row-temp text-right" role="cell">{{ fmtTemp(s.t) }}</span>
+                      <span class="sensor-row-hum text-right" role="cell">{{ fmtHum(s.h) }}</span>
+                      <svg viewBox="0 0 120 18" class="sensor-row-spark" role="cell" [attr.aria-label]="'Tendencia ' + s.id">
+                        <path
+                          [attr.d]="sparkPathTight(s.hist)"
+                          fill="none"
+                          [attr.stroke]="tempColor(s.t)"
+                          stroke-width="1.4"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                        />
+                      </svg>
                     </div>
-                    <div>
-                      <div class="sensor-metric-val text-slate-700">{{ fmtHum(s.h) }}</div>
-                      <div class="sensor-metric-lbl">humedad</div>
-                    </div>
-                  </div>
-                  <svg viewBox="0 0 120 32" class="h-8 w-full">
-                    <path
-                      [attr.d]="sparkPath(s.hist)"
-                      fill="none"
-                      [attr.stroke]="tempColor(s.t)"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
+                  }
                 </div>
-              }
-              @if (sensors().length === 0) {
-                <div
-                  class="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white py-10 text-center"
-                >
-                  <span class="material-symbols-outlined text-[28px] text-slate-300"
-                    >sensors_off</span
-                  >
-                  <div class="mt-2 text-[13px] font-semibold text-slate-500">
+              } @else if (sensors().length === 0 && isLoading()) {
+                <div class="sensor-table" aria-label="Cargando sensores">
+                  <div class="sensor-table-head">
+                    <span>Sensor</span>
+                    <span>Ubicación</span>
+                    <span class="text-right">Temp</span>
+                    <span class="text-right">HR</span>
+                    <span>Tendencia 24h</span>
+                  </div>
+                  @for (_ of [1,2,3,4,5]; track $index) {
+                    <div class="skeleton-row" aria-hidden="true">
+                      <span class="skeleton-bar" style="width:48px"></span>
+                      <span class="skeleton-bar" style="width:60%"></span>
+                      <span class="skeleton-bar" style="width:56px; margin-left:auto"></span>
+                      <span class="skeleton-bar" style="width:40px; margin-left:auto"></span>
+                      <span class="skeleton-bar" style="width:100%"></span>
+                    </div>
+                  }
+                </div>
+              } @else if (sensors().length === 0) {
+                <div class="empty-block">
+                  <span class="material-symbols-outlined text-[28px] text-slate-300" aria-hidden="true">sensors_off</span>
+                  <div class="mt-2 text-[13px] font-medium text-slate-500">
                     Sin sensores en {{ tapId() }}
                   </div>
                 </div>
               }
-            </div>
+            </section>
 
             <!-- Histórico chart -->
             @if (sensors().length > 0) {
-              <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div class="mb-3 flex items-center justify-between">
-                  <div>
-                    <h3 class="tap-h3">Histórico de temperatura</h3>
-                    <p class="mt-0.5 text-[11.5px] text-slate-500">
-                      Últimas 24 lecturas por sensor
-                    </p>
+              <section>
+                <div class="mb-3 flex items-baseline justify-between gap-3">
+                  <h3 class="section-title">Histórico de temperatura</h3>
+                  <span class="section-meta">últimas 24 lecturas</span>
+                </div>
+                <div class="chart-shell">
+                  <div class="h-[280px]">
+                    <canvas #chartCanvas></canvas>
                   </div>
                 </div>
-                <div class="h-[260px]">
-                  <canvas #chartCanvas></canvas>
-                </div>
-              </div>
+              </section>
             }
-          }
         }
 
         @if (tab() === 'configuracion') {
@@ -425,84 +278,103 @@ type DetailTab = 'resumen' | 'configuracion';
         color: #1e293b;
         letter-spacing: 0.02em;
       }
-      .tap-h2 {
-        font-family: 'Josefin Sans', sans-serif;
-        font-size: 18px;
-        font-weight: 600;
-        color: #1e293b;
-        letter-spacing: 0.02em;
-      }
       .tap-h3 {
-        font-family: 'Josefin Sans', sans-serif;
-        font-size: 14px;
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
         font-weight: 600;
         color: #1e293b;
-        letter-spacing: 0.02em;
+        letter-spacing: 0.01em;
       }
-      .tap-tabs-bar {
-        background: #ffffff;
-        border-bottom: 1px solid #e2e8f0;
-        padding: 0 20px;
-      }
-      .tap-tab-btn {
-        padding: 12px 14px;
-        font-size: 13px;
-        font-weight: 500;
-        background: none;
-        border: none;
-        border-bottom: 2px solid transparent;
-        cursor: pointer;
-        color: #64748b;
-        transition:
-          color 0.12s ease,
-          border-color 0.12s ease;
-      }
-      .tap-tab-btn--active {
+      .tap-config-btn--active {
+        background: rgba(2, 132, 199, 0.08);
         color: #0284c7;
-        border-bottom-color: #0284c7;
+        border-color: rgba(2, 132, 199, 0.30);
       }
-      .kpi-card {
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        padding: 14px 16px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+
+      /* Focus visible (a11y) */
+      button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid #0284c7;
+        outline-offset: 2px;
+        border-radius: 8px;
       }
-      .kpi-label {
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #94a3b8;
+      .sensor-row:focus-visible {
+        outline: 2px solid #0284c7;
+        outline-offset: -2px;
       }
-      .kpi-value {
+
+      .kpi-strip {
+        padding-left: 2px;
+      }
+      .kpi-hero-value {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 24px;
+        font-size: 44px;
         font-weight: 600;
-        line-height: 1.1;
-        margin-top: 4px;
+        line-height: 0.95;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: -0.02em;
       }
-      .kpi-unit {
-        font-size: 12px;
+      .kpi-hero-label {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: #94a3b8;
+        margin-top: 6px;
+      }
+      .kpi-meta {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12.5px;
         color: #64748b;
-        margin-left: 2px;
+        padding-bottom: 4px;
       }
-      .kpi-sub {
+      .kpi-meta strong {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
+      }
+      .kpi-meta-tap {
+        font-family: 'JetBrains Mono', monospace;
         font-size: 11px;
         color: #94a3b8;
-        margin-top: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
       }
-      .sensor-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
+
+      .section-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #475569;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .section-count {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+        letter-spacing: 0;
+        text-transform: none;
+      }
+      .section-meta {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 11px;
+        color: #94a3b8;
+      }
+
+      .alert-card {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent 70%);
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 14px;
         padding: 14px 16px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
       }
-      .sensor-card--alert {
-        border-color: rgba(239, 68, 68, 0.3);
-        background: linear-gradient(135deg, rgba(239, 68, 68, 0.04), #ffffff 70%);
-      }
+
       .sensor-id-chip {
         font-family: 'JetBrains Mono', monospace;
         font-size: 10.5px;
@@ -518,26 +390,135 @@ type DetailTab = 'resumen' | 'configuracion';
         font-size: 9.5px;
         font-weight: 600;
         letter-spacing: 0.04em;
-        background: rgba(239, 68, 68, 0.1);
+        background: rgba(239, 68, 68, 0.10);
         border: 1px solid rgba(239, 68, 68, 0.25);
         color: #b91c1c;
         border-radius: 4px;
         padding: 1px 5px;
       }
       .sensor-area {
+        font-family: 'DM Sans', sans-serif;
         font-size: 13px;
         color: #1e293b;
       }
       .sensor-metric-val {
         font-family: 'JetBrains Mono', monospace;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 600;
         line-height: 1;
+        font-variant-numeric: tabular-nums;
       }
       .sensor-metric-lbl {
+        font-family: 'DM Sans', sans-serif;
         font-size: 10.5px;
         color: #94a3b8;
         margin-top: 3px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      /* Dense sensor table */
+      .sensor-table {
+        border-top: 1px solid #e2e8f0;
+      }
+      .sensor-table-head,
+      .sensor-row {
+        display: grid;
+        grid-template-columns: 60px minmax(0, 1fr) 84px 64px 120px;
+        align-items: center;
+        gap: 14px;
+        padding: 8px 4px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .sensor-table-head {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 10px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #94a3b8;
+        padding-top: 10px;
+        padding-bottom: 10px;
+        background: transparent;
+      }
+      .sensor-row {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 13px;
+        color: #1e293b;
+        transition: background 0.12s ease;
+      }
+      .sensor-row:hover {
+        background: rgba(2, 132, 199, 0.03);
+      }
+      .sensor-row-area {
+        color: #475569;
+      }
+      .sensor-row-temp {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 600;
+        color: #1e293b;
+        font-variant-numeric: tabular-nums;
+      }
+      .sensor-row-hum {
+        font-family: 'JetBrains Mono', monospace;
+        color: #64748b;
+        font-variant-numeric: tabular-nums;
+      }
+      .sensor-row-spark {
+        height: 18px;
+        width: 100%;
+      }
+
+      .empty-block {
+        border: 1px dashed #e2e8f0;
+        border-radius: 12px;
+        padding: 28px;
+        text-align: center;
+      }
+
+      .chart-shell {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 18px 18px 8px;
+      }
+
+      /* Skeleton loading */
+      .skeleton-row {
+        display: grid;
+        grid-template-columns: 60px minmax(0, 1fr) 84px 64px 120px;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 4px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .skeleton-bar {
+        height: 12px;
+        border-radius: 4px;
+        background: linear-gradient(
+          90deg,
+          rgba(148, 163, 184, 0.10),
+          rgba(148, 163, 184, 0.22),
+          rgba(148, 163, 184, 0.10)
+        );
+        background-size: 200% 100%;
+        animation: skelShimmer 1.4s linear infinite;
+      }
+      @keyframes skelShimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .skeleton-bar {
+          animation: none;
+        }
+      }
+
+      .kpi-hero-value {
+        max-width: 240px;
+        overflow: hidden;
+        text-overflow: clip;
       }
     `,
   ],
@@ -565,20 +546,13 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
     const rawParam = this.params().get('tapId');
     if (rawParam) {
       const decoded = decodeURIComponent(rawParam).toUpperCase().replace(/-/g, ' ').trim();
-      const match = TAPS.find((t) => t === decoded || t.replace(' ', '-') === decoded);
-      if (match) return match;
+      const match = decoded.match(/TAP\s*(\d+)/);
+      if (match) return tapKeyFor(Number(match[1]) - 1);
     }
-    const site = this.siteRecord();
-    if (site) {
-      const desc = (site.descripcion || '').toUpperCase().replace(/-/g, ' ').trim();
-      const matchFromSite = TAPS.find((t) => desc.includes(t));
-      if (matchFromSite) return matchFromSite;
-    }
-    return TAPS[0];
+    return tapKeyFor(0);
   });
 
-  readonly tapColor = computed(() => TAP_COLORS[this.tapId()]);
-  readonly isConcentrator = computed(() => this.tapId() === 'TAP 1');
+  readonly tapColor = computed(() => tapColorFor(tapIndexFromKey(this.tapId())));
 
   readonly siteName = computed(() => this.siteRecord()?.descripcion || 'Sitio');
 
@@ -586,14 +560,6 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
     initialValue: [] as Sensor[],
   });
   readonly sensors = computed(() => this.allSensors().filter((s) => s.tap === this.tapId()));
-
-  readonly backup = toSignal(this.service.backup$, {
-    initialValue: [] as SensorBackup[],
-  });
-
-  readonly concentrator = toSignal(this.service.concentrator$, {
-    initialValue: { alerted: false, lastSeen: null } as ConcentratorState,
-  });
 
   readonly lastUpdate = toSignal(this.service.lastUpdate$, { initialValue: null as Date | null });
   readonly serviceError = toSignal(this.service.error$, { initialValue: null as string | null });
@@ -621,18 +587,8 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
     };
   });
 
-  readonly backupStats = computed(() => {
-    const list = this.backup();
-    if (list.length === 0) return { count: 0, avgT: '—', avgH: 0, alerts: 0 };
-    const ts = list.map((s) => s.t);
-    const hs = list.map((s) => s.h);
-    return {
-      count: list.length,
-      avgT: (ts.reduce((a, b) => a + b, 0) / ts.length).toFixed(1),
-      avgH: Math.round(hs.reduce((a, b) => a + b, 0) / hs.length),
-      alerts: list.filter((s) => s.alertaFisica).length,
-    };
-  });
+  readonly alertedSensors = computed(() => this.sensors().filter((s) => s.alerted));
+  readonly normalSensors = computed(() => this.sensors().filter((s) => !s.alerted));
 
   private chart: Chart | null = null;
   private intervalId: ReturnType<typeof setInterval> | null = null;
@@ -644,9 +600,7 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
         this.destroyChart();
         return;
       }
-      const list = this.isConcentrator()
-        ? this.backup().map((b) => ({ id: b.id, hist: b.hist, t: b.t }))
-        : this.sensors().map((s) => ({ id: s.id, hist: s.hist, t: s.t }));
+      const list = this.sensors().map((s) => ({ id: s.id, hist: s.hist, t: s.t }));
       if (list.length === 0) {
         this.destroyChart();
         return;
@@ -682,9 +636,7 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
 
   ngAfterViewInit(): void {
     queueMicrotask(() => {
-      const list = this.isConcentrator()
-        ? this.backup().map((b) => ({ id: b.id, hist: b.hist, t: b.t }))
-        : this.sensors().map((s) => ({ id: s.id, hist: s.hist, t: s.t }));
+      const list = this.sensors().map((s) => ({ id: s.id, hist: s.hist, t: s.t }));
       this.renderChartFor(list);
     });
   }
@@ -701,6 +653,14 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
   humColor = humColor;
 
   sparkPath(hist: number[]): string {
+    return this.buildSparkPath(hist, 32);
+  }
+
+  sparkPathTight(hist: number[]): string {
+    return this.buildSparkPath(hist, 18);
+  }
+
+  private buildSparkPath(hist: number[], height: number): string {
     if (!hist || hist.length === 0) return '';
     const min = Math.min(...hist);
     const max = Math.max(...hist);
@@ -710,7 +670,7 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
     return hist
       .map((v, i) => {
         const x = i * stepX;
-        const y = pad + (1 - (v - min) / range) * (32 - pad * 2);
+        const y = pad + (1 - (v - min) / range) * (height - pad * 2);
         return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
       })
       .join(' ');
