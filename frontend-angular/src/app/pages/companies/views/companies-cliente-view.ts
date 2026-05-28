@@ -51,7 +51,11 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
       }
 
       @if (activeTab === 'eventos') {
-        <app-companies-events-panel [sites]="sites" [subEmpresaId]="subEmpresaId" />
+        <app-companies-events-panel
+          [sites]="sites"
+          [subEmpresaId]="subEmpresaId"
+          [empresaId]="empresaId"
+        />
       }
     </div>
   `,
@@ -71,6 +75,7 @@ export class CompaniesClienteViewComponent {
 
   @Input() loading = false;
   @Input() subEmpresaId = '';
+  @Input() empresaId = '';
 
   @Output() activeTabChange = new EventEmitter<string>();
   @Output() siteSelected = new EventEmitter<SiteRecord>();

@@ -55,7 +55,11 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
       }
 
       @if (activeTab === 'eventos') {
-        <app-companies-events-panel [sites]="sites" [subEmpresaId]="subEmpresaId" />
+        <app-companies-events-panel
+          [sites]="sites"
+          [subEmpresaId]="subEmpresaId"
+          [empresaId]="empresaId"
+        />
       }
 
       @if (activeTab === 'contactos') {

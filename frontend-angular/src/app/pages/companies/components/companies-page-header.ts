@@ -24,16 +24,6 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
             Cámara frío · monitoreo de temperatura y humedad en vivo
           </div>
         </div>
-        <div class="ml-3 flex gap-1.5">
-          <div class="cr-chip-live flex items-center gap-1">
-            <span class="cr-chip-live-dot"></span>
-            En vivo
-          </div>
-          <div class="cr-chip-time flex items-center gap-1">
-            <span class="material-symbols-outlined text-[10px]">schedule</span>
-            {{ nowLabel() }}
-          </div>
-        </div>
       </div>
     } @else {
       <div class="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
