@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 import { UserManagementComponent } from '../../../components/ui/user-management';
 import { CompaniesContactsPanelComponent } from '../components/companies-contacts-panel';
+import { CompaniesEventsPanelComponent } from '../components/companies-events-panel';
 import { CompaniesGeneralPanelComponent } from '../components/companies-general-panel';
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesPageHeaderComponent } from '../components/companies-page-header';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
+import { normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 @Component({
@@ -18,6 +20,7 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
     CompaniesGeneralPanelComponent,
     CompaniesInstallationsPanelComponent,
     CompaniesContactsPanelComponent,
+    CompaniesEventsPanelComponent,
     UserManagementComponent,
   ],
   template: `
@@ -25,12 +28,13 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
       <app-companies-page-header
         [selectedSubCompany]="selectedSubCompany"
         [sitesCount]="sites.length"
+        [sites]="sites"
         [title]="headerTitle()"
         [subtitle]="headerSubtitle()"
       />
 
       <app-companies-tab-nav
-        [tabs]="tabs"
+        [tabs]="tabsComputed()"
         [activeTab]="activeTab"
         variant="superadmin"
         (activeTabChange)="activeTabChange.emit($event)"
@@ -48,6 +52,10 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
           variant="superadmin"
           (siteSelected)="siteSelected.emit($event)"
         />
+      }
+
+      @if (activeTab === 'eventos') {
+        <app-companies-events-panel [sites]="sites" [subEmpresaId]="subEmpresaId" />
       }
 
       @if (activeTab === 'contactos') {
@@ -74,7 +82,16 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 export class CompaniesGerenteViewComponent {
   @Input() activeTab = 'instalaciones';
   @Input() selectedSubCompany: SubCompanyNode | null = null;
-  @Input() sites: SiteRecord[] = [];
+  @Input() set sites(value: SiteRecord[]) {
+    this._sitesArr = value || [];
+    this._sites.set(value || []);
+  }
+  get sites(): SiteRecord[] {
+    return this._sitesArr;
+  }
+  private _sitesArr: SiteRecord[] = [];
+  private _sites = signal<SiteRecord[]>([]);
+
   @Input() loading = false;
   @Input() subEmpresaId = '';
   @Input() empresaId = '';
@@ -82,17 +99,29 @@ export class CompaniesGerenteViewComponent {
   @Output() activeTabChange = new EventEmitter<string>();
   @Output() siteSelected = new EventEmitter<SiteRecord>();
 
-  readonly tabs: CompaniesTabItem[] = [
-    { key: 'general', label: 'General', icon: 'info' },
-    { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
-    { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
-    { key: 'usuarios', label: 'Mi Equipo', icon: 'group' },
-  ];
+  readonly isColdRoom = computed(() => {
+    const list = this._sites();
+    return list.length === 1 && normalizeSiteType(list[0]?.tipo_sitio) === 'camara_frio';
+  });
+
+  readonly tabsComputed = computed<CompaniesTabItem[]>(() => {
+    const cold = this.isColdRoom();
+    return [
+      { key: 'general', label: 'General', icon: 'info' },
+      cold
+        ? { key: 'instalaciones', label: 'TAPs', icon: 'memory' }
+        : { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
+      { key: 'eventos', label: 'Eventos', icon: 'notifications' },
+      { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
+      { key: 'usuarios', label: 'Mi Equipo', icon: 'group' },
+    ];
+  });
 
   headerTitle(): string {
+    if (this.activeTab === 'instalaciones') return this.isColdRoom() ? 'TAPs' : 'Instalaciones';
     const map: Record<string, string> = {
       general: 'General',
-      instalaciones: 'Instalaciones',
+      eventos: 'Eventos',
       contactos: 'Contactos',
       usuarios: 'Mi Equipo',
     };
@@ -100,7 +129,12 @@ export class CompaniesGerenteViewComponent {
   }
 
   headerSubtitle(): string {
-    if (this.activeTab === 'instalaciones') return `${this.sites.length} sitios registrados`;
+    if (this.activeTab === 'instalaciones') {
+      return this.isColdRoom()
+        ? 'Concentradores TAP del sitio'
+        : `${this.sites.length} sitios registrados`;
+    }
+    if (this.activeTab === 'eventos') return 'Alertas y eventos recientes';
     if (this.activeTab === 'general') return 'Resumen de la división';
     return '';
   }

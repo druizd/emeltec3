@@ -64,4 +64,22 @@ router.get('/:siteId/concentrator', (req, res) => {
   });
 });
 
+router.get('/:siteId/backup', (req, res) => {
+  // TAP 1 envía las mismas variables T/H que TAPs 2-4 por canal redundante,
+  // más un booleano por sensor que refleja alerta física (contacto seco).
+  const backup = PLACEHOLDER_SENSORS.map((s) => {
+    // Backup difiere ligeramente del primary (canal independiente, drift natural).
+    const t = jitter(s.t, 0.6);
+    return {
+      id: s.id,
+      area: s.area,
+      t,
+      h: Math.max(35, Math.min(99, s.h + Math.round((Math.random() - 0.5) * 6))),
+      alertaFisica: false,
+      hist: buildHist(s.t),
+    };
+  });
+  res.json({ ok: true, data: backup });
+});
+
 module.exports = router;

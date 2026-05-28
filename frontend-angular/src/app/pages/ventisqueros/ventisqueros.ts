@@ -80,6 +80,7 @@ interface MetricOption {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+      @if (!embedded()) {
       <!-- Site header -->
       <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
         <a
@@ -122,7 +123,9 @@ interface MetricOption {
           <button class="vs-apply-btn">Aplicar</button>
         </div>
       </div>
+      }
 
+      @if (view() === 'full') {
       <!-- Sub-tabs -->
       <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
         @for (t of subTabs(); track t.key) {
@@ -149,10 +152,11 @@ interface MetricOption {
           </span>
         </div>
       </div>
+      }
 
       <!-- Scrollable content -->
       <div class="vs-content min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
-        @if (activeTab() === 'general') {
+        @if (effectiveTab() === 'general') {
           <!-- Title strip -->
           <div class="mb-3 flex flex-wrap items-end justify-between gap-3.5">
             <div>
@@ -191,53 +195,6 @@ interface MetricOption {
               <button class="vs-error-retry" (click)="onRetry()">Reintentar</button>
             </div>
           }
-
-          <!-- Concentrador TAP 1 -->
-          <div class="mb-3">
-            <div
-              class="vs-concentrator-card flex items-center gap-3"
-              [class.vs-concentrator-card--alert]="concentrator().alerted"
-            >
-              <div
-                class="vs-concentrator-icon flex h-9 w-9 items-center justify-center"
-                [style.background]="concentrator().alerted ? 'rgba(239,68,68,0.12)' : tapColors['TAP 1'] + '1A'"
-                [style.border]="
-                  '1px solid ' +
-                  (concentrator().alerted ? 'rgba(239,68,68,0.35)' : tapColors['TAP 1'] + '40')
-                "
-              >
-                <span
-                  class="material-symbols-outlined text-[18px]"
-                  [style.color]="concentrator().alerted ? '#DC2626' : tapColors['TAP 1']"
-                >
-                  {{ concentrator().alerted ? 'gpp_maybe' : 'hub' }}
-                </span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="vs-concentrator-title">TAP 1 · Concentrador maestro</div>
-                <div class="vs-concentrator-sub">
-                  {{ concentrator().alerted ? 'Alerta de redundancia activa' : 'Operación normal · sin alertas' }}
-                  @if (concentrator().lastSeen) {
-                    · última transmisión {{ concentrator().lastSeen }}
-                  }
-                </div>
-              </div>
-              <span
-                class="vs-concentrator-state"
-                [style.background]="concentrator().alerted ? '#FEF2F2' : '#F0FDF4'"
-                [style.color]="concentrator().alerted ? '#B91C1C' : '#15803D'"
-                [style.border-color]="
-                  concentrator().alerted ? 'rgba(239,68,68,0.30)' : 'rgba(34,197,94,0.30)'
-                "
-              >
-                <span
-                  class="vs-concentrator-dot"
-                  [style.background]="concentrator().alerted ? '#EF4444' : '#22C55E'"
-                ></span>
-                {{ concentrator().alerted ? 'EN ALERTA' : 'OK' }}
-              </span>
-            </div>
-          </div>
 
           <!-- Alert banner -->
           @if (alerts().length) {
@@ -435,7 +392,7 @@ interface MetricOption {
           ></app-ventisqueros-visibility-panel>
         }
 
-        @if (activeTab() === 'taps') {
+        @if (effectiveTab() === 'taps') {
           <!-- TAPS view: compact, site-card pattern, navegable -->
           <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
@@ -461,7 +418,7 @@ interface MetricOption {
             @for (t of tapAggregates(); track t.tap) {
               <button
                 type="button"
-                [routerLink]="['/companies', siteId(), 'cold-room', 'tap', t.tap.replace(' ', '-')]"
+                [routerLink]="['/companies', siteId(), 'tap', t.tap.replace(' ', '-')]"
                 class="vs-tap-summary group flex w-full cursor-pointer flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
                 [style.border-color]="t.alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
                 [style.box-shadow]="
@@ -558,13 +515,13 @@ interface MetricOption {
           </div>
         }
 
-        @if (activeTab() === 'eventos') {
+        @if (effectiveTab() === 'eventos') {
           <div class="vs-placeholder flex items-center justify-center">
             Eventos — vista por implementar
           </div>
         }
 
-        @if (activeTab() === 'contacts') {
+        @if (effectiveTab() === 'contacts') {
           <div class="vs-placeholder flex items-center justify-center">
             Contactos — vista por implementar
           </div>
@@ -1057,51 +1014,6 @@ interface MetricOption {
         background: #f8fafc;
       }
 
-      /* Concentrador TAP 1 */
-      .vs-concentrator-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 10px 14px;
-        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-      }
-      .vs-concentrator-card--alert {
-        background: linear-gradient(90deg, rgba(239, 68, 68, 0.06), #ffffff 70%);
-        border-color: rgba(239, 68, 68, 0.30);
-      }
-      .vs-concentrator-icon {
-        border-radius: 9px;
-      }
-      .vs-concentrator-title {
-        font-family: var(--font-josefin);
-        font-size: 13px;
-        font-weight: 600;
-        color: #1e293b;
-        letter-spacing: 0.02em;
-      }
-      .vs-concentrator-sub {
-        font-size: 11.5px;
-        color: #64748b;
-        margin-top: 2px;
-      }
-      .vs-concentrator-state {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 999px;
-        border: 1px solid transparent;
-        font-family: var(--font-mono);
-        font-size: 10.5px;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-      }
-      .vs-concentrator-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-      }
-
       /* Error banner */
       .vs-error-banner {
         background: #fef2f2;
@@ -1166,12 +1078,20 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly siteId = input.required<string>();
   readonly siteName = input<string>('');
   readonly companyName = input<string>('');
+  readonly embedded = input<boolean>(false);
+  readonly view = input<'full' | 'general' | 'taps' | 'eventos' | 'contacts'>('full');
 
   readonly siteTitle = computed(() => {
     const name = this.siteName().trim();
     const company = this.companyName().trim();
     if (company && name) return `${company} · ${name}`;
     return name || company || 'Cámara frío';
+  });
+
+  readonly effectiveTab = computed<TabKey>(() => {
+    const v = this.view();
+    if (v === 'general' || v === 'taps' || v === 'eventos' || v === 'contacts') return v;
+    return this.activeTab();
   });
 
   readonly metric = signal<MetricKey>('T');

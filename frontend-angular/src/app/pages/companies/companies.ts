@@ -39,7 +39,7 @@ export class CompaniesComponent implements OnInit {
   auth = inject(AuthService);
   router = inject(Router);
 
-  activeTab = signal('instalaciones');
+  activeTab = signal('general');
   selectedSubCompany = signal<SubCompanyNode | null>(null);
   sites = signal<SiteRecord[]>([]);
   loading = signal(false);
@@ -171,7 +171,7 @@ export class CompaniesComponent implements OnInit {
   }
 
   private allowedTabsForRole(role: UserRole | null): string[] {
-    if (role === 'Cliente') return ['general', 'instalaciones'];
-    return ['general', 'instalaciones', 'contactos', 'usuarios'];
+    if (role === 'Cliente') return ['general', 'instalaciones', 'eventos'];
+    return ['general', 'instalaciones', 'eventos', 'contactos', 'usuarios'];
   }
 }

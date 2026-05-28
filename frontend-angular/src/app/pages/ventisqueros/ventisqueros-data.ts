@@ -25,6 +25,15 @@ export interface ConcentratorState {
   lastSeen: string | null;
 }
 
+export interface SensorBackup {
+  id: string;
+  area: string;
+  t: number;
+  h: number;
+  alertaFisica: boolean;
+  hist: number[];
+}
+
 export const TAPS: TapKey[] = ['TAP 1', 'TAP 2', 'TAP 3', 'TAP 4'];
 
 // Concentrador maestro (TAP 1) + 3 TAPs de sensores THM.

@@ -1,47 +1,73 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
 import { SiteCardComponent } from '../../../components/ui/site-card';
+import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
+import { normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-installations-panel',
   standalone: true,
-  imports: [CommonModule, SiteCardComponent],
+  imports: [CommonModule, SiteCardComponent, VentisquerosComponent],
   template: `
-    <div [class]="getGridClass()">
-      @for (site of sites; track site.id) {
-        <app-site-card
-          [site]="site"
-          [contextLabel]="contextLabel"
-          [variant]="variant"
-          (siteSelected)="siteSelected.emit($event)"
-        />
-      }
+    @if (coldRoomSite(); as coldSite) {
+      <app-ventisqueros
+        [siteId]="coldSite.id"
+        [siteName]="coldSite.descripcion"
+        [companyName]="contextLabel"
+        [embedded]="true"
+        view="taps"
+      />
+    } @else {
+      <div [class]="getGridClass()">
+        @for (site of sites; track site.id) {
+          <app-site-card
+            [site]="site"
+            [contextLabel]="contextLabel"
+            [variant]="variant"
+            (siteSelected)="siteSelected.emit($event)"
+          />
+        }
 
-      @if (sites.length === 0 && !loading) {
-        <div [class]="getEmptyStateClass()">
-          <span class="material-symbols-outlined text-slate-300 text-5xl mb-4">inventory_2</span>
-          <p
-            [class]="
-              variant === 'superadmin'
-                ? 'text-slate-500 text-body-sm font-semibold'
-                : 'text-slate-400 font-bold uppercase tracking-widest'
-            "
-          >
-            No hay instalaciones registradas
-          </p>
-        </div>
-      }
-    </div>
+        @if (sites.length === 0 && !loading) {
+          <div [class]="getEmptyStateClass()">
+            <span class="material-symbols-outlined text-slate-300 text-5xl mb-4">inventory_2</span>
+            <p
+              [class]="
+                variant === 'superadmin'
+                  ? 'text-slate-500 text-body-sm font-semibold'
+                  : 'text-slate-400 font-bold uppercase tracking-widest'
+              "
+            >
+              No hay instalaciones registradas
+            </p>
+          </div>
+        }
+      </div>
+    }
   `,
 })
 export class CompaniesInstallationsPanelComponent {
-  @Input() sites: SiteRecord[] = [];
+  @Input() set sites(value: SiteRecord[]) {
+    this._sites.set(value || []);
+  }
+  get sites(): SiteRecord[] {
+    return this._sites();
+  }
+  private _sites = signal<SiteRecord[]>([]);
+
   @Input() loading = false;
   @Input() contextLabel = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
 
   @Output() siteSelected = new EventEmitter<SiteRecord>();
+
+  readonly coldRoomSite = computed<SiteRecord | null>(() => {
+    const list = this._sites();
+    if (list.length === 0) return null;
+    const cold = list.find((s) => normalizeSiteType(s.tipo_sitio) === 'camara_frio');
+    return cold && list.length === 1 ? cold : null;
+  });
 
   getGridClass(): string {
     if (this.variant === 'superadmin') {

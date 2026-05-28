@@ -7,8 +7,12 @@ import {
   OnChanges,
   OnDestroy,
   ViewChild,
+  computed,
   signal,
 } from '@angular/core';
+import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
+import { normalizeSiteType } from '../../../shared/site-type-ui';
+import type { SiteRecord } from '@emeltec/shared';
 
 interface KpiCard {
   label: string;
@@ -70,8 +74,16 @@ interface Periodo {
 @Component({
   selector: 'app-companies-general-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, VentisquerosComponent],
   template: `
+    @if (coldRoomSite(); as coldSite) {
+      <app-ventisqueros
+        [siteId]="coldSite.id"
+        [siteName]="coldSite.descripcion"
+        [embedded]="true"
+        view="general"
+      />
+    } @else {
     <div class="space-y-4 animate-in fade-in duration-500">
       <!-- KPIs principales -->
       <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -584,11 +596,28 @@ interface Periodo {
         }
       </section>
     </div>
+    }
   `,
 })
 export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit, OnDestroy {
-  @Input() sites: any[] = [];
+  @Input() set sites(value: any[]) {
+    this._sites = value || [];
+    this._sitesSignal.set(value || []);
+  }
+  get sites(): any[] {
+    return this._sites;
+  }
+  private _sites: any[] = [];
+  private _sitesSignal = signal<any[]>([]);
+
   @Input() subEmpresaId = '';
+
+  readonly coldRoomSite = computed<SiteRecord | null>(() => {
+    const list = this._sitesSignal();
+    if (list.length === 0) return null;
+    const cold = list.find((s) => normalizeSiteType(s?.tipo_sitio) === 'camara_frio');
+    return cold && list.length === 1 ? cold : null;
+  });
 
   @ViewChild('mapContainer') mapContainer?: ElementRef<HTMLDivElement>;
 

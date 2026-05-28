@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, Subscription, interval, startWith } from 'rxjs';
-import type { ConcentratorState, Sensor } from './ventisqueros-data';
+import type { ConcentratorState, Sensor, SensorBackup } from './ventisqueros-data';
 
 interface ApiEnvelope<T> {
   ok: boolean;
@@ -16,6 +16,7 @@ export class VentisquerosService {
   private http = inject(HttpClient);
 
   private sensorsSubject = new BehaviorSubject<Sensor[]>([]);
+  private backupSubject = new BehaviorSubject<SensorBackup[]>([]);
   private concentratorSubject = new BehaviorSubject<ConcentratorState>({
     alerted: false,
     lastSeen: null,
@@ -25,6 +26,7 @@ export class VentisquerosService {
   private errorSubject = new BehaviorSubject<string | null>(null);
 
   readonly sensors$: Observable<Sensor[]> = this.sensorsSubject.asObservable();
+  readonly backup$: Observable<SensorBackup[]> = this.backupSubject.asObservable();
   readonly concentrator$: Observable<ConcentratorState> = this.concentratorSubject.asObservable();
   readonly lastUpdate$: Observable<Date | null> = this.lastUpdateSubject.asObservable();
   readonly loading$: Observable<boolean> = this.loadingSubject.asObservable();
@@ -73,6 +75,16 @@ export class VentisquerosService {
       .subscribe({
         next: (res) => {
           if (res.ok) this.concentratorSubject.next(res.data);
+        },
+        error: () => {
+          // El error del listado principal ya quedó capturado.
+        },
+      });
+    this.http
+      .get<ApiEnvelope<SensorBackup[]>>(`/api/cold-room/${siteId}/backup?t=${Date.now()}`)
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.backupSubject.next(res.data);
         },
         error: () => {
           // El error del listado principal ya quedó capturado.

@@ -189,5 +189,10 @@ export function siteTypeMatchesModule(
 }
 
 export function dashboardRouteForSite(site: SiteRecord): string[] {
+  const type = normalizeSiteType(site.tipo_sitio);
+  if (type === 'camara_frio') {
+    // Vista cold-room está embebida en /companies para la subempresa.
+    return ['/companies'];
+  }
   return ['/companies', site.id, getSiteTypeUi(site.tipo_sitio).routeSegment];
 }
