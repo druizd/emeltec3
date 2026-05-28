@@ -46,7 +46,7 @@ const CONTACT_COLUMNS = `
 const SITE_TYPES = new Set(SITE_TYPE_IDS);
 const VARIABLE_ROLES = new Set(VARIABLE_ROLE_IDS);
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
-const DASHBOARD_DATA_CACHE_TTL_MS = 15_000;
+const DASHBOARD_DATA_CACHE_TTL_MS = 30_000;
 const dashboardDataCache = new Map();
 const dashboardDataInflight = new Map();
 
@@ -1571,7 +1571,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             SELECT max(bucket) AS max_bucket
             FROM ${granConfig.view}
             WHERE id_serial = $1
-              AND bucket >= now() - INTERVAL '7 days'
+              AND bucket >= now() - INTERVAL '48 hours'
           ),
           recent_raw AS (
             SELECT
@@ -1595,7 +1595,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               ${utcTimestampSql('bucket')} AS timestamp_completo
             FROM ${granConfig.view}
             WHERE id_serial = $1
-              AND bucket >= now() - INTERVAL '7 days'
+              AND bucket >= now() - INTERVAL '48 hours'
           )
           SELECT
             time,
@@ -1615,6 +1615,9 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           [site.id_serial, limit, offset, granConfig.bucketInterval],
         );
 
+    // No-range usa la pestaña "Datos en tiempo real" que no pagina → skip
+    // count para ahorrar una query completa por poll de 60s. Reportamos el
+    // total como rows.length post-fetch (suficiente para la UI sin pagina).
     const countQuery = useRange
       ? db.query(
           `
@@ -1651,37 +1654,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
           `,
           [site.id_serial, from, to, granConfig.bucketInterval],
         )
-      : db.query(
-          `
-          WITH latest_cagg AS (
-            SELECT max(bucket) AS max_bucket
-            FROM ${granConfig.view}
-            WHERE id_serial = $1
-              AND bucket >= now() - INTERVAL '7 days'
-          ),
-          recent_raw AS (
-            SELECT time_bucket($2::interval, e.time) AS time
-            FROM equipo e
-            CROSS JOIN latest_cagg lc
-            WHERE e.id_serial = $1
-              AND e.time >= COALESCE(lc.max_bucket + $2::interval, now() - INTERVAL '2 hours')
-            GROUP BY 1
-          ),
-          materialized AS (
-            SELECT bucket AS time
-            FROM ${granConfig.view}
-            WHERE id_serial = $1
-              AND bucket >= now() - INTERVAL '7 days'
-          )
-          SELECT count(*)::int AS total
-          FROM (
-            SELECT time FROM recent_raw
-            UNION ALL
-            SELECT time FROM materialized
-          ) history
-          `,
-          [site.id_serial, granConfig.bucketInterval],
-        );
+      : Promise.resolve({ rows: [{ total: null }] });
 
     let [pozoConfigRes, mappingsRes, historyRes, countRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),

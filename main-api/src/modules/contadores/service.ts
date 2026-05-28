@@ -14,7 +14,11 @@ import { logger } from '../../config/logger';
 import { query } from '../../config/dbHelpers';
 import { cache } from '../../config/redis';
 
-const JORNADA_CACHE_TTL_S = 300;
+// Contadores cambian lento (acumulan minuto a minuto). Cache 15 min cubre 1-2
+// polls del frontend (poll cada 10 min) → primer hit cold, siguientes warm.
+// Datos pueden estar hasta 15 min stale; aceptable para totalizadores que
+// suman gradual y el chart muestra horizonte de 30/90 dias.
+const JORNADA_CACHE_TTL_S = 900;
 import { applyMappingTransform } from '../sites/transforms';
 import { getPozoConfigBySiteId } from '../sites/repo';
 import type { PozoConfig, RegMap } from '../sites/types';

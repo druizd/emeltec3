@@ -611,6 +611,13 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   readonly diaOffset = this.state.diaOffset;
   readonly numTurnos = this.state.numTurnos;
   readonly turnosConfig = this.state.turnosConfig;
+  readonly jornadaInicio = this.state.jornadaInicio;
+
+  // Wall-clock tick: refresca cada 60s para que selectedDayKey rote sola al
+  // cambiar de jornada operativa (ej. medianoche / 07:00) sin esperar a que
+  // llegue telemetría nueva.
+  private readonly nowTick = signal(Date.now());
+  private nowTickSub?: Subscription;
 
   readonly latestTelemetryDate = computed(() => {
     const latest = this.dashboardData()?.ultima_lectura;
@@ -622,14 +629,26 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return row?.timestampMs ? new Date(row.timestampMs) : null;
   });
 
-  readonly selectedOperationDate = computed(() => {
-    const base = this.latestTelemetryDate() ?? new Date();
-    const date = new Date(base);
-    date.setDate(date.getDate() + this.diaOffset());
-    return date;
+  // Ancla "día operativo actual": si la jornada arranca a las 07:00, una hora
+  // del muro 02:00 todavía pertenece a la jornada del día calendario anterior.
+  // Restamos el offset de inicio de jornada al wall-clock antes de calcular el
+  // dayKey en TZ Chile.
+  readonly currentJornadaDayKey = computed(() => {
+    const jornadaStartMin = this.parseTimeMinutes(this.jornadaInicio() || '00:00');
+    const offsetMs = jornadaStartMin * 60_000;
+    return this.chileDayKey(new Date(this.nowTick() - offsetMs));
   });
 
-  readonly selectedDayKey = computed(() => this.chileDayKey(this.selectedOperationDate()));
+  readonly selectedDayKey = computed(() =>
+    this.addDayKey(this.currentJornadaDayKey(), this.diaOffset()),
+  );
+
+  // Date sintética (UTC mediodía) para labels: en TZ Chile (UTC-3/-4) sigue
+  // siendo el mismo día calendario que el dayKey, evita flips de zona horaria.
+  readonly selectedOperationDate = computed(() => {
+    const [year, month, day] = this.selectedDayKey().split('-').map(Number);
+    return new Date(Date.UTC(year, month - 1, day, 12));
+  });
 
   readonly metricas = computed<MetricaTiempoReal[]>(() => {
     const caudal = this.dashboardNumber('caudal') ?? this.latestHistoryNumber('caudal');
@@ -713,15 +732,13 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return latest ? this.formatChileDateTime(latest) : 'Sin registros';
   });
 
-  readonly totalDayConsumption = computed(() => {
-    const rows = this.rowsForDay(this.selectedDayKey());
-    return this.consumptionFromTotalizer(rows) ?? 0;
-  });
   private readonly barClasses = ['bg-primary', 'bg-[#0899a5]', 'bg-slate-400'];
-  private readonly HOY = new Date();
-  private readonly mockConsumo: (number | null)[] = [14.2, 10.6, null];
-  private readonly mockPct = [57, 43, 0];
 
+  // Cards de turno + Total del Día. Cada card calcula su consumo desde
+  // `rowsForShift`, que ya maneja cruce de medianoche (ej. 23:00→06:59 atraviesa
+  // a `dayKey + 1`). Total del Día = suma de turnos para garantizar
+  // consistencia matemática (suma turnos == total mostrado), incluso cuando la
+  // jornada operativa no coincide con el día calendario.
   readonly turnosReal = computed<TurnoCard[]>(() => {
     const cfg = this.turnosConfig().slice(0, this.numTurnos());
     const selectedDay = this.selectedDayKey();
@@ -730,21 +747,26 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
       const consumo = this.consumptionFromTotalizer(rows);
       return {
         nombre: c.nombre,
-        horario: `${c.inicio} – ${c.fin}`,
+        horario: this.formatTurnoHorario(c.inicio, c.fin),
         consumo,
         activo: rows.length > 0,
       };
     });
 
+    const totalTurnos = cards.reduce((acc, t) => acc + (t.consumo ?? 0), 0);
     cards.push({
       nombre: 'Total del Día',
-      horario: '24 horas',
-      consumo: this.totalDayConsumption(),
+      horario: this.formatJornadaHorario(),
+      consumo: totalTurnos,
       activo: true,
       esTotal: true,
     });
     return cards;
   });
+
+  readonly totalDayConsumption = computed(
+    () => this.turnosReal().find((t) => t.esTotal)?.consumo ?? 0,
+  );
 
   readonly distribucionReal = computed<TurnoDistribucion[]>(() => {
     const turnos = this.turnosReal().filter((turno) => !turno.esTotal);
@@ -770,41 +792,6 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     }),
   );
 
-  readonly turnos = computed<TurnoCard[]>(() => {
-    const cfg = this.turnosConfig().slice(0, this.numTurnos());
-    const cards: TurnoCard[] = cfg.map((c, i) => ({
-      nombre: c.nombre,
-      horario: `${c.inicio} – ${c.fin}`,
-      consumo: this.mockConsumo[i] ?? null,
-      activo: this.mockConsumo[i] !== null,
-    }));
-    cards.push({
-      nombre: 'Total del Día',
-      horario: '24 horas',
-      consumo: 24.8,
-      activo: true,
-      esTotal: true,
-    });
-    return cards;
-  });
-
-  readonly distribucion = computed<TurnoDistribucion[]>(() =>
-    this.turnosConfig()
-      .slice(0, this.numTurnos())
-      .map((c, i) => ({
-        nombre: c.nombre,
-        consumo: this.mockConsumo[i] ?? 0,
-        pct: this.mockPct[i] ?? 0,
-        barClass: this.barClasses[i] ?? 'bg-slate-400',
-      })),
-  );
-
-  readonly fechaDia = computed(() => {
-    const d = new Date(this.HOY);
-    d.setDate(d.getDate() + this.diaOffset());
-    return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  });
-
   readonly esHoy = computed(() => this.diaOffset() === 0);
 
   ngOnInit(): void {
@@ -816,10 +803,12 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
 
     this.state.startCountersPolling(siteId);
     this.startPolling(siteId);
+    this.nowTickSub = timer(60_000, 60_000).subscribe(() => this.nowTick.set(Date.now()));
   }
 
   ngOnDestroy(): void {
     this.pollingSub?.unsubscribe();
+    this.nowTickSub?.unsubscribe();
     this.state.stopCountersPolling();
   }
 
@@ -1136,6 +1125,28 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   private parseTimeMinutes(value: string): number {
     const [hour = '0', minute = '0'] = value.split(':');
     return Number(hour) * 60 + Number(minute);
+  }
+
+  /**
+   * Label del horario de un turno. Cuando el turno cruza la medianoche
+   * calendario (ej. 23:00 → 06:59), agregamos sufijo "(día sig.)" para que el
+   * operador entienda que la franja termina al día siguiente del seleccionado.
+   */
+  private formatTurnoHorario(start: string, end: string): string {
+    const startMin = this.parseTimeMinutes(start);
+    const endMin = this.parseTimeMinutes(end);
+    return startMin <= endMin ? `${start} – ${end}` : `${start} – ${end} (día sig.)`;
+  }
+
+  /**
+   * Label de la jornada completa (Total del Día). Si jornadaInicio == jornadaFin
+   * se interpreta como cobertura 24h. Si difieren, mostramos el rango horario
+   * tal como está configurado en el sitio.
+   */
+  private formatJornadaHorario(): string {
+    const inicio = this.state.jornadaInicio() || '07:00';
+    const fin = this.state.jornadaFin() || '07:00';
+    return inicio === fin ? '24 horas' : `${inicio} – ${fin}`;
   }
 
   private rowsForDay(dayKey: string): HistoricalRow[] {
