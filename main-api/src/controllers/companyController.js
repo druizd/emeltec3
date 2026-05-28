@@ -21,6 +21,8 @@ const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS =
   'sitio_id, profundidad_pozo_m, profundidad_sensor_m, nivel_estatico_manual_m, obra_dga, slug, created_at, updated_at';
+const POZO_CONFIG_SELECT_COLUMNS =
+  'pc.sitio_id, pc.profundidad_pozo_m, pc.profundidad_sensor_m, pc.nivel_estatico_manual_m, pc.obra_dga, pc.slug, pc.created_at, pc.updated_at';
 const CONTACT_COLUMNS = `
   co.id::text,
   co.empresa_id,
@@ -350,7 +352,7 @@ async function getSiteById(id) {
 
 async function getPozoConfigBySiteId(siteId) {
   const { rows } = await db.query(
-    `SELECT ${POZO_CONFIG_COLUMNS}
+    `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
        FROM pozo_config pc
        JOIN sitio s ON s.id = pc.sitio_id
       WHERE pc.sitio_id = $1
@@ -412,7 +414,7 @@ async function loadLatestEquipoSample(idSerial) {
 async function loadSiteDashboardData(siteId, site) {
   const [pozoConfigRes, mappingsRes, latest] = await Promise.all([
     db.query(
-      `SELECT ${POZO_CONFIG_COLUMNS}
+      `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
          FROM pozo_config pc
          JOIN sitio s ON s.id = pc.sitio_id
         WHERE pc.sitio_id = $1
@@ -436,7 +438,7 @@ async function attachPozoConfigsToSites(sites) {
 
   const siteIds = sites.map((site) => site.id);
   const { rows } = await db.query(
-    `SELECT ${POZO_CONFIG_COLUMNS}
+    `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
        FROM pozo_config pc
        JOIN sitio s ON s.id = pc.sitio_id
       WHERE pc.sitio_id = ANY($1::text[])
