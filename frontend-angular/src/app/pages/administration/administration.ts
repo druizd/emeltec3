@@ -182,6 +182,80 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       },
     ],
   },
+  vertiente: {
+    id: 'vertiente',
+    label: 'Vertiente',
+    roles: [
+      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Nivel reportado.' },
+      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado.',
+      },
+      { id: 'seÃ±al', label: 'SeÃ±al', unitHint: '%', description: 'Intensidad de seÃ±al.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
+    ],
+  },
+  canal: {
+    id: 'canal',
+    label: 'Canal',
+    roles: [
+      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Nivel reportado.' },
+      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
+      {
+        id: 'totalizador',
+        label: 'Totalizador',
+        unitHint: 'm3',
+        description: 'Volumen acumulado.',
+      },
+      { id: 'seÃ±al', label: 'SeÃ±al', unitHint: '%', description: 'Intensidad de seÃ±al.' },
+      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
+    ],
+    transforms: [
+      {
+        id: 'directo',
+        label: 'Directo',
+        description: 'Usa el valor entrante sin modificarlo.',
+        enabled: true,
+      },
+      {
+        id: 'lineal',
+        label: 'Lineal',
+        description: 'Aplica valor * factor + offset.',
+        enabled: true,
+      },
+      {
+        id: 'ieee754_32',
+        label: 'IEEE754 32 bits',
+        description: 'Une dos registros Modbus para obtener FLOAT32.',
+        enabled: true,
+        requiresD2: true,
+      },
+    ],
+  },
   electrico: {
     id: 'electrico',
     label: 'Electrico',
@@ -865,7 +939,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         [ngModel]="siteForm().descripcion"
                         (ngModelChange)="updateSiteForm('descripcion', $event)"
                         class="field-control"
-                        placeholder="Pozo, planta o instalacion"
+                        placeholder="Pozo, vertiente, canal o instalacion"
                       />
                     </div>
                     <div>

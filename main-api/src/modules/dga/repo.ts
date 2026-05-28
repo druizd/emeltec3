@@ -105,7 +105,11 @@ const POZO_DGA_COLS =
 
 export async function getPozoDgaConfig(siteId: string): Promise<PozoDgaConfigRow | null> {
   const r = await query<PozoDgaConfigRow>(
-    `SELECT ${POZO_DGA_COLS} FROM pozo_config WHERE sitio_id = $1`,
+    `SELECT ${POZO_DGA_COLS}
+       FROM pozo_config pc
+       JOIN sitio s ON s.id = pc.sitio_id
+      WHERE pc.sitio_id = $1
+        AND s.tipo_sitio = 'pozo'`,
     [siteId],
     { name: 'dga__get_pozo_dga_config' },
   );
@@ -119,7 +123,11 @@ export async function getPozoDgaConfig(siteId: string): Promise<PozoDgaConfigRow
  */
 export async function listPozosDgaActivos(): Promise<PozoDgaConfigRow[]> {
   const r = await query<PozoDgaConfigRow>(
-    `SELECT ${POZO_DGA_COLS} FROM pozo_config WHERE dga_activo = TRUE`,
+    `SELECT ${POZO_DGA_COLS}
+       FROM pozo_config pc
+       JOIN sitio s ON s.id = pc.sitio_id
+      WHERE pc.dga_activo = TRUE
+        AND s.tipo_sitio = 'pozo'`,
     [],
     { name: 'dga__list_pozos_activos' },
   );
@@ -177,8 +185,14 @@ export async function patchPozoDgaConfig(
   sets.push(`updated_at = NOW()`);
 
   const r = await query<PozoDgaConfigRow>(
-    `UPDATE pozo_config SET ${sets.join(', ')}
-       WHERE sitio_id = $1
+    `UPDATE pozo_config pc SET ${sets.join(', ')}
+       WHERE pc.sitio_id = $1
+         AND EXISTS (
+           SELECT 1
+             FROM sitio s
+            WHERE s.id = pc.sitio_id
+              AND s.tipo_sitio = 'pozo'
+         )
    RETURNING ${POZO_DGA_COLS}`,
     values,
     { label: 'dga__patch_pozo_dga_config' },
@@ -188,8 +202,14 @@ export async function patchPozoDgaConfig(
 
 export async function markPozoDgaLastRun(siteId: string, runAt: string): Promise<void> {
   await query(
-    `UPDATE pozo_config SET dga_last_run_at = $2, updated_at = NOW()
-      WHERE sitio_id = $1`,
+    `UPDATE pozo_config pc SET dga_last_run_at = $2, updated_at = NOW()
+      WHERE pc.sitio_id = $1
+        AND EXISTS (
+          SELECT 1
+            FROM sitio s
+           WHERE s.id = pc.sitio_id
+             AND s.tipo_sitio = 'pozo'
+        )`,
     [siteId, runAt],
     { name: 'dga__mark_last_run' },
   );
@@ -370,12 +390,14 @@ export async function listPendingForSubmission(limit: number): Promise<PendingSu
          ROW_NUMBER() OVER (PARTITION BY d.site_id ORDER BY d.ts ASC) AS rn
        FROM dato_dga d
        JOIN pozo_config pc      ON pc.sitio_id = d.site_id
+       JOIN sitio s             ON s.id = d.site_id
        LEFT JOIN dga_informante inf ON inf.rut = pc.dga_informante_rut
        WHERE d.estatus         = 'pendiente'
          AND (d.next_retry_at IS NULL OR d.next_retry_at <= now())
          AND pc.dga_activo     = TRUE
          AND pc.dga_transport  = 'rest'
          AND pc.dga_informante_rut IS NOT NULL
+         AND s.tipo_sitio      = 'pozo'
      )
      SELECT site_id, ts, obra, codigo_obra, caudal_instantaneo, flujo_acumulado,
             nivel_freatico, attempts, rut_informante, clave_informante,

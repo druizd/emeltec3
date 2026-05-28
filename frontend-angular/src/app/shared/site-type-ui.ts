@@ -27,7 +27,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
     color: '#0dafbd',
     bg: 'rgba(13,175,189,0.10)',
     border: 'rgba(13,175,189,0.25)',
-    siteTypes: ['pozo'],
+    siteTypes: ['pozo', 'vertiente', 'canal'],
   },
   {
     key: 'Electrico',
@@ -84,6 +84,22 @@ const SITE_TYPE_UI: Record<string, SiteTypeUi> = {
     moduleKey: 'Agua',
     routeSegment: 'water',
     badgeClass: 'bg-primary-tint-10 text-primary-container',
+  },
+  vertiente: {
+    id: 'vertiente',
+    label: 'Vertiente',
+    icon: 'water_drop',
+    moduleKey: 'Agua',
+    routeSegment: 'vertiente',
+    badgeClass: 'bg-cyan-50 text-cyan-700',
+  },
+  canal: {
+    id: 'canal',
+    label: 'Canal',
+    icon: 'waves',
+    moduleKey: 'Agua',
+    routeSegment: 'canal',
+    badgeClass: 'bg-sky-50 text-sky-700',
   },
   electrico: {
     id: 'electrico',
@@ -144,6 +160,8 @@ export function normalizeSiteType(value: string | null | undefined): string {
     .replace(/^_+|_+$/g, '');
 
   if (!normalized) return 'generico';
+  if (normalized.includes('vertiente')) return 'vertiente';
+  if (normalized.includes('canal')) return 'canal';
   if (normalized.includes('pozo') || normalized.includes('agua')) return 'pozo';
   if (normalized.includes('elect')) return 'electrico';
   if (normalized.includes('ril')) return 'riles';

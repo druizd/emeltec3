@@ -114,6 +114,8 @@ function normalizeSiteType(value) {
   if (normalized.includes('camara') || normalized.includes('frio') || normalized.includes('cold')) {
     return 'camara_frio';
   }
+  if (normalized.includes('vertiente')) return 'vertiente';
+  if (normalized.includes('canal')) return 'canal';
   if (normalized.includes('pozo') || normalized.includes('agua')) return 'pozo';
   if (normalized.includes('elect')) return 'electrico';
   if (normalized.includes('ril')) return 'riles';
@@ -348,7 +350,11 @@ async function getSiteById(id) {
 
 async function getPozoConfigBySiteId(siteId) {
   const { rows } = await db.query(
-    `SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`,
+    `SELECT ${POZO_CONFIG_COLUMNS}
+       FROM pozo_config pc
+       JOIN sitio s ON s.id = pc.sitio_id
+      WHERE pc.sitio_id = $1
+        AND s.tipo_sitio = 'pozo'`,
     [siteId],
   );
   return rows[0] || null;
@@ -405,7 +411,14 @@ async function loadLatestEquipoSample(idSerial) {
 
 async function loadSiteDashboardData(siteId, site) {
   const [pozoConfigRes, mappingsRes, latest] = await Promise.all([
-    db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
+    db.query(
+      `SELECT ${POZO_CONFIG_COLUMNS}
+         FROM pozo_config pc
+         JOIN sitio s ON s.id = pc.sitio_id
+        WHERE pc.sitio_id = $1
+          AND s.tipo_sitio = 'pozo'`,
+      [siteId],
+    ),
     db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [siteId]),
     loadLatestEquipoSample(site.id_serial),
   ]);
@@ -423,7 +436,11 @@ async function attachPozoConfigsToSites(sites) {
 
   const siteIds = sites.map((site) => site.id);
   const { rows } = await db.query(
-    `SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = ANY($1::text[])`,
+    `SELECT ${POZO_CONFIG_COLUMNS}
+       FROM pozo_config pc
+       JOIN sitio s ON s.id = pc.sitio_id
+      WHERE pc.sitio_id = ANY($1::text[])
+        AND s.tipo_sitio = 'pozo'`,
     [siteIds],
   );
   const configsBySiteId = new Map(rows.map((row) => [row.sitio_id, row]));
@@ -1036,7 +1053,7 @@ exports.createSite = async (req, res, next) => {
     if (!tipoSitio) {
       return badRequest(
         res,
-        'tipo_sitio debe ser pozo, electrico, riles, camara_frio, proceso o generico.',
+        'tipo_sitio debe ser pozo, vertiente, canal, electrico, riles, camara_frio, proceso o generico.',
       );
     }
 
@@ -1155,7 +1172,7 @@ exports.updateSite = async (req, res, next) => {
     if (tipoSitio === null) {
       return badRequest(
         res,
-        'tipo_sitio debe ser pozo, electrico, riles, camara_frio, proceso o generico.',
+        'tipo_sitio debe ser pozo, vertiente, canal, electrico, riles, camara_frio, proceso o generico.',
       );
     }
 
@@ -1179,8 +1196,9 @@ exports.updateSite = async (req, res, next) => {
       updates.push(`sub_empresa_id = $${params.length}`);
     }
 
+    const nextSiteType = tipoSitio || site.tipo_sitio;
     const shouldUpsertPozoConfig =
-      req.body.pozo_config !== undefined && (tipoSitio || site.tipo_sitio) === 'pozo';
+      nextSiteType === 'pozo' && (req.body.pozo_config !== undefined || tipoSitio === 'pozo');
 
     if (!updates.length && !shouldUpsertPozoConfig) {
       return badRequest(res, 'Debe enviar al menos un campo para actualizar.');

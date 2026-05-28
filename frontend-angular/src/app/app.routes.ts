@@ -30,6 +30,22 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:siteId/vertiente',
+        data: { siteType: 'vertiente' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-vertiente-detail').then(
+            (m) => m.CompanySiteVertienteDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/canal',
+        data: { siteType: 'canal' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-canal-detail').then(
+            (m) => m.CompanySiteCanalDetailComponent,
+          ),
+      },
+      {
         path: 'companies/:siteId/electric',
         loadComponent: () =>
           import('./pages/companies/company-site-electric-detail').then(
