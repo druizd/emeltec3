@@ -15,6 +15,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { VentisquerosFloorMapComponent } from './ventisqueros-floor-map';
 import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-panel';
 import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
+import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
 import {
   ConcentratorState,
@@ -418,7 +419,7 @@ interface MetricOption {
             @for (t of tapAggregates(); track t.tap) {
               <button
                 type="button"
-                [routerLink]="['/companies', siteId(), 'tap', t.tap.replace(' ', '-')]"
+                [routerLink]="tapRouterLink(t.tap)"
                 class="vs-tap-summary group flex w-full cursor-pointer flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
                 [style.border-color]="t.alerts > 0 ? 'rgba(239,68,68,0.30)' : '#E2E8F0'"
                 [style.box-shadow]="
@@ -1078,8 +1079,35 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly siteId = input.required<string>();
   readonly siteName = input<string>('');
   readonly companyName = input<string>('');
+  readonly coldRoomSites = input<SiteRecord[]>([]);
   readonly embedded = input<boolean>(false);
   readonly view = input<'full' | 'general' | 'taps' | 'eventos' | 'contacts'>('full');
+
+  readonly tapSiteMap = computed<Record<TapKey, string | null>>(() => {
+    const sites = this.coldRoomSites();
+    const map: Record<TapKey, string | null> = {
+      'TAP 1': null,
+      'TAP 2': null,
+      'TAP 3': null,
+      'TAP 4': null,
+    };
+    for (const site of sites) {
+      const desc = (site.descripcion || '').toUpperCase().replace(/-/g, ' ').trim();
+      for (const key of TAPS) {
+        if (desc.includes(key)) {
+          map[key] = site.id;
+          break;
+        }
+      }
+    }
+    return map;
+  });
+
+  tapRouterLink(tap: TapKey): string[] {
+    const tapSiteId = this.tapSiteMap()[tap];
+    if (tapSiteId) return ['/companies', tapSiteId, 'cold-room'];
+    return ['/companies', this.siteId(), 'tap', tap.replace(' ', '-')];
+  }
 
   readonly siteTitle = computed(() => {
     const name = this.siteName().trim();
@@ -1295,6 +1323,16 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
+      const sites = this.coldRoomSites();
+      const map = this.tapSiteMap();
+      if (sites.length > 0) {
+        const specs = sites.map((s) => {
+          const tap = (Object.keys(map) as TapKey[]).find((k) => map[k] === s.id) ?? null;
+          return { siteId: s.id, tap };
+        });
+        this.service.startPolling(specs);
+        return;
+      }
       const id = this.siteId();
       if (id) this.service.startPolling(id);
     });

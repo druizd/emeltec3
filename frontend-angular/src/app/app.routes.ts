@@ -45,6 +45,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:siteId/cold-room',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros-tap-detail').then(
+            (m) => m.VentisquerosTapDetailComponent,
+          ),
+      },
+      {
         path: 'companies/:siteId/tap/:tapId',
         loadComponent: () =>
           import('./pages/ventisqueros/ventisqueros-tap-detail').then(

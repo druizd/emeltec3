@@ -542,14 +542,19 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
   readonly backLink = computed(() => ['/companies']);
 
   readonly tapId = computed<TapKey>(() => {
-    const raw = this.params().get('tapId') || '';
-    const decoded = decodeURIComponent(raw).toUpperCase().replace(/-/g, ' ').trim();
-    const match = TAPS.find((t) => t === decoded || t.replace(' ', '-') === decoded);
-    if (!match) {
-      this.router.navigate(this.backLink());
-      return TAPS[0];
+    const rawParam = this.params().get('tapId');
+    if (rawParam) {
+      const decoded = decodeURIComponent(rawParam).toUpperCase().replace(/-/g, ' ').trim();
+      const match = TAPS.find((t) => t === decoded || t.replace(' ', '-') === decoded);
+      if (match) return match;
     }
-    return match;
+    const site = this.siteRecord();
+    if (site) {
+      const desc = (site.descripcion || '').toUpperCase().replace(/-/g, ' ').trim();
+      const matchFromSite = TAPS.find((t) => desc.includes(t));
+      if (matchFromSite) return matchFromSite;
+    }
+    return TAPS[0];
   });
 
   readonly tapColor = computed(() => TAP_COLORS[this.tapId()]);
@@ -636,14 +641,21 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
       this.router.navigate(['/companies']);
       return;
     }
-    this.service.startPolling(id);
     this.intervalId = setInterval(() => this.now.set(Date.now()), 5_000);
 
     this.companyService.fetchHierarchy().subscribe({
       next: (res) => {
-        if (!res.ok) return;
+        if (!res.ok) {
+          this.service.startPolling([{ siteId: id, tap: null }]);
+          return;
+        }
         const site = this.findSite(res.data, id);
         if (site) this.siteRecord.set(site);
+        const tap = this.tapId();
+        this.service.startPolling([{ siteId: id, tap }]);
+      },
+      error: () => {
+        this.service.startPolling([{ siteId: id, tap: null }]);
       },
     });
   }

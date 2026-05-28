@@ -80,6 +80,7 @@ interface Periodo {
       <app-ventisqueros
         [siteId]="coldSite.id"
         [siteName]="coldSite.descripcion"
+        [coldRoomSites]="coldRoomSites()"
         [embedded]="true"
         view="general"
       />
@@ -612,11 +613,18 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   @Input() subEmpresaId = '';
 
+  readonly coldRoomSites = computed<SiteRecord[]>(() => {
+    const list = this._sitesSignal();
+    return list.filter((s) => normalizeSiteType(s?.tipo_sitio) === 'camara_frio');
+  });
+
   readonly coldRoomSite = computed<SiteRecord | null>(() => {
     const list = this._sitesSignal();
     if (list.length === 0) return null;
-    const cold = list.find((s) => normalizeSiteType(s?.tipo_sitio) === 'camara_frio');
-    return cold && list.length === 1 ? cold : null;
+    const cold = this.coldRoomSites();
+    if (cold.length === 0) return null;
+    if (cold.length !== list.length) return null;
+    return cold[0];
   });
 
   @ViewChild('mapContainer') mapContainer?: ElementRef<HTMLDivElement>;

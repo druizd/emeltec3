@@ -118,8 +118,10 @@ export class CompaniesPageHeaderComponent {
 
   readonly coldRoomSite = computed<SiteRecord | null>(() => {
     const list = this._sites();
-    if (list.length !== 1) return null;
-    return normalizeSiteType(list[0]?.tipo_sitio) === 'camara_frio' ? list[0] : null;
+    if (list.length === 0) return null;
+    const cold = list.filter((s) => normalizeSiteType(s?.tipo_sitio) === 'camara_frio');
+    if (cold.length === 0 || cold.length !== list.length) return null;
+    return cold[0];
   });
 
   readonly nowLabel = signal<string>('');

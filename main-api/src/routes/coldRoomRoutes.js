@@ -35,8 +35,21 @@ function jitter(value, range = 0.4) {
   return +(value + (Math.random() - 0.5) * range * 2).toFixed(1);
 }
 
+function normalizeTap(raw) {
+  if (!raw) return null;
+  const upper = String(raw).toUpperCase().replace(/-/g, ' ').trim();
+  if (['TAP 1', 'TAP 2', 'TAP 3', 'TAP 4'].includes(upper)) return upper;
+  return null;
+}
+
 router.get('/:siteId/sensors', (req, res) => {
-  const sensors = PLACEHOLDER_SENSORS.map((s) => {
+  const tap = normalizeTap(req.query.tap);
+  // TAP 1 es concentrador puro: no tiene sensores primary propios.
+  if (tap === 'TAP 1') return res.json({ ok: true, data: [] });
+  const filtered = tap
+    ? PLACEHOLDER_SENSORS.filter((s) => s.tap === tap)
+    : PLACEHOLDER_SENSORS;
+  const sensors = filtered.map((s) => {
     const t = jitter(s.t, 0.4);
     return {
       id: s.id,
@@ -55,6 +68,11 @@ router.get('/:siteId/sensors', (req, res) => {
 });
 
 router.get('/:siteId/concentrator', (req, res) => {
+  const tap = normalizeTap(req.query.tap);
+  // Solo TAP 1 mantiene el estado del concentrador maestro.
+  if (tap && tap !== 'TAP 1') {
+    return res.json({ ok: true, data: { alerted: false, lastSeen: null } });
+  }
   res.json({
     ok: true,
     data: {
@@ -65,10 +83,11 @@ router.get('/:siteId/concentrator', (req, res) => {
 });
 
 router.get('/:siteId/backup', (req, res) => {
-  // TAP 1 envía las mismas variables T/H que TAPs 2-4 por canal redundante,
-  // más un booleano por sensor que refleja alerta física (contacto seco).
+  const tap = normalizeTap(req.query.tap);
+  // El canal redundante TAP 1 transmite las T/H de los 13 sensores + boolean
+  // de alerta física por contacto seco. Los demás TAPs no envían backup.
+  if (tap && tap !== 'TAP 1') return res.json({ ok: true, data: [] });
   const backup = PLACEHOLDER_SENSORS.map((s) => {
-    // Backup difiere ligeramente del primary (canal independiente, drift natural).
     const t = jitter(s.t, 0.6);
     return {
       id: s.id,

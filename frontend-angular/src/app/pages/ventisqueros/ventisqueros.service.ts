@@ -1,7 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Observable, Subscription, interval, startWith } from 'rxjs';
-import type { ConcentratorState, Sensor, SensorBackup } from './ventisqueros-data';
+import { BehaviorSubject, Observable, Subscription, forkJoin, interval, of, startWith } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+import type { ConcentratorState, Sensor, SensorBackup, TapKey } from './ventisqueros-data';
+
+export interface SitePollSpec {
+  siteId: string;
+  tap: TapKey | null;
+}
 
 interface ApiEnvelope<T> {
   ok: boolean;
@@ -33,62 +39,90 @@ export class VentisquerosService {
   readonly error$: Observable<string | null> = this.errorSubject.asObservable();
 
   private pollSub: Subscription | null = null;
-  private currentSiteId: string | null = null;
+  private currentKey: string | null = null;
+  private currentSites: SitePollSpec[] = [];
 
-  startPolling(siteId: string): void {
-    if (this.currentSiteId === siteId && this.pollSub) return;
+  startPolling(sites: SitePollSpec[] | string): void {
+    const normalized: SitePollSpec[] = Array.isArray(sites)
+      ? sites
+      : [{ siteId: sites, tap: null }];
+    const key = normalized
+      .map((s) => `${s.siteId}:${s.tap ?? ''}`)
+      .sort()
+      .join('|');
+    if (this.currentKey === key && this.pollSub) return;
     this.stopPolling();
-    this.currentSiteId = siteId;
+    this.currentKey = key;
+    this.currentSites = normalized;
+    if (normalized.length === 0) return;
     this.pollSub = interval(POLL_MS)
       .pipe(startWith(0))
-      .subscribe(() => this.fetch(siteId));
+      .subscribe(() => this.fetchAll(normalized));
   }
 
   stopPolling(): void {
     this.pollSub?.unsubscribe();
     this.pollSub = null;
-    this.currentSiteId = null;
+    this.currentKey = null;
+    this.currentSites = [];
   }
 
   refresh(): void {
-    if (this.currentSiteId) this.fetch(this.currentSiteId);
+    if (this.currentSites.length > 0) this.fetchAll(this.currentSites);
   }
 
-  private fetch(siteId: string): void {
+  private fetchAll(sites: SitePollSpec[]): void {
     this.loadingSubject.next(true);
-    this.http
-      .get<ApiEnvelope<Sensor[]>>(`/api/cold-room/${siteId}/sensors?t=${Date.now()}`)
-      .subscribe({
-        next: (res) => {
-          if (res.ok) this.sensorsSubject.next(res.data);
-          this.lastUpdateSubject.next(new Date());
-          this.errorSubject.next(null);
-          this.loadingSubject.next(false);
-        },
-        error: (err) => {
-          this.errorSubject.next(err?.message ?? 'Error al cargar sensores');
-          this.loadingSubject.next(false);
-        },
-      });
-    this.http
-      .get<ApiEnvelope<ConcentratorState>>(`/api/cold-room/${siteId}/concentrator?t=${Date.now()}`)
-      .subscribe({
-        next: (res) => {
-          if (res.ok) this.concentratorSubject.next(res.data);
-        },
-        error: () => {
-          // El error del listado principal ya quedó capturado.
-        },
-      });
-    this.http
-      .get<ApiEnvelope<SensorBackup[]>>(`/api/cold-room/${siteId}/backup?t=${Date.now()}`)
-      .subscribe({
-        next: (res) => {
-          if (res.ok) this.backupSubject.next(res.data);
-        },
-        error: () => {
-          // El error del listado principal ya quedó capturado.
-        },
-      });
+    const ts = Date.now();
+    const sensorsReqs = sites.map((s) =>
+      this.http
+        .get<ApiEnvelope<Sensor[]>>(this.url(s, 'sensors', ts))
+        .pipe(catchError(() => of<ApiEnvelope<Sensor[]>>({ ok: false, data: [] }))),
+    );
+    const backupReqs = sites.map((s) =>
+      this.http
+        .get<ApiEnvelope<SensorBackup[]>>(this.url(s, 'backup', ts))
+        .pipe(catchError(() => of<ApiEnvelope<SensorBackup[]>>({ ok: false, data: [] }))),
+    );
+    const concentratorReqs = sites.map((s) =>
+      this.http
+        .get<ApiEnvelope<ConcentratorState>>(this.url(s, 'concentrator', ts))
+        .pipe(
+          catchError(() =>
+            of<ApiEnvelope<ConcentratorState>>({
+              ok: false,
+              data: { alerted: false, lastSeen: null },
+            }),
+          ),
+        ),
+    );
+
+    forkJoin([forkJoin(sensorsReqs), forkJoin(backupReqs), forkJoin(concentratorReqs)]).subscribe({
+      next: ([sensorsRes, backupRes, concentratorRes]) => {
+        const sensors = sensorsRes.flatMap((r) => (r.ok ? r.data : []));
+        const backup = backupRes.flatMap((r) => (r.ok ? r.data : []));
+        const concentrator =
+          concentratorRes
+            .map((r) => r.data)
+            .find((c) => c.lastSeen !== null) ?? { alerted: false, lastSeen: null };
+        const aggAlert = backup.some((b) => b.alertaFisica) || concentrator.alerted;
+
+        this.sensorsSubject.next(sensors);
+        this.backupSubject.next(backup);
+        this.concentratorSubject.next({ ...concentrator, alerted: aggAlert });
+        this.lastUpdateSubject.next(new Date());
+        this.errorSubject.next(null);
+        this.loadingSubject.next(false);
+      },
+      error: (err) => {
+        this.errorSubject.next(err?.message ?? 'Error al cargar lecturas cold-room');
+        this.loadingSubject.next(false);
+      },
+    });
+  }
+
+  private url(spec: SitePollSpec, resource: 'sensors' | 'backup' | 'concentrator', ts: number): string {
+    const tapParam = spec.tap ? `&tap=${encodeURIComponent(spec.tap)}` : '';
+    return `/api/cold-room/${spec.siteId}/${resource}?t=${ts}${tapParam}`;
   }
 }
