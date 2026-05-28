@@ -380,10 +380,11 @@ type DetailTab = 'resumen' | 'configuracion';
         }
 
         @if (tab() === 'configuracion') {
-          @if (siteRecord(); as site) {
+          @if (siteId()) {
             <app-site-variable-settings-panel
-              [siteId]="site.id"
-              [site]="site"
+              [siteId]="siteId()"
+              [site]="siteRecord()"
+              [showPozoConfig]="false"
               accentColor="#0284C7"
               accentSoft="rgba(2,132,199,0.10)"
             />
@@ -391,7 +392,7 @@ type DetailTab = 'resumen' | 'configuracion';
             <div
               class="flex items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-16"
             >
-              <span class="text-[12px] text-slate-400">Cargando configuración…</span>
+              <span class="text-[12px] text-slate-400">Sin site seleccionado</span>
             </div>
           }
         }
