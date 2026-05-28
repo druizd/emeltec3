@@ -1571,6 +1571,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             SELECT max(bucket) AS max_bucket
             FROM ${granConfig.view}
             WHERE id_serial = $1
+              AND bucket >= now() - INTERVAL '7 days'
           ),
           recent_raw AS (
             SELECT
@@ -1594,6 +1595,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
               ${utcTimestampSql('bucket')} AS timestamp_completo
             FROM ${granConfig.view}
             WHERE id_serial = $1
+              AND bucket >= now() - INTERVAL '7 days'
           )
           SELECT
             time,
@@ -1655,6 +1657,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             SELECT max(bucket) AS max_bucket
             FROM ${granConfig.view}
             WHERE id_serial = $1
+              AND bucket >= now() - INTERVAL '7 days'
           ),
           recent_raw AS (
             SELECT time_bucket($2::interval, e.time) AS time
@@ -1668,6 +1671,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
             SELECT bucket AS time
             FROM ${granConfig.view}
             WHERE id_serial = $1
+              AND bucket >= now() - INTERVAL '7 days'
           )
           SELECT count(*)::int AS total
           FROM (
@@ -1711,6 +1715,27 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         [site.id_serial, from, to, granConfig.bucketInterval, limit, offset],
       );
       historySource = 'equipo';
+      totalRows = offset + historyRes.rows.length + (historyRes.rows.length === limit ? 1 : 0);
+    } else if (!useRange && historyRes.rows.length === 0) {
+      // Equipo sin reportes en últimos 7 días: caemos al cagg sin time bound
+      // para devolver los últimos N buckets disponibles. Usa el índice
+      // (id_serial, bucket DESC) → barato aunque scanee histórico completo.
+      historyRes = await db.query(
+        `
+        SELECT
+          bucket AS time,
+          received_at,
+          id_serial,
+          data,
+          ${utcTimestampSql('bucket')} AS timestamp_completo
+        FROM ${granConfig.view}
+        WHERE id_serial = $1
+        ORDER BY bucket DESC
+        LIMIT $2
+        OFFSET $3
+        `,
+        [site.id_serial, limit, offset],
+      );
       totalRows = offset + historyRes.rows.length + (historyRes.rows.length === limit ? 1 : 0);
     }
 
