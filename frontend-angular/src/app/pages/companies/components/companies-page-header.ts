@@ -9,7 +9,9 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
   imports: [CommonModule],
   template: `
     @if (coldRoomSite(); as coldSite) {
-      <div class="cr-site-header mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-2.5 shadow-sm">
+      <div
+        class="cr-site-header mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-5 py-2.5 shadow-sm"
+      >
         <div class="cr-module-icon flex h-9 w-9 shrink-0 items-center justify-center">
           <span class="material-symbols-outlined text-[18px] text-[#0284C7]">ac_unit</span>
         </div>
@@ -49,7 +51,7 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
       }
       .cr-module-icon {
         border-radius: 9px;
-        background: rgba(2, 132, 199, 0.10);
+        background: rgba(2, 132, 199, 0.1);
         border: 1px solid rgba(2, 132, 199, 0.25);
       }
       .cr-site-title {
@@ -123,7 +125,20 @@ export class CompaniesPageHeaderComponent {
 
   private updateTime(): void {
     const d = new Date();
-    const months = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
     const day = String(d.getDate()).padStart(2, '0');
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');

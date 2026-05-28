@@ -82,77 +82,77 @@ interface MetricOption {
   template: `
     <div class="vs-page flex h-full min-w-0 flex-1 flex-col overflow-hidden">
       @if (!embedded()) {
-      <!-- Site header -->
-      <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
-        <a
-          routerLink="/companies"
-          class="vs-back-btn flex h-9 w-9 shrink-0 items-center justify-center"
-          aria-label="Volver a instalaciones"
-        >
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
-        </a>
-        <div class="vs-module-icon flex h-9.5 w-9.5 shrink-0 items-center justify-center">
-          <span class="material-symbols-outlined text-[18px] text-[#6366F1]">ac_unit</span>
-        </div>
-        <div>
-          <div class="vs-site-title">{{ siteTitle() }}</div>
-          <div class="vs-site-subtitle">
-            Cámara frío · {{ sensors().length }} sensores THM activos
+        <!-- Site header -->
+        <div class="vs-site-header flex flex-wrap items-center gap-3 px-5 py-2.5">
+          <a
+            routerLink="/companies"
+            class="vs-back-btn flex h-9 w-9 shrink-0 items-center justify-center"
+            aria-label="Volver a instalaciones"
+          >
+            <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+          </a>
+          <div class="vs-module-icon flex h-9.5 w-9.5 shrink-0 items-center justify-center">
+            <span class="material-symbols-outlined text-[18px] text-[#6366F1]">ac_unit</span>
+          </div>
+          <div>
+            <div class="vs-site-title">{{ siteTitle() }}</div>
+            <div class="vs-site-subtitle">
+              Cámara frío · {{ sensors().length }} sensores THM activos
+            </div>
+          </div>
+          <div class="ml-3 flex gap-1.5">
+            <div class="vs-chip-live flex items-center gap-1">
+              <span class="vs-chip-live-dot"></span>
+              En vivo
+            </div>
+            <div class="vs-chip-time flex items-center gap-1">
+              <span class="material-symbols-outlined text-[10px]">schedule</span>
+              {{ nowLabel() }}
+            </div>
+          </div>
+          <div class="ml-auto flex flex-wrap items-center gap-1.5">
+            <span class="vs-range-label">Desde</span>
+            <div class="vs-range-chip flex items-center gap-1.25">
+              <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+              {{ rangeFrom }}
+            </div>
+            <span class="vs-range-label">Hasta</span>
+            <div class="vs-range-chip flex items-center gap-1.25">
+              <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+              {{ rangeTo }}
+            </div>
+            <button class="vs-apply-btn">Aplicar</button>
           </div>
         </div>
-        <div class="ml-3 flex gap-1.5">
-          <div class="vs-chip-live flex items-center gap-1">
-            <span class="vs-chip-live-dot"></span>
-            En vivo
-          </div>
-          <div class="vs-chip-time flex items-center gap-1">
-            <span class="material-symbols-outlined text-[10px]">schedule</span>
-            {{ nowLabel() }}
-          </div>
-        </div>
-        <div class="ml-auto flex flex-wrap items-center gap-1.5">
-          <span class="vs-range-label">Desde</span>
-          <div class="vs-range-chip flex items-center gap-1.25">
-            <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-            {{ rangeFrom }}
-          </div>
-          <span class="vs-range-label">Hasta</span>
-          <div class="vs-range-chip flex items-center gap-1.25">
-            <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-            {{ rangeTo }}
-          </div>
-          <button class="vs-apply-btn">Aplicar</button>
-        </div>
-      </div>
       }
 
       @if (view() === 'full') {
-      <!-- Sub-tabs -->
-      <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
-        @for (t of subTabs(); track t.key) {
-          <button
-            class="vs-tab-btn flex items-center gap-1.5"
-            [class.vs-tab-btn--active]="activeTab() === t.key"
-            (click)="activeTab.set(t.key)"
-          >
-            <span class="material-symbols-outlined text-[13px]">{{ t.icon }}</span>
-            {{ t.label }}
-            @if (t.badge) {
-              <span class="vs-tab-badge">{{ t.badge }}</span>
-            }
-          </button>
-        }
-        <div class="flex-1"></div>
-        <div class="flex items-center gap-2">
-          <span class="vs-live-indicator">
-            <span
-              class="vs-live-indicator-dot"
-              [style.background]="serviceError() ? '#EF4444' : '#22C55E'"
-            ></span>
-            {{ liveLabel() }}
-          </span>
+        <!-- Sub-tabs -->
+        <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
+          @for (t of subTabs(); track t.key) {
+            <button
+              class="vs-tab-btn flex items-center gap-1.5"
+              [class.vs-tab-btn--active]="activeTab() === t.key"
+              (click)="activeTab.set(t.key)"
+            >
+              <span class="material-symbols-outlined text-[13px]">{{ t.icon }}</span>
+              {{ t.label }}
+              @if (t.badge) {
+                <span class="vs-tab-badge">{{ t.badge }}</span>
+              }
+            </button>
+          }
+          <div class="flex-1"></div>
+          <div class="flex items-center gap-2">
+            <span class="vs-live-indicator">
+              <span
+                class="vs-live-indicator-dot"
+                [style.background]="serviceError() ? '#EF4444' : '#22C55E'"
+              ></span>
+              {{ liveLabel() }}
+            </span>
+          </div>
         </div>
-      </div>
       }
 
       <!-- Scrollable content -->
@@ -567,7 +567,9 @@ interface MetricOption {
         background: #ffffff;
         border: 1px solid #e2e8f0;
         color: #475569;
-        transition: background 0.12s ease, color 0.12s ease;
+        transition:
+          background 0.12s ease,
+          color 0.12s ease;
       }
       .vs-back-btn:hover {
         background: #f8fafc;
