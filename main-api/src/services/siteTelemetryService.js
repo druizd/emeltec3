@@ -483,7 +483,122 @@ function mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }) {
   };
 }
 
+const HISTORICAL_ROLES = ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
+
+/**
+ * Crea un mapper optimizado para procesar muchas filas históricas del mismo
+ * sitio. Resuelve la asignación rol→mapping UNA SOLA VEZ (con `rawData`
+ * vacío), luego cada fila ejecuta máximo 4 `applyMappingTransform` (uno por
+ * rol relevante) en lugar de iterar todos los mappings + búsqueda fuzzy de
+ * roles. Para una vista con 2200 filas y 8 mappings: ahorra ~17k iteraciones
+ * + 17k búsquedas de tokens.
+ *
+ * Equivalencia funcional con llamar `mapHistoricalDashboardRow` por fila.
+ */
+function createHistoricalRowMapper({ site, mappings, pozoConfig }) {
+  const skeleton = buildDashboardVariablesForRaw({
+    site,
+    mappings,
+    pozoConfig,
+    rawData: {},
+  });
+
+  const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
+  const mappingByKey = new Map(mappings.map((mapping) => [responseKeyForMapping(mapping), mapping]));
+
+  // Resuelve cada rol histórico a uno de:
+  //  - { kind: 'mapping', mapping, alias, unidad }: transforma rawData con un mapping directo
+  //  - { kind: 'derived_nivel_freatico', sourceMapping, alias, unidad }: deriva via calcularNivelFreatico usando un mapping fuente + pozoConfig
+  //  - null: rol no presente en este sitio
+  const resolved = {};
+  for (const role of HISTORICAL_ROLES) {
+    const variable = findHistoricalVariable(skeleton, role);
+    if (!variable) {
+      resolved[role] = null;
+      continue;
+    }
+
+    if (variable.derivado && role === 'nivel_freatico') {
+      const sourceMapping = mappingByKey.get(variable.fuente?.variable);
+      resolved[role] = sourceMapping
+        ? {
+            kind: 'derived_nivel_freatico',
+            sourceMapping,
+            alias: variable.alias,
+            unidad: variable.unidad || 'm',
+          }
+        : null;
+      continue;
+    }
+
+    const mapping = mappingById.get(variable.id);
+    resolved[role] = mapping
+      ? {
+          kind: 'mapping',
+          mapping,
+          alias: variable.alias,
+          unidad: variable.unidad || mapping.unidad || null,
+        }
+      : null;
+  }
+
+  return function mapRow(row) {
+    const rawData = row?.data || {};
+    const out = {
+      timestamp: toUtcIsoString(row.time),
+      fecha: toUtcIsoString(row.time),
+      received_at: toUtcIsoString(row.received_at),
+    };
+
+    for (const role of HISTORICAL_ROLES) {
+      const r = resolved[role];
+      if (!r) {
+        out[role] = serializeHistoricalVariable(null);
+        continue;
+      }
+
+      try {
+        let valor;
+        if (r.kind === 'mapping') {
+          valor = applyMappingTransform({ rawData, mapping: r.mapping, pozoConfig });
+        } else {
+          const lecturaPozo = requireFiniteNumber(
+            Number(applyMappingTransform({ rawData, mapping: r.sourceMapping, pozoConfig })),
+            r.sourceMapping.alias || r.sourceMapping.id,
+          );
+          valor = calcularNivelFreatico({
+            lecturaPozo,
+            profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
+            profundidadTotal: requireFiniteNumber(
+              pozoConfig?.profundidad_pozo_m,
+              'profundidad_pozo_m',
+            ),
+          });
+        }
+        out[role] = {
+          ok: true,
+          valor,
+          unidad: r.unidad || null,
+          alias: r.alias || null,
+          error: null,
+        };
+      } catch (err) {
+        out[role] = {
+          ok: false,
+          valor: null,
+          unidad: r.unidad || null,
+          alias: r.alias || null,
+          error: err.message,
+        };
+      }
+    }
+
+    return out;
+  };
+}
+
 module.exports = {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
+  createHistoricalRowMapper,
 };

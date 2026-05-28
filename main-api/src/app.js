@@ -40,6 +40,9 @@ app.use(
       }
       callback(new Error(`Origen no permitido por CORS: ${origin}`));
     },
+    // Server-Timing necesita estar en la lista expuesta para que DevTools del
+    // browser lo lea en peticiones cross-origin.
+    exposedHeaders: ['Server-Timing'],
   }),
 );
 

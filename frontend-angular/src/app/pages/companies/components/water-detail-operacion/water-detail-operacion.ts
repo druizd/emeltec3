@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, combineLatest, forkJoin, of, Subscription, switchMap, timer } from 'rxjs';
+import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { CompanyService } from '../../../../services/company.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
@@ -596,15 +596,28 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly companyService = inject(CompanyService);
   private pollingSub?: Subscription;
+  private dayHistorySub?: Subscription;
   private readonly CHILE_TIME_ZONE = CHILE_TIME_ZONE;
-  private readonly historyLimit = 2200;
+  // Bundle realtime (hoy operativo) usa 1500 buckets ≈ 25h: cubre jornada
+  // completa (24h máx) + margen. Para queries con range (días no actuales)
+  // se usa `historyRangeLimit` que cubre 2 días + cross-midnight.
+  private readonly historyLimit = 1500;
+  private readonly historyRangeLimit = 2500;
   private readonly chartWidth = 1120;
   private readonly chartHeight = 74;
 
   readonly modo = signal<OperacionModo>('hoy');
   readonly turnosSettingsOpen = signal(false);
   readonly dashboardData = signal<DashboardData | null>(null);
+  // `historyRows` SIEMPRE contiene datos realtime (hoy operativo) traídos del
+  // bundle. Drive sparkline + métricas top + último timestamp. Aunque el
+  // operador navegue a un día anterior, este signal NO se sobrescribe —
+  // mantenemos la lectura de caudal/nivel/totalizador en tiempo real.
   readonly historyRows = this.state.historyRows;
+  // Local: filas históricas del día seleccionado cuando el operador navegó
+  // con las flechas a un día distinto de hoy. Solo se usa para calcular las
+  // cards de turno + Total del Día.
+  readonly dayHistoryRows = signal<HistoricalRow[]>([]);
   readonly loading = signal(false);
   readonly loadError = signal('');
   readonly selectedRealtimeTimestamp = signal<number | null>(null);
@@ -658,6 +671,20 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     const [year, month, day] = this.selectedDayKey().split('-').map(Number);
     return new Date(Date.UTC(year, month - 1, day, 12));
   });
+
+  /**
+   * Filas históricas usadas para calcular cards de turno + Total del Día.
+   * Si el día seleccionado es hoy operativo → usa `historyRows` (realtime que
+   * ya pollea el bundle). Si es otro día → usa `dayHistoryRows` que se llena
+   * con la query de range cuando el operador navega con las flechas. Así el
+   * "Caudal Actual" del banner top + sparkline + última lectura SIEMPRE
+   * reflejan el momento presente, sin contaminarse con datos antiguos.
+   */
+  private readonly effectiveDayRows = computed<HistoricalRow[]>(() =>
+    this.selectedDayKey() === this.currentJornadaDayKey()
+      ? this.historyRows()
+      : this.dayHistoryRows(),
+  );
 
   readonly metricas = computed<MetricaTiempoReal[]>(() => {
     const caudal = this.dashboardNumber('caudal') ?? this.latestHistoryNumber('caudal');
@@ -817,6 +844,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pollingSub?.unsubscribe();
+    this.dayHistorySub?.unsubscribe();
     this.nowTickSub?.unsubscribe();
     this.state.stopCountersPolling();
   }
@@ -831,69 +859,68 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
       return;
     }
     this.pollingSub?.unsubscribe();
+    this.dayHistorySub?.unsubscribe();
     this.loadError.set('');
     this.startPolling(siteId);
   }
 
   private startPolling(siteId: string): void {
     this.loading.set(true);
-    // Polling combina:
-    //  - timer 60s (refresh periódico cuando estás en hoy operativo)
-    //  - selectedDayKey$ (re-fetch al cambiar de día con flechas)
-    //
-    // Si día seleccionado == hoy operativo → 1 request al endpoint bundle
-    // (dashboard + history + dedupe pozo_config / reg_map en el backend, cache
-    // 30s + bound 48h, sin count).
-    // Si día != hoy → 2 requests (dashboard sin cambio + history con range
-    // día-1, día+1 para cubrir Turno 3 cross-midnight).
-    this.pollingSub = combineLatest([timer(0, 60000), this.selectedDayKey$])
+
+    // Poll A: realtime SIEMPRE. Cada 60s pide bundle (dashboard + history).
+    // Mantiene actualizado: caudal actual, totalizador, nivel, sparkline,
+    // último timestamp, "Consumo Hoy" (cuando hoy operativo está seleccionado).
+    // Independiente del día navegado por el operador.
+    this.pollingSub = timer(0, 60000)
       .pipe(
-        switchMap(([, dayKey]) => {
-          const isToday = dayKey === this.currentJornadaDayKey();
-          this.loading.set(true);
-
-          if (isToday) {
-            return this.companyService.getSiteOperacionBundle(siteId, this.historyLimit).pipe(
-              catchError((err) => {
-                console.error('No fue posible cargar operación del pozo', err);
-                this.loadError.set('No fue posible cargar datos de operación.');
-                this.loading.set(false);
-                return of(null);
-              }),
-            );
-          }
-
-          const range = { from: this.addDayKey(dayKey, -1), to: this.addDayKey(dayKey, 1) };
-          return forkJoin({
-            dashboard: this.companyService.getSiteDashboardData(siteId),
-            history: this.companyService.getSiteDashboardHistory(
-              siteId,
-              this.historyLimit,
-              range,
-            ),
-          }).pipe(
+        switchMap(() =>
+          this.companyService.getSiteOperacionBundle(siteId, this.historyLimit).pipe(
             catchError((err) => {
               console.error('No fue posible cargar operación del pozo', err);
               this.loadError.set('No fue posible cargar datos de operación.');
               this.loading.set(false);
               return of(null);
             }),
-          );
+          ),
+        ),
+      )
+      .subscribe((res) => {
+        if (!res || !res.data) return;
+        const bundle = res.data;
+        this.dashboardData.set(bundle.dashboard || null);
+        this.historyRows.set(this.mapHistoryRows({ data: bundle.history }));
+        this.loadError.set('');
+        this.loading.set(false);
+      });
+
+    // Poll B: day history. Solo se dispara cuando el operador navega a un día
+    // distinto de hoy operativo. Trae filas del día seleccionado (con range
+    // día-1, día+1 para cubrir Turno 3 cross-midnight). Cuando vuelve a hoy
+    // operativo, limpia dayHistoryRows — turnos leen historyRows directamente.
+    this.dayHistorySub = this.selectedDayKey$
+      .pipe(
+        switchMap((dayKey) => {
+          if (dayKey === this.currentJornadaDayKey()) {
+            this.dayHistoryRows.set([]);
+            return of(null);
+          }
+          this.loading.set(true);
+          const range = { from: this.addDayKey(dayKey, -1), to: this.addDayKey(dayKey, 1) };
+          return this.companyService
+            .getSiteDashboardHistory(siteId, this.historyRangeLimit, range)
+            .pipe(
+              catchError((err) => {
+                console.error('No fue posible cargar histórico del día', err);
+                this.loadError.set('No fue posible cargar datos del día seleccionado.');
+                this.loading.set(false);
+                return of(null);
+              }),
+            );
         }),
       )
       .subscribe((res) => {
         if (!res) return;
-        // El bundle devuelve { ok, data: { dashboard, history: { rows } } }.
-        // Las llamadas separadas devuelven res.dashboard.data y res.history.data.rows.
-        // Detectamos forma del payload por shape.
-        if ('data' in res && res.data && 'dashboard' in res.data) {
-          const bundle = res.data;
-          this.dashboardData.set(bundle.dashboard || null);
-          this.historyRows.set(this.mapHistoryRows({ data: bundle.history }));
-        } else if ('dashboard' in res) {
-          this.dashboardData.set(res.dashboard?.data || null);
-          this.historyRows.set(this.mapHistoryRows(res.history));
-        }
+        this.dayHistoryRows.set(this.mapHistoryRows(res));
         this.loadError.set('');
         this.loading.set(false);
       });
@@ -1195,7 +1222,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   }
 
   private rowsForDay(dayKey: string): HistoricalRow[] {
-    return this.historyRows()
+    return this.effectiveDayRows()
       .filter(
         (row) => row.timestampMs !== null && this.chileDayKey(new Date(row.timestampMs)) === dayKey,
       )
@@ -1207,7 +1234,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     const endMin = this.parseTimeMinutes(end);
     const nextDayKey = this.addDayKey(dayKey, 1);
 
-    return this.historyRows()
+    return this.effectiveDayRows()
       .filter((row) => {
         if (row.timestampMs === null) return false;
         const rowDayKey = this.chileDayKey(new Date(row.timestampMs));

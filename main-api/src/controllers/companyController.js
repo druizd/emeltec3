@@ -5,6 +5,7 @@ const db = require('../config/db');
 const {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
+  createHistoricalRowMapper,
 } = require('../services/siteTelemetryService');
 const {
   getSiteTypeCatalog,
@@ -49,6 +50,43 @@ const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 const DASHBOARD_DATA_CACHE_TTL_MS = 30_000;
 const dashboardDataCache = new Map();
 const dashboardDataInflight = new Map();
+
+// Cache de inputs raw del bundle (pozoConfig + mappings + latest sample). En
+// vez de re-query estos 3 datos por cada poll de 60s del operacion-bundle,
+// servimos los inputs desde memoria por 30s. La query de history sigue siendo
+// fresca (1 sola DB query + JS mapping) — el dashboardData se reconstruye con
+// los inputs cacheados, que para datos casi-estáticos (config, mappings) es
+// equivalente y solo el `latest` puede quedar 30s rezagado (mismo budget del
+// dashboardDataCache anterior).
+const OPERACION_BUNDLE_INPUTS_TTL_MS = 30_000;
+const operacionBundleInputsCache = new Map();
+const operacionBundleInputsInflight = new Map();
+
+function operacionBundleInputsCacheKey(siteId) {
+  return String(siteId || '').trim();
+}
+
+function getCachedOperacionBundleInputs(siteId) {
+  const key = operacionBundleInputsCacheKey(siteId);
+  const cached = operacionBundleInputsCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt < Date.now()) {
+    operacionBundleInputsCache.delete(key);
+    return null;
+  }
+  return cached.inputs;
+}
+
+function setCachedOperacionBundleInputs(siteId, inputs) {
+  operacionBundleInputsCache.set(operacionBundleInputsCacheKey(siteId), {
+    inputs,
+    expiresAt: Date.now() + OPERACION_BUNDLE_INPUTS_TTL_MS,
+  });
+}
+
+function invalidateOperacionBundleInputsCache(siteId) {
+  operacionBundleInputsCache.delete(operacionBundleInputsCacheKey(siteId));
+}
 
 function badRequest(res, message) {
   return res.status(400).json({ ok: false, error: message, message });
@@ -1246,6 +1284,8 @@ exports.updateSite = async (req, res, next) => {
       client.release();
     }
 
+    invalidateOperacionBundleInputsCache(siteId);
+
     res.json({
       ok: true,
       message: 'Sitio actualizado correctamente.',
@@ -1450,6 +1490,9 @@ exports.getSiteDashboardData = async (req, res, next) => {
  * Devuelve historico minuto a minuto con variables transformadas para la tabla del pozo.
  */
 exports.getSiteDashboardHistory = async (req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  const ms = (since) => Number(process.hrtime.bigint() - since) / 1e6;
+  const timings = [];
   try {
     const siteId = normalizeId(req.params.siteId);
     // Max bumped a 3500 para cubrir queries de "navegación de día" que piden
@@ -1660,6 +1703,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
         )
       : Promise.resolve({ rows: [{ total: null }] });
 
+    const tQueries = process.hrtime.bigint();
     let [pozoConfigRes, mappingsRes, historyRes, countRes] = await Promise.all([
       db.query(`SELECT ${POZO_CONFIG_COLUMNS} FROM pozo_config WHERE sitio_id = $1`, [siteId]),
       db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
@@ -1668,6 +1712,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       historyQuery,
       countQuery,
     ]);
+    timings.push(`db_main;dur=${ms(tQueries).toFixed(1)}`);
 
     let historySource = granConfig.view;
     let totalRows = Number(countRes.rows[0]?.total || 0);
@@ -1718,9 +1763,13 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
 
     const pozoConfig = pozoConfigRes.rows[0] || null;
     const mappings = mappingsRes.rows || [];
-    const rows = historyRes.rows.map((row) =>
-      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }),
-    );
+    const tMap = process.hrtime.bigint();
+    const mapRow = createHistoricalRowMapper({ site, mappings, pozoConfig });
+    const rows = historyRes.rows.map(mapRow);
+    timings.push(`js_map;dur=${ms(tMap).toFixed(1)}`);
+    timings.push(`rows;desc="${rows.length}"`);
+    timings.push(`total;dur=${ms(t0).toFixed(1)}`);
+    res.setHeader('Server-Timing', timings.join(', '));
 
     return res.json({
       ok: true,
@@ -1770,9 +1819,17 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
  * dashboard-history directo.
  */
 exports.getSiteOperacionBundle = async (req, res, next) => {
+  // Server-Timing: instrumentamos los segmentos para poder ver en DevTools
+  // (Network → Timing) dónde se va el tiempo (DB inputs, DB history, JS map).
+  const t0 = process.hrtime.bigint();
+  const ms = (since) => Number(process.hrtime.bigint() - since) / 1e6;
+  const timings = [];
+
   try {
     const siteId = normalizeId(req.params.siteId);
+    const tSite = process.hrtime.bigint();
     const site = await getSiteById(siteId);
+    timings.push(`db_site;dur=${ms(tSite).toFixed(1)}`);
 
     if (!site) {
       return notFound(res, 'Sitio no encontrado.');
@@ -1821,21 +1878,54 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
       });
     }
 
-    // 4 queries paralelas. pozo_config + reg_map se comparten entre dashboard
-    // y la transformación de filas históricas → 1 fetch por cada.
-    const [pozoConfigRes, mappingsRes, latest, historyRes] = await Promise.all([
-      db.query(
-        `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
-           FROM pozo_config pc
-           JOIN sitio s ON s.id = pc.sitio_id
-          WHERE pc.sitio_id = $1
-            AND s.tipo_sitio = 'pozo'`,
-        [siteId],
-      ),
-      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
-        siteId,
-      ]),
-      loadLatestEquipoSample(site.id_serial),
+    // Cache hit warm: 3 queries (pozo, reg_map, latest) servidas desde memoria
+    // (~5min de vida). Solo se ejecuta la query de history que siempre debe
+    // ser fresca. Cache miss: las 4 queries paralelas. Inflight dedup evita
+    // tormenta cuando 2 requests concurrentes encuentran cache vacía.
+    const cachedInputs = getCachedOperacionBundleInputs(siteId);
+
+    let inputsPromise;
+    let inputsFromCache = false;
+    if (cachedInputs) {
+      inputsPromise = Promise.resolve(cachedInputs);
+      inputsFromCache = true;
+    } else {
+      const inflightKey = String(siteId);
+      inputsPromise = operacionBundleInputsInflight.get(inflightKey);
+      if (!inputsPromise) {
+        inputsPromise = Promise.all([
+          db.query(
+            `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
+               FROM pozo_config pc
+               JOIN sitio s ON s.id = pc.sitio_id
+              WHERE pc.sitio_id = $1
+                AND s.tipo_sitio = 'pozo'`,
+            [siteId],
+          ),
+          db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+            siteId,
+          ]),
+          loadLatestEquipoSample(site.id_serial),
+        ])
+          .then(([pcRes, mRes, lat]) => {
+            const inputs = {
+              pozoConfig: pcRes.rows[0] || null,
+              mappings: mRes.rows || [],
+              latest: lat,
+            };
+            setCachedOperacionBundleInputs(siteId, inputs);
+            return inputs;
+          })
+          .finally(() => {
+            operacionBundleInputsInflight.delete(inflightKey);
+          });
+        operacionBundleInputsInflight.set(inflightKey, inputsPromise);
+      }
+    }
+
+    const tQueries = process.hrtime.bigint();
+    const [inputs, historyRes] = await Promise.all([
+      inputsPromise,
       db.query(
         `
         WITH latest_cagg AS (
@@ -1887,18 +1977,25 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
       ),
     ]);
 
-    const pozoConfig = pozoConfigRes.rows[0] || null;
-    const mappings = mappingsRes.rows || [];
+    timings.push(
+      `${inputsFromCache ? 'db_inputs_cached' : 'db_inputs'};dur=${ms(tQueries).toFixed(1)}`,
+    );
 
+    const { pozoConfig, mappings, latest } = inputs;
+
+    const tBuild = process.hrtime.bigint();
     const dashboardData = buildSiteDashboardData({ site, pozoConfig, mappings, latest });
 
     // Refresca cache de dashboard-data para que el siguiente poll de 60s del
     // realtime tab encuentre warm cache (TTL 30s).
     setCachedDashboardData(dashboardDataCacheKey(siteId), dashboardData);
 
-    const historyRows = historyRes.rows.map((row) =>
-      mapHistoricalDashboardRow({ row, site, mappings, pozoConfig }),
-    );
+    const mapRow = createHistoricalRowMapper({ site, mappings, pozoConfig });
+    const historyRows = historyRes.rows.map(mapRow);
+    timings.push(`js_map;dur=${ms(tBuild).toFixed(1)}`);
+    timings.push(`rows;desc="${historyRows.length}"`);
+    timings.push(`total;dur=${ms(t0).toFixed(1)}`);
+    res.setHeader('Server-Timing', timings.join(', '));
 
     return res.json({
       ok: true,
@@ -2212,6 +2309,8 @@ exports.createSiteVariableMap = async (req, res, next) => {
       ],
     );
 
+    invalidateOperacionBundleInputsCache(siteId);
+
     res.status(201).json({
       ok: true,
       message: 'Variable mapeada correctamente.',
@@ -2320,6 +2419,8 @@ exports.updateSiteVariableMap = async (req, res, next) => {
       params,
     );
 
+    invalidateOperacionBundleInputsCache(siteId);
+
     res.json({
       ok: true,
       message: 'Mapeo actualizado correctamente.',
@@ -2357,6 +2458,8 @@ exports.deleteSiteVariableMap = async (req, res, next) => {
     if (!rowCount) {
       return notFound(res, 'Mapeo no encontrado para este sitio.');
     }
+
+    invalidateOperacionBundleInputsCache(siteId);
 
     res.json({ ok: true, message: 'Mapeo eliminado correctamente.' });
   } catch (err) {
