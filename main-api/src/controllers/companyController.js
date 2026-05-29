@@ -1923,10 +1923,17 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
       }
     }
 
-    const tQueries = process.hrtime.bigint();
-    const [inputs, historyRes] = await Promise.all([
-      inputsPromise,
-      db.query(
+    // Medimos cada promesa independientemente para saber cuál es la lenta.
+    const tInputs = process.hrtime.bigint();
+    const tracedInputs = inputsPromise.then((v) => {
+      timings.push(
+        `${inputsFromCache ? 'db_inputs_cached' : 'db_inputs'};dur=${ms(tInputs).toFixed(1)}`,
+      );
+      return v;
+    });
+    const tHistory = process.hrtime.bigint();
+    const tracedHistory = (async () => {
+      const r = await db.query(
         `
         WITH latest_cagg AS (
           SELECT max(bucket) AS max_bucket
@@ -1974,12 +1981,12 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
         OFFSET $3
         `,
         [site.id_serial, limit, 0, granConfig.bucketInterval],
-      ),
-    ]);
+      );
+      timings.push(`db_history;dur=${ms(tHistory).toFixed(1)}`);
+      return r;
+    })();
 
-    timings.push(
-      `${inputsFromCache ? 'db_inputs_cached' : 'db_inputs'};dur=${ms(tQueries).toFixed(1)}`,
-    );
+    const [inputs, historyRes] = await Promise.all([tracedInputs, tracedHistory]);
 
     const { pozoConfig, mappings, latest } = inputs;
 
