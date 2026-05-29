@@ -78,14 +78,17 @@ import {
           <!-- Dropdown agregar desde agenda + equipo Emeltec. El value usa
                prefijo c: para OperationalContact y u: para User para
                distinguir el origen en el handler. -->
-          @if (isInternal() && (availableContacts().length + availableTecnicosContactos().length) > 0) {
+          @if (isInternal() && (availableContacts().length + availableUsuariosCliente().length) > 0) {
             <div class="mb-3 flex items-center gap-2">
+              <!-- Usamos (change) + template ref en lugar de [(ngModel)] para
+                   evitar race condition de Angular signal vs DOM: después de
+                   agregar, reseteamos el value directamente en el elemento. -->
               <select
-                [ngModel]="contactPickerId()"
-                (ngModelChange)="addContactoFromAgenda($event)"
+                #pickerEl
+                (change)="onContactoPickerChange(pickerEl)"
                 class="flex-1 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-caption text-slate-700 outline-none focus:border-primary-tint-35"
               >
-                <option value="">+ Agregar desde agenda o equipo…</option>
+                <option value="">+ Agregar desde agenda…</option>
                 @if (availableContacts().length > 0) {
                   <optgroup label="Agenda del sitio">
                     @for (c of availableContacts(); track c.id) {
@@ -98,9 +101,9 @@ import {
                     }
                   </optgroup>
                 }
-                @if (availableTecnicosContactos().length > 0) {
-                  <optgroup label="Equipo Emeltec">
-                    @for (u of availableTecnicosContactos(); track u.id) {
+                @if (availableUsuariosCliente().length > 0) {
+                  <optgroup label="Usuarios de la planta">
+                    @for (u of availableUsuariosCliente(); track u.id) {
                       <option [value]="'u:' + u.id">
                         {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
                         · {{ u.tipo }}
@@ -168,11 +171,11 @@ import {
           }
         </section>
 
-        <!-- Acreditaciones -->
+        <!-- Acreditados (técnicos Emeltec con credenciales vigentes) -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-              Acreditaciones
+              Acreditados
             </h3>
             @if (isInternal()) {
               <button
@@ -195,17 +198,23 @@ import {
                       <!-- Persona: dropdown SOLO técnicos Emeltec con tipo
                            SuperAdmin (los que portan acreditaciones reales en
                            terreno). Si la persona ya está seteada y no
-                           matchea, queda visible como primera opción. -->
+                           matchea, queda visible como primera opción.
+                           Usa template ref para evitar race signal/DOM. -->
                       @if (availableAcreditadores().length > 0) {
                         <select
-                          [ngModel]="findTecnicoIdByName(a.persona)"
-                          (ngModelChange)="asignarTecnico($index, $event)"
+                          #acrePicker
+                          (change)="onAcreditadorPickerChange($index, acrePicker)"
                           class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                           title="Seleccionar técnico Emeltec acreditado"
                         >
-                          <option value="">{{ a.persona || 'Seleccionar persona…' }}</option>
+                          <option value="" [selected]="!findTecnicoIdByName(a.persona)">
+                            {{ a.persona || 'Seleccionar persona…' }}
+                          </option>
                           @for (u of availableAcreditadores(); track u.id) {
-                            <option [value]="u.id">
+                            <option
+                              [value]="u.id"
+                              [selected]="findTecnicoIdByName(a.persona) === u.id"
+                            >
                               {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
                             </option>
                           }
@@ -462,7 +471,22 @@ import {
       </div>
 
       @if (isInternal()) {
-        <div class="flex items-center justify-end gap-2">
+        <!-- Barra de acciones sticky cuando hay cambios pendientes. Avisa al
+             operador que las modificaciones quedan solo en memoria hasta
+             clickear "Guardar cambios". Sin esto, al refrescar la página
+             todo lo agregado se pierde — comportamiento esperado pero
+             confuso. -->
+        <div
+          class="sticky bottom-0 z-10 -mx-1 flex items-center justify-end gap-2 rounded-xl border bg-white/95 px-3 py-2 shadow-md backdrop-blur"
+          [class.border-amber-300]="dirty() && !saving()"
+          [class.border-slate-200]="!dirty() || saving()"
+        >
+          @if (dirty() && !saving()) {
+            <span class="mr-auto inline-flex items-center gap-1 text-caption-xs font-semibold text-amber-700">
+              <span class="material-symbols-outlined text-[14px]">edit_note</span>
+              Cambios sin guardar
+            </span>
+          }
           @if (saveMsg()) {
             <span class="text-caption-xs font-semibold text-emerald-600">{{ saveMsg() }}</span>
           }
@@ -514,15 +538,19 @@ export class BitacoraFichaSitioComponent implements OnInit {
   private readonly availableUsers = signal<User[]>([]);
 
   /**
-   * Usuarios elegibles como contactos técnicos del sitio: incluye TODO el
-   * staff (SuperAdmin, Admin, Gerente) — son las personas con responsabilidad
-   * sobre el sitio. Cliente queda fuera porque no actúa como contacto técnico.
+   * Usuarios de la MISMA empresa del sitio (excluye SuperAdmin/Admin de
+   * Emeltec). Pensado para listar gerentes de planta, jefes operacionales,
+   * etc. del cliente — los que efectivamente trabajan en el sitio.
+   * Si un User tiene empresa_id distinto al del sitio, queda fuera.
    */
-  readonly availableTecnicosContactos = computed(() =>
-    this.availableUsers().filter(
-      (u) => u.tipo === 'SuperAdmin' || u.tipo === 'Admin' || u.tipo === 'Gerente',
-    ),
-  );
+  readonly availableUsuariosCliente = computed(() => {
+    const empId = this.empresaId();
+    if (!empId) return [];
+    return this.availableUsers().filter(
+      (u) =>
+        u.empresa_id === empId && u.tipo !== 'SuperAdmin' && u.tipo !== 'Admin',
+    );
+  });
 
   /**
    * Personas elegibles como titulares de acreditaciones: solo SuperAdmin
@@ -630,10 +658,21 @@ export class BitacoraFichaSitioComponent implements OnInit {
   }
 
   /**
-   * Selecciona un contacto desde la agenda (OperationalContact) O desde el
-   * equipo Emeltec (User SuperAdmin/Admin), y lo agrega a la ficha. El
-   * valor del dropdown es un id prefijado: `c:<contactId>` para
-   * OperationalContact o `u:<userId>` para User.
+   * Handler del cambio del <select> de contactos. Usa template ref para
+   * leer el value y resetear el control directamente en el DOM, evitando
+   * race conditions entre el signal y la actualización del elemento.
+   */
+  onContactoPickerChange(el: HTMLSelectElement): void {
+    const value = el.value;
+    el.value = '';
+    this.addContactoFromAgenda(value);
+  }
+
+  /**
+   * Selecciona un contacto desde la agenda (OperationalContact) O desde
+   * usuarios de la misma planta (User cliente), y lo agrega a la ficha.
+   * El valor del dropdown es un id prefijado: `c:<contactId>` para
+   * OperationalContact o `u:<userId>` para User cliente.
    */
   addContactoFromAgenda(prefixedId: string): void {
     if (!prefixedId) return;
@@ -651,11 +690,11 @@ export class BitacoraFichaSitioComponent implements OnInit {
         };
       }
     } else if (kind === 'u') {
-      const found = this.availableTecnicosContactos().find((u) => u.id === id);
+      const found = this.availableUsuariosCliente().find((u) => u.id === id);
       if (found) {
         const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
         next = {
-          nombre: nombre || found.email || 'Técnico Emeltec',
+          nombre: nombre || found.email || 'Usuario',
           rol: found.tipo,
           telefono: found.telefono || '',
           email: found.email || '',
@@ -687,6 +726,17 @@ export class BitacoraFichaSitioComponent implements OnInit {
         return full === target;
       })?.id ?? ''
     );
+  }
+
+  /**
+   * Handler del <select> de acreditados. Lee value del DOM via template
+   * ref, asigna al acreditado, evitando race condition de Angular ngModel
+   * con signals. La selección queda persistente porque [selected] en el
+   * template binding refleja `findTecnicoIdByName(a.persona)` que ya
+   * incluye el cambio recién aplicado.
+   */
+  onAcreditadorPickerChange(idx: number, el: HTMLSelectElement): void {
+    this.asignarTecnico(idx, el.value);
   }
 
   /**
