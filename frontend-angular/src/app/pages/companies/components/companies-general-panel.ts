@@ -40,6 +40,9 @@ interface PuntoMensual {
 interface SitioResumen {
   nombre: string;
   ubicacion: string;
+  /** Número de obra DGA del pozo (pozo_config.obra_dga). NULL si no es pozo
+   *  o no está registrado. Se usa como subtítulo en "Estado de sitios". */
+  obraDga: string | null;
   estado: 'online' | 'sinDatos' | 'offline';
   /** Latitud derivada de UTM via proj4. NaN si el sitio no tiene UTM seteado. */
   lat: number;
@@ -272,7 +275,13 @@ interface Periodo {
                         <p class="truncate text-caption font-semibold text-slate-800">
                           {{ s.nombre }}
                         </p>
-                        <p class="truncate text-caption-xs text-slate-400">{{ s.ubicacion }}</p>
+                        <p class="truncate font-mono text-caption-xs text-slate-400">
+                          @if (s.obraDga) {
+                            Obra DGA · {{ s.obraDga }}
+                          } @else {
+                            {{ s.ubicacion }}
+                          }
+                        </p>
                       </div>
                       <div class="flex flex-col items-end gap-0.5 shrink-0">
                         <span
@@ -879,6 +888,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       return {
         nombre: s.descripcion || s.nombre || s.id_serial || 'Instalación',
         ubicacion: s.ubicacion || 'Sin ubicación',
+        obraDga: s.pozo_config?.obra_dga || null,
         estado: (s.activo ? 'online' : 'sinDatos') as SitioResumen['estado'],
         // Si no hay UTM aún, fallback al mock por sitio (centros Coquimbo).
         lat: norte !== null && este !== null && huso !== null ? NaN : geo.lat,

@@ -401,13 +401,17 @@ export class SidebarComponent implements OnInit {
   }
 
   roleLabel(): string {
-    const effectiveRole = this.auth.effectiveRole();
-    if (!effectiveRole) return 'Rol';
+    // Cuando hay "view as" activo mantenemos el formato Rol + scope para
+    // dejar claro que la sesión está suplantando — el cargo del operador
+    // no aplica en ese contexto. En modo normal mostramos el cargo del
+    // usuario (campo `users.cargo`), cae al rol si no está seteado.
     if (this.auth.isViewingAs()) {
+      const effectiveRole = this.auth.effectiveRole();
       const scope = this.auth.viewAsScopeLabel();
       return scope ? `Vista ${effectiveRole} · ${scope}` : `Vista ${effectiveRole}`;
     }
-    return effectiveRole;
+    const user = this.auth.user();
+    return user?.cargo || this.auth.effectiveRole() || 'Usuario';
   }
 
   private initializeSelection(): void {
