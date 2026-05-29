@@ -1764,7 +1764,12 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
     const pozoConfig = pozoConfigRes.rows[0] || null;
     const mappings = mappingsRes.rows || [];
     const tMap = process.hrtime.bigint();
-    const mapRow = createHistoricalRowMapper({ site, mappings, pozoConfig });
+    const mapRow = createHistoricalRowMapper({
+      site,
+      mappings,
+      pozoConfig,
+      sampleRawData: historyRes.rows[0]?.data || {},
+    });
     const rows = historyRes.rows.map(mapRow);
     timings.push(`js_map;dur=${ms(tMap).toFixed(1)}`);
     timings.push(`rows;desc="${rows.length}"`);
@@ -1972,7 +1977,12 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
     // realtime tab encuentre warm cache (TTL 30s).
     setCachedDashboardData(dashboardDataCacheKey(siteId), dashboardData);
 
-    const mapRow = createHistoricalRowMapper({ site, mappings, pozoConfig });
+    const mapRow = createHistoricalRowMapper({
+      site,
+      mappings,
+      pozoConfig,
+      sampleRawData: historyRes.rows[0]?.data || latest?.data || {},
+    });
     const historyRows = historyRes.rows.map(mapRow);
     timings.push(`js_map;dur=${ms(tBuild).toFixed(1)}`);
     timings.push(`rows;desc="${historyRows.length}"`);

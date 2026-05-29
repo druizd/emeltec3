@@ -487,20 +487,26 @@ const HISTORICAL_ROLES = ['caudal', 'nivel', 'totalizador', 'nivel_freatico'];
 
 /**
  * Crea un mapper optimizado para procesar muchas filas históricas del mismo
- * sitio. Resuelve la asignación rol→mapping UNA SOLA VEZ (con `rawData`
- * vacío), luego cada fila ejecuta máximo 4 `applyMappingTransform` (uno por
- * rol relevante) en lugar de iterar todos los mappings + búsqueda fuzzy de
- * roles. Para una vista con 2200 filas y 8 mappings: ahorra ~17k iteraciones
- * + 17k búsquedas de tokens.
+ * sitio. Resuelve la asignación rol→mapping UNA SOLA VEZ usando una fila de
+ * muestra (sampleRawData), luego cada fila ejecuta máximo 4
+ * `applyMappingTransform` (uno por rol relevante) en lugar de iterar todos
+ * los mappings + búsqueda fuzzy de roles. Para una vista con 2200 filas y 8
+ * mappings: ahorra ~17k iteraciones + 17k búsquedas de tokens.
+ *
+ * IMPORTANTE: `sampleRawData` debe ser de una fila real (típicamente la
+ * primera). Construir el skeleton con rawData vacío rompe la detección del
+ * nivel_freatico derivado (`buildDerivedNivelFreatico` filtra source por
+ * `Number.isFinite(Number(variable.valor))` — con rawData vacío todos los
+ * valores son null y el derived se devuelve como inexistente).
  *
  * Equivalencia funcional con llamar `mapHistoricalDashboardRow` por fila.
  */
-function createHistoricalRowMapper({ site, mappings, pozoConfig }) {
+function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData = {} }) {
   const skeleton = buildDashboardVariablesForRaw({
     site,
     mappings,
     pozoConfig,
-    rawData: {},
+    rawData: sampleRawData,
   });
 
   const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
