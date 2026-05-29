@@ -8,11 +8,21 @@ import {
   OnDestroy,
   ViewChild,
   computed,
+  inject,
   signal,
 } from '@angular/core';
+import { catchError, forkJoin, of } from 'rxjs';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord } from '@emeltec/shared';
+import {
+  CompanyService,
+  type ContadorDiarioPoint,
+  type ContadorMensualPoint,
+} from '../../../services/company.service';
+import { AlertaService, type EventoRow } from '../../../services/alerta.service';
+import { DgaService, type DgaReviewSlot } from '../../../services/dga.service';
+import { IncidenciaService, type IncidenciaRow } from '../../../services/incidencia.service';
 
 interface KpiCard {
   label: string;
@@ -69,7 +79,7 @@ interface SitioComparacion {
   consumoTend: number;
 }
 
-type PeriodoPreset = 'semana' | 'mes' | '7d';
+type PeriodoPreset = 'semana' | 'mes' | '7d' | 'custom';
 
 interface Periodo {
   label: string;
@@ -413,15 +423,23 @@ interface Periodo {
 
           <!-- Selector de presets -->
           @if (periodosOpen()) {
-            <div class="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
-              <p
-                class="mb-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-              >
-                Período de comparación
-              </p>
-              <div class="flex flex-wrap gap-2">
+            <div class="mb-4 rounded-xl border border-slate-100 bg-slate-50 p-4">
+              <div class="mb-3 flex items-center justify-between gap-2">
+                <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                  Período de comparación
+                </p>
+                @if (periodoPreset() === 'custom') {
+                  <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                    Personalizado
+                  </span>
+                }
+              </div>
+
+              <!-- Atajos rápidos -->
+              <div class="mb-4 flex flex-wrap gap-2">
                 @for (p of presets; track p.key) {
                   <button
+                    type="button"
                     (click)="setPreset(p.key)"
                     class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors"
                     [style.background]="periodoPreset() === p.key ? '#0dafbd' : 'white'"
@@ -433,6 +451,80 @@ interface Periodo {
                     {{ p.label }}
                   </button>
                 }
+              </div>
+
+              <!-- Rango custom A vs B con date pickers. Misma UX que Resumen
+                   por Período en Operación: inputs locales, recién al click
+                   Aplicar se propaga al state global y se redibuja el chart. -->
+              <div class="grid gap-3 md:grid-cols-2">
+                <div class="rounded-lg border border-slate-200 bg-white p-3">
+                  <div class="mb-2 flex items-center gap-1.5">
+                    <span class="rounded px-1.5 py-0.5 text-[10px] font-bold" style="background:rgba(13,175,189,0.12);color:#0899A5">A</span>
+                    <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-500">Período principal</span>
+                  </div>
+                  <div class="flex flex-col gap-2 text-caption text-slate-500">
+                    <label class="flex items-center gap-2">
+                      <span class="w-12 font-semibold">Desde</span>
+                      <input
+                        type="date"
+                        min="2020-01-01"
+                        [value]="periodoAInputDesde()"
+                        (input)="periodoAInputDesde.set($any($event.target).value)"
+                        class="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                      />
+                    </label>
+                    <label class="flex items-center gap-2">
+                      <span class="w-12 font-semibold">Hasta</span>
+                      <input
+                        type="date"
+                        min="2020-01-01"
+                        [value]="periodoAInputHasta()"
+                        (input)="periodoAInputHasta.set($any($event.target).value)"
+                        class="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div class="rounded-lg border border-slate-200 bg-white p-3">
+                  <div class="mb-2 flex items-center gap-1.5">
+                    <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">B</span>
+                    <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-500">Período comparado</span>
+                  </div>
+                  <div class="flex flex-col gap-2 text-caption text-slate-500">
+                    <label class="flex items-center gap-2">
+                      <span class="w-12 font-semibold">Desde</span>
+                      <input
+                        type="date"
+                        min="2020-01-01"
+                        [value]="periodoBInputDesde()"
+                        (input)="periodoBInputDesde.set($any($event.target).value)"
+                        class="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                      />
+                    </label>
+                    <label class="flex items-center gap-2">
+                      <span class="w-12 font-semibold">Hasta</span>
+                      <input
+                        type="date"
+                        min="2020-01-01"
+                        [value]="periodoBInputHasta()"
+                        (input)="periodoBInputHasta.set($any($event.target).value)"
+                        class="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  (click)="aplicarPeriodosCustom()"
+                  [disabled]="!periodosCustomPendientes()"
+                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                >
+                  <span class="material-symbols-outlined text-[14px]">check</span>
+                  Aplicar
+                </button>
               </div>
             </div>
           }
@@ -612,6 +704,11 @@ interface Periodo {
   `,
 })
 export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit, OnDestroy {
+  private readonly companyService = inject(CompanyService);
+  private readonly alertaService = inject(AlertaService);
+  private readonly dgaService = inject(DgaService);
+  private readonly incidenciaService = inject(IncidenciaService);
+
   @Input() set sites(value: any[]) {
     this._sites = value || [];
     this._sitesSignal.set(value || []);
@@ -653,6 +750,22 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     hasta: '2026-05-10',
   });
 
+  // Inputs locales para edición custom de fechas. El operador edita estos
+  // sin disparar fetch; recién al click Aplicar se propaga a periodoA/B y
+  // se redibuja el chart. Sincronizados con periodoA/B en setPreset.
+  readonly periodoAInputDesde = signal(this.periodoA().desde);
+  readonly periodoAInputHasta = signal(this.periodoA().hasta);
+  readonly periodoBInputDesde = signal(this.periodoB().desde);
+  readonly periodoBInputHasta = signal(this.periodoB().hasta);
+
+  readonly periodosCustomPendientes = computed(
+    () =>
+      this.periodoAInputDesde() !== this.periodoA().desde ||
+      this.periodoAInputHasta() !== this.periodoA().hasta ||
+      this.periodoBInputDesde() !== this.periodoB().desde ||
+      this.periodoBInputHasta() !== this.periodoB().hasta,
+  );
+
   readonly presets: { key: PeriodoPreset; label: string }[] = [
     { key: 'semana', label: 'Esta semana vs semana anterior' },
     { key: 'mes', label: 'Este mes vs mes anterior' },
@@ -662,14 +775,6 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   sitiosResumen: SitioResumen[] = [];
   kpisSecundarios: KpiCard[] = [];
   sitiosComparacion: SitioComparacion[] = [];
-
-  private readonly MOCK_FLOW_BY_SITE: number[][] = [
-    [2100, 2250, 2050, 2300, 2180, 2400],
-    [1800, 1950, 1700, 2000, 1900, 2100],
-    [1100, 1250, 1050, 1300, 1180, 1400],
-    [800, 900, 750, 950, 850, 1000],
-    [600, 700, 550, 750, 650, 800],
-  ];
 
   private readonly MOCK_SITE_GEO = [
     {
@@ -719,7 +824,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     },
   ];
 
-  readonly puntosMensuales: PuntoMensual[] = [
+  puntosMensuales: PuntoMensual[] = [
     { mes: 'Dic 25', valores: [] },
     { mes: 'Ene 26', valores: [] },
     { mes: 'Feb 26', valores: [] },
@@ -728,11 +833,15 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     { mes: 'May 26', valores: [] },
   ];
 
-  readonly metricasOp: MetricaOperacional[] = [
-    { label: 'Uptime promedio', valor: '99.1%', icon: 'wifi', tono: 'ok' },
-    { label: 'Tiempo respuesta', valor: '3.2 h', icon: 'timer', tono: 'ok' },
-    { label: 'Visitas técnicas', valor: '14', icon: 'engineering', tono: 'neutral' },
-    { label: 'Resolución 1ra visita', valor: '86%', icon: 'check_circle', tono: 'ok' },
+  // Índices [0] Uptime y [1] Tiempo respuesta quedan como placeholder ('—')
+  // hasta que se implementen fases posteriores (requieren queries más
+  // pesadas sobre samples + timestamps de eventos resueltos). [2] y [3] se
+  // pueblan en fetchRealData desde incidencias.
+  metricasOp: MetricaOperacional[] = [
+    { label: 'Uptime promedio', valor: '—', icon: 'wifi', tono: 'neutral' },
+    { label: 'Tiempo respuesta', valor: '—', icon: 'timer', tono: 'neutral' },
+    { label: 'Visitas técnicas', valor: '—', icon: 'engineering', tono: 'neutral' },
+    { label: 'Resolución', valor: '—', icon: 'check_circle', tono: 'neutral' },
   ];
 
   readonly yTicks = [
@@ -815,12 +924,11 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       },
     ];
 
+    // Inicializa chart con ceros — se llena con datos reales en fetchRealData.
     for (let mi = 0; mi < this.puntosMensuales.length; mi++) {
       this.puntosMensuales[mi] = {
         ...this.puntosMensuales[mi],
-        valores: this.sitiosResumen.map(
-          (_, si) => this.MOCK_FLOW_BY_SITE[si % this.MOCK_FLOW_BY_SITE.length][mi],
-        ),
+        valores: this.sitiosResumen.map(() => 0),
       };
     }
 
@@ -829,6 +937,274 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     if (this.viewReady) {
       if (this.map) this.updateMarkers();
       else this.initMap();
+    }
+
+    // Fetch datos reales en background. UI se actualiza por mutación
+    // directa de sitiosResumen / puntosMensuales / kpisSecundarios cuando
+    // las respuestas llegan.
+    this.fetchRealData();
+  }
+
+  /**
+   * Fetch en paralelo de:
+   *   - dashboard-data por sitio (caudal/nivel actual)
+   *   - monthly counters por sitio (consumo + tendencia)
+   *   - alertas activas por empresa (KPI)
+   *   - incidencias por empresa (visitas técnicas + resolución)
+   *
+   * Mock fallback se mantiene si alguna call falla — UI siempre tiene algo.
+   */
+  private fetchRealData(): void {
+    if (!this.sites.length) return;
+    const empresaId = this.sites[0]?.empresa_id;
+
+    // Accumulator para uptime promedio (se calcula al final, cuando llegaron
+    // todas las responses per-site). Indexado por i del site, valor en %.
+    const uptimePorSitio: number[] = new Array(this.sites.length).fill(NaN);
+    let pendingSiteResponses = this.sites.length;
+
+    // 1. Per-site: dashboard + monthly counters paralelo
+    this.sites.forEach((site, i) => {
+      forkJoin({
+        dashboard: this.companyService
+          .getSiteDashboardData(site.id)
+          .pipe(catchError(() => of(null))),
+        monthly: this.companyService
+          .getSiteMonthlyCounters(site.id, { rol: 'totalizador', meses: 7 })
+          .pipe(catchError(() => of({ ok: false, data: [] as ContadorMensualPoint[] }))),
+        daily: this.companyService
+          .getSiteDailyCounters(site.id, { rol: 'totalizador', dias: 60 })
+          .pipe(catchError(() => of({ ok: false, data: [] as ContadorDiarioPoint[] }))),
+      }).subscribe((res) => {
+        if (!this.sitiosResumen[i]) {
+          pendingSiteResponses--;
+          return;
+        }
+
+        // Caudal + nivel actual desde dashboard.resumen.
+        const dash = (res.dashboard as { data?: { resumen?: Record<string, { valor?: unknown } | undefined> } } | null)?.data;
+        const caudalRaw = Number(dash?.resumen?.['caudal']?.valor ?? NaN);
+        const nivelRaw = Number(
+          dash?.resumen?.['nivel_freatico']?.valor ?? dash?.resumen?.['nivel']?.valor ?? NaN,
+        );
+        const caudal = Number.isFinite(caudalRaw) ? Math.round(caudalRaw * 10) / 10 : 0;
+        const nivel = Number.isFinite(nivelRaw) ? Math.round(nivelRaw * 10) / 10 : 0;
+
+        // Consumo mes actual + tendencia vs mes anterior. monthly viene
+        // del más antiguo al más reciente.
+        const monthly = (res.monthly?.ok ? res.monthly.data : []) as ContadorMensualPoint[];
+        const mesActual = monthly[monthly.length - 1];
+        const mesPrev = monthly[monthly.length - 2];
+        const consumoMes = Number(mesActual?.delta ?? 0);
+        let tendencia = 0;
+        const prevDelta = Number(mesPrev?.delta ?? 0);
+        if (prevDelta > 0) {
+          tendencia = Math.round(((consumoMes - prevDelta) / prevDelta) * 1000) / 10;
+        }
+
+        // Días activos: cuenta de días con muestras en los últimos 30 días.
+        const daily = (res.daily?.ok ? res.daily.data : []) as ContadorDiarioPoint[];
+        const last30 = daily.slice(-30);
+        const diasActivos = last30.filter((d) => d.muestras > 0).length;
+
+        // Mutar in-place — el ngFor renderea desde el mismo array por index.
+        this.sitiosResumen[i] = {
+          ...this.sitiosResumen[i],
+          caudal,
+          nivel,
+          consumoMes: Math.round(consumoMes),
+          diasActivos,
+          tendenciaCaudal: tendencia,
+          m3Proyectados: Math.round(
+            (consumoMes / Math.max(1, this.DIAS_TRANSCURRIDOS)) * this.DIAS_MES,
+          ),
+        };
+
+        // Chart: últimos N meses (puntosMensuales.length, típicamente 6).
+        // monthly puede tener hasta 7. Tomamos los N más recientes.
+        const slots = this.puntosMensuales.length;
+        for (let mi = 0; mi < slots; mi++) {
+          const offset = slots - 1 - mi;
+          const m = monthly[monthly.length - 1 - offset];
+          this.puntosMensuales[mi].valores[i] = m?.delta != null ? Math.round(Number(m.delta)) : 0;
+        }
+
+        // Tracking uptime per-site: días con muestras / días esperados.
+        uptimePorSitio[i] = Math.round((diasActivos / 30) * 100);
+
+        // Reasignar arrays para que Angular detecte el cambio (signals
+        // implícitos en computeds derivados).
+        this.sitiosResumen = [...this.sitiosResumen];
+        this.puntosMensuales = this.puntosMensuales.map((p) => ({
+          ...p,
+          valores: [...p.valores],
+        }));
+        this.buildMetricasComparacion();
+
+        // Cuando todas las responses llegaron, computar uptime promedio.
+        pendingSiteResponses--;
+        if (pendingSiteResponses === 0) {
+          const validUptimes = uptimePorSitio.filter((u) => Number.isFinite(u));
+          if (validUptimes.length > 0) {
+            const promedio = Math.round(
+              validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length,
+            );
+            this.metricasOp[0] = {
+              label: 'Uptime promedio',
+              valor: `${promedio}%`,
+              icon: 'wifi',
+              tono: promedio >= 95 ? 'ok' : promedio >= 80 ? 'neutral' : 'warn',
+            };
+            this.metricasOp = [...this.metricasOp];
+          }
+        }
+      });
+    });
+
+    // 2. Alertas activas por empresa.
+    if (empresaId) {
+      this.alertaService
+        .listarEventos({ empresa_id: empresaId, resuelta: false, limit: 200 })
+        .pipe(catchError(() => of([] as EventoRow[])))
+        .subscribe((eventos) => {
+          // Backend ya filtró por empresa_id + resuelta=false. Acotamos a la
+          // sub-vista actual (puede que el usuario esté viendo solo un módulo
+          // del árbol — ej. solo pozos).
+          const siteIds = new Set(this.sites.map((s) => s.id));
+          const activos = eventos.filter((e) => siteIds.has(e.sitio_id));
+          const criticas = activos.filter((e) => e.severidad === 'critica').length;
+          this.kpisSecundarios[1] = {
+            label: 'Alertas activas',
+            valor: String(activos.length),
+            subtext:
+              activos.length === 0
+                ? 'Sin eventos activos'
+                : criticas > 0
+                  ? `${criticas} crítica${criticas > 1 ? 's' : ''} en seguimiento`
+                  : `${activos.length} en revisión`,
+            icon: 'notifications_active',
+            tono: criticas > 0 ? 'warn' : activos.length > 0 ? 'neutral' : 'ok',
+          };
+          this.kpisSecundarios = [...this.kpisSecundarios];
+        });
+
+      // 3. Tiempo respuesta promedio: eventos resueltos del último mes.
+      // delta = resuelta_at - triggered_at. Promediamos en horas.
+      const hoy = new Date();
+      const haceUnMes = new Date(hoy.getTime() - 30 * 24 * 60 * 60 * 1000);
+      this.alertaService
+        .listarEventos({
+          empresa_id: empresaId,
+          resuelta: true,
+          desde: haceUnMes.toISOString(),
+          hasta: hoy.toISOString(),
+          limit: 500,
+        })
+        .pipe(catchError(() => of([] as EventoRow[])))
+        .subscribe((eventos) => {
+          const siteIds = new Set(this.sites.map((s) => s.id));
+          const horas = eventos
+            .filter((e) => siteIds.has(e.sitio_id) && e.resuelta_at && e.triggered_at)
+            .map((e) => {
+              const t0 = new Date(e.triggered_at).getTime();
+              const t1 = new Date(e.resuelta_at!).getTime();
+              return (t1 - t0) / 1000 / 60 / 60; // horas
+            })
+            .filter((h) => Number.isFinite(h) && h >= 0);
+
+          if (horas.length === 0) {
+            this.metricasOp[1] = {
+              label: 'Tiempo respuesta',
+              valor: '—',
+              icon: 'timer',
+              tono: 'neutral',
+            };
+          } else {
+            const promHoras = horas.reduce((a, b) => a + b, 0) / horas.length;
+            // Formato: < 1h muestra minutos, < 48h muestra horas, sino días.
+            const valor =
+              promHoras < 1
+                ? `${Math.round(promHoras * 60)} min`
+                : promHoras < 48
+                  ? `${Math.round(promHoras * 10) / 10} h`
+                  : `${Math.round((promHoras / 24) * 10) / 10} d`;
+            this.metricasOp[1] = {
+              label: 'Tiempo respuesta',
+              valor,
+              icon: 'timer',
+              // < 4h verde, < 24h neutral, > 24h warn.
+              tono: promHoras < 4 ? 'ok' : promHoras < 24 ? 'neutral' : 'warn',
+            };
+          }
+          this.metricasOp = [...this.metricasOp];
+        });
+
+      // 4. DGA pendientes: review-queue global filtrado a sitios visibles.
+      // Solo aplica si la empresa tiene sitios tipo 'pozo' (los que reportan
+      // DGA). Si no hay pozos en la vista → KPI a 0.
+      const sitiosPozo = this.sites.filter((s) => s.tipo_sitio === 'pozo');
+      if (sitiosPozo.length === 0) {
+        this.kpisSecundarios[2] = {
+          label: 'DGA pendientes',
+          valor: '0',
+          subtext: 'Sin pozos en esta vista',
+          icon: 'shield',
+          tono: 'neutral',
+        };
+        this.kpisSecundarios = [...this.kpisSecundarios];
+      } else {
+        this.dgaService
+          .listReviewQueue(undefined, 500)
+          .pipe(catchError(() => of([] as DgaReviewSlot[])))
+          .subscribe((queue) => {
+            const siteIds = new Set(sitiosPozo.map((s) => s.id));
+            const pendientes = queue.filter((slot) => siteIds.has(slot.site_id));
+            // Etiqueta del mes actual para el subtext.
+            const mesActual = new Date().toLocaleDateString('es-CL', {
+              month: 'long',
+              year: 'numeric',
+            });
+            this.kpisSecundarios[2] = {
+              label: 'DGA pendientes',
+              valor: String(pendientes.length),
+              subtext:
+                pendientes.length === 0
+                  ? `${mesActual.charAt(0).toUpperCase() + mesActual.slice(1)} — al día`
+                  : `${pendientes.length} en cola de revisión`,
+              icon: 'shield',
+              tono: pendientes.length === 0 ? 'ok' : pendientes.length > 10 ? 'warn' : 'neutral',
+            };
+            this.kpisSecundarios = [...this.kpisSecundarios];
+          });
+      }
+
+      // 5. Incidencias por empresa → visitas técnicas + resolución.
+      this.incidenciaService
+        .listar({ empresa_id: empresaId, limit: 200 })
+        .pipe(catchError(() => of([] as IncidenciaRow[])))
+        .subscribe((incs) => {
+          // Filtrar al subset de sitios visibles.
+          const siteIds = new Set(this.sites.map((s) => s.id));
+          const local = incs.filter((i) => siteIds.has(i.sitio_id));
+          const total = local.length;
+          const resueltas = local.filter(
+            (i) => i.estado === 'resuelta' || i.estado === 'cerrada',
+          ).length;
+          const ratio = total > 0 ? Math.round((resueltas / total) * 100) : 0;
+          this.metricasOp[2] = {
+            label: 'Visitas técnicas',
+            valor: String(total),
+            icon: 'engineering',
+            tono: 'neutral',
+          };
+          this.metricasOp[3] = {
+            label: 'Resolución',
+            valor: total > 0 ? `${ratio}%` : '—',
+            icon: 'check_circle',
+            tono: ratio >= 80 ? 'ok' : ratio >= 60 ? 'neutral' : 'warn',
+          };
+          this.metricasOp = [...this.metricasOp];
+        });
     }
   }
 
@@ -852,6 +1228,10 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   }
 
   setPreset(preset: PeriodoPreset): void {
+    if (preset === 'custom') {
+      this.periodoPreset.set('custom');
+      return;
+    }
     this.periodoPreset.set(preset);
     if (preset === 'semana') {
       this.periodoA.set({ label: 'Esta semana', desde: '2026-05-11', hasta: '2026-05-11' });
@@ -859,11 +1239,55 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     } else if (preset === 'mes') {
       this.periodoA.set({ label: 'Mayo 2026', desde: '2026-05-01', hasta: '2026-05-11' });
       this.periodoB.set({ label: 'Abril 2026', desde: '2026-04-01', hasta: '2026-04-11' });
-    } else {
+    } else if (preset === '7d') {
       this.periodoA.set({ label: 'Últimos 7 días', desde: '2026-05-05', hasta: '2026-05-11' });
       this.periodoB.set({ label: '7 días anteriores', desde: '2026-04-28', hasta: '2026-05-04' });
     }
+    // Sincronizar inputs locales con los nuevos valores del preset para que
+    // el botón Aplicar quede deshabilitado (no hay cambios pendientes).
+    this.periodoAInputDesde.set(this.periodoA().desde);
+    this.periodoAInputHasta.set(this.periodoA().hasta);
+    this.periodoBInputDesde.set(this.periodoB().desde);
+    this.periodoBInputHasta.set(this.periodoB().hasta);
     this.buildMetricasComparacion();
+  }
+
+  /**
+   * Aplica las fechas custom de los inputs locales a periodoA/B y redibuja
+   * el chart de comparación. Marca preset como 'custom' para que el badge
+   * "Personalizado" sea visible y ningún botón de preset quede activo.
+   */
+  aplicarPeriodosCustom(): void {
+    const aDesde = this.periodoAInputDesde();
+    const aHasta = this.periodoAInputHasta();
+    const bDesde = this.periodoBInputDesde();
+    const bHasta = this.periodoBInputHasta();
+    if (!aDesde || !aHasta || !bDesde || !bHasta) return;
+    if (aDesde > aHasta || bDesde > bHasta) return;
+    this.periodoA.set({
+      label: this.formatRangoLabel(aDesde, aHasta),
+      desde: aDesde,
+      hasta: aHasta,
+    });
+    this.periodoB.set({
+      label: this.formatRangoLabel(bDesde, bHasta),
+      desde: bDesde,
+      hasta: bHasta,
+    });
+    this.periodoPreset.set('custom');
+    this.buildMetricasComparacion();
+  }
+
+  /**
+   * Genera label corto para un rango "DD/MM → DD/MM" usado en el chip de
+   * periodoA/B del header de "Comparación de períodos".
+   */
+  private formatRangoLabel(desde: string, hasta: string): string {
+    const fmt = (iso: string): string => {
+      const [, m, d] = iso.split('-');
+      return `${d}/${m}`;
+    };
+    return desde === hasta ? fmt(desde) : `${fmt(desde)} → ${fmt(hasta)}`;
   }
 
   buildPolyline(siteIndex: number): string {
@@ -1118,13 +1542,10 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         popupAnchor: [0, -38],
       });
 
-      // Links Google Maps:
-      //  - Ver pin: maps.google.com/?q=lat,lng
-      //  - Cómo llegar: maps.google.com/maps/dir/?api=1&destination=lat,lng
-      //    En móvil abre la app de Google Maps directamente con ruta calculada
-      //    desde la ubicación actual. En desktop abre maps.google.com web.
+      // Link Google Maps: maps.google.com/?q=lat,lng → muestra el pin.
+      // En móvil abre la app si está instalada. Desde ahí el usuario decide
+      // si pedir rutas con el botón "Direcciones" nativo de Google Maps.
       const gmapsView = `https://maps.google.com/?q=${s.lat},${s.lng}`;
-      const gmapsRoute = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
       const popupHtml = `
         <div style="font-family:'DM Sans',sans-serif;min-width:220px;padding:2px;">
           <p style="font-weight:800;font-size:12px;color:#1E293B;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid #E2E8F0;">${s.nombre}</p>
@@ -1146,14 +1567,9 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
               <p style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${tendColor};margin:0;">${tendSign}${s.tendenciaCaudal}%</p>
             </div>
           </div>
-          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #E2E8F0;display:flex;gap:6px;">
-            <a href="${gmapsRoute}" target="_blank" rel="noopener noreferrer"
-               style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;border-radius:6px;background:#0DAFBD;color:white;font-size:11px;font-weight:700;text-decoration:none;">
-              <span style="font-family:'Material Symbols Outlined';font-size:14px;">directions</span>
-              Cómo llegar
-            </a>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #E2E8F0;">
             <a href="${gmapsView}" target="_blank" rel="noopener noreferrer"
-               style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;border-radius:6px;background:#F8FAFC;border:1px solid #E2E8F0;color:#1E293B;font-size:11px;font-weight:700;text-decoration:none;">
+               style="display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 10px;border-radius:6px;background:#0DAFBD;color:white;font-size:11px;font-weight:700;text-decoration:none;">
               <span style="font-family:'Material Symbols Outlined';font-size:14px;">map</span>
               Ver en Maps
             </a>
@@ -1176,12 +1592,41 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     });
 
     if (bounds.length > 0) {
-      // Padding mayor + maxZoom más alto cuando hay un solo sitio para no
-      // dejarlo perdido en el centro de Chile entero.
-      this.map.fitBounds(bounds, {
-        padding: [60, 60],
-        maxZoom: bounds.length === 1 ? 14 : 11,
-      });
+      // Calculamos extensión diagonal de los bounds. Si los pozos están en
+      // un radio pequeño (< 5 km) hacemos zoom cercano (16) — útil para
+      // sitios en la misma faena. Si están dispersos por la región, zoom
+      // más bajo para overview. Padding 60px en todos los casos.
+      const diagKm = this.boundsDiagonalKm(bounds);
+      const maxZoom = diagKm < 1 ? 17 : diagKm < 5 ? 16 : diagKm < 20 ? 14 : diagKm < 100 ? 12 : 10;
+      this.map.fitBounds(bounds, { padding: [60, 60], maxZoom });
     }
+  }
+
+  /**
+   * Distancia diagonal aproximada (km) de un set de bounds [[lat, lng], ...].
+   * Usa Haversine entre el primer y último punto + sweep para encontrar el
+   * span máximo. Suficiente para decidir el zoom inicial sin precisión
+   * cartográfica.
+   */
+  private boundsDiagonalKm(bounds: [number, number][]): number {
+    if (bounds.length < 2) return 0;
+    let minLat = Infinity,
+      maxLat = -Infinity,
+      minLng = Infinity,
+      maxLng = -Infinity;
+    for (const [lat, lng] of bounds) {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    }
+    const R = 6371; // radio Tierra km
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(maxLat - minLat);
+    const dLng = toRad(maxLng - minLng);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(minLat)) * Math.cos(toRad(maxLat)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
   }
 }
