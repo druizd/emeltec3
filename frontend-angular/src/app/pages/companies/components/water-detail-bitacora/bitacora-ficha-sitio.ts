@@ -6,9 +6,13 @@
  * Vista cliente: solo lectura.
  */
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { catchError, of } from 'rxjs';
+import type { OperationalContact, User } from '@emeltec/shared';
 import { AuthService } from '../../../../services/auth.service';
+import { CompanyService } from '../../../../services/company.service';
+import { UserService } from '../../../../services/user.service';
 import {
   BitacoraSitioService,
   type FichaAcreditacion,
@@ -63,12 +67,50 @@ import {
               <button
                 type="button"
                 (click)="addContacto()"
+                title="Agregar contacto manual"
                 class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
               >
                 <span class="material-symbols-outlined text-[16px]">add</span>
               </button>
             }
           </div>
+
+          <!-- Dropdown agregar desde agenda + equipo Emeltec. El value usa
+               prefijo c: para OperationalContact y u: para User para
+               distinguir el origen en el handler. -->
+          @if (isInternal() && (availableContacts().length + availableTecnicosContactos().length) > 0) {
+            <div class="mb-3 flex items-center gap-2">
+              <select
+                [ngModel]="contactPickerId()"
+                (ngModelChange)="addContactoFromAgenda($event)"
+                class="flex-1 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-caption text-slate-700 outline-none focus:border-primary-tint-35"
+              >
+                <option value="">+ Agregar desde agenda o equipo…</option>
+                @if (availableContacts().length > 0) {
+                  <optgroup label="Agenda del sitio">
+                    @for (c of availableContacts(); track c.id) {
+                      <option [value]="'c:' + c.id">
+                        {{ c.nombre }}{{ c.apellido ? ' ' + c.apellido : '' }}
+                        @if (c.cargo) {
+                          · {{ c.cargo }}
+                        }
+                      </option>
+                    }
+                  </optgroup>
+                }
+                @if (availableTecnicosContactos().length > 0) {
+                  <optgroup label="Equipo Emeltec">
+                    @for (u of availableTecnicosContactos(); track u.id) {
+                      <option [value]="'u:' + u.id">
+                        {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
+                        · {{ u.tipo }}
+                      </option>
+                    }
+                  </optgroup>
+                }
+              </select>
+            </div>
+          }
           @if (ficha().contactos.length === 0) {
             <p class="text-caption italic text-slate-400">Sin contactos registrados.</p>
           } @else {
@@ -150,13 +192,33 @@ import {
                 <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-caption">
                   @if (isInternal()) {
                     <div class="grid grid-cols-3 gap-2">
-                      <input
-                        type="text"
-                        [ngModel]="a.persona"
-                        (ngModelChange)="updateAcreditacion($index, 'persona', $event)"
-                        placeholder="Persona"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
-                      />
+                      <!-- Persona: dropdown SOLO técnicos Emeltec con tipo
+                           SuperAdmin (los que portan acreditaciones reales en
+                           terreno). Si la persona ya está seteada y no
+                           matchea, queda visible como primera opción. -->
+                      @if (availableAcreditadores().length > 0) {
+                        <select
+                          [ngModel]="findTecnicoIdByName(a.persona)"
+                          (ngModelChange)="asignarTecnico($index, $event)"
+                          class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
+                          title="Seleccionar técnico Emeltec acreditado"
+                        >
+                          <option value="">{{ a.persona || 'Seleccionar persona…' }}</option>
+                          @for (u of availableAcreditadores(); track u.id) {
+                            <option [value]="u.id">
+                              {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
+                            </option>
+                          }
+                        </select>
+                      } @else {
+                        <input
+                          type="text"
+                          [ngModel]="a.persona"
+                          (ngModelChange)="updateAcreditacion($index, 'persona', $event)"
+                          placeholder="Persona"
+                          class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
+                        />
+                      }
                       <input
                         type="text"
                         [ngModel]="a.tipo"
@@ -191,77 +253,206 @@ import {
           }
         </section>
 
-        <!-- Riesgos -->
+        <!-- Riesgos: matriz IPER chileno (Probabilidad × Severidad) con
+             niveles Trivial / Tolerable / Moderado / Importante / Intolerable
+             según práctica SST común (Ley 16.744 / D.S. 40 / Mutual). -->
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2">
-          <div class="mb-3 flex items-center justify-between">
-            <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-              Riesgos identificados
-            </h3>
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                Matriz IPER — Probabilidad × Severidad
+              </h3>
+              <p class="mt-0.5 text-caption-xs text-slate-400">
+                Prepará la salida a terreno antes de viajar. En sitio, marcá
+                "Verificado" para confirmar el riesgo al llegar.
+              </p>
+            </div>
             @if (isInternal()) {
-              <button
-                type="button"
-                (click)="addRiesgo()"
-                class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
-              >
-                <span class="material-symbols-outlined text-[16px]">add</span>
-              </button>
+              <div class="flex items-center gap-1">
+                <!-- Atajos de riesgos comunes en pozos -->
+                <select
+                  [ngModel]="''"
+                  (ngModelChange)="addRiesgoFromPreset($event)"
+                  class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-caption-xs text-slate-600 outline-none focus:border-primary-tint-35"
+                >
+                  <option value="">+ Riesgo común…</option>
+                  @for (p of presetRiesgos; track p.descripcion) {
+                    <option [value]="p.descripcion">{{ p.descripcion }}</option>
+                  }
+                </select>
+                <button
+                  type="button"
+                  (click)="addRiesgo()"
+                  title="Agregar riesgo manual"
+                  class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
+                >
+                  <span class="material-symbols-outlined text-[16px]">add</span>
+                </button>
+              </div>
             }
           </div>
+
+          <!-- Matriz 5×5: Probabilidad (Y, descendente) × Severidad (X).
+               Etiquetas SST chilenas. Cada celda muestra cantidad de
+               riesgos plotted ahí + el valor numérico al hover. -->
+          <div class="mb-4 overflow-x-auto">
+            <div class="grid min-w-[560px] grid-cols-[100px_repeat(5,minmax(0,1fr))] gap-1 text-caption-xs">
+              <span></span>
+              @for (i of [1, 2, 3, 4, 5]; track i) {
+                <span class="text-center font-bold text-slate-500">
+                  {{ severidadLabel(i) }}
+                </span>
+              }
+              @for (p of [5, 4, 3, 2, 1]; track p) {
+                <span class="flex items-center justify-end pr-1 font-bold text-slate-500">
+                  {{ probabilidadLabel(p) }}
+                </span>
+                @for (i of [1, 2, 3, 4, 5]; track i) {
+                  <div
+                    class="flex h-12 flex-col items-center justify-center rounded font-bold"
+                    [class]="matrizCellClass(p * i)"
+                    [title]="nivelLabel(p * i) + ' · ' + (p * i)"
+                  >
+                    <span class="text-[10px] font-bold opacity-60">{{ p * i }}</span>
+                    @if (matrizCount(p, i) > 0) {
+                      <span class="text-body-sm">{{ matrizCount(p, i) }}</span>
+                    }
+                  </div>
+                }
+              }
+            </div>
+          </div>
+
+          <!-- Leyenda IPER chileno -->
+          <div class="mb-3 flex flex-wrap items-center gap-2 text-caption-xs">
+            <span class="rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700">
+              Trivial (1-2)
+            </span>
+            <span class="rounded bg-lime-100 px-2 py-0.5 font-bold text-lime-700">
+              Tolerable (3-4)
+            </span>
+            <span class="rounded bg-amber-100 px-2 py-0.5 font-bold text-amber-700">
+              Moderado (5-8)
+            </span>
+            <span class="rounded bg-orange-200 px-2 py-0.5 font-bold text-orange-800">
+              Importante (9-12)
+            </span>
+            <span class="rounded bg-rose-200 px-2 py-0.5 font-bold text-rose-800">
+              Intolerable (13-25)
+            </span>
+            <span class="ml-auto text-slate-400">
+              {{ ficha().riesgos.length }} riesgo(s) ·
+              {{ riesgosVerificados() }} verificado(s) en terreno
+            </span>
+          </div>
+
           @if (ficha().riesgos.length === 0) {
             <p class="text-caption italic text-slate-400">Sin riesgos registrados.</p>
           } @else {
             <ul class="space-y-2">
               @for (r of ficha().riesgos; track $index) {
-                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-caption">
+                <li
+                  class="rounded-lg border p-3 text-caption"
+                  [class]="riesgoCardClass(nivelRiesgo(r))"
+                >
                   @if (isInternal()) {
-                    <div class="grid gap-2 md:grid-cols-[1fr_auto_auto_1fr]">
+                    <div class="grid gap-2 md:grid-cols-[2fr_auto_auto_2fr_auto]">
                       <input
                         type="text"
                         [ngModel]="r.descripcion"
                         (ngModelChange)="updateRiesgo($index, 'descripcion', $event)"
                         placeholder="Descripción del riesgo"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
+                        class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
-                      <input
-                        type="number"
-                        min="1"
-                        max="5"
-                        [ngModel]="r.probabilidad"
-                        (ngModelChange)="updateRiesgo($index, 'probabilidad', $event)"
-                        placeholder="Prob (1-5)"
-                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
-                      />
-                      <input
-                        type="number"
-                        min="1"
-                        max="5"
-                        [ngModel]="r.impacto"
-                        (ngModelChange)="updateRiesgo($index, 'impacto', $event)"
-                        placeholder="Imp (1-5)"
-                        class="w-24 rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
-                      />
+                      <label class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1">
+                        <span class="text-caption-xs font-bold text-slate-400">P</span>
+                        <select
+                          [ngModel]="r.probabilidad"
+                          (ngModelChange)="updateRiesgo($index, 'probabilidad', +$event)"
+                          class="w-12 bg-transparent text-center font-mono outline-none"
+                        >
+                          <option [ngValue]="null">—</option>
+                          @for (n of [1, 2, 3, 4, 5]; track n) {
+                            <option [ngValue]="n">{{ n }}</option>
+                          }
+                        </select>
+                      </label>
+                      <label class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1">
+                        <span class="text-caption-xs font-bold text-slate-400">I</span>
+                        <select
+                          [ngModel]="r.impacto"
+                          (ngModelChange)="updateRiesgo($index, 'impacto', +$event)"
+                          class="w-12 bg-transparent text-center font-mono outline-none"
+                        >
+                          <option [ngValue]="null">—</option>
+                          @for (n of [1, 2, 3, 4, 5]; track n) {
+                            <option [ngValue]="n">{{ n }}</option>
+                          }
+                        </select>
+                      </label>
                       <input
                         type="text"
                         [ngModel]="r.mitigacion"
                         (ngModelChange)="updateRiesgo($index, 'mitigacion', $event)"
-                        placeholder="Mitigación"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
+                        placeholder="Mitigación / control"
+                        class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
+                      <span
+                        class="flex flex-col items-center justify-center rounded px-2 py-1 font-bold"
+                        [class]="nivelBadgeClass(nivelRiesgo(r))"
+                        [title]="'Nivel calculado: ' + (nivelRiesgo(r) ?? '—')"
+                      >
+                        <span class="text-caption-xs uppercase">{{ nivelLabel(nivelRiesgo(r)) }}</span>
+                        <span class="font-mono text-[10px] opacity-60">{{ nivelRiesgo(r) ?? '—' }}</span>
+                      </span>
                     </div>
-                    <button
-                      type="button"
-                      (click)="removeRiesgo($index)"
-                      class="mt-1 text-caption-xs font-semibold text-rose-500 hover:underline"
-                    >
-                      Eliminar
-                    </button>
+                    <input
+                      type="text"
+                      [ngModel]="r.epp_requerido"
+                      (ngModelChange)="updateRiesgo($index, 'epp_requerido', $event)"
+                      placeholder="EPP requerido (casco, arnés, guantes…)"
+                      class="mt-2 w-full rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
+                    />
+                    <div class="mt-2 flex items-center justify-between gap-2">
+                      <label class="inline-flex items-center gap-1.5 text-caption-xs font-semibold text-slate-600">
+                        <input
+                          type="checkbox"
+                          [ngModel]="r.evaluado_terreno"
+                          (ngModelChange)="updateRiesgo($index, 'evaluado_terreno', $event)"
+                          class="accent-primary"
+                        />
+                        Verificado en terreno
+                      </label>
+                      <button
+                        type="button"
+                        (click)="removeRiesgo($index)"
+                        class="text-caption-xs font-semibold text-rose-500 hover:underline"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   } @else {
-                    <p class="font-semibold text-slate-700">{{ r.descripcion }}</p>
-                    <p class="text-slate-500">
-                      Prob: {{ r.probabilidad ?? '—' }} · Impacto: {{ r.impacto ?? '—' }} ·
-                      Mitigación:
+                    <div class="flex items-start justify-between gap-2">
+                      <p class="font-semibold text-slate-700">{{ r.descripcion }}</p>
+                      <span
+                        class="rounded px-2 py-0.5 font-bold"
+                        [class]="nivelBadgeClass(nivelRiesgo(r))"
+                      >
+                        {{ nivelLabel(nivelRiesgo(r)) }}
+                      </span>
+                    </div>
+                    <p class="mt-1 text-slate-500">
+                      P: {{ r.probabilidad ?? '—' }} · I: {{ r.impacto ?? '—' }} · Mitigación:
                       {{ r.mitigacion || '—' }}
                     </p>
+                    @if (r.epp_requerido) {
+                      <p class="mt-1 text-slate-500"><strong>EPP:</strong> {{ r.epp_requerido }}</p>
+                    }
+                    @if (r.evaluado_terreno) {
+                      <p class="mt-1 text-caption-xs font-bold text-emerald-600">
+                        ✓ Verificado en terreno
+                      </p>
+                    }
                   }
                 </li>
               }
@@ -294,8 +485,11 @@ import {
 export class BitacoraFichaSitioComponent implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly api = inject(BitacoraSitioService);
+  private readonly companyService = inject(CompanyService);
+  private readonly userService = inject(UserService);
 
   readonly sitioId = input<string>('');
+  readonly empresaId = input<string>('');
 
   readonly isInternal = computed(() => this.auth.isSuperAdmin() || this.auth.isAdmin());
 
@@ -311,6 +505,67 @@ export class BitacoraFichaSitioComponent implements OnInit {
   readonly saveMsg = signal<string>('');
   readonly error = signal<string>('');
   readonly dirty = computed(() => JSON.stringify(this.ficha()) !== this.original);
+
+  // -------- Catálogos externos para dropdowns --------
+  // Contactos operativos asociados al sitio o a la empresa (sin sitio).
+  readonly availableContacts = signal<OperationalContact[]>([]);
+  // Lista raw de usuarios visibles para el caller (filtrada client-side
+  // según el destino: contactos vs acreditaciones tienen criterios distintos).
+  private readonly availableUsers = signal<User[]>([]);
+
+  /**
+   * Usuarios elegibles como contactos técnicos del sitio: incluye TODO el
+   * staff (SuperAdmin, Admin, Gerente) — son las personas con responsabilidad
+   * sobre el sitio. Cliente queda fuera porque no actúa como contacto técnico.
+   */
+  readonly availableTecnicosContactos = computed(() =>
+    this.availableUsers().filter(
+      (u) => u.tipo === 'SuperAdmin' || u.tipo === 'Admin' || u.tipo === 'Gerente',
+    ),
+  );
+
+  /**
+   * Personas elegibles como titulares de acreditaciones: solo SuperAdmin
+   * (equipo técnico Emeltec). Admin/Gerente quedan fuera porque no son
+   * los que portan las acreditaciones operativas en terreno.
+   */
+  readonly availableAcreditadores = computed(() =>
+    this.availableUsers().filter((u) => u.tipo === 'SuperAdmin'),
+  );
+  // Estado temporal para el selector "Agregar contacto desde agenda".
+  readonly contactPickerId = signal<string>('');
+  readonly acreditacionPickerIdx = signal<number | null>(null);
+
+  // Effect: fetcha catálogos cuando cambian empresaId / sitioId. Solo dispara
+  // en contexto de inyección.
+  private readonly catalogFetchEffect = effect(() => {
+    const empId = this.empresaId();
+    const sId = this.sitioId();
+    if (!sId) return;
+
+    // Operational contacts: filtramos client-side a los que apliquen al sitio
+    // (sitio_id === sId o sitio_id === null = aplica a toda empresa).
+    if (empId) {
+      this.companyService
+        .getOperationalContacts({ empresa_id: empId })
+        .pipe(catchError(() => of({ ok: false, data: [] as OperationalContact[] })))
+        .subscribe((res) => {
+          const all = res.ok ? res.data : [];
+          this.availableContacts.set(
+            all.filter((c) => !c.sitio_id || c.sitio_id === sId),
+          );
+        });
+    }
+
+    // Lista raw de usuarios. Filtros (Contactos vs Acreditaciones) se
+    // aplican en computeds derivados — necesitamos toda la lista en memoria.
+    this.userService
+      .getUsers()
+      .pipe(catchError(() => of({ ok: false, data: [] as User[] })))
+      .subscribe((res) => {
+        this.availableUsers.set(res.ok ? res.data : []);
+      });
+  });
 
   ngOnInit(): void {
     this.reload();
@@ -374,10 +629,81 @@ export class BitacoraFichaSitioComponent implements OnInit {
     }));
   }
 
+  /**
+   * Selecciona un contacto desde la agenda (OperationalContact) O desde el
+   * equipo Emeltec (User SuperAdmin/Admin), y lo agrega a la ficha. El
+   * valor del dropdown es un id prefijado: `c:<contactId>` para
+   * OperationalContact o `u:<userId>` para User.
+   */
+  addContactoFromAgenda(prefixedId: string): void {
+    if (!prefixedId) return;
+    const [kind, id] = prefixedId.split(':');
+    let next: FichaContacto | null = null;
+    if (kind === 'c') {
+      const found = this.availableContacts().find((c) => c.id === id);
+      if (found) {
+        const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
+        next = {
+          nombre: nombre || found.nombre,
+          rol: found.cargo || found.tipo_contacto || 'Responsable',
+          telefono: found.telefono || '',
+          email: found.email || '',
+        };
+      }
+    } else if (kind === 'u') {
+      const found = this.availableTecnicosContactos().find((u) => u.id === id);
+      if (found) {
+        const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
+        next = {
+          nombre: nombre || found.email || 'Técnico Emeltec',
+          rol: found.tipo,
+          telefono: found.telefono || '',
+          email: found.email || '',
+        };
+      }
+    }
+    if (next) {
+      this.ficha.update((f) => ({ ...f, contactos: [...f.contactos, next!] }));
+    }
+    this.contactPickerId.set('');
+  }
+
   // -------- Acreditaciones --------
   addAcreditacion(): void {
     const next: FichaAcreditacion = { persona: '', tipo: '', vigencia_hasta: null };
     this.ficha.update((f) => ({ ...f, acreditaciones: [...f.acreditaciones, next] }));
+  }
+  /**
+   * Resuelve el id del técnico cuyo nombre completo coincide con `persona`.
+   * Sirve para que el `<select>` muestre la opción correcta cuando la ficha
+   * ya tiene una persona seteada. Si no matchea ningún técnico → ''.
+   */
+  findTecnicoIdByName(persona: string | null | undefined): string {
+    if (!persona) return '';
+    const target = persona.trim().toLowerCase();
+    return (
+      this.availableAcreditadores().find((u) => {
+        const full = [u.nombre, u.apellido].filter(Boolean).join(' ').trim().toLowerCase();
+        return full === target;
+      })?.id ?? ''
+    );
+  }
+
+  /**
+   * Asigna el nombre completo de un técnico Emeltec (SuperAdmin) a una
+   * acreditación existente. Usa `nombre + apellido` o cae al email si no
+   * hay nombre. El idx debe ser el índice de la acreditación a modificar.
+   */
+  asignarTecnico(idx: number, userId: string): void {
+    if (!userId) {
+      this.updateAcreditacion(idx, 'persona', '');
+      return;
+    }
+    const found = this.availableAcreditadores().find((u) => u.id === userId);
+    if (!found) return;
+    const nombre =
+      [found.nombre, found.apellido].filter(Boolean).join(' ').trim() || found.email || '';
+    this.updateAcreditacion(idx, 'persona', nombre);
   }
   removeAcreditacion(idx: number): void {
     this.ficha.update((f) => ({
@@ -395,15 +721,111 @@ export class BitacoraFichaSitioComponent implements OnInit {
   }
 
   // -------- Riesgos --------
+
+  /**
+   * Catálogo de riesgos típicos en sitios de pozos. El operador elige uno
+   * del dropdown y se pre-rellenan probabilidad/impacto/mitigación/EPP
+   * según el preset. Luego puede ajustar manualmente.
+   */
+  readonly presetRiesgos: FichaRiesgo[] = [
+    {
+      descripcion: 'Trabajo en altura (sobre cabezal de pozo, escalera o estructura)',
+      categoria: 'altura',
+      probabilidad: 3,
+      impacto: 5,
+      mitigacion: 'Arnés con doble cabo, punto de anclaje certificado, supervisión',
+      epp_requerido: 'Casco con barbiquejo, arnés de cuerpo completo, calzado antideslizante',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Riesgo eléctrico (tablero, variador, cables expuestos)',
+      categoria: 'electrico',
+      probabilidad: 3,
+      impacto: 5,
+      mitigacion: 'Bloqueo + tarjeteo (LOTO), verificación con multímetro antes de tocar',
+      epp_requerido: 'Guantes dieléctricos, casco clase E, calzado dieléctrico',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Espacio confinado (cámara de pozo profundo o tanque)',
+      categoria: 'confinado',
+      probabilidad: 2,
+      impacto: 5,
+      mitigacion: 'Medición de gases pre-ingreso, ventilación forzada, vigía externo',
+      epp_requerido: 'Detector multi-gas, arnés con cuerda de rescate, radio',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Exposición a químicos (cloración / dosificación)',
+      categoria: 'quimico',
+      probabilidad: 2,
+      impacto: 4,
+      mitigacion: 'Ventilación, MSDS disponible, ducha de emergencia identificada',
+      epp_requerido: 'Mascarilla full-face, guantes nitrilo, lentes protección',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Riesgo mecánico (bomba, motor, válvulas en operación)',
+      categoria: 'mecanico',
+      probabilidad: 3,
+      impacto: 4,
+      mitigacion: 'Detener equipo antes de intervenir, bloqueo de válvulas',
+      epp_requerido: 'Guantes anti-corte, lentes, calzado punta acero',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Caída a distinto nivel (acceso al cabezal sin baranda)',
+      categoria: 'altura',
+      probabilidad: 4,
+      impacto: 4,
+      mitigacion: 'Instalar baranda temporal o línea de vida',
+      epp_requerido: 'Arnés, casco, calzado de seguridad',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Exposición a sol/calor extremo (sitio rural sin sombra)',
+      categoria: 'ambiental',
+      probabilidad: 4,
+      impacto: 3,
+      mitigacion: 'Hidratación frecuente, sombrillas, no trabajar al mediodía',
+      epp_requerido: 'Sombrero, bloqueador solar SPF50+, ropa manga larga clara',
+      evaluado_terreno: false,
+    },
+    {
+      descripcion: 'Acceso remoto / sin comunicación (zona sin señal)',
+      categoria: 'comunicacion',
+      probabilidad: 3,
+      impacto: 4,
+      mitigacion: 'Plan de comunicación con horarios, radio satelital o handheld',
+      epp_requerido: 'Radio satelital, botiquín, agua extra',
+      evaluado_terreno: false,
+    },
+  ];
+
   addRiesgo(): void {
     const next: FichaRiesgo = {
       descripcion: '',
       probabilidad: null,
       impacto: null,
       mitigacion: '',
+      categoria: null,
+      epp_requerido: null,
+      evaluado_terreno: false,
     };
     this.ficha.update((f) => ({ ...f, riesgos: [...f.riesgos, next] }));
   }
+
+  /**
+   * Agrega un riesgo desde el catálogo preset, copiando todos sus campos.
+   * Reset del dropdown manejado por el `[ngModel]=''` en el template.
+   */
+  addRiesgoFromPreset(descripcion: string): void {
+    if (!descripcion) return;
+    const preset = this.presetRiesgos.find((p) => p.descripcion === descripcion);
+    if (!preset) return;
+    this.ficha.update((f) => ({ ...f, riesgos: [...f.riesgos, { ...preset }] }));
+  }
+
   removeRiesgo(idx: number): void {
     this.ficha.update((f) => ({
       ...f,
@@ -415,6 +837,93 @@ export class BitacoraFichaSitioComponent implements OnInit {
       ...f,
       riesgos: f.riesgos.map((r, i) => (i === idx ? { ...r, [field]: value as never } : r)),
     }));
+  }
+
+  /**
+   * Nivel de riesgo = probabilidad × impacto. Retorna null si falta P o I.
+   */
+  nivelRiesgo(r: FichaRiesgo): number | null {
+    const p = Number(r.probabilidad);
+    const i = Number(r.impacto);
+    if (!Number.isFinite(p) || !Number.isFinite(i) || p <= 0 || i <= 0) return null;
+    return p * i;
+  }
+
+  /**
+   * Clase Tailwind para colorear celdas de la matriz según el nivel IPER.
+   * Trivial (1-2) verde · Tolerable (3-4) lima · Moderado (5-8) ámbar ·
+   * Importante (9-12) naranja · Intolerable (13-25) rojo.
+   */
+  matrizCellClass(nivel: number): string {
+    if (nivel <= 2) return 'bg-emerald-100 text-emerald-700';
+    if (nivel <= 4) return 'bg-lime-100 text-lime-700';
+    if (nivel <= 8) return 'bg-amber-100 text-amber-700';
+    if (nivel <= 12) return 'bg-orange-200 text-orange-800';
+    return 'bg-rose-200 text-rose-800';
+  }
+
+  /**
+   * Etiqueta SST chilena para probabilidad (1-5).
+   */
+  probabilidadLabel(p: number): string {
+    return (
+      ['Raro', 'Improbable', 'Posible', 'Probable', 'Casi seguro'][p - 1] ?? String(p)
+    );
+  }
+
+  /**
+   * Etiqueta SST chilena para severidad/consecuencia (1-5).
+   */
+  severidadLabel(s: number): string {
+    return (
+      ['Insignificante', 'Menor', 'Moderada', 'Mayor', 'Catastrófica'][s - 1] ?? String(s)
+    );
+  }
+
+  /**
+   * Etiqueta del nivel calculado según matriz IPER chileno.
+   */
+  nivelLabel(nivel: number | null): string {
+    if (nivel === null || !Number.isFinite(nivel)) return '—';
+    if (nivel <= 2) return 'Trivial';
+    if (nivel <= 4) return 'Tolerable';
+    if (nivel <= 8) return 'Moderado';
+    if (nivel <= 12) return 'Importante';
+    return 'Intolerable';
+  }
+
+  /**
+   * Cuenta cuántos riesgos están plotted en una celda (p, i) específica.
+   */
+  matrizCount(p: number, i: number): number {
+    return this.ficha().riesgos.filter((r) => r.probabilidad === p && r.impacto === i).length;
+  }
+
+  /**
+   * Borde de la card del riesgo según su nivel IPER chileno.
+   */
+  riesgoCardClass(nivel: number | null): string {
+    if (nivel === null) return 'border-slate-200 bg-slate-50/60';
+    if (nivel <= 2) return 'border-emerald-200 bg-emerald-50/40';
+    if (nivel <= 4) return 'border-lime-200 bg-lime-50/40';
+    if (nivel <= 8) return 'border-amber-200 bg-amber-50/40';
+    if (nivel <= 12) return 'border-orange-300 bg-orange-50/40';
+    return 'border-rose-300 bg-rose-50/40';
+  }
+
+  /**
+   * Badge del nivel calculado (mismo color scheme que la matriz).
+   */
+  nivelBadgeClass(nivel: number | null): string {
+    if (nivel === null) return 'bg-slate-100 text-slate-400';
+    return this.matrizCellClass(nivel);
+  }
+
+  /**
+   * Cuenta riesgos ya verificados en terreno (checkbox marcado).
+   */
+  riesgosVerificados(): number {
+    return this.ficha().riesgos.filter((r) => r.evaluado_terreno === true).length;
   }
 
   vigenciaClass(fecha: string | null | undefined): string {

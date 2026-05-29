@@ -19,11 +19,29 @@ export interface FichaAcreditacion {
   vigencia_hasta?: string | null;
 }
 
+/**
+ * Riesgo identificado en el sitio. Pensado como input de matriz P×I para
+ * que el equipo prepare la salida a terreno con anticipación.
+ *
+ * - `probabilidad`: 1 (muy baja) ... 5 (casi segura).
+ * - `impacto`: 1 (leve) ... 5 (catastrófico).
+ * - El nivel se deriva client-side: `probabilidad × impacto` →
+ *   bajo (1-4), medio (5-9), alto (10-15), crítico (16-25).
+ * - `categoria`: opcional, ej. "altura", "eléctrico", "espacio_confinado",
+ *   etc. Si está vacío, se asume "otro".
+ * - `epp_requerido`: lista libre separada por comas de elementos de
+ *   protección personal específicos del riesgo.
+ * - `evaluado_terreno`: marcado cuando se verifica el riesgo on-site
+ *   antes de empezar a trabajar.
+ */
 export interface FichaRiesgo {
   descripcion: string;
   probabilidad?: number | null;
   impacto?: number | null;
   mitigacion?: string | null;
+  categoria?: string | null;
+  epp_requerido?: string | null;
+  evaluado_terreno?: boolean | null;
 }
 
 export interface FichaSitio {

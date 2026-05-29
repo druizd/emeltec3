@@ -6,6 +6,11 @@ import { catchError, combineLatest, debounceTime, forkJoin, of, switchMap } from
 import { AlertaService, type EventoRow } from '../../../../services/alerta.service';
 import { CompanyService, type ContadorJornadaPoint } from '../../../../services/company.service';
 import {
+  CATEGORIA_LABELS,
+  IncidenciaService,
+  type IncidenciaRow,
+} from '../../../../services/incidencia.service';
+import {
   WaterOperacionStateService,
   type OperacionPreset as Preset,
 } from './water-operacion-state';
@@ -748,6 +753,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly alertaService = inject(AlertaService);
   private readonly companyService = inject(CompanyService);
+  private readonly incidenciaService = inject(IncidenciaService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly preset = this.state.preset;
@@ -770,6 +776,10 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   // Eventos reales del periodo (mapeados a AlertaPeriodo para el render existente).
   private readonly eventosReales = signal<EventoRow[]>([]);
   readonly eventosLoading = signal(false);
+  // Incidencias reales del periodo. Se mapean luego al shape de
+  // IncidenciaPeriodo del template legado.
+  private readonly incidenciasRaw = signal<IncidenciaRow[]>([]);
+  readonly incidenciasLoading = signal(false);
   // Contadores por turno: cada índice corresponde al turno (0,1,2) y trae
   // delta acumulado en el rango seleccionado. Se rellena con 3 calls
   // paralelas al endpoint `contadores-jornadas` cuando cambia el rango,
@@ -1465,6 +1475,32 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return 'info';
   }
 
+  /**
+   * Mapea las incidencias del backend al shape esperado por el template
+   * legado. Estados:
+   *   - 'abierta'    → 'pendiente'
+   *   - 'en_progreso'→ 'en_proceso'
+   *   - 'resuelta'   → 'resuelta'
+   *   - 'cerrada'    → 'resuelta' (mostramos como resuelta porque es estado final)
+   * Sort: más recientes primero.
+   */
+  private readonly incidenciasReales = computed<IncidenciaPeriodo[]>(() =>
+    [...this.incidenciasRaw()]
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
+      .map((i) => ({
+        fecha: this.formatChileDateTime(i.created_at),
+        descripcion: i.titulo + (i.descripcion ? ` — ${i.descripcion}` : ''),
+        categoria: CATEGORIA_LABELS[i.categoria] ?? i.categoria,
+        estado:
+          i.estado === 'resuelta' || i.estado === 'cerrada'
+            ? ('resuelta' as const)
+            : i.estado === 'en_progreso'
+              ? ('en_proceso' as const)
+              : ('pendiente' as const),
+        tecnico: i.tecnico_nombre_completo ?? '—',
+      })),
+  );
+
   private readonly alertasReales = computed<AlertaPeriodo[]>(() =>
     this.eventosReales().map((e) => ({
       id: e.id,
@@ -1502,10 +1538,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
         advertencias: alertas.filter((a) => a.severidad === 'advertencia').length,
         info: alertas.filter((a) => a.severidad === 'info').length,
       },
-      // preset puede ser null (rango custom): default a '30d' para incidencias
-      // mockeadas. TODO: reemplazar con AlertaService.listarIncidencias cuando
-      // exista endpoint.
-      incidencias: this.mockIncidencias[this.preset() ?? '30d'],
+      incidencias: this.incidenciasReales(),
     };
   });
 
@@ -1614,6 +1647,27 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       .subscribe((rows) => {
         this.eventosLoading.set(false);
         this.eventosReales.set(rows);
+      });
+
+    // Incidencias reales del sitio en el rango. Endpoint
+    // /api/incidencias acepta sitio_id + desde/hasta + limit.
+    combineLatest([this.fechaDesde$, this.fechaHasta$])
+      .pipe(
+        debounceTime(300),
+        switchMap(([desde, hasta]) => {
+          this.incidenciasLoading.set(true);
+          // Backend espera ISO timestamptz: convertimos a inicio/fin día Chile.
+          const desdeIso = `${desde}T00:00:00-04:00`;
+          const hastaIso = `${hasta}T23:59:59-04:00`;
+          return this.incidenciaService
+            .listar({ sitio_id: siteId, desde: desdeIso, hasta: hastaIso, limit: 200 })
+            .pipe(catchError(() => of([] as IncidenciaRow[])));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((rows) => {
+        this.incidenciasLoading.set(false);
+        this.incidenciasRaw.set(rows);
       });
 
     // Daily aggregates: agregados por día Chile en el rango. Llenan la tabla

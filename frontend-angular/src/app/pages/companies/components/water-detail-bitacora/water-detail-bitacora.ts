@@ -103,7 +103,7 @@ interface BitacoraTabItem {
 
       <!-- Section content -->
       @if (activeSection() === 'ficha') {
-        <app-bitacora-ficha-sitio [sitioId]="sitioId()" />
+        <app-bitacora-ficha-sitio [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'documentos') {
         <app-bitacora-documentos [sitioId]="sitioId()" [empresaId]="empresaId()" />
       } @else if (activeSection() === 'equipamiento') {
