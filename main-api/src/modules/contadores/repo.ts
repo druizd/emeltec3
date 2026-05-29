@@ -139,7 +139,7 @@ export async function listContadoresByVariable(
 // Helpers reexportados para que worker/script reusen.
 export async function getSiteById(siteId: string): Promise<Site | null> {
   const result = await query<Site>(
-    'SELECT id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo FROM sitio WHERE id = $1',
+    'SELECT id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo FROM sitio WHERE id = $1',
     [siteId],
     { name: 'contadores__site_by_id' },
   );

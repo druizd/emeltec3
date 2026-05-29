@@ -9,7 +9,7 @@ const HISTORY_TTL_S = 60;
 const HISTORY_RANGE_TTL_S = 300;
 
 const SITE_COLUMNS =
-  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
+  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo';
 const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS =

@@ -5,7 +5,7 @@ import { query } from '../../config/dbHelpers';
 import type { Company, HierarchySite, SubCompany } from './types';
 
 const SITE_COLUMNS =
-  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
+  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo';
 
 export async function listCompanies(empresaIds: string[] | null): Promise<Company[]> {
   if (empresaIds === null) {

@@ -20,6 +20,12 @@ export interface Site {
   sub_empresa_id: string | null;
   id_serial: string | null;
   ubicacion: string | null;
+  /** UTM northing (metros). pg-numeric vuelve como string. NULL si no seteado. */
+  coord_norte?: number | string | null;
+  /** UTM easting (metros). */
+  coord_este?: number | string | null;
+  /** Zona UTM (1-60). */
+  huso?: number | null;
   tipo_sitio: SiteType;
   activo: boolean;
 }

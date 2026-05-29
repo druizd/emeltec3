@@ -28,6 +28,12 @@ export interface HierarchySite {
   sub_empresa_id: string | null;
   id_serial: string | null;
   ubicacion: string | null;
+  /** UTM northing (metros). NUMERIC viene como string desde pg. NULL si no seteado. */
+  coord_norte?: number | string | null;
+  /** UTM easting (metros). */
+  coord_este?: number | string | null;
+  /** Zona UTM (1-60). */
+  huso?: number | null;
   tipo_sitio: string;
   activo: boolean;
   pozo_config?: unknown;
