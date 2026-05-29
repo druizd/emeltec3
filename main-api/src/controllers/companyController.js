@@ -17,7 +17,7 @@ const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
 const { formatRutForStorage } = require('../utils/rut');
 
 const SITE_COLUMNS =
-  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, tipo_sitio, activo';
+  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo';
 const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS =
@@ -107,6 +107,33 @@ function conflict(res, message) {
 function cleanString(value) {
   if (value === undefined || value === null) return '';
   return String(value).trim();
+}
+
+/**
+ * Parsea coordenada UTM (norte o este) o huso. Acepta number o string
+ * numérico. NULL si falta o vacío. Retorna Error con mensaje user-friendly
+ * si está fuera de rango o no es numérico.
+ *
+ * - 'coord_norte' / 'coord_este': metros, rango [0, 10_000_000].
+ * - 'huso': entero [1, 60].
+ */
+function parseUtmField(value, label) {
+  if (value === undefined || value === null || value === '') return null;
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    return new Error(`${label} debe ser numérico.`);
+  }
+  if (label === 'huso') {
+    const huso = Math.round(num);
+    if (huso < 1 || huso > 60) {
+      return new Error('huso debe estar entre 1 y 60.');
+    }
+    return huso;
+  }
+  if (num < 0 || num > 10_000_000) {
+    return new Error(`${label} fuera de rango UTM (0 .. 10.000.000 m).`);
+  }
+  return num;
 }
 
 function nullableString(value) {
@@ -1083,6 +1110,12 @@ exports.createSite = async (req, res, next) => {
     const descripcion = cleanString(req.body.descripcion || req.body.nombre);
     const idSerial = cleanString(req.body.id_serial || req.body.serial_id);
     const ubicacion = nullableString(req.body.ubicacion);
+    const coordNorte = parseUtmField(req.body.coord_norte, 'coord_norte');
+    const coordEste = parseUtmField(req.body.coord_este, 'coord_este');
+    const huso = parseUtmField(req.body.huso, 'huso');
+    if (coordNorte instanceof Error) return badRequest(res, coordNorte.message);
+    if (coordEste instanceof Error) return badRequest(res, coordEste.message);
+    if (huso instanceof Error) return badRequest(res, huso.message);
     const tipoSitio = normalizeSiteType(req.body.tipo_sitio);
     const activo = parseBoolean(req.body.activo, true);
 
@@ -1113,10 +1146,22 @@ exports.createSite = async (req, res, next) => {
     const id = requestedId || (await generateSequentialId(client, 'sitio', 'S'));
 
     const { rows } = await client.query(
-      `INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion, tipo_sitio, activo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING ${SITE_COLUMNS}, created_at, updated_at`,
-      [id, descripcion, idSerial, empresaId, subEmpresaId, ubicacion, tipoSitio, activo],
+      [
+        id,
+        descripcion,
+        idSerial,
+        empresaId,
+        subEmpresaId,
+        ubicacion,
+        coordNorte,
+        coordEste,
+        huso,
+        tipoSitio,
+        activo,
+      ],
     );
 
     let pozoConfig = null;
@@ -1207,6 +1252,21 @@ exports.updateSite = async (req, res, next) => {
     if (ubicacion !== undefined) {
       params.push(ubicacion);
       updates.push(`ubicacion = $${params.length}`);
+    }
+
+    // Coordenadas UTM. Cada campo se parsea solo si está presente en el
+    // body. NULL explícito permite limpiar el valor.
+    const utmFields = [
+      ['coord_norte', req.body.coord_norte],
+      ['coord_este', req.body.coord_este],
+      ['huso', req.body.huso],
+    ];
+    for (const [colName, raw] of utmFields) {
+      if (raw === undefined) continue;
+      const parsed = parseUtmField(raw, colName);
+      if (parsed instanceof Error) return badRequest(res, parsed.message);
+      params.push(parsed);
+      updates.push(`${colName} = $${params.length}`);
     }
 
     if (tipoSitio === null) {

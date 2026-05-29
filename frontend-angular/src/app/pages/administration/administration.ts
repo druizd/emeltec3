@@ -100,6 +100,12 @@ interface SiteForm {
   descripcion: string;
   id_serial: string;
   ubicacion: string;
+  /** UTM northing (metros). Texto en el form, parseado al guardar. */
+  coord_norte: string;
+  /** UTM easting (metros). */
+  coord_este: string;
+  /** Zona UTM (1-60). Chile usa 18, 19 o 20. Default 19. */
+  huso: string;
   tipo_sitio: string;
   activo: boolean;
   profundidad_pozo_m: string;
@@ -966,8 +972,58 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         [ngModel]="siteForm().ubicacion"
                         (ngModelChange)="updateSiteForm('ubicacion', $event)"
                         class="field-control"
-                        placeholder="Ciudad, faena o coordenadas"
+                        placeholder="Ciudad, faena o referencia"
                       />
+                    </div>
+                    <!-- Coordenadas UTM. Se convierten a lat/lng en el
+                         frontend (proj4) para plotear en el mapa satelital
+                         de la vista general. Chile usa huso 18/19/20. -->
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Coord. Norte (UTM)</label
+                      >
+                      <input
+                        name="site-coord-norte"
+                        type="number"
+                        step="0.01"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().coord_norte"
+                        (ngModelChange)="updateSiteForm('coord_norte', $event)"
+                        class="field-control font-mono"
+                        placeholder="6.689.234,50"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Coord. Este (UTM)</label
+                      >
+                      <input
+                        name="site-coord-este"
+                        type="number"
+                        step="0.01"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().coord_este"
+                        (ngModelChange)="updateSiteForm('coord_este', $event)"
+                        class="field-control font-mono"
+                        placeholder="345.678,90"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Huso UTM</label
+                      >
+                      <select
+                        name="site-huso"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().huso"
+                        (ngModelChange)="updateSiteForm('huso', $event)"
+                        class="field-control"
+                      >
+                        <option value="">—</option>
+                        <option value="18">18 (Norte Chile)</option>
+                        <option value="19">19 (Centro Chile)</option>
+                        <option value="20">20 (Sur Chile)</option>
+                      </select>
                     </div>
                     <div class="lg:col-span-4 flex flex-wrap gap-2">
                       <app-admin-form-actions
@@ -1488,6 +1544,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     descripcion: '',
     id_serial: '',
     ubicacion: '',
+    coord_norte: '',
+    coord_este: '',
+    huso: '',
     tipo_sitio: 'pozo',
     activo: true,
     profundidad_pozo_m: '',
@@ -2180,6 +2239,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
       descripcion: '',
       id_serial: '',
       ubicacion: '',
+      coord_norte: '',
+      coord_este: '',
+      huso: '',
       tipo_sitio: 'pozo',
       activo: true,
       profundidad_pozo_m: '',
@@ -2204,6 +2266,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         descripcion: form.descripcion,
         id_serial: form.id_serial,
         ubicacion: form.ubicacion || null,
+        coord_norte: form.coord_norte !== '' ? Number(form.coord_norte) : null,
+        coord_este: form.coord_este !== '' ? Number(form.coord_este) : null,
+        huso: form.huso !== '' ? Number(form.huso) : null,
         tipo_sitio: form.tipo_sitio,
         activo: form.activo,
       })
@@ -2254,6 +2319,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
             descripcion: form.descripcion,
             id_serial: form.id_serial,
             ubicacion: form.ubicacion || null,
+            coord_norte: form.coord_norte !== '' ? Number(form.coord_norte) : null,
+            coord_este: form.coord_este !== '' ? Number(form.coord_este) : null,
+            huso: form.huso !== '' ? Number(form.huso) : null,
             tipo_sitio: form.tipo_sitio,
             activo: form.activo,
           })
@@ -2379,6 +2447,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
       descripcion: site.descripcion,
       id_serial: site.id_serial,
       ubicacion: site.ubicacion || '',
+      coord_norte: site.coord_norte != null ? String(site.coord_norte) : '',
+      coord_este: site.coord_este != null ? String(site.coord_este) : '',
+      huso: site.huso != null ? String(site.huso) : '',
       tipo_sitio: site.tipo_sitio || 'pozo',
       activo: site.activo !== false,
       profundidad_pozo_m: '',

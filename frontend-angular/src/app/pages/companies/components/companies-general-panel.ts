@@ -31,8 +31,14 @@ interface SitioResumen {
   nombre: string;
   ubicacion: string;
   estado: 'online' | 'sinDatos' | 'offline';
+  /** Latitud derivada de UTM via proj4. NaN si el sitio no tiene UTM seteado. */
   lat: number;
+  /** Longitud derivada de UTM via proj4. NaN si el sitio no tiene UTM seteado. */
   lng: number;
+  /** UTM crudo del backend — usado para mostrar en popup + auditoría. */
+  coord_norte: number | null;
+  coord_este: number | null;
+  huso: number | null;
   caudal: number;
   nivel: number;
   consumoMes: number;
@@ -755,12 +761,22 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     this.sitiosResumen = this.sites.map((s, i) => {
       const geo = this.MOCK_SITE_GEO[i % this.MOCK_SITE_GEO.length];
       const m3Proyectados = Math.round((geo.consumoMes / this.DIAS_TRANSCURRIDOS) * this.DIAS_MES);
+      // UTM real desde backend. lat/lng se calculan lazy en updateMarkers
+      // (necesita proj4 que se carga async). De momento dejamos NaN: si las
+      // coords vienen del DB, proj4 las completa; sino, fallback a mock.
+      const norte = this.toNumberOrNull(s.coord_norte);
+      const este = this.toNumberOrNull(s.coord_este);
+      const huso = this.toNumberOrNull(s.huso);
       return {
         nombre: s.descripcion || s.nombre || s.id_serial || 'Instalación',
         ubicacion: s.ubicacion || 'Sin ubicación',
         estado: (s.activo ? 'online' : 'sinDatos') as SitioResumen['estado'],
-        lat: geo.lat,
-        lng: geo.lng,
+        // Si no hay UTM aún, fallback al mock por sitio (centros Coquimbo).
+        lat: norte !== null && este !== null && huso !== null ? NaN : geo.lat,
+        lng: norte !== null && este !== null && huso !== null ? NaN : geo.lng,
+        coord_norte: norte,
+        coord_este: este,
+        huso,
         caudal: geo.caudal,
         nivel: geo.nivel,
         consumoMes: geo.consumoMes,
@@ -941,9 +957,53 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     return m.default ?? m;
   }
 
+  /**
+   * Helper para convertir number | string | null | undefined a number | null.
+   * El backend pg-numeric vuelve como string en algunos casos; lo aceptamos.
+   */
+  private toNumberOrNull(v: unknown): number | null {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  /**
+   * Lazy load proj4. Solo se importa cuando el mapa se inicializa.
+   */
+  private proj4Lib: any = null;
+  private async loadProj4(): Promise<any> {
+    if (this.proj4Lib) return this.proj4Lib;
+    const m = await import('proj4');
+    this.proj4Lib = m.default ?? m;
+    return this.proj4Lib;
+  }
+
+  /**
+   * Convierte UTM (norte, este, huso) → [lat, lng] WGS84 usando proj4.
+   * Chile está en hemisferio sur → flag +south.
+   */
+  private utmToLatLng(
+    este: number,
+    norte: number,
+    huso: number,
+  ): { lat: number; lng: number } | null {
+    if (!this.proj4Lib) return null;
+    try {
+      const utmProj = `+proj=utm +zone=${huso} +south +ellps=WGS84 +datum=WGS84 +units=m +no_defs`;
+      const [lng, lat] = this.proj4Lib(utmProj, 'WGS84', [este, norte]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+      return { lat, lng };
+    } catch {
+      return null;
+    }
+  }
+
   private async initMap(): Promise<void> {
     if (!this.mapContainer || this.map) return;
+    // Cargamos leaflet + proj4 en paralelo. proj4 es necesario para convertir
+    // UTM del backend a lat/lng que entiende leaflet.
     this.L = await this.loadLeaflet();
+    await this.loadProj4();
     if (!this.mapContainer || this.map) return; // guard against re-entry after await
 
     this.map = this.L.map(this.mapContainer.nativeElement, {
@@ -951,10 +1011,21 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       zoomControl: true,
     });
 
-    this.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18,
-    }).addTo(this.map);
+    // Esri World Imagery (satellite) — gratis, sin API key, similar quality
+    // a Google Maps Satélite. Capa de labels (Reference) encima para ver
+    // nombres de ciudades/calles superpuestos sobre la imagen satelital.
+    this.L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution:
+          'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+        maxZoom: 19,
+      },
+    ).addTo(this.map);
+    this.L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+      { maxZoom: 19, opacity: 0.7 },
+    ).addTo(this.map);
 
     this.updateMarkers();
   }
@@ -971,6 +1042,24 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     const bounds: [number, number][] = [];
 
     this.sitiosResumen.forEach((s, i) => {
+      // Si el sitio tiene UTM, lo convertimos a lat/lng acá (just-in-time)
+      // y sobrescribimos s.lat/s.lng para que el marker apunte al lugar real.
+      if (
+        s.coord_norte !== null &&
+        s.coord_este !== null &&
+        s.huso !== null &&
+        Number.isNaN(s.lat)
+      ) {
+        const result = this.utmToLatLng(s.coord_este, s.coord_norte, s.huso);
+        if (result) {
+          s.lat = result.lat;
+          s.lng = result.lng;
+        } else {
+          // Conversión falló (huso inválido, etc.) → fallback genérico.
+          s.lat = -29.9027;
+          s.lng = -71.2517;
+        }
+      }
       const color = this.colores[i % this.colores.length];
       const dotColor =
         s.estado === 'online' ? '#22C55E' : s.estado === 'offline' ? '#F87171' : '#94A3B8';

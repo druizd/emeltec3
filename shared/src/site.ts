@@ -5,6 +5,12 @@ export interface SiteRecord {
   sub_empresa_id: string;
   id_serial: string;
   ubicacion?: string | null;
+  /** UTM northing en metros (WGS84). NULL para sitios legacy. */
+  coord_norte?: number | string | null;
+  /** UTM easting en metros (WGS84). NULL para sitios legacy. */
+  coord_este?: number | string | null;
+  /** Zona UTM (1-60). Chile usa 18 (norte), 19 (centro) o 20 (sur). */
+  huso?: number | null;
   tipo_sitio: string;
   activo: boolean;
   /** Populated por companies/tree (attachPozoConfigsToSites). Opcional en otros contextos. */
@@ -30,6 +36,9 @@ export interface CreateSitePayload {
   descripcion: string;
   id_serial: string;
   ubicacion?: string | null;
+  coord_norte?: number | string | null;
+  coord_este?: number | string | null;
+  huso?: number | null;
   tipo_sitio: string;
   activo: boolean;
   pozo_config?: PozoConfig | null;
