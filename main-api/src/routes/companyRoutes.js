@@ -69,6 +69,10 @@ router.get('/sites/:siteId/dashboard-history/export', companyController.exportSi
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);
 router.get('/sites/:siteId/operacion-bundle', companyController.getSiteOperacionBundle);
 router.get('/sites/:siteId/period-aggregates', companyController.getSitePeriodAggregates);
+router.get(
+  '/sites/:siteId/period-aggregates-daily',
+  companyController.getSitePeriodAggregatesDaily,
+);
 router.get('/sites/:siteId/variables', companyController.getSiteVariables);
 router.post('/sites/:siteId/variables', companyController.createSiteVariableMap);
 router.patch('/sites/:siteId/variables/:mapId', companyController.updateSiteVariableMap);

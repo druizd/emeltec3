@@ -19,10 +19,19 @@ interface KpiPeriodo {
 }
 
 interface FilaDiaria {
+  /** ISO YYYY-MM-DD para sorting/keying. */
+  diaIso: string;
+  /** Etiqueta legible (DD/MM/YYYY) para mostrar. */
   fecha: string;
-  flujo: number;
-  caudalProm: number;
-  nivel: number;
+  /** Delta de totalizador del día — flujo m³. null si sin datos. */
+  flujo: number | null;
+  /** Peak de caudal en el día — L/s. null si sin datos. */
+  caudalPeak: number | null;
+  /** Promedio de caudal en el día — L/s. null si sin datos. */
+  caudalProm: number | null;
+  /** Nivel freático más alto en el día — m. null si sin datos. */
+  freaticoPeak: number | null;
+  /** Cantidad de eventos/alertas disparadas en ese día. */
   alertas: number;
 }
 
@@ -443,14 +452,25 @@ interface IncidenciaPeriodo {
         </div>
       </section>
 
-      <!-- Tabla resumen diario -->
+      <!-- Tabla resumen diario: una fila por día calendario en el rango
+           aplicado. Cruza daily counters (flujo) + daily aggregates (peaks)
+           + eventos reales (alertas por día). Cap 60 filas para no romper
+           UI en rangos grandes — el operador afina fechas para ver detalle. -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div
           class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
         >
-          <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-            Resumen diario — últimos 7 días del período
-          </h3>
+          <div>
+            <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              Resumen diario
+            </h3>
+            <p class="mt-0.5 text-caption-xs text-slate-400">
+              {{ data().tabla.length }} días · {{ periodoLabel() }}
+              @if (dailyAggregatesLoading()) {
+                · <span class="text-primary-container">cargando…</span>
+              }
+            </p>
+          </div>
           <button
             type="button"
             aria-label="Descargar resumen diario en CSV"
@@ -461,7 +481,7 @@ interface IncidenciaPeriodo {
           </button>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[560px] text-left text-body-sm">
+          <table class="w-full min-w-[640px] text-left text-body-sm">
             <thead>
               <tr class="border-b border-slate-100 bg-slate-50/60">
                 <th
@@ -470,49 +490,68 @@ interface IncidenciaPeriodo {
                   Fecha
                 </th>
                 <th
-                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Flujo (m³)
                 </th>
                 <th
-                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >
+                  Caudal peak
+                </th>
+                <th
+                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Caudal prom.
                 </th>
                 <th
-                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
-                  Nivel freat.
+                  Freático max
                 </th>
                 <th
-                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400 text-right"
+                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >
                   Alertas
                 </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
-              @for (fila of data().tabla; track fila.fecha) {
-                <tr class="hover:bg-slate-50/60" [class.opacity-50]="fila.flujo === 0">
+              @for (fila of data().tabla; track fila.diaIso) {
+                <tr
+                  class="hover:bg-slate-50/60"
+                  [class.opacity-60]="(fila.flujo ?? 0) === 0"
+                >
                   <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
                     {{ fila.fecha }}
                   </td>
                   <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.flujo > 0) {
-                      {{ fila.flujo }}
+                    @if (fila.flujo !== null && fila.flujo > 0) {
+                      {{ formatNumber(fila.flujo, 1) }}
                     } @else {
                       <span class="text-slate-300">—</span>
                     }
                   </td>
                   <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.caudalProm > 0) {
-                      {{ fila.caudalProm }} L/s
+                    @if (fila.caudalPeak !== null) {
+                      {{ formatNumber(fila.caudalPeak, 1) }} L/s
                     } @else {
                       <span class="text-slate-300">—</span>
                     }
                   </td>
                   <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    {{ fila.nivel }} m
+                    @if (fila.caudalProm !== null) {
+                      {{ formatNumber(fila.caudalProm, 1) }} L/s
+                    } @else {
+                      <span class="text-slate-300">—</span>
+                    }
+                  </td>
+                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                    @if (fila.freaticoPeak !== null) {
+                      {{ formatNumber(fila.freaticoPeak, 2) }} m
+                    } @else {
+                      <span class="text-slate-300">—</span>
+                    }
                   </td>
                   <td class="px-4 py-2.5 text-right">
                     @if (fila.alertas > 0) {
@@ -746,6 +785,19 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     nivel_freatico: { max: number | null; avg: number | null; n: number; unidad: string | null };
   } | null>(null);
   readonly periodAggregatesLoading = signal(false);
+  // Agregados por día (caudal max/avg + nivel_freatico max + count) para
+  // poblar la tabla "Resumen diario". Endpoint dedicado lee equipo_5min y
+  // agrupa por día Chile en backend → 1 fila por día visible.
+  private readonly dailyAggregates = signal<
+    Array<{
+      dia: string;
+      caudal: { max: number | null; avg: number | null; n: number };
+      nivel: { max: number | null; avg: number | null; n: number };
+      nivel_freatico: { max: number | null; avg: number | null; n: number };
+      muestras: number;
+    }>
+  >([]);
+  readonly dailyAggregatesLoading = signal(false);
   // Tooltip de chart: índice de barra sobre la que hover. null = sin hover.
   readonly chartHoverIndex = signal<number | null>(null);
   // toObservable solo se permite en contexto de inyeccion → captura en field init.
@@ -974,15 +1026,74 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     ],
   };
 
-  private readonly tablaComun: FilaDiaria[] = [
-    { fecha: '10/05', flujo: 169, caudalProm: 3.1, nivel: 32.4, alertas: 0 },
-    { fecha: '09/05', flujo: 172, caudalProm: 3.1, nivel: 32.3, alertas: 0 },
-    { fecha: '08/05', flujo: 168, caudalProm: 3.0, nivel: 32.5, alertas: 1 },
-    { fecha: '07/05', flujo: 0, caudalProm: 0, nivel: 32.4, alertas: 0 },
-    { fecha: '06/05', flujo: 175, caudalProm: 3.2, nivel: 32.4, alertas: 0 },
-    { fecha: '05/05', flujo: 171, caudalProm: 3.1, nivel: 32.6, alertas: 0 },
-    { fecha: '04/05', flujo: 0, caudalProm: 0, nivel: 32.5, alertas: 0 },
-  ];
+  /**
+   * Tabla "Resumen diario" — una fila por día calendario en el rango aplicado.
+   * Cruza tres fuentes de datos:
+   *   - dailyCountersData (state): delta totalizador por día (flujo m³).
+   *   - dailyAggregates (local fetch): peak/avg caudal + peak nivel freático.
+   *   - eventosReales (alertas service): bucketea por día Chile.
+   *
+   * Si el rango es grande (>60d) cortamos a últimos 60 días para no saturar
+   * el DOM; el operador puede afinar fechas para ver el detalle.
+   */
+  readonly tablaDiariaReal = computed<FilaDiaria[]>(() => {
+    const desde = this.fechaDesde();
+    const hasta = this.fechaHasta();
+    if (!desde || !hasta) return [];
+
+    // Index daily counters por diaIso para lookup O(1).
+    const dailyByDia = new Map(this.state.dailyCountersData().map((p) => [p.dia, p]));
+
+    // Index aggregates por diaIso.
+    const aggByDia = new Map(this.dailyAggregates().map((d) => [d.dia, d]));
+
+    // Index eventos por diaIso: tomamos triggered_at, convertimos a dayKey
+    // Chile y agrupamos.
+    const eventosByDia = new Map<string, number>();
+    for (const ev of this.eventosReales()) {
+      const diaKey = this.chileDayKey(new Date(ev.triggered_at));
+      eventosByDia.set(diaKey, (eventosByDia.get(diaKey) ?? 0) + 1);
+    }
+
+    // Genera filas calendario-correctas entre desde y hasta (inclusive).
+    const filas: FilaDiaria[] = [];
+    const desdeMs = new Date(`${desde}T00:00:00-04:00`).getTime();
+    const hastaMs = new Date(`${hasta}T00:00:00-04:00`).getTime();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    for (let t = hastaMs; t >= desdeMs; t -= dayMs) {
+      const diaIso = new Date(t).toISOString().slice(0, 10);
+      const counter = dailyByDia.get(diaIso);
+      const agg = aggByDia.get(diaIso);
+
+      filas.push({
+        diaIso,
+        fecha: this.formatDiaLargo(diaIso),
+        flujo: counter?.delta != null ? Number(counter.delta) : null,
+        caudalPeak: agg?.caudal.max ?? null,
+        caudalProm: agg?.caudal.avg ?? null,
+        freaticoPeak: agg?.nivel_freatico.max ?? null,
+        alertas: eventosByDia.get(diaIso) ?? 0,
+      });
+    }
+
+    // Cap a 60 filas para no romper la UI si el rango es enorme.
+    return filas.slice(0, 60);
+  });
+
+  /**
+   * Convierte un timestamp a su dayKey YYYY-MM-DD en zona Chile.
+   */
+  private chileDayKey(d: Date): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  }
 
   private readonly barData: Record<Preset, { vals: number[]; labels: string[]; step: number }> = {
     '7d': {
@@ -1341,6 +1452,12 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(Math.round(v));
   }
 
+  /** Helper público para usar desde el template de la tabla diaria. */
+  formatNumber(v: number | null, decimals: number): string {
+    if (v === null || !Number.isFinite(v)) return '—';
+    return this.fmt(v, decimals);
+  }
+
   /** Map backend severidad (baja|media|alta|critica) → display severidad. */
   private mapSeveridad(s: string): 'critica' | 'advertencia' | 'info' {
     if (s === 'critica') return 'critica';
@@ -1378,7 +1495,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const alertas = this.alertasReales();
     return {
       kpis: this.computedKpis(),
-      tabla: this.tablaComun,
+      tabla: this.tablaDiariaReal(),
       alertas,
       alertasResumen: {
         criticas: alertas.filter((a) => a.severidad === 'critica').length,
@@ -1497,6 +1614,25 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       .subscribe((rows) => {
         this.eventosLoading.set(false);
         this.eventosReales.set(rows);
+      });
+
+    // Daily aggregates: agregados por día Chile en el rango. Llenan la tabla
+    // "Resumen diario" con flujo + caudal peak/prom + nivel freático peak +
+    // alertas (estas last se cuentan client-side desde eventosReales).
+    combineLatest([this.fechaDesde$, this.fechaHasta$])
+      .pipe(
+        debounceTime(300),
+        switchMap(([desde, hasta]) => {
+          this.dailyAggregatesLoading.set(true);
+          return this.companyService
+            .getSitePeriodAggregatesDaily(siteId, desde, hasta)
+            .pipe(catchError(() => of({ ok: false, data: null as never })));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => {
+        this.dailyAggregatesLoading.set(false);
+        this.dailyAggregates.set(res.ok && res.data ? res.data.dias : []);
       });
 
     // Period aggregates: peaks + promedios de caudal/nivel_freatico sobre el

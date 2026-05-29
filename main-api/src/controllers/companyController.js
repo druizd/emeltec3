@@ -2166,6 +2166,165 @@ exports.getSitePeriodAggregates = async (req, res, next) => {
 };
 
 /**
+ * GET /api/companies/sites/:siteId/period-aggregates-daily?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+ *
+ * Devuelve agregados (max, promedio, count) por día Chile para el rango.
+ * Sirve para llenar la tabla "Resumen diario" sin pedir el histórico crudo
+ * completo al cliente. Resolución 5min via `equipo_5min` cagg.
+ *
+ * Response:
+ *   {
+ *     ok: true,
+ *     data: {
+ *       dias: [
+ *         {
+ *           dia: 'YYYY-MM-DD',
+ *           caudal: { max: number|null, avg: number|null, n: number },
+ *           nivel: { max: number|null, avg: number|null, n: number },
+ *           nivel_freatico: { max: number|null, avg: number|null, n: number },
+ *           muestras: number
+ *         }
+ *       ]
+ *     }
+ *   }
+ */
+exports.getSitePeriodAggregatesDaily = async (req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  const ms = (since) => Number(process.hrtime.bigint() - since) / 1e6;
+  const timings = [];
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+    if (!site) return notFound(res, 'Sitio no encontrado.');
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para consultar este sitio.');
+    }
+
+    const from = parseDateOnly(req.query.desde);
+    const to = parseDateOnly(req.query.hasta);
+    if (!from || !to) {
+      return badRequest(res, 'Parámetros desde y hasta requeridos (formato YYYY-MM-DD).');
+    }
+    if (countInclusiveDays(from, to) <= 0) {
+      return badRequest(res, 'desde no puede ser mayor que hasta.');
+    }
+    if (countInclusiveDays(from, to) > 366) {
+      return badRequest(res, 'Rango máximo: 1 año.');
+    }
+
+    const tQueries = process.hrtime.bigint();
+    const [pozoConfigRes, mappingsRes, rowsRes] = await Promise.all([
+      db.query(
+        `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
+           FROM pozo_config pc
+           JOIN sitio s ON s.id = pc.sitio_id
+          WHERE pc.sitio_id = $1
+            AND s.tipo_sitio = 'pozo'`,
+        [siteId],
+      ),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+        siteId,
+      ]),
+      db.query(
+        // Devolvemos `bucket AT TIME ZONE chile` como `dia` listo, así no
+        // tenemos que recalcular el dayKey en JS por fila.
+        `SELECT
+           bucket AS time,
+           data,
+           (bucket AT TIME ZONE '${CHILE_TIME_ZONE}')::date::text AS dia
+         FROM equipo_5min
+         WHERE id_serial = $1
+           AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+           AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')`,
+        [site.id_serial, from, to],
+      ),
+    ]);
+    timings.push(`db;dur=${ms(tQueries).toFixed(1)}`);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+
+    const tMap = process.hrtime.bigint();
+    const mapper = createHistoricalRowMapper({
+      site,
+      mappings,
+      pozoConfig,
+      sampleRawData: rowsRes.rows[0]?.data || {},
+    });
+
+    // Acumulador por día. Una sola pasada sobre filas: por cada una, busca
+    // el accumulator del día (creando si no existe), aplica mapper, suma.
+    const byDay = new Map();
+    for (const row of rowsRes.rows) {
+      let acc = byDay.get(row.dia);
+      if (!acc) {
+        acc = {
+          dia: row.dia,
+          caudal: { max: -Infinity, sum: 0, n: 0 },
+          nivel: { max: -Infinity, sum: 0, n: 0 },
+          nivel_freatico: { max: -Infinity, sum: 0, n: 0 },
+          muestras: 0,
+        };
+        byDay.set(row.dia, acc);
+      }
+      acc.muestras++;
+      const r = mapper({ time: row.time, data: row.data, received_at: null });
+
+      const cv = Number(r.caudal?.valor);
+      if (r.caudal?.ok && Number.isFinite(cv)) {
+        if (cv > acc.caudal.max) acc.caudal.max = cv;
+        acc.caudal.sum += cv;
+        acc.caudal.n++;
+      }
+      const nv = Number(r.nivel?.valor);
+      if (r.nivel?.ok && Number.isFinite(nv)) {
+        if (nv > acc.nivel.max) acc.nivel.max = nv;
+        acc.nivel.sum += nv;
+        acc.nivel.n++;
+      }
+      const fv = Number(r.nivel_freatico?.valor);
+      if (r.nivel_freatico?.ok && Number.isFinite(fv)) {
+        if (fv > acc.nivel_freatico.max) acc.nivel_freatico.max = fv;
+        acc.nivel_freatico.sum += fv;
+        acc.nivel_freatico.n++;
+      }
+    }
+
+    const dias = Array.from(byDay.values())
+      .sort((a, b) => a.dia.localeCompare(b.dia))
+      .map((acc) => ({
+        dia: acc.dia,
+        caudal: {
+          max: acc.caudal.n > 0 ? acc.caudal.max : null,
+          avg: acc.caudal.n > 0 ? acc.caudal.sum / acc.caudal.n : null,
+          n: acc.caudal.n,
+        },
+        nivel: {
+          max: acc.nivel.n > 0 ? acc.nivel.max : null,
+          avg: acc.nivel.n > 0 ? acc.nivel.sum / acc.nivel.n : null,
+          n: acc.nivel.n,
+        },
+        nivel_freatico: {
+          max: acc.nivel_freatico.n > 0 ? acc.nivel_freatico.max : null,
+          avg: acc.nivel_freatico.n > 0 ? acc.nivel_freatico.sum / acc.nivel_freatico.n : null,
+          n: acc.nivel_freatico.n,
+        },
+        muestras: acc.muestras,
+      }));
+
+    timings.push(`js;dur=${ms(tMap).toFixed(1)}`);
+    timings.push(`rows;desc="${rowsRes.rows.length}"`);
+    timings.push(`dias;desc="${dias.length}"`);
+    timings.push(`total;dur=${ms(t0).toFixed(1)}`);
+    res.setHeader('Server-Timing', timings.join(', '));
+
+    return res.json({ ok: true, data: { dias } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * GET /api/companies/sites/:siteId/dashboard-history/export
  * Exporta historico transformado en CSV, filtrando por sitio y rango local America/Santiago.
  */

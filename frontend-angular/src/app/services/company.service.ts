@@ -203,6 +203,38 @@ export class CompanyService {
     >(`/api/companies/sites/${siteId}/period-aggregates?${params.toString()}`);
   }
 
+  getSitePeriodAggregatesDaily(
+    siteId: string,
+    desde: string,
+    hasta: string,
+  ): Observable<
+    ApiResponse<{
+      dias: Array<{
+        dia: string;
+        caudal: { max: number | null; avg: number | null; n: number };
+        nivel: { max: number | null; avg: number | null; n: number };
+        nivel_freatico: { max: number | null; avg: number | null; n: number };
+        muestras: number;
+      }>;
+    }>
+  > {
+    const params = new URLSearchParams();
+    params.set('desde', desde);
+    params.set('hasta', hasta);
+    params.set('t', String(Date.now()));
+    return this.http.get<
+      ApiResponse<{
+        dias: Array<{
+          dia: string;
+          caudal: { max: number | null; avg: number | null; n: number };
+          nivel: { max: number | null; avg: number | null; n: number };
+          nivel_freatico: { max: number | null; avg: number | null; n: number };
+          muestras: number;
+        }>;
+      }>
+    >(`/api/companies/sites/${siteId}/period-aggregates-daily?${params.toString()}`);
+  }
+
   getSiteMonthlyCounters(
     siteId: string,
     options: { rol?: string; meses?: number } = {},
