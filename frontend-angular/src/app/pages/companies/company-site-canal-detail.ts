@@ -3324,7 +3324,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
 
     this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
     this.startDashboardPolling(siteId);
-    this.startHistoryPolling(siteId);
+    // historyPolling lazy — solo arranca cuando se abre la modal Historial.
     this.startMonthlyCountersPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
@@ -3916,6 +3916,7 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
 
   closeHistoryView(): void {
     this.historyPanelOpen.set(false);
+    this.historyPollingSub?.unsubscribe();
   }
 
   openDownloadModal(): void {

@@ -3324,7 +3324,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
     this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
     this.startDashboardPolling(siteId);
-    this.startHistoryPolling(siteId);
+    // historyPolling pidía dashboard-history cada 60s (limit=50, ~3s en
+    // cold path) solo para llenar la modal "Historial" que está cerrada
+    // por default. Ahora se arranca lazy desde openHistoryView() y se
+    // detiene en closeHistoryView(). Win primer paint: -1 request pesada.
     this.startMonthlyCountersPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
@@ -3907,6 +3910,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   closeHistoryView(): void {
     this.historyPanelOpen.set(false);
+    this.historyPollingSub?.unsubscribe();
   }
 
   openDownloadModal(): void {
