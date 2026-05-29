@@ -718,9 +718,36 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly dgaService = inject(DgaService);
   private readonly incidenciaService = inject(IncidenciaService);
 
+  /**
+   * Sites filtrados a sub-empresa (lo que vienen del parent). El setter los
+   * expande a TODOS los sitios de la EMPRESA del cliente, filtrados al mismo
+   * subset de tipos para mantener consistencia con el módulo activo (Agua /
+   * Eléctrico / etc). El operador entra con una sub-empresa pero la Vista
+   * General quiere mostrar el panorama completo del cliente.
+   */
   @Input() set sites(value: any[]) {
-    this._sites = value || [];
-    this._sitesSignal.set(value || []);
+    const filtered = value || [];
+    const empresaId = filtered[0]?.empresa_id;
+    if (empresaId) {
+      const allInEmpresa =
+        this.companyService
+          .visibleHierarchy()
+          .find((c) => c.id === empresaId)
+          ?.subCompanies?.flatMap((sc) => sc.sites ?? []) ?? [];
+      // Conservar solo los tipos presentes en el segmento activo (ej. al estar
+      // en módulo Agua mantenemos pozo+vertiente+canal pero excluimos
+      // eléctrico/proceso que no aplican a este chart).
+      const tiposVisibles = new Set(filtered.map((s) => s.tipo_sitio));
+      const expanded =
+        tiposVisibles.size > 0
+          ? allInEmpresa.filter((s) => tiposVisibles.has(s.tipo_sitio))
+          : allInEmpresa;
+      this._sites = expanded;
+      this._sitesSignal.set(expanded);
+    } else {
+      this._sites = filtered;
+      this._sitesSignal.set(filtered);
+    }
   }
   get sites(): any[] {
     return this._sites;
