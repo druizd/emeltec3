@@ -1,5 +1,10 @@
 @import 'tailwindcss';
 
+/* Leaflet base CSS. Sin esto los tiles renderizan como cuadrados grises
+   sin posicionamiento correcto. La librería se carga via dynamic import
+   en components que la usan; el CSS sí es global. */
+@import 'leaflet/dist/leaflet.css';
+
 /* Josefin Sans — Emeltec brand display font (local variable file).
    Loaded via @font-face so we keep control over the asset.
    DM Sans (body) and JetBrains Mono (data/monospace) are loaded from

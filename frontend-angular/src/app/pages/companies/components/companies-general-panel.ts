@@ -1013,11 +1013,17 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       zoomControl: true,
     });
 
-    // Dos capas: satelital (Esri World Imagery) y calle (CartoDB Voyager,
-    // estilo limpio y moderno). Voyager por default — se ve mejor que
-    // satelital lleno cuando el operador solo quiere ubicar los pozos.
-    // Layer control permite togglear entre ambas. Sin overlay de labels para
-    // mantener el mapa limpio.
+    // Capas: Esri World Imagery (satelital) default + CartoDB Voyager (calle)
+    // como alternativa. User pidió satélite por default — los pozos se ven
+    // en contexto real de terreno (caminos, agua, vegetación).
+    const satellite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles © Esri, Maxar, Earthstar Geographics, USDA, USGS',
+        maxZoom: 19,
+      },
+    );
+
     const street = L.tileLayer(
       'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       {
@@ -1028,24 +1034,23 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       },
     );
 
-    const satellite = L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-      {
-        attribution: 'Tiles © Esri, Maxar, Earthstar Geographics, USDA, USGS',
-        maxZoom: 19,
-      },
-    );
-
-    street.addTo(this.map);
+    satellite.addTo(this.map);
     L.control
       .layers(
-        { 'Calle': street, 'Satelital': satellite },
+        { 'Satelital': satellite, 'Calle': street },
         {},
         { position: 'topright', collapsed: false },
       )
       .addTo(this.map);
 
     this.updateMarkers();
+
+    // invalidateSize: leaflet calcula el tamaño del contenedor al init. Si el
+    // contenedor estaba oculto o cambiando dimensiones, las tiles se
+    // posicionan mal (parecen cuadrados sueltos). Forzamos un recalc después
+    // de un tick para garantizar layout estable.
+    setTimeout(() => this.map?.invalidateSize(), 0);
+    setTimeout(() => this.map?.invalidateSize(), 200);
   }
 
   private updateMarkers(): void {
@@ -1113,8 +1118,15 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         popupAnchor: [0, -38],
       });
 
+      // Links Google Maps:
+      //  - Ver pin: maps.google.com/?q=lat,lng
+      //  - Cómo llegar: maps.google.com/maps/dir/?api=1&destination=lat,lng
+      //    En móvil abre la app de Google Maps directamente con ruta calculada
+      //    desde la ubicación actual. En desktop abre maps.google.com web.
+      const gmapsView = `https://maps.google.com/?q=${s.lat},${s.lng}`;
+      const gmapsRoute = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
       const popupHtml = `
-        <div style="font-family:'DM Sans',sans-serif;min-width:200px;padding:2px;">
+        <div style="font-family:'DM Sans',sans-serif;min-width:220px;padding:2px;">
           <p style="font-weight:800;font-size:12px;color:#1E293B;margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid #E2E8F0;">${s.nombre}</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;">
             <div>
@@ -1133,6 +1145,18 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
               <p style="font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin:0 0 2px;">Tendencia</p>
               <p style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:${tendColor};margin:0;">${tendSign}${s.tendenciaCaudal}%</p>
             </div>
+          </div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid #E2E8F0;display:flex;gap:6px;">
+            <a href="${gmapsRoute}" target="_blank" rel="noopener noreferrer"
+               style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;border-radius:6px;background:#0DAFBD;color:white;font-size:11px;font-weight:700;text-decoration:none;">
+              <span style="font-family:'Material Symbols Outlined';font-size:14px;">directions</span>
+              Cómo llegar
+            </a>
+            <a href="${gmapsView}" target="_blank" rel="noopener noreferrer"
+               style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:6px 8px;border-radius:6px;background:#F8FAFC;border:1px solid #E2E8F0;color:#1E293B;font-size:11px;font-weight:700;text-decoration:none;">
+              <span style="font-family:'Material Symbols Outlined';font-size:14px;">map</span>
+              Ver en Maps
+            </a>
           </div>
         </div>
       `;
