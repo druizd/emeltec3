@@ -2025,6 +2025,147 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
 };
 
 /**
+ * GET /api/companies/sites/:siteId/period-aggregates?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+ *
+ * Devuelve agregados (max, promedio, count) de caudal, nivel y nivel_freatico
+ * sobre el rango solicitado. Usa `equipo_5min` cagg para minimizar costo —
+ * resolución 5 minutos es suficiente para detectar peaks operativos. Si el
+ * sitio tiene 90 días: ~25k filas × ~4 transforms cada una = ~100ms total.
+ *
+ * Response shape:
+ *   {
+ *     ok: true,
+ *     data: {
+ *       caudal: { max: number|null, avg: number|null, n: number, unidad: string|null },
+ *       nivel: { ... },
+ *       nivel_freatico: { ... },
+ *       muestras_total: number
+ *     }
+ *   }
+ */
+exports.getSitePeriodAggregates = async (req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  const ms = (since) => Number(process.hrtime.bigint() - since) / 1e6;
+  const timings = [];
+  try {
+    const siteId = normalizeId(req.params.siteId);
+    const site = await getSiteById(siteId);
+    if (!site) return notFound(res, 'Sitio no encontrado.');
+    if (!canReadSite(req.user, site)) {
+      return forbidden(res, 'No tiene permisos para consultar este sitio.');
+    }
+
+    const from = parseDateOnly(req.query.desde);
+    const to = parseDateOnly(req.query.hasta);
+    if (!from || !to) {
+      return badRequest(res, 'Parámetros desde y hasta requeridos (formato YYYY-MM-DD).');
+    }
+    if (countInclusiveDays(from, to) <= 0) {
+      return badRequest(res, 'desde no puede ser mayor que hasta.');
+    }
+    if (countInclusiveDays(from, to) > 366) {
+      return badRequest(res, 'Rango máximo: 1 año.');
+    }
+
+    const tQueries = process.hrtime.bigint();
+    const [pozoConfigRes, mappingsRes, rowsRes] = await Promise.all([
+      db.query(
+        `SELECT ${POZO_CONFIG_SELECT_COLUMNS}
+           FROM pozo_config pc
+           JOIN sitio s ON s.id = pc.sitio_id
+          WHERE pc.sitio_id = $1
+            AND s.tipo_sitio = 'pozo'`,
+        [siteId],
+      ),
+      db.query(`SELECT ${MAP_COLUMNS} FROM reg_map WHERE sitio_id = $1 ORDER BY alias ASC`, [
+        siteId,
+      ]),
+      db.query(
+        `SELECT bucket AS time, data
+           FROM equipo_5min
+          WHERE id_serial = $1
+            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')`,
+        [site.id_serial, from, to],
+      ),
+    ]);
+    timings.push(`db;dur=${ms(tQueries).toFixed(1)}`);
+
+    const pozoConfig = pozoConfigRes.rows[0] || null;
+    const mappings = mappingsRes.rows || [];
+
+    const tMap = process.hrtime.bigint();
+    const mapper = createHistoricalRowMapper({
+      site,
+      mappings,
+      pozoConfig,
+      sampleRawData: rowsRes.rows[0]?.data || {},
+    });
+
+    let caudalMax = -Infinity, caudalSum = 0, caudalN = 0;
+    let nivelMax = -Infinity, nivelSum = 0, nivelN = 0;
+    let freaticoMax = -Infinity, freaticoSum = 0, freaticoN = 0;
+    let caudalUnidad = null, nivelUnidad = null, freaticoUnidad = null;
+
+    for (const row of rowsRes.rows) {
+      const r = mapper({ time: row.time, data: row.data, received_at: null });
+      const cv = Number(r.caudal?.valor);
+      if (r.caudal?.ok && Number.isFinite(cv)) {
+        if (cv > caudalMax) caudalMax = cv;
+        caudalSum += cv;
+        caudalN++;
+        if (!caudalUnidad) caudalUnidad = r.caudal.unidad;
+      }
+      const nv = Number(r.nivel?.valor);
+      if (r.nivel?.ok && Number.isFinite(nv)) {
+        if (nv > nivelMax) nivelMax = nv;
+        nivelSum += nv;
+        nivelN++;
+        if (!nivelUnidad) nivelUnidad = r.nivel.unidad;
+      }
+      const fv = Number(r.nivel_freatico?.valor);
+      if (r.nivel_freatico?.ok && Number.isFinite(fv)) {
+        if (fv > freaticoMax) freaticoMax = fv;
+        freaticoSum += fv;
+        freaticoN++;
+        if (!freaticoUnidad) freaticoUnidad = r.nivel_freatico.unidad;
+      }
+    }
+    timings.push(`js;dur=${ms(tMap).toFixed(1)}`);
+    timings.push(`rows;desc="${rowsRes.rows.length}"`);
+    timings.push(`total;dur=${ms(t0).toFixed(1)}`);
+    res.setHeader('Server-Timing', timings.join(', '));
+
+    return res.json({
+      ok: true,
+      data: {
+        caudal: {
+          max: caudalN > 0 ? caudalMax : null,
+          avg: caudalN > 0 ? caudalSum / caudalN : null,
+          n: caudalN,
+          unidad: caudalUnidad,
+        },
+        nivel: {
+          max: nivelN > 0 ? nivelMax : null,
+          avg: nivelN > 0 ? nivelSum / nivelN : null,
+          n: nivelN,
+          unidad: nivelUnidad,
+        },
+        nivel_freatico: {
+          max: freaticoN > 0 ? freaticoMax : null,
+          avg: freaticoN > 0 ? freaticoSum / freaticoN : null,
+          n: freaticoN,
+          unidad: freaticoUnidad,
+        },
+        muestras_total: rowsRes.rows.length,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * GET /api/companies/sites/:siteId/dashboard-history/export
  * Exporta historico transformado en CSV, filtrando por sitio y rango local America/Santiago.
  */

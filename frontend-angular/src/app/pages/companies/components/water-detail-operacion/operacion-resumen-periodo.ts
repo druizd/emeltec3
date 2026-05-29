@@ -27,9 +27,23 @@ interface FilaDiaria {
 }
 
 interface BarChart {
-  bars: { x: number; y: number; w: number; h: number; fill: string }[];
+  bars: {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    fill: string;
+    /** Centro X de la barra para anclar tooltip. */
+    cx: number;
+    /** Valor real (m³) — usado por el tooltip. */
+    valor: number;
+    /** Label legible de la fecha — usado por el tooltip. */
+    fecha: string;
+  }[];
   yTicks: { y: number; label: string }[];
   xLabels: { x: number; label: string }[];
+  /** Unidad para mostrar en el tooltip. */
+  unidad: string;
 }
 
 interface AlertaPeriodo {
@@ -54,54 +68,74 @@ interface IncidenciaPeriodo {
   imports: [CommonModule],
   template: `
     <div class="space-y-3">
-      <!-- Selector de período -->
+      <!-- Selector de período. Dos sub-componentes en horizontal separados
+           por divisor: (1) Atajos rápidos = presets canónicos; (2) Rango
+           custom = inputs de fecha + Aplicar. El rango actual aplicado se
+           muestra como subtitle bajo los presets para que el operador sepa
+           exactamente qué fechas cubre. -->
       <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
-          <!-- Presets -->
-          <div class="flex items-center gap-1" role="group" aria-label="Presets de período">
-            @for (p of presets; track p.key) {
-              <button
-                type="button"
-                (click)="setPreset(p.key)"
-                [class]="presetClass(p.key)"
-                [attr.aria-pressed]="preset() === p.key"
-              >
-                {{ p.label }}
-              </button>
-            }
+          <!-- Sub-componente 1: Atajos rápidos -->
+          <div class="flex flex-col gap-1">
+            <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              Atajos
+            </span>
+            <div class="flex items-center gap-1" role="group" aria-label="Presets de período">
+              @for (p of presets; track p.key) {
+                <button
+                  type="button"
+                  (click)="setPreset(p.key)"
+                  [class]="presetClass(p.key)"
+                  [attr.aria-pressed]="preset() === p.key"
+                >
+                  {{ p.label }}
+                </button>
+              }
+            </div>
           </div>
 
-          <!-- Rango custom. Los inputs editan signals locales (Input); recién
-               al hacer click en Aplicar se propaga al state global y se
-               re-dispara la query. Evita 1 fetch por keystroke parcial. -->
-          <div class="flex flex-wrap items-center gap-2 text-caption text-slate-500">
-            <span class="font-semibold" id="label-desde">Desde</span>
-            <input
-              type="date"
-              min="2020-01-01"
-              [value]="fechaDesdeInput()"
-              (input)="fechaDesdeInput.set($any($event.target).value)"
-              aria-labelledby="label-desde"
-              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-            />
-            <span class="font-semibold" id="label-hasta">Hasta</span>
-            <input
-              type="date"
-              min="2020-01-01"
-              [value]="fechaHastaInput()"
-              (input)="fechaHastaInput.set($any($event.target).value)"
-              aria-labelledby="label-hasta"
-              class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-            />
-            <button
-              type="button"
-              (click)="aplicarFechas()"
-              [disabled]="!fechasPendientes()"
-              class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
-            >
-              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
-              Aplicar
-            </button>
+          <!-- Divisor visual entre los dos sub-componentes -->
+          <div class="hidden h-12 w-px self-center bg-slate-200 md:block" aria-hidden="true"></div>
+
+          <!-- Sub-componente 2: Rango custom. Los inputs editan signals
+               locales (Input); recién al click en Aplicar se propaga al state
+               global y se re-dispara la query. Evita 1 fetch por keystroke
+               parcial. Si las nuevas fechas no matchean un preset canónico
+               (last-N días terminando hoy), preset queda en null y ningún
+               botón aparece resaltado. -->
+          <div class="flex flex-col gap-1">
+            <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              Rango personalizado
+            </span>
+            <div class="flex flex-wrap items-center gap-2 text-caption text-slate-500">
+              <span class="font-semibold" id="label-desde">Desde</span>
+              <input
+                type="date"
+                min="2020-01-01"
+                [value]="fechaDesdeInput()"
+                (input)="fechaDesdeInput.set($any($event.target).value)"
+                aria-labelledby="label-desde"
+                class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+              />
+              <span class="font-semibold" id="label-hasta">Hasta</span>
+              <input
+                type="date"
+                min="2020-01-01"
+                [value]="fechaHastaInput()"
+                (input)="fechaHastaInput.set($any($event.target).value)"
+                aria-labelledby="label-hasta"
+                class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+              />
+              <button
+                type="button"
+                (click)="aplicarFechas()"
+                [disabled]="!fechasPendientes()"
+                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+              >
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
+                Aplicar
+              </button>
+            </div>
           </div>
 
           <!-- Exportar -->
@@ -113,6 +147,17 @@ interface IncidenciaPeriodo {
             Exportar
           </button>
         </div>
+
+        <!-- Subtitle con rango activo: ayuda al operador a entender qué
+             fechas exactas cubre el preset/rango seleccionado. -->
+        <p class="mt-3 flex items-center gap-1 text-caption-xs font-medium text-slate-500">
+          <span class="material-symbols-outlined text-[13px]" aria-hidden="true">date_range</span>
+          <span>Rango activo:</span>
+          <span class="font-mono font-semibold text-slate-700">{{ rangoLabel() }}</span>
+          @if (preset() === null) {
+            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Personalizado</span>
+          }
+        </p>
       </section>
 
       <!-- KPIs del período -->
@@ -305,8 +350,13 @@ interface IncidenciaPeriodo {
             >{{ periodoLabel() }}</span
           >
         </div>
-        <div class="h-44 w-full">
-          <svg viewBox="0 0 1100 220" class="h-full w-full" preserveAspectRatio="none">
+        <div class="relative h-44 w-full">
+          <svg
+            viewBox="0 0 1100 220"
+            class="h-full w-full"
+            preserveAspectRatio="none"
+            (mouseleave)="chartHoverIndex.set(null)"
+          >
             @for (t of chart().yTicks; track t.y) {
               <line
                 x1="55"
@@ -332,7 +382,22 @@ interface IncidenciaPeriodo {
                 {{ l.label }}
               </text>
             }
-            @for (b of chart().bars; track b.x) {
+            @for (b of chart().bars; track $index; let i = $index) {
+              <!-- Hitbox transparente del ancho total del slot para captar hover
+                   incluso entre barras (gap visual). Mejora la experiencia en
+                   gráficos con muchas barras delgadas. -->
+              <rect
+                [attr.x]="b.x - 2"
+                y="15"
+                [attr.width]="b.w + 4"
+                height="170"
+                fill="transparent"
+                style="cursor: crosshair"
+                (mouseenter)="chartHoverIndex.set(i)"
+                (touchstart)="chartHoverIndex.set(i)"
+                role="img"
+                [attr.aria-label]="b.fecha + ': ' + b.valor + ' ' + chart().unidad"
+              />
               <rect
                 [attr.x]="b.x"
                 [attr.y]="b.y"
@@ -340,10 +405,41 @@ interface IncidenciaPeriodo {
                 [attr.height]="b.h"
                 [attr.fill]="b.fill"
                 rx="2"
-                opacity="0.85"
+                [attr.opacity]="chartHoverIndex() === i ? 1 : 0.85"
+                pointer-events="none"
+              />
+            }
+            @if (chartHoveredBar(); as h) {
+              <!-- Línea vertical de referencia -->
+              <line
+                [attr.x1]="h.cx"
+                [attr.x2]="h.cx"
+                y1="15"
+                y2="185"
+                stroke="#0DAFBD"
+                stroke-width="1"
+                stroke-dasharray="2,3"
+                pointer-events="none"
               />
             }
           </svg>
+
+          <!-- Tooltip flotante: posicionamos en % sobre el SVG (que ocupa todo
+               el contenedor con viewBox fijo). cx/1100 = % horizontal. -->
+          @if (chartHoveredBar(); as h) {
+            <div
+              class="pointer-events-none absolute -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-caption-xs shadow-lg"
+              [style.left.%]="(h.cx / 1100) * 100"
+              [style.top.%]="(h.y / 220) * 100 - 10"
+              style="transform: translate(-50%, -100%)"
+            >
+              <p class="font-semibold text-slate-700">{{ h.fecha }}</p>
+              <p class="mt-0.5 font-mono text-slate-800">
+                <span class="font-bold text-primary-container">{{ h.valor.toLocaleString('es-CL') }}</span>
+                <span class="ml-1 text-slate-500">{{ chart().unidad }}</span>
+              </p>
+            </div>
+          }
         </div>
       </section>
 
@@ -641,6 +737,17 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   // preset, turnos config o num turnos.
   private readonly turnoCountersData = signal<ContadorJornadaPoint[][]>([[], [], []]);
   readonly turnoCountersLoading = signal(false);
+  // Agregados (max, promedio) de caudal/nivel/nivel_freatico para el rango.
+  // Lo fetch un endpoint dedicado que lee equipo_5min cagg sobre el rango
+  // completo (no limitado a 25h como historyRows). Sin esto, los KPIs de
+  // peak solo cubrirían la ventana realtime, no el periodo seleccionado.
+  private readonly periodAggregates = signal<{
+    caudal: { max: number | null; avg: number | null; n: number; unidad: string | null };
+    nivel_freatico: { max: number | null; avg: number | null; n: number; unidad: string | null };
+  } | null>(null);
+  readonly periodAggregatesLoading = signal(false);
+  // Tooltip de chart: índice de barra sobre la que hover. null = sin hover.
+  readonly chartHoverIndex = signal<number | null>(null);
   // toObservable solo se permite en contexto de inyeccion → captura en field init.
   private readonly fechaDesde$ = toObservable(this.fechaDesde);
   private readonly fechaHasta$ = toObservable(this.fechaHasta);
@@ -1095,9 +1202,16 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       );
   });
 
+  /**
+   * Días esperados en el rango actualmente aplicado. Sirve como denominador
+   * de "uptime" y "días con operación". Calculado a partir de fechaDesde y
+   * fechaHasta (inclusive), no del preset — soporta rangos custom.
+   */
   private readonly diasEsperados = computed(() => {
-    const map: Record<Preset, number> = { '7d': 7, '30d': 30, '90d': 90 };
-    return map[this.preset()];
+    const desde = new Date(`${this.fechaDesde()}T00:00:00-04:00`).getTime();
+    const hasta = new Date(`${this.fechaHasta()}T00:00:00-04:00`).getTime();
+    const dias = Math.round((hasta - desde) / (24 * 60 * 60 * 1000)) + 1;
+    return Math.max(1, dias);
   });
 
   private readonly computedKpis = computed<KpiPeriodo[]>(() => {
@@ -1139,6 +1253,14 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const uptimeTono: KpiPeriodo['tono'] =
       uptimePct >= 95 ? 'ok' : uptimePct >= 80 ? 'neutral' : 'warn';
 
+    // Peaks del periodo desde period-aggregates (cubre rango completo, no
+    // limitado a 25h como historyRows). Si endpoint aún no respondió: null.
+    const agg = this.periodAggregates();
+    const caudalMax = agg?.caudal.max ?? null;
+    const caudalMaxUnidad = agg?.caudal.unidad || 'L/s';
+    const freaticoMax = agg?.nivel_freatico.max ?? null;
+    const freaticoMaxUnidad = agg?.nivel_freatico.unidad || 'm';
+
     return [
       {
         label: 'Flujo acumulado',
@@ -1167,6 +1289,26 @@ export class OperacionResumenPeriodoComponent implements OnInit {
         subtext: diasSinOp ? `${diasSinOp} días sin bomba` : 'Sin paradas',
         icon: 'event_available',
         tono: diasSinOp > diasEsperados / 3 ? 'warn' : 'neutral',
+      },
+      {
+        label: 'Peak de caudal',
+        valor: caudalMax !== null ? `${this.fmt(caudalMax, 1)} ${caudalMaxUnidad}` : `— ${caudalMaxUnidad}`,
+        subtext:
+          agg && agg.caudal.n > 0
+            ? `Sobre ${this.fmtThousands(agg.caudal.n)} mediciones`
+            : 'Sin datos en el rango',
+        icon: 'trending_up',
+        tono: caudalMax !== null ? 'ok' : 'neutral',
+      },
+      {
+        label: 'Nivel freático más alto',
+        valor: freaticoMax !== null ? `${this.fmt(freaticoMax, 2)} ${freaticoMaxUnidad}` : `— ${freaticoMaxUnidad}`,
+        subtext:
+          agg && agg.nivel_freatico.n > 0
+            ? `Sobre ${this.fmtThousands(agg.nivel_freatico.n)} mediciones`
+            : 'Sin datos en el rango',
+        icon: 'water',
+        tono: freaticoMax !== null ? 'ok' : 'neutral',
       },
       {
         label: 'Alertas en período',
@@ -1243,22 +1385,60 @@ export class OperacionResumenPeriodoComponent implements OnInit {
         advertencias: alertas.filter((a) => a.severidad === 'advertencia').length,
         info: alertas.filter((a) => a.severidad === 'info').length,
       },
-      incidencias: this.mockIncidencias[this.preset()],
+      // preset puede ser null (rango custom): default a '30d' para incidencias
+      // mockeadas. TODO: reemplazar con AlertaService.listarIncidencias cuando
+      // exista endpoint.
+      incidencias: this.mockIncidencias[this.preset() ?? '30d'],
     };
   });
 
+  /**
+   * Chart de flujo diario con datos REALES del rango aplicado. Ordena
+   * cronológicamente, calcula step de labels para no saturar el eje X (~10
+   * etiquetas visibles), y arma estructura con `cx`, `valor`, `fecha` por
+   * barra para que el tooltip pueda mostrar el dato al hover.
+   */
   readonly chart = computed((): BarChart => {
-    const { vals, labels, step } = this.barData[this.preset()];
-    return this.buildBars(vals, labels, step);
+    const daily = [...this.dailyInRange()].sort((a, b) => a.dia.localeCompare(b.dia));
+    if (daily.length === 0) {
+      return this.buildBars([0], [''], 1, [''], 'm³');
+    }
+    const vals = daily.map((p) => p.delta ?? 0);
+    const labelsCompact = daily.map((p) => this.formatDiaCompact(p.dia));
+    const labelsTooltip = daily.map((p) => this.formatDiaLargo(p.dia));
+    const step = Math.max(1, Math.ceil(daily.length / 10));
+    const unidad = daily[0]?.unidad ?? 'm³';
+    return this.buildBars(vals, labelsCompact, step, labelsTooltip, unidad);
+  });
+
+  /**
+   * Label corto del rango activo para mostrar al lado de los botones de
+   * preset. Sirve para que el operador entienda exactamente qué fechas
+   * cubre el preset seleccionado.
+   */
+  readonly rangoLabel = computed(() => {
+    const desde = this.fechaDesde();
+    const hasta = this.fechaHasta();
+    if (!desde || !hasta) return '';
+    return `${this.formatDiaLargo(desde)} → ${this.formatDiaLargo(hasta)}`;
+  });
+
+  /**
+   * Devuelve la barra resaltada por el hover (si hay). Sirve para renderear
+   * el overlay con tooltip sin recalcular toda la lista de barras.
+   */
+  readonly chartHoveredBar = computed(() => {
+    const i = this.chartHoverIndex();
+    if (i === null) return null;
+    return this.chart().bars[i] ?? null;
   });
 
   readonly periodoLabel = computed(() => {
-    const map: Record<Preset, string> = {
-      '7d': 'Últimos 7 días',
-      '30d': 'Últimos 30 días',
-      '90d': 'Últimos 90 días',
-    };
-    return map[this.preset()];
+    const p = this.preset();
+    if (p === '7d') return 'Últimos 7 días';
+    if (p === '30d') return 'Últimos 30 días';
+    if (p === '90d') return 'Últimos 90 días';
+    return 'Rango personalizado';
   });
 
   setPreset(p: Preset): void {
@@ -1319,16 +1499,48 @@ export class OperacionResumenPeriodoComponent implements OnInit {
         this.eventosReales.set(rows);
       });
 
-    // Contadores por turno: 3 calls paralelas, una por turno (inicio/fin
-    // HH:MM). Se refetchean cuando cambia preset, num turnos, config de
-    // turnos, o rango aplicado. Cache server-side TTL 15 min absorbe rebotes.
-    const presetDias: Record<Preset, number> = { '7d': 7, '30d': 30, '90d': 90 };
-    combineLatest([this.preset$, this.numTurnos$, this.turnosConfig$])
+    // Period aggregates: peaks + promedios de caudal/nivel_freatico sobre el
+    // rango completo. Endpoint lee equipo_5min en el rango (no limitado a 25h
+    // como historyRows). Trigger en cambio de fechas.
+    combineLatest([this.fechaDesde$, this.fechaHasta$])
       .pipe(
         debounceTime(300),
-        switchMap(([preset, numTurnos, turnos]) => {
+        switchMap(([desde, hasta]) => {
+          this.periodAggregatesLoading.set(true);
+          return this.companyService
+            .getSitePeriodAggregates(siteId, desde, hasta)
+            .pipe(catchError(() => of({ ok: false, data: null as never })));
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((res) => {
+        this.periodAggregatesLoading.set(false);
+        if (!res.ok || !res.data) {
+          this.periodAggregates.set(null);
+          return;
+        }
+        this.periodAggregates.set({
+          caudal: res.data.caudal,
+          nivel_freatico: res.data.nivel_freatico,
+        });
+      });
+
+    // Contadores por turno: 3 calls paralelas, una por turno (inicio/fin
+    // HH:MM). Se refetchean cuando cambia preset/fechas, num turnos, config
+    // de turnos. Cache server-side TTL 15 min absorbe rebotes.
+    //
+    // Para rangos custom (preset === null) pedimos `dias` = días desde
+    // fechaDesde hasta hoy; el backend `contadores-jornadas` solo soporta
+    // ventanas que terminan hoy, así que cubrimos hasta hoy y luego
+    // filtramos client-side al rango aplicado dentro de turnosResumen.
+    combineLatest([this.fechaDesde$, this.fechaHasta$, this.numTurnos$, this.turnosConfig$])
+      .pipe(
+        debounceTime(300),
+        switchMap(([fechaDesde, , numTurnos, turnos]) => {
           const cfg = turnos.slice(0, numTurnos);
-          const dias = presetDias[preset];
+          const desdeMs = new Date(`${fechaDesde}T00:00:00-04:00`).getTime();
+          const hoyMs = Date.now();
+          const dias = Math.max(1, Math.ceil((hoyMs - desdeMs) / (24 * 60 * 60 * 1000)));
           this.turnoCountersLoading.set(true);
           return forkJoin(
             cfg.map((t) =>
@@ -1365,7 +1577,13 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return '';
   }
 
-  private buildBars(vals: number[], labels: string[], xStep: number): BarChart {
+  private buildBars(
+    vals: number[],
+    labels: string[],
+    xStep: number,
+    tooltipLabels: string[] = labels,
+    unidad: string = 'm³',
+  ): BarChart {
     const maxVal = Math.max(...vals) || 1;
     const slotW = this.DW / vals.length;
     const barW = Math.max(slotW * 0.72, 3);
@@ -1373,12 +1591,16 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
     const bars = vals.map((v, i) => {
       const h = Math.round((v / maxVal) * this.DH);
+      const x = Math.round(this.DX + i * slotW + gapW);
       return {
-        x: Math.round(this.DX + i * slotW + gapW),
+        x,
         y: Math.round(this.DY + this.DH - h),
         w: Math.round(barW),
         h: Math.max(h, v > 0 ? 2 : 0),
         fill: v === 0 ? '#e2e8f0' : '#0DAFBD',
+        cx: Math.round(x + barW / 2),
+        valor: v,
+        fecha: tooltipLabels[i] ?? labels[i] ?? '',
       };
     });
 
@@ -1393,7 +1615,23 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       xLabels.push({ x: Math.round(this.DX + i * slotW + slotW / 2), label: labels[i] ?? '' });
     }
 
-    return { bars, yTicks, xLabels };
+    return { bars, yTicks, xLabels, unidad };
+  }
+
+  /**
+   * Formato compacto para eje X (DD/MM).
+   */
+  private formatDiaCompact(diaIso: string): string {
+    const [, m, d] = diaIso.split('-');
+    return `${d}/${m}`;
+  }
+
+  /**
+   * Formato largo para tooltip (DD/MM/YYYY).
+   */
+  private formatDiaLargo(diaIso: string): string {
+    const [y, m, d] = diaIso.split('-');
+    return `${d}/${m}/${y}`;
   }
 
   presetClass(p: Preset): string {

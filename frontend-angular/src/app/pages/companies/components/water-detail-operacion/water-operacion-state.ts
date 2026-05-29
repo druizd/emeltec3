@@ -70,7 +70,10 @@ export class WaterOperacionStateService {
 
   readonly diaOffset = signal(0);
 
-  readonly preset = signal<OperacionPreset>('30d');
+  // Preset puede ser null cuando el operador edita fechas manuales que no
+  // matchean ninguno de los 3 presets canónicos (7d, 30d, 90d ending hoy).
+  // El UI dejá de resaltar cualquier botón cuando preset === null.
+  readonly preset = signal<OperacionPreset | null>('30d');
   readonly fechaDesde = signal(this.isoTodayMinus(30));
   readonly fechaHasta = signal(this.isoTodayMinus(0));
 
@@ -276,9 +279,30 @@ export class WaterOperacionStateService {
     return d.toISOString().slice(0, 10);
   }
 
+  /**
+   * Detecta si las fechas actuales coinciden con un preset canónico. Útil
+   * para auto-deseleccionar el botón de preset cuando el operador edita
+   * fechas manualmente.
+   *
+   * Reglas:
+   *   - fechaHasta debe ser hoy.
+   *   - fechaDesde debe coincidir con hoy - N donde N ∈ {7, 30, 90}.
+   *   - Cualquier otra combinación → null (custom).
+   */
+  private detectPresetFromDates(): OperacionPreset | null {
+    if (this.fechaHasta() !== this.isoTodayMinus(0)) return null;
+    const desde = this.fechaDesde();
+    if (desde === this.isoTodayMinus(7)) return '7d';
+    if (desde === this.isoTodayMinus(30)) return '30d';
+    if (desde === this.isoTodayMinus(90)) return '90d';
+    return null;
+  }
+
   onFechaChange(campo: 'desde' | 'hasta', val: string): void {
     if (campo === 'desde') this.fechaDesde.set(val);
     else this.fechaHasta.set(val);
-    this.preset.set('30d');
+    // Re-detectar preset: si las nuevas fechas matchean alguno de los 3
+    // presets canónicos, lo activamos. Si no, queda null (custom range).
+    this.preset.set(this.detectPresetFromDates());
   }
 }

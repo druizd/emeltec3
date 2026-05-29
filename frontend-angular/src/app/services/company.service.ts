@@ -177,6 +177,32 @@ export class CompanyService {
     >(`/api/companies/sites/${siteId}/operacion-bundle?${params.toString()}`);
   }
 
+  getSitePeriodAggregates(
+    siteId: string,
+    desde: string,
+    hasta: string,
+  ): Observable<
+    ApiResponse<{
+      caudal: { max: number | null; avg: number | null; n: number; unidad: string | null };
+      nivel: { max: number | null; avg: number | null; n: number; unidad: string | null };
+      nivel_freatico: { max: number | null; avg: number | null; n: number; unidad: string | null };
+      muestras_total: number;
+    }>
+  > {
+    const params = new URLSearchParams();
+    params.set('desde', desde);
+    params.set('hasta', hasta);
+    params.set('t', String(Date.now()));
+    return this.http.get<
+      ApiResponse<{
+        caudal: { max: number | null; avg: number | null; n: number; unidad: string | null };
+        nivel: { max: number | null; avg: number | null; n: number; unidad: string | null };
+        nivel_freatico: { max: number | null; avg: number | null; n: number; unidad: string | null };
+        muestras_total: number;
+      }>
+    >(`/api/companies/sites/${siteId}/period-aggregates?${params.toString()}`);
+  }
+
   getSiteMonthlyCounters(
     siteId: string,
     options: { rol?: string; meses?: number } = {},
