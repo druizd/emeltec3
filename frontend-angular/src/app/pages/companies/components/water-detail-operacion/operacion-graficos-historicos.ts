@@ -1,7 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import * as XLSX from 'xlsx';
+// xlsx (~150 kB minified) se importa dinámicamente solo cuando el operador
+// clickea exportar. Mantiene el chunk del Operación tab liviano para el
+// primer paint en mobile.
+import type * as XlsxNamespace from 'xlsx';
 import { type HistoricalRow, WaterOperacionStateService } from './water-operacion-state';
 import { ChartSkeletonComponent } from '../../../../components/ui/chart-skeleton';
 
@@ -1040,8 +1043,8 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     return '';
   }
 
-  downloadNivelXlsx(): void {
-    this.downloadTimeseriesXlsx({
+  async downloadNivelXlsx(): Promise<void> {
+    await this.downloadTimeseriesXlsx({
       pts: this.rowsInRange('nivelFreatico'),
       sheetName: 'Nivel Freatico',
       valueHeader: 'Nivel (m)',
@@ -1050,8 +1053,17 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     });
   }
 
-  downloadCaudalXlsx(): void {
-    this.downloadTimeseriesXlsx({
+  // Lazy load xlsx — primer click paga la descarga (~150 kB), siguientes
+  // clicks reusan el módulo en memoria. Evita inflar el chunk del Operación
+  // tab cuando el operador solo viene a ver realtime.
+  private xlsxLoader?: Promise<typeof XlsxNamespace>;
+  private async loadXlsx(): Promise<typeof XlsxNamespace> {
+    if (!this.xlsxLoader) this.xlsxLoader = import('xlsx');
+    return this.xlsxLoader;
+  }
+
+  async downloadCaudalXlsx(): Promise<void> {
+    await this.downloadTimeseriesXlsx({
       pts: this.rowsInRange('caudal'),
       sheetName: 'Caudal',
       valueHeader: 'Caudal (L/s)',
@@ -1060,15 +1072,16 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     });
   }
 
-  private downloadTimeseriesXlsx(opts: {
+  private async downloadTimeseriesXlsx(opts: {
     pts: { t: number; v: number }[];
     sheetName: string;
     valueHeader: string;
     decimals: number;
     filePrefix: string;
-  }): void {
+  }): Promise<void> {
     const { pts, sheetName, valueHeader, decimals, filePrefix } = opts;
     if (pts.length === 0) return;
+    const XLSX = await this.loadXlsx();
     const factor = 10 ** decimals;
     const rows = pts.map((p) => ({
       'Fecha y hora': this.formatChileShort(p.t),
@@ -1097,9 +1110,10 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
   }
 
-  downloadJornadaXlsx(): void {
+  async downloadJornadaXlsx(): Promise<void> {
     const points = this.jornadaCountersData();
     if (points.length === 0) return;
+    const XLSX = await this.loadXlsx();
     const unit = this.turno7Unit();
     const rows = points.map((p) => ({
       Día: this.formatDiaLargo(p.dia),
@@ -1116,9 +1130,10 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     XLSX.writeFile(wb, fileName);
   }
 
-  downloadDiarioXlsx(): void {
+  async downloadDiarioXlsx(): Promise<void> {
     const points = this.diarioPoints();
     if (points.length === 0) return;
+    const XLSX = await this.loadXlsx();
     const unit = this.diarioUnit();
     const rows = points.map((p) => ({
       Día: this.formatDiaLargo(p.dia),
@@ -1134,9 +1149,10 @@ export class OperacionGraficosHistoricosComponent implements OnInit {
     XLSX.writeFile(wb, fileName);
   }
 
-  downloadMensualXlsx(): void {
+  async downloadMensualXlsx(): Promise<void> {
     const points = this.monthlyCountersData();
     if (points.length === 0) return;
+    const XLSX = await this.loadXlsx();
     const unit = this.mensualUnit();
     const rows = points.map((p) => ({
       Mes: this.formatMesLargo(p.mes),
