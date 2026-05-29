@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   Input,
@@ -717,6 +718,10 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly alertaService = inject(AlertaService);
   private readonly dgaService = inject(DgaService);
   private readonly incidenciaService = inject(IncidenciaService);
+  // Forzar CD después de mutaciones a arrays no-signal (sitiosResumen,
+  // puntosMensuales, metricasOp). El default CD de Angular no detecta
+  // mutaciones in-place de objetos plain class fields desde callbacks async.
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /**
    * Sites filtrados a sub-empresa (lo que vienen del parent). El setter los
@@ -1075,6 +1080,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         }));
         this.rebuildYTicks();
         this.buildMetricasComparacion();
+        this.cdr.markForCheck();
 
         // Cuando todas las responses llegaron, computar uptime promedio.
         pendingSiteResponses--;
@@ -1091,6 +1097,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
               tono: promedio >= 95 ? 'ok' : promedio >= 80 ? 'neutral' : 'warn',
             };
             this.metricasOp = [...this.metricasOp];
+            this.cdr.markForCheck();
           }
         }
       });
@@ -1121,6 +1128,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
             tono: criticas > 0 ? 'warn' : activos.length > 0 ? 'neutral' : 'ok',
           };
           this.kpisSecundarios = [...this.kpisSecundarios];
+          this.cdr.markForCheck();
         });
 
       // 3. Tiempo respuesta promedio: eventos resueltos del último mes.
@@ -1172,6 +1180,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
             };
           }
           this.metricasOp = [...this.metricasOp];
+          this.cdr.markForCheck();
         });
 
       // 4. DGA pendientes: review-queue global filtrado a sitios visibles.
@@ -1210,6 +1219,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
               tono: pendientes.length === 0 ? 'ok' : pendientes.length > 10 ? 'warn' : 'neutral',
             };
             this.kpisSecundarios = [...this.kpisSecundarios];
+            this.cdr.markForCheck();
           });
       }
 
@@ -1239,6 +1249,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
             tono: ratio >= 80 ? 'ok' : ratio >= 60 ? 'neutral' : 'warn',
           };
           this.metricasOp = [...this.metricasOp];
+          this.cdr.markForCheck();
         });
     }
   }
