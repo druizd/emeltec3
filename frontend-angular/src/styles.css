@@ -178,3 +178,57 @@
     outline-offset: 2px;
   }
 }
+
+/* ── Leaflet map customizations ──────────────────────────────────────── */
+/* Tooltip permanente con el nombre del sitio. Estilo "etiqueta" minimalista
+   con sombra suave para que se lea sobre fondo claro u oscuro. */
+.leaflet-tooltip.emeltec-marker-label {
+  background: rgba(30, 41, 59, 0.92);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+.leaflet-tooltip.emeltec-marker-label::before {
+  display: none;
+}
+
+/* Marker pin: cursor pointer + small bounce al hover. */
+.emeltec-marker {
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+.emeltec-marker:hover {
+  transform: translateY(-2px);
+  z-index: 1000;
+}
+
+/* Popup: borde más limpio y sombra suave. */
+.leaflet-popup-content-wrapper {
+  border-radius: 10px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+/* Layer control: estilo más limpio que el default. */
+.leaflet-control-layers {
+  border-radius: 8px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15) !important;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+}
+.leaflet-control-layers-expanded {
+  padding: 8px 12px !important;
+}
+.leaflet-control-layers label {
+  font-weight: 600;
+  color: #1e293b;
+}

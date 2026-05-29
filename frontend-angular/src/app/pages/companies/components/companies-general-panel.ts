@@ -1006,26 +1006,44 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     await this.loadProj4();
     if (!this.mapContainer || this.map) return; // guard against re-entry after await
 
-    this.map = this.L.map(this.mapContainer.nativeElement, {
+    const L: any = this.L;
+
+    this.map = L.map(this.mapContainer.nativeElement, {
       scrollWheelZoom: false,
       zoomControl: true,
     });
 
-    // Esri World Imagery (satellite) — gratis, sin API key, similar quality
-    // a Google Maps Satélite. Capa de labels (Reference) encima para ver
-    // nombres de ciudades/calles superpuestos sobre la imagen satelital.
-    this.L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    // Dos capas: satelital (Esri World Imagery) y calle (CartoDB Voyager,
+    // estilo limpio y moderno). Voyager por default — se ve mejor que
+    // satelital lleno cuando el operador solo quiere ubicar los pozos.
+    // Layer control permite togglear entre ambas. Sin overlay de labels para
+    // mantener el mapa limpio.
+    const street = L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
       {
         attribution:
-          'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20,
+      },
+    );
+
+    const satellite = L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution: 'Tiles © Esri, Maxar, Earthstar Geographics, USDA, USGS',
         maxZoom: 19,
       },
-    ).addTo(this.map);
-    this.L.tileLayer(
-      'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
-      { maxZoom: 19, opacity: 0.7 },
-    ).addTo(this.map);
+    );
+
+    street.addTo(this.map);
+    L.control
+      .layers(
+        { 'Calle': street, 'Satelital': satellite },
+        {},
+        { position: 'topright', collapsed: false },
+      )
+      .addTo(this.map);
 
     this.updateMarkers();
   }
@@ -1066,15 +1084,33 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       const tendSign = s.tendenciaCaudal >= 0 ? '+' : '';
       const tendColor = s.tendenciaCaudal >= 0 ? '#16A34A' : '#DC2626';
 
+      // Pin estilo Google Maps: gota con punta hacia abajo, badge de estado
+      // arriba a la derecha. SVG inline para nitidez en cualquier zoom.
+      const pinSvg = `
+        <svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="shadow${i}" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="1.5"/>
+              <feOffset dx="0" dy="2"/>
+              <feComponentTransfer><feFuncA type="linear" slope="0.4"/></feComponentTransfer>
+              <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <path d="M16 0 C7.16 0 0 7.16 0 16 c0 12 16 26 16 26 s16 -14 16 -26 c0 -8.84 -7.16 -16 -16 -16 z"
+                fill="${color}" filter="url(#shadow${i})"/>
+          <circle cx="16" cy="16" r="6.5" fill="white"/>
+          <circle cx="16" cy="16" r="3.5" fill="${color}"/>
+        </svg>`;
       const icon = L.divIcon({
-        html: `<div style="position:relative;width:18px;height:18px;">
-          <div style="width:18px;height:18px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);"></div>
-          <div style="position:absolute;top:-1px;right:-1px;width:8px;height:8px;border-radius:50%;background:${dotColor};border:1.5px solid white;"></div>
-        </div>`,
-        className: '',
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
-        popupAnchor: [0, -14],
+        html: `
+          <div style="position:relative;width:32px;height:42px;">
+            ${pinSvg}
+            <div style="position:absolute;top:2px;right:0;width:10px;height:10px;border-radius:50%;background:${dotColor};border:2px solid white;box-shadow:0 1px 2px rgba(0,0,0,0.3);"></div>
+          </div>`,
+        className: 'emeltec-marker',
+        iconSize: [32, 42],
+        iconAnchor: [16, 42],
+        popupAnchor: [0, -38],
       });
 
       const popupHtml = `
@@ -1102,7 +1138,13 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       `;
 
       const marker = L.marker([s.lat, s.lng], { icon })
-        .bindPopup(L.popup({ closeButton: false, maxWidth: 230 }).setContent(popupHtml))
+        .bindPopup(L.popup({ closeButton: true, maxWidth: 260 }).setContent(popupHtml))
+        .bindTooltip(s.nombre, {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -38],
+          className: 'emeltec-marker-label',
+        })
         .addTo(this.map);
 
       this.mapMarkers.push(marker);
@@ -1110,7 +1152,12 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     });
 
     if (bounds.length > 0) {
-      this.map.fitBounds(bounds, { padding: [50, 50], maxZoom: 11 });
+      // Padding mayor + maxZoom más alto cuando hay un solo sitio para no
+      // dejarlo perdido en el centro de Chile entero.
+      this.map.fitBounds(bounds, {
+        padding: [60, 60],
+        maxZoom: bounds.length === 1 ? 14 : 11,
+      });
     }
   }
 }
