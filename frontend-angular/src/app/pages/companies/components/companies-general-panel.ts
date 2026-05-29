@@ -119,9 +119,11 @@ interface Periodo {
                   Flujo acumulado mensual
                 </p>
                 <p class="mt-2 font-mono text-h3 font-semibold leading-none text-on-surface">
-                  14,921 m³
+                  {{ flujoAcumuladoMes() }} m³
                 </p>
-                <p class="mt-1 text-caption-xs text-on-surface-variant">Acumulado en mayo 2026</p>
+                <p class="mt-1 text-caption-xs text-on-surface-variant">
+                  Acumulado en {{ mesActualLabel() }}
+                </p>
               </div>
               <span
                 class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-10"
@@ -897,8 +899,55 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly chartW = 930;
   private readonly chartH = 190;
 
-  private readonly DIAS_MES = 31;
-  private readonly DIAS_TRANSCURRIDOS = 11;
+  /**
+   * Días reales transcurridos del mes actual (1..31) y total del mes
+   * (28..31). Recalculados al renderear porque el componente puede vivir
+   * varios días sin re-instanciarse. Usados para calcular `m3Proyectados`:
+   *   proyeccion = consumoMes * DIAS_MES / DIAS_TRANSCURRIDOS
+   * Antes estaban hardcoded en 11 y 31 → inflaba la proyección ~3x cuando
+   * el mes estaba más avanzado.
+   */
+  private get DIAS_TRANSCURRIDOS(): number {
+    return Math.max(1, new Date().getDate());
+  }
+  private get DIAS_MES(): number {
+    const hoy = new Date();
+    return new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+  }
+
+  /**
+   * Suma del consumo del mes actual de todos los sitios visibles. Formato
+   * "es-CL" con separador de miles. Se recalcula en cada render porque
+   * `sitiosResumen` se reasigna al llegar respuestas async de
+   * fetchRealData → bindings re-evalúan.
+   */
+  flujoAcumuladoMes(): string {
+    const total = this.sitiosResumen.reduce((acc, s) => acc + (s.consumoMes || 0), 0);
+    return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 }).format(Math.round(total));
+  }
+
+  /**
+   * Label del mes actual en español, ej. "mayo 2026". Usado como subtitle
+   * del KPI "Flujo acumulado mensual" para evitar el hardcoded "mayo 2026".
+   */
+  mesActualLabel(): string {
+    const meses = [
+      'enero',
+      'febrero',
+      'marzo',
+      'abril',
+      'mayo',
+      'junio',
+      'julio',
+      'agosto',
+      'septiembre',
+      'octubre',
+      'noviembre',
+      'diciembre',
+    ];
+    const hoy = new Date();
+    return `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
+  }
 
   private map: any = null;
   private mapMarkers: any[] = [];
