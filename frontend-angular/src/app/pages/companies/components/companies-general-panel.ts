@@ -12,7 +12,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { catchError, forkJoin, of } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord } from '@emeltec/shared';
@@ -60,6 +60,11 @@ interface SitioResumen {
   diasMes: number;
   m3Proyectados: number;
   tendenciaCaudal: number;
+  /** Per-cell load state — true cuando la respuesta correspondiente ya llegó
+   *  (con o sin datos). Sirve para esconder skeleton y mostrar valor real. */
+  dashboardLoaded: boolean;
+  monthlyLoaded: boolean;
+  dailyLoaded: boolean;
 }
 
 interface MetricaOperacional {
@@ -292,13 +297,17 @@ interface Periodo {
                           [class]="estadoTextClass(s.estado)"
                           >{{ estadoLabel(s.estado) }}</span
                         >
-                        <span
-                          class="text-caption-xs font-bold"
-                          [style.color]="s.tendenciaCaudal >= 0 ? '#16A34A' : '#DC2626'"
-                        >
-                          {{ s.tendenciaCaudal >= 0 ? '▲' : '▼' }}
-                          {{ formatNum(s.tendenciaCaudal) }}%
-                        </span>
+                        @if (s.monthlyLoaded) {
+                          <span
+                            class="text-caption-xs font-bold"
+                            [style.color]="s.tendenciaCaudal >= 0 ? '#16A34A' : '#DC2626'"
+                          >
+                            {{ s.tendenciaCaudal >= 0 ? '▲' : '▼' }}
+                            {{ formatNum(s.tendenciaCaudal) }}%
+                          </span>
+                        } @else {
+                          <span class="inline-block h-2.5 w-10 animate-pulse rounded bg-slate-200"></span>
+                        }
                       </div>
                     </div>
 
@@ -308,26 +317,38 @@ interface Periodo {
                         <span class="text-caption-xs font-semibold text-slate-400"
                           >Consumido este mes</span
                         >
-                        <span class="font-mono text-caption-xs font-bold text-slate-700"
-                          >{{ s.consumoMes.toLocaleString() }} m³</span
-                        >
+                        @if (s.monthlyLoaded) {
+                          <span class="font-mono text-caption-xs font-bold text-slate-700"
+                            >{{ s.consumoMes.toLocaleString() }} m³</span
+                          >
+                        } @else {
+                          <span class="inline-block h-3 w-16 animate-pulse rounded bg-slate-200"></span>
+                        }
                       </div>
                       <div class="flex items-center justify-between">
                         <span class="text-caption-xs font-semibold text-slate-400"
                           >Proyección fin de mes</span
                         >
-                        <span class="font-mono text-caption-xs font-bold" style="color:#0dafbd"
-                          >{{ s.m3Proyectados.toLocaleString() }} m³</span
-                        >
+                        @if (s.monthlyLoaded) {
+                          <span class="font-mono text-caption-xs font-bold" style="color:#0dafbd"
+                            >{{ s.m3Proyectados.toLocaleString() }} m³</span
+                          >
+                        } @else {
+                          <span class="inline-block h-3 w-16 animate-pulse rounded bg-slate-200"></span>
+                        }
                       </div>
                       <div class="flex items-center justify-between">
                         <span class="text-caption-xs font-semibold text-slate-400"
                           >Días con extracción</span
                         >
-                        <span class="font-mono text-caption-xs font-bold text-slate-700"
-                          >{{ s.diasActivos }}
-                          <span class="font-normal text-slate-400">de {{ s.diasMes }}</span></span
-                        >
+                        @if (s.dailyLoaded) {
+                          <span class="font-mono text-caption-xs font-bold text-slate-700"
+                            >{{ s.diasActivos }}
+                            <span class="font-normal text-slate-400">de {{ s.diasMes }}</span></span
+                          >
+                        } @else {
+                          <span class="inline-block h-3 w-14 animate-pulse rounded bg-slate-200"></span>
+                        }
                       </div>
                     </div>
                   </button>
@@ -984,6 +1005,9 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         diasMes: this.DIAS_MES,
         m3Proyectados: 0,
         tendenciaCaudal: 0,
+        dashboardLoaded: false,
+        monthlyLoaded: false,
+        dailyLoaded: false,
       };
     });
 
@@ -1046,110 +1070,122 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     if (!this.sites.length) return;
     const empresaId = this.sites[0]?.empresa_id;
 
-    // Accumulator para uptime promedio (se calcula al final, cuando llegaron
-    // todas las responses per-site). Indexado por i del site, valor en %.
+    // Accumulator para uptime promedio (se calcula cuando llegaron todas las
+    // responses daily). Indexado por i del site, valor en %.
     const uptimePorSitio: number[] = new Array(this.sites.length).fill(NaN);
-    let pendingSiteResponses = this.sites.length;
+    let pendingDailyResponses = this.sites.length;
 
-    // 1. Per-site: dashboard + monthly counters paralelo
+    const flushArrays = (): void => {
+      this.sitiosResumen = [...this.sitiosResumen];
+      this.cdr.markForCheck();
+    };
+
+    // Render parcial: las 3 calls per-site corren independientes. Cada
+    // respuesta actualiza solo su slice del SitioResumen — el operador ve
+    // caudal/nivel apenas llega dashboard sin esperar monthly+daily, y la
+    // tabla de consumo aparece sola si monthly responde antes.
     this.sites.forEach((site, i) => {
-      forkJoin({
-        dashboard: this.companyService
-          .getSiteDashboardData(site.id)
-          .pipe(catchError(() => of(null))),
-        monthly: this.companyService
-          .getSiteMonthlyCounters(site.id, { rol: 'totalizador', meses: 7 })
-          .pipe(catchError(() => of({ ok: false, data: [] as ContadorMensualPoint[] }))),
-        daily: this.companyService
-          .getSiteDailyCounters(site.id, { rol: 'totalizador', dias: 60 })
-          .pipe(catchError(() => of({ ok: false, data: [] as ContadorDiarioPoint[] }))),
-      }).subscribe((res) => {
-        if (!this.sitiosResumen[i]) {
-          pendingSiteResponses--;
-          return;
-        }
+      // 1a. Dashboard → caudal + nivel actual.
+      this.companyService
+        .getSiteDashboardData(site.id)
+        .pipe(catchError(() => of(null)))
+        .subscribe((res) => {
+          if (!this.sitiosResumen[i]) return;
+          const dash = (res as { data?: { resumen?: Record<string, { valor?: unknown } | undefined> } } | null)?.data;
+          const caudalRaw = Number(dash?.resumen?.['caudal']?.valor ?? NaN);
+          const nivelRaw = Number(
+            dash?.resumen?.['nivel_freatico']?.valor ?? dash?.resumen?.['nivel']?.valor ?? NaN,
+          );
+          const caudal = Number.isFinite(caudalRaw) ? Math.round(caudalRaw * 10) / 10 : 0;
+          const nivel = Number.isFinite(nivelRaw) ? Math.round(nivelRaw * 10) / 10 : 0;
+          this.sitiosResumen[i] = {
+            ...this.sitiosResumen[i],
+            caudal,
+            nivel,
+            dashboardLoaded: true,
+          };
+          flushArrays();
+        });
 
-        // Caudal + nivel actual desde dashboard.resumen.
-        const dash = (res.dashboard as { data?: { resumen?: Record<string, { valor?: unknown } | undefined> } } | null)?.data;
-        const caudalRaw = Number(dash?.resumen?.['caudal']?.valor ?? NaN);
-        const nivelRaw = Number(
-          dash?.resumen?.['nivel_freatico']?.valor ?? dash?.resumen?.['nivel']?.valor ?? NaN,
-        );
-        const caudal = Number.isFinite(caudalRaw) ? Math.round(caudalRaw * 10) / 10 : 0;
-        const nivel = Number.isFinite(nivelRaw) ? Math.round(nivelRaw * 10) / 10 : 0;
-
-        // Consumo mes actual + tendencia vs mes anterior. monthly viene
-        // del más antiguo al más reciente.
-        const monthly = (res.monthly?.ok ? res.monthly.data : []) as ContadorMensualPoint[];
-        const mesActual = monthly[monthly.length - 1];
-        const mesPrev = monthly[monthly.length - 2];
-        const consumoMes = Number(mesActual?.delta ?? 0);
-        let tendencia = 0;
-        const prevDelta = Number(mesPrev?.delta ?? 0);
-        if (prevDelta > 0) {
-          tendencia = Math.round(((consumoMes - prevDelta) / prevDelta) * 1000) / 10;
-        }
-
-        // Días activos: cuenta de días con muestras en los últimos 30 días.
-        const daily = (res.daily?.ok ? res.daily.data : []) as ContadorDiarioPoint[];
-        const last30 = daily.slice(-30);
-        const diasActivos = last30.filter((d) => d.muestras > 0).length;
-
-        // Mutar in-place — el ngFor renderea desde el mismo array por index.
-        this.sitiosResumen[i] = {
-          ...this.sitiosResumen[i],
-          caudal,
-          nivel,
-          consumoMes: Math.round(consumoMes),
-          diasActivos,
-          tendenciaCaudal: tendencia,
-          m3Proyectados: Math.round(
-            (consumoMes / Math.max(1, this.DIAS_TRANSCURRIDOS)) * this.DIAS_MES,
-          ),
-        };
-
-        // Chart: últimos N meses (puntosMensuales.length, típicamente 6).
-        // monthly puede tener hasta 7. Tomamos los N más recientes.
-        const slots = this.puntosMensuales.length;
-        for (let mi = 0; mi < slots; mi++) {
-          const offset = slots - 1 - mi;
-          const m = monthly[monthly.length - 1 - offset];
-          this.puntosMensuales[mi].valores[i] = m?.delta != null ? Math.round(Number(m.delta)) : 0;
-        }
-
-        // Tracking uptime per-site: días con muestras / días esperados.
-        uptimePorSitio[i] = Math.round((diasActivos / 30) * 100);
-
-        // Reasignar arrays para que Angular detecte el cambio (signals
-        // implícitos en computeds derivados).
-        this.sitiosResumen = [...this.sitiosResumen];
-        this.puntosMensuales = this.puntosMensuales.map((p) => ({
-          ...p,
-          valores: [...p.valores],
-        }));
-        this.rebuildYTicks();
-        this.buildMetricasComparacion();
-        this.cdr.markForCheck();
-
-        // Cuando todas las responses llegaron, computar uptime promedio.
-        pendingSiteResponses--;
-        if (pendingSiteResponses === 0) {
-          const validUptimes = uptimePorSitio.filter((u) => Number.isFinite(u));
-          if (validUptimes.length > 0) {
-            const promedio = Math.round(
-              validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length,
-            );
-            this.metricasOp[0] = {
-              label: 'Uptime promedio',
-              valor: `${promedio}%`,
-              icon: 'wifi',
-              tono: promedio >= 95 ? 'ok' : promedio >= 80 ? 'neutral' : 'warn',
-            };
-            this.metricasOp = [...this.metricasOp];
-            this.cdr.markForCheck();
+      // 1b. Monthly counters → consumo del mes + tendencia + chart.
+      this.companyService
+        .getSiteMonthlyCounters(site.id, { rol: 'totalizador', meses: 7 })
+        .pipe(catchError(() => of({ ok: false, data: [] as ContadorMensualPoint[] })))
+        .subscribe((res) => {
+          if (!this.sitiosResumen[i]) return;
+          const monthly = (res?.ok ? res.data : []) as ContadorMensualPoint[];
+          const mesActual = monthly[monthly.length - 1];
+          const mesPrev = monthly[monthly.length - 2];
+          const consumoMes = Number(mesActual?.delta ?? 0);
+          let tendencia = 0;
+          const prevDelta = Number(mesPrev?.delta ?? 0);
+          if (prevDelta > 0) {
+            tendencia = Math.round(((consumoMes - prevDelta) / prevDelta) * 1000) / 10;
           }
-        }
-      });
+          this.sitiosResumen[i] = {
+            ...this.sitiosResumen[i],
+            consumoMes: Math.round(consumoMes),
+            tendenciaCaudal: tendencia,
+            m3Proyectados: Math.round(
+              (consumoMes / Math.max(1, this.DIAS_TRANSCURRIDOS)) * this.DIAS_MES,
+            ),
+            monthlyLoaded: true,
+          };
+          // Chart: últimos N meses.
+          const slots = this.puntosMensuales.length;
+          for (let mi = 0; mi < slots; mi++) {
+            const offset = slots - 1 - mi;
+            const m = monthly[monthly.length - 1 - offset];
+            this.puntosMensuales[mi].valores[i] =
+              m?.delta != null ? Math.round(Number(m.delta)) : 0;
+          }
+          this.puntosMensuales = this.puntosMensuales.map((p) => ({
+            ...p,
+            valores: [...p.valores],
+          }));
+          this.rebuildYTicks();
+          this.buildMetricasComparacion();
+          flushArrays();
+        });
+
+      // 1c. Daily counters → días activos (uptime).
+      this.companyService
+        .getSiteDailyCounters(site.id, { rol: 'totalizador', dias: 60 })
+        .pipe(catchError(() => of({ ok: false, data: [] as ContadorDiarioPoint[] })))
+        .subscribe((res) => {
+          if (!this.sitiosResumen[i]) {
+            pendingDailyResponses--;
+            return;
+          }
+          const daily = (res?.ok ? res.data : []) as ContadorDiarioPoint[];
+          const last30 = daily.slice(-30);
+          const diasActivos = last30.filter((d) => d.muestras > 0).length;
+          this.sitiosResumen[i] = {
+            ...this.sitiosResumen[i],
+            diasActivos,
+            dailyLoaded: true,
+          };
+          uptimePorSitio[i] = Math.round((diasActivos / 30) * 100);
+          flushArrays();
+
+          pendingDailyResponses--;
+          if (pendingDailyResponses === 0) {
+            const validUptimes = uptimePorSitio.filter((u) => Number.isFinite(u));
+            if (validUptimes.length > 0) {
+              const promedio = Math.round(
+                validUptimes.reduce((a, b) => a + b, 0) / validUptimes.length,
+              );
+              this.metricasOp[0] = {
+                label: 'Uptime promedio',
+                valor: `${promedio}%`,
+                icon: 'wifi',
+                tono: promedio >= 95 ? 'ok' : promedio >= 80 ? 'neutral' : 'warn',
+              };
+              this.metricasOp = [...this.metricasOp];
+              this.cdr.markForCheck();
+            }
+          }
+        });
     });
 
     // 2. Alertas activas por empresa.

@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
-import { Observable, tap } from 'rxjs';
+import { Observable, of, tap } from 'rxjs';
+import { finalize, shareReplay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import type { ViewAsContext } from './auth.service';
 import type {
@@ -66,6 +67,10 @@ export class CompanyService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 
+  private readonly siteCache = new Map<string, { value: ApiResponse<unknown>; expiresAt: number }>();
+  private readonly siteInflight = new Map<string, Observable<ApiResponse<unknown>>>();
+  private readonly SITE_CACHE_TTL_MS = 30_000;
+
   companies = signal<Company[]>([]);
   hierarchy = signal<CompanyNode[]>([]);
   visibleHierarchy = computed<CompanyNode[]>(() =>
@@ -126,9 +131,54 @@ export class CompanyService {
     );
   }
 
+  /**
+   * Cache TTL + in-flight dedupe para fetches frecuentes por sitio. Comparte
+   * respuestas entre la vista General y el detalle por sitio cuando ambas
+   * piden el mismo dato dentro de la ventana de SITE_CACHE_TTL_MS.
+   * El polling del detalle (timer 60s) supera el TTL → siempre re-fetch.
+   * Use `invalidateSiteCache(siteId)` tras mutaciones explícitas.
+   */
+  private cachedSiteGet<T>(
+    key: string,
+    fetch: () => Observable<ApiResponse<T>>,
+  ): Observable<ApiResponse<T>> {
+    const hit = this.siteCache.get(key);
+    if (hit && hit.expiresAt > Date.now()) {
+      return of(hit.value as ApiResponse<T>);
+    }
+    const existing = this.siteInflight.get(key);
+    if (existing) return existing as Observable<ApiResponse<T>>;
+    const req$ = fetch().pipe(
+      tap((res) => {
+        if (res?.ok) {
+          this.siteCache.set(key, {
+            value: res,
+            expiresAt: Date.now() + this.SITE_CACHE_TTL_MS,
+          });
+        }
+      }),
+      finalize(() => this.siteInflight.delete(key)),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+    this.siteInflight.set(key, req$ as Observable<ApiResponse<unknown>>);
+    return req$;
+  }
+
+  invalidateSiteCache(siteId?: string): void {
+    if (!siteId) {
+      this.siteCache.clear();
+      return;
+    }
+    for (const k of this.siteCache.keys()) {
+      if (k.includes(`:${siteId}:`) || k.endsWith(`:${siteId}`)) this.siteCache.delete(k);
+    }
+  }
+
   getSiteDashboardData(siteId: string): Observable<ApiResponse<SiteDashboardData>> {
-    return this.http.get<ApiResponse<SiteDashboardData>>(
-      `/api/companies/sites/${siteId}/dashboard-data?t=${Date.now()}`,
+    return this.cachedSiteGet(`dashboard:${siteId}`, () =>
+      this.http.get<ApiResponse<SiteDashboardData>>(
+        `/api/companies/sites/${siteId}/dashboard-data`,
+      ),
     );
   }
 
@@ -242,9 +292,11 @@ export class CompanyService {
     const params = new URLSearchParams();
     if (options.rol) params.set('rol', options.rol);
     if (options.meses) params.set('meses', String(options.meses));
-    params.set('t', String(Date.now()));
-    return this.http.get<ApiResponse<ContadorMensualPoint[]>>(
-      `/api/companies/sites/${siteId}/contadores-mensuales?${params.toString()}`,
+    const key = `monthly:${siteId}:${options.rol ?? ''}:${options.meses ?? ''}`;
+    return this.cachedSiteGet(key, () =>
+      this.http.get<ApiResponse<ContadorMensualPoint[]>>(
+        `/api/companies/sites/${siteId}/contadores-mensuales?${params.toString()}`,
+      ),
     );
   }
 
@@ -255,9 +307,11 @@ export class CompanyService {
     const params = new URLSearchParams();
     if (options.rol) params.set('rol', options.rol);
     if (options.dias) params.set('dias', String(options.dias));
-    params.set('t', String(Date.now()));
-    return this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
-      `/api/companies/sites/${siteId}/contadores-diarios?${params.toString()}`,
+    const key = `daily:${siteId}:${options.rol ?? ''}:${options.dias ?? ''}`;
+    return this.cachedSiteGet(key, () =>
+      this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
+        `/api/companies/sites/${siteId}/contadores-diarios?${params.toString()}`,
+      ),
     );
   }
 

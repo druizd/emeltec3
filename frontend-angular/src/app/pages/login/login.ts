@@ -38,7 +38,16 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
+  private readonly heroImages = [
+    '/images/login-field-hero-polished.png',
+    '/images/login-hero-control.jpg',
+  ];
+
   readonly currentYear = new Date().getFullYear();
+  readonly heroImage = signal(
+    this.heroImages[Math.floor(Math.random() * this.heroImages.length)],
+  );
+  readonly heroImageUrl = computed(() => `url('${this.heroImage()}')`);
   readonly step = signal<LoginStep>('email');
   readonly email = signal('');
   readonly password = signal('');
