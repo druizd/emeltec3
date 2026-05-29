@@ -833,14 +833,13 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     },
   ];
 
-  puntosMensuales: PuntoMensual[] = [
-    { mes: 'Dic 25', valores: [] },
-    { mes: 'Ene 26', valores: [] },
-    { mes: 'Feb 26', valores: [] },
-    { mes: 'Mar 26', valores: [] },
-    { mes: 'Abr 26', valores: [] },
-    { mes: 'May 26', valores: [] },
-  ];
+  // Labels de meses generados en runtime para reflejar los meses reales.
+  // Se rellena en buildMonthLabels() con los últimos 6 meses ending hoy.
+  puntosMensuales: PuntoMensual[] = [];
+
+  // Y-axis ticks recalculados según max real (rebuildYTicks). Inicial
+  // placeholder a [0, 100] mientras la primera fetch llega.
+  yTicks: { y: number; label: string }[] = [];
 
   // Índices [0] Uptime y [1] Tiempo respuesta quedan como placeholder ('—')
   // hasta que se implementen fases posteriores (requieren queries más
@@ -853,7 +852,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     { label: 'Resolución', valor: '—', icon: 'check_circle', tono: 'neutral' },
   ];
 
-  readonly yTicks = [
+  // Y-axis ticks tope fijo (legacy, no usar — se sobrescribe via rebuildYTicks).
+  private readonly yTicksLegacy = [
     { y: 10, label: '2500' },
     { y: 73, label: '1875' },
     { y: 137, label: '1250' },
@@ -877,32 +877,32 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   ngOnChanges(): void {
     this.sitiosResumen = this.sites.map((s, i) => {
+      // UTM real desde backend. Si no hay UTM, fallback al geo mock por
+      // sitio (centros Coquimbo) — solo afecta posición del pin en el mapa.
       const geo = this.MOCK_SITE_GEO[i % this.MOCK_SITE_GEO.length];
-      const m3Proyectados = Math.round((geo.consumoMes / this.DIAS_TRANSCURRIDOS) * this.DIAS_MES);
-      // UTM real desde backend. lat/lng se calculan lazy en updateMarkers
-      // (necesita proj4 que se carga async). De momento dejamos NaN: si las
-      // coords vienen del DB, proj4 las completa; sino, fallback a mock.
       const norte = this.toNumberOrNull(s.coord_norte);
       const este = this.toNumberOrNull(s.coord_este);
       const huso = this.toNumberOrNull(s.huso);
+      // Métricas inicializadas en 0 / null — `fetchRealData` los llena con
+      // datos reales del backend. Si el sitio no es pozo o no tiene
+      // contadores configurados, quedan en 0.
       return {
         nombre: s.descripcion || s.nombre || s.id_serial || 'Instalación',
         ubicacion: s.ubicacion || 'Sin ubicación',
         obraDga: s.pozo_config?.obra_dga || null,
         estado: (s.activo ? 'online' : 'sinDatos') as SitioResumen['estado'],
-        // Si no hay UTM aún, fallback al mock por sitio (centros Coquimbo).
         lat: norte !== null && este !== null && huso !== null ? NaN : geo.lat,
         lng: norte !== null && este !== null && huso !== null ? NaN : geo.lng,
         coord_norte: norte,
         coord_este: este,
         huso,
-        caudal: geo.caudal,
-        nivel: geo.nivel,
-        consumoMes: geo.consumoMes,
-        diasActivos: geo.diasActivos,
+        caudal: 0,
+        nivel: 0,
+        consumoMes: 0,
+        diasActivos: 0,
         diasMes: this.DIAS_MES,
-        m3Proyectados,
-        tendenciaCaudal: geo.tendenciaCaudal,
+        m3Proyectados: 0,
+        tendenciaCaudal: 0,
       };
     });
 
@@ -934,13 +934,10 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       },
     ];
 
-    // Inicializa chart con ceros — se llena con datos reales en fetchRealData.
-    for (let mi = 0; mi < this.puntosMensuales.length; mi++) {
-      this.puntosMensuales[mi] = {
-        ...this.puntosMensuales[mi],
-        valores: this.sitiosResumen.map(() => 0),
-      };
-    }
+    // Inicializa chart con últimos 6 meses reales (labels) y valores en 0.
+    // fetchRealData los llena con deltas reales del monthly counter.
+    this.puntosMensuales = this.buildMonthLabels(6);
+    this.rebuildYTicks();
 
     this.buildMetricasComparacion();
 
@@ -1049,6 +1046,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
           ...p,
           valores: [...p.valores],
         }));
+        this.rebuildYTicks();
         this.buildMetricasComparacion();
 
         // Cuando todas las responses llegaron, computar uptime promedio.
@@ -1300,10 +1298,15 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     return desde === hasta ? fmt(desde) : `${fmt(desde)} → ${fmt(hasta)}`;
   }
 
+  /** Tope dinámico del Y-axis. Se recalcula en rebuildYTicks() cada vez que
+   *  llegan datos nuevos para mantener el chart escalado. */
+  private chartMaxVal = 1;
+
   buildPolyline(siteIndex: number): string {
     const n = this.puntosMensuales.length;
+    if (n < 2) return '';
     const step = this.chartW / (n - 1);
-    const maxVal = 2500;
+    const maxVal = this.chartMaxVal || 1;
     return this.puntosMensuales
       .map((p, i) => {
         const x = this.chartX0 + i * step;
@@ -1311,6 +1314,50 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         return `${x},${y}`;
       })
       .join(' ');
+  }
+
+  /**
+   * Inicializa puntosMensuales con labels reales de los últimos 6 meses,
+   * ending mes actual. Se llama al recibir respuestas de monthly counters
+   * para reemplazar los meses hardcoded.
+   */
+  private buildMonthLabels(monthsAgo: number): PuntoMensual[] {
+    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const hoy = new Date();
+    const slots: PuntoMensual[] = [];
+    for (let i = monthsAgo - 1; i >= 0; i--) {
+      const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const label = `${meses[d.getMonth()]} ${String(d.getFullYear()).slice(-2)}`;
+      slots.push({ mes: label, valores: new Array(this.sites.length).fill(0) });
+    }
+    return slots;
+  }
+
+  /**
+   * Recalcula `chartMaxVal` y `yTicks` desde los valores actuales del chart
+   * para que la escala Y se adapte al rango real (no quede pegada en 2500
+   * si la empresa consume 80 m³/mes).
+   */
+  private rebuildYTicks(): void {
+    let max = 0;
+    for (const p of this.puntosMensuales) {
+      for (const v of p.valores) {
+        if (v > max) max = v;
+      }
+    }
+    // Margen 20% arriba del max + ronda a número "limpio" para labels legibles.
+    const padded = max * 1.2;
+    const scale = Math.pow(10, Math.floor(Math.log10(padded || 1)));
+    const niceMax = Math.ceil(padded / scale) * scale || 100;
+    this.chartMaxVal = niceMax;
+    const nTicks = 4;
+    this.yTicks = Array.from({ length: nTicks }, (_, i) => ({
+      y: Math.round(this.chartY0 + this.chartH - (i / (nTicks - 1)) * this.chartH),
+      label:
+        i === 0
+          ? '0'
+          : Math.round((niceMax * i) / (nTicks - 1)).toLocaleString('es-CL'),
+    }));
   }
 
   formatNum(n: number): string {

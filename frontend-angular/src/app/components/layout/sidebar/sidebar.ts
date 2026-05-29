@@ -92,7 +92,7 @@ const MODULES = SITE_MODULES;
             </div>
             <div class="min-w-0">
               <p class="truncate text-caption font-semibold leading-tight text-[#1e293b]">
-                {{ auth.user()?.nombre || 'Usuario' }}
+                {{ userFullName() }}
               </p>
               <p class="text-caption-xs text-[#94a3b8]">{{ roleLabel() }}</p>
             </div>
@@ -398,6 +398,17 @@ export class SidebarComponent implements OnInit {
     const first = user.nombre?.charAt(0) ?? '';
     const last = user.apellido?.charAt(0) ?? '';
     return `${first}${last}`.trim().toUpperCase() || user.nombre.substring(0, 2).toUpperCase();
+  }
+
+  /**
+   * Nombre completo del operador: nombre + apellido. Fallback al nombre
+   * solo si no hay apellido, y a "Usuario" si no hay ninguno.
+   */
+  userFullName(): string {
+    const user = this.auth.user();
+    if (!user) return 'Usuario';
+    const partes = [user.nombre, user.apellido].filter((p) => p && String(p).trim());
+    return partes.join(' ').trim() || 'Usuario';
   }
 
   roleLabel(): string {
