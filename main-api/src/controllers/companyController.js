@@ -1933,54 +1933,29 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
     });
     const tHistory = process.hrtime.bigint();
     const tracedHistory = (async () => {
+      // Query simple sobre el cagg con index seek `(id_serial, bucket DESC)`.
+      // Antes había un UNION cagg+raw + COALESCE que confundía al planner de
+      // TimescaleDB y disparaba el SQL a ~4s. El cagg `equipo_1min` tiene
+      // end_offset=2 min en la policy de refresh — perdemos a lo más los
+      // últimos 1-2 buckets que aún no se materializaron. Para realtime tab
+      // que poll cada 60s + sparkline de 60 muestras, es imperceptible. El
+      // `dashboard.ultima_lectura` ya cubre el dato más reciente vía
+      // `loadLatestEquipoSample` (query independiente al raw `equipo`).
       const r = await db.query(
         `
-        WITH latest_cagg AS (
-          SELECT max(bucket) AS max_bucket
-          FROM ${granConfig.view}
-          WHERE id_serial = $1
-            AND bucket >= now() - INTERVAL '48 hours'
-        ),
-        recent_raw AS (
-          SELECT
-            time_bucket($4::interval, e.time) AS time,
-            last(e.received_at, e.time)       AS received_at,
-            last(e.id_serial, e.time)         AS id_serial,
-            last(e.data, e.time)              AS data,
-            ${utcTimestampSql('time_bucket($4::interval, e.time)')} AS timestamp_completo
-          FROM equipo e
-          CROSS JOIN latest_cagg lc
-          WHERE e.id_serial = $1
-            AND e.time >= COALESCE(lc.max_bucket + $4::interval, now() - INTERVAL '2 hours')
-          GROUP BY 1
-        ),
-        materialized AS (
-          SELECT
-            bucket AS time,
-            received_at,
-            id_serial,
-            data,
-            ${utcTimestampSql('bucket')} AS timestamp_completo
-          FROM ${granConfig.view}
-          WHERE id_serial = $1
-            AND bucket >= now() - INTERVAL '48 hours'
-        )
         SELECT
-          time,
+          bucket AS time,
           received_at,
           id_serial,
           data,
-          timestamp_completo
-        FROM (
-          SELECT * FROM recent_raw
-          UNION ALL
-          SELECT * FROM materialized
-        ) history
-        ORDER BY time DESC
+          ${utcTimestampSql('bucket')} AS timestamp_completo
+        FROM ${granConfig.view}
+        WHERE id_serial = $1
+          AND bucket >= now() - INTERVAL '48 hours'
+        ORDER BY bucket DESC
         LIMIT $2
-        OFFSET $3
         `,
-        [site.id_serial, limit, 0, granConfig.bucketInterval],
+        [site.id_serial, limit],
       );
       timings.push(`db_history;dur=${ms(tHistory).toFixed(1)}`);
       return r;
