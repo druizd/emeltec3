@@ -2003,6 +2003,9 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
     timings.push(`rows;desc="${historyRows.length}"`);
     timings.push(`total;dur=${ms(t0).toFixed(1)}`);
     res.setHeader('Server-Timing', timings.join(', '));
+    // Loggea breakdown a stdout para inspección via `docker logs main-api`
+    // sin necesidad de leer headers en el browser/curl.
+    console.log(`[operacion-bundle] siteId=${siteId} ${timings.join(' ')}`);
 
     return res.json({
       ok: true,
