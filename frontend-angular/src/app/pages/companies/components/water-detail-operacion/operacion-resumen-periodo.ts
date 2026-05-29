@@ -2,8 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { catchError, combineLatest, debounceTime, of, switchMap } from 'rxjs';
+import { catchError, combineLatest, debounceTime, forkJoin, of, switchMap } from 'rxjs';
 import { AlertaService, type EventoRow } from '../../../../services/alerta.service';
+import { CompanyService, type ContadorJornadaPoint } from '../../../../services/company.service';
 import {
   WaterOperacionStateService,
   type OperacionPreset as Preset,
@@ -70,14 +71,16 @@ interface IncidenciaPeriodo {
             }
           </div>
 
-          <!-- Rango custom -->
+          <!-- Rango custom. Los inputs editan signals locales (Input); recién
+               al hacer click en Aplicar se propaga al state global y se
+               re-dispara la query. Evita 1 fetch por keystroke parcial. -->
           <div class="flex flex-wrap items-center gap-2 text-caption text-slate-500">
             <span class="font-semibold" id="label-desde">Desde</span>
             <input
               type="date"
               min="2020-01-01"
-              [value]="fechaDesde()"
-              (change)="onFechaChange('desde', $any($event.target).value)"
+              [value]="fechaDesdeInput()"
+              (input)="fechaDesdeInput.set($any($event.target).value)"
               aria-labelledby="label-desde"
               class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
@@ -85,11 +88,20 @@ interface IncidenciaPeriodo {
             <input
               type="date"
               min="2020-01-01"
-              [value]="fechaHasta()"
-              (change)="onFechaChange('hasta', $any($event.target).value)"
+              [value]="fechaHastaInput()"
+              (input)="fechaHastaInput.set($any($event.target).value)"
               aria-labelledby="label-hasta"
               class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-mono text-caption text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
+            <button
+              type="button"
+              (click)="aplicarFechas()"
+              [disabled]="!fechasPendientes()"
+              class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+            >
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
+              Aplicar
+            </button>
           </div>
 
           <!-- Exportar -->
@@ -600,6 +612,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   private readonly state = inject(WaterOperacionStateService);
   private readonly route = inject(ActivatedRoute);
   private readonly alertaService = inject(AlertaService);
+  private readonly companyService = inject(CompanyService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly preset = this.state.preset;
@@ -609,12 +622,31 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   readonly turnosConfig = this.state.turnosConfig;
   readonly resumenSettingsOpen = signal(false);
 
+  // Input signals locales: el operador edita estos sin disparar fetches hasta
+  // que clickea Aplicar. Inicializados desde el state actual y resincronizados
+  // cuando los presets cambian.
+  readonly fechaDesdeInput = signal(this.state.fechaDesde());
+  readonly fechaHastaInput = signal(this.state.fechaHasta());
+  readonly fechasPendientes = computed(
+    () =>
+      this.fechaDesdeInput() !== this.fechaDesde() || this.fechaHastaInput() !== this.fechaHasta(),
+  );
+
   // Eventos reales del periodo (mapeados a AlertaPeriodo para el render existente).
   private readonly eventosReales = signal<EventoRow[]>([]);
   readonly eventosLoading = signal(false);
+  // Contadores por turno: cada índice corresponde al turno (0,1,2) y trae
+  // delta acumulado en el rango seleccionado. Se rellena con 3 calls
+  // paralelas al endpoint `contadores-jornadas` cuando cambia el rango,
+  // preset, turnos config o num turnos.
+  private readonly turnoCountersData = signal<ContadorJornadaPoint[][]>([[], [], []]);
+  readonly turnoCountersLoading = signal(false);
   // toObservable solo se permite en contexto de inyeccion → captura en field init.
   private readonly fechaDesde$ = toObservable(this.fechaDesde);
   private readonly fechaHasta$ = toObservable(this.fechaHasta);
+  private readonly preset$ = toObservable(this.preset);
+  private readonly numTurnos$ = toObservable(this.numTurnos);
+  private readonly turnosConfig$ = toObservable(this.turnosConfig);
 
   readonly presets: { key: Preset; label: string }[] = [
     { key: '7d', label: '7 días' },
@@ -622,23 +654,39 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     { key: '90d', label: '90 días' },
   ];
 
-  private readonly mockTurnoFlujo: Record<Preset, (number | null)[]> = {
-    '7d': [674, 509, null],
-    '30d': [2804, 2116, null],
-    '90d': [8505, 6416, null],
-  };
-  private readonly mockTurnoPct = [57, 43, 0];
   private readonly dotClasses = ['bg-primary', 'bg-[#0899a5]', 'bg-slate-400'];
 
+  /**
+   * Cards por turno con datos REALES desde `contadores-jornadas`.
+   *
+   * Suma de deltas por turno en el rango [fechaDesde, fechaHasta] (filtrado
+   * client-side porque el endpoint devuelve los últimos `dias` días enteros).
+   * % es relativo al total del periodo entre todos los turnos visibles.
+   */
   readonly turnosResumen = computed(() => {
     const cfg = this.turnosConfig().slice(0, this.numTurnos());
-    const flujos = this.mockTurnoFlujo[this.preset()];
-    return cfg.map((c, i) => ({
-      nombre: c.nombre,
-      horario: `${c.inicio} – ${c.fin}`,
-      flujo: flujos[i] ?? 0,
-      pct: flujos[i] ? (this.mockTurnoPct[i] ?? 0) : 0,
-    }));
+    const desde = this.fechaDesde();
+    const hasta = this.fechaHasta();
+    const dataByTurno = this.turnoCountersData();
+
+    const flujos = cfg.map((_, i) => {
+      const points = dataByTurno[i] ?? [];
+      return points
+        .filter((p) => p.dia >= desde && p.dia <= hasta)
+        .reduce((acc, p) => acc + (p.delta ?? 0), 0);
+    });
+
+    const total = flujos.reduce((a, b) => a + b, 0);
+
+    return cfg.map((c, i) => {
+      const flujo = flujos[i] ?? 0;
+      return {
+        nombre: c.nombre,
+        horario: `${c.inicio} – ${c.fin}`,
+        flujo: Math.round(flujo),
+        pct: total > 0 ? Math.round((flujo / total) * 100) : 0,
+      };
+    });
   });
 
   updateTurnoConfig(index: number, field: 'nombre' | 'inicio' | 'fin', value: string): void {
@@ -1075,8 +1123,21 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       ? nivelesFreaticos.reduce((a, b) => a + b, 0) / nivelesFreaticos.length
       : null;
 
-    const mockAlertas = this.mockKpis[this.preset()][4];
-    const mockUptime = this.mockKpis[this.preset()][5];
+    // Alertas reales: cuenta total de eventos del periodo + breakdown críticas
+    // vs advertencias. `eventosReales` viene del endpoint alertas que ya se
+    // fetchea en ngOnInit cuando cambia rango.
+    const alertas = this.alertasReales();
+    const criticas = alertas.filter((a) => a.severidad === 'critica').length;
+    const advertencias = alertas.filter((a) => a.severidad === 'advertencia').length;
+    const alertasTono: KpiPeriodo['tono'] = criticas > 0 ? 'warn' : 'neutral';
+
+    // Uptime comunicación: días con al menos una muestra dividido sobre días
+    // esperados. Aproximación; para precisión a nivel de minuto haría falta
+    // contar todas las mediciones esperadas vs recibidas.
+    const diasConDatos = daily.filter((p) => p.muestras > 0).length;
+    const uptimePct = diasEsperados > 0 ? Math.round((diasConDatos / diasEsperados) * 100) : 0;
+    const uptimeTono: KpiPeriodo['tono'] =
+      uptimePct >= 95 ? 'ok' : uptimePct >= 80 ? 'neutral' : 'warn';
 
     return [
       {
@@ -1107,19 +1168,22 @@ export class OperacionResumenPeriodoComponent implements OnInit {
         icon: 'event_available',
         tono: diasSinOp > diasEsperados / 3 ? 'warn' : 'neutral',
       },
-      mockAlertas ?? {
+      {
         label: 'Alertas en período',
-        valor: '—',
-        subtext: 'Sin datos',
+        valor: String(alertas.length),
+        subtext:
+          alertas.length === 0
+            ? 'Sin eventos'
+            : `${criticas} crít · ${advertencias} adv`,
         icon: 'notifications',
-        tono: 'neutral',
+        tono: alertasTono,
       },
-      mockUptime ?? {
+      {
         label: 'Uptime comunicación',
-        valor: '—',
-        subtext: 'Sin datos',
+        valor: `${uptimePct}%`,
+        subtext: `${diasConDatos} / ${diasEsperados} días con datos`,
         icon: 'wifi',
-        tono: 'neutral',
+        tono: uptimeTono,
       },
     ];
   });
@@ -1199,10 +1263,20 @@ export class OperacionResumenPeriodoComponent implements OnInit {
 
   setPreset(p: Preset): void {
     this.state.setPreset(p);
+    // El preset reescribe el rango. Sincronizamos los inputs locales para que
+    // el botón Aplicar quede desactivado (no hay cambios pendientes).
+    this.fechaDesdeInput.set(this.state.fechaDesde());
+    this.fechaHastaInput.set(this.state.fechaHasta());
   }
 
-  onFechaChange(campo: 'desde' | 'hasta', val: string): void {
-    this.state.onFechaChange(campo, val);
+  aplicarFechas(): void {
+    const desde = this.fechaDesdeInput();
+    const hasta = this.fechaHastaInput();
+    if (!desde || !hasta) return;
+    // Validación básica: desde no puede ser mayor que hasta.
+    if (desde > hasta) return;
+    this.state.onFechaChange('desde', desde);
+    this.state.onFechaChange('hasta', hasta);
   }
 
   ngOnInit(): void {
@@ -1212,6 +1286,15 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     // Lazy-trigger contadores: solo se necesitan en esta tab. Idempotente.
     this.state.ensureContadoresPolling(siteId);
 
+    // Sync inputs cuando state cambia desde fuera (ej. preset clic).
+    combineLatest([this.fechaDesde$, this.fechaHasta$])
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(([desde, hasta]) => {
+        this.fechaDesdeInput.set(desde);
+        this.fechaHastaInput.set(hasta);
+      });
+
+    // Eventos (alertas) reales del periodo.
     combineLatest([this.fechaDesde$, this.fechaHasta$])
       .pipe(
         debounceTime(300),
@@ -1234,6 +1317,41 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       .subscribe((rows) => {
         this.eventosLoading.set(false);
         this.eventosReales.set(rows);
+      });
+
+    // Contadores por turno: 3 calls paralelas, una por turno (inicio/fin
+    // HH:MM). Se refetchean cuando cambia preset, num turnos, config de
+    // turnos, o rango aplicado. Cache server-side TTL 15 min absorbe rebotes.
+    const presetDias: Record<Preset, number> = { '7d': 7, '30d': 30, '90d': 90 };
+    combineLatest([this.preset$, this.numTurnos$, this.turnosConfig$])
+      .pipe(
+        debounceTime(300),
+        switchMap(([preset, numTurnos, turnos]) => {
+          const cfg = turnos.slice(0, numTurnos);
+          const dias = presetDias[preset];
+          this.turnoCountersLoading.set(true);
+          return forkJoin(
+            cfg.map((t) =>
+              this.companyService
+                .getSiteJornadaCounters(siteId, {
+                  rol: 'totalizador',
+                  dias,
+                  inicio: t.inicio,
+                  fin: t.fin,
+                })
+                .pipe(catchError(() => of({ ok: false, data: [] as ContadorJornadaPoint[] }))),
+            ),
+          );
+        }),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe((results) => {
+        this.turnoCountersLoading.set(false);
+        const padded: ContadorJornadaPoint[][] = [[], [], []];
+        results.forEach((r, i) => {
+          padded[i] = (r && r.ok ? r.data : []) ?? [];
+        });
+        this.turnoCountersData.set(padded);
       });
   }
 
