@@ -211,10 +211,7 @@ const CONTACT_TYPES = [
           >
             <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
               <div class="min-w-0">
-                <h3
-                  id="add-contact-title"
-                  class="text-h6 font-bold text-slate-900"
-                >
+                <h3 id="add-contact-title" class="text-h6 font-bold text-slate-900">
                   Agregar contacto
                 </h3>
                 <p class="mt-1 text-body-sm text-slate-500">
@@ -233,7 +230,9 @@ const CONTACT_TYPES = [
             </div>
 
             @if (status() && statusType() === 'error') {
-              <div class="mx-6 mt-4 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-caption font-semibold text-rose-700">
+              <div
+                class="mx-6 mt-4 rounded-lg border border-rose-100 bg-rose-50 px-3 py-2 text-caption font-semibold text-rose-700"
+              >
                 {{ status() }}
               </div>
             }

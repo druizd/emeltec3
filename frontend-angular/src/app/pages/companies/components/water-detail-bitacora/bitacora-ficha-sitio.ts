@@ -78,7 +78,7 @@ import {
           <!-- Dropdown agregar desde agenda + equipo Emeltec. El value usa
                prefijo c: para OperationalContact y u: para User para
                distinguir el origen en el handler. -->
-          @if (isInternal() && (availableContacts().length + availableUsuariosCliente().length) > 0) {
+          @if (isInternal() && availableContacts().length + availableUsuariosCliente().length > 0) {
             <div class="mb-3 flex items-center gap-2">
               <!-- Usamos (change) + template ref en lugar de [(ngModel)] para
                    evitar race condition de Angular signal vs DOM: después de
@@ -105,8 +105,7 @@ import {
                   <optgroup label="Usuarios de la planta">
                     @for (u of availableUsuariosCliente(); track u.id) {
                       <option [value]="'u:' + u.id">
-                        {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
-                        · {{ u.tipo }}
+                        {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }} · {{ u.tipo }}
                       </option>
                     }
                   </optgroup>
@@ -272,8 +271,8 @@ import {
                 Matriz IPER — Probabilidad × Severidad
               </h3>
               <p class="mt-0.5 text-caption-xs text-slate-400">
-                Prepará la salida a terreno antes de viajar. En sitio, marcá
-                "Verificado" para confirmar el riesgo al llegar.
+                Prepará la salida a terreno antes de viajar. En sitio, marcá "Verificado" para
+                confirmar el riesgo al llegar.
               </p>
             </div>
             @if (isInternal()) {
@@ -305,7 +304,9 @@ import {
                Etiquetas SST chilenas. Cada celda muestra cantidad de
                riesgos plotted ahí + el valor numérico al hover. -->
           <div class="mb-4 overflow-x-auto">
-            <div class="grid min-w-[560px] grid-cols-[100px_repeat(5,minmax(0,1fr))] gap-1 text-caption-xs">
+            <div
+              class="grid min-w-[560px] grid-cols-[100px_repeat(5,minmax(0,1fr))] gap-1 text-caption-xs"
+            >
               <span></span>
               @for (i of [1, 2, 3, 4, 5]; track i) {
                 <span class="text-center font-bold text-slate-500">
@@ -320,7 +321,7 @@ import {
                   <div
                     class="flex h-12 flex-col items-center justify-center rounded font-bold"
                     [class]="matrizCellClass(p * i)"
-                    [title]="nivelLabel(p * i) + ' · ' + (p * i)"
+                    [title]="nivelLabel(p * i) + ' · ' + p * i"
                   >
                     <span class="text-[10px] font-bold opacity-60">{{ p * i }}</span>
                     @if (matrizCount(p, i) > 0) {
@@ -350,8 +351,8 @@ import {
               Intolerable (13-25)
             </span>
             <span class="ml-auto text-slate-400">
-              {{ ficha().riesgos.length }} riesgo(s) ·
-              {{ riesgosVerificados() }} verificado(s) en terreno
+              {{ ficha().riesgos.length }} riesgo(s) · {{ riesgosVerificados() }} verificado(s) en
+              terreno
             </span>
           </div>
 
@@ -373,7 +374,9 @@ import {
                         placeholder="Descripción del riesgo"
                         class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
-                      <label class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1">
+                      <label
+                        class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1"
+                      >
                         <span class="text-caption-xs font-bold text-slate-400">P</span>
                         <select
                           [ngModel]="r.probabilidad"
@@ -386,7 +389,9 @@ import {
                           }
                         </select>
                       </label>
-                      <label class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1">
+                      <label
+                        class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1"
+                      >
                         <span class="text-caption-xs font-bold text-slate-400">I</span>
                         <select
                           [ngModel]="r.impacto"
@@ -411,8 +416,12 @@ import {
                         [class]="nivelBadgeClass(nivelRiesgo(r))"
                         [title]="'Nivel calculado: ' + (nivelRiesgo(r) ?? '—')"
                       >
-                        <span class="text-caption-xs uppercase">{{ nivelLabel(nivelRiesgo(r)) }}</span>
-                        <span class="font-mono text-[10px] opacity-60">{{ nivelRiesgo(r) ?? '—' }}</span>
+                        <span class="text-caption-xs uppercase">{{
+                          nivelLabel(nivelRiesgo(r))
+                        }}</span>
+                        <span class="font-mono text-[10px] opacity-60">{{
+                          nivelRiesgo(r) ?? '—'
+                        }}</span>
                       </span>
                     </div>
                     <input
@@ -423,7 +432,9 @@ import {
                       class="mt-2 w-full rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                     />
                     <div class="mt-2 flex items-center justify-between gap-2">
-                      <label class="inline-flex items-center gap-1.5 text-caption-xs font-semibold text-slate-600">
+                      <label
+                        class="inline-flex items-center gap-1.5 text-caption-xs font-semibold text-slate-600"
+                      >
                         <input
                           type="checkbox"
                           [ngModel]="r.evaluado_terreno"
@@ -482,7 +493,9 @@ import {
           [class.border-slate-200]="!dirty() || saving()"
         >
           @if (dirty() && !saving()) {
-            <span class="mr-auto inline-flex items-center gap-1 text-caption-xs font-semibold text-amber-700">
+            <span
+              class="mr-auto inline-flex items-center gap-1 text-caption-xs font-semibold text-amber-700"
+            >
               <span class="material-symbols-outlined text-[14px]">edit_note</span>
               Cambios sin guardar
             </span>
@@ -547,8 +560,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
     const empId = this.empresaId();
     if (!empId) return [];
     return this.availableUsers().filter(
-      (u) =>
-        u.empresa_id === empId && u.tipo !== 'SuperAdmin' && u.tipo !== 'Admin',
+      (u) => u.empresa_id === empId && u.tipo !== 'SuperAdmin' && u.tipo !== 'Admin',
     );
   });
 
@@ -579,9 +591,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
         .pipe(catchError(() => of({ ok: false, data: [] as OperationalContact[] })))
         .subscribe((res) => {
           const all = res.ok ? res.data : [];
-          this.availableContacts.set(
-            all.filter((c) => !c.sitio_id || c.sitio_id === sId),
-          );
+          this.availableContacts.set(all.filter((c) => !c.sitio_id || c.sitio_id === sId));
         });
     }
 
@@ -916,18 +926,14 @@ export class BitacoraFichaSitioComponent implements OnInit {
    * Etiqueta SST chilena para probabilidad (1-5).
    */
   probabilidadLabel(p: number): string {
-    return (
-      ['Raro', 'Improbable', 'Posible', 'Probable', 'Casi seguro'][p - 1] ?? String(p)
-    );
+    return ['Raro', 'Improbable', 'Posible', 'Probable', 'Casi seguro'][p - 1] ?? String(p);
   }
 
   /**
    * Etiqueta SST chilena para severidad/consecuencia (1-5).
    */
   severidadLabel(s: number): string {
-    return (
-      ['Insignificante', 'Menor', 'Moderada', 'Mayor', 'Catastrófica'][s - 1] ?? String(s)
-    );
+    return ['Insignificante', 'Menor', 'Moderada', 'Mayor', 'Catastrófica'][s - 1] ?? String(s);
   }
 
   /**

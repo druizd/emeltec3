@@ -510,7 +510,9 @@ function createHistoricalRowMapper({ site, mappings, pozoConfig, sampleRawData =
   });
 
   const mappingById = new Map(mappings.map((mapping) => [mapping.id, mapping]));
-  const mappingByKey = new Map(mappings.map((mapping) => [responseKeyForMapping(mapping), mapping]));
+  const mappingByKey = new Map(
+    mappings.map((mapping) => [responseKeyForMapping(mapping), mapping]),
+  );
 
   // Resuelve cada rol histórico a uno de:
   //  - { kind: 'mapping', mapping, alias, unidad }: transforma rawData con un mapping directo

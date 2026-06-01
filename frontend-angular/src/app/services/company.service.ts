@@ -67,7 +67,10 @@ export class CompanyService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 
-  private readonly siteCache = new Map<string, { value: ApiResponse<unknown>; expiresAt: number }>();
+  private readonly siteCache = new Map<
+    string,
+    { value: ApiResponse<unknown>; expiresAt: number }
+  >();
   private readonly siteInflight = new Map<string, Observable<ApiResponse<unknown>>>();
   private readonly SITE_CACHE_TTL_MS = 30_000;
 
@@ -247,7 +250,12 @@ export class CompanyService {
       ApiResponse<{
         caudal: { max: number | null; avg: number | null; n: number; unidad: string | null };
         nivel: { max: number | null; avg: number | null; n: number; unidad: string | null };
-        nivel_freatico: { max: number | null; avg: number | null; n: number; unidad: string | null };
+        nivel_freatico: {
+          max: number | null;
+          avg: number | null;
+          n: number;
+          unidad: string | null;
+        };
         muestras_total: number;
       }>
     >(`/api/companies/sites/${siteId}/period-aggregates?${params.toString()}`);

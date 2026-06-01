@@ -44,9 +44,7 @@ export class LoginComponent {
   ];
 
   readonly currentYear = new Date().getFullYear();
-  readonly heroImage = signal(
-    this.heroImages[Math.floor(Math.random() * this.heroImages.length)],
-  );
+  readonly heroImage = signal(this.heroImages[Math.floor(Math.random() * this.heroImages.length)]);
   readonly heroImageUrl = computed(() => `url('${this.heroImage()}')`);
   readonly step = signal<LoginStep>('email');
   readonly email = signal('');

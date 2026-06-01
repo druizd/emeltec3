@@ -306,7 +306,9 @@ interface Periodo {
                             {{ formatNum(s.tendenciaCaudal) }}%
                           </span>
                         } @else {
-                          <span class="inline-block h-2.5 w-10 animate-pulse rounded bg-slate-200"></span>
+                          <span
+                            class="inline-block h-2.5 w-10 animate-pulse rounded bg-slate-200"
+                          ></span>
                         }
                       </div>
                     </div>
@@ -322,7 +324,9 @@ interface Periodo {
                             >{{ s.consumoMes.toLocaleString() }} m³</span
                           >
                         } @else {
-                          <span class="inline-block h-3 w-16 animate-pulse rounded bg-slate-200"></span>
+                          <span
+                            class="inline-block h-3 w-16 animate-pulse rounded bg-slate-200"
+                          ></span>
                         }
                       </div>
                       <div class="flex items-center justify-between">
@@ -334,7 +338,9 @@ interface Periodo {
                             >{{ s.m3Proyectados.toLocaleString() }} m³</span
                           >
                         } @else {
-                          <span class="inline-block h-3 w-16 animate-pulse rounded bg-slate-200"></span>
+                          <span
+                            class="inline-block h-3 w-16 animate-pulse rounded bg-slate-200"
+                          ></span>
                         }
                       </div>
                       <div class="flex items-center justify-between">
@@ -347,7 +353,9 @@ interface Periodo {
                             <span class="font-normal text-slate-400">de {{ s.diasMes }}</span></span
                           >
                         } @else {
-                          <span class="inline-block h-3 w-14 animate-pulse rounded bg-slate-200"></span>
+                          <span
+                            class="inline-block h-3 w-14 animate-pulse rounded bg-slate-200"
+                          ></span>
                         }
                       </div>
                     </div>
@@ -462,7 +470,9 @@ interface Periodo {
                   Período de comparación
                 </p>
                 @if (periodoPreset() === 'custom') {
-                  <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                  <span
+                    class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700"
+                  >
                     Personalizado
                   </span>
                 }
@@ -492,8 +502,15 @@ interface Periodo {
               <div class="grid gap-3 md:grid-cols-2">
                 <div class="rounded-lg border border-slate-200 bg-white p-3">
                   <div class="mb-2 flex items-center gap-1.5">
-                    <span class="rounded px-1.5 py-0.5 text-[10px] font-bold" style="background:rgba(13,175,189,0.12);color:#0899A5">A</span>
-                    <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-500">Período principal</span>
+                    <span
+                      class="rounded px-1.5 py-0.5 text-[10px] font-bold"
+                      style="background:rgba(13,175,189,0.12);color:#0899A5"
+                      >A</span
+                    >
+                    <span
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-slate-500"
+                      >Período principal</span
+                    >
                   </div>
                   <div class="flex flex-col gap-2 text-caption text-slate-500">
                     <label class="flex items-center gap-2">
@@ -520,8 +537,14 @@ interface Periodo {
                 </div>
                 <div class="rounded-lg border border-slate-200 bg-white p-3">
                   <div class="mb-2 flex items-center gap-1.5">
-                    <span class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">B</span>
-                    <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-500">Período comparado</span>
+                    <span
+                      class="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-bold text-slate-500"
+                      >B</span
+                    >
+                    <span
+                      class="text-caption-xs font-semibold uppercase tracking-widest text-slate-500"
+                      >Período comparado</span
+                    >
                   </div>
                   <div class="flex flex-col gap-2 text-caption text-slate-500">
                     <label class="flex items-center gap-2">
@@ -1091,7 +1114,9 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         .pipe(catchError(() => of(null)))
         .subscribe((res) => {
           if (!this.sitiosResumen[i]) return;
-          const dash = (res as { data?: { resumen?: Record<string, { valor?: unknown } | undefined> } } | null)?.data;
+          const dash = (
+            res as { data?: { resumen?: Record<string, { valor?: unknown } | undefined> } } | null
+          )?.data;
           const caudalRaw = Number(dash?.resumen?.['caudal']?.valor ?? NaN);
           const nivelRaw = Number(
             dash?.resumen?.['nivel_freatico']?.valor ?? dash?.resumen?.['nivel']?.valor ?? NaN,
@@ -1445,7 +1470,20 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
    * para reemplazar los meses hardcoded.
    */
   private buildMonthLabels(monthsAgo: number): PuntoMensual[] {
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const meses = [
+      'Ene',
+      'Feb',
+      'Mar',
+      'Abr',
+      'May',
+      'Jun',
+      'Jul',
+      'Ago',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dic',
+    ];
     const hoy = new Date();
     const slots: PuntoMensual[] = [];
     for (let i = monthsAgo - 1; i >= 0; i--) {
@@ -1476,10 +1514,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     const nTicks = 4;
     this.yTicks = Array.from({ length: nTicks }, (_, i) => ({
       y: Math.round(this.chartY0 + this.chartH - (i / (nTicks - 1)) * this.chartH),
-      label:
-        i === 0
-          ? '0'
-          : Math.round((niceMax * i) / (nTicks - 1)).toLocaleString('es-CL'),
+      label: i === 0 ? '0' : Math.round((niceMax * i) / (nTicks - 1)).toLocaleString('es-CL'),
     }));
   }
 
@@ -1641,7 +1676,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     satellite.addTo(this.map);
     L.control
       .layers(
-        { 'Satelital': satellite, 'Calle': street },
+        { Satelital: satellite, Calle: street },
         {},
         { position: 'topright', collapsed: false },
       )

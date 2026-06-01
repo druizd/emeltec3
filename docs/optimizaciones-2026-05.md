@@ -18,15 +18,15 @@ pozos (`/companies/:siteId/water` → tabs Hoy, Histórico, Resumen por Período
 
 ## Resumen de wins
 
-| Métrica | Antes | Después |
-| --- | --- | --- |
-| operacion-bundle cold | 4.4 s | 86 ms (51×) |
-| dashboard-history (parent polling) | 3 s c/60 s | eliminado (lazy on modal open) |
-| Primer paint Operación (mobile) | ~7 s | ~5 s |
-| Material Symbols woff2 | 1.1 MB | 319 kB |
-| Chunks JS revalidados por page load | 20 (~4 s RTT) | 0 (immutable cache) |
-| Bundle JS realtime (water-detail-operacion) | incluía xlsx | xlsx en chunk lazy aparte |
-| Requests cold path Operación tab Hoy | 6 | 2 (bundle + operacion-config) |
+| Métrica                                     | Antes         | Después                        |
+| ------------------------------------------- | ------------- | ------------------------------ |
+| operacion-bundle cold                       | 4.4 s         | 86 ms (51×)                    |
+| dashboard-history (parent polling)          | 3 s c/60 s    | eliminado (lazy on modal open) |
+| Primer paint Operación (mobile)             | ~7 s          | ~5 s                           |
+| Material Symbols woff2                      | 1.1 MB        | 319 kB                         |
+| Chunks JS revalidados por page load         | 20 (~4 s RTT) | 0 (immutable cache)            |
+| Bundle JS realtime (water-detail-operacion) | incluía xlsx  | xlsx en chunk lazy aparte      |
+| Requests cold path Operación tab Hoy        | 6             | 2 (bundle + operacion-config)  |
 
 ## Cambios backend (`main-api/src/...`)
 
@@ -114,13 +114,17 @@ opción.
 ### index.html
 
 Material Symbols pasó de:
+
 ```
 ?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap
 ```
+
 a:
+
 ```
 ?family=Material+Symbols+Outlined:wght@400&display=swap
 ```
+
 **Win: 1.1 MB → 319 kB**. Si se necesita FILL=1 o pesos distintos, agregar
 valores discretos a la URL en lugar de rangos.
 
@@ -225,14 +229,14 @@ aplicado. % distribución relativa al total visible.
 Reemplazado mock fijo de 7 días por **1 fila por día calendario en el
 rango aplicado** (cap 60 filas). Cruza 3 fuentes:
 
-| Columna | Fuente |
-| --- | --- |
-| Fecha | calendar generated `DD/MM/YYYY` |
-| Flujo (m³) | `dailyCountersData[dia].delta` |
-| Caudal peak | `dailyAggregates[dia].caudal.max` |
-| Caudal prom. | `dailyAggregates[dia].caudal.avg` |
+| Columna      | Fuente                                    |
+| ------------ | ----------------------------------------- |
+| Fecha        | calendar generated `DD/MM/YYYY`           |
+| Flujo (m³)   | `dailyCountersData[dia].delta`            |
+| Caudal peak  | `dailyAggregates[dia].caudal.max`         |
+| Caudal prom. | `dailyAggregates[dia].caudal.avg`         |
 | Freático max | `dailyAggregates[dia].nivel_freatico.max` |
-| Alertas | `eventosReales` bucketed por día Chile |
+| Alertas      | `eventosReales` bucketed por día Chile    |
 
 Días sin operación (flujo=0) renderizan con opacity 60. Celdas sin datos
 muestran `—`. Alertas usan badge ambar.
@@ -240,6 +244,7 @@ muestran `—`. Alertas usan badge ambar.
 ### Componente service (`company.service.ts`)
 
 Métodos nuevos:
+
 - `getSiteOperacionBundle(siteId, limit)`
 - `getSitePeriodAggregates(siteId, desde, hasta)`
 - `getSitePeriodAggregatesDaily(siteId, desde, hasta)`
@@ -268,6 +273,7 @@ modbus/GSM, worker dejó de procesar parte del histórico.
 ### Cache invalidation
 
 `operacionBundleInputsCache` se invalida en:
+
 - `updateSite`
 - `createSiteVariableMap`
 - `updateSiteVariableMap`

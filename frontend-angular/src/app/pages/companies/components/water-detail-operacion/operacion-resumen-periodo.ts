@@ -169,7 +169,10 @@ interface IncidenciaPeriodo {
           <span>Rango activo:</span>
           <span class="font-mono font-semibold text-slate-700">{{ rangoLabel() }}</span>
           @if (preset() === null) {
-            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Personalizado</span>
+            <span
+              class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700"
+              >Personalizado</span
+            >
           }
         </p>
       </section>
@@ -449,7 +452,9 @@ interface IncidenciaPeriodo {
             >
               <p class="font-semibold text-slate-700">{{ h.fecha }}</p>
               <p class="mt-0.5 font-mono text-slate-800">
-                <span class="font-bold text-primary-container">{{ h.valor.toLocaleString('es-CL') }}</span>
+                <span class="font-bold text-primary-container">{{
+                  h.valor.toLocaleString('es-CL')
+                }}</span>
                 <span class="ml-1 text-slate-500">{{ chart().unidad }}</span>
               </p>
             </div>
@@ -523,10 +528,7 @@ interface IncidenciaPeriodo {
             </thead>
             <tbody class="divide-y divide-slate-100">
               @for (fila of data().tabla; track fila.diaIso) {
-                <tr
-                  class="hover:bg-slate-50/60"
-                  [class.opacity-60]="(fila.flujo ?? 0) === 0"
-                >
+                <tr class="hover:bg-slate-50/60" [class.opacity-60]="(fila.flujo ?? 0) === 0">
                   <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
                     {{ fila.fecha }}
                   </td>
@@ -1413,7 +1415,10 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       },
       {
         label: 'Peak de caudal',
-        valor: caudalMax !== null ? `${this.fmt(caudalMax, 1)} ${caudalMaxUnidad}` : `— ${caudalMaxUnidad}`,
+        valor:
+          caudalMax !== null
+            ? `${this.fmt(caudalMax, 1)} ${caudalMaxUnidad}`
+            : `— ${caudalMaxUnidad}`,
         subtext:
           agg && agg.caudal.n > 0
             ? `Sobre ${this.fmtThousands(agg.caudal.n)} mediciones`
@@ -1423,7 +1428,10 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       },
       {
         label: 'Nivel freático más alto',
-        valor: freaticoMax !== null ? `${this.fmt(freaticoMax, 2)} ${freaticoMaxUnidad}` : `— ${freaticoMaxUnidad}`,
+        valor:
+          freaticoMax !== null
+            ? `${this.fmt(freaticoMax, 2)} ${freaticoMaxUnidad}`
+            : `— ${freaticoMaxUnidad}`,
         subtext:
           agg && agg.nivel_freatico.n > 0
             ? `Sobre ${this.fmtThousands(agg.nivel_freatico.n)} mediciones`
@@ -1434,10 +1442,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       {
         label: 'Alertas en período',
         valor: String(alertas.length),
-        subtext:
-          alertas.length === 0
-            ? 'Sin eventos'
-            : `${criticas} crít · ${advertencias} adv`,
+        subtext: alertas.length === 0 ? 'Sin eventos' : `${criticas} crít · ${advertencias} adv`,
         icon: 'notifications',
         tono: alertasTono,
       },
