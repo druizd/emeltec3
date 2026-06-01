@@ -20,6 +20,12 @@ type Config struct {
 
 	MainAPIURL     string
 	InternalAPIKey string
+
+	SQLitePath             string
+	LocalSyncIntervalSec   int
+	LinuxDBAPIURL          string
+	PLCCommandPollInterval int
+	PLCDryRun              bool
 }
 
 func Load() Config {
@@ -38,6 +44,12 @@ func Load() Config {
 
 		MainAPIURL:     getEnv("MAIN_API_URL", "http://localhost:3000"),
 		InternalAPIKey: getEnv("INTERNAL_API_KEY", ""),
+
+		SQLitePath:             getEnv("SQLITE_PATH", "data/local/telemetry_local.db"),
+		LocalSyncIntervalSec:   getEnvInt("LOCAL_SYNC_INTERVAL_SEC", 30),
+		LinuxDBAPIURL:          getEnv("LINUX_DB_API_URL", ""),
+		PLCCommandPollInterval: getEnvInt("PLC_COMMAND_POLL_INTERVAL_SEC", 5),
+		PLCDryRun:              getEnvBool("PLC_DRY_RUN", true),
 	}
 }
 
@@ -58,4 +70,19 @@ func getEnvInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+func getEnvBool(key string, def bool) bool {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+	switch v {
+	case "1", "true", "TRUE", "yes", "YES", "on", "ON":
+		return true
+	case "0", "false", "FALSE", "no", "NO", "off", "OFF":
+		return false
+	default:
+		return def
+	}
 }
