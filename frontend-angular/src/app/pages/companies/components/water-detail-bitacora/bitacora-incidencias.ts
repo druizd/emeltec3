@@ -26,6 +26,10 @@ import {
 import { UserService } from '../../../../services/user.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '../../../../components/ui/confirm-dialog';
 
 interface DraftIncidencia {
   titulo: string;
@@ -66,7 +70,13 @@ function emptyDraft(): DraftIncidencia {
   selector: 'app-bitacora-incidencias',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent, TableSkeletonComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    InlineErrorComponent,
+    TableSkeletonComponent,
+    ConfirmDialogComponent,
+  ],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -318,6 +328,12 @@ function emptyDraft(): DraftIncidencia {
       </div>
     </div>
 
+    <app-confirm-dialog
+      [data]="confirmData()"
+      (accept)="onConfirmAccept()"
+      (dismiss)="onConfirmCancel()"
+    />
+
     <!-- Form template reusable -->
     <ng-template #formTemplate let-draft let-isNew="isNew">
       <div class="space-y-3">
@@ -328,6 +344,7 @@ function emptyDraft(): DraftIncidencia {
           >
           <input
             type="text"
+            maxlength="120"
             [(ngModel)]="draft.titulo"
             placeholder="Ej. Tablero eléctrico con sobrecalentamiento"
             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
@@ -341,6 +358,7 @@ function emptyDraft(): DraftIncidencia {
           >
           <textarea
             rows="3"
+            maxlength="600"
             [(ngModel)]="draft.descripcion"
             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           ></textarea>
@@ -462,6 +480,27 @@ export class BitacoraIncidenciasComponent {
   readonly expandedId = signal<number | null>(null);
   readonly drafts = signal<Record<number, DraftIncidencia>>({});
   readonly usuariosEmpresa = signal<User[]>([]);
+
+  // Confirmación con modal del proyecto (reemplaza confirm() nativo).
+  readonly confirmData = signal<ConfirmDialogData | null>(null);
+  private pendingConfirm: (() => void) | null = null;
+
+  private askConfirm(data: ConfirmDialogData, action: () => void): void {
+    this.pendingConfirm = action;
+    this.confirmData.set(data);
+  }
+
+  onConfirmAccept(): void {
+    const action = this.pendingConfirm;
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+    action?.();
+  }
+
+  onConfirmCancel(): void {
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+  }
 
   nuevaDraft: DraftIncidencia = emptyDraft();
 
@@ -607,6 +646,21 @@ export class BitacoraIncidenciasComponent {
   guardarEdicion(inc: IncidenciaRow): void {
     const draft = this.drafts()[inc.id];
     if (!draft) return;
+    this.askConfirm(
+      {
+        title: 'Guardar cambios',
+        message: `¿Confirmás los cambios en la incidencia "${draft.titulo.trim() || inc.titulo}"?`,
+        confirmText: 'Guardar',
+        tone: 'primary',
+        icon: 'edit',
+      },
+      () => this.doGuardarEdicion(inc),
+    );
+  }
+
+  private doGuardarEdicion(inc: IncidenciaRow): void {
+    const draft = this.drafts()[inc.id];
+    if (!draft) return;
     this.saving.set(true);
     this.errorMsg.set(null);
     this.incidenciaService
@@ -647,11 +701,21 @@ export class BitacoraIncidenciasComponent {
   }
 
   eliminar(inc: IncidenciaRow): void {
-    if (!confirm(`¿Eliminar incidencia "${inc.titulo}"? No se puede deshacer.`)) return;
-    this.incidenciaService.eliminar(inc.id).subscribe({
-      next: () => this.incidencias.update((rs) => rs.filter((r) => r.id !== inc.id)),
-      error: (err) => this.errorMsg.set(err?.error?.error || 'No se pudo eliminar'),
-    });
+    this.askConfirm(
+      {
+        title: 'Eliminar incidencia',
+        message: `¿Eliminar la incidencia "${inc.titulo}"? Esta acción no se puede deshacer.`,
+        confirmText: 'Eliminar',
+        tone: 'danger',
+        icon: 'delete',
+      },
+      () => {
+        this.incidenciaService.eliminar(inc.id).subscribe({
+          next: () => this.incidencias.update((rs) => rs.filter((r) => r.id !== inc.id)),
+          error: (err) => this.errorMsg.set(err?.error?.error || 'No se pudo eliminar'),
+        });
+      },
+    );
   }
 
   origenIcon(o: IncidenciaOrigen): string {

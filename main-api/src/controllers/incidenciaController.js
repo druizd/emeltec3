@@ -161,6 +161,13 @@ exports.crearIncidencia = async (req, res) => {
       .json({ ok: false, error: 'Campos requeridos: sitio_id, empresa_id, titulo' });
   }
 
+  if (String(titulo).length > 255 || (descripcion != null && String(descripcion).length > 2000)) {
+    return res.status(400).json({
+      ok: false,
+      error: 'titulo (máx 255) o descripcion (máx 2000) exceden el largo permitido',
+    });
+  }
+
   if (
     !ORIGENES.includes(origen) ||
     !CATEGORIAS.includes(categoria) ||
@@ -261,6 +268,8 @@ exports.actualizarIncidencia = async (req, res) => {
     categoria: (v) => CATEGORIAS.includes(v),
     gravedad: (v) => GRAVEDADES.includes(v),
     estado: (v) => ESTADOS.includes(v),
+    titulo: (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 255,
+    descripcion: (v) => v == null || (typeof v === 'string' && v.length <= 2000),
   };
 
   const updates = [];
