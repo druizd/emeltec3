@@ -20,11 +20,15 @@ import {
   type FichaRiesgo,
   type FichaSitio,
 } from '../../../../services/bitacora-sitio.service';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '../../../../components/ui/confirm-dialog';
 
 @Component({
   selector: 'app-bitacora-ficha-sitio',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmDialogComponent],
   template: `
     <div class="space-y-3">
       <!-- Pin crítico -->
@@ -119,10 +123,11 @@ import {
             <ul class="space-y-2">
               @for (c of ficha().contactos; track $index) {
                 <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2">
-                  @if (isInternal()) {
+                  @if (isInternal() && editingContactoIdx() === $index) {
                     <div class="grid grid-cols-2 gap-2 text-caption">
                       <input
                         type="text"
+                        maxlength="40"
                         [ngModel]="c.nombre"
                         (ngModelChange)="updateContacto($index, 'nombre', $event)"
                         placeholder="Nombre"
@@ -136,28 +141,67 @@ import {
                         <option value="Responsable">Responsable</option>
                         <option value="Operador">Operador</option>
                       </select>
-                      <input
-                        type="text"
-                        [ngModel]="c.telefono"
-                        (ngModelChange)="updateContacto($index, 'telefono', $event)"
-                        placeholder="Teléfono"
-                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
-                      />
+                      <div
+                        class="flex items-stretch overflow-hidden rounded border border-slate-200 focus-within:border-primary-tint-35"
+                      >
+                        <span
+                          class="flex items-center bg-slate-100 px-2 font-mono text-caption text-slate-500"
+                          >+56</span
+                        >
+                        <input
+                          type="tel"
+                          inputmode="numeric"
+                          maxlength="9"
+                          [ngModel]="telefonoLocal(c)"
+                          (ngModelChange)="updateTelefono($index, $event)"
+                          placeholder="9 1234 5678"
+                          class="w-full px-2 py-1 font-mono outline-none"
+                        />
+                      </div>
                       <input
                         type="email"
+                        maxlength="80"
                         [ngModel]="c.email"
                         (ngModelChange)="updateContacto($index, 'email', $event)"
                         placeholder="Email"
                         class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                     </div>
-                    <button
-                      type="button"
-                      (click)="removeContacto($index)"
-                      class="mt-1 text-caption-xs font-semibold text-rose-500 hover:underline"
-                    >
-                      Eliminar
-                    </button>
+                    <div class="mt-1 flex justify-end">
+                      <button
+                        type="button"
+                        (click)="editingContactoIdx.set(null)"
+                        class="inline-flex items-center gap-1 rounded border border-primary-tint-25 bg-primary-tint-08 px-2 py-1 text-caption-xs font-bold text-primary-container hover:bg-primary-tint-14"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">check</span>
+                        Listo
+                      </button>
+                    </div>
+                  } @else if (isInternal()) {
+                    <p class="text-body-sm font-semibold text-slate-700">
+                      {{ c.nombre || 'Sin nombre' }}
+                    </p>
+                    <p class="text-caption-xs text-slate-500">
+                      {{ c.rol }} · {{ c.telefono || '—' }} · {{ c.email || '—' }}
+                    </p>
+                    <div class="mt-1 flex gap-3">
+                      <button
+                        type="button"
+                        (click)="pedirEditarContacto($index)"
+                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-primary-container hover:underline"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">edit</span>
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        (click)="pedirEliminarContacto($index)"
+                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-rose-500 hover:underline"
+                      >
+                        <span class="material-symbols-outlined text-[14px]">delete</span>
+                        Eliminar
+                      </button>
+                    </div>
                   } @else {
                     <p class="text-body-sm font-semibold text-slate-700">{{ c.nombre }}</p>
                     <p class="text-caption-xs text-slate-500">
@@ -517,6 +561,12 @@ import {
         </div>
       }
     </div>
+
+    <app-confirm-dialog
+      [data]="confirmData()"
+      (confirm)="onConfirmAccept()"
+      (cancel)="onConfirmCancel()"
+    />
   `,
 })
 export class BitacoraFichaSitioComponent implements OnInit {
@@ -542,6 +592,64 @@ export class BitacoraFichaSitioComponent implements OnInit {
   readonly saveMsg = signal<string>('');
   readonly error = signal<string>('');
   readonly dirty = computed(() => JSON.stringify(this.ficha()) !== this.original);
+
+  // Índice del contacto en modo edición (null = todos read-only). Editar un
+  // contacto existente requiere desbloquear con confirmación.
+  readonly editingContactoIdx = signal<number | null>(null);
+
+  // Confirmación con modal del proyecto (reemplaza confirm() nativo).
+  readonly confirmData = signal<ConfirmDialogData | null>(null);
+  private pendingConfirm: (() => void) | null = null;
+
+  private askConfirm(data: ConfirmDialogData, action: () => void): void {
+    this.pendingConfirm = action;
+    this.confirmData.set(data);
+  }
+
+  onConfirmAccept(): void {
+    const action = this.pendingConfirm;
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+    action?.();
+  }
+
+  onConfirmCancel(): void {
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+  }
+
+  /** Pide confirmación antes de desbloquear un contacto existente para editar. */
+  pedirEditarContacto(idx: number): void {
+    const c = this.ficha().contactos[idx];
+    this.askConfirm(
+      {
+        title: 'Editar contacto',
+        message: `¿Querés editar el contacto "${c?.nombre || 'sin nombre'}"?`,
+        confirmText: 'Editar',
+        tone: 'primary',
+        icon: 'edit',
+      },
+      () => this.editingContactoIdx.set(idx),
+    );
+  }
+
+  /** Pide confirmación antes de eliminar un contacto. */
+  pedirEliminarContacto(idx: number): void {
+    const c = this.ficha().contactos[idx];
+    this.askConfirm(
+      {
+        title: 'Eliminar contacto',
+        message: `¿Eliminar el contacto "${c?.nombre || 'sin nombre'}"? Recordá guardar los cambios para confirmarlo.`,
+        confirmText: 'Eliminar',
+        tone: 'danger',
+        icon: 'delete',
+      },
+      () => {
+        this.removeContacto(idx);
+        this.editingContactoIdx.set(null);
+      },
+    );
+  }
 
   // -------- Catálogos externos para dropdowns --------
   // Contactos operativos asociados al sitio o a la empresa (sin sitio).
@@ -652,7 +760,10 @@ export class BitacoraFichaSitioComponent implements OnInit {
   // -------- Contactos --------
   addContacto(): void {
     const next: FichaContacto = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
+    const newIdx = this.ficha().contactos.length;
     this.ficha.update((f) => ({ ...f, contactos: [...f.contactos, next] }));
+    // Un contacto recién agregado queda editable para poder llenarlo.
+    this.editingContactoIdx.set(newIdx);
   }
   removeContacto(idx: number): void {
     this.ficha.update((f) => ({
@@ -665,6 +776,25 @@ export class BitacoraFichaSitioComponent implements OnInit {
       ...f,
       contactos: f.contactos.map((c, i) => (i === idx ? { ...c, [field]: value as never } : c)),
     }));
+  }
+
+  /**
+   * Parte local (9 dígitos) del teléfono, sin el código país +56. El +56 se
+   * muestra fijo en el template, así el usuario solo escribe los 9 dígitos
+   * del móvil chileno.
+   */
+  telefonoLocal(c: FichaContacto): string {
+    const digits = String(c.telefono ?? '').replace(/\D/g, '');
+    const local = digits.startsWith('56') && digits.length > 9 ? digits.slice(2) : digits;
+    return local.slice(0, 9);
+  }
+
+  /** Normaliza el teléfono a `+56 <9 dígitos>`, descartando cualquier no-dígito. */
+  updateTelefono(idx: number, raw: string): void {
+    const local = String(raw ?? '')
+      .replace(/\D/g, '')
+      .slice(0, 9);
+    this.updateContacto(idx, 'telefono', local ? `+56 ${local}` : '');
   }
 
   /**
@@ -712,7 +842,9 @@ export class BitacoraFichaSitioComponent implements OnInit {
       }
     }
     if (next) {
+      const newIdx = this.ficha().contactos.length;
       this.ficha.update((f) => ({ ...f, contactos: [...f.contactos, next!] }));
+      this.editingContactoIdx.set(newIdx);
     }
     this.contactPickerId.set('');
   }

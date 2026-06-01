@@ -12,11 +12,15 @@ import {
   type SitioEquipo,
 } from '../../../../services/bitacora-sitio.service';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '../../../../components/ui/confirm-dialog';
 
 @Component({
   selector: 'app-bitacora-equipamiento',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableSkeletonComponent],
+  imports: [CommonModule, FormsModule, TableSkeletonComponent, ConfirmDialogComponent],
   template: `
     <div class="space-y-3">
       <div class="flex items-center justify-between gap-3">
@@ -181,6 +185,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
               Nombre
               <input
                 type="text"
+                maxlength="80"
                 [ngModel]="form().nombre"
                 (ngModelChange)="updateForm('nombre', $event)"
                 placeholder="Ej. Caudalímetro principal"
@@ -193,6 +198,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
               Fabricante
               <input
                 type="text"
+                maxlength="60"
                 [ngModel]="form().fabricante"
                 (ngModelChange)="updateForm('fabricante', $event)"
                 class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-primary-tint-35"
@@ -204,6 +210,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
               Modelo
               <input
                 type="text"
+                maxlength="60"
                 [ngModel]="form().modelo"
                 (ngModelChange)="updateForm('modelo', $event)"
                 class="h-9 rounded border border-slate-200 px-2 text-body-sm outline-none focus:border-primary-tint-35"
@@ -215,6 +222,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
               N° Serie
               <input
                 type="text"
+                maxlength="50"
                 [ngModel]="form().serie"
                 (ngModelChange)="updateForm('serie', $event)"
                 class="h-9 rounded border border-slate-200 px-2 text-body-sm font-mono outline-none focus:border-primary-tint-35"
@@ -264,6 +272,7 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
               Notas
               <textarea
                 rows="3"
+                maxlength="500"
                 [ngModel]="form().notas"
                 (ngModelChange)="updateForm('notas', $event)"
                 class="rounded border border-slate-200 px-2 py-1.5 text-body-sm outline-none focus:border-primary-tint-35"
@@ -290,6 +299,12 @@ import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton
         </div>
       </div>
     }
+
+    <app-confirm-dialog
+      [data]="confirmData()"
+      (confirm)="onConfirmAccept()"
+      (cancel)="onConfirmCancel()"
+    />
   `,
 })
 export class BitacoraEquipamientoComponent implements OnInit {
@@ -304,6 +319,27 @@ export class BitacoraEquipamientoComponent implements OnInit {
   readonly formOpen = signal<boolean>(false);
   readonly editingId = signal<string>('');
   readonly form = signal<CreateEquipoPayload>(this.emptyForm());
+
+  // Confirmación con modal del proyecto (reemplaza confirm() nativo).
+  readonly confirmData = signal<ConfirmDialogData | null>(null);
+  private pendingConfirm: (() => void) | null = null;
+
+  private askConfirm(data: ConfirmDialogData, action: () => void): void {
+    this.pendingConfirm = action;
+    this.confirmData.set(data);
+  }
+
+  onConfirmAccept(): void {
+    const action = this.pendingConfirm;
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+    action?.();
+  }
+
+  onConfirmCancel(): void {
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+  }
 
   ngOnInit(): void {
     this.reload();
@@ -375,6 +411,27 @@ export class BitacoraEquipamientoComponent implements OnInit {
   save(): void {
     const f = this.form();
     if (!f.nombre?.trim()) return;
+    // Al editar un equipo existente, pedimos confirmación. Al crear uno
+    // nuevo no hace falta (no hay dato previo que se sobrescriba).
+    if (this.editingId()) {
+      this.askConfirm(
+        {
+          title: 'Guardar cambios',
+          message: `¿Confirmás los cambios en el equipo "${f.nombre.trim()}"?`,
+          confirmText: 'Guardar',
+          tone: 'primary',
+          icon: 'edit',
+        },
+        () => this.doSave(),
+      );
+      return;
+    }
+    this.doSave();
+  }
+
+  private doSave(): void {
+    const f = this.form();
+    if (!f.nombre?.trim()) return;
     // Limpiar strings vacíos a null para que backend acepte.
     const clean = (v: string | null | undefined) => (v && String(v).trim() !== '' ? v : null);
     const payload: CreateEquipoPayload = {
@@ -413,14 +470,24 @@ export class BitacoraEquipamientoComponent implements OnInit {
   }
 
   onDelete(eq: SitioEquipo): void {
-    if (!confirm(`¿Eliminar equipo "${eq.nombre}"? Esta acción no se puede deshacer.`)) return;
-    this.api.deleteEquipo(eq.id).subscribe({
-      next: () => this.equipos.update((list) => list.filter((e) => e.id !== eq.id)),
-      error: (err) =>
-        this.error.set(
-          'No se pudo eliminar: ' + (err?.error?.error?.message ?? err?.message ?? ''),
-        ),
-    });
+    this.askConfirm(
+      {
+        title: 'Eliminar equipo',
+        message: `¿Eliminar el equipo "${eq.nombre}"? Esta acción no se puede deshacer.`,
+        confirmText: 'Eliminar',
+        tone: 'danger',
+        icon: 'delete',
+      },
+      () => {
+        this.api.deleteEquipo(eq.id).subscribe({
+          next: () => this.equipos.update((list) => list.filter((e) => e.id !== eq.id)),
+          error: (err) =>
+            this.error.set(
+              'No se pudo eliminar: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+            ),
+        });
+      },
+    );
   }
 
   private diasParaVencimientoGarantia(fecha: string | null): number | null {
