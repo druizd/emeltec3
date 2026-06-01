@@ -330,8 +330,8 @@ function emptyDraft(): DraftIncidencia {
 
     <app-confirm-dialog
       [data]="confirmData()"
-      (confirm)="onConfirmAccept()"
-      (cancel)="onConfirmCancel()"
+      (accept)="onConfirmAccept()"
+      (dismiss)="onConfirmCancel()"
     />
 
     <!-- Form template reusable -->

@@ -3,7 +3,7 @@
  * Conectado a /api/v2/sites/:siteId/bitacora/equipos via BitacoraSitioService.
  */
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   BitacoraSitioService,
@@ -302,8 +302,8 @@ import {
 
     <app-confirm-dialog
       [data]="confirmData()"
-      (confirm)="onConfirmAccept()"
-      (cancel)="onConfirmCancel()"
+      (accept)="onConfirmAccept()"
+      (dismiss)="onConfirmCancel()"
     />
   `,
 })

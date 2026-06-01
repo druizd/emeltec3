@@ -24,7 +24,7 @@ export interface ConfirmDialogData {
     @if (data(); as d) {
       <div
         class="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
-        (click)="cancel.emit()"
+        (click)="dismiss.emit()"
       >
         <section
           class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
@@ -54,14 +54,14 @@ export interface ConfirmDialogData {
           <div class="flex flex-col-reverse gap-2 bg-slate-50 px-5 py-4 sm:flex-row sm:justify-end">
             <button
               type="button"
-              (click)="cancel.emit()"
+              (click)="dismiss.emit()"
               class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
             >
               {{ d.cancelText ?? 'Cancelar' }}
             </button>
             <button
               type="button"
-              (click)="confirm.emit()"
+              (click)="accept.emit()"
               [class]="
                 (d.tone ?? 'primary') === 'danger'
                   ? 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-caption font-bold text-white hover:bg-rose-700'
@@ -81,6 +81,6 @@ export interface ConfirmDialogData {
 })
 export class ConfirmDialogComponent {
   readonly data = input<ConfirmDialogData | null>(null);
-  readonly confirm = output<void>();
-  readonly cancel = output<void>();
+  readonly accept = output<void>();
+  readonly dismiss = output<void>();
 }

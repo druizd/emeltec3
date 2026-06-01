@@ -152,7 +152,7 @@ import {
                           type="tel"
                           inputmode="numeric"
                           maxlength="9"
-                          [ngModel]="telefonoLocal(c)"
+                          [ngModel]="c.telefono"
                           (ngModelChange)="updateTelefono($index, $event)"
                           placeholder="9 1234 5678"
                           class="w-full px-2 py-1 font-mono outline-none"
@@ -160,7 +160,7 @@ import {
                       </div>
                       <input
                         type="email"
-                        maxlength="80"
+                        maxlength="25"
                         [ngModel]="c.email"
                         (ngModelChange)="updateContacto($index, 'email', $event)"
                         placeholder="Email"
@@ -182,7 +182,8 @@ import {
                       {{ c.nombre || 'Sin nombre' }}
                     </p>
                     <p class="text-caption-xs text-slate-500">
-                      {{ c.rol }} · {{ c.telefono || '—' }} · {{ c.email || '—' }}
+                      {{ c.rol }} · {{ c.telefono ? '+56 ' + c.telefono : '—' }} ·
+                      {{ c.email || '—' }}
                     </p>
                     <div class="mt-1 flex gap-3">
                       <button
@@ -205,7 +206,8 @@ import {
                   } @else {
                     <p class="text-body-sm font-semibold text-slate-700">{{ c.nombre }}</p>
                     <p class="text-caption-xs text-slate-500">
-                      {{ c.rol }} · {{ c.telefono || '—' }} · {{ c.email || '—' }}
+                      {{ c.rol }} · {{ c.telefono ? '+56 ' + c.telefono : '—' }} ·
+                      {{ c.email || '—' }}
                     </p>
                   }
                 </li>
@@ -564,8 +566,8 @@ import {
 
     <app-confirm-dialog
       [data]="confirmData()"
-      (confirm)="onConfirmAccept()"
-      (cancel)="onConfirmCancel()"
+      (accept)="onConfirmAccept()"
+      (dismiss)="onConfirmCancel()"
     />
   `,
 })
@@ -722,8 +724,9 @@ export class BitacoraFichaSitioComponent implements OnInit {
     this.error.set('');
     this.api.getFicha(this.sitioId()).subscribe({
       next: (f) => {
-        this.ficha.set(f);
-        this.original = JSON.stringify(f);
+        const norm = this.fichaWithLocalPhones(f);
+        this.ficha.set(norm);
+        this.original = JSON.stringify(norm);
       },
       error: (err) =>
         this.error.set(
@@ -737,10 +740,11 @@ export class BitacoraFichaSitioComponent implements OnInit {
     this.saving.set(true);
     this.error.set('');
     this.saveMsg.set('');
-    this.api.patchFicha(this.sitioId(), this.ficha()).subscribe({
+    this.api.patchFicha(this.sitioId(), this.fichaWithFullPhones(this.ficha())).subscribe({
       next: (f) => {
-        this.ficha.set(f);
-        this.original = JSON.stringify(f);
+        const norm = this.fichaWithLocalPhones(f);
+        this.ficha.set(norm);
+        this.original = JSON.stringify(norm);
         this.saving.set(false);
         this.saveMsg.set('Guardado.');
         setTimeout(() => this.saveMsg.set(''), 3000);
@@ -783,18 +787,43 @@ export class BitacoraFichaSitioComponent implements OnInit {
    * muestra fijo en el template, así el usuario solo escribe los 9 dígitos
    * del móvil chileno.
    */
-  telefonoLocal(c: FichaContacto): string {
-    const digits = String(c.telefono ?? '').replace(/\D/g, '');
-    const local = digits.startsWith('56') && digits.length > 9 ? digits.slice(2) : digits;
-    return local.slice(0, 9);
-  }
-
-  /** Normaliza el teléfono a `+56 <9 dígitos>`, descartando cualquier no-dígito. */
+  /**
+   * En memoria el teléfono se guarda como SOLO los 9 dígitos locales (sin +56).
+   * El +56 se muestra fijo en el template y se antepone únicamente al guardar.
+   * Así el usuario escribe/borra libre y el +56 nunca se mete en el input.
+   */
   updateTelefono(idx: number, raw: string): void {
-    const local = String(raw ?? '')
+    const digits = String(raw ?? '')
       .replace(/\D/g, '')
       .slice(0, 9);
-    this.updateContacto(idx, 'telefono', local ? `+56 ${local}` : '');
+    this.updateContacto(idx, 'telefono', digits);
+  }
+
+  /** Quita el prefijo +56 y cualquier no-dígito; deja los 9 dígitos locales. */
+  private toLocalPhone(tel: string | null | undefined): string {
+    return String(tel ?? '')
+      .replace(/^\+?56\s*/, '')
+      .replace(/\D/g, '')
+      .slice(0, 9);
+  }
+
+  /** Ficha con teléfonos normalizados a dígitos locales (para editar/mostrar). */
+  private fichaWithLocalPhones(f: FichaSitio): FichaSitio {
+    return {
+      ...f,
+      contactos: f.contactos.map((c) => ({ ...c, telefono: this.toLocalPhone(c.telefono) })),
+    };
+  }
+
+  /** Ficha con teléfonos como `+56 <9 dígitos>` (para enviar al backend). */
+  private fichaWithFullPhones(f: FichaSitio): FichaSitio {
+    return {
+      ...f,
+      contactos: f.contactos.map((c) => {
+        const local = this.toLocalPhone(c.telefono);
+        return { ...c, telefono: local ? `+56 ${local}` : '' };
+      }),
+    };
   }
 
   /**
@@ -825,7 +854,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
         next = {
           nombre: nombre || found.nombre,
           rol: found.cargo || found.tipo_contacto || 'Responsable',
-          telefono: found.telefono || '',
+          telefono: this.toLocalPhone(found.telefono),
           email: found.email || '',
         };
       }
@@ -836,7 +865,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
         next = {
           nombre: nombre || found.email || 'Usuario',
           rol: found.tipo,
-          telefono: found.telefono || '',
+          telefono: this.toLocalPhone(found.telefono),
           email: found.email || '',
         };
       }
