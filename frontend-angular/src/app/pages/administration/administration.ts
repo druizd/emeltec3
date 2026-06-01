@@ -108,6 +108,7 @@ interface SiteForm {
   huso: string;
   tipo_sitio: string;
   activo: boolean;
+  es_maleta_piloto: boolean;
   profundidad_pozo_m: string;
   profundidad_sensor_m: string;
   nivel_estatico_manual_m: string;
@@ -625,9 +626,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       />
                     </div>
                     <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">RUT</label>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >RUT (opcional)</label
+                      >
                       <input
-                        required
                         [disabled]="companyFormDisabled()"
                         name="company-rut"
                         [ngModel]="companyForm().rut"
@@ -932,6 +934,21 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                       >
                         <option value="true">Activo</option>
                         <option value="false">Inactivo</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Maleta Piloto</label
+                      >
+                      <select
+                        name="site-maleta-piloto"
+                        [disabled]="siteFormDisabled()"
+                        [ngModel]="siteForm().es_maleta_piloto ? 'true' : 'false'"
+                        (ngModelChange)="updateSiteMaletaPiloto($event)"
+                        class="field-control"
+                      >
+                        <option value="false">No</option>
+                        <option value="true">Sí — mostrar en Maletas Piloto</option>
                       </select>
                     </div>
                     <div>
@@ -1549,6 +1566,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     huso: '',
     tipo_sitio: 'pozo',
     activo: true,
+    es_maleta_piloto: false,
     profundidad_pozo_m: '',
     profundidad_sensor_m: '',
     nivel_estatico_manual_m: '',
@@ -1747,6 +1765,10 @@ export class AdministrationComponent implements OnInit, OnDestroy {
 
   updateSiteActive(value: string): void {
     this.siteForm.update((form) => ({ ...form, activo: value === 'true' }));
+  }
+
+  updateSiteMaletaPiloto(value: string): void {
+    this.siteForm.update((form) => ({ ...form, es_maleta_piloto: value === 'true' }));
   }
 
   updateCompanySearch(value: string): void {
@@ -2244,6 +2266,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
       huso: '',
       tipo_sitio: 'pozo',
       activo: true,
+      es_maleta_piloto: false,
       profundidad_pozo_m: '',
       profundidad_sensor_m: '',
       nivel_estatico_manual_m: '',
@@ -2271,6 +2294,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         huso: form.huso !== '' ? Number(form.huso) : null,
         tipo_sitio: form.tipo_sitio,
         activo: form.activo,
+        es_maleta_piloto: form.es_maleta_piloto,
       })
       .subscribe({
         next: (res) => {
@@ -2324,6 +2348,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
             huso: form.huso !== '' ? Number(form.huso) : null,
             tipo_sitio: form.tipo_sitio,
             activo: form.activo,
+            es_maleta_piloto: form.es_maleta_piloto,
           })
           .subscribe({
             next: (res) => {
@@ -2452,6 +2477,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
       huso: site.huso != null ? String(site.huso) : '',
       tipo_sitio: site.tipo_sitio || 'pozo',
       activo: site.activo !== false,
+      es_maleta_piloto: site.es_maleta_piloto === true,
       profundidad_pozo_m: '',
       profundidad_sensor_m: '',
       nivel_estatico_manual_m: '',

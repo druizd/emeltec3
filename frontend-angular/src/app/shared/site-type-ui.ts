@@ -206,6 +206,24 @@ export function siteTypeMatchesModule(
   return module.siteTypes.includes(type);
 }
 
+/**
+ * Agrupación visual de un sitio en un módulo del sidebar/dashboard.
+ *
+ * Si el sitio tiene `es_maleta_piloto`, se fuerza al módulo "Maletas Piloto"
+ * (`_other`) y NO aparece en su módulo operativo normal. Si no, se agrupa por
+ * `tipo_sitio` como siempre. La lógica de detalle (qué vista abre) sigue
+ * dependiendo de `tipo_sitio`, no de este override.
+ */
+export function siteMatchesModule(
+  site: Pick<SiteRecord, 'tipo_sitio' | 'es_maleta_piloto'>,
+  moduleKey: string,
+): boolean {
+  if (site.es_maleta_piloto) {
+    return moduleKey === '_other';
+  }
+  return siteTypeMatchesModule(site.tipo_sitio, moduleKey);
+}
+
 export function dashboardRouteForSite(site: SiteRecord): string[] {
   const type = normalizeSiteType(site.tipo_sitio);
   if (type === 'camara_frio') {

@@ -28,6 +28,8 @@ export interface Site {
   huso?: number | null;
   tipo_sitio: SiteType;
   activo: boolean;
+  /** Override visual: agrupa el sitio bajo "Maletas Piloto" sin cambiar tipo_sitio. */
+  es_maleta_piloto?: boolean;
 }
 
 export interface PozoConfig {

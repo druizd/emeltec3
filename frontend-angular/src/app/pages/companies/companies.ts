@@ -11,7 +11,7 @@ import {
   dashboardRouteForSite,
   getSiteTypeUi,
   normalizeSiteType,
-  siteTypeMatchesModule,
+  siteMatchesModule,
   siteTypesForModule,
 } from '../../shared/site-type-ui';
 import type {
@@ -132,7 +132,7 @@ export class CompaniesComponent implements OnInit {
     typeFilter: string[] | null,
   ): SiteRecord[] {
     if (moduleKey) {
-      return sites.filter((site) => siteTypeMatchesModule(site.tipo_sitio, moduleKey));
+      return sites.filter((site) => siteMatchesModule(site, moduleKey));
     }
 
     if (typeFilter?.length) {

@@ -13,6 +13,10 @@ export interface SiteRecord {
   huso?: number | null;
   tipo_sitio: string;
   activo: boolean;
+  /** Override visual: si true, el sitio se agrupa bajo "Maletas Piloto" en el
+   * sidebar/dashboard sin importar su tipo_sitio. La lógica de detalle sigue
+   * usando tipo_sitio (un pozo marcado sigue abriendo la vista de pozo). */
+  es_maleta_piloto?: boolean;
   /** Populated por companies/tree (attachPozoConfigsToSites). Opcional en otros contextos. */
   pozo_config?: PozoConfig | null;
   /** Populated por companies/tree (attachLastSeenToSites) — MAX(equipo.time) por id_serial. */
@@ -41,6 +45,7 @@ export interface CreateSitePayload {
   huso?: number | null;
   tipo_sitio: string;
   activo: boolean;
+  es_maleta_piloto?: boolean;
   pozo_config?: PozoConfig | null;
 }
 

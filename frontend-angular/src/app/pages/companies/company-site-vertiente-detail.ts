@@ -11,11 +11,9 @@ import {
   signal,
 } from '@angular/core';
 import { InlineErrorComponent } from '../../components/ui/inline-error';
-import { WellDiagramSkeletonComponent } from '../../components/ui/well-diagram-skeleton';
 import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
 import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
-import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
@@ -33,6 +31,10 @@ import { CHILE_TIME_ZONE } from '../../shared/timezone';
 import { getSiteTypeUi, siteTypesForModule } from '../../shared/site-type-ui';
 import { DgaGenerarReporteModalComponent } from './components/dga-generar-reporte-modal/dga-generar-reporte-modal';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import {
+  VertientePanelComponent,
+  VertienteData,
+} from './components/vertiente-panel/vertiente-panel.component';
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
@@ -203,12 +205,11 @@ type OperationMode = 'realtime' | 'turnos';
     WaterDetailAnalisisComponent,
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
+    VertientePanelComponent,
     InlineErrorComponent,
-    WellDiagramSkeletonComponent,
     KpiStripSkeletonComponent,
     ChartSkeletonComponent,
     TableSkeletonComponent,
-    WellStatCardComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -811,541 +812,7 @@ type OperationMode = 'realtime' | 'turnos';
                 class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
               >
                 <div class="flex flex-col gap-5 xl:h-full">
-                  <article
-                    class="flex flex-1 flex-col rounded-xl border border-primary-tint-25 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
-                  >
-                    <p
-                      class="mb-3 text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                    >
-                      Diagrama del pozo
-                    </p>
-
-                    @if (dashboardLoading()) {
-                      <app-well-diagram-skeleton />
-                    } @else {
-                      <div class="flex gap-3 items-start">
-                        <!-- SVG Well Diagram (flex:1) -->
-                        <div style="flex:1;min-width:0;overflow:visible">
-                          <svg
-                            [attr.viewBox]="'0 0 ' + svgW + ' ' + svgH"
-                            style="width:100%;height:auto;display:block;overflow:visible"
-                          >
-                            <style>
-                              @keyframes wdiagWave1 {
-                                0%,
-                                100% {
-                                  transform: translateX(0);
-                                }
-                                50% {
-                                  transform: translateX(-7px);
-                                }
-                              }
-                              @keyframes wdiagWave2 {
-                                0%,
-                                100% {
-                                  transform: translateX(0);
-                                }
-                                50% {
-                                  transform: translateX(6px);
-                                }
-                              }
-                              @keyframes wdiagBubble {
-                                0% {
-                                  opacity: 0;
-                                  transform: translateY(0);
-                                }
-                                8% {
-                                  opacity: 0.62;
-                                }
-                                78% {
-                                  opacity: 0.22;
-                                }
-                                100% {
-                                  opacity: 0;
-                                  transform: translateY(-580px);
-                                }
-                              }
-                              .wdiag-w1 {
-                                animation: wdiagWave1 3s ease-in-out infinite;
-                              }
-                              .wdiag-w2 {
-                                animation: wdiagWave2 4.8s ease-in-out infinite;
-                              }
-                              .wdiag-b {
-                                animation-name: wdiagBubble;
-                                animation-timing-function: ease-in;
-                                animation-iteration-count: infinite;
-                                animation-fill-mode: both;
-                                animation-duration: var(--d, 4s);
-                                animation-delay: var(--e, 0s);
-                              }
-                              @media (prefers-reduced-motion: reduce) {
-                                .wdiag-w1,
-                                .wdiag-w2,
-                                .wdiag-b {
-                                  animation: none !important;
-                                }
-                              }
-                            </style>
-                            <defs>
-                              <linearGradient id="wg" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="0%" stop-color="#8EEAF1" stop-opacity="0.85" />
-                                <stop offset="18%" stop-color="#0DAFBD" stop-opacity="0.92" />
-                                <stop offset="65%" stop-color="#067D88" stop-opacity="0.97" />
-                                <stop offset="100%" stop-color="#034851" stop-opacity="1" />
-                              </linearGradient>
-                              <radialGradient id="shimmer" cx="40%" cy="25%" r="55%">
-                                <stop offset="0%" stop-color="white" stop-opacity="0.22" />
-                                <stop offset="100%" stop-color="white" stop-opacity="0" />
-                              </radialGradient>
-                              <pattern
-                                id="dots"
-                                x="0"
-                                y="0"
-                                width="8"
-                                height="8"
-                                patternUnits="userSpaceOnUse"
-                              >
-                                <rect width="8" height="8" fill="#F5EDD8" />
-                                <circle cx="3" cy="3" r="1" fill="#C4A882" opacity="0.6" />
-                                <circle cx="7" cy="7" r="0.7" fill="#C4A882" opacity="0.4" />
-                              </pattern>
-                              <clipPath id="wellClip">
-                                <rect
-                                  [attr.x]="svgWellL + 4"
-                                  [attr.y]="svgWellTop"
-                                  [attr.width]="svgWellR - svgWellL - 8"
-                                  [attr.height]="svgWellH"
-                                />
-                              </clipPath>
-                            </defs>
-
-                            <!-- Soil left -->
-                            <rect
-                              x="0"
-                              [attr.y]="svgWellTop"
-                              [attr.width]="svgWellL"
-                              [attr.height]="svgWellH"
-                              fill="url(#dots)"
-                            />
-                            <!-- Soil right (extended to SVG edge so annotation zone has background) -->
-                            <rect
-                              [attr.x]="svgWellR"
-                              [attr.y]="svgWellTop"
-                              [attr.width]="svgW - svgWellR"
-                              [attr.height]="svgWellH"
-                              fill="url(#dots)"
-                            />
-
-                            <!-- Ground surface band -->
-                            <rect
-                              x="0"
-                              y="0"
-                              [attr.width]="svgW"
-                              [attr.height]="svgWellTop"
-                              fill="#8B7355"
-                              opacity="0.15"
-                            />
-                            <line
-                              x1="0"
-                              [attr.y1]="svgWellTop"
-                              [attr.x2]="svgW"
-                              [attr.y2]="svgWellTop"
-                              stroke="#8B7355"
-                              stroke-width="2"
-                            />
-
-                            <!-- Grass marks -->
-                            @for (gx of svgGrassX; track gx) {
-                              <line
-                                [attr.x1]="gx"
-                                [attr.y1]="svgWellTop"
-                                [attr.x2]="gx - 3"
-                                [attr.y2]="svgWellTop - 7"
-                                stroke="#6B9B37"
-                                stroke-width="1.5"
-                                stroke-linecap="round"
-                              />
-                            }
-
-                            <!-- Well casing — empty air gap -->
-                            <rect
-                              [attr.x]="svgWellL + 4"
-                              [attr.y]="svgWellTop"
-                              [attr.width]="svgWellR - svgWellL - 8"
-                              [attr.height]="svgWaterY - svgWellTop"
-                              fill="#F0F9FF"
-                              opacity="0.9"
-                            />
-
-                            <!-- Water fill (gradient) -->
-                            <rect
-                              [attr.x]="svgWellL + 4"
-                              [attr.y]="svgWaterY"
-                              [attr.width]="svgWellR - svgWellL - 8"
-                              [attr.height]="svgWellBot - svgWaterY"
-                              fill="url(#wg)"
-                              clip-path="url(#wellClip)"
-                            />
-                            <!-- Water shimmer overlay -->
-                            <rect
-                              [attr.x]="svgWellL + 4"
-                              [attr.y]="svgWaterY"
-                              [attr.width]="svgWellR - svgWellL - 8"
-                              [attr.height]="svgWellBot - svgWaterY"
-                              fill="url(#shimmer)"
-                              clip-path="url(#wellClip)"
-                            />
-                            <!-- Surface refraction stripe -->
-                            <rect
-                              [attr.x]="svgWellL + 7"
-                              [attr.y]="svgWaterY + 3"
-                              [attr.width]="svgWellR - svgWellL - 16"
-                              height="4"
-                              fill="white"
-                              opacity="0.28"
-                              rx="2"
-                              clip-path="url(#wellClip)"
-                            />
-                            <!-- Caustic light patches near bottom -->
-                            <ellipse
-                              [attr.cx]="svgTextCX - 9"
-                              [attr.cy]="svgWellBot - 24"
-                              rx="9"
-                              ry="3"
-                              fill="white"
-                              opacity="0.07"
-                              clip-path="url(#wellClip)"
-                            />
-                            <ellipse
-                              [attr.cx]="svgTextCX + 7"
-                              [attr.cy]="svgWellBot - 40"
-                              rx="6"
-                              ry="2"
-                              fill="white"
-                              opacity="0.05"
-                              clip-path="url(#wellClip)"
-                            />
-
-                            <!-- Wave surface (primary, animated) -->
-                            <g class="wdiag-w1" clip-path="url(#wellClip)">
-                              <path
-                                [attr.d]="svgWavePath"
-                                fill="none"
-                                stroke="rgba(255,255,255,0.65)"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                              />
-                            </g>
-                            <!-- Wave surface (secondary, animated opposite direction) -->
-                            <g class="wdiag-w2" clip-path="url(#wellClip)">
-                              <path
-                                [attr.d]="svgWave2Path"
-                                fill="none"
-                                stroke="rgba(13,175,189,0.45)"
-                                stroke-width="1.2"
-                              />
-                            </g>
-                            <!-- Bubbles rising from bottom -->
-                            <g clip-path="url(#wellClip)">
-                              <circle
-                                class="wdiag-b"
-                                style="--d:4s;--e:0s"
-                                cx="97"
-                                [attr.cy]="svgWellBot - 22"
-                                r="2"
-                                fill="rgba(255,255,255,0.82)"
-                              />
-                              <circle
-                                class="wdiag-b"
-                                style="--d:5.5s;--e:1.4s"
-                                cx="131"
-                                [attr.cy]="svgWellBot - 40"
-                                r="1.5"
-                                fill="rgba(255,255,255,0.70)"
-                              />
-                              <circle
-                                class="wdiag-b"
-                                style="--d:3.8s;--e:2.7s"
-                                cx="113"
-                                [attr.cy]="svgWellBot - 13"
-                                r="2.5"
-                                fill="rgba(255,255,255,0.75)"
-                              />
-                              <circle
-                                class="wdiag-b"
-                                style="--d:5s;--e:0.6s"
-                                cx="145"
-                                [attr.cy]="svgWellBot - 52"
-                                r="1.8"
-                                fill="rgba(255,255,255,0.65)"
-                              />
-                              <circle
-                                class="wdiag-b"
-                                style="--d:4.3s;--e:3.8s"
-                                cx="104"
-                                [attr.cy]="svgWellBot - 30"
-                                r="1.2"
-                                fill="rgba(255,255,255,0.80)"
-                              />
-                              <circle
-                                class="wdiag-b"
-                                style="--d:6s;--e:2s"
-                                cx="122"
-                                [attr.cy]="svgWellBot - 8"
-                                r="1.8"
-                                fill="rgba(255,255,255,0.68)"
-                              />
-                            </g>
-
-                            <!-- Fill % label inside water -->
-                            @if (svgFillPct > 12) {
-                              <text
-                                [attr.x]="svgTextCX"
-                                [attr.y]="svgTextWaterY"
-                                font-size="15"
-                                font-weight="700"
-                                fill="white"
-                                text-anchor="middle"
-                                font-family="JetBrains Mono"
-                                opacity="0.9"
-                              >
-                                {{ svgFillPct }}%
-                              </text>
-                            }
-
-                            <!-- Well walls -->
-                            <rect
-                              [attr.x]="svgWellL"
-                              [attr.y]="svgWellTop"
-                              width="8"
-                              [attr.height]="svgWellH"
-                              fill="#94A3B8"
-                              rx="2"
-                            />
-                            <rect
-                              [attr.x]="svgWellR - 8"
-                              [attr.y]="svgWellTop"
-                              width="8"
-                              [attr.height]="svgWellH"
-                              fill="#94A3B8"
-                              rx="2"
-                            />
-                            <rect
-                              [attr.x]="svgWellL"
-                              [attr.y]="svgWellBot - 6"
-                              [attr.width]="svgWellR - svgWellL"
-                              height="7"
-                              fill="#64748B"
-                              rx="2"
-                            />
-
-                            <!-- Sensor: only shown when depth data exists, right wall, proportional -->
-                            @if (wellSensorDepth() !== null) {
-                              <!-- Vertical depth guide from well top to sensor -->
-                              <line
-                                [attr.x1]="svgWellR - 4"
-                                [attr.y1]="svgWellTop"
-                                [attr.x2]="svgWellR - 4"
-                                [attr.y2]="svgSensorY"
-                                stroke="#F97316"
-                                stroke-width="1"
-                                stroke-dasharray="3 3"
-                                opacity="0.35"
-                              />
-                              <!-- Horizontal indicator from right wall outward -->
-                              <line
-                                [attr.x1]="svgWellR"
-                                [attr.y1]="svgSensorY"
-                                [attr.x2]="svgWellR + 18"
-                                [attr.y2]="svgSensorY"
-                                stroke="#F97316"
-                                stroke-width="1.5"
-                                stroke-dasharray="3 2"
-                              />
-                              <!-- Sensor marker -->
-                              <rect
-                                [attr.x]="svgWellR + 18"
-                                [attr.y]="svgSensorY - 5"
-                                width="9"
-                                height="10"
-                                fill="#F97316"
-                                rx="2"
-                              />
-                              <!-- Sensor label -->
-                              <text
-                                [attr.x]="svgWellR + 30"
-                                [attr.y]="svgSensorY + 5"
-                                font-size="12"
-                                fill="#F97316"
-                                font-family="DM Sans"
-                                font-weight="600"
-                              >
-                                Sensor
-                              </text>
-                            }
-
-                            <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
-                            <!-- Superficie circle (at ground level) -->
-                            <circle
-                              [attr.cx]="svgAnnotX"
-                              [attr.cy]="svgWellTop"
-                              r="3"
-                              fill="#64748B"
-                            />
-                            <!-- Superficie label: left-center, higher above line -->
-                            <text
-                              x="124"
-                              [attr.y]="svgWellTop - 16"
-                              font-size="9"
-                              fill="#64748B"
-                              font-family="DM Sans"
-                              font-weight="600"
-                              text-anchor="middle"
-                            >
-                              Superficie
-                            </text>
-
-                            <!-- Vertical dashed line: Superficie → Nivel Freático -->
-                            <line
-                              [attr.x1]="svgAnnotX"
-                              [attr.y1]="svgWellTop + 3"
-                              [attr.x2]="svgAnnotX"
-                              [attr.y2]="svgWaterY - 3"
-                              stroke="#0DAFBD"
-                              stroke-width="1.5"
-                              stroke-dasharray="4 3"
-                            />
-
-                            <!-- Nivel Freático circle + horizontal line into well -->
-                            <circle
-                              [attr.cx]="svgAnnotX"
-                              [attr.cy]="svgWaterY"
-                              r="3"
-                              fill="#0DAFBD"
-                            />
-                            <line
-                              [attr.x1]="svgAnnotX"
-                              [attr.y1]="svgWaterY"
-                              [attr.x2]="svgWellR - 5"
-                              [attr.y2]="svgWaterY"
-                              stroke="#0DAFBD"
-                              stroke-width="1.5"
-                              stroke-dasharray="4 2"
-                            />
-                            <!-- Nivel Freático label: centered above the horizontal dashed line -->
-                            <text
-                              [attr.x]="(svgAnnotX + svgWellR - 5) / 2"
-                              [attr.y]="svgWaterY - 7"
-                              font-size="12"
-                              fill="#0DAFBD"
-                              font-family="DM Sans"
-                              font-weight="700"
-                              text-anchor="middle"
-                            >
-                              Nv. Freático
-                            </text>
-
-                            <!-- Left depth arrow -->
-                            <line
-                              [attr.x1]="svgWellL - 10"
-                              [attr.y1]="svgWellTop + 2"
-                              [attr.x2]="svgWellL - 10"
-                              [attr.y2]="svgWellBot - 2"
-                              stroke="#CBD5E1"
-                              stroke-width="1"
-                            />
-                            <line
-                              [attr.x1]="svgWellL - 14"
-                              [attr.y1]="svgWellTop + 2"
-                              [attr.x2]="svgWellL - 6"
-                              [attr.y2]="svgWellTop + 2"
-                              stroke="#CBD5E1"
-                              stroke-width="1"
-                            />
-                            <line
-                              [attr.x1]="svgWellL - 14"
-                              [attr.y1]="svgWellBot - 2"
-                              [attr.x2]="svgWellL - 6"
-                              [attr.y2]="svgWellBot - 2"
-                              stroke="#CBD5E1"
-                              stroke-width="1"
-                            />
-                            <text
-                              [attr.x]="svgWellL - 12"
-                              [attr.y]="svgDepthMidY + 4"
-                              font-size="13"
-                              fill="#94A3B8"
-                              font-family="JetBrains Mono"
-                              text-anchor="middle"
-                              [attr.transform]="
-                                'rotate(-90,' + (svgWellL - 12) + ',' + svgDepthMidY + ')'
-                              "
-                            >
-                              {{ wellTotalDepth() ?? 18 }}m prof.
-                            </text>
-                          </svg>
-                        </div>
-                        <!-- Stats column (derecha) -->
-                        <div class="flex w-[124px] shrink-0 flex-col gap-2">
-                          <app-well-stat-card
-                            tone="primary"
-                            label="Nv. Freático"
-                            [value]="formatMeters(wellNivelFreatico())"
-                            unit="m"
-                            helper="desde superficie"
-                          />
-                          <app-well-stat-card
-                            tone="neutral"
-                            label="Llenado"
-                            [value]="svgFillPct"
-                            unit="%"
-                          >
-                            <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
-                              <div
-                                class="h-full rounded-full bg-gradient-to-r from-primary-container to-emerald-500"
-                                [style.width.%]="wellFillStylePercent()"
-                              ></div>
-                            </div>
-                          </app-well-stat-card>
-                          <app-well-stat-card
-                            tone="neutral"
-                            size="md"
-                            label="Prof. Total"
-                            [value]="formatMeters(wellTotalDepth()) + ' m'"
-                          />
-                          <app-well-stat-card
-                            tone="orange"
-                            size="md"
-                            label="Sensor"
-                            [value]="formatMeters(wellSensorDepth()) + ' m'"
-                          />
-                          @if (wellSignalPercent() !== null) {
-                            <app-well-stat-card
-                              tone="blue"
-                              label="% Señal"
-                              [value]="wellSignalPercent() ?? ''"
-                              unit="%"
-                            >
-                              <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
-                                <div
-                                  class="h-full rounded-full bg-gradient-to-r from-sky-500 to-emerald-500"
-                                  [style.width.%]="wellSignalPercent()"
-                                ></div>
-                              </div>
-                            </app-well-stat-card>
-                          }
-                          <app-well-stat-card
-                            tone="neutral"
-                            size="sm"
-                            label="Último dato recibido"
-                            [value]="latestDeviceTimeLabel()"
-                            [helper]="latestDeviceDateLabel()"
-                          />
-                        </div>
-                      </div>
-                    }
-                  </article>
+                  <app-vertiente-panel [data]="vertienteData()" />
                 </div>
 
                 <div class="flex flex-col gap-5 xl:h-full">
@@ -2638,9 +2105,8 @@ type OperationMode = 'realtime' | 'turnos';
 })
 export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
   readonly installationType = 'vertiente' as const;
-  readonly dgaEnabled = false;
-  readonly dgaUnavailableMessage =
-    'Reporte DGA para vertiente pendiente de configuracion especifica.';
+  readonly dgaEnabled = true;
+  readonly dgaUnavailableMessage = '';
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -2859,6 +2325,57 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
   }
   get svgDepthMidY(): number {
     return Math.round((this.svgWellTop + this.svgWellBot) / 2);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Datos enviados al panel de vertiente (diorama animado).
+  // El SVG vive en VertientePanelComponent; aqu� solo mapeamos signals ? shape.
+  // ---------------------------------------------------------------------------
+  vertienteData = computed<VertienteData>(() => {
+    const ctx = this.siteContext();
+    const sitio = ctx?.site;
+    const nivel = this.wellNivelFreatico();
+    const caudalNum = this.findDashboardNumber('caudal') ?? this.latestHistoryNumber('caudalValue');
+    const totalizadorNum =
+      this.findDashboardNumber('totalizador') ??
+      this.findDashboardTransformNumber('uint32_registros') ??
+      this.latestHistoryNumber('totalizadorValue');
+    const tempNum = this.findDashboardNumber('temperatura');
+
+    const maxCaudalCfg = this.toNumber(sitio?.pozo_config?.dga_caudal_max_lps);
+    const maxCaudal = maxCaudalCfg && maxCaudalCfg > 0 ? maxCaudalCfg : null;
+    const caudalPct =
+      caudalNum != null && maxCaudal != null
+        ? Math.max(0, Math.min(100, Math.round((caudalNum / maxCaudal) * 100)))
+        : this.svgFillPct;
+
+    return {
+      nombre: (sitio?.descripcion || 'VERTIENTE').toUpperCase(),
+      sensorId: sitio?.id_serial || '',
+      nivel: this.formatMeters(nivel),
+      caudal: caudalNum == null ? '�' : this.formatNumber2(caudalNum),
+      caudalPct,
+      volumen:
+        totalizadorNum == null
+          ? '�'
+          : new Intl.NumberFormat('es-CL').format(Math.trunc(totalizadorNum)),
+      temp: tempNum == null ? '�' : this.formatNumber1(tempNum),
+      ultimaHora: this.latestDeviceTimeLabel(),
+      ultimaFecha: this.latestDeviceDateLabel(),
+    };
+  });
+
+  private formatNumber1(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(value);
+  }
+  private formatNumber2(value: number): string {
+    return new Intl.NumberFormat('es-CL', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
   }
 
   dashboardRefreshLabel = computed(() =>
