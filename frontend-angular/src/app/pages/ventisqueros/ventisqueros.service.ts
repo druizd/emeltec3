@@ -60,7 +60,11 @@ function readBoolean(value: unknown): boolean {
   return false;
 }
 
-function getCoord(mapping: VariableMapping | undefined, key: 'cx' | 'cy' | 'r', fallback: number): number {
+function getCoord(
+  mapping: VariableMapping | undefined,
+  key: 'cx' | 'cy' | 'r',
+  fallback: number,
+): number {
   const params = (mapping?.parametros || {}) as Record<string, unknown>;
   const n = readNumber(params[key]);
   return n ?? fallback;
@@ -98,7 +102,10 @@ export class VentisquerosService {
     const normalized: SitePollSpec[] = Array.isArray(sites)
       ? sites
       : [{ siteId: sites, tap: null }];
-    const key = normalized.map((s) => `${s.siteId}:${s.tap ?? ''}`).sort().join('|');
+    const key = normalized
+      .map((s) => `${s.siteId}:${s.tap ?? ''}`)
+      .sort()
+      .join('|');
     if (this.currentKey === key && this.currentSites.length > 0) return;
     this.stopPolling();
     this.currentKey = key;
@@ -130,9 +137,13 @@ export class VentisquerosService {
 
   private loadMappings(sites: SitePollSpec[]): Observable<void> {
     const reqs = sites.map((s) =>
-      this.adminService.getSiteVariables(s.siteId).pipe(
-        catchError(() => of<ApiResponse<SiteVariablesPayload>>({ ok: false, data: null as never })),
-      ),
+      this.adminService
+        .getSiteVariables(s.siteId)
+        .pipe(
+          catchError(() =>
+            of<ApiResponse<SiteVariablesPayload>>({ ok: false, data: null as never }),
+          ),
+        ),
     );
     return forkJoin(reqs).pipe(
       switchMap((results) => {
@@ -270,11 +281,27 @@ export class VentisquerosService {
     mappingByAlias: Map<string, VariableMapping>,
   ): Map<
     string,
-    { t: number | null; h: number | null; alerta: boolean; area: string; cx: number; cy: number; r: number }
+    {
+      t: number | null;
+      h: number | null;
+      alerta: boolean;
+      area: string;
+      cx: number;
+      cy: number;
+      r: number;
+    }
   > {
     const out = new Map<
       string,
-      { t: number | null; h: number | null; alerta: boolean; area: string; cx: number; cy: number; r: number }
+      {
+        t: number | null;
+        h: number | null;
+        alerta: boolean;
+        area: string;
+        cx: number;
+        cy: number;
+        r: number;
+      }
     >();
     for (const v of variables) {
       const parts = parseAlias(v.alias);

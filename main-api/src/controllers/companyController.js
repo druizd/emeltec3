@@ -2162,10 +2162,18 @@ exports.getSitePeriodAggregates = async (req, res, next) => {
       sampleRawData: rowsRes.rows[0]?.data || {},
     });
 
-    let caudalMax = -Infinity, caudalSum = 0, caudalN = 0;
-    let nivelMax = -Infinity, nivelSum = 0, nivelN = 0;
-    let freaticoMax = -Infinity, freaticoSum = 0, freaticoN = 0;
-    let caudalUnidad = null, nivelUnidad = null, freaticoUnidad = null;
+    let caudalMax = -Infinity,
+      caudalSum = 0,
+      caudalN = 0;
+    let nivelMax = -Infinity,
+      nivelSum = 0,
+      nivelN = 0;
+    let freaticoMax = -Infinity,
+      freaticoSum = 0,
+      freaticoN = 0;
+    let caudalUnidad = null,
+      nivelUnidad = null,
+      freaticoUnidad = null;
 
     for (const row of rowsRes.rows) {
       const r = mapper({ time: row.time, data: row.data, received_at: null });

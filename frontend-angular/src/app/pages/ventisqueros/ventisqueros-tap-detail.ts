@@ -60,15 +60,13 @@ type DetailTab = 'resumen' | 'configuracion';
           [style.background]="tapColor() + '1A'"
           [style.border]="'1px solid ' + tapColor() + '40'"
         >
-          <span class="material-symbols-outlined text-[18px]" [style.color]="tapColor()">memory</span>
+          <span class="material-symbols-outlined text-[18px]" [style.color]="tapColor()"
+            >memory</span
+          >
         </div>
         <div class="min-w-0">
-          <div class="tap-title truncate">
-            {{ siteName() }} · {{ tapId() }}
-          </div>
-          <div class="mt-0.5 text-[11px] text-slate-400">
-            {{ sensors().length }} sensores THM
-          </div>
+          <div class="tap-title truncate">{{ siteName() }} · {{ tapId() }}</div>
+          <div class="mt-0.5 text-[11px] text-slate-400">{{ sensors().length }} sensores THM</div>
         </div>
         <span
           class="ml-auto flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium"
@@ -88,7 +86,9 @@ type DetailTab = 'resumen' | 'configuracion';
           (click)="tab.set(tab() === 'configuracion' ? 'resumen' : 'configuracion')"
           [title]="tab() === 'configuracion' ? 'Volver al resumen' : 'Configurar variables'"
           [attr.aria-pressed]="tab() === 'configuracion'"
-          [attr.aria-label]="tab() === 'configuracion' ? 'Volver al resumen' : 'Configurar variables'"
+          [attr.aria-label]="
+            tab() === 'configuracion' ? 'Volver al resumen' : 'Configurar variables'
+          "
         >
           <span class="material-symbols-outlined text-[16px]" aria-hidden="true">
             {{ tab() === 'configuracion' ? 'arrow_back' : 'tune' }}
@@ -100,153 +100,172 @@ type DetailTab = 'resumen' | 'configuracion';
       <!-- Content -->
       <div class="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-5">
         @if (tab() === 'resumen') {
-            <!-- KPI strip -->
-            <div class="kpi-strip mb-7 flex flex-wrap items-end gap-8">
-              <div class="kpi-hero">
-                <div
-                  class="kpi-hero-value"
-                  [style.color]="stats().alerts > 0 ? '#DC2626' : tapColor()"
-                >
-                  {{ stats().alerts > 0 ? stats().alerts : stats().count }}
-                </div>
-                <div class="kpi-hero-label">
-                  {{ stats().alerts === 1 ? 'sensor en alerta' : stats().alerts > 0 ? 'sensores en alerta' : 'sensores en operación' }}
-                </div>
+          <!-- KPI strip -->
+          <div class="kpi-strip mb-7 flex flex-wrap items-end gap-8">
+            <div class="kpi-hero">
+              <div
+                class="kpi-hero-value"
+                [style.color]="stats().alerts > 0 ? '#DC2626' : tapColor()"
+              >
+                {{ stats().alerts > 0 ? stats().alerts : stats().count }}
               </div>
-              <div class="kpi-meta flex flex-wrap items-baseline gap-x-5 gap-y-1">
-                <span>Temp prom <strong>{{ stats().avgT }}°C</strong></span>
-                <span>HR prom <strong>{{ stats().avgH }}%</strong></span>
-                <span class="kpi-meta-tap">{{ tapId() }}</span>
+              <div class="kpi-hero-label">
+                {{
+                  stats().alerts === 1
+                    ? 'sensor en alerta'
+                    : stats().alerts > 0
+                      ? 'sensores en alerta'
+                      : 'sensores en operación'
+                }}
               </div>
             </div>
+            <div class="kpi-meta flex flex-wrap items-baseline gap-x-5 gap-y-1">
+              <span
+                >Temp prom <strong>{{ stats().avgT }}°C</strong></span
+              >
+              <span
+                >HR prom <strong>{{ stats().avgH }}%</strong></span
+              >
+              <span class="kpi-meta-tap">{{ tapId() }}</span>
+            </div>
+          </div>
 
-            <!-- Alertas destacadas -->
-            @if (alertedSensors().length > 0) {
-              <section class="mb-6">
-                <h3 class="section-title mb-2 text-rose-700">
-                  Sensores en alerta
-                  <span class="section-count">{{ alertedSensors().length }}</span>
-                </h3>
-                <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  @for (s of alertedSensors(); track s.id) {
-                    <article class="alert-card">
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="min-w-0">
-                          <div class="flex items-center gap-1.5">
-                            <span class="sensor-id-chip">{{ s.id }}</span>
-                            <span class="sensor-alert-chip">ALERTA</span>
-                          </div>
-                          <div class="sensor-area mt-1.5 truncate">{{ s.area }}</div>
-                        </div>
-                        <div
-                          class="h-2.5 w-2.5 shrink-0 rounded-full"
-                          [style.background]="tempColor(s.t)"
-                          [style.box-shadow]="'0 0 0 4px rgba(239,68,68,0.20)'"
-                        ></div>
-                      </div>
-                      <div class="mt-3 flex items-baseline gap-4">
-                        <div>
-                          <div class="sensor-metric-val text-rose-700">{{ fmtTemp(s.t) }}</div>
-                          <div class="sensor-metric-lbl">temperatura</div>
-                        </div>
-                        <div>
-                          <div class="sensor-metric-val text-slate-700">{{ fmtHum(s.h) }}</div>
-                          <div class="sensor-metric-lbl">humedad</div>
-                        </div>
-                      </div>
-                      <svg viewBox="0 0 120 32" class="mt-2 h-8 w-full">
-                        <path
-                          [attr.d]="sparkPath(s.hist)"
-                          fill="none"
-                          [attr.stroke]="tempColor(s.t)"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </article>
-                  }
-                </div>
-              </section>
-            }
-
-            <!-- Operación normal: lista densa -->
+          <!-- Alertas destacadas -->
+          @if (alertedSensors().length > 0) {
             <section class="mb-6">
-              <h3 class="section-title mb-2">
-                Operación normal
-                <span class="section-count">{{ normalSensors().length }}</span>
+              <h3 class="section-title mb-2 text-rose-700">
+                Sensores en alerta
+                <span class="section-count">{{ alertedSensors().length }}</span>
               </h3>
-              @if (normalSensors().length > 0) {
-                <div class="sensor-table" role="table" aria-label="Sensores en operación normal">
-                  <div class="sensor-table-head" role="row">
-                    <span role="columnheader">Sensor</span>
-                    <span role="columnheader">Ubicación</span>
-                    <span class="text-right" role="columnheader">Temp</span>
-                    <span class="text-right" role="columnheader">HR</span>
-                    <span role="columnheader">Tendencia 24h</span>
-                  </div>
-                  @for (s of normalSensors(); track s.id) {
-                    <div class="sensor-row" [title]="s.area" role="row">
-                      <span class="sensor-id-chip" role="cell">{{ s.id }}</span>
-                      <span class="sensor-row-area truncate" role="cell">{{ s.area }}</span>
-                      <span class="sensor-row-temp text-right" role="cell">{{ fmtTemp(s.t) }}</span>
-                      <span class="sensor-row-hum text-right" role="cell">{{ fmtHum(s.h) }}</span>
-                      <svg viewBox="0 0 120 18" class="sensor-row-spark" role="cell" [attr.aria-label]="'Tendencia ' + s.id">
-                        <path
-                          [attr.d]="sparkPathTight(s.hist)"
-                          fill="none"
-                          [attr.stroke]="tempColor(s.t)"
-                          stroke-width="1.4"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
+              <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                @for (s of alertedSensors(); track s.id) {
+                  <article class="alert-card">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="min-w-0">
+                        <div class="flex items-center gap-1.5">
+                          <span class="sensor-id-chip">{{ s.id }}</span>
+                          <span class="sensor-alert-chip">ALERTA</span>
+                        </div>
+                        <div class="sensor-area mt-1.5 truncate">{{ s.area }}</div>
+                      </div>
+                      <div
+                        class="h-2.5 w-2.5 shrink-0 rounded-full"
+                        [style.background]="tempColor(s.t)"
+                        [style.box-shadow]="'0 0 0 4px rgba(239,68,68,0.20)'"
+                      ></div>
                     </div>
-                  }
-                </div>
-              } @else if (sensors().length === 0 && isLoading()) {
-                <div class="sensor-table" aria-label="Cargando sensores">
-                  <div class="sensor-table-head">
-                    <span>Sensor</span>
-                    <span>Ubicación</span>
-                    <span class="text-right">Temp</span>
-                    <span class="text-right">HR</span>
-                    <span>Tendencia 24h</span>
-                  </div>
-                  @for (_ of [1,2,3,4,5]; track $index) {
-                    <div class="skeleton-row" aria-hidden="true">
-                      <span class="skeleton-bar" style="width:48px"></span>
-                      <span class="skeleton-bar" style="width:60%"></span>
-                      <span class="skeleton-bar" style="width:56px; margin-left:auto"></span>
-                      <span class="skeleton-bar" style="width:40px; margin-left:auto"></span>
-                      <span class="skeleton-bar" style="width:100%"></span>
+                    <div class="mt-3 flex items-baseline gap-4">
+                      <div>
+                        <div class="sensor-metric-val text-rose-700">{{ fmtTemp(s.t) }}</div>
+                        <div class="sensor-metric-lbl">temperatura</div>
+                      </div>
+                      <div>
+                        <div class="sensor-metric-val text-slate-700">{{ fmtHum(s.h) }}</div>
+                        <div class="sensor-metric-lbl">humedad</div>
+                      </div>
                     </div>
-                  }
-                </div>
-              } @else if (sensors().length === 0) {
-                <div class="empty-block">
-                  <span class="material-symbols-outlined text-[28px] text-slate-300" aria-hidden="true">sensors_off</span>
-                  <div class="mt-2 text-[13px] font-medium text-slate-500">
-                    Sin sensores en {{ tapId() }}
-                  </div>
-                </div>
-              }
+                    <svg viewBox="0 0 120 32" class="mt-2 h-8 w-full">
+                      <path
+                        [attr.d]="sparkPath(s.hist)"
+                        fill="none"
+                        [attr.stroke]="tempColor(s.t)"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                  </article>
+                }
+              </div>
             </section>
+          }
 
-            <!-- Histórico chart -->
-            @if (sensors().length > 0) {
-              <section>
-                <div class="mb-3 flex items-baseline justify-between gap-3">
-                  <h3 class="section-title">Histórico de temperatura</h3>
-                  <span class="section-meta">últimas 24 lecturas</span>
+          <!-- Operación normal: lista densa -->
+          <section class="mb-6">
+            <h3 class="section-title mb-2">
+              Operación normal
+              <span class="section-count">{{ normalSensors().length }}</span>
+            </h3>
+            @if (normalSensors().length > 0) {
+              <div class="sensor-table" role="table" aria-label="Sensores en operación normal">
+                <div class="sensor-table-head" role="row">
+                  <span role="columnheader">Sensor</span>
+                  <span role="columnheader">Ubicación</span>
+                  <span class="text-right" role="columnheader">Temp</span>
+                  <span class="text-right" role="columnheader">HR</span>
+                  <span role="columnheader">Tendencia 24h</span>
                 </div>
-                <div class="chart-shell">
-                  <div class="h-[280px]">
-                    <canvas #chartCanvas></canvas>
+                @for (s of normalSensors(); track s.id) {
+                  <div class="sensor-row" [title]="s.area" role="row">
+                    <span class="sensor-id-chip" role="cell">{{ s.id }}</span>
+                    <span class="sensor-row-area truncate" role="cell">{{ s.area }}</span>
+                    <span class="sensor-row-temp text-right" role="cell">{{ fmtTemp(s.t) }}</span>
+                    <span class="sensor-row-hum text-right" role="cell">{{ fmtHum(s.h) }}</span>
+                    <svg
+                      viewBox="0 0 120 18"
+                      class="sensor-row-spark"
+                      role="cell"
+                      [attr.aria-label]="'Tendencia ' + s.id"
+                    >
+                      <path
+                        [attr.d]="sparkPathTight(s.hist)"
+                        fill="none"
+                        [attr.stroke]="tempColor(s.t)"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
                   </div>
+                }
+              </div>
+            } @else if (sensors().length === 0 && isLoading()) {
+              <div class="sensor-table" aria-label="Cargando sensores">
+                <div class="sensor-table-head">
+                  <span>Sensor</span>
+                  <span>Ubicación</span>
+                  <span class="text-right">Temp</span>
+                  <span class="text-right">HR</span>
+                  <span>Tendencia 24h</span>
                 </div>
-              </section>
+                @for (_ of [1, 2, 3, 4, 5]; track $index) {
+                  <div class="skeleton-row" aria-hidden="true">
+                    <span class="skeleton-bar" style="width:48px"></span>
+                    <span class="skeleton-bar" style="width:60%"></span>
+                    <span class="skeleton-bar" style="width:56px; margin-left:auto"></span>
+                    <span class="skeleton-bar" style="width:40px; margin-left:auto"></span>
+                    <span class="skeleton-bar" style="width:100%"></span>
+                  </div>
+                }
+              </div>
+            } @else if (sensors().length === 0) {
+              <div class="empty-block">
+                <span
+                  class="material-symbols-outlined text-[28px] text-slate-300"
+                  aria-hidden="true"
+                  >sensors_off</span
+                >
+                <div class="mt-2 text-[13px] font-medium text-slate-500">
+                  Sin sensores en {{ tapId() }}
+                </div>
+              </div>
             }
+          </section>
+
+          <!-- Histórico chart -->
+          @if (sensors().length > 0) {
+            <section>
+              <div class="mb-3 flex items-baseline justify-between gap-3">
+                <h3 class="section-title">Histórico de temperatura</h3>
+                <span class="section-meta">últimas 24 lecturas</span>
+              </div>
+              <div class="chart-shell">
+                <div class="h-[280px]">
+                  <canvas #chartCanvas></canvas>
+                </div>
+              </div>
+            </section>
+          }
         }
 
         @if (tab() === 'configuracion') {
@@ -288,7 +307,7 @@ type DetailTab = 'resumen' | 'configuracion';
       .tap-config-btn--active {
         background: rgba(2, 132, 199, 0.08);
         color: #0284c7;
-        border-color: rgba(2, 132, 199, 0.30);
+        border-color: rgba(2, 132, 199, 0.3);
       }
 
       /* Focus visible (a11y) */
@@ -390,7 +409,7 @@ type DetailTab = 'resumen' | 'configuracion';
         font-size: 9.5px;
         font-weight: 600;
         letter-spacing: 0.04em;
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         border: 1px solid rgba(239, 68, 68, 0.25);
         color: #b91c1c;
         border-radius: 4px;
@@ -497,16 +516,20 @@ type DetailTab = 'resumen' | 'configuracion';
         border-radius: 4px;
         background: linear-gradient(
           90deg,
-          rgba(148, 163, 184, 0.10),
+          rgba(148, 163, 184, 0.1),
           rgba(148, 163, 184, 0.22),
-          rgba(148, 163, 184, 0.10)
+          rgba(148, 163, 184, 0.1)
         );
         background-size: 200% 100%;
         animation: skelShimmer 1.4s linear infinite;
       }
       @keyframes skelShimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {

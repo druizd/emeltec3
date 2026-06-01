@@ -6,7 +6,6 @@ const emailService = require('../services/emailService');
 
 const WELCOME_OTP_MINUTES = 60 * 24; // 24h para activar la cuenta
 
-
 const USER_PROFILE_SELECT = `
   SELECT u.id,
          u.nombre,
@@ -376,10 +375,11 @@ exports.createUser = async (req, res, next) => {
     const otpHash = await bcrypt.hash(otpCode, 10);
     const otpExpiresAt = new Date(Date.now() + WELCOME_OTP_MINUTES * 60 * 1000);
     try {
-      await db.query(
-        'UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE id = $3',
-        [otpHash, otpExpiresAt, rows[0].id],
-      );
+      await db.query('UPDATE usuario SET otp_hash = $1, otp_expires_at = $2 WHERE id = $3', [
+        otpHash,
+        otpExpiresAt,
+        rows[0].id,
+      ]);
     } catch (otpErr) {
       console.error('[createUser] Error guardando OTP bienvenida:', otpErr.message);
     }
