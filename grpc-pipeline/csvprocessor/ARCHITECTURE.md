@@ -35,6 +35,18 @@ SendRecords
       +-- ERROR -> retry hasta 3 intentos; luego MoveToFailed
 ```
 
+Desde 2026-06-01, el procesador tambien guarda cada `TelemetryRecord` en SQLite
+local antes del envio gRPC:
+
+```text
+CSV/log -> TelemetryRecord -> SQLite telemetry_records pending
+                         -> gRPC Linux OK -> SQLite synced
+                         -> gRPC falla   -> SQLite queda pending
+```
+
+Un loop `LOCAL_SYNC_INTERVAL_SEC` reintenta los registros `pending` desde SQLite
+contra el `csvconsumer`.
+
 ---
 
 ## Formato de Archivo
@@ -143,6 +155,12 @@ TIMEOUT_SECONDS=10
 INPUT_DIR=C:\Users\azureuser\Documents\csvprocessor\data\incoming_logs
 RAW_BACKUP_DIR=C:\Users\azureuser\Documents\csvprocessor\data\raw_backup
 FAILED_DIR=C:\Users\azureuser\Documents\csvprocessor\data\failed_logs
+SQLITE_PATH=C:\Users\azureuser\Documents\csvprocessor\data\local\telemetry_local.db
+LOCAL_SYNC_INTERVAL_SEC=30
+
+LINUX_DB_API_URL=http://145.190.8.19:3010
+PLC_COMMAND_POLL_INTERVAL_SEC=5
+PLC_DRY_RUN=true
 
 MAIN_API_URL=
 INTERNAL_API_KEY=
@@ -155,19 +173,24 @@ STATS_INTERVAL_SEC=10
 
 Defaults del codigo:
 
-| Variable             | Default                 | Descripcion                      |
-| -------------------- | ----------------------- | -------------------------------- |
-| `GRPC_ADDRESS`       | `localhost:50051`       | Direccion del csvconsumer        |
-| `TIMEOUT_SECONDS`    | `10`                    | Timeout por llamada gRPC         |
-| `INPUT_DIR`          | `data/incoming_logs`    | Carpeta de entrada               |
-| `RAW_BACKUP_DIR`     | `data/raw_backup`       | Respaldo raw por `id_serial`     |
-| `FAILED_DIR`         | `data/failed_logs`      | Archivos con 3 intentos fallidos |
-| `NUM_WORKERS`        | `4`                     | Workers paralelos                |
-| `WATCH_INTERVAL_MS`  | `200`                   | Frecuencia de escaneo            |
-| `RETRY_INTERVAL_SEC` | `60`                    | Frecuencia de retry              |
-| `STATS_INTERVAL_SEC` | `10`                    | Frecuencia de stats              |
-| `MAIN_API_URL`       | `http://localhost:3000` | URL de main-api para alertas     |
-| `INTERNAL_API_KEY`   | ``                      | API key interna para alertas     |
+| Variable                        | Default                         | Descripcion                                 |
+| ------------------------------- | ------------------------------- | ------------------------------------------- |
+| `GRPC_ADDRESS`                  | `localhost:50051`               | Direccion del csvconsumer                   |
+| `TIMEOUT_SECONDS`               | `10`                            | Timeout por llamada gRPC                    |
+| `INPUT_DIR`                     | `data/incoming_logs`            | Carpeta de entrada                          |
+| `RAW_BACKUP_DIR`                | `data/raw_backup`               | Respaldo raw por `id_serial`                |
+| `FAILED_DIR`                    | `data/failed_logs`              | Archivos con 3 intentos fallidos            |
+| `SQLITE_PATH`                   | `data/local/telemetry_local.db` | Respaldo/cola local SQLite                  |
+| `LOCAL_SYNC_INTERVAL_SEC`       | `30`                            | Reintento de telemetria pendiente           |
+| `LINUX_DB_API_URL`              | ``                              | API Linux para comandos PLC                 |
+| `PLC_COMMAND_POLL_INTERVAL_SEC` | `5`                             | Polling de comandos PLC                     |
+| `PLC_DRY_RUN`                   | `true`                          | Simula ejecucion PLC sin escribir al equipo |
+| `NUM_WORKERS`                   | `4`                             | Workers paralelos                           |
+| `WATCH_INTERVAL_MS`             | `200`                           | Frecuencia de escaneo                       |
+| `RETRY_INTERVAL_SEC`            | `60`                            | Frecuencia de retry                         |
+| `STATS_INTERVAL_SEC`            | `10`                            | Frecuencia de stats                         |
+| `MAIN_API_URL`                  | `http://localhost:3000`         | URL de main-api para alertas                |
+| `INTERNAL_API_KEY`              | ``                              | API key interna para alertas                |
 
 ---
 
@@ -178,7 +201,28 @@ C:\Users\azureuser\Documents\csvprocessor\data\
   incoming_logs\              archivos por procesar
   raw_backup\<id_serial>\     respaldo raw del archivo original
   failed_logs\                archivos que fallaron 3 intentos
+  local\telemetry_local.db    SQLite local
 ```
+
+Tablas SQLite:
+
+```text
+telemetry_records
+  datos leidos del PLC y estado sync_status pending/synced
+
+plc_commands
+  comandos descargados desde Linux y resultado de ejecucion local
+```
+
+Flujo de comandos PLC:
+
+```text
+Linux linux-db-api -> Windows csvprocessor -> PLC -> Windows -> Linux
+```
+
+Por defecto `PLC_DRY_RUN=true`; eso valida el circuito completo sin escribir al
+PLC real. Para escritura real falta implementar el driver/protocolo del PLC en
+`internal/plcagent`. La SQLite local vive en `internal/localdb`.
 
 Estructura del backup:
 

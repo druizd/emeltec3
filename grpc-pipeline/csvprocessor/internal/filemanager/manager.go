@@ -24,22 +24,23 @@ func EnsureDirectories(dirs ...string) error {
 }
 
 func ListInputFiles(inputDir string) ([]string, error) {
-	entries, err := os.ReadDir(inputDir)
+	files := make([]string, 0)
+	err := filepath.WalkDir(inputDir, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+
+		ext := strings.ToLower(filepath.Ext(entry.Name()))
+		if ext == ".csv" || ext == ".log" || ext == ".txt" {
+			files = append(files, path)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("no se pudo leer el directorio [%s]: %w", inputDir, err)
-	}
-
-	files := make([]string, 0)
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		ext := strings.ToLower(filepath.Ext(name))
-		if ext == ".csv" || ext == ".log" || ext == ".txt" {
-			files = append(files, filepath.Join(inputDir, name))
-		}
 	}
 
 	sort.Strings(files)
@@ -132,11 +133,35 @@ func MoveToFailed(sourcePath, failedDir string) error {
 	return moveFile(sourcePath, targetPath)
 }
 
+func MoveToFailedFromRoot(sourcePath, inputDir, failedDir string) error {
+	relativePath, err := filepath.Rel(inputDir, sourcePath)
+	if err != nil || strings.HasPrefix(relativePath, "..") || filepath.IsAbs(relativePath) {
+		return MoveToFailed(sourcePath, failedDir)
+	}
+
+	targetPath := filepath.Join(failedDir, relativePath)
+	return moveFile(sourcePath, targetPath)
+}
+
+func IsInsideDir(rootDir, filePath string) bool {
+	relativePath, err := filepath.Rel(rootDir, filePath)
+	if err != nil {
+		return false
+	}
+	return relativePath != "." &&
+		!strings.HasPrefix(relativePath, "..") &&
+		!filepath.IsAbs(relativePath)
+}
+
 func moveFile(sourcePath, targetPath string) error {
 	if _, err := os.Stat(targetPath); err == nil {
 		if err := os.Remove(targetPath); err != nil {
 			return fmt.Errorf("no se pudo reemplazar el archivo destino [%s]: %w", targetPath, err)
 		}
+	}
+
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return fmt.Errorf("no se pudo crear directorio destino [%s]: %w", filepath.Dir(targetPath), err)
 	}
 
 	if err := os.Rename(sourcePath, targetPath); err == nil {

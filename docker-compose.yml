@@ -76,6 +76,31 @@ services:
     healthcheck: *healthcheck-main-api
     restart: unless-stopped
 
+  linux-db-api:
+    build: ./linux-db-api
+    container_name: emeltec-linux-db-api
+    ports:
+      - '${LINUX_DB_API_HOST_PORT:-3010}:3010'
+    env_file:
+      - ./.env
+    environment:
+      <<: *db-env
+      PORT: 3010
+      RUST_LOG: info
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -qO- http://localhost:3010/health >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     container_name: emeltec-redis
