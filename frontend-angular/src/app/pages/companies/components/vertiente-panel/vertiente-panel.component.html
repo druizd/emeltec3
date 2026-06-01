@@ -1,0 +1,46 @@
+<div class="vpanel">
+  <div class="vpanel-head">
+    <div class="vpanel-title">{{ data.nombre }} · SECCIÓN DE MEDICIÓN</div>
+    <div class="rt-badge"><span class="rt-dot"></span> SIMULACIÓN EN TIEMPO REAL</div>
+  </div>
+
+  <div class="vpanel-screen">
+    <div class="bokeh">
+      <span class="b1"></span><span class="b2"></span><span class="b3"></span>
+      <span class="b4"></span><span class="b5"></span><span class="b6"></span>
+    </div>
+
+    <div class="diagram" [innerHTML]="svg"></div>
+
+    <div class="tag">
+      <span class="d"></span>
+      {{ data.nombre
+      }}<ng-container *ngIf="data.sensorId"> · SENSOR {{ data.sensorId }}</ng-container>
+    </div>
+
+    <div class="tchips">
+      <div class="tchip sel">
+        <div class="tl">NIVEL DE AGUA</div>
+        <div class="tv">{{ data.nivel }}<span>m</span></div>
+      </div>
+      <div class="tchip">
+        <div class="tl">CAUDAL ACTUAL</div>
+        <div class="tv">{{ data.caudal }}<span>L/s</span></div>
+        <div class="tbar"><i [style.width.%]="data.caudalPct"></i></div>
+      </div>
+      <div class="tchip">
+        <div class="tl">VOLUMEN ACUMULADO</div>
+        <div class="tv">{{ data.volumen }}<span>m³</span></div>
+      </div>
+      <div class="tchip">
+        <div class="tl">TEMP. AGUA</div>
+        <div class="tv">{{ data.temp }}<span>°C</span></div>
+      </div>
+      <div class="tchip">
+        <div class="tl">ÚLTIMO DATO</div>
+        <div class="tv">{{ data.ultimaHora }}</div>
+        <div class="tfoot">{{ data.ultimaFecha }}</div>
+      </div>
+    </div>
+  </div>
+</div>

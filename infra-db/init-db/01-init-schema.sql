@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS timescaledb;
 CREATE TABLE IF NOT EXISTS empresa (
     id           VARCHAR(10)   PRIMARY KEY,
     nombre       VARCHAR(150)  NOT NULL,
-    rut          VARCHAR(20)   NOT NULL UNIQUE,
+    rut          VARCHAR(20)   UNIQUE,
     sitios       INTEGER       DEFAULT 0,
     tipo_empresa VARCHAR(50)   NOT NULL,
     created_at   TIMESTAMPTZ   DEFAULT NOW(),
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS empresa (
 CREATE TABLE IF NOT EXISTS sub_empresa (
     id          VARCHAR(10)   PRIMARY KEY,
     nombre      VARCHAR(150)  NOT NULL,
-    rut         VARCHAR(20)   NOT NULL UNIQUE,
+    rut         VARCHAR(20)   UNIQUE,
     sitios      INTEGER       DEFAULT 0,
     empresa_id  VARCHAR(10)   NOT NULL REFERENCES empresa(id) ON DELETE CASCADE,
     created_at  TIMESTAMPTZ   DEFAULT NOW(),

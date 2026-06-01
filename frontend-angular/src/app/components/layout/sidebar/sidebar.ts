@@ -6,7 +6,7 @@ import { CompanyService } from '../../../services/company.service';
 import {
   SITE_MODULES,
   normalizeSiteType,
-  siteTypeMatchesModule,
+  siteMatchesModule,
   siteTypesForModule,
 } from '../../../shared/site-type-ui';
 import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
@@ -492,7 +492,7 @@ export class SidebarComponent implements OnInit {
 
   private toSubCompanyItem(moduleKey: string, subCompany: SubCompanyNode): SiteItem | null {
     const matchingSites = (subCompany.sites || []).filter((site: SiteRecord) =>
-      siteTypeMatchesModule(site.tipo_sitio, moduleKey),
+      siteMatchesModule(site, moduleKey),
     );
 
     if (!matchingSites.length) {

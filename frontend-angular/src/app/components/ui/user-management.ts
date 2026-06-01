@@ -14,7 +14,6 @@ import { UserService } from '../../services/user.service';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
 import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
-import { formatRutInput } from '../../shared/rut';
 
 @Component({
   selector: 'app-user-management',
@@ -154,21 +153,6 @@ import { formatRutInput } from '../../shared/rut';
                   name="apellido"
                   class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
                   placeholder="Ej. Sánchez"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >RUT del Usuario *</label
-                >
-                <input
-                  required
-                  [ngModel]="newUser.rut_usuario"
-                  (ngModelChange)="updateNewUserRut($event)"
-                  name="rut_usuario"
-                  inputmode="text"
-                  maxlength="12"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
-                  placeholder="12.345.678-9"
                 />
               </div>
               <div class="space-y-1.5">
@@ -475,10 +459,6 @@ export class UserManagementComponent implements OnInit, OnChanges {
   resetForm() {
     this.clearForm();
     this.status.set({ type: '', msg: '' });
-  }
-
-  updateNewUserRut(value: string) {
-    this.newUser.rut_usuario = formatRutInput(value);
   }
 
   setUserSearch(value: string) {

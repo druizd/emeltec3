@@ -17,7 +17,7 @@ const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
 const { formatRutForStorage } = require('../utils/rut');
 
 const SITE_COLUMNS =
-  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo';
+  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 const MAP_COLUMNS =
   'id, alias, d1, d2, tipo_dato, unidad, rol_dashboard, transformacion, parametros, sitio_id, created_at, updated_at';
 const POZO_CONFIG_COLUMNS =
@@ -756,11 +756,11 @@ exports.createCompany = async (req, res, next) => {
     }
 
     const nombre = cleanString(req.body.nombre);
-    const rut = formatRutForStorage(req.body.rut);
+    const rut = formatRutForStorage(req.body.rut) || null;
     const tipoEmpresa = cleanString(req.body.tipo_empresa) || 'Cliente';
 
-    if (!nombre || !rut) {
-      return badRequest(res, 'nombre y rut son requeridos.');
+    if (!nombre) {
+      return badRequest(res, 'nombre es requerido.');
     }
 
     await client.query('BEGIN');
@@ -823,10 +823,10 @@ exports.updateCompany = async (req, res, next) => {
 
     for (const [field, value] of fields) {
       if (value === undefined) continue;
-      if (!value) {
+      if (!value && field !== 'rut') {
         return badRequest(res, `${field} no puede quedar vacio.`);
       }
-      params.push(value);
+      params.push(value || null);
       updates.push(`${field} = $${params.length}`);
     }
 
@@ -914,10 +914,10 @@ exports.createSubCompany = async (req, res, next) => {
     }
 
     const nombre = cleanString(req.body.nombre);
-    const rut = formatRutForStorage(req.body.rut);
+    const rut = formatRutForStorage(req.body.rut) || null;
 
-    if (!nombre || !rut) {
-      return badRequest(res, 'nombre y rut son requeridos.');
+    if (!nombre) {
+      return badRequest(res, 'nombre es requerido.');
     }
 
     const company = await getCompanyById(empresaId);
@@ -995,10 +995,10 @@ exports.updateSubCompany = async (req, res, next) => {
 
     for (const [field, value] of fields) {
       if (value === undefined) continue;
-      if (!value) {
+      if (!value && field !== 'rut') {
         return badRequest(res, `${field} no puede quedar vacio.`);
       }
-      params.push(value);
+      params.push(value || null);
       updates.push(`${field} = $${params.length}`);
     }
 
@@ -1118,6 +1118,7 @@ exports.createSite = async (req, res, next) => {
     if (huso instanceof Error) return badRequest(res, huso.message);
     const tipoSitio = normalizeSiteType(req.body.tipo_sitio);
     const activo = parseBoolean(req.body.activo, true);
+    const esMaletaPiloto = parseBoolean(req.body.es_maleta_piloto, false);
 
     if (!descripcion || !idSerial) {
       return badRequest(res, 'descripcion e id_serial son requeridos.');
@@ -1146,8 +1147,8 @@ exports.createSite = async (req, res, next) => {
     const id = requestedId || (await generateSequentialId(client, 'sitio', 'S'));
 
     const { rows } = await client.query(
-      `INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO sitio (id, descripcion, id_serial, empresa_id, sub_empresa_id, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
        RETURNING ${SITE_COLUMNS}, created_at, updated_at`,
       [
         id,
@@ -1161,6 +1162,7 @@ exports.createSite = async (req, res, next) => {
         huso,
         tipoSitio,
         activo,
+        esMaletaPiloto,
       ],
     );
 
@@ -1233,6 +1235,10 @@ exports.updateSite = async (req, res, next) => {
       req.body.tipo_sitio === undefined ? undefined : normalizeSiteType(req.body.tipo_sitio);
     const activo =
       req.body.activo === undefined ? undefined : parseBoolean(req.body.activo, site.activo);
+    const esMaletaPiloto =
+      req.body.es_maleta_piloto === undefined
+        ? undefined
+        : parseBoolean(req.body.es_maleta_piloto, site.es_maleta_piloto);
 
     if (descripcion) {
       params.push(descripcion);
@@ -1284,6 +1290,11 @@ exports.updateSite = async (req, res, next) => {
     if (activo !== undefined) {
       params.push(activo);
       updates.push(`activo = $${params.length}`);
+    }
+
+    if (esMaletaPiloto !== undefined) {
+      params.push(esMaletaPiloto);
+      updates.push(`es_maleta_piloto = $${params.length}`);
     }
 
     if (nextEmpresaId !== site.empresa_id) {
