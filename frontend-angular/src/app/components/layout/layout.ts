@@ -5,6 +5,7 @@ import { HeaderComponent } from './header/header';
 import { SidebarComponent } from './sidebar/sidebar';
 import { ViewAsBannerComponent } from './view-as-banner/view-as-banner';
 import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
+import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
 
 @Component({
   selector: 'app-layout',
@@ -16,6 +17,7 @@ import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
     SidebarComponent,
     ViewAsBannerComponent,
     ShortcutPaletteComponent,
+    SessionExpiryWarningComponent,
   ],
   template: `
     <a
@@ -181,6 +183,9 @@ import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
 
     <!-- ── Paleta de atajos de teclado (? / ⌘K) ── -->
     <app-shortcut-palette />
+
+    <!-- ── Aviso de sesión por expirar (31s antes del auto-logout) ── -->
+    <app-session-expiry-warning />
   `,
 })
 export class LayoutComponent {

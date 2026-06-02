@@ -36,7 +36,7 @@ Base: `/api/auth`
 
 ```
 POST /start          → { flow: 'password' }
-POST /login          → JWT 12h
+POST /login          → JWT 1h
 ```
 
 ### 2. Password + MFA (`auth_mode = 'password_otp'`)
@@ -44,21 +44,21 @@ POST /login          → JWT 12h
 ```
 POST /start          → { flow: 'password' }
 POST /login          → challenge_token (10min) + OTP por email
-POST /login (mode=mfa, otp_code, challenge_token) → JWT 12h
+POST /login (mode=mfa, otp_code, challenge_token) → JWT 1h
 ```
 
 ### 3. OTP puro (`auth_mode = 'otp'`)
 
 ```
 POST /start          → OTP enviado + { flow: 'otp', expires_at }
-POST /login          → JWT 12h
+POST /login          → JWT 1h
 ```
 
 ### 4. Activación de cuenta nueva
 
 ```
 POST /setup/start    → setup_token (10min) + OTP por email
-POST /setup/complete → activa cuenta, setea password, JWT 12h
+POST /setup/complete → activa cuenta, setea password, JWT 1h
 ```
 
 ---
@@ -67,11 +67,11 @@ POST /setup/complete → activa cuenta, setea password, JWT 12h
 
 | Tipo          | TTL   | Claims                                        |
 | ------------- | ----- | --------------------------------------------- |
-| Auth token    | 12h   | `id, email, tipo, empresa_id, sub_empresa_id` |
+| Auth token    | 1h    | `id, email, tipo, empresa_id, sub_empresa_id` |
 | Challenge MFA | 10min | `{ email, purpose: 'mfa' }`                   |
 | Setup token   | 10min | `{ email, purpose: 'account_setup' }`         |
 
-Sin refresh tokens. Expirado → re-login.
+Sin refresh tokens. Expirado → re-login. La duración del auth token es fija: `1h`. El frontend lee el claim `exp`, muestra un aviso 31 segundos antes y cierra sesión automáticamente al expirar. No hay renovación silenciosa por actividad.
 
 ---
 
