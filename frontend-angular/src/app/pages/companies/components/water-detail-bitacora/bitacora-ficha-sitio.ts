@@ -740,7 +740,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
     this.saving.set(true);
     this.error.set('');
     this.saveMsg.set('');
-    this.api.patchFicha(this.sitioId(), this.fichaWithFullPhones(this.ficha())).subscribe({
+    this.api.patchFicha(this.sitioId(), this.fichaForSave(this.ficha())).subscribe({
       next: (f) => {
         const norm = this.fichaWithLocalPhones(f);
         this.ficha.set(norm);
@@ -815,14 +815,25 @@ export class BitacoraFichaSitioComponent implements OnInit {
     };
   }
 
-  /** Ficha con teléfonos como `+56 <9 dígitos>` (para enviar al backend). */
-  private fichaWithFullPhones(f: FichaSitio): FichaSitio {
+  /**
+   * Ficha lista para enviar al backend:
+   *  - antepone +56 a los teléfonos no vacíos,
+   *  - descarta filas incompletas (el backend exige nombre/persona/tipo/
+   *    descripción no vacíos; una fila en blanco recién agregada daría 422).
+   */
+  private fichaForSave(f: FichaSitio): FichaSitio {
     return {
       ...f,
-      contactos: f.contactos.map((c) => {
-        const local = this.toLocalPhone(c.telefono);
-        return { ...c, telefono: local ? `+56 ${local}` : '' };
-      }),
+      contactos: f.contactos
+        .filter((c) => (c.nombre ?? '').trim().length > 0)
+        .map((c) => {
+          const local = this.toLocalPhone(c.telefono);
+          return { ...c, telefono: local ? `+56 ${local}` : '' };
+        }),
+      acreditaciones: f.acreditaciones.filter(
+        (a) => (a.persona ?? '').trim().length > 0 && (a.tipo ?? '').trim().length > 0,
+      ),
+      riesgos: f.riesgos.filter((r) => (r.descripcion ?? '').trim().length > 0),
     };
   }
 

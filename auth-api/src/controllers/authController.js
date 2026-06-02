@@ -5,6 +5,9 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret, mainApiUrl, internalApiKey } = require('../config/env');
 const audit = require('../services/auditLog');
 
+// Política de seguridad: la sesión dura 1 hora, sin refresh ni extensión silenciosa.
+const AUTH_TOKEN_TTL = '1h';
+
 const DEFAULT_OTP_MINS = 30;
 const MAX_OTP_MINS = 1440;
 const BCRYPT_COST = 12;
@@ -77,7 +80,7 @@ function makeAuthToken(user) {
       sub_empresa_id: user.sub_empresa_id,
     },
     jwtSecret,
-    { expiresIn: '12h', algorithm: 'HS256' },
+    { expiresIn: AUTH_TOKEN_TTL, algorithm: 'HS256' },
   );
 }
 
