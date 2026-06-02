@@ -151,6 +151,7 @@ export class CompanySiteComingSoonDetailComponent implements OnInit {
     if (type === 'riles') return '#22c55e';
     if (type === 'camara_frio') return '#0284c7';
     if (type === 'proceso') return '#6366f1';
+    if (type === 'pasteurizador') return '#e11d48';
     return '#f97316';
   };
   accentSoft = () => {
@@ -158,6 +159,7 @@ export class CompanySiteComingSoonDetailComponent implements OnInit {
     if (type === 'riles') return 'rgba(34,197,94,0.10)';
     if (type === 'camara_frio') return 'rgba(2,132,199,0.10)';
     if (type === 'proceso') return 'rgba(99,102,241,0.10)';
+    if (type === 'pasteurizador') return 'rgba(225,29,72,0.10)';
     return 'rgba(249,115,22,0.10)';
   };
 

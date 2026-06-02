@@ -8,6 +8,7 @@ export type SiteType =
   | 'canal'
   | 'electrico'
   | 'proceso'
+  | 'pasteurizador'
   | 'riles'
   | 'camara_frio'
   | 'generico'

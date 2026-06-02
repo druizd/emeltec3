@@ -83,6 +83,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:siteId/pasteurizador',
+        data: { siteType: 'pasteurizador' },
+        loadComponent: () =>
+          import('./pages/companies/company-site-coming-soon-detail').then(
+            (m) => m.CompanySiteComingSoonDetailComponent,
+          ),
+      },
+      {
         path: 'companies/:siteId/generic',
         data: { siteType: 'generico' },
         loadComponent: () =>

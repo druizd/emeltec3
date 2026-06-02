@@ -63,7 +63,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
     color: '#6366f1',
     bg: 'rgba(99,102,241,0.08)',
     border: 'rgba(99,102,241,0.20)',
-    siteTypes: ['proceso'],
+    siteTypes: ['proceso', 'pasteurizador'],
   },
   {
     key: '_other',
@@ -133,6 +133,14 @@ const SITE_TYPE_UI: Record<string, SiteTypeUi> = {
     routeSegment: 'process',
     badgeClass: 'bg-indigo-50 text-indigo-700',
   },
+  pasteurizador: {
+    id: 'pasteurizador',
+    label: 'Pasteurizador',
+    icon: 'device_thermostat',
+    moduleKey: 'Proceso',
+    routeSegment: 'pasteurizador',
+    badgeClass: 'bg-rose-50 text-rose-700',
+  },
   generico: {
     id: 'generico',
     label: 'Generico',
@@ -165,6 +173,7 @@ export function normalizeSiteType(value: string | null | undefined): string {
   if (normalized.includes('pozo') || normalized.includes('agua')) return 'pozo';
   if (normalized.includes('elect')) return 'electrico';
   if (normalized.includes('ril')) return 'riles';
+  if (normalized.includes('pasteur')) return 'pasteurizador';
   if (normalized.includes('camara') || normalized.includes('frio') || normalized.includes('cold')) {
     return 'camara_frio';
   }
@@ -224,11 +233,29 @@ export function siteMatchesModule(
   return siteTypeMatchesModule(site.tipo_sitio, moduleKey);
 }
 
+function tapRouteSegmentForSite(site: SiteRecord): string | null {
+  const candidates = [site.descripcion, site.ubicacion, site.id_serial];
+
+  for (const value of candidates) {
+    const match = value?.match(/\btap\s*[-_:#]?\s*(\d{1,2})\b/i);
+    if (!match) continue;
+
+    const tapNumber = Number(match[1]);
+    if (Number.isInteger(tapNumber) && tapNumber > 0) {
+      return `TAP-${tapNumber}`;
+    }
+  }
+
+  return null;
+}
+
 export function dashboardRouteForSite(site: SiteRecord): string[] {
   const type = normalizeSiteType(site.tipo_sitio);
   if (type === 'camara_frio') {
-    // Vista cold-room está embebida en /companies para la subempresa.
-    return ['/companies'];
+    const tapSegment = tapRouteSegmentForSite(site);
+    return tapSegment
+      ? ['/companies', site.id, 'tap', tapSegment]
+      : ['/companies', site.id, 'cold-room'];
   }
   return ['/companies', site.id, getSiteTypeUi(site.tipo_sitio).routeSegment];
 }
