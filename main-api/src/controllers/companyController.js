@@ -186,6 +186,7 @@ function normalizeSiteType(value) {
   if (normalized.includes('pozo') || normalized.includes('agua')) return 'pozo';
   if (normalized.includes('elect')) return 'electrico';
   if (normalized.includes('ril')) return 'riles';
+  if (normalized.includes('pasteur')) return 'pasteurizador';
   if (normalized.includes('proceso') || normalized.includes('variable')) return 'proceso';
   return SITE_TYPES.has(normalized) ? normalized : null;
 }
@@ -1127,7 +1128,7 @@ exports.createSite = async (req, res, next) => {
     if (!tipoSitio) {
       return badRequest(
         res,
-        'tipo_sitio debe ser pozo, vertiente, canal, electrico, riles, camara_frio, proceso o generico.',
+        'tipo_sitio debe ser pozo, vertiente, canal, electrico, riles, camara_frio, proceso, pasteurizador o generico.',
       );
     }
 
@@ -1278,7 +1279,7 @@ exports.updateSite = async (req, res, next) => {
     if (tipoSitio === null) {
       return badRequest(
         res,
-        'tipo_sitio debe ser pozo, vertiente, canal, electrico, riles, camara_frio, proceso o generico.',
+        'tipo_sitio debe ser pozo, vertiente, canal, electrico, riles, camara_frio, proceso, pasteurizador o generico.',
       );
     }
 

@@ -61,6 +61,91 @@ export interface SiteOperacionConfig {
 }
 
 export type HistoryGranularity = '1m' | '1h' | '1d';
+export type PasteurizadorGranularity = '1m' | '5m' | '1h' | '1d';
+export type PasteurizadorRole =
+  | 'temperatura_pasteurizacion'
+  | 'temperatura_entrada'
+  | 'salida_producto_tina'
+  | 'estado_valvula'
+  | 'cierres_valvula'
+  | 'errores_criticos'
+  | 'tiempo_batch'
+  | 'temperatura_promedio_batch'
+  | 'temperatura_ingreso_agua'
+  | 'presion_vapor'
+  | 'temperatura_gases_combustion'
+  | 'señal';
+
+export interface PasteurizadorMetric {
+  role: PasteurizadorRole | string;
+  label: string;
+  kind: string;
+  ok: boolean;
+  valor: string | number | boolean | null;
+  unidad: string | null;
+  alias: string | null;
+  error: string | null;
+}
+
+export interface PasteurizadorSnapshot {
+  server_time: string | null;
+  site: Pick<SiteRecord, 'id' | 'descripcion' | 'id_serial' | 'tipo_sitio' | 'activo'>;
+  ultima_lectura: SiteDashboardData['ultima_lectura'];
+  estado_operativo: {
+    id: 'sin_datos' | 'critico' | 'operativo' | string;
+    label: string;
+    severity: 'warning' | 'critical' | 'normal' | string;
+    valve_open: boolean | null;
+  };
+  variables: Record<string, PasteurizadorMetric>;
+  metadata: {
+    roles: { id: PasteurizadorRole | string; label: string; unit: string | null; kind: string }[];
+    source: 'equipo' | string;
+  };
+}
+
+export interface PasteurizadorHistoryRow {
+  timestamp: string | null;
+  received_at: string | null;
+  variables: Record<string, PasteurizadorMetric>;
+}
+
+export interface PasteurizadorHistoryResponse {
+  site: Pick<SiteRecord, 'id' | 'descripcion' | 'id_serial' | 'tipo_sitio' | 'activo'>;
+  rows: PasteurizadorHistoryRow[];
+  pagination: {
+    limit: number;
+    page: number;
+    total: number | null;
+    total_pages: number;
+    has_more: boolean;
+    granularity: PasteurizadorGranularity;
+    source: string;
+  };
+}
+
+export interface PasteurizadorSummaryMetric {
+  role: PasteurizadorRole | string;
+  label: string;
+  kind: string;
+  unidad: string | null;
+  n: number;
+  numeric_n: number;
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  latest: string | number | boolean | null;
+  latest_at: string | null;
+  alias: string | null;
+  ok: boolean;
+}
+
+export interface PasteurizadorSummaryResponse {
+  site: Pick<SiteRecord, 'id' | 'descripcion' | 'id_serial' | 'tipo_sitio' | 'activo'>;
+  range: { from: string; to: string; granularity: PasteurizadorGranularity; source: string };
+  muestras_total: number;
+  resumen: Record<string, PasteurizadorSummaryMetric>;
+}
 
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
@@ -228,6 +313,58 @@ export class CompanyService {
         server_time: string;
       }>
     >(`/api/companies/sites/${siteId}/operacion-bundle?${params.toString()}`);
+  }
+
+  getPasteurizadorSnapshot(siteId: string): Observable<ApiResponse<PasteurizadorSnapshot>> {
+    return this.http.get<ApiResponse<PasteurizadorSnapshot>>(
+      `/api/companies/sites/${siteId}/pasteurizador/snapshot?t=${Date.now()}`,
+    );
+  }
+
+  getPasteurizadorHistory(
+    siteId: string,
+    options: {
+      from?: string;
+      to?: string;
+      limit?: number;
+      page?: number;
+      granularity?: PasteurizadorGranularity;
+      roles?: PasteurizadorRole[];
+    } = {},
+  ): Observable<ApiResponse<PasteurizadorHistoryResponse>> {
+    const params = new URLSearchParams();
+    if (options.from) params.set('from', options.from);
+    if (options.to) params.set('to', options.to);
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.page) params.set('page', String(options.page));
+    if (options.granularity) params.set('granularity', options.granularity);
+    if (options.roles?.length) params.set('roles', options.roles.join(','));
+    params.set('t', String(Date.now()));
+
+    return this.http.get<ApiResponse<PasteurizadorHistoryResponse>>(
+      `/api/companies/sites/${siteId}/pasteurizador/history?${params.toString()}`,
+    );
+  }
+
+  getPasteurizadorSummary(
+    siteId: string,
+    options: {
+      from: string;
+      to: string;
+      granularity?: PasteurizadorGranularity;
+      roles?: PasteurizadorRole[];
+    },
+  ): Observable<ApiResponse<PasteurizadorSummaryResponse>> {
+    const params = new URLSearchParams();
+    params.set('from', options.from);
+    params.set('to', options.to);
+    if (options.granularity) params.set('granularity', options.granularity);
+    if (options.roles?.length) params.set('roles', options.roles.join(','));
+    params.set('t', String(Date.now()));
+
+    return this.http.get<ApiResponse<PasteurizadorSummaryResponse>>(
+      `/api/companies/sites/${siteId}/pasteurizador/summary?${params.toString()}`,
+    );
   }
 
   getSitePeriodAggregates(

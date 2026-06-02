@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
+const pasteurizadorController = require('../controllers/pasteurizadorController');
 const { protect } = require('../middlewares/authMiddleware');
 
 // Lazy require del controller TS compilado de contadores (puede no estar
@@ -68,6 +69,12 @@ if (siteOperacionConfigController) {
 router.get('/sites/:siteId/dashboard-history/export', companyController.exportSiteDashboardHistory);
 router.get('/sites/:siteId/dashboard-history', companyController.getSiteDashboardHistory);
 router.get('/sites/:siteId/operacion-bundle', companyController.getSiteOperacionBundle);
+router.get(
+  '/sites/:siteId/pasteurizador/snapshot',
+  pasteurizadorController.getPasteurizadorSnapshot,
+);
+router.get('/sites/:siteId/pasteurizador/history', pasteurizadorController.getPasteurizadorHistory);
+router.get('/sites/:siteId/pasteurizador/summary', pasteurizadorController.getPasteurizadorSummary);
 router.get('/sites/:siteId/period-aggregates', companyController.getSitePeriodAggregates);
 router.get(
   '/sites/:siteId/period-aggregates-daily',
