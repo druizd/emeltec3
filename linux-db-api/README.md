@@ -31,12 +31,20 @@ Windows y su sincronizacion.
 Linux es la fuente de verdad para comandos PLC. La tabla `plc_commands` vive en
 PostgreSQL/TimescaleDB y el agente Windows la consulta por HTTP.
 
-Crear comando:
+Crear comando simple (`write_tag`, formato actual):
 
 ```bash
 curl -X POST http://localhost:3010/api/plc/commands \
   -H 'Content-Type: application/json' \
   -d '{"id_serial":"151.24.7.13","tag":"REG4","value":120,"command_type":"write_tag","requested_by":"admin"}'
+```
+
+Crear comando multiple (`write_tags`, formato `equipo.data`):
+
+```bash
+curl -X POST http://localhost:3010/api/plc/commands \
+  -H 'Content-Type: application/json' \
+  -d '{"id_serial":"151.23.33.22","command_type":"write_tags","data":{"REG4":120,"REG5":0,"AI23":717},"requested_by":"admin"}'
 ```
 
 Flujo esperado:
@@ -52,6 +60,7 @@ Antes de usar los endpoints, aplicar:
 
 ```bash
 docker exec -i emeltec-db psql -U postgres -d telemetry_platform < infra-db/migrations/2026-06-01-plc-commands.sql
+docker exec -i emeltec-db psql -U postgres -d telemetry_platform < infra-db/migrations/2026-06-03-plc-command-data.sql
 ```
 
 ## Desarrollo local

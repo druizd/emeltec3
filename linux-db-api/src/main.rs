@@ -3,8 +3,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{DefaultBodyLimit, Path, Query, Request, State};
 use axum::http::StatusCode;
+use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -23,6 +24,7 @@ const MAX_TOP_TABLES_LIMIT: i64 = 50;
 struct AppState {
     db: Arc<Client>,
     started_at: Instant,
+    api_key: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -169,8 +171,9 @@ struct PlcCommandQuery {
 struct CreatePlcCommandRequest {
     command_id: Option<String>,
     id_serial: String,
-    tag: String,
-    value: Value,
+    tag: Option<String>,
+    value: Option<Value>,
+    data: Option<Value>,
     command_type: Option<String>,
     requested_by: Option<String>,
 }
@@ -208,6 +211,7 @@ struct PlcCommand {
     id_serial: String,
     tag: String,
     value: String,
+    data: Option<Value>,
     command_type: String,
     status: String,
     requested_by: Option<String>,
@@ -260,6 +264,32 @@ fn required_text(value: &str, field: &str) -> Result<String, ApiError> {
         return Err(ApiError::bad_request(format!("{} requerido", field)));
     }
     Ok(trimmed.to_string())
+}
+
+async fn require_api_key(
+    State(state): State<AppState>,
+    request: Request,
+    next: Next,
+) -> Result<Response, ApiError> {
+    if !state.api_key.is_empty() {
+        let key = request
+            .headers()
+            .get("x-internal-key")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        if key != state.api_key {
+            tracing::warn!(
+                method = %request.method(),
+                uri = %request.uri(),
+                "acceso denegado: API key inválida o ausente"
+            );
+            return Err(ApiError {
+                status: StatusCode::UNAUTHORIZED,
+                message: "API key inválida o ausente".to_string(),
+            });
+        }
+    }
+    Ok(next.run(request).await)
 }
 
 fn utc_now_sql() -> &'static str {
@@ -337,14 +367,55 @@ async fn create_plc_command(
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(generated_command_id);
     let id_serial = required_text(&req.id_serial, "id_serial")?;
-    let tag = required_text(&req.tag, "tag")?;
     let command_type = req
         .command_type
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "write_tag".to_string());
-    let value = match req.value {
-        Value::String(value) => value,
-        other => other.to_string(),
+
+    let (tag, value, data) = match command_type.as_str() {
+        "write_tag" => {
+            let tag = required_text(req.tag.as_deref().unwrap_or(""), "tag")?;
+            let value = req
+                .value
+                .filter(|value| !value.is_null())
+                .ok_or_else(|| ApiError::bad_request("value requerido"))?;
+            let value = match value {
+                Value::String(value) => value,
+                other => other.to_string(),
+            };
+            (tag, value, req.data)
+        }
+        "write_tags" => {
+            let data = req
+                .data
+                .filter(|value| value.is_object())
+                .ok_or_else(|| ApiError::bad_request("data debe ser un objeto JSON"))?;
+            let tags = data.as_object().expect("data validado como objeto JSON");
+            if tags.is_empty() {
+                return Err(ApiError::bad_request("data debe incluir al menos un tag"));
+            }
+            if tags.keys().any(|tag| tag.trim().is_empty()) {
+                return Err(ApiError::bad_request("data no puede incluir tags vacios"));
+            }
+            if tags.values().any(Value::is_null) {
+                return Err(ApiError::bad_request("data no puede incluir valores null"));
+            }
+            (
+                req.tag.unwrap_or_default().trim().to_string(),
+                req.value
+                    .map(|value| match value {
+                        Value::String(value) => value,
+                        other => other.to_string(),
+                    })
+                    .unwrap_or_default(),
+                Some(data),
+            )
+        }
+        _ => {
+            return Err(ApiError::bad_request(
+                "command_type debe ser write_tag o write_tags",
+            ));
+        }
     };
 
     let row = state
@@ -352,11 +423,11 @@ async fn create_plc_command(
         .query_one(
             "
             INSERT INTO plc_commands (
-              command_id, id_serial, tag, value, command_type, requested_by
+              command_id, id_serial, tag, value, data, command_type, requested_by
             )
-            VALUES ($1, $2, $3, $4, $5, $6)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             RETURNING
-              command_id, id_serial, tag, value, command_type, status,
+              command_id, id_serial, tag, value, data, command_type, status,
               requested_by,
               to_char(timezone('UTC', requested_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS requested_at,
               to_char(timezone('UTC', sent_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at,
@@ -369,6 +440,7 @@ async fn create_plc_command(
                 &id_serial,
                 &tag,
                 &value,
+                &data,
                 &command_type,
                 &req.requested_by,
             ],
@@ -397,7 +469,7 @@ async fn list_plc_commands(
         .query(
             "
             SELECT
-              command_id, id_serial, tag, value, command_type, status,
+              command_id, id_serial, tag, value, data, command_type, status,
               requested_by,
               to_char(timezone('UTC', requested_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS requested_at,
               to_char(timezone('UTC', sent_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at,
@@ -442,7 +514,7 @@ async fn pending_plc_commands(
               LIMIT $1
             )
             RETURNING
-              command_id, id_serial, tag, value, command_type, status,
+              command_id, id_serial, tag, value, data, command_type, status,
               requested_by,
               to_char(timezone('UTC', requested_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS requested_at,
               to_char(timezone('UTC', sent_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at,
@@ -510,6 +582,7 @@ fn plc_command_from_row(row: &tokio_postgres::Row) -> PlcCommand {
         id_serial: row.get("id_serial"),
         tag: row.get("tag"),
         value: row.get("value"),
+        data: row.get("data"),
         command_type: row.get("command_type"),
         status: row.get("status"),
         requested_by: row.get("requested_by"),
@@ -692,15 +765,26 @@ async fn timescale_usage(db: &Client) -> TimescaleUsage {
 }
 
 fn build_router(state: AppState) -> Router {
-    Router::new()
-        .route("/health", get(health))
+    let protected = Router::new()
         .route("/api/db/usage", get(db_usage))
-        .route("/api/plc/commands", post(create_plc_command).get(list_plc_commands))
+        .route(
+            "/api/plc/commands",
+            post(create_plc_command).get(list_plc_commands),
+        )
         .route("/api/plc/commands/pending", get(pending_plc_commands))
         .route(
             "/api/plc/commands/:command_id/result",
             post(report_plc_command_result),
         )
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
+            require_api_key,
+        ));
+
+    Router::new()
+        .route("/health", get(health))
+        .merge(protected)
+        .layer(DefaultBodyLimit::max(64 * 1024))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -715,12 +799,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init();
 
     let port = get_env("PORT", "3010");
+    let api_key = get_env("INTERNAL_API_KEY", "");
+    if api_key.is_empty() {
+        tracing::warn!("INTERNAL_API_KEY no configurada — endpoints /api/* sin autenticación");
+    }
+
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
     let db = connect_db().await?;
 
     let state = AppState {
         db,
         started_at: Instant::now(),
+        api_key,
     };
     let listener = TcpListener::bind(addr).await?;
 
