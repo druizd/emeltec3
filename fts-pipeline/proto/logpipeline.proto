@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package logpipeline;
+
+message TelemetryRecord {
+  string id_serial = 1;
+  string fecha = 2;
+  string hora = 3;
+  string data = 4;
+}
+
+message SendRecordsRequest {
+  repeated TelemetryRecord records = 1;
+  string filename = 2;
+}
+
+message SendRecordsResponse {
+  bool ok = 1;
+  int32 inserted = 2;
+  int32 duplicates = 3;
+  string message = 4;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string status = 1;
+}
+
+service LogIngestion {
+  rpc SendRecords (SendRecordsRequest) returns (SendRecordsResponse);
+  rpc Ping (PingRequest) returns (PingResponse);
+}

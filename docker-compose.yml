@@ -206,6 +206,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  ftsconsumer:
+    build:
+      context: ./fts-pipeline
+      dockerfile: ftsconsumer-rust.Dockerfile
+    container_name: emeltec-ftsconsumer
+    ports:
+      - '${FTSCONSUMER_HOST_PORT:-50061}:50061'
+    environment:
+      <<: *db-env
+      FTS_CONSUMER_PORT: 50061
+      RUST_LOG: info
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   timescale_data:
   redis_data:
