@@ -44,15 +44,6 @@ interface TrendSummaryCard {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <section class="trend-period-tabs" aria-label="Periodo de tendencias">
-      <button type="button" [class.is-active]="period() === 'actual'" (click)="setPeriod('actual')">
-        Actual
-      </button>
-      <button type="button" [class.is-active]="period() === 'diario'" (click)="setPeriod('diario')">
-        Diario
-      </button>
-    </section>
-
     <section class="trend-overview" aria-label="Resumen de tendencias">
       @for (card of summaryCards; track card.label) {
         <article class="trend-mini-card" [ngClass]="'tone-' + card.tone">
@@ -63,17 +54,6 @@ interface TrendSummaryCard {
           </div>
         </article>
       }
-
-      <div class="trend-overview-actions">
-        <button type="button" class="date-button">
-          <span class="material-symbols-outlined">calendar_month</span>
-          02/06/2026
-        </button>
-        <button type="button" class="export-button">
-          <span class="material-symbols-outlined">download</span>
-          Exportar
-        </button>
-      </div>
     </section>
 
     <section class="trend-card">
@@ -221,63 +201,39 @@ interface TrendSummaryCard {
   `,
   styles: [
     `
-      .trend-period-tabs {
-        display: flex;
-        min-height: 54px;
-        align-items: center;
+      :host {
+        display: grid;
         gap: 26px;
-        border-bottom: 1px solid #dfe7f1;
-      }
-
-      .trend-period-tabs button {
-        position: relative;
-        min-height: 54px;
-        color: #475569;
-        font-size: 14px;
-        font-weight: 800;
-      }
-
-      .trend-period-tabs button.is-active {
-        color: #0dafbd;
-      }
-
-      .trend-period-tabs button.is-active::after {
-        content: '';
-        position: absolute;
-        inset-inline: 0;
-        bottom: -1px;
-        height: 2px;
-        border-radius: 9999px;
-        background: #0dafbd;
       }
 
       .trend-overview {
         display: grid;
-        grid-template-columns: repeat(5, minmax(144px, 1fr)) auto;
-        gap: 10px;
+        grid-template-columns: repeat(5, minmax(168px, 1fr));
+        gap: 14px;
         align-items: stretch;
+        padding-inline: 2px;
       }
 
       .trend-mini-card {
         display: flex;
-        min-height: 58px;
+        min-height: 66px;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         overflow: hidden;
         border: 1px solid #dfe7f1;
-        border-radius: 10px;
+        border-radius: 13px;
         background: #ffffff;
-        padding: 10px 12px;
+        padding: 12px 14px;
         box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05);
       }
 
       .trend-mini-card > .material-symbols-outlined {
         display: grid;
-        height: 34px;
-        width: 34px;
+        height: 38px;
+        width: 38px;
         flex-shrink: 0;
         place-items: center;
-        border-radius: 9px;
+        border-radius: 11px;
         font-size: 20px;
       }
 
@@ -346,47 +302,11 @@ interface TrendSummaryCard {
         color: #dc2626;
       }
 
-      .trend-overview-actions {
-        display: flex;
-        align-items: stretch;
-        gap: 8px;
-      }
-
-      .trend-overview-actions button {
-        display: inline-flex;
-        min-height: 58px;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        border-radius: 10px;
-        padding: 0 13px;
-        font-size: 12px;
-        font-weight: 900;
-        white-space: nowrap;
-      }
-
-      .date-button {
-        border: 1px solid #dfe7f1;
-        background: #ffffff;
-        color: #475569;
-      }
-
-      .date-button .material-symbols-outlined,
-      .export-button .material-symbols-outlined {
-        font-size: 18px;
-      }
-
-      .export-button {
-        background: #8b5cf6;
-        color: #ffffff;
-        box-shadow: 0 8px 18px rgba(139, 92, 246, 0.18);
-      }
-
       .trend-card,
       .batch-card {
         overflow: hidden;
         border: 1px solid #dfe7f1;
-        border-radius: 12px;
+        border-radius: 14px;
         background: #ffffff;
         box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
       }
@@ -458,7 +378,7 @@ interface TrendSummaryCard {
       }
 
       .trend-body {
-        padding: 17px 18px 20px;
+        padding: 18px 20px 22px;
       }
 
       .chart-toolbar {
@@ -769,14 +689,6 @@ interface TrendSummaryCard {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .trend-overview-actions {
-          grid-column: 1 / -1;
-        }
-
-        .trend-overview-actions button {
-          flex: 1;
-        }
-
         .trend-card__hero,
         .chart-toolbar,
         .batch-card header {
@@ -811,7 +723,6 @@ export class PasteurizadorTrendsPanelComponent implements AfterViewInit, OnChang
 
   @ViewChild('canvas') canvas?: ElementRef<HTMLCanvasElement>;
 
-  readonly period = signal<'actual' | 'diario'>('actual');
   readonly rangeStart = signal(0);
   readonly rangeEnd = signal(0);
 
@@ -894,10 +805,6 @@ export class PasteurizadorTrendsPanelComponent implements AfterViewInit, OnChang
 
   ngOnDestroy(): void {
     this.destroyChart();
-  }
-
-  setPeriod(period: 'actual' | 'diario'): void {
-    this.period.set(period);
   }
 
   applyPreset(minutes: number): void {

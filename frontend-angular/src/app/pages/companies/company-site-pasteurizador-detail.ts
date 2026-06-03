@@ -29,7 +29,7 @@ interface SiteContext {
 }
 
 type PasteurSection = 'monitoring' | 'operation' | 'alerts' | 'log' | 'analysis';
-type PasteurOperationView = 'dashboard' | 'trends' | 'history';
+type PasteurOperationView = 'trends' | 'diagram' | 'history';
 
 interface PasteurHistoryRow {
   id: string;
@@ -168,96 +168,8 @@ interface PasteurHistoryRow {
             </nav>
 
             @if (activeSection() === 'monitoring') {
-              <main id="pasteur-monitoring" class="diagram-view" role="tabpanel">
-                <app-pasteurizador-process-diagram [data]="processDiagramData" />
-              </main>
-            } @else if (activeSection() === 'operation') {
-              <main id="pasteur-operation" class="operation-view" role="tabpanel">
-                @if (activeOperationView() !== 'history') {
-                  <nav class="operation-tabs" aria-label="Vistas de operacion">
-                    <button
-                      type="button"
-                      [class.is-active]="activeOperationView() === 'dashboard'"
-                      (click)="setActiveOperationView('dashboard')"
-                    >
-                      <span class="material-symbols-outlined">dashboard</span>
-                      Dashboard
-                    </button>
-                    <button
-                      type="button"
-                      [class.is-active]="activeOperationView() === 'trends'"
-                      (click)="setActiveOperationView('trends')"
-                    >
-                      <span class="material-symbols-outlined">show_chart</span>
-                      Tendencias
-                    </button>
-                  </nav>
-                }
-
-                @if (activeOperationView() === 'dashboard') {
-                  <section class="kpi-grid" aria-label="Indicadores principales">
-                    @for (kpi of kpis; track kpi.label) {
-                      <app-pasteurizador-kpi-card [kpi]="kpi" />
-                    }
-                  </section>
-
-                  <section class="main-grid">
-                    <app-pasteurizador-chart-card [chart]="pasteurChart" [featured]="true" />
-
-                    <aside class="right-rail">
-                      <app-pasteurizador-status-card
-                        eyebrow="Informacion rapida"
-                        title="Resumen operativo"
-                        icon="manufacturing"
-                        [metrics]="quickMetrics"
-                      />
-                      <article class="history-actions-card">
-                        <div class="history-actions-head">
-                          <span class="history-actions-icon">
-                            <span class="material-symbols-outlined">database</span>
-                          </span>
-                          <div>
-                            <p>Registros del sitio</p>
-                            <h2>Datos operativos</h2>
-                          </div>
-                        </div>
-
-                        <p class="history-actions-copy">
-                          Consulta lecturas filtradas por fecha. La vista muestra maximo 50
-                          registros por carga.
-                        </p>
-
-                        <div class="history-actions-buttons">
-                          <button type="button" class="history-primary" (click)="openHistoryView()">
-                            <span class="material-symbols-outlined">history</span>
-                            Datos historicos
-                          </button>
-                          <button
-                            type="button"
-                            class="history-secondary"
-                            (click)="downloadHistoryCsv()"
-                          >
-                            <span class="material-symbols-outlined">download</span>
-                            Descargar
-                          </button>
-                        </div>
-                      </article>
-                    </aside>
-                  </section>
-
-                  <section class="secondary-grid" aria-label="Graficos secundarios">
-                    <app-pasteurizador-chart-card [chart]="entradaChart" />
-                    <app-pasteurizador-chart-card [chart]="productoChart" />
-                  </section>
-                } @else if (activeOperationView() === 'trends') {
-                  <app-pasteurizador-trends-panel
-                    [times]="trendTimes"
-                    [pasteurValues]="trendPasteurValues"
-                    [entradaValues]="trendEntradaValues"
-                    [productoValues]="trendProductoValues"
-                    [valveValues]="trendValveValues"
-                  />
-                } @else {
+              <main id="pasteur-monitoring" class="operation-view" role="tabpanel">
+                @if (activeOperationView() === 'history') {
                   <section class="history-view">
                     <div class="history-toolbar">
                       <div class="history-title">
@@ -265,7 +177,7 @@ interface PasteurHistoryRow {
                           type="button"
                           class="history-back"
                           (click)="closeHistoryView()"
-                          aria-label="Volver al dashboard operacional"
+                          aria-label="Volver al dashboard de monitoreo"
                         >
                           <span class="material-symbols-outlined">arrow_back</span>
                         </button>
@@ -365,6 +277,94 @@ interface PasteurHistoryRow {
                       </div>
                     </div>
                   </section>
+                } @else {
+                  <section class="kpi-grid" aria-label="Indicadores principales">
+                    @for (kpi of kpis; track kpi.label) {
+                      <app-pasteurizador-kpi-card [kpi]="kpi" />
+                    }
+                  </section>
+
+                  <section class="main-grid">
+                    <app-pasteurizador-chart-card [chart]="pasteurChart" [featured]="true" />
+
+                    <aside class="right-rail">
+                      <app-pasteurizador-status-card
+                        eyebrow="Informacion rapida"
+                        title="Resumen operativo"
+                        icon="manufacturing"
+                        [metrics]="quickMetrics"
+                      />
+                      <article class="history-actions-card">
+                        <div class="history-actions-head">
+                          <span class="history-actions-icon">
+                            <span class="material-symbols-outlined">database</span>
+                          </span>
+                          <div>
+                            <p>Registros del sitio</p>
+                            <h2>Datos operativos</h2>
+                          </div>
+                        </div>
+
+                        <p class="history-actions-copy">
+                          Consulta lecturas filtradas por fecha. La vista muestra maximo 50
+                          registros por carga.
+                        </p>
+
+                        <div class="history-actions-buttons">
+                          <button type="button" class="history-primary" (click)="openHistoryView()">
+                            <span class="material-symbols-outlined">history</span>
+                            Datos historicos
+                          </button>
+                          <button
+                            type="button"
+                            class="history-secondary"
+                            (click)="downloadHistoryCsv()"
+                          >
+                            <span class="material-symbols-outlined">download</span>
+                            Descargar
+                          </button>
+                        </div>
+                      </article>
+                    </aside>
+                  </section>
+
+                  <section class="secondary-grid" aria-label="Graficos secundarios">
+                    <app-pasteurizador-chart-card [chart]="entradaChart" />
+                    <app-pasteurizador-chart-card [chart]="productoChart" />
+                  </section>
+                }
+              </main>
+            } @else if (activeSection() === 'operation') {
+              <main id="pasteur-operation" class="operation-view" role="tabpanel">
+                <nav class="operation-tabs" aria-label="Vistas de operacion">
+                  <button
+                    type="button"
+                    [class.is-active]="activeOperationView() === 'trends'"
+                    (click)="setActiveOperationView('trends')"
+                  >
+                    <span class="material-symbols-outlined">show_chart</span>
+                    Tendencias
+                  </button>
+                  <button
+                    type="button"
+                    [class.is-active]="activeOperationView() === 'diagram'"
+                    (click)="setActiveOperationView('diagram')"
+                  >
+                    <span class="material-symbols-outlined">account_tree</span>
+                    Diagrama de proceso
+                  </button>
+                </nav>
+
+                @if (activeOperationView() === 'diagram') {
+                  <app-pasteurizador-process-diagram [data]="processDiagramData" />
+                } @else {
+                  <app-pasteurizador-trends-panel
+                    [times]="trendTimes"
+                    [pasteurValues]="trendPasteurValues"
+                    [entradaValues]="trendEntradaValues"
+                    [productoValues]="trendProductoValues"
+                    [valveValues]="trendValveValues"
+                  />
                 }
               </main>
             } @else if (activeSection() === 'alerts') {
@@ -991,7 +991,7 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit {
 
   siteContext = signal<SiteContext | null>(null);
   activeSection = signal<PasteurSection>('monitoring');
-  activeOperationView = signal<PasteurOperationView>('dashboard');
+  activeOperationView = signal<PasteurOperationView>('trends');
   settingsPanelOpen = signal(false);
   readonly isSuperAdmin = this.auth.isSuperAdmin;
   readonly canEditSiteSettings = this.auth.canEditSiteSettings;
@@ -1255,6 +1255,9 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit {
   setActiveSection(section: PasteurSection): void {
     if (section === 'analysis' && !this.isSuperAdmin()) return;
     this.settingsPanelOpen.set(false);
+    if (section === 'operation' && this.activeSection() !== 'operation') {
+      this.activeOperationView.set('trends');
+    }
     this.activeSection.set(section);
   }
 
@@ -1264,11 +1267,12 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit {
 
   openHistoryView(): void {
     this.historyDateRangeError.set('');
+    this.activeSection.set('monitoring');
     this.activeOperationView.set('history');
   }
 
   closeHistoryView(): void {
-    this.activeOperationView.set('dashboard');
+    this.activeOperationView.set('trends');
   }
 
   setHistoryDateFrom(event: Event): void {
