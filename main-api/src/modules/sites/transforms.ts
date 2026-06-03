@@ -108,6 +108,12 @@ export function applyMappingTransform({
     case 'lineal':
       return applyLinearTransform(rawD1, params);
 
+    case 'lineal_int16': {
+      const raw = requireFiniteNumber(rawD1, mapping.d1);
+      const signed = raw > 32767 ? raw - 65536 : raw;
+      return applyLinearTransform(signed, params);
+    }
+
     case 'ieee754_32': {
       if (mapping.d2) {
         const high = requireFiniteNumber(rawD1, mapping.d1);
