@@ -86,8 +86,8 @@ export const routes: Routes = [
         path: 'companies/:siteId/pasteurizador',
         data: { siteType: 'pasteurizador' },
         loadComponent: () =>
-          import('./pages/companies/company-site-coming-soon-detail').then(
-            (m) => m.CompanySiteComingSoonDetailComponent,
+          import('./pages/companies/company-site-pasteurizador-detail').then(
+            (m) => m.CompanySitePasteurizadorDetailComponent,
           ),
       },
       {
