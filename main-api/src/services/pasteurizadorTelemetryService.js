@@ -56,11 +56,37 @@ const PASTEURIZADOR_DEFAULT_HISTORY_ROLES = Object.freeze([
 ]);
 
 const PASTEURIZADOR_HISTORY_GRANULARITY = Object.freeze({
-  '1m': { view: 'equipo_1min', label: '1 minuto', maxDays: 31 },
-  '5m': { view: 'equipo_5min', label: '5 minutos', maxDays: 93 },
-  '1h': { view: 'equipo_hourly', label: '1 hora', maxDays: 366 },
-  '1d': { view: 'equipo_daily', label: '1 dia', maxDays: 1095 },
+  '1m': { view: 'equipo_1min', bucketInterval: '1 minute', label: '1 minuto', maxDays: 93 },
+  '5m': { view: 'equipo_5min', bucketInterval: '5 minutes', label: '5 minutos', maxDays: 93 },
+  '1h': { view: 'equipo_hourly', bucketInterval: '1 hour', label: '1 hora', maxDays: 366 },
+  '1d': { view: 'equipo_daily', bucketInterval: '1 day', label: '1 dia', maxDays: 1095 },
 });
+
+const PASTEURIZADOR_BUNDLE_INPUTS_TTL_MS = 30_000;
+const pasteurizadorBundleInputsCache = new Map();
+const pasteurizadorBundleInputsInflight = new Map();
+
+function pasteurizadorBundleInputsCacheKey(siteId) {
+  return String(siteId || '').trim();
+}
+
+function getCachedPasteurizadorBundleInputs(siteId) {
+  const key = pasteurizadorBundleInputsCacheKey(siteId);
+  const cached = pasteurizadorBundleInputsCache.get(key);
+  if (!cached) return null;
+  if (cached.expiresAt < Date.now()) {
+    pasteurizadorBundleInputsCache.delete(key);
+    return null;
+  }
+  return cached.inputs;
+}
+
+function setCachedPasteurizadorBundleInputs(siteId, inputs) {
+  pasteurizadorBundleInputsCache.set(pasteurizadorBundleInputsCacheKey(siteId), {
+    inputs,
+    expiresAt: Date.now() + PASTEURIZADOR_BUNDLE_INPUTS_TTL_MS,
+  });
+}
 
 function cleanString(value) {
   if (value === undefined || value === null) return '';
@@ -355,11 +381,7 @@ async function loadLatestEquipoSample(idSerial) {
   return fallback.rows[0] || null;
 }
 
-async function loadPasteurizadorSnapshot(site) {
-  const [mappings, latest] = await Promise.all([
-    getMappingsBySiteId(site.id),
-    loadLatestEquipoSample(site.id_serial),
-  ]);
+function buildPasteurizadorSnapshotPayload(site, mappings, latest) {
   const dashboard = buildDashboardForRaw(site, mappings, latest);
   const variables = buildPasteurizadorVariableMap(
     dashboard.variables || [],
@@ -379,50 +401,208 @@ async function loadPasteurizadorSnapshot(site) {
   };
 }
 
+async function loadPasteurizadorSnapshot(site) {
+  const [mappings, latest] = await Promise.all([
+    getMappingsBySiteId(site.id),
+    loadLatestEquipoSample(site.id_serial),
+  ]);
+
+  return buildPasteurizadorSnapshotPayload(site, mappings, latest);
+}
+
+async function loadPasteurizadorBundleInputs(site) {
+  const cachedInputs = getCachedPasteurizadorBundleInputs(site.id);
+  if (cachedInputs) {
+    return { inputs: cachedInputs, fromCache: true };
+  }
+
+  const inflightKey = pasteurizadorBundleInputsCacheKey(site.id);
+  let inputsPromise = pasteurizadorBundleInputsInflight.get(inflightKey);
+  if (!inputsPromise) {
+    inputsPromise = Promise.all([
+      getMappingsBySiteId(site.id),
+      loadLatestEquipoSample(site.id_serial),
+    ])
+      .then(([mappings, latest]) => {
+        const inputs = { mappings, latest };
+        setCachedPasteurizadorBundleInputs(site.id, inputs);
+        return inputs;
+      })
+      .finally(() => {
+        pasteurizadorBundleInputsInflight.delete(inflightKey);
+      });
+    pasteurizadorBundleInputsInflight.set(inflightKey, inputsPromise);
+  }
+
+  return { inputs: await inputsPromise, fromCache: false };
+}
+
+async function loadPasteurizadorBundle(site, options) {
+  const { limit, granularity, roles } = options;
+  const granConfig = PASTEURIZADOR_HISTORY_GRANULARITY[granularity];
+
+  const inputsPromise = loadPasteurizadorBundleInputs(site);
+  const historyPromise = db.query(
+    `
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM ${granConfig.view}
+    WHERE id_serial = $1
+      AND bucket >= now() - INTERVAL '48 hours'
+    ORDER BY bucket DESC
+    LIMIT $2
+    `,
+    [site.id_serial, limit],
+  );
+
+  const [{ inputs, fromCache }, historyRes] = await Promise.all([inputsPromise, historyPromise]);
+  const { mappings, latest } = inputs;
+  const rows = historyRes.rows.map((rawRow) => buildHistoryRow({ site, mappings, rawRow, roles }));
+
+  return {
+    snapshot: buildPasteurizadorSnapshotPayload(site, mappings, latest),
+    history: {
+      site: serializeSite(site),
+      rows,
+      pagination: {
+        limit,
+        page: 1,
+        total: null,
+        total_pages: 1,
+        has_more: rows.length === limit,
+        granularity,
+        source: granConfig.view,
+      },
+    },
+    server_time: toUtcIsoString(new Date()),
+    cache: {
+      inputs: fromCache ? 'hit' : 'miss',
+    },
+  };
+}
+
 async function loadPasteurizadorHistory(site, options) {
   const { from, to, limit, page, granularity, roles } = options;
   const granConfig = PASTEURIZADOR_HISTORY_GRANULARITY[granularity];
   const offset = (page - 1) * limit;
   const mappingsPromise = getMappingsBySiteId(site.id);
   const useRange = Boolean(from && to);
+  const rangeParams = [site.id_serial, from, to, limit, offset];
 
   const historyPromise = useRange
     ? db.query(
         `
-        SELECT bucket AS time, received_at, id_serial, data
-        FROM ${granConfig.view}
-        WHERE id_serial = $1
-          AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-        ORDER BY bucket DESC
-        LIMIT $4
-        OFFSET $5
+        WITH latest_cagg AS (
+          SELECT max(bucket) AS max_bucket
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        ),
+        recent_raw AS (
+          SELECT
+            time_bucket($6::interval, e.time) AS time,
+            last(e.received_at, e.time)       AS received_at,
+            last(e.id_serial, e.time)         AS id_serial,
+            last(e.data, e.time)              AS data
+          FROM equipo e
+          CROSS JOIN latest_cagg lc
+          WHERE e.id_serial = $1
+            AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $6::interval)
+          GROUP BY 1
+        ),
+        materialized AS (
+          SELECT bucket AS time, received_at, id_serial, data
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        )
+        SELECT time, received_at, id_serial, data
+        FROM (
+          SELECT * FROM recent_raw
+          UNION ALL
+          SELECT * FROM materialized
+        ) history
+        ORDER BY time DESC
+        LIMIT $4 OFFSET $5
         `,
-        [site.id_serial, from, to, limit, offset],
+        [...rangeParams, granConfig.bucketInterval],
       )
     : db.query(
         `
-        SELECT bucket AS time, received_at, id_serial, data
-        FROM ${granConfig.view}
-        WHERE id_serial = $1
-          AND bucket >= NOW() - INTERVAL '48 hours'
-        ORDER BY bucket DESC
-        LIMIT $2
-        OFFSET $3
+        WITH latest_cagg AS (
+          SELECT max(bucket) AS max_bucket
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= now() - INTERVAL '48 hours'
+        ),
+        recent_raw AS (
+          SELECT
+            time_bucket($4::interval, e.time) AS time,
+            last(e.received_at, e.time)       AS received_at,
+            last(e.id_serial, e.time)         AS id_serial,
+            last(e.data, e.time)              AS data
+          FROM equipo e
+          CROSS JOIN latest_cagg lc
+          WHERE e.id_serial = $1
+            AND e.time >= COALESCE(lc.max_bucket + $4::interval, now() - INTERVAL '2 hours')
+          GROUP BY 1
+        ),
+        materialized AS (
+          SELECT bucket AS time, received_at, id_serial, data
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= now() - INTERVAL '48 hours'
+        )
+        SELECT time, received_at, id_serial, data
+        FROM (
+          SELECT * FROM recent_raw
+          UNION ALL
+          SELECT * FROM materialized
+        ) history
+        ORDER BY time DESC
+        LIMIT $2 OFFSET $3
         `,
-        [site.id_serial, limit, offset],
+        [site.id_serial, limit, offset, granConfig.bucketInterval],
       );
 
   const countPromise = useRange
     ? db.query(
         `
-        SELECT COUNT(*)::int AS total
-        FROM ${granConfig.view}
-        WHERE id_serial = $1
-          AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
-          AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        WITH latest_cagg AS (
+          SELECT max(bucket) AS max_bucket
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        ),
+        recent_raw AS (
+          SELECT time_bucket($4::interval, e.time) AS time
+          FROM equipo e
+          CROSS JOIN latest_cagg lc
+          WHERE e.id_serial = $1
+            AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND e.time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $4::interval)
+          GROUP BY 1
+        ),
+        materialized AS (
+          SELECT bucket AS time
+          FROM ${granConfig.view}
+          WHERE id_serial = $1
+            AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+            AND bucket <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        )
+        SELECT count(*)::int AS total
+        FROM (
+          SELECT time FROM recent_raw
+          UNION ALL
+          SELECT time FROM materialized
+        ) history
         `,
-        [site.id_serial, from, to],
+        [site.id_serial, from, to, granConfig.bucketInterval],
       )
     : Promise.resolve({ rows: [{ total: null }] });
 
@@ -443,6 +623,26 @@ async function loadPasteurizadorHistory(site, options) {
       OFFSET $3
       `,
       [site.id_serial, limit, offset],
+    );
+  }
+
+  if (useRange && historyRes.rows.length === 0) {
+    historyRes = await db.query(
+      `
+      SELECT
+        time_bucket($4::interval, time) AS time,
+        last(received_at, time)         AS received_at,
+        last(id_serial, time)           AS id_serial,
+        last(data, time)                AS data
+      FROM equipo
+      WHERE id_serial = $1
+        AND time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+        AND time <  (($3::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT $5 OFFSET $6
+      `,
+      [site.id_serial, from, to, granConfig.bucketInterval, limit, offset],
     );
   }
 
@@ -507,6 +707,7 @@ module.exports = {
   canonicalPasteurizadorRole,
   normalizePasteurizadorRoles,
   getSiteById,
+  loadPasteurizadorBundle,
   loadPasteurizadorSnapshot,
   loadPasteurizadorHistory,
   loadPasteurizadorSummary,

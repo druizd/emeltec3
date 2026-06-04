@@ -4,6 +4,7 @@ const {
   PASTEURIZADOR_HISTORY_GRANULARITY,
   PASTEURIZADOR_ROLE_IDS,
   getSiteById,
+  loadPasteurizadorBundle,
   loadPasteurizadorHistory,
   loadPasteurizadorSnapshot,
   loadPasteurizadorSummary,
@@ -154,6 +155,36 @@ exports.getPasteurizadorSnapshot = async (req, res, next) => {
 
     const data = await loadPasteurizadorSnapshot(site);
     res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getPasteurizadorBundle = async (req, res, next) => {
+  const t0 = process.hrtime.bigint();
+  const ms = (since) => Number(process.hrtime.bigint() - since) / 1e6;
+
+  try {
+    const site = await loadAuthorizedPasteurizador(req, res);
+    if (!site) return;
+
+    const granularity = parseGranularity(req.query.granularity, '1m');
+    if (!granularity) {
+      return badRequest(res, 'granularity debe ser 1m, 5m, 1h o 1d.');
+    }
+
+    const roles = parseRoleSelection(req, res);
+    if (!roles) return;
+
+    const data = await loadPasteurizadorBundle(site, {
+      limit: parseLimit(req.query.limit, 500, 3500),
+      granularity,
+      roles,
+    });
+
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Server-Timing', `total;dur=${ms(t0).toFixed(1)}`);
     res.json({ ok: true, data });
   } catch (err) {
     next(err);
