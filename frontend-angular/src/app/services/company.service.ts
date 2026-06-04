@@ -147,6 +147,15 @@ export interface PasteurizadorSummaryResponse {
   resumen: Record<string, PasteurizadorSummaryMetric>;
 }
 
+export interface PasteurizadorBundleResponse {
+  snapshot: PasteurizadorSnapshot;
+  history: PasteurizadorHistoryResponse;
+  server_time: string | null;
+  cache?: {
+    inputs?: 'hit' | 'miss' | string;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -318,6 +327,25 @@ export class CompanyService {
   getPasteurizadorSnapshot(siteId: string): Observable<ApiResponse<PasteurizadorSnapshot>> {
     return this.http.get<ApiResponse<PasteurizadorSnapshot>>(
       `/api/companies/sites/${siteId}/pasteurizador/snapshot?t=${Date.now()}`,
+    );
+  }
+
+  getPasteurizadorBundle(
+    siteId: string,
+    options: {
+      limit?: number;
+      granularity?: PasteurizadorGranularity;
+      roles?: PasteurizadorRole[];
+    } = {},
+  ): Observable<ApiResponse<PasteurizadorBundleResponse>> {
+    const params = new URLSearchParams();
+    if (options.limit) params.set('limit', String(options.limit));
+    if (options.granularity) params.set('granularity', options.granularity);
+    if (options.roles?.length) params.set('roles', options.roles.join(','));
+    params.set('t', String(Date.now()));
+
+    return this.http.get<ApiResponse<PasteurizadorBundleResponse>>(
+      `/api/companies/sites/${siteId}/pasteurizador/bundle?${params.toString()}`,
     );
   }
 
