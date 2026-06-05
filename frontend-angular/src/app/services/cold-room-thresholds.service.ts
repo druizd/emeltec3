@@ -1,5 +1,5 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { ColdRoomAuditService } from './cold-room-audit.service';
 
 export type AlertLevel = 'ok' | 'info' | 'warn' | 'crit' | 'severe' | 'unknown';
 
@@ -7,20 +7,15 @@ export interface SalaThreshold {
   area: string;
   tMax: number;
   tMin?: number;
-  /** °C below tMax where "warn" (anticipación) kicks in. Default 1.5°C */
   warnDeltaC?: number;
-  /** Min consecutive minutes over tMax to consider sustained crit. Default 5 */
   sustainedMin?: number;
-  /** Min consecutive minutes over tMax to escalate to severe. Default 30 */
   severeMin?: number;
-  /** Hysteresis: °C below tMax required to clear an excursion. Default 0.5 */
   hysteresisC?: number;
   updatedAt: string;
+  updatedBy?: string;
 }
 
 type ThresholdsMap = Record<string, SalaThreshold>;
-
-const STORAGE_KEY = 'coldroom:thresholds:v1';
 
 export const THRESHOLD_DEFAULTS = {
   warnDeltaC: 1.5,
@@ -29,7 +24,7 @@ export const THRESHOLD_DEFAULTS = {
   hysteresisC: 0.5,
 };
 
-// Defaults provided by client (Ventisqueros faenadora).
+// Defaults provided by client (Ventisqueros faenadora) — sembrado inicial si tabla vacía.
 const DEFAULT_THRESHOLDS: SalaThreshold[] = [
   { area: 'Matanza / Eviscerado', tMax: 10, updatedAt: '' },
   { area: 'Calibrado', tMax: 10, updatedAt: '' },
@@ -44,6 +39,8 @@ const DEFAULT_THRESHOLDS: SalaThreshold[] = [
   { area: 'Cámara Secundaria', tMax: -18, updatedAt: '' },
 ];
 
+const STORAGE_KEY = 'coldroom:thresholds:v2';
+
 export function slugifyArea(area: string): string {
   return area
     .toLowerCase()
@@ -55,14 +52,64 @@ export function slugifyArea(area: string): string {
 
 @Injectable({ providedIn: 'root' })
 export class ColdRoomThresholdsService {
-  private readonly audit = inject(ColdRoomAuditService);
-  private readonly map = signal<ThresholdsMap>(this.load());
+  private readonly http = inject(HttpClient);
+  private readonly map = signal<ThresholdsMap>(this.loadLocalCache());
+  private currentSiteId: string | null = null;
 
   readonly thresholds = computed(() => this.map());
 
+  /** Initialize for a site. Fetches from backend; falls back to local cache + defaults on error. */
+  setSiteId(siteId: string): void {
+    if (this.currentSiteId === siteId) return;
+    this.currentSiteId = siteId;
+    this.refresh();
+  }
+
+  refresh(): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .get<{ ok: boolean; data: Array<SalaThreshold & { slug: string }> }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds`,
+      )
+      .subscribe({
+        next: (res) => {
+          if (!res.ok) return;
+          const next: ThresholdsMap = {};
+          for (const r of res.data) {
+            const slug = r.slug || slugifyArea(r.area);
+            next[slug] = {
+              area: r.area,
+              tMax: r.tMax,
+              tMin: r.tMin ?? undefined,
+              warnDeltaC: r.warnDeltaC ?? undefined,
+              sustainedMin: r.sustainedMin ?? undefined,
+              severeMin: r.severeMin ?? undefined,
+              hysteresisC: r.hysteresisC ?? undefined,
+              updatedAt: r.updatedAt,
+              updatedBy: r.updatedBy,
+            };
+          }
+          // If backend empty, seed defaults locally + push them to server.
+          if (Object.keys(next).length === 0) {
+            for (const d of DEFAULT_THRESHOLDS) {
+              const slug = slugifyArea(d.area);
+              const seeded: SalaThreshold = { ...d, updatedAt: new Date().toISOString() };
+              next[slug] = seeded;
+              this.pushUpsert(seeded.area, seeded.tMax, seeded.tMin);
+            }
+          }
+          this.map.set(next);
+          this.persistLocalCache(next);
+        },
+        error: () => {
+          // Keep local cache; UI continues with stale data.
+        },
+      });
+  }
+
   list(): SalaThreshold[] {
-    const m = this.map();
-    return Object.values(m).sort((a, b) => a.area.localeCompare(b.area));
+    return Object.values(this.map()).sort((a, b) => a.area.localeCompare(b.area));
   }
 
   get(areaOrSlug: string): SalaThreshold | null {
@@ -72,48 +119,66 @@ export class ColdRoomThresholdsService {
 
   set(area: string, tMax: number, tMin?: number): void {
     const slug = slugifyArea(area);
-    const prev = this.map()[slug];
     const updated: ThresholdsMap = {
       ...this.map(),
-      [slug]: {
-        area,
-        tMax,
-        tMin,
-        updatedAt: new Date().toISOString(),
-      },
+      [slug]: { area, tMax, tMin, updatedAt: new Date().toISOString() },
     };
-    this.map.set(updated);
-    this.persist(updated);
-    this.audit.record(
-      'threshold',
-      prev ? 'update' : 'create',
-      area,
-      prev ? { tMax: prev.tMax, tMin: prev.tMin } : undefined,
-      { tMax, tMin },
-    );
+    this.map.set(updated); // optimistic
+    this.persistLocalCache(updated);
+    this.pushUpsert(area, tMax, tMin);
   }
 
   remove(area: string): void {
     const slug = slugifyArea(area);
-    const prev = this.map()[slug];
     const { [slug]: _drop, ...rest } = this.map();
     this.map.set(rest);
-    this.persist(rest);
-    if (prev) {
-      this.audit.record('threshold', 'delete', area, prev, undefined);
-    }
+    this.persistLocalCache(rest);
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .delete<{ ok: boolean }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`,
+      )
+      .subscribe({ error: () => this.refresh() });
   }
 
   resetToDefaults(): void {
-    const seeded = this.seedDefaults();
-    this.map.set(seeded);
-    this.persist(seeded);
-    this.audit.record('threshold', 'reset', 'all', undefined, undefined, 'Restablecido a defaults cliente');
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .post<{ ok: boolean }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/reset`,
+        {},
+      )
+      .subscribe({
+        next: () => {
+          // Re-seed defaults after wipe.
+          for (const d of DEFAULT_THRESHOLDS) {
+            this.pushUpsert(d.area, d.tMax, d.tMin);
+          }
+          this.refresh();
+        },
+        error: () => this.refresh(),
+      });
   }
 
-  /**
-   * Legacy 3-level evaluation. Use `evaluateLevel` for HACCP multi-level.
-   */
+  ensureAreas(areas: string[]): void {
+    const cur = this.map();
+    let changed = false;
+    const out: ThresholdsMap = { ...cur };
+    for (const area of areas) {
+      const slug = slugifyArea(area);
+      if (!out[slug]) {
+        out[slug] = { area, tMax: NaN, updatedAt: '' };
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.map.set(out);
+      this.persistLocalCache(out);
+    }
+  }
+
   evaluate(area: string, currentMaxT: number, marginPct = 0.05): 'ok' | 'warn' | 'crit' | 'unknown' {
     const th = this.get(area);
     if (!th) return 'unknown';
@@ -123,18 +188,7 @@ export class ColdRoomThresholdsService {
     return 'ok';
   }
 
-  /**
-   * HACCP multi-level evaluation. Considers:
-   * - currentMaxT vs tMax
-   * - warnDeltaC for "info" (approaching)
-   * - sustainedMin / severeMin for elevated severity based on ongoing duration
-   * @param sustainedActiveMin Minutes the violation has been ongoing now.
-   */
-  evaluateLevel(
-    area: string,
-    currentMaxT: number,
-    sustainedActiveMin = 0,
-  ): AlertLevel {
+  evaluateLevel(area: string, currentMaxT: number, sustainedActiveMin = 0): AlertLevel {
     const th = this.get(area);
     if (!th) return 'unknown';
     const warnDelta = th.warnDeltaC ?? THRESHOLD_DEFAULTS.warnDeltaC;
@@ -148,11 +202,14 @@ export class ColdRoomThresholdsService {
     return 'ok';
   }
 
-  /**
-   * Detect deviations in a temperature time series. Returns list of intervals
-   * where T > tMax for ≥ 1 sample, with hysteresis for closing.
-   * Terminología: "desviación" per SERNAPESCA Res. 3160/2016.
-   */
+  isSensorOutOfBand(area: string, t: number): boolean {
+    const th = this.get(area);
+    if (!th) return false;
+    if (t > th.tMax) return true;
+    if (typeof th.tMin === 'number' && t < th.tMin) return true;
+    return false;
+  }
+
   detectDeviations(
     area: string,
     series: Array<{ t: string; v: number }>,
@@ -169,7 +226,6 @@ export class ColdRoomThresholdsService {
     const sustained = th.sustainedMin ?? THRESHOLD_DEFAULTS.sustainedMin;
     const severe = th.severeMin ?? THRESHOLD_DEFAULTS.severeMin;
     const hyst = th.hysteresisC ?? THRESHOLD_DEFAULTS.hysteresisC;
-
     const out: Array<{
       startTs: string;
       endTs: string | null;
@@ -178,21 +234,19 @@ export class ColdRoomThresholdsService {
       sustained: boolean;
       severe: boolean;
     }> = [];
-    let inExcursion = false;
+    let inDev = false;
     let startIdx = -1;
     let peak = -Infinity;
-
     for (let i = 0; i < series.length; i++) {
       const p = series[i];
-      if (!inExcursion) {
+      if (!inDev) {
         if (p.v > th.tMax) {
-          inExcursion = true;
+          inDev = true;
           startIdx = i;
           peak = p.v;
         }
       } else {
         if (p.v > peak) peak = p.v;
-        // Close when drops below tMax - hysteresis
         if (p.v <= th.tMax - hyst) {
           const startTs = series[startIdx].t;
           const endTs = p.t;
@@ -206,14 +260,13 @@ export class ColdRoomThresholdsService {
             sustained: durMin >= sustained,
             severe: durMin >= severe,
           });
-          inExcursion = false;
+          inDev = false;
           startIdx = -1;
           peak = -Infinity;
         }
       }
     }
-    // Open-ended (still active)
-    if (inExcursion && startIdx >= 0) {
+    if (inDev && startIdx >= 0) {
       const startTs = series[startIdx].t;
       const last = series[series.length - 1];
       const durMs = new Date(last.t).getTime() - new Date(startTs).getTime();
@@ -230,58 +283,32 @@ export class ColdRoomThresholdsService {
     return out;
   }
 
-  isSensorOutOfBand(area: string, t: number): boolean {
-    const th = this.get(area);
-    if (!th) return false;
-    if (t > th.tMax) return true;
-    if (typeof th.tMin === 'number' && t < th.tMin) return true;
-    return false;
+  private pushUpsert(area: string, tMax: number, tMin?: number): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    const slug = slugifyArea(area);
+    this.http
+      .put<{ ok: boolean }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`,
+        { area, tMax, tMin: tMin ?? null },
+      )
+      .subscribe({ error: () => this.refresh() });
   }
 
-  private load(): ThresholdsMap {
-    let stored: ThresholdsMap = {};
+  private loadLocalCache(): ThresholdsMap {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as ThresholdsMap;
-        if (parsed && typeof parsed === 'object') stored = parsed;
+        if (parsed && typeof parsed === 'object') return parsed;
       }
     } catch {
       /* ignore */
     }
-    // Merge defaults: keep user overrides, fill missing keys from defaults.
-    const merged: ThresholdsMap = { ...this.seedDefaults(), ...stored };
-    this.persist(merged);
-    return merged;
+    return {};
   }
 
-  ensureAreas(areas: string[]): void {
-    const cur = this.map();
-    let changed = false;
-    const out: ThresholdsMap = { ...cur };
-    for (const area of areas) {
-      const slug = slugifyArea(area);
-      if (!out[slug]) {
-        out[slug] = { area, tMax: NaN, updatedAt: '' };
-        changed = true;
-      }
-    }
-    if (changed) {
-      this.map.set(out);
-      this.persist(out);
-    }
-  }
-
-  private seedDefaults(): ThresholdsMap {
-    const out: ThresholdsMap = {};
-    const now = new Date().toISOString();
-    for (const t of DEFAULT_THRESHOLDS) {
-      out[slugifyArea(t.area)] = { ...t, updatedAt: now };
-    }
-    return out;
-  }
-
-  private persist(map: ThresholdsMap): void {
+  private persistLocalCache(map: ThresholdsMap): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
     } catch {

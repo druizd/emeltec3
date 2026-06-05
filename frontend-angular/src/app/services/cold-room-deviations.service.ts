@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import {
   ColdRoomThresholdsService,
@@ -82,16 +83,62 @@ export interface DeviationAck {
 
 type AckMap = Record<string, DeviationAck>;
 
-const ACK_STORAGE_KEY = 'coldroom:deviation-acks:v1';
+const ACK_STORAGE_KEY = 'coldroom:deviation-acks:v2';
 
 @Injectable({ providedIn: 'root' })
 export class ColdRoomDeviationsService {
+  private readonly http = inject(HttpClient);
   private readonly thresholds = inject(ColdRoomThresholdsService);
   private readonly defrost = inject(ColdRoomDefrostService);
   private readonly audit = inject(ColdRoomAuditService);
   private readonly acks = signal<AckMap>(this.loadAcks());
+  private currentSiteId: string | null = null;
 
   readonly ackMap = computed(() => this.acks());
+
+  setSiteId(siteId: string): void {
+    if (this.currentSiteId === siteId) return;
+    this.currentSiteId = siteId;
+    this.refresh();
+  }
+
+  refresh(): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .get<{ ok: boolean; data: AckMap }>(`/api/cold-room/${encodeURIComponent(siteId)}/acks`)
+      .subscribe({
+        next: (res) => {
+          if (!res.ok) return;
+          this.acks.set(res.data || {});
+          this.persist(res.data || {});
+        },
+        error: () => {
+          /* keep cache */
+        },
+      });
+  }
+
+  private pushAck(id: string, ack: DeviationAck): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .put<{ ok: boolean }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/acks/${encodeURIComponent(id)}`,
+        ack,
+      )
+      .subscribe({ error: () => this.refresh() });
+  }
+
+  private pushDelete(id: string): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .delete<{ ok: boolean }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/acks/${encodeURIComponent(id)}`,
+      )
+      .subscribe({ error: () => this.refresh() });
+  }
 
   /**
    * Build deviation list across all sensors using their histPoints + thresholds.
@@ -158,49 +205,43 @@ export class ColdRoomDeviationsService {
 
   acknowledge(id: string, by = 'operator', note?: string): void {
     const prev = this.acks()[id];
-    const next: AckMap = {
-      ...this.acks(),
-      [id]: {
-        ...(prev || {}),
-        acknowledged: true,
-        ackedAt: new Date().toISOString(),
-        ackedBy: by,
-        note,
-      },
+    const ack: DeviationAck = {
+      ...(prev || { acknowledged: false }),
+      acknowledged: true,
+      ackedAt: new Date().toISOString(),
+      ackedBy: by,
+      note,
     };
+    const next: AckMap = { ...this.acks(), [id]: ack };
     this.acks.set(next);
     this.persist(next);
-    this.audit.record('deviation', 'ack', id, prev, { acknowledged: true }, note);
+    this.pushAck(id, ack);
   }
 
   resolve(id: string, note?: string): void {
     const cur = this.acks()[id];
-    const next: AckMap = {
-      ...this.acks(),
-      [id]: {
-        ...(cur || {}),
-        acknowledged: cur?.acknowledged ?? true,
-        ackedAt: cur?.ackedAt ?? new Date().toISOString(),
-        ackedBy: cur?.ackedBy ?? 'operator',
-        resolved: true,
-        resolvedAt: new Date().toISOString(),
-        note: note ?? cur?.note,
-      },
+    const ack: DeviationAck = {
+      ...(cur || { acknowledged: false }),
+      acknowledged: cur?.acknowledged ?? true,
+      ackedAt: cur?.ackedAt ?? new Date().toISOString(),
+      ackedBy: cur?.ackedBy ?? 'operator',
+      resolved: true,
+      resolvedAt: new Date().toISOString(),
+      note: note ?? cur?.note,
     };
+    const next: AckMap = { ...this.acks(), [id]: ack };
     this.acks.set(next);
     this.persist(next);
-    this.audit.record('deviation', 'resolve', id, cur, { resolved: true }, note);
+    this.pushAck(id, ack);
   }
 
   setNote(id: string, note: string): void {
     const cur = this.acks()[id];
-    const next: AckMap = {
-      ...this.acks(),
-      [id]: { ...(cur || { acknowledged: false }), note },
-    };
+    const ack: DeviationAck = { ...(cur || { acknowledged: false }), note };
+    const next: AckMap = { ...this.acks(), [id]: ack };
     this.acks.set(next);
     this.persist(next);
-    this.audit.record('deviation', 'note', id, cur?.note, note);
+    this.pushAck(id, ack);
   }
 
   /**
@@ -217,41 +258,31 @@ export class ColdRoomDeviationsService {
     const cur = this.acks()[id];
     const meta = DEVIATION_CAUSES[cause];
     const nowIso = new Date().toISOString();
-    const next: AckMap = {
-      ...this.acks(),
-      [id]: {
-        ...(cur || { acknowledged: false }),
-        cause,
-        causeSource: source,
-        causeBy: by,
-        causeAt: nowIso,
-        causeNote: note ?? cur?.causeNote,
-        // Expected causes auto-acknowledge + resolve to close the workflow.
-        acknowledged: meta.expected ? true : cur?.acknowledged ?? false,
-        ackedAt: meta.expected ? cur?.ackedAt ?? nowIso : cur?.ackedAt,
-        ackedBy: meta.expected ? cur?.ackedBy ?? by : cur?.ackedBy,
-      },
+    const ack: DeviationAck = {
+      ...(cur || { acknowledged: false }),
+      cause,
+      causeSource: source,
+      causeBy: by,
+      causeAt: nowIso,
+      causeNote: note ?? cur?.causeNote,
+      acknowledged: meta.expected ? true : cur?.acknowledged ?? false,
+      ackedAt: meta.expected ? cur?.ackedAt ?? nowIso : cur?.ackedAt,
+      ackedBy: meta.expected ? cur?.ackedBy ?? by : cur?.ackedBy,
     };
+    const next: AckMap = { ...this.acks(), [id]: ack };
     this.acks.set(next);
     this.persist(next);
-    this.audit.record(
-      'deviation',
-      'classify-cause',
-      id,
-      cur?.cause,
-      { cause, source },
-      note,
-    );
+    this.pushAck(id, ack);
   }
 
   clearCause(id: string): void {
     const cur = this.acks()[id];
     if (!cur) return;
     const { cause: _c, causeSource: _s, causeBy: _b, causeAt: _a, causeNote: _n, ...rest } = cur;
-    const next: AckMap = { ...this.acks(), [id]: rest };
+    const next: AckMap = { ...this.acks(), [id]: rest as DeviationAck };
     this.acks.set(next);
     this.persist(next);
-    this.audit.record('deviation', 'clear-cause', id, cur.cause, undefined);
+    this.pushAck(id, rest as DeviationAck);
   }
 
   /**

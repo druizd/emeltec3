@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { AuthService } from './auth.service';
 
@@ -32,16 +33,49 @@ export interface ColdRoomAuditEntry {
   note?: string;
 }
 
-const STORAGE_KEY = 'coldroom:audit-log:v1';
+const STORAGE_KEY = 'coldroom:audit-log:v2';
 const MAX_ENTRIES = 2000;
 
 @Injectable({ providedIn: 'root' })
 export class ColdRoomAuditService {
+  private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
   private readonly entriesSignal = signal<ColdRoomAuditEntry[]>(this.load());
+  private currentSiteId: string | null = null;
 
   readonly entries = computed(() => this.entriesSignal());
 
+  setSiteId(siteId: string): void {
+    if (this.currentSiteId === siteId) return;
+    this.currentSiteId = siteId;
+    this.refresh();
+  }
+
+  refresh(): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .get<{ ok: boolean; data: ColdRoomAuditEntry[] }>(
+        `/api/cold-room/${encodeURIComponent(siteId)}/audit?limit=2000`,
+      )
+      .subscribe({
+        next: (res) => {
+          if (!res.ok) return;
+          this.entriesSignal.set(res.data || []);
+          this.persist(res.data || []);
+        },
+        error: () => {
+          /* keep local cache */
+        },
+      });
+  }
+
+  /**
+   * Backend ahora registra audit automáticamente al recibir mutaciones (PUT/POST/DELETE
+   * en /thresholds, /defrost, /acks). Esta función queda para registrar entradas
+   * client-initiated (eventos explícitos sin mutación HTTP correspondiente).
+   * Refresca la lista local desde backend después de enviar.
+   */
   record(
     category: ColdRoomAuditCategory,
     action: ColdRoomAuditAction,
@@ -50,6 +84,8 @@ export class ColdRoomAuditService {
     next?: unknown,
     note?: string,
   ): void {
+    const siteId = this.currentSiteId;
+    // Optimistic local insert.
     const u = this.auth.user();
     const actor = u ? `${u.nombre} ${u.apellido}`.trim() || u.email : 'operador';
     const actorRole = u?.tipo;
@@ -68,6 +104,22 @@ export class ColdRoomAuditService {
     const list = [entry, ...this.entriesSignal()].slice(0, MAX_ENTRIES);
     this.entriesSignal.set(list);
     this.persist(list);
+    if (!siteId) return;
+    this.http
+      .post<{ ok: boolean }>(`/api/cold-room/${encodeURIComponent(siteId)}/audit`, {
+        category,
+        action,
+        target,
+        prev,
+        next,
+        note,
+      })
+      .subscribe({
+        next: () => this.refresh(),
+        error: () => {
+          /* keep local */
+        },
+      });
   }
 
   filter(opts: {

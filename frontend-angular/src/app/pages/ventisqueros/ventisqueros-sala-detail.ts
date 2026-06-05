@@ -1561,6 +1561,8 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
       this.router.navigate(['/companies']);
       return;
     }
+    this.thresholdsSvc.setSiteId(id);
+    this.deviationsSvc.setSiteId(id);
     this.clockId = setInterval(() => this.now.set(Date.now()), 5_000);
     this.companyService.fetchHierarchy().subscribe({
       next: (res) => {

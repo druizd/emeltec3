@@ -4294,6 +4294,13 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.intervalId = setInterval(() => this.now.set(Date.now()), 1000);
+    const sid = this.siteId();
+    if (sid) {
+      this.thresholdsSvc.setSiteId(sid);
+      this.defrostSvc.setSiteId(sid);
+      this.deviationsSvc.setSiteId(sid);
+      this.auditSvc.setSiteId(sid);
+    }
   }
 
   ngOnDestroy(): void {

@@ -1,34 +1,66 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { slugifyArea } from './cold-room-thresholds.service';
-import { ColdRoomAuditService } from './cold-room-audit.service';
 
-/**
- * Ventana defrost: programación periódica de descongelado donde la temperatura
- * sube transitoriamente. Desviaciones dentro de estas ventanas se marcan como
- * "esperadas" y no cuentan como crítico HACCP.
- *
- * daysOfWeek: 1=Lun, 2=Mar, ..., 7=Dom (ISO 8601).
- */
 export interface DefrostWindow {
   id: string;
-  startHHmm: string; // "02:00"
+  startHHmm: string;
   durationMin: number;
-  daysOfWeek: number[]; // 1..7 (ISO 8601: 1=Lun, 7=Dom)
+  daysOfWeek: number[];
   enabled: boolean;
-  /** Optional human note: "ciclo automático evaporador A". */
   note?: string;
 }
 
-type DefrostMap = Record<string /* slug */, DefrostWindow[]>;
+type DefrostMap = Record<string, DefrostWindow[]>;
 
-const STORAGE_KEY = 'coldroom:defrost-schedules:v1';
+const STORAGE_KEY = 'coldroom:defrost-schedules:v2';
 
 @Injectable({ providedIn: 'root' })
 export class ColdRoomDefrostService {
-  private readonly audit = inject(ColdRoomAuditService);
-  private readonly map = signal<DefrostMap>(this.load());
+  private readonly http = inject(HttpClient);
+  private readonly map = signal<DefrostMap>(this.loadLocalCache());
+  private currentSiteId: string | null = null;
 
   readonly schedules = computed(() => this.map());
+
+  setSiteId(siteId: string): void {
+    if (this.currentSiteId === siteId) return;
+    this.currentSiteId = siteId;
+    this.refresh();
+  }
+
+  refresh(): void {
+    const siteId = this.currentSiteId;
+    if (!siteId) return;
+    this.http
+      .get<{
+        ok: boolean;
+        data: Array<DefrostWindow & { slug: string }>;
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/defrost`)
+      .subscribe({
+        next: (res) => {
+          if (!res.ok) return;
+          const next: DefrostMap = {};
+          for (const w of res.data) {
+            const slug = w.slug;
+            if (!next[slug]) next[slug] = [];
+            next[slug].push({
+              id: w.id,
+              startHHmm: w.startHHmm,
+              durationMin: w.durationMin,
+              daysOfWeek: w.daysOfWeek || [],
+              enabled: w.enabled,
+              note: w.note,
+            });
+          }
+          this.map.set(next);
+          this.persistLocalCache(next);
+        },
+        error: () => {
+          /* keep cache */
+        },
+      });
+  }
 
   list(areaOrSlug: string): DefrostWindow[] {
     const slug = slugifyArea(areaOrSlug);
@@ -36,12 +68,12 @@ export class ColdRoomDefrostService {
   }
 
   setWindows(area: string, windows: DefrostWindow[]): void {
+    // Used rarely; bulk replace not exposed in backend — issue individual updates.
     const slug = slugifyArea(area);
-    const prev = this.map()[slug] || [];
     const next: DefrostMap = { ...this.map(), [slug]: windows };
     this.map.set(next);
-    this.persist(next);
-    this.audit.record('defrost', 'update', area, prev, windows);
+    this.persistLocalCache(next);
+    // No bulk endpoint; caller should use add/update/remove for persistence.
   }
 
   addWindow(area: string, w: Omit<DefrostWindow, 'id'>): DefrostWindow {
@@ -50,42 +82,63 @@ export class ColdRoomDefrostService {
     const current = this.list(area);
     const next: DefrostMap = { ...this.map(), [slug]: [...current, newW] };
     this.map.set(next);
-    this.persist(next);
-    this.audit.record('defrost', 'create', `${area}/${newW.id}`, undefined, newW);
+    this.persistLocalCache(next);
+    const siteId = this.currentSiteId;
+    if (siteId) {
+      this.http
+        .post<{ ok: boolean }>(`/api/cold-room/${encodeURIComponent(siteId)}/defrost`, {
+          id: newW.id,
+          slug,
+          startHHmm: newW.startHHmm,
+          durationMin: newW.durationMin,
+          daysOfWeek: newW.daysOfWeek,
+          enabled: newW.enabled,
+          note: newW.note ?? null,
+        })
+        .subscribe({ error: () => this.refresh() });
+    }
     return newW;
   }
 
   removeWindow(area: string, id: string): void {
     const slug = slugifyArea(area);
-    const prev = this.list(area).find((w) => w.id === id);
     const current = this.list(area).filter((w) => w.id !== id);
     const next: DefrostMap = { ...this.map(), [slug]: current };
     this.map.set(next);
-    this.persist(next);
-    if (prev) {
-      this.audit.record('defrost', 'delete', `${area}/${id}`, prev, undefined);
+    this.persistLocalCache(next);
+    const siteId = this.currentSiteId;
+    if (siteId) {
+      this.http
+        .delete<{ ok: boolean }>(
+          `/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(id)}`,
+        )
+        .subscribe({ error: () => this.refresh() });
     }
   }
 
   updateWindow(area: string, id: string, patch: Partial<DefrostWindow>): void {
     const slug = slugifyArea(area);
-    const prev = this.list(area).find((w) => w.id === id);
     const current = this.list(area).map((w) => (w.id === id ? { ...w, ...patch } : w));
     const next: DefrostMap = { ...this.map(), [slug]: current };
     this.map.set(next);
-    this.persist(next);
-    this.audit.record('defrost', 'update', `${area}/${id}`, prev, patch);
+    this.persistLocalCache(next);
+    const siteId = this.currentSiteId;
+    if (siteId) {
+      this.http
+        .put<{ ok: boolean }>(
+          `/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(id)}`,
+          patch,
+        )
+        .subscribe({ error: () => this.refresh() });
+    }
   }
 
-  /**
-   * Returns true if timestamp falls within any enabled defrost window for area.
-   */
   isInDefrost(area: string, ts: string | Date): boolean {
     const windows = this.list(area).filter((w) => w.enabled);
     if (windows.length === 0) return false;
     const d = typeof ts === 'string' ? new Date(ts) : ts;
     if (!isFinite(d.getTime())) return false;
-    const dow = ((d.getDay() + 6) % 7) + 1; // JS 0=Sun -> ISO 1=Mon..7=Sun
+    const dow = ((d.getDay() + 6) % 7) + 1;
     const minOfDay = d.getHours() * 60 + d.getMinutes();
     for (const w of windows) {
       if (!w.daysOfWeek.includes(dow)) continue;
@@ -93,12 +146,10 @@ export class ColdRoomDefrostService {
       if (!isFinite(hh) || !isFinite(mm)) continue;
       const start = hh * 60 + mm;
       const end = start + w.durationMin;
-      // Wraps to next day if > 24h.
       if (end <= 24 * 60) {
         if (minOfDay >= start && minOfDay < end) return true;
       } else {
         if (minOfDay >= start) return true;
-        // Spill into next day handled by checking previous day's window:
         const prevDow = dow === 1 ? 7 : dow - 1;
         if (w.daysOfWeek.includes(prevDow) && minOfDay < end - 24 * 60) return true;
       }
@@ -106,10 +157,6 @@ export class ColdRoomDefrostService {
     return false;
   }
 
-  /**
-   * Returns count of overlap minutes between [startTs, endTs] interval and
-   * defrost windows. Used to discount "expected" excess time from HACCP totals.
-   */
   defrostOverlapMin(area: string, startTs: string, endTs: string | null): number {
     const start = new Date(startTs);
     const end = endTs ? new Date(endTs) : new Date();
@@ -122,28 +169,35 @@ export class ColdRoomDefrostService {
     return overlap;
   }
 
-  /** Reset to defaults (no schedules). */
   clear(area?: string): void {
     if (!area) {
-      const prev = this.map();
+      // Local only — no bulk wipe endpoint.
       this.map.set({});
-      this.persist({});
-      this.audit.record('defrost', 'reset', 'all', prev, {});
+      this.persistLocalCache({});
       return;
     }
     const slug = slugifyArea(area);
-    const prev = this.map()[slug];
+    const current = this.list(area);
     const { [slug]: _drop, ...rest } = this.map();
     this.map.set(rest);
-    this.persist(rest);
-    if (prev) this.audit.record('defrost', 'delete', area, prev, undefined);
+    this.persistLocalCache(rest);
+    const siteId = this.currentSiteId;
+    if (siteId) {
+      for (const w of current) {
+        this.http
+          .delete(
+            `/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(w.id)}`,
+          )
+          .subscribe({ error: () => this.refresh() });
+      }
+    }
   }
 
   private newId(): string {
     return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  private load(): DefrostMap {
+  private loadLocalCache(): DefrostMap {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
@@ -156,7 +210,7 @@ export class ColdRoomDefrostService {
     return {};
   }
 
-  private persist(map: DefrostMap): void {
+  private persistLocalCache(map: DefrostMap): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
     } catch {

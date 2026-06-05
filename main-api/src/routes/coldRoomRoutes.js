@@ -1,8 +1,448 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/authMiddleware');
+const pool = require('../config/db');
 
 router.use(protect);
+
+// === HACCP config endpoints (thresholds, defrost, acks, audit) ===
+// Storage: Postgres tables created in migration 006.
+// Auth: protect middleware ensures req.user is set; we surface actor in audit.
+
+function actorFromReq(req) {
+  const u = req.user;
+  if (!u) return { name: 'operador', role: null };
+  const name = `${u.nombre || ''} ${u.apellido || ''}`.trim() || u.email || u.id || 'operador';
+  return { name, role: u.tipo || null };
+}
+
+async function logAudit(siteId, actor, category, action, target, prev, next, note) {
+  try {
+    await pool.query(
+      `INSERT INTO cold_room_audit_log
+        (site_id, actor, actor_role, category, action, target, prev, next, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        siteId,
+        actor.name,
+        actor.role,
+        category,
+        action,
+        target,
+        prev !== undefined ? JSON.stringify(prev) : null,
+        next !== undefined ? JSON.stringify(next) : null,
+        note || null,
+      ],
+    );
+  } catch (err) {
+    console.error('[coldRoom audit] insert failed:', err.message);
+  }
+}
+
+// --- Thresholds ---
+router.get('/:siteId/thresholds', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT sala_slug, area, t_max, t_min, warn_delta_c, sustained_min, severe_min,
+              hysteresis_c, updated_at, updated_by
+       FROM cold_room_threshold
+       WHERE site_id = $1
+       ORDER BY area`,
+      [req.params.siteId],
+    );
+    res.json({
+      ok: true,
+      data: rows.map((r) => ({
+        slug: r.sala_slug,
+        area: r.area,
+        tMax: Number(r.t_max),
+        tMin: r.t_min !== null ? Number(r.t_min) : null,
+        warnDeltaC: r.warn_delta_c !== null ? Number(r.warn_delta_c) : null,
+        sustainedMin: r.sustained_min,
+        severeMin: r.severe_min,
+        hysteresisC: r.hysteresis_c !== null ? Number(r.hysteresis_c) : null,
+        updatedAt: r.updated_at,
+        updatedBy: r.updated_by,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.put('/:siteId/thresholds/:slug', async (req, res) => {
+  const { siteId, slug } = req.params;
+  const {
+    area,
+    tMax,
+    tMin = null,
+    warnDeltaC = null,
+    sustainedMin = null,
+    severeMin = null,
+    hysteresisC = null,
+  } = req.body || {};
+  if (!area || typeof tMax !== 'number') {
+    return res.status(400).json({ ok: false, error: 'area y tMax requeridos' });
+  }
+  try {
+    const actor = actorFromReq(req);
+    const prevRes = await pool.query(
+      `SELECT t_max, t_min FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
+      [siteId, slug],
+    );
+    const prev = prevRes.rows[0] || null;
+    await pool.query(
+      `INSERT INTO cold_room_threshold
+        (site_id, sala_slug, area, t_max, t_min, warn_delta_c, sustained_min, severe_min,
+         hysteresis_c, updated_at, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW(), $10)
+       ON CONFLICT (site_id, sala_slug) DO UPDATE SET
+         area=$3, t_max=$4, t_min=$5, warn_delta_c=$6, sustained_min=$7, severe_min=$8,
+         hysteresis_c=$9, updated_at=NOW(), updated_by=$10`,
+      [siteId, slug, area, tMax, tMin, warnDeltaC, sustainedMin, severeMin, hysteresisC, actor.name],
+    );
+    logAudit(
+      siteId,
+      actor,
+      'threshold',
+      prev ? 'update' : 'create',
+      area,
+      prev ? { tMax: Number(prev.t_max), tMin: prev.t_min !== null ? Number(prev.t_min) : null } : null,
+      { tMax, tMin },
+    );
+    res.json({ ok: true, data: { slug, area, tMax, tMin } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/:siteId/thresholds/:slug', async (req, res) => {
+  const { siteId, slug } = req.params;
+  try {
+    const actor = actorFromReq(req);
+    const prevRes = await pool.query(
+      `SELECT area, t_max, t_min FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
+      [siteId, slug],
+    );
+    const prev = prevRes.rows[0];
+    await pool.query(`DELETE FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`, [
+      siteId,
+      slug,
+    ]);
+    if (prev) {
+      logAudit(siteId, actor, 'threshold', 'delete', prev.area,
+        { tMax: Number(prev.t_max), tMin: prev.t_min !== null ? Number(prev.t_min) : null }, null);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/:siteId/thresholds/reset', async (req, res) => {
+  try {
+    const actor = actorFromReq(req);
+    await pool.query(`DELETE FROM cold_room_threshold WHERE site_id=$1`, [req.params.siteId]);
+    logAudit(req.params.siteId, actor, 'threshold', 'reset', 'all', null, null, 'reset all');
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- Defrost windows ---
+router.get('/:siteId/defrost', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, sala_slug, start_hhmm, duration_min, days_of_week, enabled, note,
+              created_at, updated_at
+       FROM cold_room_defrost_window
+       WHERE site_id = $1
+       ORDER BY sala_slug, start_hhmm`,
+      [req.params.siteId],
+    );
+    res.json({
+      ok: true,
+      data: rows.map((r) => ({
+        id: r.id,
+        slug: r.sala_slug,
+        startHHmm: r.start_hhmm,
+        durationMin: r.duration_min,
+        daysOfWeek: r.days_of_week || [],
+        enabled: r.enabled,
+        note: r.note,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/:siteId/defrost', async (req, res) => {
+  const { siteId } = req.params;
+  const { id, slug, startHHmm, durationMin, daysOfWeek = [], enabled = true, note = null } =
+    req.body || {};
+  if (!id || !slug || !startHHmm || typeof durationMin !== 'number') {
+    return res
+      .status(400)
+      .json({ ok: false, error: 'id, slug, startHHmm, durationMin requeridos' });
+  }
+  try {
+    const actor = actorFromReq(req);
+    await pool.query(
+      `INSERT INTO cold_room_defrost_window
+        (id, site_id, sala_slug, start_hhmm, duration_min, days_of_week, enabled, note,
+         created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW(), NOW())`,
+      [id, siteId, slug, startHHmm, durationMin, daysOfWeek, enabled, note],
+    );
+    logAudit(siteId, actor, 'defrost', 'create', `${slug}/${id}`, null, {
+      startHHmm,
+      durationMin,
+      daysOfWeek,
+      enabled,
+    });
+    res.json({ ok: true, data: { id } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.put('/:siteId/defrost/:id', async (req, res) => {
+  const { siteId, id } = req.params;
+  const patch = req.body || {};
+  try {
+    const actor = actorFromReq(req);
+    const prevRes = await pool.query(
+      `SELECT sala_slug, start_hhmm, duration_min, days_of_week, enabled, note
+       FROM cold_room_defrost_window WHERE id=$1 AND site_id=$2`,
+      [id, siteId],
+    );
+    if (prevRes.rowCount === 0) return res.status(404).json({ ok: false, error: 'no encontrado' });
+    const prev = prevRes.rows[0];
+    const next = {
+      startHHmm: patch.startHHmm ?? prev.start_hhmm,
+      durationMin: patch.durationMin ?? prev.duration_min,
+      daysOfWeek: patch.daysOfWeek ?? prev.days_of_week,
+      enabled: patch.enabled ?? prev.enabled,
+      note: patch.note ?? prev.note,
+    };
+    await pool.query(
+      `UPDATE cold_room_defrost_window
+       SET start_hhmm=$1, duration_min=$2, days_of_week=$3, enabled=$4, note=$5, updated_at=NOW()
+       WHERE id=$6 AND site_id=$7`,
+      [next.startHHmm, next.durationMin, next.daysOfWeek, next.enabled, next.note, id, siteId],
+    );
+    logAudit(siteId, actor, 'defrost', 'update', `${prev.sala_slug}/${id}`, {
+      startHHmm: prev.start_hhmm,
+      durationMin: prev.duration_min,
+      daysOfWeek: prev.days_of_week,
+      enabled: prev.enabled,
+    }, next);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/:siteId/defrost/:id', async (req, res) => {
+  const { siteId, id } = req.params;
+  try {
+    const actor = actorFromReq(req);
+    const prevRes = await pool.query(
+      `SELECT sala_slug, start_hhmm, duration_min, days_of_week, enabled
+       FROM cold_room_defrost_window WHERE id=$1 AND site_id=$2`,
+      [id, siteId],
+    );
+    const prev = prevRes.rows[0];
+    await pool.query(`DELETE FROM cold_room_defrost_window WHERE id=$1 AND site_id=$2`, [
+      id,
+      siteId,
+    ]);
+    if (prev) {
+      logAudit(siteId, actor, 'defrost', 'delete', `${prev.sala_slug}/${id}`, {
+        startHHmm: prev.start_hhmm,
+        durationMin: prev.duration_min,
+        daysOfWeek: prev.days_of_week,
+        enabled: prev.enabled,
+      }, null);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- Deviation acks ---
+router.get('/:siteId/acks', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT deviation_id, acknowledged, acked_at, acked_by, note, resolved, resolved_at,
+              cause, cause_source, cause_by, cause_at, cause_note
+       FROM cold_room_deviation_ack
+       WHERE site_id = $1`,
+      [req.params.siteId],
+    );
+    const map = {};
+    for (const r of rows) {
+      map[r.deviation_id] = {
+        acknowledged: r.acknowledged,
+        ackedAt: r.acked_at,
+        ackedBy: r.acked_by,
+        note: r.note,
+        resolved: r.resolved,
+        resolvedAt: r.resolved_at,
+        cause: r.cause,
+        causeSource: r.cause_source,
+        causeBy: r.cause_by,
+        causeAt: r.cause_at,
+        causeNote: r.cause_note,
+      };
+    }
+    res.json({ ok: true, data: map });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.put('/:siteId/acks/:devId', async (req, res) => {
+  const { siteId, devId } = req.params;
+  const a = req.body || {};
+  try {
+    const actor = actorFromReq(req);
+    const prevRes = await pool.query(
+      `SELECT * FROM cold_room_deviation_ack WHERE site_id=$1 AND deviation_id=$2`,
+      [siteId, devId],
+    );
+    const prev = prevRes.rows[0] || null;
+    await pool.query(
+      `INSERT INTO cold_room_deviation_ack
+        (site_id, deviation_id, acknowledged, acked_at, acked_by, note, resolved, resolved_at,
+         cause, cause_source, cause_by, cause_at, cause_note, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
+       ON CONFLICT (site_id, deviation_id) DO UPDATE SET
+         acknowledged=$3, acked_at=$4, acked_by=$5, note=$6, resolved=$7, resolved_at=$8,
+         cause=$9, cause_source=$10, cause_by=$11, cause_at=$12, cause_note=$13, updated_at=NOW()`,
+      [
+        siteId,
+        devId,
+        !!a.acknowledged,
+        a.ackedAt || null,
+        a.ackedBy || null,
+        a.note || null,
+        !!a.resolved,
+        a.resolvedAt || null,
+        a.cause || null,
+        a.causeSource || null,
+        a.causeBy || null,
+        a.causeAt || null,
+        a.causeNote || null,
+      ],
+    );
+    // Determine which action to log based on diff.
+    let action = 'update';
+    if (!prev) action = 'ack';
+    else if (!prev.resolved && a.resolved) action = 'resolve';
+    else if ((prev.cause || null) !== (a.cause || null)) action = 'classify-cause';
+    logAudit(siteId, actor, 'deviation', action, devId, prev, a, a.note || a.causeNote);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/:siteId/acks/:devId', async (req, res) => {
+  try {
+    const actor = actorFromReq(req);
+    await pool.query(
+      `DELETE FROM cold_room_deviation_ack WHERE site_id=$1 AND deviation_id=$2`,
+      [req.params.siteId, req.params.devId],
+    );
+    logAudit(req.params.siteId, actor, 'deviation', 'clear-cause', req.params.devId, null, null);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- Audit log ---
+router.get('/:siteId/audit', async (req, res) => {
+  const { siteId } = req.params;
+  const { from, to, category, action, q, limit = 500, page = 1 } = req.query;
+  const where = ['site_id = $1'];
+  const params = [siteId];
+  if (from) {
+    params.push(from);
+    where.push(`ts >= $${params.length}`);
+  }
+  if (to) {
+    params.push(to);
+    where.push(`ts <= $${params.length}`);
+  }
+  if (category) {
+    params.push(category);
+    where.push(`category = $${params.length}`);
+  }
+  if (action) {
+    params.push(action);
+    where.push(`action = $${params.length}`);
+  }
+  if (q) {
+    params.push(`%${q}%`);
+    where.push(
+      `(actor ILIKE $${params.length} OR target ILIKE $${params.length} OR note ILIKE $${params.length})`,
+    );
+  }
+  const lim = Math.min(2000, Math.max(1, Number(limit) || 500));
+  const off = Math.max(0, (Number(page) - 1) * lim);
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, ts, actor, actor_role, category, action, target, prev, next, note
+       FROM cold_room_audit_log
+       WHERE ${where.join(' AND ')}
+       ORDER BY ts DESC
+       LIMIT ${lim} OFFSET ${off}`,
+      params,
+    );
+    res.json({
+      ok: true,
+      data: rows.map((r) => ({
+        id: String(r.id),
+        ts: r.ts,
+        actor: r.actor,
+        actorRole: r.actor_role,
+        category: r.category,
+        action: r.action,
+        target: r.target,
+        prev: r.prev,
+        next: r.next,
+        note: r.note,
+      })),
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/:siteId/audit', async (req, res) => {
+  // Client-initiated explicit audit entry (rare; most logging happens via mutations).
+  const { siteId } = req.params;
+  const { category, action, target, prev, next, note } = req.body || {};
+  if (!category || !action || !target) {
+    return res.status(400).json({ ok: false, error: 'category, action, target requeridos' });
+  }
+  try {
+    const actor = actorFromReq(req);
+    await logAudit(siteId, actor, category, action, target, prev, next, note);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+
 
 const PLACEHOLDER_SENSORS = [
   // TAP 2
