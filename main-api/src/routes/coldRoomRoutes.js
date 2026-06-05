@@ -68,6 +68,76 @@ async function seedDefaultThresholdsIfEmpty(siteId) {
   return true;
 }
 
+/**
+ * Backfill: rellena t_min/note NULL en rows existentes que matcheen un default
+ * conocido (por sala_slug). NO sobrescribe valores no-null (respeta custom).
+ * Idempotente: corre en cada GET y solo afecta columnas NULL.
+ */
+/**
+ * Renombra rows legacy con áreas/slugs viejos. Idempotente.
+ */
+const LEGACY_RENAMES = [
+  { fromSlug: 'frigorifico-primario', toSlug: 'camara-primaria', toArea: 'Cámara Primaria' },
+  { fromSlug: 'producto-en-transito', toSlug: 'camara-de-transito', toArea: 'Cámara de Tránsito' },
+  { fromSlug: 'sala-de-porciones', toSlug: 'porciones', toArea: 'Porciones' },
+];
+
+async function renameLegacyThresholds(siteId) {
+  for (const r of LEGACY_RENAMES) {
+    // Si ya existe el slug nuevo, borra el viejo (evita conflicto).
+    const newExists = await pool.query(
+      `SELECT 1 FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
+      [siteId, r.toSlug],
+    );
+    if (newExists.rowCount > 0) {
+      await pool.query(
+        `DELETE FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
+        [siteId, r.fromSlug],
+      );
+      continue;
+    }
+    const res = await pool.query(
+      `UPDATE cold_room_threshold
+       SET sala_slug=$1, area=$2, updated_at=NOW()
+       WHERE site_id=$3 AND sala_slug=$4
+       RETURNING area`,
+      [r.toSlug, r.toArea, siteId, r.fromSlug],
+    );
+    if (res.rowCount > 0) {
+      await pool.query(
+        `INSERT INTO cold_room_audit_log
+           (site_id, actor, actor_role, category, action, target, prev, next, note)
+         VALUES ($1, 'system', 'system', 'threshold', 'update', $2, $3, $4, 'Rename legacy')`,
+        [siteId, r.toArea, JSON.stringify({ slug: r.fromSlug }), JSON.stringify({ slug: r.toSlug })],
+      );
+    }
+  }
+}
+
+async function backfillDefaults(siteId) {
+  for (const d of DEFAULT_THRESHOLDS) {
+    const slug = slugifyArea(d.area);
+    const res = await pool.query(
+      `UPDATE cold_room_threshold
+       SET t_min = COALESCE(t_min, $1),
+           note  = COALESCE(note,  $2)
+       WHERE site_id=$3 AND sala_slug=$4
+         AND (t_min IS NULL OR note IS NULL)
+       RETURNING t_min, note`,
+      [d.tMin ?? null, d.note ?? null, siteId, slug],
+    );
+    if (res.rowCount > 0) {
+      await pool.query(
+        `INSERT INTO cold_room_audit_log
+           (site_id, actor, actor_role, category, action, target, prev, next, note)
+         VALUES ($1, 'system', 'system', 'threshold', 'update', $2, NULL, $3,
+                 'Backfill defaults cliente (tMin/note)')`,
+        [siteId, d.area, JSON.stringify({ tMin: d.tMin, note: d.note })],
+      );
+    }
+  }
+}
+
 function actorFromReq(req) {
   const u = req.user;
   if (!u) return { name: 'operador', role: null };
@@ -101,7 +171,9 @@ async function logAudit(siteId, actor, category, action, target, prev, next, not
 // --- Thresholds ---
 router.get('/:siteId/thresholds', async (req, res) => {
   try {
+    await renameLegacyThresholds(req.params.siteId);
     await seedDefaultThresholdsIfEmpty(req.params.siteId);
+    await backfillDefaults(req.params.siteId);
     const { rows } = await pool.query(
       `SELECT sala_slug, area, t_max, t_min, warn_delta_c, sustained_min, severe_min,
               hysteresis_c, note, updated_at, updated_by

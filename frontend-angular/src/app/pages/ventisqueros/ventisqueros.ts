@@ -528,7 +528,7 @@ interface MetricOption {
                 </div>
 
                 @if (sa.spark.length > 1) {
-                  <svg viewBox="0 0 120 32" class="sala-spark">
+                  <svg viewBox="0 0 120 32" class="sala-spark" preserveAspectRatio="none">
                     <defs>
                       <linearGradient
                         [attr.id]="'spark-' + sa.slug"
@@ -569,6 +569,11 @@ interface MetricOption {
                       stroke-linejoin="round"
                     />
                   </svg>
+                } @else {
+                  <div class="sala-spark-empty">
+                    <span class="material-symbols-outlined text-[14px]">timeline</span>
+                    <span>Sin histórico aún</span>
+                  </div>
                 }
 
                 <div class="sala-stats-row">
@@ -614,7 +619,12 @@ interface MetricOption {
                     class="sala-op-pill"
                     [class.sala-op-pill--bad]="sa.reportingCount < sa.count"
                     [class.sala-op-pill--empty]="sa.count === 0 || (sa.reportingCount === 0 && sa.count > 0)"
-                    title="Sensores con lectura reciente (≤ 60s)"
+                    [title]="
+                      'Sensores con lectura ≤ 60s vs total de la sala. ' +
+                      (sa.reportingCount === 0 ? 'Ninguno reportando: sin lectura reciente o canal offline.' :
+                       sa.reportingCount < sa.count ? 'Algunos sensores stale (>60s sin transmitir).' :
+                       'Todos transmitiendo OK.')
+                    "
                   >
                     <span class="material-symbols-outlined text-[11px]">sensors</span>
                     <span class="sala-op-lbl">Reportando</span>
@@ -661,7 +671,11 @@ interface MetricOption {
                       </span>
                     }
                   }
-                  <span class="sala-hr" title="Humedad Relativa">HR {{ sa.avgH }}%</span>
+                  <span class="sala-hr" title="Humedad Relativa (promedio sensores)">
+                    <span class="material-symbols-outlined text-[12px]">water_drop</span>
+                    <span class="sala-hr-lbl">HR</span>
+                    {{ sa.avgH }}%
+                  </span>
                 </footer>
               </button>
             }
@@ -3017,6 +3031,9 @@ interface MetricOption {
         align-items: center;
         justify-content: space-between;
         gap: 8px;
+        margin-top: auto;
+        padding-top: 8px;
+        border-top: 1px solid #f1f5f9;
       }
       .sala-status {
         display: inline-flex;
@@ -3065,18 +3082,47 @@ interface MetricOption {
       }
       .sala-card[data-status='crit'] .sala-status--severe { color: #fff; }
       .sala-hr {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: rgba(14, 165, 233, 0.10);
+        color: #0369a1;
+        border: 1px solid rgba(14, 165, 233, 0.30);
         font-family: var(--font-mono);
-        font-size: 10.5px;
-        color: #94a3b8;
+        font-size: 11.5px;
+        font-weight: 700;
         font-variant-numeric: tabular-nums;
         cursor: help;
-        border-bottom: 1px dotted #cbd5e1;
+      }
+      .sala-hr-lbl {
+        font-family: var(--font-dm);
+        font-size: 9.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        opacity: 0.75;
       }
 
       .sala-spark {
         width: 100%;
         height: 32px;
         margin-top: -2px;
+      }
+      .sala-spark-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        height: 32px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #cbd5e1;
+        font-style: italic;
+      }
+      .sala-spark-empty .material-symbols-outlined {
+        color: #cbd5e1;
       }
 
       .sala-ops-row {
@@ -3652,26 +3698,47 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   private readonly STALE_MS = 60_000;
 
   readonly salaAggregates = computed<SalaAggregate[]>(() => {
-    // Access thresholds signal so this aggregate recomputes when umbrales change.
     this.thresholdsSvc.thresholds();
     this.now();
     const rich = this.coldRoomSensors();
-    const richByArea = new Map<string, ColdRoomSensor[]>();
+
+    // Primary grouping by ColdRoom data (authoritative source for area names).
+    const byArea = new Map<string, ColdRoomSensor[]>();
     for (const r of rich) {
       const key = (r.area || '—').trim();
-      const list = richByArea.get(key) || [];
+      const list = byArea.get(key) || [];
       list.push(r);
-      richByArea.set(key, list);
+      byArea.set(key, list);
     }
-    const map = new Map<string, Sensor[]>();
-    for (const s of this.sensors()) {
-      const key = (s.area || '—').trim();
-      const list = map.get(key) || [];
-      list.push(s);
-      map.set(key, list);
+    // Fallback: si ColdRoom polling no activo, usar VentisquerosService sensors
+    // mapeados a shape compatible (sin histPoints/lastSeen).
+    if (byArea.size === 0) {
+      for (const s of this.sensors()) {
+        const key = (s.area || '—').trim();
+        const list = byArea.get(key) || [];
+        list.push({
+          id: s.id,
+          tap: s.tap,
+          area: s.area,
+          cx: s.cx,
+          cy: s.cy,
+          r: s.r,
+          t: s.t,
+          h: s.h,
+          alerted: s.alerted,
+          setpoint: 0,
+          tMin: -100,
+          tMax: 100,
+          lastSeen: '',
+          hist: s.hist || [],
+          histPoints: [],
+        } as ColdRoomSensor);
+        byArea.set(key, list);
+      }
     }
+
     const out: SalaAggregate[] = [];
-    for (const [area, sensors] of map) {
+    for (const [area, sensors] of byArea) {
       const ts = sensors.map((s) => s.t);
       const hs = sensors.map((s) => s.h);
       const taps = Array.from(new Set(sensors.map((s) => s.tap))).sort();
@@ -3685,15 +3752,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       const histAvg = allHist.length
         ? allHist.reduce((a, b) => a + b, 0) / allHist.length
         : actualNum;
-      const richSensors = richByArea.get(area) || [];
-      const { spark, outOfBandMin } = this.computeSparkAndOutOfBand(richSensors, th?.tMax ?? null);
-      const reportingCount = this.computeReportingCount(richSensors);
-
-      // Desviaciones: detect ongoing + open count.
-      const deviations = this.deviationsSvc.detect(richSensors);
+      const { spark, outOfBandMin } = this.computeSparkAndOutOfBand(sensors, th?.tMax ?? null);
+      const reportingCount = this.computeReportingCount(sensors);
+      const deviations = this.deviationsSvc.detect(sensors);
       const ongoing = deviations.filter((e) => e.ongoing);
       const open = deviations.filter((e) => this.deviationsSvc.isOpen(e));
-      // Sustained minutes of the most-active ongoing deviation (used for level).
       const longestOngoing = ongoing.reduce((m, e) => Math.max(m, e.durationMin), 0);
       const level = sensors.length === 0
         ? 'unknown'
@@ -3706,6 +3769,19 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
             : level === 'ok'
               ? 'ok'
               : 'unknown';
+      // Sensors aggregate keeps minimal shape needed by SalaAggregate (Sensor[] type).
+      const sensorsAsLegacy: Sensor[] = sensors.map((s) => ({
+        id: s.id,
+        tap: s.tap,
+        area: s.area,
+        cx: s.cx,
+        cy: s.cy,
+        r: s.r,
+        t: s.t,
+        h: s.h,
+        hist: s.hist,
+        alerted: s.alerted,
+      }));
       out.push({
         area,
         slug: this.salaSlug(area),
@@ -3718,7 +3794,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         maxT: sensors.length ? maxTNum.toFixed(1) : '—',
         maxTNum,
         taps,
-        sensors,
+        sensors: sensorsAsLegacy,
         thresholdMax: th?.tMax ?? null,
         level,
         status,
