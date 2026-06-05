@@ -1168,17 +1168,32 @@ router.get('/:siteId/sensors', async (req, res) => {
     console.error('[cold-room sensors real] fallback to mock:', err.message);
   }
 
-  // Fallback mock cuando reg_map vacío o equipo sin datos.
-  if (tap === 'TAP 1') return res.json({ ok: true, data: [] });
-  const filtered = tap ? PLACEHOLDER_SENSORS.filter((s) => s.tap === tap) : PLACEHOLDER_SENSORS;
+  // No fallback a mock en prod: confunde debugging y oculta config faltante
+  // de reg_map. Devolver array vacío + meta.source='no-data' para que UI
+  // muestre skeleton/empty state. Para dev/demo usar ?mock=1 explícito.
+  if (req.query.mock === '1') {
+    if (tap === 'TAP 1') return res.json({ ok: true, data: [] });
+    const filtered = tap ? PLACEHOLDER_SENSORS.filter((s) => s.tap === tap) : PLACEHOLDER_SENSORS;
+    return res.json({
+      ok: true,
+      data: filtered.map((s) => sensorSnapshot(s, range)),
+      meta: {
+        range,
+        count: filtered.length,
+        serverTime: new Date().toISOString(),
+        source: 'mock',
+      },
+    });
+  }
   res.json({
     ok: true,
-    data: filtered.map((s) => sensorSnapshot(s, range)),
+    data: [],
     meta: {
       range,
-      count: filtered.length,
+      count: 0,
       serverTime: new Date().toISOString(),
-      source: 'mock',
+      source: 'no-data',
+      hint: 'reg_map sin sensores STH-* o siteIds no incluye los TAPs cold-room',
     },
   });
 });
