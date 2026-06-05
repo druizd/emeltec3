@@ -14,7 +14,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Chart, registerables } from 'chart.js';
 import annotationPlugin, { type AnnotationOptions } from 'chartjs-plugin-annotation';
@@ -67,7 +67,6 @@ interface SortState {
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink,
     SiteVariableSettingsPanelComponent,
     VentisquerosFloorMapComponent,
   ],

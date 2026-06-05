@@ -9,7 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import type { CompanyNode, SiteRecord } from '@emeltec/shared';
 import { CompanyService } from '../../services/company.service';
@@ -29,7 +29,7 @@ const STALE_MS = 60_000;
 @Component({
   selector: 'app-ventisqueros-tap-diag-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden" style="background:#F0F2F5;">
