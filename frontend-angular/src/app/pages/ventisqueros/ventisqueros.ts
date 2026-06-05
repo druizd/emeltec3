@@ -447,8 +447,8 @@ interface MetricOption {
             <div>
               <h2 class="vs-h1 text-slate-800">Salas</h2>
               <p class="mt-1 text-[12px] text-slate-500">
-                {{ salaAggregates().length }} salas · {{ sensors().length }} sensores · click para
-                ver histórico
+                {{ salaAggregates().length }} salas · {{ coldRoomSensors().length }} sensores · click
+                para ver histórico
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -456,19 +456,35 @@ interface MetricOption {
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="umbralesOpen.set(true)"
-                title="Configurar temperatura máxima por sala"
+                [title]="
+                  salasSinUmbralCount() > 0
+                    ? salasSinUmbralCount() + ' sala(s) sin umbral configurado'
+                    : 'Configurar temperatura máxima por sala'
+                "
               >
                 <span class="material-symbols-outlined text-[14px]">tune</span>
                 Umbrales
+                @if (salasSinUmbralCount() > 0) {
+                  <span class="audit-count-badge audit-count-badge--warn">{{
+                    salasSinUmbralCount()
+                  }}</span>
+                }
               </button>
               <button
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="defrostOpen.set(true)"
-                title="Programar ventanas defrost por sala"
+                [title]="
+                  defrostEnabledCount() > 0
+                    ? defrostEnabledCount() + ' ventana(s) defrost activa(s)'
+                    : 'Programar ventanas defrost por sala'
+                "
               >
                 <span class="material-symbols-outlined text-[14px]">ac_unit</span>
                 Defrost
+                @if (defrostEnabledCount() > 0) {
+                  <span class="audit-count-badge">{{ defrostEnabledCount() }}</span>
+                }
               </button>
               <button
                 type="button"
@@ -508,7 +524,6 @@ interface MetricOption {
                     <div class="sala-skel-line" style="flex: 1; height: 28px"></div>
                     <div class="sala-skel-line" style="flex: 1; height: 28px"></div>
                   </div>
-                  <div class="sala-skel-line" style="width: 100%; height: 28px"></div>
                 </div>
               }
             </div>
@@ -663,8 +678,8 @@ interface MetricOption {
                     </span>
                   </span>
                   <span class="sala-stat-divider"></span>
-                  <span class="sala-stat">
-                    <span class="sala-stat-lbl">Prom</span>
+                  <span class="sala-stat" title="Promedio últimas 24h (1min sample)">
+                    <span class="sala-stat-lbl">Prom 24h</span>
                     <span class="sala-stat-val" [style.color]="tempColor(sa.avgTNum)">
                       {{ sa.avgT }}°C
                     </span>
@@ -698,21 +713,22 @@ interface MetricOption {
                     <span class="sala-op-lbl">Desviaciones</span>
                     <strong>{{ sa.deviationsOpenCount }}</strong>
                   </span>
-                  <span
-                    class="sala-op-pill"
-                    [class.sala-op-pill--bad]="sa.reportingCount < sa.count"
-                    [class.sala-op-pill--empty]="sa.count === 0 || (sa.reportingCount === 0 && sa.count > 0)"
-                    [title]="
-                      'Sensores con lectura ≤ 60s vs total de la sala. ' +
-                      (sa.reportingCount === 0 ? 'Ninguno reportando: sin lectura reciente o canal offline.' :
-                       sa.reportingCount < sa.count ? 'Algunos sensores stale (>60s sin transmitir).' :
-                       'Todos transmitiendo OK.')
-                    "
-                  >
-                    <span class="material-symbols-outlined text-[11px]">sensors</span>
-                    <span class="sala-op-lbl">Reportando</span>
-                    <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
-                  </span>
+                  @if (sa.activeCount > 0) {
+                    <span
+                      class="sala-op-pill"
+                      [class.sala-op-pill--bad]="sa.reportingCount < sa.activeCount"
+                      [title]="
+                        'Sensores activos con lectura reciente (≤3 min) vs total activos. ' +
+                        (sa.reportingCount === 0 ? 'Ninguno reportando: sin lectura reciente o canal offline.' :
+                         sa.reportingCount < sa.activeCount ? 'Algunos sensores stale (>3 min sin transmitir).' :
+                         'Todos transmitiendo OK.')
+                      "
+                    >
+                      <span class="material-symbols-outlined text-[11px]">sensors</span>
+                      <span class="sala-op-lbl">Reportando</span>
+                      <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
+                    </span>
+                  }
                   @if (sa.defectiveCount > 0) {
                     <span
                       class="sala-op-pill sala-op-pill--bad"
@@ -760,7 +776,7 @@ interface MetricOption {
                     @default {
                       <span class="sala-status sala-status--unknown">
                         <span class="material-symbols-outlined text-[12px]">help</span>
-                        Sin umbral
+                        Esperando lectura
                       </span>
                     }
                   }
@@ -2738,6 +2754,10 @@ interface MetricOption {
         font-size: 10px;
         font-weight: 700;
       }
+      .audit-count-badge--warn {
+        background: rgba(245, 158, 11, 0.15);
+        color: #b45309;
+      }
       .vs-audit-body {
         padding: 14px;
         display: flex;
@@ -3985,7 +4005,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
     return this.sensors();
   });
-  private readonly STALE_MS = 60_000;
+  // Tolerancia para considerar un sensor "reportando". 180s cubre el lag
+  // natural del cagg equipo_1min (bucket de 1min refresh + propagación) sin
+  // marcar falsos stale en sensores que sí están transmitiendo. Sensor caído
+  // real supera este umbral en pocos minutos.
+  private readonly STALE_MS = 180_000;
 
   readonly salaAggregates = computed<SalaAggregate[]>(() => {
     this.thresholdsSvc.thresholds();
@@ -4499,6 +4523,18 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly auditFilterTo = signal<string>('');
 
   readonly auditEntries = computed(() => this.auditSvc.entries());
+
+  readonly salasSinUmbralCount = computed(
+    () => this.salaAggregates().filter((sa) => sa.thresholdMax === null).length,
+  );
+
+  readonly defrostEnabledCount = computed(() => {
+    const map = this.defrostSvc.schedules();
+    return Object.values(map).reduce(
+      (sum, list) => sum + (list as DefrostWindow[]).filter((w) => w.enabled).length,
+      0,
+    );
+  });
 
   readonly auditFiltered = computed(() => {
     return this.auditSvc.filter({
