@@ -95,10 +95,10 @@ async function renameLegacyThresholds(siteId) {
       [siteId, r.toSlug],
     );
     if (newExists.rowCount > 0) {
-      await pool.query(
-        `DELETE FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
-        [siteId, r.fromSlug],
-      );
+      await pool.query(`DELETE FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`, [
+        siteId,
+        r.fromSlug,
+      ]);
       continue;
     }
     const res = await pool.query(
@@ -113,7 +113,12 @@ async function renameLegacyThresholds(siteId) {
         `INSERT INTO cold_room_audit_log
            (site_id, actor, actor_role, category, action, target, prev, next, note)
          VALUES ($1, 'system', 'system', 'threshold', 'update', $2, $3, $4, 'Rename legacy')`,
-        [siteId, r.toArea, JSON.stringify({ slug: r.fromSlug }), JSON.stringify({ slug: r.toSlug })],
+        [
+          siteId,
+          r.toArea,
+          JSON.stringify({ slug: r.fromSlug }),
+          JSON.stringify({ slug: r.toSlug }),
+        ],
       );
     }
   }

@@ -293,7 +293,11 @@ export class ColdRoomThresholdsService {
           this.refresh();
         },
         error: (err) => {
-          console.error('[ColdRoomThresholds] PUT failed:', err?.status, err?.error || err?.message);
+          console.error(
+            '[ColdRoomThresholds] PUT failed:',
+            err?.status,
+            err?.error || err?.message,
+          );
           this.refresh();
         },
       });
