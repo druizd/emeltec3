@@ -277,13 +277,26 @@ export class ColdRoomThresholdsService {
     this.http
       .put<{
         ok: boolean;
+        error?: string;
       }>(`/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`, {
         area,
         tMax,
         tMin: tMin ?? null,
         note: note ?? null,
       })
-      .subscribe({ error: () => this.refresh() });
+      .subscribe({
+        next: (res) => {
+          if (!res.ok) {
+            console.error('[ColdRoomThresholds] PUT response not ok:', res.error || res);
+          }
+          // Refresh to confirm backend persisted (catches silent rollbacks).
+          this.refresh();
+        },
+        error: (err) => {
+          console.error('[ColdRoomThresholds] PUT failed:', err?.status, err?.error || err?.message);
+          this.refresh();
+        },
+      });
   }
 
   private loadLocalCache(): ThresholdsMap {
