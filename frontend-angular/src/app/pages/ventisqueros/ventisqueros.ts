@@ -23,7 +23,10 @@ import {
   type ColdRoomConcentratorChannel,
   type ColdRoomSensor,
 } from '../../services/cold-room.service';
-import { ColdRoomThresholdsService } from '../../services/cold-room-thresholds.service';
+import {
+  ColdRoomThresholdsService,
+  type SalaThreshold,
+} from '../../services/cold-room-thresholds.service';
 import { ColdRoomDeviationsService } from '../../services/cold-room-deviations.service';
 import {
   ColdRoomDefrostService,
@@ -3965,7 +3968,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     const storedSlugs = new Set(stored.map((t) => this.salaSlug(t.area)));
     const liveAreas = Array.from(new Set(this.sensors().map((s) => (s.area || '').trim())))
       .filter((a) => a && !storedSlugs.has(this.salaSlug(a)));
-    const extras = liveAreas.map((area) => ({ area, tMax: NaN, updatedAt: '' }));
+    const extras: SalaThreshold[] = liveAreas.map((area) => ({
+      area,
+      tMax: NaN,
+      updatedAt: '',
+    }));
     return [...stored, ...extras].sort((a, b) => a.area.localeCompare(b.area));
   });
 
