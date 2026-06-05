@@ -1937,7 +1937,11 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           y1: {
             position: 'right',
             grid: { display: false },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}%` },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${Number(v).toFixed(0)}%`,
+            },
           },
         },
       },
