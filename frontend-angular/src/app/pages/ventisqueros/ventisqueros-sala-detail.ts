@@ -59,23 +59,24 @@ function slugify(area: string): string {
     <div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden" style="background:#F0F2F5;">
       <!-- Header -->
       <div class="sala-header flex flex-wrap items-center gap-3 border-t border-b px-5 py-2.5">
-        <button
-          type="button"
-          (click)="goBack()"
-          class="sala-icon-btn"
-          aria-label="Volver"
-        >
+        <button type="button" (click)="goBack()" class="sala-icon-btn" aria-label="Volver">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
         <div
           class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg"
-          [style.background]="statusLevel() === 'critical' ? 'rgba(239,68,68,0.10)' : 'rgba(13,175,189,0.10)'"
-          [style.border]="'1px solid ' + (statusLevel() === 'critical' ? 'rgba(239,68,68,0.30)' : 'rgba(13,175,189,0.30)')"
+          [style.background]="
+            statusLevel() === 'critical' ? 'rgba(239,68,68,0.10)' : 'rgba(13,175,189,0.10)'
+          "
+          [style.border]="
+            '1px solid ' +
+            (statusLevel() === 'critical' ? 'rgba(239,68,68,0.30)' : 'rgba(13,175,189,0.30)')
+          "
         >
           <span
             class="material-symbols-outlined text-[18px]"
             [style.color]="statusLevel() === 'critical' ? '#DC2626' : '#0DAFBD'"
-            >meeting_room</span>
+            >meeting_room</span
+          >
         </div>
         <div class="min-w-0">
           <div class="sala-title truncate">{{ siteName() }} · {{ areaName() }}</div>
@@ -179,13 +180,25 @@ function slugify(area: string): string {
               </div>
             </div>
             <div class="kpi-meta flex flex-wrap items-baseline gap-x-5 gap-y-1">
-              <span>Actual <strong>{{ stats().actualT }}°C</strong></span>
-              <span>Prom <strong>{{ stats().avgT }}°C</strong></span>
-              <span>HR <strong>{{ stats().avgH }}%</strong></span>
-              <span>Mín <strong>{{ stats().minT }}°C</strong></span>
-              <span>Máx <strong>{{ stats().maxT }}°C</strong></span>
+              <span
+                >Actual <strong>{{ stats().actualT }}°C</strong></span
+              >
+              <span
+                >Prom <strong>{{ stats().avgT }}°C</strong></span
+              >
+              <span
+                >HR <strong>{{ stats().avgH }}%</strong></span
+              >
+              <span
+                >Mín <strong>{{ stats().minT }}°C</strong></span
+              >
+              <span
+                >Máx <strong>{{ stats().maxT }}°C</strong></span
+              >
               @if (stats().thresholdMax !== null) {
-                <span>Umbral <strong>{{ stats().thresholdMax }}°C</strong></span>
+                <span
+                  >Umbral <strong>{{ stats().thresholdMax }}°C</strong></span
+                >
               }
               @if (taps().length > 0) {
                 <span class="kpi-meta-tap">{{ taps().join(' · ') }}</span>
@@ -242,18 +255,8 @@ function slugify(area: string): string {
                   </div>
                   <svg viewBox="0 0 120 32" class="mt-2 h-8 w-full">
                     <defs>
-                      <linearGradient
-                        [attr.id]="'salasp-' + s.id"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          [attr.stop-color]="tempColor(s.t)"
-                          stop-opacity="0.30"
-                        />
+                      <linearGradient [attr.id]="'salasp-' + s.id" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" [attr.stop-color]="tempColor(s.t)" stop-opacity="0.30" />
                         <stop offset="100%" stop-color="#fff" stop-opacity="0" />
                       </linearGradient>
                     </defs>
@@ -280,9 +283,7 @@ function slugify(area: string): string {
           <div class="empty-state">
             <span class="material-symbols-outlined text-[36px] text-slate-300">sensors_off</span>
             <div class="empty-title">Sin sensores en esta sala</div>
-            <div class="empty-sub">
-              Verifica que la sala "{{ areaName() }}" esté provisionada.
-            </div>
+            <div class="empty-sub">Verifica que la sala "{{ areaName() }}" esté provisionada.</div>
           </div>
         }
 
@@ -305,16 +306,9 @@ function slugify(area: string): string {
                   [attr.data-level]="effectiveCause(ex)?.cause === 'defrost' ? 'defrost' : ex.level"
                 >
                   <header class="deviation-head">
-                    <div
-                      class="deviation-level-pill"
-                      [attr.data-level]="ex.level"
-                    >
+                    <div class="deviation-level-pill" [attr.data-level]="ex.level">
                       <span class="material-symbols-outlined text-[11px]">{{
-                        ex.level === 'severe'
-                          ? 'error'
-                          : ex.level === 'crit'
-                            ? 'warning'
-                            : 'flag'
+                        ex.level === 'severe' ? 'error' : ex.level === 'crit' ? 'warning' : 'flag'
                       }}</span>
                       {{ deviationLevelLabel(ex.level) }}
                     </div>
@@ -324,11 +318,19 @@ function slugify(area: string): string {
                         class="deviation-cause-badge"
                         [attr.data-cause]="ec.cause"
                         [attr.data-source]="ec.source"
-                        [title]="ec.source === 'auto' ? 'Clasificado automáticamente por ventana defrost' : 'Clasificado manualmente por operador'"
+                        [title]="
+                          ec.source === 'auto'
+                            ? 'Clasificado automáticamente por ventana defrost'
+                            : 'Clasificado manualmente por operador'
+                        "
                       >
-                        <span class="material-symbols-outlined text-[11px]">{{ causeIcon(ec.cause) }}</span>
+                        <span class="material-symbols-outlined text-[11px]">{{
+                          causeIcon(ec.cause)
+                        }}</span>
                         {{ causeLabel(ec.cause) }}
-                        <span class="deviation-cause-src">({{ ec.source === 'auto' ? 'auto' : 'manual' }})</span>
+                        <span class="deviation-cause-src"
+                          >({{ ec.source === 'auto' ? 'auto' : 'manual' }})</span
+                        >
                       </span>
                     }
                     @if (ex.ongoing) {
@@ -338,7 +340,10 @@ function slugify(area: string): string {
                       </span>
                     }
                     @if (!ex.defrost && ex.defrostOverlapMin > 0) {
-                      <span class="deviation-defrost-overlap" title="Minutos solapando ventana defrost (descontados del cómputo)">
+                      <span
+                        class="deviation-defrost-overlap"
+                        title="Minutos solapando ventana defrost (descontados del cómputo)"
+                      >
                         <span class="material-symbols-outlined text-[10px]">ac_unit</span>
                         −{{ ex.defrostOverlapMin }}m
                       </span>
@@ -354,13 +359,17 @@ function slugify(area: string): string {
                       <span class="deviation-stat-val">
                         {{ fmtDeviationDuration(ex.durationMin) }}
                         @if (ex.defrostOverlapMin > 0 && !ex.defrost) {
-                          <span class="deviation-stat-sub">efectivo {{ fmtDeviationDuration(ex.effectiveMin) }}</span>
+                          <span class="deviation-stat-sub"
+                            >efectivo {{ fmtDeviationDuration(ex.effectiveMin) }}</span
+                          >
                         }
                       </span>
                     </div>
                     <div class="deviation-stat">
                       <span class="deviation-stat-lbl">Peak T</span>
-                      <span class="deviation-stat-val" [class.text-rose-700]="!ex.defrost">{{ ex.peakT }}°C</span>
+                      <span class="deviation-stat-val" [class.text-rose-700]="!ex.defrost"
+                        >{{ ex.peakT }}°C</span
+                      >
                     </div>
                     <div class="deviation-stat">
                       <span class="deviation-stat-lbl">Umbral</span>
@@ -374,8 +383,12 @@ function slugify(area: string): string {
                       }}</span>
                       <span>
                         {{ ack.resolved ? 'Resuelta' : 'Reconocida' }}
-                        · {{ ack.ackedBy }}
-                        · {{ fmtDeviationTime(ack.resolved ? (ack.resolvedAt || ack.ackedAt!) : ack.ackedAt!) }}
+                        · {{ ack.ackedBy }} ·
+                        {{
+                          fmtDeviationTime(
+                            ack.resolved ? ack.resolvedAt || ack.ackedAt! : ack.ackedAt!
+                          )
+                        }}
                       </span>
                     </div>
                   }
@@ -387,14 +400,12 @@ function slugify(area: string): string {
                       [attr.aria-label]="'Clasificar desviación ' + ex.id"
                     >
                       <option value="">
-                        {{
-                          effectiveCause(ex)
-                            ? 'Cambiar causa…'
-                            : 'Clasificar causa…'
-                        }}
+                        {{ effectiveCause(ex) ? 'Cambiar causa…' : 'Clasificar causa…' }}
                       </option>
                       @for (c of causes; track c.key) {
-                        <option [value]="c.key">{{ c.label }}{{ c.expected ? ' (esperada)' : '' }}</option>
+                        <option [value]="c.key">
+                          {{ c.label }}{{ c.expected ? ' (esperada)' : '' }}
+                        </option>
                       }
                     </select>
                     @if (effectiveCause(ex); as ec) {
@@ -497,7 +508,12 @@ function slugify(area: string): string {
                 {{ drilldownData()?.area || '—' }} · {{ drilldownData()?.tap || '' }}
               </div>
             </div>
-            <button type="button" class="drawer-close" (click)="closeDrilldown()" aria-label="Cerrar">
+            <button
+              type="button"
+              class="drawer-close"
+              (click)="closeDrilldown()"
+              aria-label="Cerrar"
+            >
               <span class="material-symbols-outlined text-[18px]">close</span>
             </button>
           </header>
@@ -572,11 +588,20 @@ function slugify(area: string): string {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #64748b;
-        transition: color 0.15s ease, background 0.15s ease, transform 0.18s ease;
+        transition:
+          color 0.15s ease,
+          background 0.15s ease,
+          transform 0.18s ease;
       }
-      .sala-icon-btn:hover { color: #0d99a5; }
-      .sala-icon-btn:active { transform: translateY(1px); }
-      .sala-icon-btn:disabled { opacity: 0.5; }
+      .sala-icon-btn:hover {
+        color: #0d99a5;
+      }
+      .sala-icon-btn:active {
+        transform: translateY(1px);
+      }
+      .sala-icon-btn:disabled {
+        opacity: 0.5;
+      }
       .sala-btn {
         display: inline-flex;
         align-items: center;
@@ -590,11 +615,21 @@ function slugify(area: string): string {
         font-family: 'DM Sans', sans-serif;
         font-size: 12px;
         font-weight: 500;
-        transition: color 0.15s ease, background 0.15s ease, transform 0.18s ease;
+        transition:
+          color 0.15s ease,
+          background 0.15s ease,
+          transform 0.18s ease;
       }
-      .sala-btn:hover { color: #0d99a5; background: rgba(13, 175, 189, 0.05); }
-      .sala-btn:active { transform: translateY(1px); }
-      .sala-btn:disabled { opacity: 0.5; }
+      .sala-btn:hover {
+        color: #0d99a5;
+        background: rgba(13, 175, 189, 0.05);
+      }
+      .sala-btn:active {
+        transform: translateY(1px);
+      }
+      .sala-btn:disabled {
+        opacity: 0.5;
+      }
 
       .sala-title {
         font-family: 'Josefin Sans', sans-serif;
@@ -614,7 +649,7 @@ function slugify(area: string): string {
         padding: 4px 9px;
         border-radius: 999px;
         background: rgba(34, 197, 94, 0.08);
-        border: 1px solid rgba(34, 197, 94, 0.20);
+        border: 1px solid rgba(34, 197, 94, 0.2);
       }
       .sala-live--err {
         color: #b91c1c;
@@ -628,14 +663,29 @@ function slugify(area: string): string {
         border-radius: 50%;
         background: #22c55e;
       }
-      .sala-live-dot--err { background: #ef4444; }
-      .sala-live-dot--pulse { animation: salaPulse 1.6s ease-in-out infinite; }
-      @keyframes salaPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
-        70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+      .sala-live-dot--err {
+        background: #ef4444;
       }
-      .sala-spin { animation: salaSpin 0.8s linear infinite; }
-      @keyframes salaSpin { to { transform: rotate(360deg); } }
+      .sala-live-dot--pulse {
+        animation: salaPulse 1.6s ease-in-out infinite;
+      }
+      @keyframes salaPulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+        }
+        70% {
+          box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+        }
+      }
+      .sala-spin {
+        animation: salaSpin 0.8s linear infinite;
+      }
+      @keyframes salaSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
       .status-banner {
         padding: 0 20px;
@@ -653,21 +703,30 @@ function slugify(area: string): string {
         margin: 10px 0;
       }
       .status-banner[data-level='warning'] .status-banner-inner {
-        background: linear-gradient(90deg, rgba(251, 191, 36, 0.10), transparent 60%);
+        background: linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent 60%);
         border-color: rgba(251, 191, 36, 0.25);
       }
       .status-banner[data-level='critical'] .status-banner-inner {
         background: linear-gradient(90deg, rgba(239, 68, 68, 0.12), transparent 60%);
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
       }
-      .status-icon { font-size: 22px; color: #16a34a; }
-      .status-banner[data-level='warning'] .status-icon { color: #d97706; }
-      .status-banner[data-level='critical'] .status-icon { color: #dc2626; }
+      .status-icon {
+        font-size: 22px;
+        color: #16a34a;
+      }
+      .status-banner[data-level='warning'] .status-icon {
+        color: #d97706;
+      }
+      .status-banner[data-level='critical'] .status-icon {
+        color: #dc2626;
+      }
       .status-banner[data-level='unknown'] .status-banner-inner {
         background: #f8fafc;
         border-color: #e2e8f0;
       }
-      .status-banner[data-level='unknown'] .status-icon { color: #94a3b8; }
+      .status-banner[data-level='unknown'] .status-icon {
+        color: #94a3b8;
+      }
       .status-title {
         font-family: 'DM Sans', sans-serif;
         font-size: 13.5px;
@@ -776,14 +835,17 @@ function slugify(area: string): string {
         padding: 14px 16px;
         cursor: pointer;
         text-align: left;
-        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s ease;
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease,
+          border-color 0.15s ease;
       }
       .sensor-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
       }
       .sensor-card--alert {
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent 70%);
       }
       .sensor-id-chip {
@@ -842,9 +904,13 @@ function slugify(area: string): string {
         border-radius: 6px;
         color: #64748b;
         background: transparent;
-        transition: background 0.15s ease, color 0.15s ease;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
       }
-      .range-pill:hover { color: #1e293b; }
+      .range-pill:hover {
+        color: #1e293b;
+      }
       .range-pill--active {
         background: #ffffff;
         color: #0d99a5;
@@ -859,7 +925,9 @@ function slugify(area: string): string {
         color: #64748b;
         cursor: pointer;
       }
-      .band-toggle input { accent-color: #0d99a5; }
+      .band-toggle input {
+        accent-color: #0d99a5;
+      }
 
       .chart-shell {
         background: #ffffff;
@@ -925,11 +993,11 @@ function slugify(area: string): string {
         letter-spacing: 0.06em;
       }
       .deviation-level-pill[data-level='warn'] {
-        background: rgba(245, 158, 11, 0.10);
+        background: rgba(245, 158, 11, 0.1);
         color: #b45309;
       }
       .deviation-level-pill[data-level='crit'] {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
       }
       .deviation-level-pill[data-level='severe'] {
@@ -939,7 +1007,7 @@ function slugify(area: string): string {
       .deviation-level-pill[data-level='defrost'] {
         background: rgba(56, 189, 248, 0.12);
         color: #0369a1;
-        border: 1px solid rgba(14, 165, 233, 0.30);
+        border: 1px solid rgba(14, 165, 233, 0.3);
       }
       .deviation-defrost-overlap {
         margin-left: auto;
@@ -950,7 +1018,7 @@ function slugify(area: string): string {
         font-size: 10px;
         font-weight: 600;
         color: #0369a1;
-        background: rgba(56, 189, 248, 0.10);
+        background: rgba(56, 189, 248, 0.1);
         border: 1px solid rgba(14, 165, 233, 0.25);
         border-radius: 999px;
         padding: 2px 7px;
@@ -995,8 +1063,13 @@ function slugify(area: string): string {
         animation: devPulse 1.4s ease-in-out infinite;
       }
       @keyframes devPulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55); }
-        70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.55);
+        }
+        70% {
+          box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+        }
       }
       .deviation-body {
         display: grid;
@@ -1029,7 +1102,7 @@ function slugify(area: string): string {
         padding: 6px 10px;
         border-radius: 8px;
         background: rgba(34, 197, 94, 0.08);
-        border: 1px solid rgba(34, 197, 94, 0.20);
+        border: 1px solid rgba(34, 197, 94, 0.2);
         color: #15803d;
         font-family: 'DM Sans', sans-serif;
         font-size: 11.5px;
@@ -1053,17 +1126,25 @@ function slugify(area: string): string {
         font-weight: 500;
         cursor: pointer;
       }
-      .deviation-btn:hover { color: #1e293b; background: #f8fafc; }
+      .deviation-btn:hover {
+        color: #1e293b;
+        background: #f8fafc;
+      }
       .deviation-btn--primary {
         background: #0d99a5;
         color: #fff;
         border-color: #0d99a5;
       }
-      .deviation-btn--primary:hover { background: #0a7d87; }
+      .deviation-btn--primary:hover {
+        background: #0a7d87;
+      }
       .deviation-btn--ghost {
         color: #94a3b8;
       }
-      .deviation-btn--ghost:hover { color: #475569; background: #f1f5f9; }
+      .deviation-btn--ghost:hover {
+        color: #475569;
+        background: #f1f5f9;
+      }
 
       .deviation-cause-badge {
         display: inline-flex;
@@ -1076,24 +1157,24 @@ function slugify(area: string): string {
         font-weight: 600;
       }
       .deviation-cause-badge[data-cause='defrost'] {
-        background: rgba(56, 189, 248, 0.10);
+        background: rgba(56, 189, 248, 0.1);
         color: #0369a1;
-        border: 1px solid rgba(14, 165, 233, 0.30);
+        border: 1px solid rgba(14, 165, 233, 0.3);
       }
       .deviation-cause-badge[data-cause='door-open'] {
-        background: rgba(168, 85, 247, 0.10);
+        background: rgba(168, 85, 247, 0.1);
         color: #6d28d9;
-        border: 1px solid rgba(168, 85, 247, 0.30);
+        border: 1px solid rgba(168, 85, 247, 0.3);
       }
       .deviation-cause-badge[data-cause='load-unload'] {
-        background: rgba(245, 158, 11, 0.10);
+        background: rgba(245, 158, 11, 0.1);
         color: #b45309;
-        border: 1px solid rgba(245, 158, 11, 0.30);
+        border: 1px solid rgba(245, 158, 11, 0.3);
       }
       .deviation-cause-badge[data-cause='cleaning'] {
-        background: rgba(20, 184, 166, 0.10);
+        background: rgba(20, 184, 166, 0.1);
         color: #0f766e;
-        border: 1px solid rgba(20, 184, 166, 0.30);
+        border: 1px solid rgba(20, 184, 166, 0.3);
       }
       .deviation-cause-badge[data-cause='other'] {
         background: #f1f5f9;
@@ -1124,14 +1205,16 @@ function slugify(area: string): string {
         border-color: #0d99a5;
       }
 
-      .deviation-foot-spacer { flex: 1; }
+      .deviation-foot-spacer {
+        flex: 1;
+      }
       .deviation-closed-tag {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         padding: 4px 10px;
         border-radius: 999px;
-        background: rgba(34, 197, 94, 0.10);
+        background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
         font-family: 'DM Sans', sans-serif;
@@ -1174,10 +1257,22 @@ function slugify(area: string): string {
         animation: cardIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         animation-delay: calc(var(--i, 0) * 30ms);
       }
-      @keyframes cardIn { to { opacity: 1; transform: translateY(0); } }
+      @keyframes cardIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
-        .anim-stagger { animation: none; opacity: 1; transform: none; }
-        .sala-live-dot--pulse, .sala-spin { animation: none; }
+        .anim-stagger {
+          animation: none;
+          opacity: 1;
+          transform: none;
+        }
+        .sala-live-dot--pulse,
+        .sala-spin {
+          animation: none;
+        }
       }
 
       /* Drawer */
@@ -1195,15 +1290,21 @@ function slugify(area: string): string {
         width: min(540px, 96vw);
         background: #ffffff;
         border-left: 1px solid #e2e8f0;
-        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.10);
+        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.1);
         z-index: 41;
         display: flex;
         flex-direction: column;
         animation: salaSlideIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes salaSlideIn {
-        from { transform: translateX(24px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from {
+          transform: translateX(24px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
       }
       .drawer-head {
         padding: 14px 16px;
@@ -1236,8 +1337,15 @@ function slugify(area: string): string {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
       }
-      .drawer-close:hover { color: #1e293b; background: #f1f5f9; }
-      .drawer-body { padding: 16px; overflow-y: auto; flex: 1; }
+      .drawer-close:hover {
+        color: #1e293b;
+        background: #f1f5f9;
+      }
+      .drawer-body {
+        padding: 16px;
+        overflow-y: auto;
+        flex: 1;
+      }
       .drawer-loading {
         text-align: center;
         padding: 48px 16px;
@@ -1287,9 +1395,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     return this.deviationsSvc.detect(this.sensors());
   });
 
-  readonly deviationsOngoing = computed(() =>
-    this.deviations().filter((e) => e.ongoing),
-  );
+  readonly deviationsOngoing = computed(() => this.deviations().filter((e) => e.ongoing));
 
   readonly deviationsOpen = computed(() =>
     this.deviations().filter((e) => this.deviationsSvc.isOpen(e)),
@@ -1340,7 +1446,9 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   // === Cause classification (híbrido) ===
   readonly causes = (
-    Object.entries(DEVIATION_CAUSES) as Array<[DeviationCause, (typeof DEVIATION_CAUSES)[DeviationCause]]>
+    Object.entries(DEVIATION_CAUSES) as Array<
+      [DeviationCause, (typeof DEVIATION_CAUSES)[DeviationCause]]
+    >
   ).map(([key, meta]) => ({ key, ...meta }));
 
   effectiveCause(d: Deviation) {
@@ -1418,12 +1526,12 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly areaName = computed(() => {
     const first = this.sensors()[0];
     if (first?.area) return first.area;
-    return this.salaSlug().replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    return this.salaSlug()
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
   });
 
-  readonly taps = computed(() =>
-    Array.from(new Set(this.sensors().map((s) => s.tap))).sort(),
-  );
+  readonly taps = computed(() => Array.from(new Set(this.sensors().map((s) => s.tap))).sort());
 
   readonly liveLabel = computed(() => {
     if (this.serviceError()) return 'Sin conexión';

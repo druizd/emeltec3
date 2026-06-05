@@ -162,11 +162,7 @@ export class ColdRoomService {
     return `/api/cold-room/${encodeURIComponent(siteId)}/export?${params.toString()}`;
   }
 
-  downloadCsv(
-    siteId: string,
-    tap: string | null,
-    range: ColdRoomRange = '24h',
-  ): Observable<Blob> {
+  downloadCsv(siteId: string, tap: string | null, range: ColdRoomRange = '24h'): Observable<Blob> {
     return this.http.get(this.exportCsvUrl(siteId, tap, range), { responseType: 'blob' });
   }
 }

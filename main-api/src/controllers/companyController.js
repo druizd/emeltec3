@@ -13,6 +13,9 @@ const {
   VARIABLE_ROLE_IDS,
   VARIABLE_TRANSFORM_IDS,
 } = require('../config/siteTypeCatalog');
+const {
+  invalidatePasteurizadorBundleInputsCache,
+} = require('../services/pasteurizadorTelemetryService');
 const { CHILE_TIME_ZONE, formatChileTimestamp } = require('../utils/timezone');
 const { formatRutForStorage } = require('../utils/rut');
 
@@ -86,6 +89,11 @@ function setCachedOperacionBundleInputs(siteId, inputs) {
 
 function invalidateOperacionBundleInputsCache(siteId) {
   operacionBundleInputsCache.delete(operacionBundleInputsCacheKey(siteId));
+}
+
+function invalidateSiteTelemetryCaches(siteId) {
+  invalidateOperacionBundleInputsCache(siteId);
+  invalidatePasteurizadorBundleInputsCache(siteId);
 }
 
 function badRequest(res, message) {
@@ -1356,7 +1364,7 @@ exports.updateSite = async (req, res, next) => {
       client.release();
     }
 
-    invalidateOperacionBundleInputsCache(siteId);
+    invalidateSiteTelemetryCaches(siteId);
 
     res.json({
       ok: true,
@@ -2684,7 +2692,7 @@ exports.createSiteVariableMap = async (req, res, next) => {
       ],
     );
 
-    invalidateOperacionBundleInputsCache(siteId);
+    invalidateSiteTelemetryCaches(siteId);
 
     res.status(201).json({
       ok: true,
@@ -2794,7 +2802,7 @@ exports.updateSiteVariableMap = async (req, res, next) => {
       params,
     );
 
-    invalidateOperacionBundleInputsCache(siteId);
+    invalidateSiteTelemetryCaches(siteId);
 
     res.json({
       ok: true,
@@ -2834,7 +2842,7 @@ exports.deleteSiteVariableMap = async (req, res, next) => {
       return notFound(res, 'Mapeo no encontrado para este sitio.');
     }
 
-    invalidateOperacionBundleInputsCache(siteId);
+    invalidateSiteTelemetryCaches(siteId);
 
     res.json({ ok: true, message: 'Mapeo eliminado correctamente.' });
   } catch (err) {

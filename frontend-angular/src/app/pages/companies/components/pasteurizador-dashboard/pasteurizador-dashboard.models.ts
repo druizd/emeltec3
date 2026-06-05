@@ -30,6 +30,10 @@ export interface PasteurChart {
   max: number;
   referenceLines?: PasteurReferenceLine[];
   times: string[];
+  timestamps?: number[];
+  xMinMs?: number;
+  xMaxMs?: number;
+  latestTimestampMs?: number;
   tooltipDateLabel?: string;
   tooltipMetricLabel?: string;
 }

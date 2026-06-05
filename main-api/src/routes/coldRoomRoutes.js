@@ -210,8 +210,15 @@ router.delete('/:siteId/thresholds/:slug', async (req, res) => {
       slug,
     ]);
     if (prev) {
-      logAudit(siteId, actor, 'threshold', 'delete', prev.area,
-        { tMax: Number(prev.t_max), tMin: prev.t_min !== null ? Number(prev.t_min) : null }, null);
+      logAudit(
+        siteId,
+        actor,
+        'threshold',
+        'delete',
+        prev.area,
+        { tMax: Number(prev.t_max), tMin: prev.t_min !== null ? Number(prev.t_min) : null },
+        null,
+      );
     }
     res.json({ ok: true });
   } catch (err) {
@@ -272,8 +279,15 @@ router.get('/:siteId/defrost', async (req, res) => {
 
 router.post('/:siteId/defrost', async (req, res) => {
   const { siteId } = req.params;
-  const { id, slug, startHHmm, durationMin, daysOfWeek = [], enabled = true, note = null } =
-    req.body || {};
+  const {
+    id,
+    slug,
+    startHHmm,
+    durationMin,
+    daysOfWeek = [],
+    enabled = true,
+    note = null,
+  } = req.body || {};
   if (!id || !slug || !startHHmm || typeof durationMin !== 'number') {
     return res
       .status(400)
@@ -325,12 +339,20 @@ router.put('/:siteId/defrost/:id', async (req, res) => {
        WHERE id=$6 AND site_id=$7`,
       [next.startHHmm, next.durationMin, next.daysOfWeek, next.enabled, next.note, id, siteId],
     );
-    logAudit(siteId, actor, 'defrost', 'update', `${prev.sala_slug}/${id}`, {
-      startHHmm: prev.start_hhmm,
-      durationMin: prev.duration_min,
-      daysOfWeek: prev.days_of_week,
-      enabled: prev.enabled,
-    }, next);
+    logAudit(
+      siteId,
+      actor,
+      'defrost',
+      'update',
+      `${prev.sala_slug}/${id}`,
+      {
+        startHHmm: prev.start_hhmm,
+        durationMin: prev.duration_min,
+        daysOfWeek: prev.days_of_week,
+        enabled: prev.enabled,
+      },
+      next,
+    );
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -352,12 +374,20 @@ router.delete('/:siteId/defrost/:id', async (req, res) => {
       siteId,
     ]);
     if (prev) {
-      logAudit(siteId, actor, 'defrost', 'delete', `${prev.sala_slug}/${id}`, {
-        startHHmm: prev.start_hhmm,
-        durationMin: prev.duration_min,
-        daysOfWeek: prev.days_of_week,
-        enabled: prev.enabled,
-      }, null);
+      logAudit(
+        siteId,
+        actor,
+        'defrost',
+        'delete',
+        `${prev.sala_slug}/${id}`,
+        {
+          startHHmm: prev.start_hhmm,
+          durationMin: prev.duration_min,
+          daysOfWeek: prev.days_of_week,
+          enabled: prev.enabled,
+        },
+        null,
+      );
     }
     res.json({ ok: true });
   } catch (err) {
@@ -446,10 +476,10 @@ router.put('/:siteId/acks/:devId', async (req, res) => {
 router.delete('/:siteId/acks/:devId', async (req, res) => {
   try {
     const actor = actorFromReq(req);
-    await pool.query(
-      `DELETE FROM cold_room_deviation_ack WHERE site_id=$1 AND deviation_id=$2`,
-      [req.params.siteId, req.params.devId],
-    );
+    await pool.query(`DELETE FROM cold_room_deviation_ack WHERE site_id=$1 AND deviation_id=$2`, [
+      req.params.siteId,
+      req.params.devId,
+    ]);
     logAudit(req.params.siteId, actor, 'deviation', 'clear-cause', req.params.devId, null, null);
     res.json({ ok: true });
   } catch (err) {
@@ -531,8 +561,6 @@ router.post('/:siteId/audit', async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
-
-
 
 const PLACEHOLDER_SENSORS = [
   // TAP 2
@@ -908,18 +936,21 @@ router.get('/:siteId/export', (req, res) => {
     return res.status(400).json({ ok: false, error: 'Formato no soportado' });
   }
   const rows = [];
-  rows.push(['sensor_id', 'tap', 'area', 'timestamp_iso', 'temperatura_c', 'humedad_pct'].join(','));
+  rows.push(
+    ['sensor_id', 'tap', 'area', 'timestamp_iso', 'temperatura_c', 'humedad_pct'].join(','),
+  );
   filtered.forEach((s) => {
     const tempSeries = buildHist(s.t, range);
     const humSeries = buildHistHum(s.h, range);
     tempSeries.forEach((p, i) => {
       const hVal = humSeries[i] ? humSeries[i].v : '';
-      rows.push(
-        [s.id, s.tap, JSON.stringify(s.area), p.t, p.v, hVal].join(','),
-      );
+      rows.push([s.id, s.tap, JSON.stringify(s.area), p.t, p.v, hVal].join(','));
     });
   });
-  const filename = `cold-room-${req.params.siteId}-${tap || 'all'}-${range}.csv`.replace(/\s+/g, '-');
+  const filename = `cold-room-${req.params.siteId}-${tap || 'all'}-${range}.csv`.replace(
+    /\s+/g,
+    '-',
+  );
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(rows.join('\n'));

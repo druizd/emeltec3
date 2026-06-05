@@ -1,9 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import {
-  ColdRoomThresholdsService,
-  type AlertLevel,
-} from './cold-room-thresholds.service';
+import { ColdRoomThresholdsService, type AlertLevel } from './cold-room-thresholds.service';
 import { ColdRoomDefrostService } from './cold-room-defrost.service';
 import { ColdRoomAuditService } from './cold-room-audit.service';
 import type { ColdRoomSensor } from './cold-room.service';
@@ -39,12 +36,7 @@ export interface Deviation {
  * Causa documentada de una desviación. Requisito HACCP: cada incidente debe
  * tener causa registrada para auditoría SERNAPESCA.
  */
-export type DeviationCause =
-  | 'defrost'
-  | 'door-open'
-  | 'load-unload'
-  | 'cleaning'
-  | 'other';
+export type DeviationCause = 'defrost' | 'door-open' | 'load-unload' | 'cleaning' | 'other';
 
 /**
  * Source: 'auto' = sistema clasificó por schedule defrost.
@@ -123,10 +115,9 @@ export class ColdRoomDeviationsService {
     const siteId = this.currentSiteId;
     if (!siteId) return;
     this.http
-      .put<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/acks/${encodeURIComponent(id)}`,
-        ack,
-      )
+      .put<{
+        ok: boolean;
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/acks/${encodeURIComponent(id)}`, ack)
       .subscribe({ error: () => this.refresh() });
   }
 
@@ -134,9 +125,9 @@ export class ColdRoomDeviationsService {
     const siteId = this.currentSiteId;
     if (!siteId) return;
     this.http
-      .delete<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/acks/${encodeURIComponent(id)}`,
-      )
+      .delete<{
+        ok: boolean;
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/acks/${encodeURIComponent(id)}`)
       .subscribe({ error: () => this.refresh() });
   }
 
@@ -265,9 +256,9 @@ export class ColdRoomDeviationsService {
       causeBy: by,
       causeAt: nowIso,
       causeNote: note ?? cur?.causeNote,
-      acknowledged: meta.expected ? true : cur?.acknowledged ?? false,
-      ackedAt: meta.expected ? cur?.ackedAt ?? nowIso : cur?.ackedAt,
-      ackedBy: meta.expected ? cur?.ackedBy ?? by : cur?.ackedBy,
+      acknowledged: meta.expected ? true : (cur?.acknowledged ?? false),
+      ackedAt: meta.expected ? (cur?.ackedAt ?? nowIso) : cur?.ackedAt,
+      ackedBy: meta.expected ? (cur?.ackedBy ?? by) : cur?.ackedBy,
     };
     const next: AckMap = { ...this.acks(), [id]: ack };
     this.acks.set(next);
