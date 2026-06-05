@@ -68,10 +68,24 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'companies/:siteId/tap/:tapId/diag',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros-tap-diag-detail').then(
+            (m) => m.VentisquerosTapDiagDetailComponent,
+          ),
+      },
+      {
         path: 'companies/:siteId/tap/:tapId',
         loadComponent: () =>
           import('./pages/ventisqueros/ventisqueros-tap-detail').then(
             (m) => m.VentisquerosTapDetailComponent,
+          ),
+      },
+      {
+        path: 'companies/:siteId/sala/:salaSlug',
+        loadComponent: () =>
+          import('./pages/ventisqueros/ventisqueros-sala-detail').then(
+            (m) => m.VentisquerosSalaDetailComponent,
           ),
       },
       {

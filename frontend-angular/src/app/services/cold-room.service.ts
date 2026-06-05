@@ -1,0 +1,172 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+import type { ApiResponse } from '@emeltec/shared';
+
+export type ColdRoomRange = '1h' | '6h' | '24h' | '7d';
+
+export interface ColdRoomHistPoint {
+  t: string;
+  v: number;
+}
+
+export interface ColdRoomSensor {
+  id: string;
+  tap: string;
+  area: string;
+  cx: number;
+  cy: number;
+  r: number;
+  t: number;
+  h: number;
+  alerted: boolean;
+  setpoint: number;
+  tMin: number;
+  tMax: number;
+  lastSeen: string;
+  hist: number[];
+  histPoints: ColdRoomHistPoint[];
+}
+
+export interface ColdRoomSensorsResponse {
+  ok: boolean;
+  data: ColdRoomSensor[];
+  meta?: { range: ColdRoomRange; count: number; serverTime: string };
+  error?: string;
+}
+
+export interface ColdRoomSensorHistory {
+  id: string;
+  area: string;
+  tap: string;
+  setpoint: number;
+  tMin: number;
+  tMax: number;
+  range: ColdRoomRange;
+  temperature: ColdRoomHistPoint[];
+  humidity: ColdRoomHistPoint[];
+}
+
+export interface ColdRoomConcentratorChannel {
+  id: string;
+  tap: string;
+  area: string;
+  online: boolean;
+  rssi: number;
+  lastSeen: string;
+}
+
+export interface ColdRoomConcentrator {
+  alerted: boolean;
+  lastSeen: string | null;
+  uptime?: number;
+  online?: number;
+  total?: number;
+  channels?: ColdRoomConcentratorChannel[];
+  firmwareVersion?: string;
+  bridgeAddress?: string;
+}
+
+export interface ColdRoomBackupSensor {
+  id: string;
+  area: string;
+  tap: string;
+  t: number;
+  h: number;
+  alertaFisica: boolean;
+  setpoint: number;
+  tMin: number;
+  tMax: number;
+  lastSeen: string;
+  hist: number[];
+}
+
+export interface ColdRoomAlarm {
+  id: string;
+  sensorId: string;
+  tap: string;
+  area: string;
+  severity: 'warning' | 'critical';
+  message: string;
+  since: string;
+  acknowledged: boolean;
+}
+
+@Injectable({ providedIn: 'root' })
+export class ColdRoomService {
+  private http = inject(HttpClient);
+
+  getSensors(
+    siteId: string,
+    tap: string | null,
+    range: ColdRoomRange = '24h',
+  ): Observable<ColdRoomSensorsResponse> {
+    const params = new URLSearchParams();
+    if (tap) params.set('tap', tap);
+    params.set('range', range);
+    params.set('t', String(Date.now()));
+    return this.http.get<ColdRoomSensorsResponse>(
+      `/api/cold-room/${encodeURIComponent(siteId)}/sensors?${params.toString()}`,
+    );
+  }
+
+  getSensorHistory(
+    siteId: string,
+    sensorId: string,
+    range: ColdRoomRange = '24h',
+  ): Observable<ApiResponse<ColdRoomSensorHistory>> {
+    const params = new URLSearchParams();
+    params.set('range', range);
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ColdRoomSensorHistory>>(
+      `/api/cold-room/${encodeURIComponent(siteId)}/sensors/${encodeURIComponent(sensorId)}/history?${params.toString()}`,
+    );
+  }
+
+  getConcentrator(siteId: string): Observable<ApiResponse<ColdRoomConcentrator>> {
+    const params = new URLSearchParams();
+    params.set('tap', 'TAP 1');
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ColdRoomConcentrator>>(
+      `/api/cold-room/${encodeURIComponent(siteId)}/concentrator?${params.toString()}`,
+    );
+  }
+
+  getBackup(
+    siteId: string,
+    range: ColdRoomRange = '24h',
+  ): Observable<ApiResponse<ColdRoomBackupSensor[]>> {
+    const params = new URLSearchParams();
+    params.set('tap', 'TAP 1');
+    params.set('range', range);
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ColdRoomBackupSensor[]>>(
+      `/api/cold-room/${encodeURIComponent(siteId)}/backup?${params.toString()}`,
+    );
+  }
+
+  getAlarms(siteId: string, tap: string | null): Observable<ApiResponse<ColdRoomAlarm[]>> {
+    const params = new URLSearchParams();
+    if (tap) params.set('tap', tap);
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<ColdRoomAlarm[]>>(
+      `/api/cold-room/${encodeURIComponent(siteId)}/alarms?${params.toString()}`,
+    );
+  }
+
+  exportCsvUrl(siteId: string, tap: string | null, range: ColdRoomRange = '24h'): string {
+    const params = new URLSearchParams();
+    if (tap) params.set('tap', tap);
+    params.set('range', range);
+    params.set('format', 'csv');
+    return `/api/cold-room/${encodeURIComponent(siteId)}/export?${params.toString()}`;
+  }
+
+  downloadCsv(
+    siteId: string,
+    tap: string | null,
+    range: ColdRoomRange = '24h',
+  ): Observable<Blob> {
+    return this.http.get(this.exportCsvUrl(siteId, tap, range), { responseType: 'blob' });
+  }
+}

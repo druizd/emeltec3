@@ -114,10 +114,10 @@ export class CompaniesSuperAdminViewComponent {
   readonly tabsComputed = computed<CompaniesTabItem[]>(() => {
     const cold = this.isColdRoom();
     return [
-      { key: 'general', label: 'General', icon: 'info' },
+      { key: 'general', label: 'General', icon: 'grid_view' },
       cold
-        ? { key: 'instalaciones', label: 'TAPs', icon: 'memory' }
-        : { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
+        ? { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' }
+        : { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' },
       { key: 'eventos', label: 'Eventos', icon: 'notifications' },
       { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
       { key: 'usuarios', label: 'Gestión usuarios', icon: 'person_add' },
@@ -126,7 +126,7 @@ export class CompaniesSuperAdminViewComponent {
 
   getActiveTitle(): string {
     if (this.activeTab === 'instalaciones') {
-      return this.isColdRoom() ? 'TAPs' : 'Instalaciones';
+      return this.isColdRoom() ? 'Salas' : 'Salas';
     }
 
     if (this.activeTab === 'eventos') {
