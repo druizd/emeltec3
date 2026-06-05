@@ -75,6 +75,10 @@ router.get(
 );
 router.get('/sites/:siteId/pasteurizador/bundle', pasteurizadorController.getPasteurizadorBundle);
 router.get('/sites/:siteId/pasteurizador/history', pasteurizadorController.getPasteurizadorHistory);
+router.get(
+  '/sites/:siteId/pasteurizador/daily-kpis',
+  pasteurizadorController.getPasteurizadorDailyKpis,
+);
 router.get('/sites/:siteId/pasteurizador/summary', pasteurizadorController.getPasteurizadorSummary);
 router.get('/sites/:siteId/period-aggregates', companyController.getSitePeriodAggregates);
 router.get(

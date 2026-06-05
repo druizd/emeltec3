@@ -156,6 +156,41 @@ export interface PasteurizadorBundleResponse {
   };
 }
 
+export interface PasteurizadorBatchResponse {
+  id: number;
+  start_at: string;
+  end_at: string;
+  duration_min: number;
+  volume_l: number;
+  temp_promedio_c: number | null;
+  cierres_valvula: number;
+  errores_criticos: number;
+  status: 'completado';
+  puntos: number;
+}
+
+export interface PasteurizadorDailyKpisResponse {
+  site: Pick<SiteRecord, 'id' | 'descripcion' | 'id_serial' | 'tipo_sitio' | 'activo'>;
+  date: string;
+  source: string;
+  samples: number;
+  kpis: {
+    production_total_l: number;
+    pasteurization_avg_c: number | null;
+    operation_minutes: number;
+    valid_batches: number;
+    alarms_count: number;
+    discarded_cycles: number;
+    batch_rules: {
+      min_l: number;
+      max_l: number;
+      operation_temp_min_c: number;
+      reset_confirm_points?: number;
+    };
+  };
+  batches: PasteurizadorBatchResponse[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
@@ -371,6 +406,19 @@ export class CompanyService {
 
     return this.http.get<ApiResponse<PasteurizadorHistoryResponse>>(
       `/api/companies/sites/${siteId}/pasteurizador/history?${params.toString()}`,
+    );
+  }
+
+  getPasteurizadorDailyKpis(
+    siteId: string,
+    date?: string,
+  ): Observable<ApiResponse<PasteurizadorDailyKpisResponse>> {
+    const params = new URLSearchParams();
+    if (date) params.set('date', date);
+    params.set('t', String(Date.now()));
+
+    return this.http.get<ApiResponse<PasteurizadorDailyKpisResponse>>(
+      `/api/companies/sites/${siteId}/pasteurizador/daily-kpis?${params.toString()}`,
     );
   }
 
