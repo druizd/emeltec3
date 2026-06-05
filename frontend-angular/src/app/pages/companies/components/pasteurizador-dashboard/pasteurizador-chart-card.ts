@@ -22,6 +22,9 @@ import type { PasteurChart, PasteurReferenceLine } from './pasteurizador-dashboa
 
 Chart.register(...registerables);
 
+type TimePoint = { x: number; y: number };
+type ChartPointValue = number | TimePoint | null;
+
 @Component({
   selector: 'app-pasteurizador-chart-card',
   standalone: true,
@@ -191,14 +194,14 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
     gradient.addColorStop(0.58, this.withAlpha(color, 0.055));
     gradient.addColorStop(1, this.withAlpha(color, 0.01));
 
-    const config: ChartConfiguration<'line'> = {
+    const config: ChartConfiguration<'line', ChartPointValue[], string | number> = {
       type: 'line',
       data: {
-        labels: this.chart.times,
+        labels: this.hasTimeAxis() ? undefined : this.chart.times,
         datasets: [
           {
             label: this.chart.title,
-            data: this.chart.values,
+            data: this.primaryDatasetData(),
             borderColor: color,
             backgroundColor: gradient,
             borderWidth: this.featured ? 3.4 : 3,
@@ -222,10 +225,20 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
     this.chartInstance = new Chart(ctx, config);
   }
 
-  private referenceDatasets(): ChartDataset<'line', number[]>[] {
+  private primaryDatasetData(): ChartPointValue[] {
+    if (!this.hasTimeAxis()) return this.chart.values;
+
+    return this.chart.values.map((value, index) => {
+      const timestamp = this.chart.timestamps?.[index];
+      if (!Number.isFinite(value) || !Number.isFinite(timestamp)) return null;
+      return { x: Number(timestamp), y: value };
+    });
+  }
+
+  private referenceDatasets(): ChartDataset<'line', ChartPointValue[]>[] {
     return (this.chart.referenceLines || []).map((line) => ({
       label: line.label,
-      data: this.chart.values.map(() => line.value),
+      data: this.referenceDatasetData(line.value),
       borderColor: this.referenceColor(line.tone),
       backgroundColor: this.referenceColor(line.tone),
       borderDash: line.tone === 'target' ? [8, 6] : [6, 7],
@@ -237,6 +250,16 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
       tension: 0,
       order: 0,
     }));
+  }
+
+  private referenceDatasetData(value: number): ChartPointValue[] {
+    if (!this.hasTimeAxis()) return this.chart.values.map(() => value);
+    const start = this.chart.xMinMs ?? this.chart.timestamps?.[0] ?? Date.now();
+    const end = this.chart.xMaxMs ?? this.chart.timestamps?.at(-1) ?? start;
+    return [
+      { x: start, y: value },
+      { x: end, y: value },
+    ];
   }
 
   private chartOptions(): ChartOptions<'line'> {
@@ -253,27 +276,55 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
         duration: 350,
       },
       scales: {
-        x: {
-          grid: {
-            color: (context) =>
-              this.xTickLabel(context.index || 0) ? '#e7ecf3' : 'rgba(231, 236, 243, 0)',
-            drawTicks: false,
-          },
-          border: {
-            color: '#dbe3ee',
-          },
-          ticks: {
-            color: '#94a3b8',
-            autoSkip: false,
-            font: {
-              family: 'JetBrains Mono',
-              size: 11,
-              weight: 800,
+        x: this.hasTimeAxis()
+          ? {
+              type: 'linear',
+              min: this.chart.xMinMs,
+              max: this.chart.xMaxMs,
+              grid: {
+                color: '#e7ecf3',
+                drawTicks: false,
+              },
+              border: {
+                color: '#dbe3ee',
+              },
+              ticks: {
+                color: '#94a3b8',
+                autoSkip: false,
+                maxTicksLimit: 8,
+                stepSize: 10 * 60 * 1000,
+                maxRotation: 45,
+                minRotation: 45,
+                font: {
+                  family: 'JetBrains Mono',
+                  size: 11,
+                  weight: 800,
+                },
+                padding: 12,
+                callback: (value) => this.formatChileTimeShort(Number(value)),
+              },
+            }
+          : {
+              grid: {
+                color: (context) =>
+                  this.xTickLabel(context.index || 0) ? '#e7ecf3' : 'rgba(231, 236, 243, 0)',
+                drawTicks: false,
+              },
+              border: {
+                color: '#dbe3ee',
+              },
+              ticks: {
+                color: '#94a3b8',
+                autoSkip: false,
+                font: {
+                  family: 'JetBrains Mono',
+                  size: 11,
+                  weight: 800,
+                },
+                padding: 12,
+                callback: (_value, index) => this.xTickLabel(index),
+              },
             },
-            padding: 12,
-            callback: (_value, index) => this.xTickLabel(index),
-          },
-        },
         y: {
           min: yBounds.min,
           max: yBounds.max,
@@ -350,8 +401,9 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
       afterDatasetsDraw: (chart) => {
         const dataset = chart.data.datasets[0];
         const meta = chart.getDatasetMeta(0);
-        const point = meta.data[meta.data.length - 1];
-        const value = dataset.data[dataset.data.length - 1];
+        const lastIndex = this.lastFiniteDataIndex(dataset.data as ChartPointValue[]);
+        const point = meta.data[lastIndex];
+        const value = this.pointY(dataset.data[lastIndex] as ChartPointValue);
         if (!point || typeof value !== 'number') return;
 
         const ctx = chart.ctx;
@@ -375,6 +427,10 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
   }
 
   private tooltipTitle(items: TooltipItem<'line'>[]): string {
+    if (this.hasTimeAxis()) {
+      const timestamp = Number(items[0]?.parsed?.x);
+      return this.formatTooltipTimestamp(timestamp);
+    }
     const label = String(items[0]?.label || '');
     return `${this.chart.tooltipDateLabel || '02 Junio 2026'} ${label}`;
   }
@@ -429,6 +485,56 @@ export class PasteurizadorChartCardComponent implements AfterViewInit, OnChanges
     const minute = Number(label.slice(-2));
     const isEdge = index === 0 || index === this.chart.times.length - 1;
     return isEdge || minute % 10 === 0 ? label : '';
+  }
+
+  private hasTimeAxis(): boolean {
+    return (
+      Array.isArray(this.chart.timestamps) &&
+      this.chart.timestamps.length === this.chart.values.length &&
+      Number.isFinite(this.chart.xMinMs) &&
+      Number.isFinite(this.chart.xMaxMs)
+    );
+  }
+
+  private lastFiniteDataIndex(data: ChartPointValue[]): number {
+    for (let index = data.length - 1; index >= 0; index -= 1) {
+      if (typeof this.pointY(data[index]) === 'number') return index;
+    }
+    return -1;
+  }
+
+  private pointY(value: ChartPointValue): number | null {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (value && typeof value.y === 'number' && Number.isFinite(value.y)) return value.y;
+    return null;
+  }
+
+  private formatChileTimeShort(timestampMs: number): string {
+    if (!Number.isFinite(timestampMs)) return '';
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).format(new Date(timestampMs));
+  }
+
+  private formatTooltipTimestamp(timestampMs: number): string {
+    if (!Number.isFinite(timestampMs)) return this.chart.tooltipDateLabel || '';
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    })
+      .format(new Date(timestampMs))
+      .replace(/\./g, '');
   }
 
   private seriesColor(): string {

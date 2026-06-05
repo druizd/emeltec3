@@ -78,12 +78,7 @@ interface SortState {
         class="cr-header flex flex-wrap items-center gap-3 border-t border-b px-5 py-2.5"
         [style.borderBottomColor]="tapColor()"
       >
-        <button
-          type="button"
-          (click)="goBack()"
-          class="cr-icon-btn"
-          aria-label="Volver"
-        >
+        <button type="button" (click)="goBack()" class="cr-icon-btn" aria-label="Volver">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
         <div
@@ -106,11 +101,7 @@ interface SortState {
           </div>
         </div>
 
-        <span
-          class="cr-live ml-auto"
-          [class.cr-live--err]="!!serviceError()"
-          [title]="liveLabel()"
-        >
+        <span class="cr-live ml-auto" [class.cr-live--err]="!!serviceError()" [title]="liveLabel()">
           <span
             class="cr-live-dot"
             [class.cr-live-dot--err]="!!serviceError()"
@@ -221,9 +212,7 @@ interface SortState {
                           class="kpi-hero-value"
                           [style.color]="c.alerted ? '#DC2626' : tapColor()"
                         >
-                          {{ c.online ?? 0 }}<span class="kpi-hero-total"
-                            >/{{ c.total ?? 0 }}</span
-                          >
+                          {{ c.online ?? 0 }}<span class="kpi-hero-total">/{{ c.total ?? 0 }}</span>
                         </div>
                         <div class="kpi-hero-label">canales online</div>
                       </div>
@@ -316,13 +305,7 @@ interface SortState {
                         </div>
                         <svg viewBox="0 0 120 28" class="mt-2 h-7 w-full">
                           <defs>
-                            <linearGradient
-                              [attr.id]="'bgsp-' + b.id"
-                              x1="0"
-                              y1="0"
-                              x2="0"
-                              y2="1"
-                            >
+                            <linearGradient [attr.id]="'bgsp-' + b.id" x1="0" y1="0" x2="0" y2="1">
                               <stop
                                 offset="0%"
                                 [attr.stop-color]="b.alertaFisica ? '#EF4444' : tempColor(b.t)"
@@ -472,13 +455,7 @@ interface SortState {
                       </div>
                       <svg viewBox="0 0 120 32" class="mt-2 h-8 w-full">
                         <defs>
-                          <linearGradient
-                            [attr.id]="'asp-' + s.id"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
+                          <linearGradient [attr.id]="'asp-' + s.id" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="0%" stop-color="#EF4444" stop-opacity="0.35" />
                             <stop offset="100%" stop-color="#fff" stop-opacity="0" />
                           </linearGradient>
@@ -604,18 +581,10 @@ interface SortState {
                     <button class="th-btn" role="columnheader" (click)="toggleSort('area')">
                       Ubicación {{ sortArrow('area') }}
                     </button>
-                    <button
-                      class="th-btn text-right"
-                      role="columnheader"
-                      (click)="toggleSort('t')"
-                    >
+                    <button class="th-btn text-right" role="columnheader" (click)="toggleSort('t')">
                       Temp {{ sortArrow('t') }}
                     </button>
-                    <button
-                      class="th-btn text-right"
-                      role="columnheader"
-                      (click)="toggleSort('h')"
-                    >
+                    <button class="th-btn text-right" role="columnheader" (click)="toggleSort('h')">
                       HR {{ sortArrow('h') }}
                     </button>
                     <button class="th-btn" role="columnheader" (click)="toggleSort('status')">
@@ -746,13 +715,7 @@ interface SortState {
                       </div>
                       <svg viewBox="0 0 120 32" class="mt-2 h-8 w-full">
                         <defs>
-                          <linearGradient
-                            [attr.id]="'gsp-' + s.id"
-                            x1="0"
-                            y1="0"
-                            x2="0"
-                            y2="1"
-                          >
+                          <linearGradient [attr.id]="'gsp-' + s.id" x1="0" y1="0" x2="0" y2="1">
                             <stop
                               offset="0%"
                               [attr.stop-color]="tempColor(s.t)"
@@ -885,7 +848,6 @@ interface SortState {
                     </div>
                   </div>
                 </section>
-
               }
             </div>
           }
@@ -936,7 +898,12 @@ interface SortState {
                 }}</span>
               </div>
             </div>
-            <button type="button" class="drawer-close" (click)="closeDrilldown()" aria-label="Cerrar">
+            <button
+              type="button"
+              class="drawer-close"
+              (click)="closeDrilldown()"
+              aria-label="Cerrar"
+            >
               <span class="material-symbols-outlined text-[18px]">close</span>
             </button>
           </header>
@@ -1010,7 +977,10 @@ interface SortState {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #64748b;
-        transition: color 0.15s ease, background 0.15s ease, transform 0.18s ease;
+        transition:
+          color 0.15s ease,
+          background 0.15s ease,
+          transform 0.18s ease;
       }
       .cr-icon-btn:hover {
         color: #0284c7;
@@ -1039,7 +1009,10 @@ interface SortState {
         font-family: 'DM Sans', sans-serif;
         font-size: 12px;
         font-weight: 500;
-        transition: color 0.15s ease, background 0.15s ease, transform 0.18s ease;
+        transition:
+          color 0.15s ease,
+          background 0.15s ease,
+          transform 0.18s ease;
       }
       .cr-btn:hover {
         color: #0284c7;
@@ -1076,7 +1049,7 @@ interface SortState {
         padding: 4px 9px;
         border-radius: 999px;
         background: rgba(34, 197, 94, 0.08);
-        border: 1px solid rgba(34, 197, 94, 0.20);
+        border: 1px solid rgba(34, 197, 94, 0.2);
       }
       .cr-live--err {
         color: #b91c1c;
@@ -1097,8 +1070,13 @@ interface SortState {
         animation: livePulse 1.6s ease-in-out infinite;
       }
       @keyframes livePulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
-        70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
+        }
+        70% {
+          box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+        }
       }
 
       /* Smart status banner */
@@ -1118,12 +1096,12 @@ interface SortState {
         margin: 10px 0;
       }
       .status-banner[data-level='warning'] .status-banner-inner {
-        background: linear-gradient(90deg, rgba(251, 191, 36, 0.10), transparent 60%);
+        background: linear-gradient(90deg, rgba(251, 191, 36, 0.1), transparent 60%);
         border-color: rgba(251, 191, 36, 0.25);
       }
       .status-banner[data-level='critical'] .status-banner-inner {
         background: linear-gradient(90deg, rgba(239, 68, 68, 0.12), transparent 60%);
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
       }
       .status-icon {
         font-size: 22px;
@@ -1284,7 +1262,9 @@ interface SortState {
         padding: 14px 16px;
         cursor: pointer;
         text-align: left;
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease;
       }
       .alert-card:hover {
         transform: translateY(-2px);
@@ -1425,7 +1405,7 @@ interface SortState {
       }
       .view-toggle-btn--active {
         color: #0284c7;
-        background: rgba(2, 132, 199, 0.10);
+        background: rgba(2, 132, 199, 0.1);
       }
 
       .compare-pill {
@@ -1434,7 +1414,7 @@ interface SortState {
         gap: 6px;
         padding: 5px 10px;
         border-radius: 999px;
-        background: rgba(2, 132, 199, 0.10);
+        background: rgba(2, 132, 199, 0.1);
         border: 1px solid rgba(2, 132, 199, 0.25);
         color: #0284c7;
         font-family: 'DM Sans', sans-serif;
@@ -1461,7 +1441,9 @@ interface SortState {
         border-radius: 6px;
         color: #64748b;
         background: transparent;
-        transition: background 0.15s ease, color 0.15s ease;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
       }
       .range-pill:hover {
         color: #1e293b;
@@ -1492,7 +1474,7 @@ interface SortState {
         gap: 6px;
         padding: 8px 10px;
         background: linear-gradient(90deg, rgba(13, 175, 189, 0.06), transparent 70%);
-        border: 1px solid rgba(13, 175, 189, 0.20);
+        border: 1px solid rgba(13, 175, 189, 0.2);
         border-radius: 10px;
       }
       .pinned-lbl {
@@ -1514,14 +1496,16 @@ interface SortState {
         background: #ffffff;
         border: 1px solid #e2e8f0;
         border-radius: 8px;
-        transition: transform 0.18s ease, border-color 0.15s ease;
+        transition:
+          transform 0.18s ease,
+          border-color 0.15s ease;
       }
       .pinned-chip:hover {
         transform: translateY(-1px);
         border-color: rgba(13, 175, 189, 0.4);
       }
       .pinned-chip--alert {
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
       }
 
       /* Table */
@@ -1622,11 +1606,13 @@ interface SortState {
         color: #cbd5e1;
         padding: 2px;
         border-radius: 4px;
-        transition: color 0.15s ease, background 0.15s ease;
+        transition:
+          color 0.15s ease,
+          background 0.15s ease;
       }
       .row-pin:hover {
         color: #0d99a5;
-        background: rgba(13, 175, 189, 0.10);
+        background: rgba(13, 175, 189, 0.1);
       }
       .row-pin--on {
         color: #0d99a5;
@@ -1645,14 +1631,17 @@ interface SortState {
         padding: 12px 14px;
         cursor: pointer;
         text-align: left;
-        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s ease;
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease,
+          border-color 0.15s ease;
       }
       .grid-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
       }
       .grid-card--alert {
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.04), transparent 70%);
       }
       .grid-card--cmp {
@@ -1737,8 +1726,12 @@ interface SortState {
         animation: skelShimmer 1.4s linear infinite;
       }
       @keyframes skelShimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -1762,7 +1755,10 @@ interface SortState {
         animation-delay: calc(var(--i, 0) * 28ms);
       }
       @keyframes cardIn {
-        to { opacity: 1; transform: translateY(0); }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       /* Concentrator (TAP 1) */
@@ -1773,7 +1769,9 @@ interface SortState {
         align-items: stretch;
       }
       @media (max-width: 900px) {
-        .conc-grid { grid-template-columns: minmax(0, 1fr); }
+        .conc-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
       }
       .conc-card {
         background: #ffffff;
@@ -1841,7 +1839,9 @@ interface SortState {
         padding: 12px 14px;
         cursor: pointer;
         text-align: left;
-        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease;
       }
       .backup-card:hover {
         transform: translateY(-2px);
@@ -1872,8 +1872,14 @@ interface SortState {
         animation: toastIn 0.22s ease;
       }
       @keyframes toastIn {
-        from { transform: translate(-50%, 8px); opacity: 0; }
-        to { transform: translate(-50%, 0); opacity: 1; }
+        from {
+          transform: translate(-50%, 8px);
+          opacity: 0;
+        }
+        to {
+          transform: translate(-50%, 0);
+          opacity: 1;
+        }
       }
 
       /* Drawer */
@@ -1892,19 +1898,29 @@ interface SortState {
         width: min(540px, 96vw);
         background: #ffffff;
         border-left: 1px solid #e2e8f0;
-        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.10);
+        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.1);
         z-index: 41;
         display: flex;
         flex-direction: column;
         animation: slideIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       @keyframes slideIn {
-        from { transform: translateX(24px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from {
+          transform: translateX(24px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
       }
       .drawer-head {
         padding: 14px 16px;
@@ -1982,7 +1998,9 @@ interface SortState {
         animation: cr-spin 0.8s linear infinite;
       }
       @keyframes cr-spin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
     `,
   ],
@@ -2666,8 +2684,7 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
           padding: 3,
         },
       };
-      const setpointAvg =
-        sensors.reduce((a, b) => a + b.setpoint, 0) / sensors.length;
+      const setpointAvg = sensors.reduce((a, b) => a + b.setpoint, 0) / sensors.length;
       annotations['setpoint'] = {
         type: 'line',
         yMin: setpointAvg,

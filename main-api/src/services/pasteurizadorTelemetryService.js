@@ -54,6 +54,12 @@ const PASTEURIZADOR_DEFAULT_HISTORY_ROLES = Object.freeze([
   'errores_criticos',
   'presion_vapor',
 ]);
+const PASTEURIZADOR_DAILY_KPI_ROLES = Object.freeze([
+  'temperatura_pasteurizacion',
+  'salida_producto_tina',
+  'cierres_valvula',
+  'errores_criticos',
+]);
 
 const PASTEURIZADOR_HISTORY_GRANULARITY = Object.freeze({
   '1m': { view: 'equipo_1min', bucketInterval: '1 minute', label: '1 minuto', maxDays: 93 },
@@ -63,6 +69,12 @@ const PASTEURIZADOR_HISTORY_GRANULARITY = Object.freeze({
 });
 
 const PASTEURIZADOR_BUNDLE_INPUTS_TTL_MS = 30_000;
+const PASTEURIZADOR_BATCH_MIN_L = 7000;
+const PASTEURIZADOR_BATCH_MAX_L = 9000;
+const PASTEURIZADOR_PRODUCT_RESET_DROP_L = 500;
+const PASTEURIZADOR_PRODUCT_ACTIVE_EPSILON_L = 1;
+const PASTEURIZADOR_PRODUCT_RESET_CONFIRM_POINTS = 2;
+const PASTEURIZADOR_OPERATION_TEMP_MIN_C = 50;
 const pasteurizadorBundleInputsCache = new Map();
 const pasteurizadorBundleInputsInflight = new Map();
 
@@ -86,6 +98,10 @@ function setCachedPasteurizadorBundleInputs(siteId, inputs) {
     inputs,
     expiresAt: Date.now() + PASTEURIZADOR_BUNDLE_INPUTS_TTL_MS,
   });
+}
+
+function invalidatePasteurizadorBundleInputsCache(siteId) {
+  pasteurizadorBundleInputsCache.delete(pasteurizadorBundleInputsCacheKey(siteId));
 }
 
 function cleanString(value) {
@@ -324,6 +340,255 @@ function finalizeSummaryStats(stats) {
   return stats;
 }
 
+function roundNumber(value, fractionDigits = 2) {
+  if (!Number.isFinite(value)) return null;
+  const factor = 10 ** fractionDigits;
+  return Math.round(value * factor) / factor;
+}
+
+function readHistoryMetricNumber(row, roleId) {
+  const metric = row?.variables?.[roleId];
+  if (!metric?.ok) return null;
+  return numberOrNull(metric.valor);
+}
+
+function createPasteurizadorCycle(point) {
+  return {
+    start_at: point.timestamp,
+    end_at: point.timestamp,
+    start_ms: point.timestampMs,
+    end_ms: point.timestampMs,
+    max_product_l: point.producto,
+    last_product_l: point.producto,
+    temp_sum: point.temp === null ? 0 : point.temp,
+    temp_count: point.temp === null ? 0 : 1,
+    point_count: 1,
+    cierres_values: point.cierres === null ? [] : [point.cierres],
+    errores_values: point.errores === null ? [] : [point.errores],
+    reset_zero_count: 0,
+    reset_at: null,
+    reset_ms: null,
+  };
+}
+
+function updatePasteurizadorCycle(cycle, point) {
+  cycle.end_at = point.timestamp;
+  cycle.end_ms = point.timestampMs;
+  cycle.max_product_l = Math.max(cycle.max_product_l, point.producto);
+  cycle.last_product_l = point.producto;
+  cycle.point_count++;
+  cycle.reset_zero_count = 0;
+  cycle.reset_at = null;
+  cycle.reset_ms = null;
+
+  if (point.temp !== null) {
+    cycle.temp_sum += point.temp;
+    cycle.temp_count++;
+  }
+
+  if (point.cierres !== null) {
+    cycle.cierres_values.push(point.cierres);
+  }
+
+  if (point.errores !== null) {
+    cycle.errores_values.push(point.errores);
+  }
+}
+
+function markPasteurizadorResetPoint(cycle, point) {
+  if (!cycle.reset_at) {
+    cycle.reset_at = point.timestamp;
+    cycle.reset_ms = point.timestampMs;
+  }
+  cycle.reset_zero_count++;
+}
+
+function finalizePasteurizadorCycle(cycle) {
+  const volume = roundNumber(cycle.max_product_l, 0) ?? 0;
+  const endAt = cycle.reset_at || cycle.end_at;
+  const endMs = cycle.reset_ms || cycle.end_ms;
+  const durationMinutes = Math.max(1, Math.round((endMs - cycle.start_ms) / 60000) + 1);
+  const avgTemp = cycle.temp_count ? cycle.temp_sum / cycle.temp_count : null;
+  const valid = volume >= PASTEURIZADOR_BATCH_MIN_L && volume <= PASTEURIZADOR_BATCH_MAX_L;
+  const valveClosures = countCounterWindowEvents(cycle.cierres_values);
+
+  return {
+    valid,
+    batch: {
+      start_at: cycle.start_at,
+      end_at: endAt,
+      duration_min: durationMinutes,
+      volume_l: volume,
+      temp_promedio_c: avgTemp === null ? null : roundNumber(avgTemp, 1),
+      cierres_valvula: valveClosures,
+      errores_criticos: countCounterWindowEvents(cycle.errores_values),
+      status: 'completado',
+      temp_points: cycle.temp_count,
+      puntos: cycle.point_count,
+    },
+    discard_reason: valid
+      ? null
+      : volume < PASTEURIZADOR_BATCH_MIN_L
+        ? 'volumen_bajo'
+        : 'volumen_alto',
+  };
+}
+
+function countPositiveCounterEvents(values) {
+  let total = 0;
+  let previous = null;
+
+  for (const value of values) {
+    if (value === null) continue;
+    const current = Math.max(0, value);
+
+    if (previous === null) {
+      total += current;
+    } else if (current >= previous) {
+      total += current - previous;
+    } else {
+      total += current;
+    }
+
+    previous = current;
+  }
+
+  return Math.round(total);
+}
+
+function countCounterWindowEvents(values) {
+  if (!values.length) return 0;
+
+  let total = 0;
+  let previous = Math.max(0, values[0]);
+
+  for (const value of values.slice(1)) {
+    if (value === null) continue;
+    const current = Math.max(0, value);
+
+    if (current >= previous) total += current - previous;
+    else total += current;
+
+    previous = current;
+  }
+
+  return Math.round(total);
+}
+
+function calculatePasteurizadorDailyKpis(rows) {
+  const points = rows
+    .map((row) => ({
+      timestamp: row.timestamp,
+      timestampMs: new Date(row.timestamp).getTime(),
+      producto: readHistoryMetricNumber(row, 'salida_producto_tina'),
+      temp: readHistoryMetricNumber(row, 'temperatura_pasteurizacion'),
+      cierres: readHistoryMetricNumber(row, 'cierres_valvula'),
+      errores: readHistoryMetricNumber(row, 'errores_criticos'),
+    }))
+    .filter((point) => Number.isFinite(point.timestampMs));
+
+  const validBatches = [];
+  const discarded = [];
+  let cycle = null;
+
+  const closeCycle = () => {
+    if (!cycle) return;
+    const result = finalizePasteurizadorCycle(cycle);
+    if (result.valid) validBatches.push(result.batch);
+    else discarded.push(result);
+    cycle = null;
+  };
+
+  for (const point of points) {
+    const product = point.producto;
+    if (product === null || product < 0) continue;
+
+    const activeProduct = product > PASTEURIZADOR_PRODUCT_ACTIVE_EPSILON_L;
+    if (!cycle) {
+      if (activeProduct) {
+        cycle = createPasteurizadorCycle({
+          ...point,
+          producto: product,
+          temp:
+            point.temp !== null && point.temp >= PASTEURIZADOR_OPERATION_TEMP_MIN_C
+              ? point.temp
+              : null,
+        });
+      }
+      continue;
+    }
+
+    const previous = cycle.last_product_l;
+
+    if (!activeProduct) {
+      markPasteurizadorResetPoint(cycle, point);
+      if (cycle.reset_zero_count >= PASTEURIZADOR_PRODUCT_RESET_CONFIRM_POINTS) {
+        closeCycle();
+      }
+      continue;
+    }
+
+    const largeReset = product + PASTEURIZADOR_PRODUCT_RESET_DROP_L < previous;
+
+    if (largeReset) {
+      closeCycle();
+      cycle = createPasteurizadorCycle({
+        ...point,
+        producto: product,
+        temp:
+          point.temp !== null && point.temp >= PASTEURIZADOR_OPERATION_TEMP_MIN_C
+            ? point.temp
+            : null,
+      });
+      continue;
+    }
+
+    updatePasteurizadorCycle(cycle, {
+      ...point,
+      producto: product,
+      temp:
+        point.temp !== null && point.temp >= PASTEURIZADOR_OPERATION_TEMP_MIN_C ? point.temp : null,
+    });
+  }
+
+  const productionTotal = validBatches.reduce((sum, batch) => sum + batch.volume_l, 0);
+  const tempWeighted = validBatches.reduce(
+    (acc, batch) => {
+      if (batch.temp_promedio_c !== null && batch.temp_points > 0) {
+        acc.sum += batch.temp_promedio_c * batch.temp_points;
+        acc.count += batch.temp_points;
+      }
+      return acc;
+    },
+    { sum: 0, count: 0 },
+  );
+  const operationMinutes = validBatches.reduce((sum, batch) => sum + batch.duration_min, 0);
+  const alarms = countPositiveCounterEvents(points.map((point) => point.errores));
+
+  return {
+    kpis: {
+      production_total_l: roundNumber(productionTotal, 0) ?? 0,
+      pasteurization_avg_c: tempWeighted.count
+        ? roundNumber(tempWeighted.sum / tempWeighted.count, 1)
+        : null,
+      operation_minutes: operationMinutes,
+      valid_batches: validBatches.length,
+      alarms_count: alarms,
+      discarded_cycles: discarded.length,
+      batch_rules: {
+        min_l: PASTEURIZADOR_BATCH_MIN_L,
+        max_l: PASTEURIZADOR_BATCH_MAX_L,
+        operation_temp_min_c: PASTEURIZADOR_OPERATION_TEMP_MIN_C,
+        reset_confirm_points: PASTEURIZADOR_PRODUCT_RESET_CONFIRM_POINTS,
+      },
+    },
+    batches: validBatches.map((batch, index) => ({
+      id: index + 1,
+      ...batch,
+    })),
+  };
+}
+
 async function getSiteById(siteId) {
   const { rows } = await db.query(`SELECT ${SITE_COLUMNS} FROM sitio WHERE id = $1`, [siteId]);
   return rows[0] || null;
@@ -444,14 +709,40 @@ async function loadPasteurizadorBundle(site, options) {
   const inputsPromise = loadPasteurizadorBundleInputs(site);
   const historyPromise = db.query(
     `
-    SELECT bucket AS time, received_at, id_serial, data
-    FROM ${granConfig.view}
-    WHERE id_serial = $1
-      AND bucket >= now() - INTERVAL '48 hours'
-    ORDER BY bucket DESC
+    WITH latest_cagg AS (
+      SELECT max(bucket) AS max_bucket
+      FROM ${granConfig.view}
+      WHERE id_serial = $1
+        AND bucket >= now() - INTERVAL '48 hours'
+    ),
+    recent_raw AS (
+      SELECT
+        time_bucket($3::interval, e.time) AS time,
+        last(e.received_at, e.time)       AS received_at,
+        last(e.id_serial, e.time)         AS id_serial,
+        last(e.data, e.time)              AS data
+      FROM equipo e
+      CROSS JOIN latest_cagg lc
+      WHERE e.id_serial = $1
+        AND e.time >= COALESCE(lc.max_bucket + $3::interval, now() - INTERVAL '2 hours')
+      GROUP BY 1
+    ),
+    materialized AS (
+      SELECT bucket AS time, received_at, id_serial, data
+      FROM ${granConfig.view}
+      WHERE id_serial = $1
+        AND bucket >= now() - INTERVAL '48 hours'
+    )
+    SELECT time, received_at, id_serial, data
+    FROM (
+      SELECT * FROM recent_raw
+      UNION ALL
+      SELECT * FROM materialized
+    ) history
+    ORDER BY time DESC
     LIMIT $2
     `,
-    [site.id_serial, limit],
+    [site.id_serial, limit, granConfig.bucketInterval],
   );
 
   const [{ inputs, fromCache }, historyRes] = await Promise.all([inputsPromise, historyPromise]);
@@ -664,6 +955,73 @@ async function loadPasteurizadorHistory(site, options) {
   };
 }
 
+async function loadPasteurizadorDailyKpis(site, options) {
+  const { date } = options;
+  const granConfig = PASTEURIZADOR_HISTORY_GRANULARITY['1m'];
+  const [mappings, rowsRes] = await Promise.all([
+    getMappingsBySiteId(site.id),
+    db.query(
+      `
+      WITH latest_cagg AS (
+        SELECT max(bucket) AS max_bucket
+        FROM ${granConfig.view}
+        WHERE id_serial = $1
+          AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND bucket <  (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+      ),
+      recent_raw AS (
+        SELECT
+          time_bucket($3::interval, e.time) AS time,
+          last(e.received_at, e.time)       AS received_at,
+          last(e.id_serial, e.time)         AS id_serial,
+          last(e.data, e.time)              AS data
+        FROM equipo e
+        CROSS JOIN latest_cagg lc
+        WHERE e.id_serial = $1
+          AND e.time >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND e.time <  (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND (lc.max_bucket IS NULL OR e.time >= lc.max_bucket + $3::interval)
+        GROUP BY 1
+      ),
+      materialized AS (
+        SELECT bucket AS time, received_at, id_serial, data
+        FROM ${granConfig.view}
+        WHERE id_serial = $1
+          AND bucket >= ($2::date::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+          AND bucket <  (($2::date + INTERVAL '1 day')::timestamp AT TIME ZONE '${CHILE_TIME_ZONE}')
+      )
+      SELECT time, received_at, id_serial, data
+      FROM (
+        SELECT * FROM recent_raw
+        UNION ALL
+        SELECT * FROM materialized
+      ) history
+      ORDER BY time ASC
+      `,
+      [site.id_serial, date, granConfig.bucketInterval],
+    ),
+  ]);
+
+  const rows = rowsRes.rows.map((rawRow) =>
+    buildHistoryRow({
+      site,
+      mappings,
+      rawRow,
+      roles: PASTEURIZADOR_DAILY_KPI_ROLES,
+    }),
+  );
+  const daily = calculatePasteurizadorDailyKpis(rows);
+
+  return {
+    site: serializeSite(site),
+    date,
+    source: granConfig.view,
+    samples: rows.length,
+    kpis: daily.kpis,
+    batches: daily.batches,
+  };
+}
+
 async function loadPasteurizadorSummary(site, options) {
   const { from, to, granularity, roles } = options;
   const granConfig = PASTEURIZADOR_HISTORY_GRANULARITY[granularity];
@@ -707,7 +1065,9 @@ module.exports = {
   canonicalPasteurizadorRole,
   normalizePasteurizadorRoles,
   getSiteById,
+  invalidatePasteurizadorBundleInputsCache,
   loadPasteurizadorBundle,
+  loadPasteurizadorDailyKpis,
   loadPasteurizadorSnapshot,
   loadPasteurizadorHistory,
   loadPasteurizadorSummary,

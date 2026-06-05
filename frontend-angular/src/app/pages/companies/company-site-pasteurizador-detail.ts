@@ -7,6 +7,7 @@ import { SkeletonComponent } from '../../components/ui/skeleton';
 import { AuthService } from '../../services/auth.service';
 import {
   CompanyService,
+  type PasteurizadorDailyKpisResponse,
   type PasteurizadorHistoryResponse,
   type PasteurizadorMetric,
   type PasteurizadorRole,
@@ -55,6 +56,8 @@ interface PasteurHistoryRow {
 
 const PASTEUR_HISTORY_PAGE_SIZE = 50;
 const PASTEUR_REALTIME_LIMIT = 121;
+const PASTEUR_MONITOR_WINDOW_MS = 60 * 60 * 1000;
+const PASTEUR_AXIS_FUTURE_PADDING_MS = 5 * 60 * 1000;
 const PASTEUR_HISTORY_ROLES: PasteurizadorRole[] = [
   'temperatura_pasteurizacion',
   'temperatura_entrada',
@@ -445,6 +448,7 @@ function chileMonthStart(): string {
                     [entradaValues]="trendEntradaValues()"
                     [productoValues]="trendProductoValues()"
                     [valveValues]="trendValveValues()"
+                    [dailyKpis]="dailyKpis()"
                   />
                 }
               </main>
@@ -1071,6 +1075,7 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
   readonly companyService = inject(CompanyService);
   private realtimePollingSub?: Subscription;
   private historyPollingSub?: Subscription;
+  private dailyKpisPollingSub?: Subscription;
 
   siteContext = signal<SiteContext | null>(null);
   activeSection = signal<PasteurSection>('monitoring');
@@ -1079,6 +1084,7 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
   readonly isSuperAdmin = this.auth.isSuperAdmin;
   readonly canEditSiteSettings = this.auth.canEditSiteSettings;
   readonly snapshot = signal<PasteurizadorSnapshot | null>(null);
+  readonly dailyKpis = signal<PasteurizadorDailyKpisResponse | null>(null);
   readonly realtimeRows = signal<PasteurHistoryRow[]>([]);
   readonly realtimeLoading = signal(false);
   readonly realtimeError = signal('');
@@ -1106,7 +1112,21 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
   readonly historyRangeEnd = computed(() =>
     Math.min(this.historyPage() * PASTEUR_HISTORY_PAGE_SIZE, this.historyTotalRows()),
   );
-  readonly chartRows = computed(() => this.sortedRealtimeRows().slice(-61));
+  readonly chartRows = computed(() => {
+    const rows = this.sortedRealtimeRows();
+    const latest = rows.at(-1)?.timestampMs ?? Date.now();
+    const start = latest - PASTEUR_MONITOR_WINDOW_MS;
+    return rows.filter((row) => row.timestampMs >= start && row.timestampMs <= latest);
+  });
+  readonly chartTimeWindow = computed(() => {
+    const latest = this.chartRows().at(-1)?.timestampMs ?? Date.now();
+    return {
+      latestMs: latest,
+      startMs: latest - PASTEUR_MONITOR_WINDOW_MS,
+      endMs: latest + PASTEUR_AXIS_FUTURE_PADDING_MS,
+    };
+  });
+  readonly chartTimestamps = computed(() => this.chartRows().map((row) => row.timestampMs));
   readonly trendRows = computed(() => this.sortedRealtimeRows().slice(-PASTEUR_REALTIME_LIMIT));
   readonly times = computed(() =>
     this.chartRows().map((row) => this.formatChileTimeShort(row.timestampMs)),
@@ -1300,6 +1320,10 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
       { label: 'Max. 75 °C', value: 75, tone: 'max' },
     ],
     times: this.times(),
+    timestamps: this.chartTimestamps(),
+    xMinMs: this.chartTimeWindow().startMs,
+    xMaxMs: this.chartTimeWindow().endMs,
+    latestTimestampMs: this.chartTimeWindow().latestMs,
     tooltipDateLabel: this.latestChartDateLabel(),
     tooltipMetricLabel: 'Pasteurizacion',
   }));
@@ -1314,6 +1338,10 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
     min: 20,
     max: 50,
     times: this.times(),
+    timestamps: this.chartTimestamps(),
+    xMinMs: this.chartTimeWindow().startMs,
+    xMaxMs: this.chartTimeWindow().endMs,
+    latestTimestampMs: this.chartTimeWindow().latestMs,
     tooltipDateLabel: this.latestChartDateLabel(),
     tooltipMetricLabel: 'Entrada',
   }));
@@ -1328,6 +1356,10 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
     min: 0,
     max: Math.max(3500, ...this.productoValues()),
     times: this.times(),
+    timestamps: this.chartTimestamps(),
+    xMinMs: this.chartTimeWindow().startMs,
+    xMaxMs: this.chartTimeWindow().endMs,
+    latestTimestampMs: this.chartTimeWindow().latestMs,
     tooltipDateLabel: this.latestChartDateLabel(),
     tooltipMetricLabel: 'Producto a tina',
   }));
@@ -1369,7 +1401,11 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
         this.companyService.selectedSiteModuleKey.set('Proceso');
         this.companyService.selectedSiteTypeFilter.set(['pasteurizador']);
         this.siteContext.set(match);
+        this.dailyKpis.set(null);
         this.startRealtimePolling(siteId);
+        if (this.activeSection() === 'operation' && this.activeOperationView() === 'trends') {
+          this.startDailyKpisPolling(siteId);
+        }
       },
       error: () => this.router.navigate(['/companies']),
     });
@@ -1378,6 +1414,7 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
   ngOnDestroy(): void {
     this.realtimePollingSub?.unsubscribe();
     this.historyPollingSub?.unsubscribe();
+    this.dailyKpisPollingSub?.unsubscribe();
   }
 
   siteName(context: SiteContext): string {
@@ -1394,17 +1431,33 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
     if (section !== 'monitoring') {
       this.historyPollingSub?.unsubscribe();
     }
+    if (section !== 'operation') {
+      this.dailyKpisPollingSub?.unsubscribe();
+    }
     if (section === 'operation' && this.activeSection() !== 'operation') {
       this.activeOperationView.set('trends');
     }
     this.activeSection.set(section);
+
+    if (section === 'operation' && this.activeOperationView() === 'trends') {
+      const siteId = this.currentSiteId();
+      if (siteId) this.startDailyKpisPolling(siteId);
+    }
   }
 
   setActiveOperationView(view: PasteurOperationView): void {
     if (view !== 'history') {
       this.historyPollingSub?.unsubscribe();
     }
+    if (view !== 'trends') {
+      this.dailyKpisPollingSub?.unsubscribe();
+    }
     this.activeOperationView.set(view);
+
+    if (view === 'trends' && this.activeSection() === 'operation') {
+      const siteId = this.currentSiteId();
+      if (siteId) this.startDailyKpisPolling(siteId);
+    }
   }
 
   openHistoryView(): void {
@@ -1561,7 +1614,12 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
   onVariableMapChanged(): void {
     this.refreshHierarchySnapshot();
     const siteId = this.currentSiteId();
-    if (siteId) this.startRealtimePolling(siteId);
+    if (!siteId) return;
+
+    this.startRealtimePolling(siteId);
+    if (this.activeSection() === 'operation' && this.activeOperationView() === 'trends') {
+      this.startDailyKpisPolling(siteId);
+    }
   }
 
   private startRealtimePolling(siteId: string): void {
@@ -1642,39 +1700,87 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
       });
   }
 
+  private startDailyKpisPolling(siteId: string): void {
+    this.dailyKpisPollingSub?.unsubscribe();
+
+    this.dailyKpisPollingSub = timer(0, 60000)
+      .pipe(
+        switchMap(() =>
+          this.companyService.getPasteurizadorDailyKpis(siteId, chileToday()).pipe(
+            catchError((err) => {
+              console.error('No fue posible cargar KPIs diarios del pasteurizador', err);
+              return of(null);
+            }),
+          ),
+        ),
+      )
+      .subscribe((res) => {
+        if (!res?.ok) return;
+        this.dailyKpis.set(res.data ?? null);
+      });
+  }
+
   private mapPasteurHistoryRows(data: PasteurizadorHistoryResponse | null): PasteurHistoryRow[] {
     return (data?.rows ?? [])
       .map((row, index): PasteurHistoryRow | null => {
         const date =
           this.parseTelemetryDate(row.timestamp) ?? this.parseTelemetryDate(row.received_at);
         if (!date) return null;
-
-        const vars = row.variables ?? {};
-        const entrada = this.metricNumber(vars['temperatura_entrada']);
-        const pasteurizacion = this.metricNumber(vars['temperatura_pasteurizacion']);
-        const productoTina = this.metricNumber(vars['salida_producto_tina']);
-        const valveOpen = this.metricBoolean(vars['estado_valvula']);
-        const erroresCriticos = this.metricNumber(vars['errores_criticos']);
-
-        return {
-          id: `${date.getTime()}-${index}`,
-          timestampMs: date.getTime(),
-          fecha: this.formatHistoryDate(date),
-          entrada: this.metricDisplay(vars['temperatura_entrada'], 1, 'C'),
-          pasteurizacion: this.metricDisplay(vars['temperatura_pasteurizacion'], 1, 'C'),
-          productoTina: this.metricDisplay(vars['salida_producto_tina'], 0, 'L'),
-          entradaValue: entrada,
-          pasteurizacionValue: pasteurizacion,
-          productoTinaValue: productoTina,
-          valveValue: valveOpen ? 1 : 0,
-          erroresCriticosValue: erroresCriticos,
-        };
+        return this.buildPasteurHistoryRow(row.variables ?? {}, date, `history-${index}`);
       })
       .filter((row): row is PasteurHistoryRow => row !== null);
   }
 
   private sortedRealtimeRows(): PasteurHistoryRow[] {
-    return [...this.realtimeRows()].sort((a, b) => a.timestampMs - b.timestampMs);
+    const rows = [...this.realtimeRows()].sort((a, b) => a.timestampMs - b.timestampMs);
+    const snapshotRow = this.latestSnapshotHistoryRow();
+    if (!snapshotRow) return rows;
+
+    const latestHistoryMs = rows.at(-1)?.timestampMs ?? 0;
+    if (snapshotRow.timestampMs < latestHistoryMs) return rows;
+
+    return [...rows.filter((row) => row.timestampMs !== snapshotRow.timestampMs), snapshotRow].sort(
+      (a, b) => a.timestampMs - b.timestampMs,
+    );
+  }
+
+  private latestSnapshotHistoryRow(): PasteurHistoryRow | null {
+    const snapshot = this.snapshot();
+    if (!snapshot) return null;
+
+    const latest = snapshot.ultima_lectura;
+    const rawTimestamp =
+      latest?.timestamp_completo || latest?.time || latest?.received_at || snapshot.server_time;
+    const date = this.parseTelemetryDate(rawTimestamp || null);
+    if (!date) return null;
+
+    return this.buildPasteurHistoryRow(snapshot.variables ?? {}, date, 'snapshot-latest');
+  }
+
+  private buildPasteurHistoryRow(
+    vars: Record<string, PasteurizadorMetric>,
+    date: Date,
+    idSuffix: string,
+  ): PasteurHistoryRow {
+    const entrada = this.metricNumber(vars['temperatura_entrada']);
+    const pasteurizacion = this.metricNumber(vars['temperatura_pasteurizacion']);
+    const productoTina = this.metricNumber(vars['salida_producto_tina']);
+    const valveOpen = this.metricBoolean(vars['estado_valvula']);
+    const erroresCriticos = this.metricNumber(vars['errores_criticos']);
+
+    return {
+      id: `${date.getTime()}-${idSuffix}`,
+      timestampMs: date.getTime(),
+      fecha: this.formatHistoryDate(date),
+      entrada: this.metricDisplay(vars['temperatura_entrada'], 1, 'C'),
+      pasteurizacion: this.metricDisplay(vars['temperatura_pasteurizacion'], 1, 'C'),
+      productoTina: this.metricDisplay(vars['salida_producto_tina'], 0, 'L'),
+      entradaValue: entrada,
+      pasteurizacionValue: pasteurizacion,
+      productoTinaValue: productoTina,
+      valveValue: valveOpen ? 1 : 0,
+      erroresCriticosValue: erroresCriticos,
+    };
   }
 
   private seriesFromRows(
