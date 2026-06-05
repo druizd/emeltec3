@@ -718,9 +718,9 @@ interface MetricOption {
                       class="sala-op-pill"
                       [class.sala-op-pill--bad]="sa.reportingCount < sa.activeCount"
                       [title]="
-                        'Sensores activos con lectura reciente (≤3 min) vs total activos. ' +
+                        'Sensores activos con lectura reciente (≤5 min) vs total activos. ' +
                         (sa.reportingCount === 0 ? 'Ninguno reportando: sin lectura reciente o canal offline.' :
-                         sa.reportingCount < sa.activeCount ? 'Algunos sensores stale (>3 min sin transmitir).' :
+                         sa.reportingCount < sa.activeCount ? 'Algunos sensores stale (>5 min sin transmitir).' :
                          'Todos transmitiendo OK.')
                       "
                     >
@@ -4005,11 +4005,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
     return this.sensors();
   });
-  // Tolerancia para considerar un sensor "reportando". 180s cubre el lag
-  // natural del cagg equipo_1min (bucket de 1min refresh + propagación) sin
-  // marcar falsos stale en sensores que sí están transmitiendo. Sensor caído
-  // real supera este umbral en pocos minutos.
-  private readonly STALE_MS = 180_000;
+  // Tolerancia para considerar un sensor "reportando". 5 min cubre lag del
+  // cagg equipo_1min (bucket 1min + refresh policy + propagación) + un ciclo
+  // extra para casos borderline. Sensor caído real supera ampliamente este
+  // umbral. Caída real de TAP visible en pocos minutos.
+  private readonly STALE_MS = 300_000;
 
   readonly salaAggregates = computed<SalaAggregate[]>(() => {
     this.thresholdsSvc.thresholds();
