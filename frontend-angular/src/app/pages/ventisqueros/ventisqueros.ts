@@ -86,6 +86,9 @@ interface SalaAggregate {
   area: string;
   slug: string;
   count: number;
+  activeCount: number;
+  defectiveCount: number;
+  defectiveReasons: string[];
   alerts: number;
   actualT: string;
   actualTNum: number;
@@ -321,16 +324,16 @@ interface MetricOption {
 
           <!-- Map + sensor rail -->
           <div class="vs-map-grid grid gap-3">
-            <div class="relative min-w-0">
+            <div class="relative h-full min-w-0">
               <app-ventisqueros-floor-map
-                [sensors]="sensors()"
+                [sensors]="floorMapSensors()"
                 [metric]="metric()"
                 [selectedId]="selectedId()"
                 [hiddenSensors]="hiddenSensors()"
                 [hasAlerts]="alerts().length > 0"
                 (selectSensor)="selectedId.set($event)"
               ></app-ventisqueros-floor-map>
-              @if (sensors().length === 0) {
+              @if (floorMapSensors().length === 0) {
                 <div class="vs-empty-overlay">
                   <span class="material-symbols-outlined text-[28px] text-slate-400">
                     sensors_off
@@ -350,22 +353,28 @@ interface MetricOption {
             </div>
 
             <!-- Sensor rail -->
-            <div class="vs-rail flex h-full min-w-0 shrink-0 flex-col gap-3 overflow-hidden">
+            <div class="vs-rail flex h-full shrink-0 flex-col gap-3 overflow-hidden">
               <app-ventisqueros-focus-card [focus]="focusSensor()"></app-ventisqueros-focus-card>
 
               <div class="vs-tap-panel flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                 <div class="vs-tap-panel-head flex items-center justify-between">
                   <div class="vs-tap-panel-title">TAP</div>
                   <span class="vs-tap-panel-meta">
-                    {{ sensors().length }} sensores · {{ taps().length }} TAP
+                    {{ floorMapSensors().length }} sensores · {{ taps().length }} TAP
                   </span>
                 </div>
                 <div class="flex-1 overflow-y-auto overflow-x-hidden pr-1">
                   @for (tap of taps(); track tap) {
                     @if ((groupedSensors()[tap] || []).length > 0) {
-                      <div class="mb-2">
+                      <div
+                        class="vs-tap-group"
+                        [style.--tap-color]="tapColors()[tap] || '#94A3B8'"
+                      >
                         <div class="vs-tap-group-head flex items-center justify-between">
-                          <span>{{ tap }}</span>
+                          <span class="vs-tap-group-name">
+                            <span class="vs-tap-group-dot"></span>
+                            {{ tap }}
+                          </span>
                           <span class="vs-tap-group-count">
                             {{ groupedSensors()[tap]?.length || 0 }}
                           </span>
@@ -476,6 +485,38 @@ interface MetricOption {
             </div>
           </div>
 
+          @if (coldRoomSensors().length === 0) {
+            <div class="vs-salas-grid grid gap-3">
+              @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+                <div class="sala-card sala-card--skeleton">
+                  <header class="sala-card-head">
+                    <div class="sala-card-icon sala-skel-icon"></div>
+                    <div class="min-w-0 flex-1">
+                      <div class="sala-skel-line" style="width: 60%; height: 14px"></div>
+                      <div
+                        class="sala-skel-line"
+                        style="width: 40%; height: 10px; margin-top: 6px"
+                      ></div>
+                    </div>
+                  </header>
+                  <div class="sala-card-hero">
+                    <div class="sala-skel-line" style="width: 100px; height: 36px"></div>
+                    <div class="sala-skel-line" style="width: 70px; height: 30px"></div>
+                  </div>
+                  <div class="sala-stats-row">
+                    <div class="sala-skel-line" style="flex: 1; height: 28px"></div>
+                    <div class="sala-skel-line" style="flex: 1; height: 28px"></div>
+                    <div class="sala-skel-line" style="flex: 1; height: 28px"></div>
+                  </div>
+                  <div class="sala-skel-line" style="width: 100%; height: 28px"></div>
+                </div>
+              }
+            </div>
+            <div class="sala-skel-hint">
+              <span class="material-symbols-outlined text-[14px]">cached</span>
+              Cargando datos en vivo del cagg…
+            </div>
+          } @else {
           <div class="vs-salas-grid grid gap-3">
             @for (sa of salaAggregates(); track sa.slug) {
               <button
@@ -530,7 +571,8 @@ interface MetricOption {
                   }
                 </div>
 
-                @if (sa.spark.length > 1) {
+                <!-- Spark chart oculto temporalmente (preview sin gráfico). Restaurar cambiando false → sa.spark.length > 1 -->
+                @if (false) {
                   <div class="sala-spark-wrap" (mouseleave)="onSparkLeave()">
                     <svg
                       viewBox="0 0 120 32"
@@ -558,8 +600,8 @@ interface MetricOption {
                         <line
                           [attr.x1]="0"
                           [attr.x2]="120"
-                          [attr.y1]="thresholdYPos(sa.spark, sa.thresholdMax, 32)"
-                          [attr.y2]="thresholdYPos(sa.spark, sa.thresholdMax, 32)"
+                          [attr.y1]="thresholdYPos(sa.spark, sa.thresholdMax!, 32)"
+                          [attr.y2]="thresholdYPos(sa.spark, sa.thresholdMax!, 32)"
                           stroke="rgba(239, 68, 68, 0.45)"
                           stroke-width="0.8"
                           stroke-dasharray="3 2"
@@ -610,12 +652,8 @@ interface MetricOption {
                       <span>ahora</span>
                     </div>
                   </div>
-                } @else {
-                  <div class="sala-spark-empty">
-                    <span class="material-symbols-outlined text-[14px]">timeline</span>
-                    <span>Sin histórico aún</span>
-                  </div>
                 }
+                <!-- @else { sala-spark-empty } también oculto en preview -->
 
                 <div class="sala-stats-row">
                   <span class="sala-stat">
@@ -673,8 +711,18 @@ interface MetricOption {
                   >
                     <span class="material-symbols-outlined text-[11px]">sensors</span>
                     <span class="sala-op-lbl">Reportando</span>
-                    <strong>{{ sa.reportingCount }}/{{ sa.count }}</strong>
+                    <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
                   </span>
+                  @if (sa.defectiveCount > 0) {
+                    <span
+                      class="sala-op-pill sala-op-pill--bad"
+                      [title]="sa.defectiveReasons.join(' · ')"
+                    >
+                      <span class="material-symbols-outlined text-[11px]">sensors_off</span>
+                      <span class="sala-op-lbl">En falla</span>
+                      <strong>{{ sa.defectiveCount }}/{{ sa.count }}</strong>
+                    </span>
+                  }
                 </div>
 
                 <footer class="sala-card-foot">
@@ -732,6 +780,7 @@ interface MetricOption {
               </div>
             }
           </div>
+          }
         }
 
         @if (effectiveTab() === 'compliance') {
@@ -1446,19 +1495,14 @@ interface MetricOption {
                 <span class="material-symbols-outlined text-[14px]">download</span>
                 CSV
               </button>
-              <button
-                type="button"
-                class="vs-audit-btn vs-audit-btn--danger"
-                (click)="clearAudit()"
-                [disabled]="auditEntries().length === 0"
-                title="Borrar log local"
-              >
-                <span class="material-symbols-outlined text-[14px]">delete</span>
-              </button>
+              <span class="vs-audit-locked" title="Audit log inmutable — almacenado en DB (HACCP)">
+                <span class="material-symbols-outlined text-[14px]">lock</span>
+                Inmutable
+              </span>
             </div>
 
             <div class="vs-audit-meta">
-              {{ auditFiltered().length }} de {{ auditEntries().length }} entradas
+              {{ auditFiltered().length }} de {{ auditEntries().length }} entradas · persistido en DB
             </div>
 
             @if (auditFiltered().length === 0) {
@@ -1842,12 +1886,14 @@ interface MetricOption {
       /* Map + rail */
       .vs-map-grid {
         grid-template-columns: minmax(0, 1fr) 320px;
-        height: min(760px, calc(100vh - 360px));
-        min-height: 540px;
+        height: min(920px, calc(100vh - 240px));
+        min-height: 680px;
+        align-items: stretch;
       }
       .vs-rail {
         width: 320px;
         min-width: 320px;
+        height: 100%;
       }
 
       /* TAP panel (rail) */
@@ -1872,8 +1918,30 @@ interface MetricOption {
         color: #94a3b8;
         font-family: var(--font-mono);
       }
+      .vs-tap-group {
+        position: relative;
+        padding: 4px 4px 8px 10px;
+        margin-bottom: 6px;
+        border-left: 2px solid var(--tap-color, #94a3b8);
+        border-radius: 3px 6px 6px 3px;
+      }
+      .vs-tap-group:hover {
+        background: rgba(15, 23, 42, 0.025);
+      }
+      .vs-tap-group-name {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .vs-tap-group-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--tap-color, #94a3b8);
+      }
       .vs-tap-group-head {
-        padding: 6px 8px 4px;
+        padding: 4px 4px 6px 0;
         font-size: 10px;
         font-weight: 600;
         color: #94a3b8;
@@ -2709,10 +2777,22 @@ interface MetricOption {
         border-color: #0d99a5;
       }
       .vs-audit-btn--primary:hover { background: #0a7d87; }
-      .vs-audit-btn--danger {
-        color: #94a3b8;
+      .vs-audit-locked {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 9px;
+        border-radius: 8px;
+        background: rgba(13, 175, 189, 0.08);
+        border: 1px solid rgba(13, 175, 189, 0.22);
+        color: #0d99a5;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        cursor: help;
       }
-      .vs-audit-btn--danger:hover { color: #dc2626; background: rgba(239, 68, 68, 0.08); }
 
       .vs-audit-meta {
         font-family: var(--font-dm);
@@ -2844,6 +2924,62 @@ interface MetricOption {
       }
       .vs-salas-grid {
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      }
+      .sala-card--skeleton {
+        pointer-events: none;
+        cursor: default;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 14px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .sala-skel-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: linear-gradient(
+          90deg,
+          rgba(148, 163, 184, 0.10),
+          rgba(148, 163, 184, 0.22),
+          rgba(148, 163, 184, 0.10)
+        );
+        background-size: 200% 100%;
+        animation: salaSkelShimmer 1.4s linear infinite;
+      }
+      .sala-skel-line {
+        display: inline-block;
+        border-radius: 4px;
+        background: linear-gradient(
+          90deg,
+          rgba(148, 163, 184, 0.10),
+          rgba(148, 163, 184, 0.22),
+          rgba(148, 163, 184, 0.10)
+        );
+        background-size: 200% 100%;
+        animation: salaSkelShimmer 1.4s linear infinite;
+      }
+      @keyframes salaSkelShimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      .sala-skel-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 12px;
+        padding: 6px 12px;
+        background: rgba(13, 175, 189, 0.06);
+        border: 1px solid rgba(13, 175, 189, 0.20);
+        border-radius: 999px;
+        font-family: var(--font-dm);
+        font-size: 11px;
+        color: #0d99a5;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sala-skel-icon, .sala-skel-line { animation: none; }
       }
       .vs-tap-summary-title {
         font-family: var(--font-josefin);
@@ -3655,22 +3791,28 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   });
   readonly isLoading = toSignal(this.service.loading$, { initialValue: false });
 
-  readonly alerts = computed(() => this.sensors().filter((s) => s.alerted));
+  // Source unificado: prefiere ColdRoom (cagg, real) cuando disponible,
+  // fallback a VentisquerosService legacy. Excluye defective de stats/alerts.
+  readonly alerts = computed(() =>
+    this.floorMapSensors().filter((s) => !s.defective && s.alerted),
+  );
   readonly alertSnippet = computed(() => this.alerts().slice(0, 2));
   readonly extraAlerts = computed(() => Math.max(0, this.alerts().length - 2));
 
   readonly groupedSensors = computed<Record<string, Sensor[]>>(() => {
     const out: Record<string, Sensor[]> = {};
-    for (const s of this.sensors()) {
+    for (const s of this.floorMapSensors()) {
       (out[s.tap] = out[s.tap] || []).push(s);
     }
     return out;
   });
 
-  readonly focusSensor = computed(() => this.sensors().find((s) => s.id === this.selectedId()));
+  readonly focusSensor = computed(() =>
+    this.floorMapSensors().find((s) => s.id === this.selectedId()),
+  );
 
   readonly stats = computed(() => {
-    const list = this.sensors();
+    const list = this.floorMapSensors().filter((s) => !s.defective);
     const ts = list.map((s) => s.t);
     const hs = list.map((s) => s.h);
     const alerts = this.alerts();
@@ -3782,6 +3924,32 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   // Rich data (with histPoints + lastSeen). Fed when Salas tab active.
   readonly coldRoomSensors = signal<ColdRoomSensor[]>([]);
   private coldRoomPollTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Fuente unificada del floor map: prefiere ColdRoom (real, con defective)
+   * cuando hay datos, cae a VentisquerosService legacy si no hay polling activo.
+   * Garantiza que pin individual y card de sala usen los mismos valores T/H.
+   */
+  readonly floorMapSensors = computed<Sensor[]>(() => {
+    const rich = this.coldRoomSensors();
+    if (rich.length > 0) {
+      return rich.map((s) => ({
+        id: s.id,
+        tap: s.tap,
+        area: s.area,
+        cx: s.cx,
+        cy: s.cy,
+        r: s.r,
+        t: s.t,
+        h: s.h,
+        hist: s.hist,
+        alerted: s.alerted,
+        defective: s.defective,
+        defectiveReason: s.defectiveReason,
+      }));
+    }
+    return this.sensors();
+  });
   private readonly STALE_MS = 60_000;
 
   readonly salaAggregates = computed<SalaAggregate[]>(() => {
@@ -3789,7 +3957,9 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     this.now();
     const rich = this.coldRoomSensors();
 
-    // Primary grouping by ColdRoom data (authoritative source for area names).
+    // Salas usa SOLO ColdRoom data (fuente autoritativa: cagg equipo_1min +
+    // reg_map). Sin fallback legacy: evita "flash" de valores distintos
+    // mientras carga el primer fetch. UI muestra skeleton hasta que llegue.
     const byArea = new Map<string, ColdRoomSensor[]>();
     for (const r of rich) {
       const key = (r.area || '—').trim();
@@ -3797,55 +3967,42 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       list.push(r);
       byArea.set(key, list);
     }
-    // Fallback: si ColdRoom polling no activo, usar VentisquerosService sensors
-    // mapeados a shape compatible (sin histPoints/lastSeen).
-    if (byArea.size === 0) {
-      for (const s of this.sensors()) {
-        const key = (s.area || '—').trim();
-        const list = byArea.get(key) || [];
-        list.push({
-          id: s.id,
-          tap: s.tap,
-          area: s.area,
-          cx: s.cx,
-          cy: s.cy,
-          r: s.r,
-          t: s.t,
-          h: s.h,
-          alerted: s.alerted,
-          setpoint: 0,
-          tMin: -100,
-          tMax: 100,
-          lastSeen: '',
-          hist: s.hist || [],
-          histPoints: [],
-        } as ColdRoomSensor);
-        byArea.set(key, list);
-      }
-    }
 
     const out: SalaAggregate[] = [];
     for (const [area, sensors] of byArea) {
-      const ts = sensors.map((s) => s.t);
-      const hs = sensors.map((s) => s.h);
+      // Excluir sensores defectuosos del cómputo de agregados. Sensores rotos
+      // (reg_map.parametros.defective=true) reportan ceros/basura y diluyen
+      // promedios. Se cuentan separados para UI ("N en falla").
+      const active = sensors.filter((s) => !s.defective);
+      const defectiveSensors = sensors.filter((s) => s.defective);
+      const defectiveReasons = defectiveSensors
+        .map((s) => `${s.id}: ${s.defectiveReason || 'fuera de servicio'}`)
+        .filter(Boolean);
+
+      const ts = active.map((s) => s.t);
+      const hs = active.map((s) => s.h);
       const taps = Array.from(new Set(sensors.map((s) => s.tap))).sort();
-      const maxTNum = sensors.length ? Math.max(...ts) : 0;
+      const maxTNum = active.length ? Math.max(...ts) : 0;
+      const minTNum = active.length ? Math.min(...ts) : 0;
       const th = this.thresholdsSvc.get(area);
-      const alerts = sensors.filter((s) =>
+      const alerts = active.filter((s) =>
         th ? this.thresholdsSvc.isSensorOutOfBand(area, s.t) : s.alerted,
       ).length;
-      const actualNum = sensors.length ? ts.reduce((a, b) => a + b, 0) / ts.length : 0;
-      const allHist = sensors.flatMap((s) => s.hist || []);
+      // Actual = peor caso (max T entre sensores activos). HACCP-relevante:
+      // el sensor más caliente es el que define riesgo de la sala. Si solo
+      // hay 1 sensor → max = single value (sin cambio).
+      const actualNum = active.length ? maxTNum : 0;
+      const allHist = active.flatMap((s) => s.hist || []);
       const histAvg = allHist.length
         ? allHist.reduce((a, b) => a + b, 0) / allHist.length
         : actualNum;
-      const { spark, outOfBandMin } = this.computeSparkAndOutOfBand(sensors, th?.tMax ?? null);
-      const reportingCount = this.computeReportingCount(sensors);
-      const deviations = this.deviationsSvc.detect(sensors);
+      const { spark, outOfBandMin } = this.computeSparkAndOutOfBand(active, th?.tMax ?? null);
+      const reportingCount = this.computeReportingCount(active);
+      const deviations = this.deviationsSvc.detect(active);
       const ongoing = deviations.filter((e) => e.ongoing);
       const open = deviations.filter((e) => this.deviationsSvc.isOpen(e));
       const longestOngoing = ongoing.reduce((m, e) => Math.max(m, e.durationMin), 0);
-      const level = sensors.length === 0
+      const level = active.length === 0
         ? 'unknown'
         : this.thresholdsSvc.evaluateLevel(area, maxTNum, longestOngoing);
       const status: SalaAggregate['status'] =
@@ -3868,21 +4025,25 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         h: s.h,
         hist: s.hist,
         alerted: s.alerted,
+        defective: s.defective,
+        defectiveReason: s.defectiveReason,
       }));
-      const minTNum = sensors.length ? Math.min(...ts) : 0;
       out.push({
         area,
         slug: this.salaSlug(area),
         count: sensors.length,
+        activeCount: active.length,
+        defectiveCount: defectiveSensors.length,
+        defectiveReasons,
         alerts,
-        actualT: sensors.length ? actualNum.toFixed(1) : '—',
+        actualT: active.length ? actualNum.toFixed(1) : '—',
         actualTNum: actualNum,
-        avgT: sensors.length ? histAvg.toFixed(1) : '—',
+        avgT: active.length ? histAvg.toFixed(1) : '—',
         avgTNum: histAvg,
-        avgH: sensors.length ? Math.round(hs.reduce((a, b) => a + b, 0) / hs.length) : 0,
-        minT: sensors.length ? minTNum.toFixed(1) : '—',
+        avgH: active.length ? Math.round(hs.reduce((a, b) => a + b, 0) / hs.length) : 0,
+        minT: active.length ? minTNum.toFixed(1) : '—',
         minTNum,
-        maxT: sensors.length ? maxTNum.toFixed(1) : '—',
+        maxT: active.length ? maxTNum.toFixed(1) : '—',
         maxTNum,
         taps,
         sensors: sensorsAsLegacy,
@@ -3939,14 +4100,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
     let globalOutMin = 0;
     let globalTotalMin = 0;
-    const salaMetrics: Array<{
+    const salaMetrics: {
       area: string;
       slug: string;
       outMin: number;
       compliancePct: number;
       devs: number;
       level: 'ok' | 'warn' | 'crit' | 'severe' | 'unknown';
-    }> = [];
+    }[] = [];
 
     for (const [area, list] of byArea) {
       const th = this.thresholdsSvc.get(area);
@@ -4024,7 +4185,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       other: { label: 'Otra', color: '#94A3B8' },
       unclassified: { label: 'Sin clasificar', color: '#EF4444' },
     };
-    const causes: Array<{ key: string; label: string; count: number; pct: number; color: string }> = [];
+    const causes: { key: string; label: string; count: number; pct: number; color: string }[] = [];
     for (const [key, count] of causeStats) {
       const meta = CAUSE_META[key] || { label: key, color: '#64748B' };
       causes.push({
@@ -4039,7 +4200,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
     // Hourly/daily trend: bucketize sample points and compute % in-band per bucket.
     const trendBuckets = period === '24h' ? 24 : 7;
-    const hourlyTrend: Array<{ label: string; pct: number }> = [];
+    const hourlyTrend: { label: string; pct: number }[] = [];
     if (pointsPerSensor > 0) {
       const ptsPerBucket = Math.max(1, Math.floor(pointsPerSensor / trendBuckets));
       for (let b = 0; b < trendBuckets; b++) {
@@ -4229,7 +4390,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   // === Defrost drawer ===
   readonly defrostOpen = signal<boolean>(false);
   readonly defrostSelectedSlug = signal<string | null>(null);
-  readonly daysOfWeekChoices: Array<{ n: number; lbl: string }> = [
+  readonly daysOfWeekChoices: { n: number; lbl: string }[] = [
     { n: 1, lbl: 'L' },
     { n: 2, lbl: 'M' },
     { n: 3, lbl: 'X' },
@@ -4580,7 +4741,9 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     effect(() => {
       // Rich cold-room data when Salas or Compliance tab active.
       const tab = this.effectiveTab();
-      if (tab === 'salas' || tab === 'compliance') this.startColdRoomPolling();
+      // Pollear también en General — el floor map ahora usa coldRoomSensors.
+      if (tab === 'general' || tab === 'salas' || tab === 'compliance')
+        this.startColdRoomPolling();
       else this.stopColdRoomPolling();
     });
   }
@@ -4622,7 +4785,12 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   private fetchColdRoomSensors(): void {
     const id = this.siteId();
     if (!id) return;
-    this.coldRoom.getSensors(id, null, '24h').subscribe({
+    // Agrega siteIds de TODOS los TAPs cold-room para que backend bundle desde
+    // múltiples reg_map + equipo_1min cagg en una sola query. Si coldRoomSites
+    // está vacío (vista single-site), usa solo el siteId primary.
+    const related = this.coldRoomSites().map((s) => s.id);
+    const allIds = related.length > 0 ? [...new Set([id, ...related])] : [id];
+    this.coldRoom.getSensors(id, null, '24h', allIds).subscribe({
       next: (res) => {
         if (res.ok) this.coldRoomSensors.set(res.data || []);
       },
@@ -4673,6 +4841,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     if (sensors.length === 0) return 0;
     const now = Date.now();
     return sensors.filter((s) => {
+      // Sensor defectuoso aunque reporte timestamp no cuenta como activo.
+      if (s.defective) return false;
       if (!s.lastSeen) return false;
       return now - new Date(s.lastSeen).getTime() < this.STALE_MS;
     }).length;

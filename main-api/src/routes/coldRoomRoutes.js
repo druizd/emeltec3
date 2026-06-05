@@ -831,34 +831,89 @@ function normalizeRange(raw) {
   return RANGE_PRESETS[key] ? key : '24h';
 }
 
+/**
+ * Sintetiza histórico realista de refrigeración:
+ *   - Ciclo compresor (~30min on/off, ±0.8°C sine slow)
+ *   - Defrost programado 02:00 / 10:00 / 18:00 (spike +2.5°C por 20min)
+ *   - Drift lento day-night (±0.3°C)
+ *   - Ruido sensor mínimo (±0.05°C)
+ */
 function buildHist(baseT, range) {
   const preset = RANGE_PRESETS[range] || RANGE_PRESETS['24h'];
   const { points, intervalMs } = preset;
   const now = Date.now();
   const data = [];
+  const defrostHours = [2, 10, 18];
+  const defrostDurationMin = 18;
+  let drift = 0;
   for (let i = 0; i < points; i++) {
-    const phase = Math.sin((i + 5) / Math.max(points / 12, 1)) * 0.8;
-    const jitter = (Math.random() - 0.5) * 0.4;
-    const drift = Math.cos(i / Math.max(points / 4, 1)) * 0.3;
+    const ts = now - (points - 1 - i) * intervalMs;
+    const d = new Date(ts);
+    const hourOfDay = d.getHours();
+    const minuteOfHour = d.getMinutes();
+
+    // Compresor cycle ~30 min, amplitud 0.8°C.
+    const compressorPhase =
+      Math.sin((d.getMinutes() + d.getHours() * 60) / 4.77) * 0.8;
+
+    // Defrost spike si estamos en ventana defrost.
+    let defrostSpike = 0;
+    if (defrostHours.includes(hourOfDay) && minuteOfHour < defrostDurationMin) {
+      const t = minuteOfHour / defrostDurationMin;
+      // Curva campana: sube y baja en 20 min, peak ~2.5°C
+      defrostSpike = Math.sin(t * Math.PI) * 2.5;
+    }
+
+    // Drift lento (random walk acotado).
+    drift += (Math.random() - 0.5) * 0.01;
+    drift = Math.max(-0.4, Math.min(0.4, drift));
+
+    // Ruido sensor (mínimo, refleja resolución sonda).
+    const noise = (Math.random() - 0.5) * 0.1;
+
+    const v = baseT + compressorPhase + defrostSpike + drift + noise;
     data.push({
-      t: new Date(now - (points - 1 - i) * intervalMs).toISOString(),
-      v: +(baseT + phase + drift + jitter).toFixed(2),
+      t: new Date(ts).toISOString(),
+      v: +v.toFixed(2),
     });
   }
   return data;
 }
 
+/**
+ * HR: cambia más lento que T. Drops durante defrost (puerta + evaporador caliente).
+ */
 function buildHistHum(baseH, range) {
   const preset = RANGE_PRESETS[range] || RANGE_PRESETS['24h'];
   const { points, intervalMs } = preset;
   const now = Date.now();
   const data = [];
+  const defrostHours = [2, 10, 18];
+  let drift = 0;
   for (let i = 0; i < points; i++) {
-    const phase = Math.sin((i + 3) / Math.max(points / 10, 1)) * 2;
-    const jitter = (Math.random() - 0.5) * 1.2;
-    const v = Math.max(30, Math.min(99, baseH + phase + jitter));
+    const ts = now - (points - 1 - i) * intervalMs;
+    const d = new Date(ts);
+    const hourOfDay = d.getHours();
+    const minuteOfHour = d.getMinutes();
+
+    // Ondulación lenta ~2h período, ±1.5%
+    const phase = Math.sin((d.getMinutes() + d.getHours() * 60) / 19) * 1.5;
+
+    // Defrost: HR cae 3-5% por 20min (aire seco evaporador caliente).
+    let defrostDrop = 0;
+    if (defrostHours.includes(hourOfDay) && minuteOfHour < 20) {
+      const t = minuteOfHour / 20;
+      defrostDrop = -Math.sin(t * Math.PI) * 4;
+    }
+
+    // Drift muy lento (random walk acotado).
+    drift += (Math.random() - 0.5) * 0.02;
+    drift = Math.max(-1, Math.min(1, drift));
+
+    const noise = (Math.random() - 0.5) * 0.2;
+    const v = Math.max(30, Math.min(99, baseH + phase + defrostDrop + drift + noise));
     data.push({
-      t: new Date(now - (points - 1 - i) * intervalMs).toISOString(),
+      t: new Date(ts).toISOString(),
       v: +v.toFixed(2),
     });
   }
@@ -900,16 +955,292 @@ function sensorSnapshot(s, range) {
   };
 }
 
-router.get('/:siteId/sensors', (req, res) => {
+/**
+ * Mapeo range → cagg view + intervalo. Aprovecha continuous aggregates Timescale
+ * (equipo_1min/5min/hourly/daily). El cagg ya está materializado y indexado por
+ * (id_serial, bucket DESC) → lookups sub-segundo incluso con millones de filas.
+ */
+const RANGE_CAGG_MAP = {
+  '1h': { view: 'equipo_1min', bucketInterval: '1 minute', points: 60 },
+  '6h': { view: 'equipo_1min', bucketInterval: '1 minute', points: 360 },
+  '24h': { view: 'equipo_1min', bucketInterval: '1 minute', points: 1440 },
+  '7d': { view: 'equipo_hourly', bucketInterval: '1 hour', points: 168 },
+};
+
+/**
+ * Lee reg_map de los sites + cagg correspondiente y pivota a histPoints por sensor.
+ * Aplica factor*raw + offset. Marca sensores `defective` desde parametros.
+ *
+ * @param {string[]} siteIds - Lista de site ids a cargar.
+ * @param {string} range - '1h'|'6h'|'24h'|'7d'
+ * @param {string|null} tapFilter - Filtra por TAP label si se pasa (ej. 'TAP 2').
+ * @returns {Promise<Array>} Array de sensores con histPoints + snapshot.
+ */
+async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
+  if (!siteIds || siteIds.length === 0) return null;
+  const cfg = RANGE_CAGG_MAP[range] || RANGE_CAGG_MAP['24h'];
+
+  // 1. Sitios → id_serial + descripcion (= TAP label).
+  const sitesRes = await pool.query(
+    `SELECT id, descripcion, id_serial FROM sitio WHERE id = ANY($1)`,
+    [siteIds],
+  );
+  if (sitesRes.rowCount === 0) return null;
+  const siteById = new Map(sitesRes.rows.map((r) => [r.id, r]));
+  const idSerials = sitesRes.rows.map((r) => r.id_serial).filter(Boolean);
+  if (idSerials.length === 0) return null;
+
+  // 2. reg_map filtrado a aliases STH-XX.
+  const mapRes = await pool.query(
+    `SELECT sitio_id, alias, d1, parametros
+     FROM reg_map
+     WHERE sitio_id = ANY($1) AND alias LIKE 'STH-%' AND d1 IS NOT NULL`,
+    [siteIds],
+  );
+  if (mapRes.rowCount === 0) return null;
+
+  // 3. Agrupar aliases por sensorId (STH-01, STH-02, etc.) + parametros.
+  // Cada sensor tiene 2 aliases (.T y .H) que comparten parametros.
+  const sensors = new Map(); // sensorId+'@'+siteId → { id, tap, area, cx, cy, r, regT, regH, factor, defective, ... }
+  for (const m of mapRes.rows) {
+    const match = m.alias.match(/^(STH-\d+)\.(T|H)$/);
+    if (!match) continue;
+    const sensorId = match[1];
+    const channel = match[2]; // 'T' or 'H'
+    const params = m.parametros || {};
+    const key = `${sensorId}@${m.sitio_id}`;
+    let s = sensors.get(key);
+    if (!s) {
+      const site = siteById.get(m.sitio_id);
+      s = {
+        id: sensorId,
+        tap: site ? site.descripcion : '',
+        siteId: m.sitio_id,
+        idSerial: site ? site.id_serial : null,
+        area: (params.area || '').replace(/\s+/g, ' ').trim(),
+        cx: Number(params.cx) || 0,
+        cy: Number(params.cy) || 0,
+        r: Number(params.r) || 60,
+        factor: typeof params.factor === 'number' ? params.factor : Number(params.factor) || 0.01,
+        offset: typeof params.offset === 'number' ? params.offset : Number(params.offset) || 0,
+        defective: !!params.defective,
+        defectiveReason: params.defective_reason || null,
+        regT: null,
+        regH: null,
+      };
+      sensors.set(key, s);
+    }
+    if (channel === 'T') s.regT = m.d1;
+    if (channel === 'H') s.regH = m.d1;
+  }
+
+  // Filter por TAP si se pasó.
+  let sensorList = [...sensors.values()];
+  if (tapFilter) sensorList = sensorList.filter((s) => s.tap === tapFilter);
+  if (sensorList.length === 0) return [];
+
+  // 4. Query cagg para last N points.
+  const cutoffMs = Date.now() - cfg.points * (cfg.view === 'equipo_1min' ? 60_000 : 3_600_000);
+  const cutoff = new Date(cutoffMs);
+  const histRes = await pool.query(
+    `SELECT id_serial, bucket, data
+     FROM ${cfg.view}
+     WHERE id_serial = ANY($1) AND bucket >= $2
+     ORDER BY id_serial, bucket ASC
+     LIMIT $3`,
+    [idSerials, cutoff, cfg.points * idSerials.length + 100],
+  );
+
+  // 5. Agrupar buckets por id_serial.
+  const bySerial = new Map();
+  for (const row of histRes.rows) {
+    const list = bySerial.get(row.id_serial) || [];
+    list.push({ t: row.bucket, data: row.data || {} });
+    bySerial.set(row.id_serial, list);
+  }
+
+  // 6. Construir respuesta por sensor.
+  // Modbus holding registers son 16-bit; valores negativos vienen como uint16
+  // (e.g. -2200 = 63336). Sin convertir a signed int16 las temps de freezer
+  // se inflan a +630°C. Conversión: si > 32767 → restar 65536.
+  const toSigned16 = (n) => (typeof n === 'number' && n > 32767 ? n - 65536 : n);
+
+  const out = [];
+  for (const s of sensorList) {
+    const buckets = bySerial.get(s.idSerial) || [];
+    const histPoints = s.regT
+      ? buckets
+          .map((b) => {
+            const raw = toSigned16(b.data[s.regT]);
+            if (typeof raw !== 'number') return null;
+            return { t: new Date(b.t).toISOString(), v: +(raw * s.factor + s.offset).toFixed(2) };
+          })
+          .filter((p) => p !== null)
+      : [];
+    const histHumPoints = s.regH
+      ? buckets
+          .map((b) => {
+            // HR es siempre 0-100% → naturalmente unsigned, no requiere conversión.
+            const raw = b.data[s.regH];
+            if (typeof raw !== 'number') return null;
+            return { t: new Date(b.t).toISOString(), v: +(raw * s.factor + s.offset).toFixed(2) };
+          })
+          .filter((p) => p !== null)
+      : [];
+
+    const lastT = histPoints.length ? histPoints[histPoints.length - 1].v : 0;
+    const lastH = histHumPoints.length ? histHumPoints[histHumPoints.length - 1].v : 0;
+    const lastBucket = buckets.length ? buckets[buckets.length - 1].t : null;
+
+    // Threshold lookup per sala_slug.
+    const slug = (s.area || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    // Resolved later via threshold table — for now use defaults from DEFAULT_THRESHOLDS.
+    const defaultThr = DEFAULT_THRESHOLDS.find(
+      (d) => slugifyArea(d.area) === slug,
+    );
+    const tMax = defaultThr?.tMax ?? null;
+    const tMin = defaultThr?.tMin ?? null;
+    const alerted = !s.defective && (
+      (tMax !== null && lastT > tMax) ||
+      (tMin !== null && lastT < tMin)
+    );
+
+    out.push({
+      id: s.id,
+      tap: s.tap,
+      area: s.area,
+      cx: s.cx,
+      cy: s.cy,
+      r: s.r,
+      t: lastT,
+      h: lastH,
+      alerted,
+      setpoint: defaultThr ? (defaultThr.tMax + (defaultThr.tMin ?? defaultThr.tMax)) / 2 : 0,
+      tMin: tMin !== null ? tMin : -50,
+      tMax: tMax !== null ? tMax : 50,
+      lastSeen: lastBucket ? new Date(lastBucket).toISOString() : new Date(0).toISOString(),
+      hist: histPoints.map((p) => p.v),
+      histPoints,
+      defective: s.defective || undefined,
+      defectiveReason: s.defectiveReason || undefined,
+    });
+  }
+  return out;
+}
+
+router.get('/:siteId/sensors', async (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
+  // Support combo siteIds query for aggregation across multiple cold-room sites.
+  // Frontend pasa ?siteIds=S110,S111,S113 cuando Ventisqueros tiene 4 TAPs.
+  const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
+  const siteIds = siteIdsRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Intentar datos reales primero (reg_map + equipo_1min cagg).
+  try {
+    const real = await loadRealColdRoomSensors(siteIds, range, tap);
+    if (real !== null && real.length > 0) {
+      return res.json({
+        ok: true,
+        data: real,
+        meta: {
+          range,
+          count: real.length,
+          serverTime: new Date().toISOString(),
+          source: 'cagg',
+        },
+      });
+    }
+  } catch (err) {
+    console.error('[cold-room sensors real] fallback to mock:', err.message);
+  }
+
+  // Fallback mock cuando reg_map vacío o equipo sin datos.
   if (tap === 'TAP 1') return res.json({ ok: true, data: [] });
   const filtered = tap ? PLACEHOLDER_SENSORS.filter((s) => s.tap === tap) : PLACEHOLDER_SENSORS;
   res.json({
     ok: true,
     data: filtered.map((s) => sensorSnapshot(s, range)),
-    meta: { range, count: filtered.length, serverTime: new Date().toISOString() },
+    meta: {
+      range,
+      count: filtered.length,
+      serverTime: new Date().toISOString(),
+      source: 'mock',
+    },
   });
+});
+
+/**
+ * PUT /:siteId/sensors/:sensorId/defective
+ * Marca/desmarca sensor como fuera de servicio. Actualiza parametros.defective
+ * en reg_map de ambos aliases (.T y .H) del sensor para mantener consistencia.
+ * Body: { defective: boolean, reason?: string }
+ */
+router.put('/:siteId/sensors/:sensorId/defective', async (req, res) => {
+  const { siteId, sensorId } = req.params;
+  const { defective, reason } = req.body || {};
+  if (typeof defective !== 'boolean') {
+    return res.status(400).json({ ok: false, error: 'defective (boolean) requerido' });
+  }
+  try {
+    const actor = actorFromReq(req);
+
+    // Aliases del sensor (ej. STH-02.T, STH-02.H).
+    const aliasFilter = `${sensorId}.%`;
+    const prevRes = await pool.query(
+      `SELECT alias, parametros FROM reg_map
+       WHERE sitio_id = $1 AND alias LIKE $2`,
+      [siteId, aliasFilter],
+    );
+    if (prevRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Sensor no encontrado en reg_map' });
+    }
+
+    // Aplicar patch a parametros JSONB de cada alias.
+    for (const row of prevRes.rows) {
+      const params = row.parametros || {};
+      if (defective) {
+        params.defective = true;
+        params.defective_since = new Date().toISOString().slice(0, 10);
+        params.defective_reason = reason || 'Marcado manualmente por operador';
+        params.defective_by = actor.name;
+      } else {
+        delete params.defective;
+        delete params.defective_since;
+        delete params.defective_reason;
+        delete params.defective_by;
+      }
+      await pool.query(
+        `UPDATE reg_map SET parametros = $1, updated_at = NOW()
+         WHERE sitio_id = $2 AND alias = $3`,
+        [JSON.stringify(params), siteId, row.alias],
+      );
+    }
+
+    // Audit log.
+    logAudit(
+      siteId,
+      actor,
+      'threshold', // categoría existente; usa target distintivo
+      defective ? 'update' : 'update',
+      `sensor:${sensorId}`,
+      { defective: !defective },
+      { defective, reason: reason || null },
+      defective ? `Marcado en falla: ${reason || 'sin razón'}` : 'Reactivado',
+    );
+
+    res.json({ ok: true, data: { sensorId, defective, reason: reason || null } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 router.get('/:siteId/sensors/:sensorId/history', (req, res) => {

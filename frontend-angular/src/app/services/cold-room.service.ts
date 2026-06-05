@@ -26,6 +26,9 @@ export interface ColdRoomSensor {
   lastSeen: string;
   hist: number[];
   histPoints: ColdRoomHistPoint[];
+  /** True si reg_map.parametros.defective === true. */
+  defective?: boolean;
+  defectiveReason?: string;
 }
 
 export interface ColdRoomSensorsResponse {
@@ -100,13 +103,36 @@ export class ColdRoomService {
     siteId: string,
     tap: string | null,
     range: ColdRoomRange = '24h',
+    siteIds?: string[],
   ): Observable<ColdRoomSensorsResponse> {
     const params = new URLSearchParams();
     if (tap) params.set('tap', tap);
     params.set('range', range);
     params.set('t', String(Date.now()));
+    if (siteIds && siteIds.length > 0) {
+      params.set('siteIds', siteIds.join(','));
+    }
     return this.http.get<ColdRoomSensorsResponse>(
       `/api/cold-room/${encodeURIComponent(siteId)}/sensors?${params.toString()}`,
+    );
+  }
+
+  /**
+   * Marca/desmarca un sensor como defective (fuera de servicio). Backend persiste
+   * en reg_map.parametros y registra audit log. Cliente debe refrescar sensors
+   * después para ver el cambio reflejado.
+   */
+  setSensorDefective(
+    siteId: string,
+    sensorId: string,
+    defective: boolean,
+    reason?: string,
+  ): Observable<ApiResponse<{ sensorId: string; defective: boolean; reason: string | null }>> {
+    return this.http.put<
+      ApiResponse<{ sensorId: string; defective: boolean; reason: string | null }>
+    >(
+      `/api/cold-room/${encodeURIComponent(siteId)}/sensors/${encodeURIComponent(sensorId)}/defective`,
+      { defective, reason: reason || null },
     );
   }
 

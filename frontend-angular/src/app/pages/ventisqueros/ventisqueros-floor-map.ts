@@ -81,12 +81,14 @@ const ZOOM_STEP = 1.25;
 
         <g style="mix-blend-mode: multiply;">
           @for (s of visibleSensors(); track s.id) {
-            <circle
-              [attr.cx]="s.cx"
-              [attr.cy]="s.cy"
-              [attr.r]="s.r"
-              [attr.fill]="'url(#halo-' + s.id + ')'"
-            />
+            @if (!s.defective) {
+              <circle
+                [attr.cx]="s.cx"
+                [attr.cy]="s.cy"
+                [attr.r]="s.r"
+                [attr.fill]="'url(#halo-' + s.id + ')'"
+              />
+            }
           }
         </g>
 
@@ -146,16 +148,36 @@ const ZOOM_STEP = 1.25;
             (mouseleave)="hoverId.set(null)"
             (click)="selectSensor.emit(s.id); $event.stopPropagation()"
           >
+            <title>{{ s.defective ? defectiveTitle(s) : s.id }}</title>
             <circle
               [attr.cx]="s.cx"
               [attr.cy]="s.cy"
               [attr.r]="hoverId() === s.id || selectedId() === s.id ? 7.5 : 6"
               fill="#FFFFFF"
               [attr.stroke]="strokeFor(s)"
+              [attr.stroke-dasharray]="s.defective ? '2 2' : null"
               stroke-width="1.4"
               style="transition: r 0.15s;"
+              [style.opacity]="s.defective ? 0.6 : 1"
             />
-            <circle [attr.cx]="s.cx" [attr.cy]="s.cy" r="3.4" [attr.fill]="colorFor(s)" />
+            <circle
+              [attr.cx]="s.cx"
+              [attr.cy]="s.cy"
+              r="3.4"
+              [attr.fill]="colorFor(s)"
+              [style.opacity]="s.defective ? 0.5 : 1"
+            />
+            @if (s.defective) {
+              <line
+                [attr.x1]="s.cx - 4.2"
+                [attr.y1]="s.cy - 4.2"
+                [attr.x2]="s.cx + 4.2"
+                [attr.y2]="s.cy + 4.2"
+                stroke="#64748B"
+                stroke-width="1.1"
+                stroke-linecap="round"
+              />
+            }
           </g>
         }
       </svg>
@@ -421,15 +443,27 @@ export class VentisquerosFloorMapComponent {
   );
 
   colorFor(s: Sensor): string {
+    if (s.defective) return '#94A3B8'; // slate-400, sensor fuera de servicio
     if (this.metric() === 'H') return humColor(s.h);
     if (this.metric() === 'A') return s.alerted ? '#EF4444' : 'rgb(148,163,184)';
     return tempColor(s.t);
   }
 
   strokeFor(s: Sensor): string {
+    if (s.defective) return '#94A3B8';
     if (s.alerted) return '#EF4444';
     if (this.selectedId() === s.id) return '#0DAFBD';
     return '#FFFFFF';
+  }
+
+  isDefective(s: Sensor): boolean {
+    return !!s.defective;
+  }
+
+  defectiveTitle(s: Sensor): string {
+    return s.defectiveReason
+      ? `Fuera de servicio: ${s.defectiveReason}`
+      : 'Sensor fuera de servicio';
   }
 
   chipLeftPct(s: Sensor): number {
@@ -477,10 +511,12 @@ export class VentisquerosFloorMapComponent {
   }
 
   chipPrimary(s: Sensor): string {
+    if (s.defective) return '—';
     return this.metric() === 'H' ? `${Number(s.h.toFixed(2))}%` : `${s.t.toFixed(1)}°C`;
   }
 
   chipSecondary(s: Sensor): string {
+    if (s.defective) return 'sin servicio';
     return this.metric() === 'H' ? `${s.t.toFixed(1)}°C` : `${Number(s.h.toFixed(2))}%`;
   }
 

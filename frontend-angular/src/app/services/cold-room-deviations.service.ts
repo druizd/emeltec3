@@ -269,11 +269,16 @@ export class ColdRoomDeviationsService {
   clearCause(id: string): void {
     const cur = this.acks()[id];
     if (!cur) return;
-    const { cause: _c, causeSource: _s, causeBy: _b, causeAt: _a, causeNote: _n, ...rest } = cur;
-    const next: AckMap = { ...this.acks(), [id]: rest as DeviationAck };
+    const rest: DeviationAck = { ...cur };
+    delete rest.cause;
+    delete rest.causeSource;
+    delete rest.causeBy;
+    delete rest.causeAt;
+    delete rest.causeNote;
+    const next: AckMap = { ...this.acks(), [id]: rest };
     this.acks.set(next);
     this.persist(next);
-    this.pushAck(id, rest as DeviationAck);
+    this.pushAck(id, rest);
   }
 
   /**

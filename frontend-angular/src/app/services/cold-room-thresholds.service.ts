@@ -60,7 +60,7 @@ export class ColdRoomThresholdsService {
     this.http
       .get<{
         ok: boolean;
-        data: Array<SalaThreshold & { slug: string }>;
+        data: (SalaThreshold & { slug: string })[];
       }>(`/api/cold-room/${encodeURIComponent(siteId)}/thresholds`)
       .subscribe({
         next: (res) => {
@@ -121,7 +121,8 @@ export class ColdRoomThresholdsService {
 
   remove(area: string): void {
     const slug = slugifyArea(area);
-    const { [slug]: _drop, ...rest } = this.map();
+    const rest = { ...this.map() };
+    delete rest[slug];
     this.map.set(rest);
     this.persistLocalCache(rest);
     const siteId = this.currentSiteId;
@@ -199,28 +200,28 @@ export class ColdRoomThresholdsService {
 
   detectDeviations(
     area: string,
-    series: Array<{ t: string; v: number }>,
-  ): Array<{
+    series: { t: string; v: number }[],
+  ): {
     startTs: string;
     endTs: string | null;
     durationMin: number;
     peakT: number;
     sustained: boolean;
     severe: boolean;
-  }> {
+  }[] {
     const th = this.get(area);
     if (!th || !series.length) return [];
     const sustained = th.sustainedMin ?? THRESHOLD_DEFAULTS.sustainedMin;
     const severe = th.severeMin ?? THRESHOLD_DEFAULTS.severeMin;
     const hyst = th.hysteresisC ?? THRESHOLD_DEFAULTS.hysteresisC;
-    const out: Array<{
+    const out: {
       startTs: string;
       endTs: string | null;
       durationMin: number;
       peakT: number;
       sustained: boolean;
       severe: boolean;
-    }> = [];
+    }[] = [];
     let inDev = false;
     let startIdx = -1;
     let peak = -Infinity;

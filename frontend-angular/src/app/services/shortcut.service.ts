@@ -15,7 +15,7 @@ export interface ShortcutBinding {
   /** Sección agrupada en palette (Navegación, Ayuda, etc.). */
   group: 'Navegación' | 'Ayuda';
   /** Roles permitidos. Si vacío, todos. */
-  roles?: Array<'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente'>;
+  roles?: ('SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente')[];
   /** Callback que ejecuta el atajo. Recibe el dispatcher. */
   action: () => void;
 }

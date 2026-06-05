@@ -219,6 +219,7 @@ function slugify(area: string): string {
                 <article
                   class="sensor-card anim-stagger"
                   [class.sensor-card--alert]="s.alerted"
+                  [class.sensor-card--defective]="s.defective"
                   [style.--i]="i"
                   (click)="openSensorDrilldown(s.id)"
                   (keydown.enter)="openSensorDrilldown(s.id)"
@@ -229,11 +230,34 @@ function slugify(area: string): string {
                   <header class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-1.5">
                       <span class="sensor-id-chip">{{ s.id }}</span>
-                      @if (s.alerted) {
+                      @if (s.alerted && !s.defective) {
                         <span class="sensor-alert-chip">ALERTA</span>
                       }
+                      @if (s.defective) {
+                        <span class="sensor-defective-chip" [title]="s.defectiveReason || ''">
+                          <span class="material-symbols-outlined text-[10px]">sensors_off</span>
+                          EN FALLA
+                        </span>
+                      }
                     </div>
-                    <span class="tap-tag">{{ s.tap }}</span>
+                    <div class="flex items-center gap-1">
+                      <span class="tap-tag">{{ s.tap }}</span>
+                      <button
+                        type="button"
+                        class="sensor-defective-toggle"
+                        [class.sensor-defective-toggle--active]="s.defective"
+                        (click)="toggleSensorDefective(s, $event)"
+                        [title]="
+                          s.defective
+                            ? 'Click para reactivar sensor'
+                            : 'Click para marcar fuera de servicio (excluye del promedio)'
+                        "
+                      >
+                        <span class="material-symbols-outlined text-[12px]">
+                          {{ s.defective ? 'restart_alt' : 'power_settings_new' }}
+                        </span>
+                      </button>
+                    </div>
                   </header>
                   <div class="mt-2 flex items-baseline gap-4">
                     <div>
@@ -848,6 +872,55 @@ function slugify(area: string): string {
         border-color: rgba(239, 68, 68, 0.3);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent 70%);
       }
+      .sensor-card--defective {
+        opacity: 0.6;
+        background: repeating-linear-gradient(
+          45deg,
+          #ffffff,
+          #ffffff 6px,
+          #f8fafc 6px,
+          #f8fafc 12px
+        );
+        border-color: #cbd5e1;
+      }
+      .sensor-defective-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9.5px;
+        font-weight: 600;
+        background: rgba(148, 163, 184, 0.18);
+        border: 1px solid rgba(148, 163, 184, 0.40);
+        color: #475569;
+        border-radius: 4px;
+        padding: 1px 5px;
+        letter-spacing: 0.04em;
+      }
+      .sensor-defective-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: transparent;
+        border: 0;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+      .sensor-defective-toggle:hover {
+        background: rgba(239, 68, 68, 0.10);
+        color: #b91c1c;
+      }
+      .sensor-defective-toggle--active {
+        color: #0d99a5;
+      }
+      .sensor-defective-toggle--active:hover {
+        background: rgba(13, 175, 189, 0.10);
+        color: #0d99a5;
+      }
       .sensor-id-chip {
         font-family: 'JetBrains Mono', monospace;
         font-size: 10.5px;
@@ -1446,9 +1519,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   // === Cause classification (híbrido) ===
   readonly causes = (
-    Object.entries(DEVIATION_CAUSES) as Array<
-      [DeviationCause, (typeof DEVIATION_CAUSES)[DeviationCause]]
-    >
+    Object.entries(DEVIATION_CAUSES) as [DeviationCause, (typeof DEVIATION_CAUSES)[DeviationCause]][]
   ).map(([key, meta]) => ({ key, ...meta }));
 
   effectiveCause(d: Deviation) {
@@ -1729,6 +1800,33 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   setDrilldownRange(r: ColdRoomRange): void {
     if (this.drilldownRange() === r) return;
     this.drilldownRange.set(r);
+  }
+
+  toggleSensorDefective(s: ColdRoomSensor, ev: Event): void {
+    ev.stopPropagation();
+    const sid = this.siteId();
+    if (!sid) return;
+    const next = !s.defective;
+    let reason: string | undefined;
+    if (next) {
+      const input = window.prompt(
+        `Marcar sensor ${s.id} como fuera de servicio.\nMotivo (opcional):`,
+        '',
+      );
+      if (input === null) return; // cancelado
+      reason = input || undefined;
+    } else if (!window.confirm(`¿Reactivar sensor ${s.id}?`)) {
+      return;
+    }
+    this.coldRoom.setSensorDefective(sid, s.id, next, reason).subscribe({
+      next: () => {
+        // Refrescar fetch para reflejar nuevo estado.
+        this.fetchData();
+      },
+      error: (err) => {
+        console.error('[setSensorDefective] failed:', err?.status, err?.error || err?.message);
+      },
+    });
   }
 
   openSensorDrilldown(id: string): void {
