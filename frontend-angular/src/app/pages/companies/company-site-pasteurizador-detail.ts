@@ -81,14 +81,18 @@ interface PasteurHistoryRow {
                 <p>Volver al detalle del sitio</p>
               </div>
 
-              <app-site-variable-settings-panel
-                [siteId]="context.site.id"
-                [site]="context.site"
-                [showPozoConfig]="false"
-                accentColor="#8b5cf6"
-                accentSoft="rgba(139,92,246,0.10)"
-                (variableMapChanged)="onVariableMapChanged()"
-              />
+              @defer (when settingsPanelOpen()) {
+                <app-site-variable-settings-panel
+                  [siteId]="context.site.id"
+                  [site]="context.site"
+                  [showPozoConfig]="false"
+                  accentColor="#8b5cf6"
+                  accentSoft="rgba(139,92,246,0.10)"
+                  (variableMapChanged)="onVariableMapChanged()"
+                />
+              } @placeholder {
+                <app-skeleton class="h-64 w-full rounded-xl" />
+              }
             </div>
           } @else {
             <nav
@@ -356,34 +360,56 @@ interface PasteurHistoryRow {
                 </nav>
 
                 @if (activeOperationView() === 'diagram') {
-                  <app-pasteurizador-process-diagram [data]="processDiagramData" />
+                  @defer (when activeOperationView() === 'diagram') {
+                    <app-pasteurizador-process-diagram [data]="processDiagramData" />
+                  } @placeholder {
+                    <app-skeleton class="h-[520px] w-full rounded-xl" />
+                  }
                 } @else {
-                  <app-pasteurizador-trends-panel
-                    [times]="trendTimes"
-                    [pasteurValues]="trendPasteurValues"
-                    [entradaValues]="trendEntradaValues"
-                    [productoValues]="trendProductoValues"
-                    [valveValues]="trendValveValues"
-                  />
+                  @defer (
+                    when activeSection() === 'operation' && activeOperationView() === 'trends'
+                  ) {
+                    <app-pasteurizador-trends-panel
+                      [times]="trendTimes"
+                      [pasteurValues]="trendPasteurValues"
+                      [entradaValues]="trendEntradaValues"
+                      [productoValues]="trendProductoValues"
+                      [valveValues]="trendValveValues"
+                    />
+                  } @placeholder {
+                    <app-skeleton class="h-[520px] w-full rounded-xl" />
+                  }
                 }
               </main>
             } @else if (activeSection() === 'alerts') {
               <main id="pasteur-alerts" role="tabpanel">
-                <app-water-detail-alertas
-                  [sitioId]="context.site.id"
-                  [empresaId]="context.company.id"
-                />
+                @defer (when activeSection() === 'alerts') {
+                  <app-water-detail-alertas
+                    [sitioId]="context.site.id"
+                    [empresaId]="context.company.id"
+                  />
+                } @placeholder {
+                  <app-skeleton class="h-64 w-full rounded-xl" />
+                }
               </main>
             } @else if (activeSection() === 'log') {
               <main id="pasteur-log" role="tabpanel">
-                <app-water-detail-bitacora
-                  [sitioId]="context.site.id"
-                  [empresaId]="context.company.id"
-                />
+                @defer (when activeSection() === 'log') {
+                  <app-water-detail-bitacora
+                    [sitioId]="context.site.id"
+                    [empresaId]="context.company.id"
+                  />
+                } @placeholder {
+                  <app-skeleton class="h-64 w-full rounded-xl" />
+                }
               </main>
             } @else if (activeSection() === 'analysis' && isSuperAdmin()) {
               <main id="pasteur-analysis" role="tabpanel">
-                <app-water-detail-analisis [sitioId]="context.site.id" />
+                @defer (when activeSection() === 'analysis' && isSuperAdmin()) {
+                  <app-water-detail-analisis [sitioId]="context.site.id" />
+                } @placeholder {
+                  <app-skeleton class="h-64 w-full rounded-xl" />
+                }
               </main>
             }
           }
@@ -1222,6 +1248,12 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit {
       return;
     }
 
+    const cachedMatch = this.findAccessibleSite(this.companyService.visibleHierarchy(), siteId);
+    if (cachedMatch) {
+      this.applySiteContext(cachedMatch);
+      return;
+    }
+
     this.companyService.fetchHierarchy().subscribe({
       next: (res) => {
         if (!res.ok) {
@@ -1235,10 +1267,7 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit {
           return;
         }
 
-        this.companyService.selectedSubCompanyId.set(match.subCompany.id);
-        this.companyService.selectedSiteModuleKey.set('Proceso');
-        this.companyService.selectedSiteTypeFilter.set(['pasteurizador']);
-        this.siteContext.set(match);
+        this.applySiteContext(match);
       },
       error: () => this.router.navigate(['/companies']),
     });
@@ -1511,6 +1540,13 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit {
       },
       error: () => undefined,
     });
+  }
+
+  private applySiteContext(match: SiteContext): void {
+    this.companyService.selectedSubCompanyId.set(match.subCompany.id);
+    this.companyService.selectedSiteModuleKey.set('Proceso');
+    this.companyService.selectedSiteTypeFilter.set(['pasteurizador']);
+    this.siteContext.set(match);
   }
 
   private currentSiteId(): string {
