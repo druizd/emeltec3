@@ -37,19 +37,21 @@ function slugifyArea(area) {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Inserta defaults faltantes (no toca existentes gracias a ON CONFLICT DO NOTHING).
+ * Garantiza que cualquier sala default sin row obtenga uno, incluso si la tabla
+ * ya tiene otras rows. Audit log emitido por cada nueva inserción.
+ */
 async function seedDefaultThresholdsIfEmpty(siteId) {
-  const count = await pool.query(
-    `SELECT COUNT(*)::int AS c FROM cold_room_threshold WHERE site_id=$1`,
-    [siteId],
-  );
-  if (count.rows[0].c > 0) return false;
   const insertSql = `
     INSERT INTO cold_room_threshold
       (site_id, sala_slug, area, t_max, t_min, note, updated_at, updated_by)
     VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
-    ON CONFLICT (site_id, sala_slug) DO NOTHING`;
+    ON CONFLICT (site_id, sala_slug) DO NOTHING
+    RETURNING sala_slug`;
+  let insertedCount = 0;
   for (const d of DEFAULT_THRESHOLDS) {
-    await pool.query(insertSql, [
+    const res = await pool.query(insertSql, [
       siteId,
       slugifyArea(d.area),
       d.area,
@@ -58,14 +60,17 @@ async function seedDefaultThresholdsIfEmpty(siteId) {
       d.note ?? null,
       'system:seed',
     ]);
+    if (res.rowCount > 0) {
+      insertedCount++;
+      await pool.query(
+        `INSERT INTO cold_room_audit_log
+           (site_id, actor, actor_role, category, action, target, prev, next, note)
+         VALUES ($1, 'system', 'system', 'threshold', 'create', $2, NULL, $3, 'Seed default cliente')`,
+        [siteId, d.area, JSON.stringify({ tMax: d.tMax, tMin: d.tMin, note: d.note })],
+      );
+    }
   }
-  await pool.query(
-    `INSERT INTO cold_room_audit_log
-       (site_id, actor, actor_role, category, action, target, prev, next, note)
-     VALUES ($1, 'system', 'system', 'threshold', 'reset', 'all', NULL, $2, 'Seed inicial defaults cliente')`,
-    [siteId, JSON.stringify(DEFAULT_THRESHOLDS)],
-  );
-  return true;
+  return insertedCount > 0;
 }
 
 /**

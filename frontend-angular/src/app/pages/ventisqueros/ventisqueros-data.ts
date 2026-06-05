@@ -59,16 +59,19 @@ export function tapIndexFromKey(key: TapKey | null | undefined): number {
   return Number.isFinite(n) && n > 0 ? n - 1 : 0;
 }
 
-// Escala invertida: -40°C es objetivo (teal "safe"), más caliente = peor.
+// Paleta Pharma cold-chain (WHO PQS-inspired): mapea zonas reales del proceso.
+// Freezer profundo (azul oscuro) → refrigerado (cyan/teal) → cool target (emerald/lime)
+// → warn (amber) → peligro (rojo). Semánticamente alineado a HACCP.
 const TEMP_STOPS: Array<[number, [number, number, number]]> = [
-  [-40, [13, 175, 189]],
-  [-30, [16, 185, 129]],
-  [-20, [132, 204, 22]],
-  [-10, [234, 179, 8]],
-  [0, [245, 158, 11]],
-  [10, [249, 115, 22]],
-  [20, [239, 68, 68]],
-  [28, [153, 27, 27]],
+  [-40, [30, 58, 138]], // #1E3A8A blue-900 (freezer profundo)
+  [-25, [37, 99, 235]], // #2563EB blue-600 (freezer)
+  [-18, [14, 165, 233]], // #0EA5E9 sky-500 (umbral freezer)
+  [-5, [20, 184, 166]], // #14B8A6 teal-500 (cámara refrigerada)
+  [0, [16, 185, 129]], // #10B981 emerald-500 (refrigerado OK)
+  [4, [132, 204, 22]], // #84CC16 lime-500 (cool target)
+  [10, [234, 179, 8]], // #EAB308 amber-500 (warn)
+  [20, [220, 38, 38]], // #DC2626 red-600 (hot / peligro)
+  [28, [153, 27, 27]], // #991B1B red-800 (severe)
 ];
 
 const HUM_STOPS: Array<[number, [number, number, number]]> = [

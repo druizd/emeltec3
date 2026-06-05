@@ -88,9 +88,12 @@ interface SalaAggregate {
   count: number;
   alerts: number;
   actualT: string;
+  actualTNum: number;
   avgT: string;
+  avgTNum: number;
   avgH: number;
   minT: string;
+  minTNum: number;
   maxT: string;
   maxTNum: number;
   taps: TapKey[];
@@ -508,7 +511,7 @@ interface MetricOption {
                   <div class="sala-actual">
                     <div
                       class="sala-actual-val"
-                      [style.color]="sa.status === 'crit' ? '#DC2626' : sa.status === 'warn' ? '#D97706' : '#0D99A5'"
+                      [style.color]="sa.status === 'crit' ? '#DC2626' : tempColor(sa.actualTNum)"
                     >
                       {{ sa.actualT }}<span class="sala-actual-unit">°C</span>
                     </div>
@@ -528,47 +531,85 @@ interface MetricOption {
                 </div>
 
                 @if (sa.spark.length > 1) {
-                  <svg viewBox="0 0 120 32" class="sala-spark" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient
-                        [attr.id]="'spark-' + sa.slug"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          [attr.stop-color]="sa.status === 'crit' ? '#EF4444' : sa.status === 'warn' ? '#F59E0B' : '#0DAFBD'"
-                          stop-opacity="0.30"
+                  <div class="sala-spark-wrap" (mouseleave)="onSparkLeave()">
+                    <svg
+                      viewBox="0 0 120 32"
+                      class="sala-spark"
+                      preserveAspectRatio="none"
+                      (mousemove)="onSparkMove($event, sa)"
+                    >
+                      <defs>
+                        <linearGradient
+                          [attr.id]="'spark-' + sa.slug"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            [attr.stop-color]="sa.status === 'crit' ? '#EF4444' : sa.status === 'warn' ? '#F59E0B' : '#0DAFBD'"
+                            stop-opacity="0.30"
+                          />
+                          <stop offset="100%" stop-color="#fff" stop-opacity="0" />
+                        </linearGradient>
+                      </defs>
+                      @if (sa.thresholdMax !== null) {
+                        <line
+                          [attr.x1]="0"
+                          [attr.x2]="120"
+                          [attr.y1]="thresholdYPos(sa.spark, sa.thresholdMax, 32)"
+                          [attr.y2]="thresholdYPos(sa.spark, sa.thresholdMax, 32)"
+                          stroke="rgba(239, 68, 68, 0.45)"
+                          stroke-width="0.8"
+                          stroke-dasharray="3 2"
                         />
-                        <stop offset="100%" stop-color="#fff" stop-opacity="0" />
-                      </linearGradient>
-                    </defs>
-                    @if (sa.thresholdMax !== null) {
-                      <line
-                        [attr.x1]="0"
-                        [attr.x2]="120"
-                        [attr.y1]="thresholdYPos(sa.spark, sa.thresholdMax, 32)"
-                        [attr.y2]="thresholdYPos(sa.spark, sa.thresholdMax, 32)"
-                        stroke="rgba(239, 68, 68, 0.45)"
-                        stroke-width="0.8"
-                        stroke-dasharray="3 2"
+                      }
+                      <path
+                        [attr.d]="sparkAreaPath(sa.spark, 120, 32)"
+                        [attr.fill]="'url(#spark-' + sa.slug + ')'"
                       />
+                      <path
+                        [attr.d]="sparkPath(sa.spark, 120, 32)"
+                        fill="none"
+                        [attr.stroke]="sa.status === 'crit' ? '#EF4444' : sa.status === 'warn' ? '#F59E0B' : '#0DAFBD'"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                      @if (sparkHoverSlug() === sa.slug) {
+                        <line
+                          [attr.x1]="sparkHoverXPct(sa) * 1.2"
+                          [attr.x2]="sparkHoverXPct(sa) * 1.2"
+                          y1="0"
+                          y2="32"
+                          stroke="rgba(15, 23, 42, 0.45)"
+                          stroke-width="0.6"
+                        />
+                      }
+                    </svg>
+                    @if (sparkHoverSlug() === sa.slug && sparkHoverValue(sa) !== null) {
+                      <div
+                        class="sala-spark-tooltip"
+                        [style.left.%]="sparkHoverXPct(sa)"
+                        [style.transform]="
+                          sparkHoverXPct(sa) > 70
+                            ? 'translate(-100%, -100%)'
+                            : sparkHoverXPct(sa) < 30
+                              ? 'translate(0, -100%)'
+                              : 'translate(-50%, -100%)'
+                        "
+                      >
+                        <strong>{{ sparkHoverValue(sa)!.toFixed(1) }}°C</strong>
+                        <span>{{ sparkHoverTime(sa) }}</span>
+                      </div>
                     }
-                    <path
-                      [attr.d]="sparkAreaPath(sa.spark, 120, 32)"
-                      [attr.fill]="'url(#spark-' + sa.slug + ')'"
-                    />
-                    <path
-                      [attr.d]="sparkPath(sa.spark, 120, 32)"
-                      fill="none"
-                      [attr.stroke]="sa.status === 'crit' ? '#EF4444' : sa.status === 'warn' ? '#F59E0B' : '#0DAFBD'"
-                      stroke-width="1.4"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                    />
-                  </svg>
+                    <div class="sala-spark-axis">
+                      <span>hace 24h</span>
+                      <span>12h</span>
+                      <span>ahora</span>
+                    </div>
+                  </div>
                 } @else {
                   <div class="sala-spark-empty">
                     <span class="material-symbols-outlined text-[14px]">timeline</span>
@@ -579,19 +620,23 @@ interface MetricOption {
                 <div class="sala-stats-row">
                   <span class="sala-stat">
                     <span class="sala-stat-lbl">Mín</span>
-                    <span class="sala-stat-val">{{ sa.minT }}°C</span>
+                    <span class="sala-stat-val" [style.color]="tempColor(sa.minTNum)">
+                      {{ sa.minT }}°C
+                    </span>
                   </span>
                   <span class="sala-stat-divider"></span>
                   <span class="sala-stat">
                     <span class="sala-stat-lbl">Prom</span>
-                    <span class="sala-stat-val">{{ sa.avgT }}°C</span>
+                    <span class="sala-stat-val" [style.color]="tempColor(sa.avgTNum)">
+                      {{ sa.avgT }}°C
+                    </span>
                   </span>
                   <span class="sala-stat-divider"></span>
                   <span class="sala-stat">
                     <span class="sala-stat-lbl">Máx</span>
                     <span
                       class="sala-stat-val"
-                      [style.color]="sa.status === 'crit' ? '#DC2626' : sa.status === 'warn' ? '#D97706' : '#1E293B'"
+                      [style.color]="sa.status === 'crit' ? '#DC2626' : tempColor(sa.maxTNum)"
                     >{{ sa.maxT }}°C</span>
                   </span>
                 </div>
@@ -3105,10 +3150,52 @@ interface MetricOption {
         opacity: 0.75;
       }
 
+      .sala-spark-wrap {
+        position: relative;
+        margin-top: -2px;
+      }
       .sala-spark {
         width: 100%;
         height: 32px;
-        margin-top: -2px;
+        cursor: crosshair;
+        display: block;
+      }
+      .sala-spark-axis {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1px;
+        font-family: var(--font-dm);
+        font-size: 9px;
+        color: #cbd5e1;
+        letter-spacing: 0.04em;
+      }
+      .sala-spark-tooltip {
+        position: absolute;
+        top: -2px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 4px 7px;
+        border-radius: 6px;
+        background: #1e293b;
+        color: #f8fafc;
+        font-family: var(--font-dm);
+        font-size: 10px;
+        line-height: 1.2;
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.20);
+        z-index: 3;
+      }
+      .sala-spark-tooltip strong {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        font-weight: 700;
+      }
+      .sala-spark-tooltip span {
+        font-size: 9px;
+        opacity: 0.7;
+        margin-top: 1px;
       }
       .sala-spark-empty {
         display: flex;
@@ -3782,15 +3869,19 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         hist: s.hist,
         alerted: s.alerted,
       }));
+      const minTNum = sensors.length ? Math.min(...ts) : 0;
       out.push({
         area,
         slug: this.salaSlug(area),
         count: sensors.length,
         alerts,
         actualT: sensors.length ? actualNum.toFixed(1) : '—',
+        actualTNum: actualNum,
         avgT: sensors.length ? histAvg.toFixed(1) : '—',
+        avgTNum: histAvg,
         avgH: sensors.length ? Math.round(hs.reduce((a, b) => a + b, 0) / hs.length) : 0,
-        minT: sensors.length ? Math.min(...ts).toFixed(1) : '—',
+        minT: sensors.length ? minTNum.toFixed(1) : '—',
+        minTNum,
         maxT: sensors.length ? maxTNum.toFixed(1) : '—',
         maxTNum,
         taps,
@@ -4037,6 +4128,51 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   // === Umbrales drawer ===
   readonly umbralesOpen = signal<boolean>(false);
+
+  // === Spark hover interactivo ===
+  readonly sparkHoverSlug = signal<string | null>(null);
+  readonly sparkHoverIdx = signal<number>(0);
+
+  onSparkMove(ev: MouseEvent, sa: SalaAggregate): void {
+    if (sa.spark.length < 2) return;
+    const target = ev.currentTarget as SVGElement | null;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const x = ev.clientX - rect.left;
+    const pct = Math.max(0, Math.min(1, x / rect.width));
+    const idx = Math.round(pct * (sa.spark.length - 1));
+    this.sparkHoverSlug.set(sa.slug);
+    this.sparkHoverIdx.set(idx);
+  }
+
+  onSparkLeave(): void {
+    this.sparkHoverSlug.set(null);
+  }
+
+  sparkHoverValue(sa: SalaAggregate): number | null {
+    if (this.sparkHoverSlug() !== sa.slug || sa.spark.length === 0) return null;
+    const idx = Math.max(0, Math.min(sa.spark.length - 1, this.sparkHoverIdx()));
+    return sa.spark[idx];
+  }
+
+  sparkHoverTime(sa: SalaAggregate): string {
+    if (this.sparkHoverSlug() !== sa.slug || sa.spark.length === 0) return '';
+    const idx = Math.max(0, Math.min(sa.spark.length - 1, this.sparkHoverIdx()));
+    // 24h preset = 1 sample/min. Newer = higher idx.
+    const minutesAgo = sa.spark.length - 1 - idx;
+    if (minutesAgo < 1) return 'ahora';
+    if (minutesAgo < 60) return `hace ${minutesAgo}m`;
+    const h = Math.floor(minutesAgo / 60);
+    const m = minutesAgo % 60;
+    return m === 0 ? `hace ${h}h` : `hace ${h}h ${m}m`;
+  }
+
+  sparkHoverXPct(sa: SalaAggregate): number {
+    if (this.sparkHoverSlug() !== sa.slug || sa.spark.length === 0) return 0;
+    const idx = Math.max(0, Math.min(sa.spark.length - 1, this.sparkHoverIdx()));
+    return (idx / (sa.spark.length - 1)) * 100;
+  }
   readonly thresholdsList = computed(() => {
     this.thresholdsSvc.thresholds();
     // Merge live sensor areas with stored thresholds. Missing ones show empty.
