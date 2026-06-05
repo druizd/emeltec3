@@ -114,5 +114,5 @@ export function fmtTemp(t: number): string {
 }
 
 export function fmtHum(h: number): string {
-  return `${h}%`;
+  return `${Number(h.toFixed(2))}%`;
 }
