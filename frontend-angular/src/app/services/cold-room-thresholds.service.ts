@@ -11,6 +11,7 @@ export interface SalaThreshold {
   sustainedMin?: number;
   severeMin?: number;
   hysteresisC?: number;
+  note?: string;
   updatedAt: string;
   updatedBy?: string;
 }
@@ -74,6 +75,7 @@ export class ColdRoomThresholdsService {
               sustainedMin: r.sustainedMin ?? undefined,
               severeMin: r.severeMin ?? undefined,
               hysteresisC: r.hysteresisC ?? undefined,
+              note: r.note ?? undefined,
               updatedAt: r.updatedAt,
               updatedBy: r.updatedBy,
             };
@@ -97,15 +99,23 @@ export class ColdRoomThresholdsService {
     return this.map()[slug] || null;
   }
 
-  set(area: string, tMax: number, tMin?: number): void {
+  set(area: string, tMax: number, tMin?: number, note?: string): void {
     const slug = slugifyArea(area);
+    const prev = this.map()[slug];
     const updated: ThresholdsMap = {
       ...this.map(),
-      [slug]: { area, tMax, tMin, updatedAt: new Date().toISOString() },
+      [slug]: {
+        ...(prev || {}),
+        area,
+        tMax,
+        tMin,
+        note: note ?? prev?.note,
+        updatedAt: new Date().toISOString(),
+      },
     };
     this.map.set(updated); // optimistic
     this.persistLocalCache(updated);
-    this.pushUpsert(area, tMax, tMin);
+    this.pushUpsert(area, tMax, tMin, note ?? prev?.note);
   }
 
   remove(area: string): void {
@@ -258,14 +268,14 @@ export class ColdRoomThresholdsService {
     return out;
   }
 
-  private pushUpsert(area: string, tMax: number, tMin?: number): void {
+  private pushUpsert(area: string, tMax: number, tMin?: number, note?: string): void {
     const siteId = this.currentSiteId;
     if (!siteId) return;
     const slug = slugifyArea(area);
     this.http
       .put<{ ok: boolean }>(
         `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`,
-        { area, tMax, tMin: tMin ?? null },
+        { area, tMax, tMin: tMin ?? null, note: note ?? null },
       )
       .subscribe({ error: () => this.refresh() });
   }

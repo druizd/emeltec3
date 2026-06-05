@@ -24,10 +24,13 @@ CREATE TABLE IF NOT EXISTS cold_room_threshold (
     sustained_min  INTEGER,
     severe_min     INTEGER,
     hysteresis_c   DOUBLE PRECISION,
+    note           TEXT,
     updated_at     TIMESTAMPTZ        NOT NULL DEFAULT NOW(),
     updated_by     VARCHAR(150),
     PRIMARY KEY (site_id, sala_slug)
 );
+-- Idempotente para deployments incrementales.
+ALTER TABLE cold_room_threshold ADD COLUMN IF NOT EXISTS note TEXT;
 
 -- Ventanas defrost programadas.
 CREATE TABLE IF NOT EXISTS cold_room_defrost_window (

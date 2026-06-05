@@ -15,17 +15,17 @@ router.use(protect);
  * Slug derivado del area (lowercase + ASCII + dashes).
  */
 const DEFAULT_THRESHOLDS = [
-  { area: 'Matanza / Eviscerado', tMax: 10 },
-  { area: 'Calibrado', tMax: 10 },
-  { area: 'Empaque Primario', tMax: 10 },
-  { area: 'Antecámara Primaria', tMax: 4 },
-  { area: 'Cámara Primaria', tMax: -18 },
-  { area: 'Filete', tMax: 10 },
-  { area: 'Cámara de Tránsito', tMax: 4 },
-  { area: 'Porciones', tMax: 10 },
-  { area: 'Empaque Secundario', tMax: 10 },
-  { area: 'Antecámara Secundaria', tMax: 4 },
-  { area: 'Cámara Secundaria', tMax: -18 },
+  { area: 'Matanza / Eviscerado', tMax: 10, tMin: -2, note: 'Evitar congelamiento' },
+  { area: 'Calibrado', tMax: 10, tMin: -2, note: 'Evitar congelamiento' },
+  { area: 'Empaque Primario', tMax: 10, tMin: 0, note: 'Evitar congelamiento' },
+  { area: 'Antecámara Primaria', tMax: 4, tMin: -2, note: 'Zona de amortiguación' },
+  { area: 'Cámara Primaria', tMax: -18, tMin: -25, note: 'Alerta de sobre consumo energía' },
+  { area: 'Filete', tMax: 10, tMin: 0, note: 'Evitar congelación' },
+  { area: 'Cámara de Tránsito', tMax: 4, tMin: -2, note: 'Zona de amortiguación' },
+  { area: 'Porciones', tMax: 10, tMin: 0, note: 'Evitar congelamiento' },
+  { area: 'Empaque Secundario', tMax: 10, tMin: 0, note: 'Evitar congelamiento' },
+  { area: 'Antecámara Secundaria', tMax: 4, tMin: -2, note: 'Zona de amortiguación' },
+  { area: 'Cámara Secundaria', tMax: -18, tMin: -25, note: 'Alerta de sobre consumo energía' },
 ];
 
 function slugifyArea(area) {
@@ -45,11 +45,19 @@ async function seedDefaultThresholdsIfEmpty(siteId) {
   if (count.rows[0].c > 0) return false;
   const insertSql = `
     INSERT INTO cold_room_threshold
-      (site_id, sala_slug, area, t_max, updated_at, updated_by)
-    VALUES ($1, $2, $3, $4, NOW(), $5)
+      (site_id, sala_slug, area, t_max, t_min, note, updated_at, updated_by)
+    VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7)
     ON CONFLICT (site_id, sala_slug) DO NOTHING`;
   for (const d of DEFAULT_THRESHOLDS) {
-    await pool.query(insertSql, [siteId, slugifyArea(d.area), d.area, d.tMax, 'system:seed']);
+    await pool.query(insertSql, [
+      siteId,
+      slugifyArea(d.area),
+      d.area,
+      d.tMax,
+      d.tMin ?? null,
+      d.note ?? null,
+      'system:seed',
+    ]);
   }
   await pool.query(
     `INSERT INTO cold_room_audit_log
@@ -96,7 +104,7 @@ router.get('/:siteId/thresholds', async (req, res) => {
     await seedDefaultThresholdsIfEmpty(req.params.siteId);
     const { rows } = await pool.query(
       `SELECT sala_slug, area, t_max, t_min, warn_delta_c, sustained_min, severe_min,
-              hysteresis_c, updated_at, updated_by
+              hysteresis_c, note, updated_at, updated_by
        FROM cold_room_threshold
        WHERE site_id = $1
        ORDER BY area`,
@@ -113,6 +121,7 @@ router.get('/:siteId/thresholds', async (req, res) => {
         sustainedMin: r.sustained_min,
         severeMin: r.severe_min,
         hysteresisC: r.hysteresis_c !== null ? Number(r.hysteresis_c) : null,
+        note: r.note,
         updatedAt: r.updated_at,
         updatedBy: r.updated_by,
       })),
@@ -132,6 +141,7 @@ router.put('/:siteId/thresholds/:slug', async (req, res) => {
     sustainedMin = null,
     severeMin = null,
     hysteresisC = null,
+    note = null,
   } = req.body || {};
   if (!area || typeof tMax !== 'number') {
     return res.status(400).json({ ok: false, error: 'area y tMax requeridos' });
@@ -139,19 +149,31 @@ router.put('/:siteId/thresholds/:slug', async (req, res) => {
   try {
     const actor = actorFromReq(req);
     const prevRes = await pool.query(
-      `SELECT t_max, t_min FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
+      `SELECT t_max, t_min, note FROM cold_room_threshold WHERE site_id=$1 AND sala_slug=$2`,
       [siteId, slug],
     );
     const prev = prevRes.rows[0] || null;
     await pool.query(
       `INSERT INTO cold_room_threshold
         (site_id, sala_slug, area, t_max, t_min, warn_delta_c, sustained_min, severe_min,
-         hysteresis_c, updated_at, updated_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, NOW(), $10)
+         hysteresis_c, note, updated_at, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW(), $11)
        ON CONFLICT (site_id, sala_slug) DO UPDATE SET
          area=$3, t_max=$4, t_min=$5, warn_delta_c=$6, sustained_min=$7, severe_min=$8,
-         hysteresis_c=$9, updated_at=NOW(), updated_by=$10`,
-      [siteId, slug, area, tMax, tMin, warnDeltaC, sustainedMin, severeMin, hysteresisC, actor.name],
+         hysteresis_c=$9, note=$10, updated_at=NOW(), updated_by=$11`,
+      [
+        siteId,
+        slug,
+        area,
+        tMax,
+        tMin,
+        warnDeltaC,
+        sustainedMin,
+        severeMin,
+        hysteresisC,
+        note,
+        actor.name,
+      ],
     );
     logAudit(
       siteId,
@@ -159,10 +181,16 @@ router.put('/:siteId/thresholds/:slug', async (req, res) => {
       'threshold',
       prev ? 'update' : 'create',
       area,
-      prev ? { tMax: Number(prev.t_max), tMin: prev.t_min !== null ? Number(prev.t_min) : null } : null,
-      { tMax, tMin },
+      prev
+        ? {
+            tMax: Number(prev.t_max),
+            tMin: prev.t_min !== null ? Number(prev.t_min) : null,
+            note: prev.note,
+          }
+        : null,
+      { tMax, tMin, note },
     );
-    res.json({ ok: true, data: { slug, area, tMax, tMin } });
+    res.json({ ok: true, data: { slug, area, tMax, tMin, note } });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
