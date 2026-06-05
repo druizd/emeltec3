@@ -1,6 +1,6 @@
-# ftsconsumer-rust
+# ftpconsumer-rust
 
-Consumer gRPC independiente para el `ftsprocessor` Windows.
+Consumer gRPC independiente para el `ftpprocessor` Windows.
 
 Servicio protobuf: `LogIngestion`.
 
