@@ -177,14 +177,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(get_env("RUST_LOG", "info"))
         .init();
 
-    let port = get_env("FTS_CONSUMER_PORT", "50061");
+    let port = get_env("FTP_CONSUMER_PORT", "50061");
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
     let db = connect_db().await?;
     let service = ConsumerService {
         db: Arc::new(Mutex::new(db)),
     };
 
-    info!("ftsconsumer gRPC escuchando en {}", addr);
+    info!("ftpconsumer gRPC escuchando en {}", addr);
 
     Server::builder()
         .add_service(LogIngestionServer::new(service))
