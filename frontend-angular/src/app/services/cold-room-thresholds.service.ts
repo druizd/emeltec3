@@ -24,20 +24,8 @@ export const THRESHOLD_DEFAULTS = {
   hysteresisC: 0.5,
 };
 
-// Defaults provided by client (Ventisqueros faenadora) — sembrado inicial si tabla vacía.
-const DEFAULT_THRESHOLDS: SalaThreshold[] = [
-  { area: 'Matanza / Eviscerado', tMax: 10, updatedAt: '' },
-  { area: 'Calibrado', tMax: 10, updatedAt: '' },
-  { area: 'Empaque Primario', tMax: 10, updatedAt: '' },
-  { area: 'Antecámara Primaria', tMax: 4, updatedAt: '' },
-  { area: 'Cámara Primaria', tMax: -18, updatedAt: '' },
-  { area: 'Filete', tMax: 10, updatedAt: '' },
-  { area: 'Cámara de Tránsito', tMax: 4, updatedAt: '' },
-  { area: 'Porciones', tMax: 10, updatedAt: '' },
-  { area: 'Empaque Secundario', tMax: 10, updatedAt: '' },
-  { area: 'Antecámara Secundaria', tMax: 4, updatedAt: '' },
-  { area: 'Cámara Secundaria', tMax: -18, updatedAt: '' },
-];
+// Defaults autoritativos viven en backend (coldRoomRoutes.js → seedDefaultThresholdsIfEmpty).
+// Frontend sólo lee. No seed cliente.
 
 const STORAGE_KEY = 'coldroom:thresholds:v2';
 
@@ -90,15 +78,7 @@ export class ColdRoomThresholdsService {
               updatedBy: r.updatedBy,
             };
           }
-          // If backend empty, seed defaults locally + push them to server.
-          if (Object.keys(next).length === 0) {
-            for (const d of DEFAULT_THRESHOLDS) {
-              const slug = slugifyArea(d.area);
-              const seeded: SalaThreshold = { ...d, updatedAt: new Date().toISOString() };
-              next[slug] = seeded;
-              this.pushUpsert(seeded.area, seeded.tMax, seeded.tMin);
-            }
-          }
+          // Backend seeds defaults automáticamente si tabla vacía (single source of truth).
           this.map.set(next);
           this.persistLocalCache(next);
         },
@@ -145,19 +125,14 @@ export class ColdRoomThresholdsService {
   resetToDefaults(): void {
     const siteId = this.currentSiteId;
     if (!siteId) return;
+    // Backend re-siembra defaults dentro del endpoint reset.
     this.http
       .post<{ ok: boolean }>(
         `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/reset`,
         {},
       )
       .subscribe({
-        next: () => {
-          // Re-seed defaults after wipe.
-          for (const d of DEFAULT_THRESHOLDS) {
-            this.pushUpsert(d.area, d.tMax, d.tMin);
-          }
-          this.refresh();
-        },
+        next: () => this.refresh(),
         error: () => this.refresh(),
       });
   }

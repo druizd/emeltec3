@@ -9,6 +9,57 @@ router.use(protect);
 // Storage: Postgres tables created in migration 006.
 // Auth: protect middleware ensures req.user is set; we surface actor in audit.
 
+/**
+ * Defaults HACCP por sala — provistos por cliente Ventisqueros faenadora.
+ * Sembrados automáticamente al primer GET de cada site_id si tabla vacía.
+ * Slug derivado del area (lowercase + ASCII + dashes).
+ */
+const DEFAULT_THRESHOLDS = [
+  { area: 'Matanza / Eviscerado', tMax: 10 },
+  { area: 'Calibrado', tMax: 10 },
+  { area: 'Empaque Primario', tMax: 10 },
+  { area: 'Antecámara Primaria', tMax: 4 },
+  { area: 'Cámara Primaria', tMax: -18 },
+  { area: 'Filete', tMax: 10 },
+  { area: 'Cámara de Tránsito', tMax: 4 },
+  { area: 'Porciones', tMax: 10 },
+  { area: 'Empaque Secundario', tMax: 10 },
+  { area: 'Antecámara Secundaria', tMax: 4 },
+  { area: 'Cámara Secundaria', tMax: -18 },
+];
+
+function slugifyArea(area) {
+  return String(area || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function seedDefaultThresholdsIfEmpty(siteId) {
+  const count = await pool.query(
+    `SELECT COUNT(*)::int AS c FROM cold_room_threshold WHERE site_id=$1`,
+    [siteId],
+  );
+  if (count.rows[0].c > 0) return false;
+  const insertSql = `
+    INSERT INTO cold_room_threshold
+      (site_id, sala_slug, area, t_max, updated_at, updated_by)
+    VALUES ($1, $2, $3, $4, NOW(), $5)
+    ON CONFLICT (site_id, sala_slug) DO NOTHING`;
+  for (const d of DEFAULT_THRESHOLDS) {
+    await pool.query(insertSql, [siteId, slugifyArea(d.area), d.area, d.tMax, 'system:seed']);
+  }
+  await pool.query(
+    `INSERT INTO cold_room_audit_log
+       (site_id, actor, actor_role, category, action, target, prev, next, note)
+     VALUES ($1, 'system', 'system', 'threshold', 'reset', 'all', NULL, $2, 'Seed inicial defaults cliente')`,
+    [siteId, JSON.stringify(DEFAULT_THRESHOLDS)],
+  );
+  return true;
+}
+
 function actorFromReq(req) {
   const u = req.user;
   if (!u) return { name: 'operador', role: null };
@@ -42,6 +93,7 @@ async function logAudit(siteId, actor, category, action, target, prev, next, not
 // --- Thresholds ---
 router.get('/:siteId/thresholds', async (req, res) => {
   try {
+    await seedDefaultThresholdsIfEmpty(req.params.siteId);
     const { rows } = await pool.query(
       `SELECT sala_slug, area, t_max, t_min, warn_delta_c, sustained_min, severe_min,
               hysteresis_c, updated_at, updated_by
@@ -143,7 +195,17 @@ router.post('/:siteId/thresholds/reset', async (req, res) => {
   try {
     const actor = actorFromReq(req);
     await pool.query(`DELETE FROM cold_room_threshold WHERE site_id=$1`, [req.params.siteId]);
-    logAudit(req.params.siteId, actor, 'threshold', 'reset', 'all', null, null, 'reset all');
+    await seedDefaultThresholdsIfEmpty(req.params.siteId);
+    logAudit(
+      req.params.siteId,
+      actor,
+      'threshold',
+      'reset',
+      'all',
+      null,
+      DEFAULT_THRESHOLDS,
+      'Restablecido a defaults cliente',
+    );
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
