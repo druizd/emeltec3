@@ -128,14 +128,18 @@ function chileMonthStart(): string {
                 <p>Volver al detalle del sitio</p>
               </div>
 
-              <app-site-variable-settings-panel
-                [siteId]="context.site.id"
-                [site]="context.site"
-                [showPozoConfig]="false"
-                accentColor="#8b5cf6"
-                accentSoft="rgba(139,92,246,0.10)"
-                (variableMapChanged)="onVariableMapChanged()"
-              />
+              @defer (when settingsPanelOpen()) {
+                <app-site-variable-settings-panel
+                  [siteId]="context.site.id"
+                  [site]="context.site"
+                  [showPozoConfig]="false"
+                  accentColor="#8b5cf6"
+                  accentSoft="rgba(139,92,246,0.10)"
+                  (variableMapChanged)="onVariableMapChanged()"
+                />
+              } @placeholder {
+                <app-skeleton class="h-64 w-full rounded-xl" />
+              }
             </div>
           } @else {
             <nav
@@ -440,35 +444,57 @@ function chileMonthStart(): string {
                 </nav>
 
                 @if (activeOperationView() === 'diagram') {
-                  <app-pasteurizador-process-diagram [data]="processDiagramData()" />
+                  @defer (when activeOperationView() === 'diagram') {
+                    <app-pasteurizador-process-diagram [data]="processDiagramData()" />
+                  } @placeholder {
+                    <app-skeleton class="h-[520px] w-full rounded-xl" />
+                  }
                 } @else {
-                  <app-pasteurizador-trends-panel
-                    [times]="trendTimes()"
-                    [pasteurValues]="trendPasteurValues()"
-                    [entradaValues]="trendEntradaValues()"
-                    [productoValues]="trendProductoValues()"
-                    [valveValues]="trendValveValues()"
-                    [dailyKpis]="dailyKpis()"
-                  />
+                  @defer (
+                    when activeSection() === 'operation' && activeOperationView() === 'trends'
+                  ) {
+                    <app-pasteurizador-trends-panel
+                      [times]="trendTimes()"
+                      [pasteurValues]="trendPasteurValues()"
+                      [entradaValues]="trendEntradaValues()"
+                      [productoValues]="trendProductoValues()"
+                      [valveValues]="trendValveValues()"
+                      [dailyKpis]="dailyKpis()"
+                    />
+                  } @placeholder {
+                    <app-skeleton class="h-[520px] w-full rounded-xl" />
+                  }
                 }
               </main>
             } @else if (activeSection() === 'alerts') {
               <main id="pasteur-alerts" role="tabpanel">
-                <app-water-detail-alertas
-                  [sitioId]="context.site.id"
-                  [empresaId]="context.company.id"
-                />
+                @defer (when activeSection() === 'alerts') {
+                  <app-water-detail-alertas
+                    [sitioId]="context.site.id"
+                    [empresaId]="context.company.id"
+                  />
+                } @placeholder {
+                  <app-skeleton class="h-64 w-full rounded-xl" />
+                }
               </main>
             } @else if (activeSection() === 'log') {
               <main id="pasteur-log" role="tabpanel">
-                <app-water-detail-bitacora
-                  [sitioId]="context.site.id"
-                  [empresaId]="context.company.id"
-                />
+                @defer (when activeSection() === 'log') {
+                  <app-water-detail-bitacora
+                    [sitioId]="context.site.id"
+                    [empresaId]="context.company.id"
+                  />
+                } @placeholder {
+                  <app-skeleton class="h-64 w-full rounded-xl" />
+                }
               </main>
             } @else if (activeSection() === 'analysis' && isSuperAdmin()) {
               <main id="pasteur-analysis" role="tabpanel">
-                <app-water-detail-analisis [sitioId]="context.site.id" />
+                @defer (when activeSection() === 'analysis' && isSuperAdmin()) {
+                  <app-water-detail-analisis [sitioId]="context.site.id" />
+                } @placeholder {
+                  <app-skeleton class="h-64 w-full rounded-xl" />
+                }
               </main>
             }
           }
@@ -1384,6 +1410,12 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
       return;
     }
 
+    const cachedMatch = this.findAccessibleSite(this.companyService.visibleHierarchy(), siteId);
+    if (cachedMatch) {
+      this.applySiteContext(cachedMatch);
+      return;
+    }
+
     this.companyService.fetchHierarchy().subscribe({
       next: (res) => {
         if (!res.ok) {
@@ -1397,15 +1429,7 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
           return;
         }
 
-        this.companyService.selectedSubCompanyId.set(match.subCompany.id);
-        this.companyService.selectedSiteModuleKey.set('Proceso');
-        this.companyService.selectedSiteTypeFilter.set(['pasteurizador']);
-        this.siteContext.set(match);
-        this.dailyKpis.set(null);
-        this.startRealtimePolling(siteId);
-        if (this.activeSection() === 'operation' && this.activeOperationView() === 'trends') {
-          this.startDailyKpisPolling(siteId);
-        }
+        this.applySiteContext(match);
       },
       error: () => this.router.navigate(['/companies']),
     });
@@ -1933,6 +1957,18 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
       },
       error: () => undefined,
     });
+  }
+
+  private applySiteContext(match: SiteContext): void {
+    this.companyService.selectedSubCompanyId.set(match.subCompany.id);
+    this.companyService.selectedSiteModuleKey.set('Proceso');
+    this.companyService.selectedSiteTypeFilter.set(['pasteurizador']);
+    this.siteContext.set(match);
+    this.dailyKpis.set(null);
+    this.startRealtimePolling(match.site.id);
+    if (this.activeSection() === 'operation' && this.activeOperationView() === 'trends') {
+      this.startDailyKpisPolling(match.site.id);
+    }
   }
 
   private currentSiteId(): string {

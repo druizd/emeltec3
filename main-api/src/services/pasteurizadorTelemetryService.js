@@ -709,45 +709,41 @@ async function loadPasteurizadorBundle(site, options) {
   const inputsPromise = loadPasteurizadorBundleInputs(site);
   const historyPromise = db.query(
     `
-    WITH latest_cagg AS (
-      SELECT max(bucket) AS max_bucket
-      FROM ${granConfig.view}
-      WHERE id_serial = $1
-        AND bucket >= now() - INTERVAL '48 hours'
-    ),
-    recent_raw AS (
-      SELECT
-        time_bucket($3::interval, e.time) AS time,
-        last(e.received_at, e.time)       AS received_at,
-        last(e.id_serial, e.time)         AS id_serial,
-        last(e.data, e.time)              AS data
-      FROM equipo e
-      CROSS JOIN latest_cagg lc
-      WHERE e.id_serial = $1
-        AND e.time >= COALESCE(lc.max_bucket + $3::interval, now() - INTERVAL '2 hours')
-      GROUP BY 1
-    ),
-    materialized AS (
-      SELECT bucket AS time, received_at, id_serial, data
-      FROM ${granConfig.view}
-      WHERE id_serial = $1
-        AND bucket >= now() - INTERVAL '48 hours'
-    )
-    SELECT time, received_at, id_serial, data
-    FROM (
-      SELECT * FROM recent_raw
-      UNION ALL
-      SELECT * FROM materialized
-    ) history
-    ORDER BY time DESC
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM ${granConfig.view}
+    WHERE id_serial = $1
+      AND bucket >= now() - INTERVAL '48 hours'
+    ORDER BY bucket DESC
     LIMIT $2
     `,
-    [site.id_serial, limit, granConfig.bucketInterval],
+    [site.id_serial, limit],
   );
 
   const [{ inputs, fromCache }, historyRes] = await Promise.all([inputsPromise, historyPromise]);
   const { mappings, latest } = inputs;
-  const rows = historyRes.rows.map((rawRow) => buildHistoryRow({ site, mappings, rawRow, roles }));
+  let historyRows = historyRes.rows;
+
+  if (historyRows.length === 0) {
+    const fallback = await db.query(
+      `
+      SELECT
+        time_bucket($3::interval, time) AS time,
+        last(received_at, time)         AS received_at,
+        last(id_serial, time)           AS id_serial,
+        last(data, time)                AS data
+      FROM equipo
+      WHERE id_serial = $1
+        AND time >= now() - INTERVAL '2 hours'
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT $2
+      `,
+      [site.id_serial, limit, granConfig.bucketInterval],
+    );
+    historyRows = fallback.rows;
+  }
+
+  const rows = historyRows.map((rawRow) => buildHistoryRow({ site, mappings, rawRow, roles }));
 
   return {
     snapshot: buildPasteurizadorSnapshotPayload(site, mappings, latest),
