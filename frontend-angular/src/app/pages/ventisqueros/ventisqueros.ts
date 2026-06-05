@@ -1072,12 +1072,15 @@ interface MetricOption {
 
           <div class="vs-taps-grid grid gap-3">
             @for (d of tapDiagFiltered(); track d.tap) {
-              <button
-                type="button"
-                [routerLink]="tapDiagRouterLink(d.tap)"
-                class="vs-tap-diag group flex w-full cursor-pointer flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
+              <div
+                class="vs-tap-diag group relative flex w-full flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
                 [attr.data-status]="d.status"
               >
+                <a
+                  [routerLink]="tapRouterLink(d.tap)"
+                  class="absolute inset-0 z-0 rounded-2xl"
+                  [attr.aria-label]="d.tap + ' — ver TAP y configurar'"
+                ></a>
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex min-w-0 items-start gap-3">
                     <div
@@ -1160,16 +1163,24 @@ interface MetricOption {
                   }
                 </div>
 
-                <div class="mt-3 flex items-center justify-between border-t border-slate-100 pt-2">
-                  <span class="text-[10.5px] text-slate-400 font-mono">
-                    {{ d.channelsTotal === 0 ? 'Sin canales' : 'Diagnóstico →' }}
+                <div class="relative z-10 mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                  <a
+                    [routerLink]="tapDiagRouterLink(d.tap)"
+                    class="vs-tap-diag-btn"
+                    [title]="'Diagnóstico de red · ' + d.tap"
+                  >
+                    <span class="material-symbols-outlined text-[13px]">network_check</span>
+                    Diag red
+                  </a>
+                  <span class="inline-flex items-center gap-1 text-[10.5px] text-slate-400 font-mono">
+                    Ver TAP
+                    <span
+                      class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5"
+                      [style.color]="d.color"
+                      >chevron_right</span>
                   </span>
-                  <span
-                    class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5"
-                    [style.color]="d.color"
-                    >chevron_right</span>
                 </div>
-              </button>
+              </div>
             }
             @if (tapDiagFiltered().length === 0) {
               <div class="vs-empty-overlay col-span-full">
@@ -3482,6 +3493,30 @@ interface MetricOption {
         text-align: left;
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
         border-color: #e2e8f0;
+        cursor: pointer;
+      }
+      .vs-tap-diag:hover {
+        border-color: rgba(13, 175, 189, 0.40);
+      }
+      .vs-tap-diag-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 9px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        font-weight: 600;
+        line-height: 1;
+        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+      .vs-tap-diag-btn:hover {
+        color: #6366f1;
+        border-color: rgba(99, 102, 241, 0.35);
+        background: rgba(99, 102, 241, 0.06);
       }
       .vs-tap-diag[data-status='offline'] {
         border-color: rgba(239, 68, 68, 0.30);
