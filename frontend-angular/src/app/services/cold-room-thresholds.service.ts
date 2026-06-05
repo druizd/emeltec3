@@ -58,9 +58,10 @@ export class ColdRoomThresholdsService {
     const siteId = this.currentSiteId;
     if (!siteId) return;
     this.http
-      .get<{ ok: boolean; data: Array<SalaThreshold & { slug: string }> }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds`,
-      )
+      .get<{
+        ok: boolean;
+        data: Array<SalaThreshold & { slug: string }>;
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/thresholds`)
       .subscribe({
         next: (res) => {
           if (!res.ok) return;
@@ -126,9 +127,9 @@ export class ColdRoomThresholdsService {
     const siteId = this.currentSiteId;
     if (!siteId) return;
     this.http
-      .delete<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`,
-      )
+      .delete<{
+        ok: boolean;
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`)
       .subscribe({ error: () => this.refresh() });
   }
 
@@ -137,10 +138,7 @@ export class ColdRoomThresholdsService {
     if (!siteId) return;
     // Backend re-siembra defaults dentro del endpoint reset.
     this.http
-      .post<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/reset`,
-        {},
-      )
+      .post<{ ok: boolean }>(`/api/cold-room/${encodeURIComponent(siteId)}/thresholds/reset`, {})
       .subscribe({
         next: () => this.refresh(),
         error: () => this.refresh(),
@@ -164,7 +162,11 @@ export class ColdRoomThresholdsService {
     }
   }
 
-  evaluate(area: string, currentMaxT: number, marginPct = 0.05): 'ok' | 'warn' | 'crit' | 'unknown' {
+  evaluate(
+    area: string,
+    currentMaxT: number,
+    marginPct = 0.05,
+  ): 'ok' | 'warn' | 'crit' | 'unknown' {
     const th = this.get(area);
     if (!th) return 'unknown';
     if (currentMaxT > th.tMax) return 'crit';
@@ -273,10 +275,14 @@ export class ColdRoomThresholdsService {
     if (!siteId) return;
     const slug = slugifyArea(area);
     this.http
-      .put<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`,
-        { area, tMax, tMin: tMin ?? null, note: note ?? null },
-      )
+      .put<{
+        ok: boolean;
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/thresholds/${encodeURIComponent(slug)}`, {
+        area,
+        tMax,
+        tMin: tMin ?? null,
+        note: note ?? null,
+      })
       .subscribe({ error: () => this.refresh() });
   }
 

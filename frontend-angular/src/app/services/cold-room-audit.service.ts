@@ -55,9 +55,10 @@ export class ColdRoomAuditService {
     const siteId = this.currentSiteId;
     if (!siteId) return;
     this.http
-      .get<{ ok: boolean; data: ColdRoomAuditEntry[] }>(
-        `/api/cold-room/${encodeURIComponent(siteId)}/audit?limit=2000`,
-      )
+      .get<{
+        ok: boolean;
+        data: ColdRoomAuditEntry[];
+      }>(`/api/cold-room/${encodeURIComponent(siteId)}/audit?limit=2000`)
       .subscribe({
         next: (res) => {
           if (!res.ok) return;
@@ -142,13 +143,7 @@ export class ColdRoomAuditService {
       if (fromMs !== null && tsMs < fromMs) return false;
       if (toMs !== null && tsMs > toMs) return false;
       if (q) {
-        const hay = [
-          e.actor,
-          e.target,
-          this.stringify(e.prev),
-          this.stringify(e.next),
-          e.note,
-        ]
+        const hay = [e.actor, e.target, this.stringify(e.prev), this.stringify(e.next), e.note]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();

@@ -109,9 +109,9 @@ export class ColdRoomDefrostService {
     const siteId = this.currentSiteId;
     if (siteId) {
       this.http
-        .delete<{ ok: boolean }>(
-          `/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(id)}`,
-        )
+        .delete<{
+          ok: boolean;
+        }>(`/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(id)}`)
         .subscribe({ error: () => this.refresh() });
     }
   }
@@ -125,10 +125,9 @@ export class ColdRoomDefrostService {
     const siteId = this.currentSiteId;
     if (siteId) {
       this.http
-        .put<{ ok: boolean }>(
-          `/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(id)}`,
-          patch,
-        )
+        .put<{
+          ok: boolean;
+        }>(`/api/cold-room/${encodeURIComponent(siteId)}/defrost/${encodeURIComponent(id)}`, patch)
         .subscribe({ error: () => this.refresh() });
     }
   }

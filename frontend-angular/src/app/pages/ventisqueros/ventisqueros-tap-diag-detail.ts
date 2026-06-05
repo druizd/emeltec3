@@ -35,12 +35,7 @@ const STALE_MS = 60_000;
     <div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden" style="background:#F0F2F5;">
       <!-- Header -->
       <div class="diag-header flex flex-wrap items-center gap-3 border-t border-b px-5 py-2.5">
-        <button
-          type="button"
-          (click)="goBack()"
-          class="diag-icon-btn"
-          aria-label="Volver"
-        >
+        <button type="button" (click)="goBack()" class="diag-icon-btn" aria-label="Volver">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span>
         </button>
         <div
@@ -49,7 +44,8 @@ const STALE_MS = 60_000;
           [style.border]="'1px solid ' + tapColor() + '40'"
         >
           <span class="material-symbols-outlined text-[18px]" [style.color]="tapColor()"
-            >memory</span>
+            >memory</span
+          >
         </div>
         <div class="min-w-0">
           <div class="diag-title truncate">{{ siteName() }} · {{ tapId() }}</div>
@@ -69,7 +65,8 @@ const STALE_MS = 60_000;
           title="Actualizar"
         >
           <span class="material-symbols-outlined text-[16px]" [class.diag-spin]="isLoading()"
-            >sync</span>
+            >sync</span
+          >
         </button>
 
         <button
@@ -202,9 +199,7 @@ const STALE_MS = 60_000;
           <!-- Channels table -->
           <div class="ch-table" role="table">
             <div class="ch-table-head" role="row">
-              <button class="th-btn" (click)="toggleSort('id')">
-                Canal {{ sortArrow('id') }}
-              </button>
+              <button class="th-btn" (click)="toggleSort('id')">Canal {{ sortArrow('id') }}</button>
               <span>Área</span>
               <button class="th-btn text-right" (click)="toggleSort('rssi')">
                 RSSI {{ sortArrow('rssi') }}
@@ -242,9 +237,7 @@ const STALE_MS = 60_000;
               </div>
             }
             @if (filteredChannels().length === 0) {
-              <div class="empty-block">
-                Sin canales para el filtro actual.
-              </div>
+              <div class="empty-block">Sin canales para el filtro actual.</div>
             }
           </div>
         }
@@ -253,7 +246,10 @@ const STALE_MS = 60_000;
   `,
   styles: [
     `
-      :host { display: block; height: 100%; }
+      :host {
+        display: block;
+        height: 100%;
+      }
 
       .diag-header {
         background: linear-gradient(180deg, #fbfcfd, #f8fafc);
@@ -271,10 +267,16 @@ const STALE_MS = 60_000;
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #64748b;
-        transition: color 0.15s ease, background 0.15s ease;
+        transition:
+          color 0.15s ease,
+          background 0.15s ease;
       }
-      .diag-icon-btn:hover { color: #6366f1; }
-      .diag-icon-btn:disabled { opacity: 0.5; }
+      .diag-icon-btn:hover {
+        color: #6366f1;
+      }
+      .diag-icon-btn:disabled {
+        opacity: 0.5;
+      }
       .diag-btn {
         display: inline-flex;
         align-items: center;
@@ -289,10 +291,21 @@ const STALE_MS = 60_000;
         font-size: 12px;
         font-weight: 500;
       }
-      .diag-btn:hover { color: #6366f1; background: rgba(99, 102, 241, 0.05); }
-      .diag-btn:disabled { opacity: 0.5; }
-      .diag-spin { animation: diagSpin 0.8s linear infinite; }
-      @keyframes diagSpin { to { transform: rotate(360deg); } }
+      .diag-btn:hover {
+        color: #6366f1;
+        background: rgba(99, 102, 241, 0.05);
+      }
+      .diag-btn:disabled {
+        opacity: 0.5;
+      }
+      .diag-spin {
+        animation: diagSpin 0.8s linear infinite;
+      }
+      @keyframes diagSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
 
       .diag-title {
         font-family: 'Josefin Sans', sans-serif;
@@ -311,19 +324,19 @@ const STALE_MS = 60_000;
         font-family: 'DM Sans', sans-serif;
         font-size: 11px;
         font-weight: 600;
-        background: rgba(34, 197, 94, 0.10);
+        background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
       }
       .diag-status-pill[data-status='degraded'] {
         background: rgba(251, 191, 36, 0.12);
         color: #b45309;
-        border-color: rgba(251, 191, 36, 0.30);
+        border-color: rgba(251, 191, 36, 0.3);
       }
       .diag-status-pill[data-status='offline'] {
         background: rgba(239, 68, 68, 0.12);
         color: #b91c1c;
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
       }
       .diag-status-pill[data-status='unknown'] {
         background: #f1f5f9;
@@ -465,11 +478,13 @@ const STALE_MS = 60_000;
         background: #ffffff;
         color: #475569;
       }
-      .diag-pill:hover { color: #1e293b; }
+      .diag-pill:hover {
+        color: #1e293b;
+      }
       .diag-pill--active {
-        background: rgba(99, 102, 241, 0.10);
+        background: rgba(99, 102, 241, 0.1);
         color: #6366f1;
-        border-color: rgba(99, 102, 241, 0.30);
+        border-color: rgba(99, 102, 241, 0.3);
       }
       .diag-search {
         position: relative;
@@ -535,7 +550,9 @@ const STALE_MS = 60_000;
         text-align: left;
         letter-spacing: 0.08em;
       }
-      .th-btn:hover { color: #475569; }
+      .th-btn:hover {
+        color: #475569;
+      }
       .ch-row {
         font-family: 'DM Sans', sans-serif;
         font-size: 12.5px;
@@ -602,19 +619,19 @@ const STALE_MS = 60_000;
         font-family: 'DM Sans', sans-serif;
         font-size: 10.5px;
         font-weight: 600;
-        background: rgba(34, 197, 94, 0.10);
+        background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
       }
       .ch-status-pill[data-status='stale'] {
         background: rgba(251, 191, 36, 0.12);
         color: #b45309;
-        border-color: rgba(251, 191, 36, 0.30);
+        border-color: rgba(251, 191, 36, 0.3);
       }
       .ch-status-pill[data-status='offline'] {
         background: rgba(239, 68, 68, 0.12);
         color: #b91c1c;
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
       }
 
       .empty-block {
@@ -650,10 +667,21 @@ const STALE_MS = 60_000;
         animation: rowIn 0.28s ease forwards;
         animation-delay: calc(var(--i, 0) * 22ms);
       }
-      @keyframes rowIn { to { opacity: 1; transform: translateY(0); } }
+      @keyframes rowIn {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
       @media (prefers-reduced-motion: reduce) {
-        .anim-stagger { animation: none; opacity: 1; transform: none; }
-        .diag-spin { animation: none; }
+        .anim-stagger {
+          animation: none;
+          opacity: 1;
+          transform: none;
+        }
+        .diag-spin {
+          animation: none;
+        }
       }
     `,
   ],
@@ -700,9 +728,7 @@ export class VentisquerosTapDiagDetailComponent implements OnInit, OnDestroy {
   readonly backLink = computed(() => ['/companies']);
   readonly siteName = computed(() => this.siteRecord()?.descripcion || 'Sitio');
 
-  readonly channels = computed(() =>
-    this.allChannels().filter((c) => c.tap === this.tapId()),
-  );
+  readonly channels = computed(() => this.allChannels().filter((c) => c.tap === this.tapId()));
 
   readonly onlineCount = computed(() => this.channels().filter((c) => c.online).length);
 
@@ -793,9 +819,7 @@ export class VentisquerosTapDiagDetailComponent implements OnInit, OnDestroy {
       return true;
     });
     if (q) {
-      list = list.filter(
-        (c) => c.id.toLowerCase().includes(q) || c.area.toLowerCase().includes(q),
-      );
+      list = list.filter((c) => c.id.toLowerCase().includes(q) || c.area.toLowerCase().includes(q));
     }
     const s = this.sort();
     const dir = s.dir === 'asc' ? 1 : -1;
