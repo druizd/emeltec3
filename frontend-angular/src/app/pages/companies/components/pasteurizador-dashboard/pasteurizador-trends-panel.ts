@@ -18,6 +18,11 @@ import {
   TooltipItem,
   registerables,
 } from 'chart.js';
+import type {
+  PasteurizadorBatchResponse,
+  PasteurizadorDailyKpisResponse,
+} from '../../../../services/company.service';
+import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
 
 Chart.register(...registerables);
 
@@ -45,7 +50,7 @@ interface TrendSummaryCard {
   imports: [CommonModule],
   template: `
     <section class="trend-overview" aria-label="Resumen de tendencias">
-      @for (card of summaryCards; track card.label) {
+      @for (card of summaryCards(); track card.label) {
         <article class="trend-mini-card" [ngClass]="'tone-' + card.tone">
           <span class="material-symbols-outlined">{{ card.icon }}</span>
           <div>
@@ -166,7 +171,7 @@ interface TrendSummaryCard {
             </tr>
           </thead>
           <tbody>
-            @for (batch of batches; track batch.id) {
+            @for (batch of batches(); track batch.id) {
               <tr>
                 <td class="batch-id">{{ batch.id }}</td>
                 <td>
@@ -192,6 +197,10 @@ interface TrendSummaryCard {
                     {{ batch.errores }}
                   </span>
                 </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td class="empty-batches" colspan="6">Sin batches completos hoy</td>
               </tr>
             }
           </tbody>
@@ -621,6 +630,14 @@ interface TrendSummaryCard {
         color: #7c3aed;
       }
 
+      .empty-batches {
+        padding: 28px 18px;
+        color: #94a3b8;
+        font-family: var(--font-body);
+        font-weight: 900;
+        text-align: center;
+      }
+
       .time-cell {
         display: grid;
         grid-template-columns: 28px 1fr;
@@ -720,67 +737,12 @@ export class PasteurizadorTrendsPanelComponent implements AfterViewInit, OnChang
   @Input({ required: true }) entradaValues: number[] = [];
   @Input({ required: true }) productoValues: number[] = [];
   @Input() valveValues: number[] = [];
+  @Input() dailyKpis: PasteurizadorDailyKpisResponse | null = null;
 
   @ViewChild('canvas') canvas?: ElementRef<HTMLCanvasElement>;
 
   readonly rangeStart = signal(0);
   readonly rangeEnd = signal(0);
-
-  readonly summaryCards: TrendSummaryCard[] = [
-    {
-      label: 'Produccion total (hoy)',
-      value: '3.118 L',
-      icon: 'database',
-      tone: 'green',
-    },
-    {
-      label: 'Temp. promedio (hoy)',
-      value: '69.2 °C',
-      icon: 'device_thermostat',
-      tone: 'blue',
-    },
-    {
-      label: 'Tiempo operacion (hoy)',
-      value: '5 h 27 min',
-      icon: 'schedule',
-      tone: 'amber',
-    },
-    {
-      label: 'N° batches (hoy)',
-      value: '2',
-      icon: 'inventory_2',
-      tone: 'cyan',
-    },
-    {
-      label: 'N° alarmas (hoy)',
-      value: '0',
-      icon: 'shield',
-      tone: 'red',
-    },
-  ];
-
-  readonly batches: BatchRow[] = [
-    {
-      id: 1,
-      inicio: '16:52',
-      termino: '17:51',
-      duracion: '59 min',
-      temperatura: '69°',
-      salida: '8377',
-      cierres: 5,
-      errores: 0,
-    },
-    {
-      id: 2,
-      inicio: '17:52',
-      termino: '18:15',
-      duracion: '23 min',
-      temperatura: '75°',
-      salida: '3118',
-      cierres: 1,
-      errores: 5,
-    },
-  ];
 
   private chartInstance: Chart<'line'> | null = null;
   private initialized = false;
@@ -805,6 +767,50 @@ export class PasteurizadorTrendsPanelComponent implements AfterViewInit, OnChang
 
   ngOnDestroy(): void {
     this.destroyChart();
+  }
+
+  batches(): BatchRow[] {
+    return (this.dailyKpis?.batches ?? []).map((batch) => this.mapBatchRow(batch));
+  }
+
+  summaryCards(): TrendSummaryCard[] {
+    const kpis = this.dailyKpis?.kpis ?? null;
+
+    return [
+      {
+        label: 'Produccion total (hoy)',
+        value: kpis ? `${this.formatNumber(kpis.production_total_l, 0)} L` : '-- L',
+        icon: 'database',
+        tone: 'green',
+      },
+      {
+        label: 'Temp. promedio (hoy)',
+        value:
+          kpis?.pasteurization_avg_c === null || kpis?.pasteurization_avg_c === undefined
+            ? '-- \u00b0C'
+            : `${this.formatNumber(kpis.pasteurization_avg_c, 1)} \u00b0C`,
+        icon: 'device_thermostat',
+        tone: 'blue',
+      },
+      {
+        label: 'Tiempo operacion (hoy)',
+        value: kpis ? this.formatDuration(kpis.operation_minutes) : '--',
+        icon: 'schedule',
+        tone: 'amber',
+      },
+      {
+        label: 'N\u00b0 batches (hoy)',
+        value: kpis ? this.formatNumber(kpis.valid_batches, 0) : '--',
+        icon: 'inventory_2',
+        tone: 'cyan',
+      },
+      {
+        label: 'N\u00b0 alarmas (hoy)',
+        value: kpis ? this.formatNumber(kpis.alarms_count, 0) : '--',
+        icon: 'shield',
+        tone: 'red',
+      },
+    ];
   }
 
   applyPreset(minutes: number): void {
@@ -1117,6 +1123,46 @@ export class PasteurizadorTrendsPanelComponent implements AfterViewInit, OnChang
 
   private visibleValues(values: number[]): number[] {
     return values.slice(this.rangeStart(), this.rangeEnd() + 1);
+  }
+
+  private mapBatchRow(batch: PasteurizadorBatchResponse): BatchRow {
+    return {
+      id: batch.id,
+      inicio: this.formatBatchTime(batch.start_at),
+      termino: this.formatBatchTime(batch.end_at),
+      duracion: this.formatDuration(batch.duration_min),
+      temperatura:
+        batch.temp_promedio_c === null ? '--°' : `${this.formatNumber(batch.temp_promedio_c, 0)}°`,
+      salida: this.formatNumber(batch.volume_l, 0),
+      cierres: batch.cierres_valvula,
+      errores: batch.errores_criticos,
+    };
+  }
+
+  private formatBatchTime(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '--:--';
+
+    return new Intl.DateTimeFormat('es-CL', {
+      timeZone: CHILE_TIME_ZONE,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date);
+  }
+
+  private formatNumber(value: number, maximumFractionDigits: number): string {
+    return value.toLocaleString('es-CL', { maximumFractionDigits });
+  }
+
+  private formatDuration(minutes: number): string {
+    const safeMinutes = Math.max(0, Math.round(minutes));
+    const hours = Math.floor(safeMinutes / 60);
+    const remainingMinutes = safeMinutes % 60;
+
+    if (!hours) return `${remainingMinutes} min`;
+    if (!remainingMinutes) return `${hours} h`;
+    return `${hours} h ${remainingMinutes} min`;
   }
 
   private destroyChart(): void {

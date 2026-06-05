@@ -477,11 +477,11 @@ export class VentisquerosFloorMapComponent {
   }
 
   chipPrimary(s: Sensor): string {
-    return this.metric() === 'H' ? `${s.h}%` : `${s.t.toFixed(1)}°C`;
+    return this.metric() === 'H' ? `${Number(s.h.toFixed(2))}%` : `${s.t.toFixed(1)}°C`;
   }
 
   chipSecondary(s: Sensor): string {
-    return this.metric() === 'H' ? `${s.t.toFixed(1)}°C` : `${s.h}%`;
+    return this.metric() === 'H' ? `${s.t.toFixed(1)}°C` : `${Number(s.h.toFixed(2))}%`;
   }
 
   // ── Zoom / Pan ───────────────────────────────────────────────────
