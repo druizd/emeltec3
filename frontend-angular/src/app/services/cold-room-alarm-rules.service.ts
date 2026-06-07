@@ -19,33 +19,35 @@ export interface AlarmRule {
   severity: AlarmSeverity;
   notifyEmail: boolean;
   notifyUi: boolean;
-  recipientIds: number[];
+  recipientUserIds: string[];
   createdAt: string;
   updatedAt: string;
 }
 
-export interface AlarmRecipient {
-  id?: number;
+export interface EligibleUser {
+  id: string;
+  nombre: string;
+  apellido: string;
   email: string;
-  name?: string | null;
-  enabled: boolean;
+  cargo: string | null;
+  tipo: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class ColdRoomAlarmRulesService {
   private readonly http = inject(HttpClient);
   private readonly rulesSignal = signal<AlarmRule[]>([]);
-  private readonly recipientsSignal = signal<AlarmRecipient[]>([]);
+  private readonly usersSignal = signal<EligibleUser[]>([]);
   private currentSiteId: string | null = null;
 
   readonly rules = computed(() => this.rulesSignal());
-  readonly recipients = computed(() => this.recipientsSignal());
+  readonly eligibleUsers = computed(() => this.usersSignal());
 
   setSiteId(siteId: string): void {
     if (this.currentSiteId === siteId) return;
     this.currentSiteId = siteId;
     this.refresh();
-    this.refreshRecipients();
+    this.refreshEligibleUsers();
   }
 
   refresh(): void {
@@ -62,16 +64,16 @@ export class ColdRoomAlarmRulesService {
       });
   }
 
-  refreshRecipients(): void {
+  refreshEligibleUsers(): void {
     const sid = this.currentSiteId;
     if (!sid) return;
     this.http
-      .get<{ ok: boolean; data: AlarmRecipient[] }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-recipients`,
+      .get<{ ok: boolean; data: EligibleUser[] }>(
+        `/api/cold-room/${encodeURIComponent(sid)}/alarm-eligible-users`,
       )
       .subscribe({
         next: (res) => {
-          if (res.ok) this.recipientsSignal.set(res.data || []);
+          if (res.ok) this.usersSignal.set(res.data || []);
         },
       });
   }
@@ -115,27 +117,6 @@ export class ColdRoomAlarmRulesService {
     const cur = this.rulesSignal().find((r) => r.id === id);
     if (!cur) return;
     this.update(id, { enabled: !cur.enabled });
-  }
-
-  addRecipient(payload: { email: string; name?: string; enabled?: boolean }): void {
-    const sid = this.currentSiteId;
-    if (!sid) return;
-    this.http
-      .post<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-recipients`,
-        payload,
-      )
-      .subscribe({ next: () => this.refreshRecipients() });
-  }
-
-  removeRecipient(id: number): void {
-    const sid = this.currentSiteId;
-    if (!sid) return;
-    this.http
-      .delete<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-recipients/${id}`,
-      )
-      .subscribe({ next: () => this.refreshRecipients() });
   }
 
   describeRule(rule: AlarmRule): string {

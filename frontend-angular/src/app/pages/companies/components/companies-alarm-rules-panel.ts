@@ -30,7 +30,7 @@ interface DraftRule {
   sustainedMin: number;
   severity: AlarmSeverity;
   notifyUi: boolean;
-  recipientIds: number[];
+  recipientUserIds: string[];
   enabled: boolean;
 }
 
@@ -44,7 +44,7 @@ const DEFAULT_DRAFT: DraftRule = {
   sustainedMin: 5,
   severity: 'warn',
   notifyUi: true,
-  recipientIds: [],
+  recipientUserIds: [],
   enabled: true,
 };
 
@@ -183,32 +183,34 @@ const DEFAULT_DRAFT: DraftRule = {
 
             <div class="ar-field ar-field--full">
               <span>¿A quién avisamos por email?</span>
-              @if (recipients().length === 0) {
+              @if (eligibleUsers().length === 0) {
                 <div class="ar-empty-inline">
-                  Aún no hay destinatarios. Agrega correos en la sección "Destinatarios" abajo para
-                  poder seleccionarlos.
+                  No hay usuarios asignados a esta instalación. Agrega usuarios en
+                  <strong>Gestión Usuarios</strong> para poder elegirlos como destinatarios.
                 </div>
               } @else {
                 <div class="ar-recipient-picker">
-                  @for (r of recipients(); track r.email) {
-                    <label class="ar-recipient-check" [class.ar-recipient-check--off]="!r.enabled">
+                  @for (u of eligibleUsers(); track u.id) {
+                    <label class="ar-recipient-check">
                       <input
                         type="checkbox"
-                        [checked]="isDraftRecipient(r.id)"
-                        (change)="toggleDraftRecipient(r.id)"
-                        [disabled]="!r.enabled"
+                        [checked]="isDraftUser(u.id)"
+                        (change)="toggleDraftUser(u.id)"
                       />
                       <span class="ar-recipient-check-info">
-                        <span class="ar-recipient-check-email">{{ r.email }}</span>
-                        @if (r.name) {
-                          <span class="ar-recipient-check-name">{{ r.name }}</span>
-                        }
+                        <span class="ar-recipient-check-email">{{ userLabel(u) }}</span>
+                        <span class="ar-recipient-check-name">
+                          {{ u.email }}
+                          @if (u.cargo) {
+                            · {{ u.cargo }}
+                          }
+                        </span>
                       </span>
                     </label>
                   }
                 </div>
                 <small class="ar-hint">
-                  Si no marcas a nadie, esta regla no enviará emails (sólo aparecerá en UI).
+                  Si no marcas a nadie, esta regla sólo aparecerá en UI (sin enviar email).
                 </small>
               }
             </div>
@@ -241,72 +243,6 @@ const DEFAULT_DRAFT: DraftRule = {
           </div>
         </div>
       }
-
-      <!-- Recipients -->
-      <div class="ar-recipients">
-        <div class="ar-recipients-head">
-          <div class="ar-recipients-title">Destinatarios de email</div>
-          <span class="ar-recipients-meta">
-            Agrega correos aquí. Luego al crear/editar reglas elegirás cuáles reciben cada una.
-          </span>
-        </div>
-        <div class="ar-recipients-add">
-          <input
-            type="email"
-            placeholder="correo@empresa.cl"
-            [value]="newRecipientEmail()"
-            (input)="updateNewEmail($event)"
-          />
-          <input
-            type="text"
-            placeholder="Nombre (opcional)"
-            [value]="newRecipientName()"
-            (input)="updateNewName($event)"
-          />
-          <button
-            type="button"
-            class="ar-btn ar-btn--primary"
-            (click)="addRecipient()"
-            [disabled]="!newRecipientEmail()"
-          >
-            <span class="material-symbols-outlined text-[14px]">add</span>
-            Agregar
-          </button>
-        </div>
-        @if (recipients().length === 0) {
-          <div class="ar-recipients-empty">
-            Sin destinatarios. Agrega correos para que reciban emails cuando las reglas con "Email"
-            activado disparen.
-          </div>
-        } @else {
-          <div class="ar-recipients-list">
-            @for (r of recipients(); track r.email) {
-              <div class="ar-recipient-row">
-                <div class="ar-recipient-info">
-                  <div class="ar-recipient-email">
-                    <span class="material-symbols-outlined text-[14px]">mail</span>
-                    {{ r.email }}
-                    @if (!r.enabled) {
-                      <span class="ar-card-tag ar-card-tag--off">Inactivo</span>
-                    }
-                  </div>
-                  @if (r.name) {
-                    <div class="ar-recipient-name">{{ r.name }}</div>
-                  }
-                </div>
-                <button
-                  type="button"
-                  class="ar-icon-btn ar-icon-btn--danger"
-                  (click)="removeRecipient(r.id)"
-                  title="Quitar"
-                >
-                  <span class="material-symbols-outlined text-[16px]">delete</span>
-                </button>
-              </div>
-            }
-          </div>
-        }
-      </div>
 
       <div class="ar-list">
         @if (rules().length === 0) {
@@ -908,32 +844,15 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
     if (changes['siteId'] && this.siteId) this.svc.setSiteId(this.siteId);
   }
 
-  readonly recipients = this.svc.recipients;
-  readonly newRecipientEmail = signal<string>('');
-  readonly newRecipientName = signal<string>('');
+  readonly eligibleUsers = this.svc.eligibleUsers;
 
-  addRecipient(): void {
-    const email = this.newRecipientEmail().trim();
-    if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
-    this.svc.addRecipient({
-      email,
-      name: this.newRecipientName().trim() || undefined,
-    });
-    this.newRecipientEmail.set('');
-    this.newRecipientName.set('');
+  userLabel(u: { nombre: string; apellido: string; email: string }): string {
+    const name = `${u.nombre} ${u.apellido}`.trim();
+    return name || u.email;
   }
 
-  removeRecipient(id?: number): void {
-    if (!id) return;
-    if (!confirm('¿Quitar este destinatario?')) return;
-    this.svc.removeRecipient(id);
-  }
-
-  updateNewEmail(ev: Event): void {
-    this.newRecipientEmail.set((ev.target as HTMLInputElement).value);
-  }
-  updateNewName(ev: Event): void {
-    this.newRecipientName.set((ev.target as HTMLInputElement).value);
+  userById(id: string) {
+    return this.eligibleUsers().find((u) => u.id === id);
   }
 
   private fetchSensors(): void {
@@ -1002,7 +921,7 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
       sustainedMin: r.sustainedMin,
       severity: r.severity,
       notifyUi: r.notifyUi,
-      recipientIds: [...(r.recipientIds || [])],
+      recipientUserIds: [...(r.recipientUserIds || [])],
       enabled: r.enabled,
     };
     this.editingId.set(r.id);
@@ -1010,17 +929,15 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
     this.formOpen.set(true);
   }
 
-  toggleDraftRecipient(id: number | undefined): void {
-    if (id === undefined) return;
-    const cur = new Set(this.draft.recipientIds);
-    if (cur.has(id)) cur.delete(id);
-    else cur.add(id);
-    this.draft.recipientIds = [...cur];
+  toggleDraftUser(userId: string): void {
+    const cur = new Set(this.draft.recipientUserIds);
+    if (cur.has(userId)) cur.delete(userId);
+    else cur.add(userId);
+    this.draft.recipientUserIds = [...cur];
   }
 
-  isDraftRecipient(id: number | undefined): boolean {
-    if (id === undefined) return false;
-    return this.draft.recipientIds.includes(id);
+  isDraftUser(userId: string): boolean {
+    return this.draft.recipientUserIds.includes(userId);
   }
 
   closeForm(): void {
@@ -1072,9 +989,9 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
         this.draft.targetKind === 'all' ? null : this.draft.targetValue.trim(),
       sustainedMin: this.draft.sustainedMin,
       severity: this.draft.severity,
-      notifyEmail: this.draft.recipientIds.length > 0,
+      notifyEmail: this.draft.recipientUserIds.length > 0,
       notifyUi: this.draft.notifyUi,
-      recipientIds: this.draft.recipientIds,
+      recipientUserIds: this.draft.recipientUserIds,
     };
 
     const editId = this.editingId();

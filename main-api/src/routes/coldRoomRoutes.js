@@ -1542,9 +1542,7 @@ function ruleRowToObj(r) {
     severity: r.severity,
     notifyEmail: r.notify_email,
     notifyUi: r.notify_ui,
-    recipientIds: Array.isArray(r.recipient_ids)
-      ? r.recipient_ids.map((n) => Number(n))
-      : [],
+    recipientUserIds: Array.isArray(r.recipient_user_ids) ? r.recipient_user_ids : [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -1567,13 +1565,13 @@ router.post('/:siteId/alarm-rules', async (req, res) => {
   try {
     const b = req.body || {};
     const id = b.id || `alarm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const recIds = Array.isArray(b.recipientIds)
-      ? b.recipientIds.map((n) => Number(n)).filter((n) => Number.isFinite(n))
+    const recUserIds = Array.isArray(b.recipientUserIds)
+      ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
       : [];
     await pool.query(
       `INSERT INTO cold_room_alarm_rule
         (id, site_id, name, enabled, metric, op, threshold, target_kind, target_value,
-         sustained_min, severity, notify_email, notify_ui, recipient_ids, updated_at)
+         sustained_min, severity, notify_email, notify_ui, recipient_user_ids, updated_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())`,
       [
         id,
@@ -1587,9 +1585,9 @@ router.post('/:siteId/alarm-rules', async (req, res) => {
         b.targetValue || null,
         b.sustainedMin || 0,
         b.severity || 'warn',
-        recIds.length > 0,
+        recUserIds.length > 0,
         b.notifyUi !== false,
-        recIds,
+        recUserIds,
       ],
     );
     res.json({ ok: true, data: { id } });
@@ -1601,13 +1599,13 @@ router.post('/:siteId/alarm-rules', async (req, res) => {
 router.put('/:siteId/alarm-rules/:ruleId', async (req, res) => {
   try {
     const b = req.body || {};
-    const recIds = Array.isArray(b.recipientIds)
-      ? b.recipientIds.map((n) => Number(n)).filter((n) => Number.isFinite(n))
+    const recUserIds = Array.isArray(b.recipientUserIds)
+      ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
       : [];
     await pool.query(
       `UPDATE cold_room_alarm_rule SET
         name=$1, enabled=$2, metric=$3, op=$4, threshold=$5, target_kind=$6, target_value=$7,
-        sustained_min=$8, severity=$9, notify_email=$10, notify_ui=$11, recipient_ids=$12,
+        sustained_min=$8, severity=$9, notify_email=$10, notify_ui=$11, recipient_user_ids=$12,
         updated_at=NOW()
        WHERE id=$13 AND site_id=$14`,
       [
@@ -1620,9 +1618,9 @@ router.put('/:siteId/alarm-rules/:ruleId', async (req, res) => {
         b.targetValue || null,
         b.sustainedMin || 0,
         b.severity || 'warn',
-        recIds.length > 0,
+        recUserIds.length > 0,
         b.notifyUi !== false,
-        recIds,
+        recUserIds,
         req.params.ruleId,
         req.params.siteId,
       ],
@@ -1645,52 +1643,30 @@ router.delete('/:siteId/alarm-rules/:ruleId', async (req, res) => {
   }
 });
 
-// --- Recipients ---
-router.get('/:siteId/alarm-recipients', async (req, res) => {
+// --- Usuarios elegibles del sitio (sub_empresa) ---
+router.get('/:siteId/alarm-eligible-users', async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT id, email, name, enabled, min_severity, created_at
-       FROM cold_room_alarm_recipient WHERE site_id=$1 ORDER BY email`,
+    // Sitio → sub_empresa.
+    const siteRes = await pool.query(
+      `SELECT sub_empresa_id, empresa_id FROM sitio WHERE id = $1`,
       [req.params.siteId],
     );
-    res.json({ ok: true, data: rows });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-router.post('/:siteId/alarm-recipients', async (req, res) => {
-  try {
-    const b = req.body || {};
-    if (!b.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(b.email))) {
-      return res.status(400).json({ ok: false, error: 'Email inválido' });
+    if (siteRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
     }
-    await pool.query(
-      `INSERT INTO cold_room_alarm_recipient (site_id, email, name, enabled, min_severity)
-       VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (site_id, email) DO UPDATE SET
-         name=EXCLUDED.name, enabled=EXCLUDED.enabled, min_severity=EXCLUDED.min_severity`,
-      [
-        req.params.siteId,
-        String(b.email).toLowerCase(),
-        b.name || null,
-        b.enabled !== false,
-        b.minSeverity || 'warn',
-      ],
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+    const { sub_empresa_id, empresa_id } = siteRes.rows[0];
 
-router.delete('/:siteId/alarm-recipients/:id', async (req, res) => {
-  try {
-    await pool.query(
-      `DELETE FROM cold_room_alarm_recipient WHERE id=$1 AND site_id=$2`,
-      [req.params.id, req.params.siteId],
-    );
-    res.json({ ok: true });
+    // Usuarios de la sub_empresa (o empresa si sub_empresa_id null) con email válido.
+    const userQuery = sub_empresa_id
+      ? `SELECT id, nombre, COALESCE(apellido,'') AS apellido, email, cargo, tipo
+         FROM usuario WHERE sub_empresa_id = $1 AND email IS NOT NULL AND email != ''
+         ORDER BY nombre`
+      : `SELECT id, nombre, COALESCE(apellido,'') AS apellido, email, cargo, tipo
+         FROM usuario WHERE empresa_id = $1 AND email IS NOT NULL AND email != ''
+         ORDER BY nombre`;
+    const param = sub_empresa_id || empresa_id;
+    const { rows } = await pool.query(userQuery, [param]);
+    res.json({ ok: true, data: rows });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -1816,12 +1792,13 @@ function evalRuleOp(rule, v) {
 }
 
 async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId) {
-  if (!rule.recipientIds || rule.recipientIds.length === 0) return;
-  // Destinatarios explícitamente seleccionados para esta regla.
+  if (!rule.recipientUserIds || rule.recipientUserIds.length === 0) return;
+  // Destinatarios = usuarios de la plataforma elegidos para esta regla.
   const recRes = await pool.query(
-    `SELECT email, name FROM cold_room_alarm_recipient
-     WHERE site_id=$1 AND enabled=TRUE AND id = ANY($2::bigint[])`,
-    [siteId, rule.recipientIds],
+    `SELECT id, email, COALESCE(nombre,'') || ' ' || COALESCE(apellido,'') AS name
+     FROM usuario
+     WHERE id = ANY($1::varchar[]) AND email IS NOT NULL AND email != ''`,
+    [rule.recipientUserIds],
   );
   const recipients = recRes.rows;
   if (recipients.length === 0) return;
