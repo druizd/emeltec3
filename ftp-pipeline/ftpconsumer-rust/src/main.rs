@@ -88,12 +88,12 @@ async fn insert_records(
     let statement = transaction
         .prepare(
             "INSERT INTO equipo (time, id_serial, data)
-             SELECT ($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC', $3, $4
+             SELECT ($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC', $3::varchar(50), $4
              WHERE NOT EXISTS (
                  SELECT 1
                  FROM equipo
                  WHERE time = (($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC')
-                   AND id_serial = $3
+                   AND id_serial = $3::varchar(50)
              )",
         )
         .await?;
