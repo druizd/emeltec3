@@ -4769,7 +4769,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       if (e.action === 'classify-cause') {
         const causePrev = get(prev, 'cause');
         const causeNext = get(next, 'cause');
-        const lbl = causeNext ? (this.causeLabel(causeNext) || causeNext) : '—';
+        const lbl = causeNext ? this.causeLabel(causeNext) || causeNext : '—';
         if (causePrev && causePrev !== causeNext) {
           return `Causa: ${this.causeLabel(causePrev)} → ${lbl}`;
         }
