@@ -601,7 +601,6 @@ function slugify(area: string): string {
               placeholder="Ej: defrost programado de 03:00–03:15. Producto bajo control."
               [value]="nm.note"
               (input)="updateNoteModalText($event)"
-              autofocus
             ></textarea>
             <div class="note-modal-hint">
               Esta acción queda registrada en el audit log HACCP (inmutable).
