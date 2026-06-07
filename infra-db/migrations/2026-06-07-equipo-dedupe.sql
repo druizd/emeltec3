@@ -1,11 +1,5 @@
--- Evita duplicados exactos de telemetria por equipo y timestamp.
--- TimescaleDB exige incluir la dimension temporal en indices unicos.
+-- La deduplicacion de las cargas FTP se aplica en ftpconsumer antes de insertar.
+-- No hacemos limpieza historica aqui porque equipo puede estar comprimida en
+-- TimescaleDB y un DELETE masivo fuerza descompresion de demasiadas tuplas.
 
-DELETE FROM equipo a
-USING equipo b
-WHERE a.id_serial = b.id_serial
-  AND a.time = b.time
-  AND a.ctid > b.ctid;
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_equipo_unique_serial_time
-ON equipo (id_serial, time);
+SELECT 1;
