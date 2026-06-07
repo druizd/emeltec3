@@ -98,7 +98,7 @@ import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 export class CompaniesPageHeaderComponent {
   @Input() selectedSubCompany: SubCompanyNode | null = null;
   @Input() sitesCount = 0;
-  @Input() title = 'Instalaciones';
+  @Input() title = 'Salas';
   @Input() subtitle = '';
   @Input() set sites(value: SiteRecord[]) {
     this._sites.set(value || []);

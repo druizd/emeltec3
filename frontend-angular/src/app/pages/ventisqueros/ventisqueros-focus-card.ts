@@ -70,7 +70,7 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
           <div class="vs-stat-card">
             <div class="vs-stat-label">Humedad</div>
             <div class="mt-1 flex items-baseline gap-0.75">
-              <span class="vs-stat-value text-[#1E293B]">{{ f.h }}</span>
+              <span class="vs-stat-value text-[#1E293B]">{{ fmtHumValue(f.h) }}</span>
               <span class="vs-stat-unit">%</span>
             </div>
             <div class="vs-h-bar-track">
@@ -91,7 +91,7 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
             <span class="material-symbols-outlined text-[11px]">schedule</span>
             hace 32 s
           </span>
-          <span class="vs-focus-base">HR {{ f.h }}%</span>
+          <span class="vs-focus-base">HR {{ fmtHumValue(f.h) }}%</span>
         </div>
       </div>
     }
@@ -218,6 +218,10 @@ export class VentisquerosFocusCardComponent {
   readonly focus = input.required<Sensor | undefined>();
 
   readonly fmtTemp = fmtTemp;
+
+  fmtHumValue(h: number): number {
+    return Number(h.toFixed(2));
+  }
 
   sparkColor(s: Sensor): string {
     return s.alerted ? '#EF4444' : tempColor(s.t);

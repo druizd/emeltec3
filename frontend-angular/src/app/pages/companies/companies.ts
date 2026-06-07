@@ -39,10 +39,19 @@ export class CompaniesComponent implements OnInit {
   auth = inject(AuthService);
   router = inject(Router);
 
-  activeTab = signal('general');
+  activeTab = signal(this.loadActiveTab());
   selectedSubCompany = signal<SubCompanyNode | null>(null);
   sites = signal<SiteRecord[]>([]);
   loading = signal(false);
+
+  private loadActiveTab(): string {
+    try {
+      const v = localStorage.getItem('companies:activeTab');
+      return v && v.length > 0 ? v : 'general';
+    } catch {
+      return 'general';
+    }
+  }
 
   constructor() {
     effect(() => {
@@ -50,6 +59,15 @@ export class CompaniesComponent implements OnInit {
       const allowedTabs = this.allowedTabsForRole(role);
       if (!allowedTabs.includes(this.activeTab())) {
         this.activeTab.set(allowedTabs[0]);
+      }
+    });
+
+    // Persist activeTab para sobrevivir refresh.
+    effect(() => {
+      try {
+        localStorage.setItem('companies:activeTab', this.activeTab());
+      } catch {
+        /* ignore */
       }
     });
 

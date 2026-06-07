@@ -111,10 +111,10 @@ export class CompaniesAdminViewComponent {
   readonly tabsComputed = computed<CompaniesTabItem[]>(() => {
     const cold = this.isColdRoom();
     return [
-      { key: 'general', label: 'General', icon: 'info' },
+      { key: 'general', label: 'General', icon: 'grid_view' },
       cold
-        ? { key: 'instalaciones', label: 'TAPs', icon: 'memory' }
-        : { key: 'instalaciones', label: 'Instalaciones', icon: 'factory' },
+        ? { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' }
+        : { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' },
       { key: 'eventos', label: 'Eventos', icon: 'notifications' },
       { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
       { key: 'usuarios', label: 'Gestión Usuarios', icon: 'person_add' },
@@ -122,7 +122,7 @@ export class CompaniesAdminViewComponent {
   });
 
   headerTitle(): string {
-    if (this.activeTab === 'instalaciones') return this.isColdRoom() ? 'TAPs' : 'Instalaciones';
+    if (this.activeTab === 'instalaciones') return this.isColdRoom() ? 'Salas' : 'Salas';
     const map: Record<string, string> = {
       general: 'General',
       eventos: 'Eventos',

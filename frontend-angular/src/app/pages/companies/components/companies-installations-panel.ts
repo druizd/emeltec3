@@ -17,7 +17,7 @@ import type { SiteRecord } from '@emeltec/shared';
         [companyName]="contextLabel"
         [coldRoomSites]="coldRoomSites()"
         [embedded]="true"
-        view="taps"
+        view="full"
       />
     } @else {
       <div [class]="getGridClass()">
