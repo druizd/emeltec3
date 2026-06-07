@@ -118,6 +118,46 @@ export class ColdRoomService {
   }
 
   /**
+   * Export histórico custom: rango de fechas + selección de salas/sensores.
+   * Backend elige cagg óptimo (1min/5min/hourly/daily) según duración.
+   */
+  exportHistory(
+    siteId: string,
+    from: string,
+    to: string,
+    siteIds: string[],
+    sensorIds: string[],
+  ): Observable<{
+    ok: boolean;
+    data: {
+      points: Array<{ ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }>;
+    };
+    meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
+    error?: string;
+  }> {
+    const params = new URLSearchParams();
+    params.set('from', from);
+    params.set('to', to);
+    if (siteIds.length > 0) params.set('siteIds', siteIds.join(','));
+    if (sensorIds.length > 0) params.set('sensorIds', sensorIds.join(','));
+    return this.http.get<{
+      ok: boolean;
+      data: {
+        points: Array<{
+          ts: string;
+          sensorId: string;
+          area: string;
+          tap: string;
+          t: number | null;
+          h: number | null;
+        }>;
+      };
+      meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
+      error?: string;
+    }>(`/api/cold-room/${encodeURIComponent(siteId)}/history-export?${params.toString()}`);
+  }
+
+  /**
    * Marca/desmarca un sensor como defective (fuera de servicio). Backend persiste
    * en reg_map.parametros y registra audit log. Cliente debe refrescar sensors
    * después para ver el cambio reflejado.

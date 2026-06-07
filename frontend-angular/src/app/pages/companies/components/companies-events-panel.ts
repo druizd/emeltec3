@@ -1,16 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, computed, signal } from '@angular/core';
 import { WaterDetailAlertasComponent } from './water-detail-alertas/water-detail-alertas';
+import { CompaniesAlarmRulesPanelComponent } from './companies-alarm-rules-panel';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord } from '@emeltec/shared';
 
 @Component({
   selector: 'app-companies-events-panel',
   standalone: true,
-  imports: [CommonModule, WaterDetailAlertasComponent],
+  imports: [CommonModule, WaterDetailAlertasComponent, CompaniesAlarmRulesPanelComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (selectedSite(); as site) {
+    @if (isColdRoomContext()) {
+      <app-companies-alarm-rules-panel
+        [coldRoomSiteIds]="coldRoomSiteIdList()"
+        [siteId]="primarySiteId()"
+      />
+    } @else if (selectedSite(); as site) {
       <app-water-detail-alertas [sitioId]="site.id" [empresaId]="empresaId" />
     } @else {
       <div
@@ -19,7 +25,7 @@ import type { SiteRecord } from '@emeltec/shared';
         <span class="material-symbols-outlined text-5xl text-slate-300">notifications_paused</span>
         <h3 class="mt-4 text-body-sm font-semibold text-slate-500">Sin sitio seleccionado</h3>
         <p class="mt-1 text-caption text-slate-400">
-          Selecciona una subempresa con sitios para gestionar alertas.
+          Selecciona una subempresa con sitios para gestionar alarmas.
         </p>
       </div>
     }
@@ -55,4 +61,14 @@ export class CompaniesEventsPanelComponent {
     const list = this._sites();
     return list[0] ?? null;
   });
+
+  // Considera contexto cold-room cuando hay AL MENOS un sitio cold-room.
+  // El panel de reglas es transversal (no por sitio), evalúa todas las salas.
+  readonly isColdRoomContext = computed<boolean>(() => this.coldRoomSites().length > 0);
+
+  readonly coldRoomSiteIdList = computed<string[]>(() =>
+    this.coldRoomSites().map((s) => s.id),
+  );
+
+  readonly primarySiteId = computed<string>(() => this.coldRoomSites()[0]?.id || '');
 }

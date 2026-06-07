@@ -68,13 +68,6 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'companies/:siteId/tap/:tapId/diag',
-        loadComponent: () =>
-          import('./pages/ventisqueros/ventisqueros-tap-diag-detail').then(
-            (m) => m.VentisquerosTapDiagDetailComponent,
-          ),
-      },
-      {
         path: 'companies/:siteId/tap/:tapId',
         loadComponent: () =>
           import('./pages/ventisqueros/ventisqueros-tap-detail').then(

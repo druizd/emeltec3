@@ -92,13 +92,13 @@ export class CompaniesClienteViewComponent {
       cold
         ? { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' }
         : { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' },
-      { key: 'eventos', label: 'Eventos', icon: 'notifications' },
+      { key: 'eventos', label: 'Alarmas', icon: 'notifications' },
     ];
   });
 
   headerTitle(): string {
     if (this.activeTab === 'instalaciones') return this.isColdRoom() ? 'Salas' : 'Salas';
-    if (this.activeTab === 'eventos') return 'Eventos';
+    if (this.activeTab === 'eventos') return 'Alarmas';
     return 'General';
   }
 
@@ -108,7 +108,7 @@ export class CompaniesClienteViewComponent {
         ? 'Concentradores TAP del sitio'
         : this.sites.length + ' sitios registrados';
     }
-    if (this.activeTab === 'eventos') return 'Alertas y eventos recientes';
+    if (this.activeTab === 'eventos') return 'Reglas y eventos activos';
     return 'Resumen de la división';
   }
 }

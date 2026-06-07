@@ -71,6 +71,9 @@ exports.login = async (req, res, next) => {
       id: unUsuario.id,
       email: unUsuario.email,
       tipo: unUsuario.tipo,
+      cargo: unUsuario.cargo || null,
+      nombre: unUsuario.nombre || null,
+      apellido: unUsuario.apellido || null,
       empresa_id: unUsuario.empresa_id,
       sub_empresa_id: unUsuario.sub_empresa_id,
     };

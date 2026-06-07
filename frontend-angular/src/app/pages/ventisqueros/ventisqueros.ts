@@ -18,11 +18,7 @@ import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-
 import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
 import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
-import {
-  ColdRoomService,
-  type ColdRoomConcentratorChannel,
-  type ColdRoomSensor,
-} from '../../services/cold-room.service';
+import { ColdRoomService, type ColdRoomSensor } from '../../services/cold-room.service';
 import {
   ColdRoomThresholdsService,
   type SalaThreshold,
@@ -50,7 +46,7 @@ import {
   tempColor,
 } from './ventisqueros-data';
 
-type TabKey = 'general' | 'salas' | 'compliance' | 'taps' | 'eventos' | 'contacts';
+type TabKey = 'general' | 'salas' | 'compliance' | 'taps' | 'alarmas' | 'contacts';
 
 interface SubTab {
   key: TabKey;
@@ -95,15 +91,13 @@ interface TapDiagnostic {
   tap: TapKey;
   color: string;
   status: TapTechStatus;
-  channels: ColdRoomConcentratorChannel[];
-  channelsOnline: number;
-  channelsTotal: number;
-  channelsStale: number;
   oldestSeenIso: string | null;
   oldestSeenMs: number | null;
-  avgRssi: number | null;
-  worstRssi: { ch: ColdRoomConcentratorChannel; rssi: number } | null;
-  bestRssi: { ch: ColdRoomConcentratorChannel; rssi: number } | null;
+  sensorsReporting: number;
+  sensorsTotal: number;
+  coveragePct: number;
+  coverageMinutes: number;
+  coverageSlots: boolean[];
 }
 
 interface MetricOption {
@@ -251,9 +245,12 @@ interface MetricOption {
                     <span class="vs-alert-chip">{{ a.id }}</span>
                   }
                 </div>
-                <button class="vs-alert-btn flex items-center gap-1.5">
+                <button
+                  class="vs-alert-btn flex items-center gap-1.5"
+                  (click)="activeTab.set('alarmas')"
+                >
                   <span class="material-symbols-outlined text-[11px]">notifications_active</span>
-                  Ver eventos
+                  Ver alarmas
                 </button>
               </div>
             </div>
@@ -486,6 +483,15 @@ interface MetricOption {
                 @if (auditEntries().length > 0) {
                   <span class="audit-count-badge">{{ auditEntries().length }}</span>
                 }
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                (click)="openHistoryExport()"
+                title="Descargar historial CSV con rango y sensores configurables"
+              >
+                <span class="material-symbols-outlined text-[14px]">download</span>
+                Descargar historial
               </button>
             </div>
           </div>
@@ -872,20 +878,66 @@ interface MetricOption {
             <div class="comp-section">
               <h3 class="comp-section-title">
                 Tendencia compliance
-                <span class="comp-section-meta">{{ cm.periodLabel }}</span>
+                <span class="comp-section-meta">
+                  {{ cm.periodLabel }} · % del tiempo dentro de umbral
+                </span>
               </h3>
-              <div class="comp-trend">
-                @for (b of cm.hourlyTrend; track $index) {
-                  <div class="comp-trend-col">
-                    <div
-                      class="comp-trend-bar"
-                      [style.height.px]="trendBarHeight(b.pct, 80)"
-                      [style.background]="trendBarColor(b.pct)"
-                      [title]="b.label + ' — ' + b.pct.toFixed(1) + '%'"
-                    ></div>
-                    <div class="comp-trend-lbl">{{ b.label }}</div>
+              <div class="comp-trend-wrap">
+                <!-- Eje Y -->
+                <div class="comp-trend-yaxis">
+                  <span>100%</span>
+                  <span>{{ trendYAxisMid() }}%</span>
+                  <span>{{ trendYAxisMin() }}%</span>
+                </div>
+                <div class="comp-trend-chart">
+                  <!-- Gridlines + referencia 99% -->
+                  <div class="comp-trend-grid">
+                    <span class="comp-trend-grid-line"></span>
+                    <span class="comp-trend-grid-line"></span>
+                    <span class="comp-trend-grid-line"></span>
                   </div>
-                }
+                  <span
+                    class="comp-trend-ref"
+                    [style.bottom.%]="trendPctToY(99)"
+                    title="Umbral aceptable HACCP 99%"
+                  >
+                    <span class="comp-trend-ref-lbl">99% target</span>
+                  </span>
+                  <!-- Barras -->
+                  <div class="comp-trend-bars">
+                    @for (b of cm.hourlyTrend; track $index) {
+                      <div class="comp-trend-col" [title]="b.label + ' — ' + b.pct.toFixed(2) + '%'">
+                        <span
+                          class="comp-trend-bar"
+                          [style.height.%]="trendPctToY(b.pct)"
+                          [style.background]="trendBarColor(b.pct)"
+                        ></span>
+                        <span class="comp-trend-bar-val">{{ b.pct.toFixed(0) }}</span>
+                        <span class="comp-trend-lbl">{{ b.label }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+              <div class="comp-trend-legend">
+                <span class="comp-trend-legend-item">
+                  <span class="comp-trend-swatch" style="background: #22C55E"></span>
+                  ≥ 99.5%
+                </span>
+                <span class="comp-trend-legend-item">
+                  <span class="comp-trend-swatch" style="background: #84CC16"></span>
+                  98–99.5%
+                </span>
+                <span class="comp-trend-legend-item">
+                  <span class="comp-trend-swatch" style="background: #F59E0B"></span>
+                  95–98%
+                </span>
+                <span class="comp-trend-legend-item">
+                  <span class="comp-trend-swatch" style="background: #EF4444"></span>
+                  &lt; 95%
+                </span>
+                <span class="comp-trend-legend-sep">·</span>
+                <span class="comp-trend-legend-item">Gaps de datos cuentan como fuera-banda</span>
               </div>
             </div>
 
@@ -999,14 +1051,6 @@ interface MetricOption {
               </p>
             </div>
             <div class="flex items-center gap-2">
-              <button
-                type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
-                (click)="fetchConcentratorManual()"
-              >
-                <span class="material-symbols-outlined text-[14px]">sync</span>
-                Actualizar
-              </button>
             </div>
           </div>
 
@@ -1023,21 +1067,6 @@ interface MetricOption {
             <div class="vs-diag-kpi-card vs-diag-kpi-card--err">
               <div class="vs-diag-kpi-val">{{ diagKpis().offline }}</div>
               <div class="vs-diag-kpi-lbl">Offline</div>
-            </div>
-            <div class="vs-diag-kpi-card">
-              <div class="vs-diag-kpi-val">
-                {{ diagKpis().avgRssi !== null ? diagKpis().avgRssi + ' dBm' : '—' }}
-              </div>
-              <div class="vs-diag-kpi-lbl">RSSI prom.</div>
-            </div>
-            <div class="vs-diag-kpi-card">
-              <div
-                class="vs-diag-kpi-val"
-                [style.color]="diagKpis().stale > 0 ? '#DC2626' : '#1E293B'"
-              >
-                {{ diagKpis().stale }}
-              </div>
-              <div class="vs-diag-kpi-lbl">Canales sin señal &gt;60s</div>
             </div>
           </div>
 
@@ -1088,7 +1117,6 @@ interface MetricOption {
               >
                 <option value="tap">TAP</option>
                 <option value="lastSeen">Último visto (más viejo primero)</option>
-                <option value="rssi">RSSI (más débil primero)</option>
               </select>
             </div>
           </div>
@@ -1118,7 +1146,11 @@ interface MetricOption {
                     <div class="min-w-0">
                       <h3 class="vs-tap-summary-title truncate text-slate-800">{{ d.tap }}</h3>
                       <p class="truncate text-[11px] text-slate-400">
-                        Último visto {{ relativeMs(d.oldestSeenMs) }} · ID concentrador
+                        @if (d.oldestSeenMs !== null) {
+                          Última transmisión {{ relativeMs(d.oldestSeenMs) }}
+                        } @else {
+                          Sin lectura registrada
+                        }
                       </p>
                     </div>
                   </div>
@@ -1136,73 +1168,63 @@ interface MetricOption {
                   </span>
                 </div>
 
-                <!-- Channels online / total -->
-                <div class="mt-3 vs-diag-channels">
-                  <div class="vs-diag-channels-row">
-                    <span class="vs-diag-channels-lbl">Canales online</span>
-                    <span class="vs-diag-channels-val">
-                      {{ d.channelsOnline }} / {{ d.channelsTotal }}
-                      @if (d.channelsStale > 0) {
-                        <span class="vs-diag-stale">· {{ d.channelsStale }} stale</span>
-                      }
+                <!-- Sensores reportando (cagg) -->
+                <div class="mt-2 vs-tap-sensors-row">
+                  <span class="vs-tap-sensors-lbl">
+                    <span class="material-symbols-outlined text-[11px]">sensors</span>
+                    Sensores reportando
+                  </span>
+                  <span
+                    class="vs-tap-sensors-val"
+                    [class.vs-tap-sensors-val--bad]="
+                      d.sensorsTotal > 0 && d.sensorsReporting < d.sensorsTotal
+                    "
+                  >
+                    {{ d.sensorsReporting }} / {{ d.sensorsTotal }}
+                  </span>
+                </div>
+
+                <!-- Cobertura 24h (cagg coverage + sparkline gaps) -->
+                <div class="mt-2 vs-tap-cov">
+                  <div class="vs-tap-cov-head">
+                    <span class="vs-tap-cov-lbl">
+                      <span class="material-symbols-outlined text-[11px]">timeline</span>
+                      Cobertura 24h
+                    </span>
+                    <span
+                      class="vs-tap-cov-val"
+                      [class.vs-tap-cov-val--bad]="d.coveragePct < 95"
+                      [class.vs-tap-cov-val--warn]="d.coveragePct >= 95 && d.coveragePct < 99"
+                      [title]="d.coverageMinutes + ' / 1440 min con lectura'"
+                    >
+                      {{ d.coveragePct.toFixed(1) }}%
                     </span>
                   </div>
-                  <div class="vs-diag-channels-bar">
-                    <div
-                      class="vs-diag-channels-fill"
-                      [style.width.%]="
-                        d.channelsTotal > 0 ? (d.channelsOnline / d.channelsTotal) * 100 : 0
-                      "
-                      [style.background]="
-                        d.status === 'online'
-                          ? '#22C55E'
-                          : d.status === 'degraded'
-                            ? '#F59E0B'
-                            : '#EF4444'
-                      "
-                    ></div>
+                  <div
+                    class="vs-tap-cov-spark"
+                    [title]="
+                      'Sparkline transmisión 24h · cada barra = 24min. Verde = al menos 1 lectura, gris = gap'
+                    "
+                  >
+                    @for (s of d.coverageSlots; track $index) {
+                      <span
+                        class="vs-tap-cov-slot"
+                        [class.vs-tap-cov-slot--on]="s"
+                        [style.background]="s ? d.color : '#E2E8F0'"
+                      ></span>
+                    }
+                  </div>
+                  <div class="vs-tap-cov-axis">
+                    <span>-24h</span>
+                    <span>-12h</span>
+                    <span>ahora</span>
                   </div>
                 </div>
 
-                <!-- RSSI -->
-                <div class="mt-3 vs-diag-rssi">
-                  <div class="vs-diag-rssi-head">
-                    <span class="vs-diag-channels-lbl">RSSI promedio</span>
-                    <span class="vs-diag-rssi-val">
-                      {{ d.avgRssi !== null ? d.avgRssi + ' dBm' : '—' }}
-                      <span class="vs-diag-rssi-tag">{{ rssiLabel(d.avgRssi) }}</span>
-                    </span>
-                  </div>
-                  <div class="vs-diag-rssi-bar">
-                    <div class="vs-diag-rssi-fill" [style.width.%]="rssiBarPct(d.avgRssi)"></div>
-                  </div>
-                  @if (d.worstRssi && d.bestRssi) {
-                    <div class="vs-diag-rssi-meta">
-                      <span
-                        >Peor: <strong>{{ d.worstRssi.rssi }} dBm</strong> ({{
-                          d.worstRssi.ch.id
-                        }})</span
-                      >
-                      <span
-                        >Mejor: <strong>{{ d.bestRssi.rssi }} dBm</strong> ({{
-                          d.bestRssi.ch.id
-                        }})</span
-                      >
-                    </div>
-                  }
-                </div>
 
                 <div
-                  class="relative z-10 mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2"
+                  class="relative z-10 mt-3 flex items-center justify-end gap-2 border-t border-slate-100 pt-2"
                 >
-                  <a
-                    [routerLink]="tapDiagRouterLink(d.tap)"
-                    class="vs-tap-diag-btn"
-                    [title]="'Diagnóstico de red · ' + d.tap"
-                  >
-                    <span class="material-symbols-outlined text-[13px]">network_check</span>
-                    Diag red
-                  </a>
                   <span
                     class="inline-flex items-center gap-1 text-[10.5px] text-slate-400 font-mono"
                   >
@@ -1228,10 +1250,110 @@ interface MetricOption {
           </div>
         }
 
-        @if (effectiveTab() === 'eventos') {
-          <div class="vs-placeholder flex items-center justify-center">
-            Eventos — vista por implementar
+        @if (effectiveTab() === 'alarmas') {
+          <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 class="vs-h1 text-slate-800">Alarmas</h2>
+              <p class="mt-1 text-[12px] text-slate-500">
+                Eventos operacionales activos · {{ alarmsCounts().total }} total
+              </p>
+            </div>
+            <div class="vs-alarms-filter">
+              <button
+                type="button"
+                class="vs-alarms-chip"
+                [class.vs-alarms-chip--active]="alarmsFilter() === 'all'"
+                (click)="alarmsFilter.set('all')"
+              >
+                Todas <strong>{{ alarmsCounts().total }}</strong>
+              </button>
+              <button
+                type="button"
+                class="vs-alarms-chip vs-alarms-chip--crit"
+                [class.vs-alarms-chip--active]="alarmsFilter() === 'crit'"
+                (click)="alarmsFilter.set('crit')"
+              >
+                Críticas <strong>{{ alarmsCounts().crit }}</strong>
+              </button>
+              <button
+                type="button"
+                class="vs-alarms-chip vs-alarms-chip--warn"
+                [class.vs-alarms-chip--active]="alarmsFilter() === 'warn'"
+                (click)="alarmsFilter.set('warn')"
+              >
+                Advertencias <strong>{{ alarmsCounts().warn }}</strong>
+              </button>
+              <button
+                type="button"
+                class="vs-alarms-chip vs-alarms-chip--info"
+                [class.vs-alarms-chip--active]="alarmsFilter() === 'info'"
+                (click)="alarmsFilter.set('info')"
+              >
+                Info <strong>{{ alarmsCounts().info }}</strong>
+              </button>
+            </div>
           </div>
+
+          @if (alarmsFiltered().length === 0) {
+            <div class="vs-alarms-empty">
+              <span class="material-symbols-outlined text-[32px] text-emerald-300">check_circle</span>
+              <div class="vs-alarms-empty-title">
+                {{ alarmsCounts().total === 0 ? 'Sin alarmas activas' : 'Sin alarmas en este filtro' }}
+              </div>
+              @if (alarmsCounts().total === 0) {
+                <div class="vs-alarms-empty-sub">Todos los sensores dentro de banda y reportando.</div>
+              }
+            </div>
+          } @else {
+            <div class="vs-alarms-list">
+              @for (al of alarmsFiltered(); track al.id) {
+                <article class="vs-alarm-card" [attr.data-severity]="al.severity">
+                  <div class="vs-alarm-icon" [attr.data-severity]="al.severity">
+                    <span class="material-symbols-outlined">{{ al.icon }}</span>
+                  </div>
+                  <div class="vs-alarm-body">
+                    <div class="vs-alarm-head">
+                      <span class="vs-alarm-title">{{ al.title }}</span>
+                      <span class="vs-alarm-sev" [attr.data-severity]="al.severity">
+                        {{ al.severity === 'crit' ? 'Crítica' : al.severity === 'warn' ? 'Advertencia' : 'Info' }}
+                      </span>
+                    </div>
+                    <div class="vs-alarm-detail">{{ al.detail }}</div>
+                    <div class="vs-alarm-meta">
+                      @if (al.area) {
+                        <span class="vs-alarm-tag">
+                          <span class="material-symbols-outlined text-[11px]">meeting_room</span>
+                          {{ al.area }}
+                        </span>
+                      }
+                      @if (al.tap) {
+                        <span class="vs-alarm-tag">
+                          <span class="material-symbols-outlined text-[11px]">memory</span>
+                          {{ al.tap }}
+                        </span>
+                      }
+                      @if (al.sinceMs !== null) {
+                        <span class="vs-alarm-tag">
+                          <span class="material-symbols-outlined text-[11px]">schedule</span>
+                          desde hace {{ relativeMs(al.sinceMs) }}
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  @if (al.areaSlug; as slug) {
+                    <a
+                      [routerLink]="alarmAreaLink(slug)"
+                      [queryParams]="salaQueryParams()"
+                      class="vs-alarm-action"
+                      title="Ir a detalle de sala"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                    </a>
+                  }
+                </article>
+              }
+            </div>
+          }
         }
 
         @if (effectiveTab() === 'contacts') {
@@ -1562,8 +1684,8 @@ interface MetricOption {
             </div>
 
             <div class="vs-audit-meta">
-              {{ auditFiltered().length }} de {{ auditEntries().length }} entradas · persistido en
-              DB
+              Mostrando {{ auditPaged().length }} de {{ auditFiltered().length }} filtradas ·
+              {{ auditEntries().length }} totales · persistido en DB
             </div>
 
             @if (auditFiltered().length === 0) {
@@ -1579,7 +1701,7 @@ interface MetricOption {
               </div>
             } @else {
               <div class="vs-audit-list">
-                @for (e of auditFiltered(); track e.id) {
+                @for (e of auditPaged(); track e.id) {
                   <article class="vs-audit-row" [attr.data-category]="e.category">
                     <div class="vs-audit-row-head">
                       <span class="vs-audit-cat" [attr.data-category]="e.category">
@@ -1609,8 +1731,166 @@ interface MetricOption {
                   </article>
                 }
               </div>
+              @if (auditFiltered().length > auditPaged().length) {
+                <button
+                  type="button"
+                  class="vs-audit-loadmore"
+                  (click)="loadMoreAudit()"
+                >
+                  <span class="material-symbols-outlined text-[14px]">expand_more</span>
+                  Cargar más ({{ auditFiltered().length - auditPaged().length }} restantes)
+                </button>
+              }
             }
           </div>
+        </aside>
+      }
+
+      <!-- Modal Descargar historial -->
+      @if (historyExportOpen()) {
+        <div class="vs-hx-backdrop" (click)="closeHistoryExport()" aria-hidden="true"></div>
+        <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
+          <header class="vs-hx-head">
+            <div class="vs-hx-title">Descargar historial</div>
+            <button type="button" class="vs-hx-close" (click)="closeHistoryExport()" aria-label="Cerrar">
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </header>
+
+          <div class="vs-hx-body">
+            <!-- Rango fechas -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">1. Rango de fechas</div>
+              <div class="vs-hx-range">
+                <label class="vs-hx-field">
+                  <span>Desde</span>
+                  <input
+                    type="datetime-local"
+                    [value]="historyExportFrom()"
+                    (input)="setHistoryExportFrom($event)"
+                  />
+                </label>
+                <label class="vs-hx-field">
+                  <span>Hasta</span>
+                  <input
+                    type="datetime-local"
+                    [value]="historyExportTo()"
+                    (input)="setHistoryExportTo($event)"
+                  />
+                </label>
+              </div>
+              <div class="vs-hx-hint">
+                Cagg se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h (≤30d), 1d (resto).
+              </div>
+            </div>
+
+            <!-- Salas -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-head">
+                <div class="vs-hx-section-title">
+                  2. Salas
+                  <span class="vs-hx-count">
+                    {{ historyExportSelectedSalas().size }} / {{ salaAggregates().length }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="vs-hx-toggle-all"
+                  (click)="toggleExportSelectAllSalas()"
+                >
+                  {{
+                    historyExportSelectedSalas().size === salaAggregates().length
+                      ? 'Quitar todas'
+                      : 'Seleccionar todas'
+                  }}
+                </button>
+              </div>
+              <div class="vs-hx-grid">
+                @for (sa of salaAggregates(); track sa.slug) {
+                  <label class="vs-hx-checkbox">
+                    <input
+                      type="checkbox"
+                      [checked]="historyExportSelectedSalas().has(sa.slug)"
+                      (change)="toggleExportSala(sa.slug)"
+                    />
+                    <span class="vs-hx-checkbox-lbl">
+                      {{ sa.area }}
+                      <span class="vs-hx-checkbox-meta">{{ sa.count }} sensores</span>
+                    </span>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <!-- Sensores -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-head">
+                <div class="vs-hx-section-title">
+                  3. Sensores
+                  <span class="vs-hx-count">
+                    {{ historyExportSelectedSensors().size }} / {{ exportAvailableSensors().length }}
+                  </span>
+                </div>
+                @if (exportAvailableSensors().length > 0) {
+                  <button
+                    type="button"
+                    class="vs-hx-toggle-all"
+                    (click)="toggleExportSelectAllSensors()"
+                  >
+                    {{
+                      historyExportSelectedSensors().size === exportAvailableSensors().length
+                        ? 'Quitar todos'
+                        : 'Seleccionar todos'
+                    }}
+                  </button>
+                }
+              </div>
+              @if (exportAvailableSensors().length === 0) {
+                <div class="vs-hx-empty">Selecciona al menos una sala primero.</div>
+              } @else {
+                <div class="vs-hx-grid">
+                  @for (s of exportAvailableSensors(); track s.id) {
+                    <label class="vs-hx-checkbox">
+                      <input
+                        type="checkbox"
+                        [checked]="historyExportSelectedSensors().has(s.id)"
+                        (change)="toggleExportSensor(s.id)"
+                      />
+                      <span class="vs-hx-checkbox-lbl">
+                        {{ s.id }}
+                        <span class="vs-hx-checkbox-meta">{{ s.area }} · {{ s.tap }}</span>
+                      </span>
+                    </label>
+                  }
+                </div>
+              }
+            </div>
+
+            @if (historyExportError(); as err) {
+              <div class="vs-hx-error">
+                <span class="material-symbols-outlined text-[14px]">error</span>
+                {{ err }}
+              </div>
+            }
+          </div>
+
+          <footer class="vs-hx-foot">
+            <button type="button" class="vs-hx-btn" (click)="closeHistoryExport()">Cancelar</button>
+            <button
+              type="button"
+              class="vs-hx-btn vs-hx-btn--primary"
+              [disabled]="historyExportLoading() || historyExportSelectedSensors().size === 0"
+              (click)="confirmHistoryExport()"
+            >
+              @if (historyExportLoading()) {
+                <span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                Generando…
+              } @else {
+                <span class="material-symbols-outlined text-[14px]">download</span>
+                Descargar CSV
+              }
+            </button>
+          </footer>
         </aside>
       }
     </div>
@@ -2701,33 +2981,129 @@ interface MetricOption {
         letter-spacing: 0.06em;
       }
 
-      .comp-trend {
+      .comp-trend-wrap {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .comp-trend-yaxis {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 36px;
+        padding: 4px 0 20px 0;
+        font-family: var(--font-mono);
+        font-size: 9.5px;
+        color: #94a3b8;
+        text-align: right;
+      }
+      .comp-trend-chart {
+        position: relative;
+        flex: 1;
+        height: 160px;
+        padding: 4px 2px 20px 2px;
+      }
+      .comp-trend-grid {
+        position: absolute;
+        inset: 4px 2px 20px 2px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      .comp-trend-grid-line {
+        height: 1px;
+        background: rgba(148, 163, 184, 0.20);
+      }
+      .comp-trend-ref {
+        position: absolute;
+        left: 2px;
+        right: 2px;
+        height: 1px;
+        background: rgba(13, 175, 189, 0.55);
+        border-top: 1px dashed rgba(13, 175, 189, 0.75);
+        pointer-events: none;
+      }
+      .comp-trend-ref-lbl {
+        position: absolute;
+        right: 0;
+        top: -14px;
+        font-family: var(--font-mono);
+        font-size: 9px;
+        font-weight: 600;
+        color: #0d99a5;
+        background: #ffffff;
+        padding: 0 4px;
+      }
+      .comp-trend-bars {
+        position: absolute;
+        inset: 4px 2px 20px 2px;
         display: flex;
         gap: 6px;
         align-items: flex-end;
-        height: 110px;
-        padding: 4px 2px;
       }
       .comp-trend-col {
         flex: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
+        justify-content: flex-end;
+        height: 100%;
         min-width: 0;
+        position: relative;
       }
       .comp-trend-bar {
         width: 100%;
         max-width: 28px;
-        border-radius: 4px 4px 0 0;
+        border-radius: 3px 3px 0 0;
         transition:
           height 0.25s ease,
           background 0.25s ease;
+        min-height: 2px;
+      }
+      .comp-trend-bar-val {
+        position: absolute;
+        top: -14px;
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        font-weight: 600;
+        color: #475569;
+        opacity: 0;
+        transition: opacity 0.15s ease;
+      }
+      .comp-trend-col:hover .comp-trend-bar-val {
+        opacity: 1;
       }
       .comp-trend-lbl {
+        position: absolute;
+        bottom: -16px;
         font-family: var(--font-mono);
         font-size: 9.5px;
         color: #94a3b8;
+      }
+      .comp-trend-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+        margin-top: 6px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #64748b;
+      }
+      .comp-trend-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .comp-trend-swatch {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+      }
+      .comp-trend-legend-sep {
+        color: #cbd5e1;
       }
 
       .comp-ranking {
@@ -2869,6 +3245,456 @@ interface MetricOption {
         background: rgba(245, 158, 11, 0.15);
         color: #b45309;
       }
+
+      /* History export modal */
+      .vs-hx-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.50);
+        z-index: 50;
+        animation: hxFadeIn 0.15s ease-out;
+      }
+      @keyframes hxFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .vs-hx-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(640px, 94vw);
+        max-height: 88vh;
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+        z-index: 51;
+        display: flex;
+        flex-direction: column;
+        animation: hxScaleIn 0.20s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes hxScaleIn {
+        from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
+      .vs-hx-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .vs-hx-title {
+        font-family: 'Josefin Sans', sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .vs-hx-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: transparent;
+        color: #64748b;
+        border: 1px solid transparent;
+      }
+      .vs-hx-close:hover {
+        background: rgba(15, 23, 42, 0.06);
+        color: #1e293b;
+      }
+      .vs-hx-body {
+        padding: 16px 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .vs-hx-section {
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+      }
+      .vs-hx-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .vs-hx-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .vs-hx-section-title {
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+      }
+      .vs-hx-count {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 500;
+        color: #94a3b8;
+        margin-left: 6px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .vs-hx-toggle-all {
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #0d99a5;
+        background: transparent;
+        border: none;
+        font-weight: 500;
+      }
+      .vs-hx-toggle-all:hover {
+        text-decoration: underline;
+      }
+      .vs-hx-range {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .vs-hx-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-family: var(--font-dm);
+        font-size: 11px;
+        color: #64748b;
+      }
+      .vs-hx-field input {
+        padding: 7px 9px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #1e293b;
+        outline: none;
+      }
+      .vs-hx-field input:focus {
+        border-color: #0d99a5;
+      }
+      .vs-hx-hint {
+        margin-top: 6px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .vs-hx-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 6px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 4px 2px;
+      }
+      .vs-hx-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 9px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .vs-hx-checkbox:hover {
+        border-color: rgba(13, 175, 189, 0.30);
+        background: rgba(13, 175, 189, 0.04);
+      }
+      .vs-hx-checkbox input {
+        margin-top: 2px;
+        accent-color: #0d99a5;
+      }
+      .vs-hx-checkbox-lbl {
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        color: #1e293b;
+        line-height: 1.3;
+      }
+      .vs-hx-checkbox-meta {
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-weight: 400;
+      }
+      .vs-hx-empty {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #94a3b8;
+        font-style: italic;
+        padding: 10px;
+        text-align: center;
+        background: #f8fafc;
+        border-radius: 7px;
+      }
+      .vs-hx-error {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 10px;
+        background: rgba(239, 68, 68, 0.10);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 7px;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+      }
+      .vs-hx-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 18px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 0 0 14px 14px;
+      }
+      .vs-hx-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 14px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .vs-hx-btn:hover:not(:disabled) {
+        background: #f1f5f9;
+      }
+      .vs-hx-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .vs-hx-btn--primary {
+        background: #0d99a5;
+        color: #ffffff;
+        border-color: #0d99a5;
+      }
+      .vs-hx-btn--primary:hover:not(:disabled) {
+        background: #0c8b96;
+      }
+      .animate-spin {
+        animation: hxSpin 0.9s linear infinite;
+      }
+      @keyframes hxSpin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Alarmas tab */
+      .vs-alarms-filter {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .vs-alarms-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        font-weight: 500;
+        transition: color 0.15s, border-color 0.15s, background 0.15s;
+      }
+      .vs-alarms-chip strong {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #94a3b8;
+      }
+      .vs-alarms-chip:hover {
+        color: #1e293b;
+        border-color: #cbd5e1;
+      }
+      .vs-alarms-chip--active {
+        background: #1e293b;
+        color: #ffffff;
+        border-color: #1e293b;
+      }
+      .vs-alarms-chip--active strong {
+        color: #ffffff;
+      }
+      .vs-alarms-chip--crit.vs-alarms-chip--active {
+        background: #dc2626;
+        border-color: #dc2626;
+      }
+      .vs-alarms-chip--warn.vs-alarms-chip--active {
+        background: #d97706;
+        border-color: #d97706;
+      }
+      .vs-alarms-chip--info.vs-alarms-chip--active {
+        background: #0d99a5;
+        border-color: #0d99a5;
+      }
+      .vs-alarms-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 60px 20px;
+        background: #ffffff;
+        border: 1px dashed #e2e8f0;
+        border-radius: 12px;
+        text-align: center;
+      }
+      .vs-alarms-empty-title {
+        font-family: var(--font-dm);
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .vs-alarms-empty-sub {
+        font-family: var(--font-dm);
+        font-size: 12px;
+        color: #64748b;
+      }
+      .vs-alarms-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .vs-alarm-card {
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        padding: 12px 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-left-width: 3px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        transition: box-shadow 0.15s;
+      }
+      .vs-alarm-card:hover {
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+      }
+      .vs-alarm-card[data-severity='crit'] {
+        border-left-color: #dc2626;
+      }
+      .vs-alarm-card[data-severity='warn'] {
+        border-left-color: #d97706;
+      }
+      .vs-alarm-card[data-severity='info'] {
+        border-left-color: #0d99a5;
+      }
+      .vs-alarm-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        flex-shrink: 0;
+      }
+      .vs-alarm-icon[data-severity='crit'] {
+        background: rgba(239, 68, 68, 0.10);
+        color: #dc2626;
+      }
+      .vs-alarm-icon[data-severity='warn'] {
+        background: rgba(245, 158, 11, 0.10);
+        color: #d97706;
+      }
+      .vs-alarm-icon[data-severity='info'] {
+        background: rgba(13, 175, 189, 0.10);
+        color: #0d99a5;
+      }
+      .vs-alarm-icon .material-symbols-outlined {
+        font-size: 18px;
+      }
+      .vs-alarm-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .vs-alarm-head {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 3px;
+      }
+      .vs-alarm-title {
+        font-family: var(--font-dm);
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .vs-alarm-sev {
+        padding: 1px 7px;
+        border-radius: 999px;
+        font-family: var(--font-dm);
+        font-size: 9.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .vs-alarm-sev[data-severity='crit'] {
+        background: rgba(239, 68, 68, 0.12);
+        color: #b91c1c;
+      }
+      .vs-alarm-sev[data-severity='warn'] {
+        background: rgba(245, 158, 11, 0.12);
+        color: #b45309;
+      }
+      .vs-alarm-sev[data-severity='info'] {
+        background: rgba(13, 175, 189, 0.12);
+        color: #0d99a5;
+      }
+      .vs-alarm-detail {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #475569;
+        line-height: 1.4;
+      }
+      .vs-alarm-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .vs-alarm-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #64748b;
+      }
+      .vs-alarm-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        align-self: center;
+        flex-shrink: 0;
+        transition: color 0.15s, border-color 0.15s, background 0.15s;
+      }
+      .vs-alarm-action:hover {
+        color: #0d99a5;
+        border-color: rgba(13, 175, 189, 0.35);
+        background: rgba(13, 175, 189, 0.04);
+      }
       .vs-audit-body {
         padding: 14px;
         display: flex;
@@ -2962,6 +3788,29 @@ interface MetricOption {
         background: #f8fafc;
         border: 1px dashed #e2e8f0;
         border-radius: 12px;
+      }
+
+      .vs-audit-loadmore {
+        margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px dashed #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: color 0.15s, border-color 0.15s, background 0.15s;
+      }
+      .vs-audit-loadmore:hover {
+        color: #0d99a5;
+        border-color: rgba(13, 175, 189, 0.35);
+        background: rgba(13, 175, 189, 0.04);
       }
 
       .vs-audit-list {
@@ -3717,11 +4566,90 @@ interface MetricOption {
       }
 
       .vs-diag-channels-row,
-      .vs-diag-rssi-head {
+      .vs-tap-sensors-row {
         display: flex;
         justify-content: space-between;
-        align-items: baseline;
+        align-items: center;
         margin-bottom: 4px;
+      }
+      .vs-tap-sensors-lbl {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+      }
+      .vs-tap-sensors-val {
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #15803d;
+        font-variant-numeric: tabular-nums;
+      }
+      .vs-tap-sensors-val--bad {
+        color: #b91c1c;
+      }
+      .vs-tap-cov {
+        margin-top: 6px;
+      }
+      .vs-tap-cov-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 3px;
+      }
+      .vs-tap-cov-lbl {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+      }
+      .vs-tap-cov-val {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 600;
+        color: #15803d;
+        font-variant-numeric: tabular-nums;
+      }
+      .vs-tap-cov-val--warn {
+        color: #b45309;
+      }
+      .vs-tap-cov-val--bad {
+        color: #b91c1c;
+      }
+      .vs-tap-cov-spark {
+        display: flex;
+        gap: 1px;
+        height: 14px;
+        align-items: stretch;
+        background: #f8fafc;
+        padding: 1px;
+        border-radius: 3px;
+      }
+      .vs-tap-cov-slot {
+        flex: 1;
+        height: 100%;
+        border-radius: 1px;
+        opacity: 0.4;
+        transition: opacity 0.15s;
+      }
+      .vs-tap-cov-slot--on {
+        opacity: 1;
+      }
+      .vs-tap-cov-axis {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 2px;
+        font-family: var(--font-mono);
+        font-size: 8.5px;
+        color: #cbd5e1;
       }
       .vs-diag-channels-lbl {
         font-family: var(--font-dm);
@@ -3730,8 +4658,7 @@ interface MetricOption {
         letter-spacing: 0.06em;
         color: #94a3b8;
       }
-      .vs-diag-channels-val,
-      .vs-diag-rssi-val {
+      .vs-diag-channels-val {
         font-family: var(--font-mono);
         font-size: 12.5px;
         font-weight: 600;
@@ -3743,41 +4670,15 @@ interface MetricOption {
         font-size: 10.5px;
         font-weight: 500;
       }
-      .vs-diag-channels-bar,
-      .vs-diag-rssi-bar {
+      .vs-diag-channels-bar {
         height: 6px;
         background: #f1f5f9;
         border-radius: 3px;
         overflow: hidden;
       }
-      .vs-diag-channels-fill,
-      .vs-diag-rssi-fill {
+      .vs-diag-channels-fill {
         height: 100%;
         transition: width 0.3s ease;
-      }
-      .vs-diag-rssi-fill {
-        background: linear-gradient(90deg, #ef4444, #f59e0b 40%, #22c55e 75%);
-      }
-      .vs-diag-rssi-tag {
-        font-family: var(--font-dm);
-        font-size: 10px;
-        font-weight: 500;
-        color: #64748b;
-        margin-left: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .vs-diag-rssi-meta {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 5px;
-        font-family: var(--font-dm);
-        font-size: 10.5px;
-        color: #64748b;
-      }
-      .vs-diag-rssi-meta strong {
-        font-family: var(--font-mono);
-        color: #1e293b;
       }
       .vs-stat-mini-label {
         font-size: 9px;
@@ -3903,7 +4804,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly coldRoomSites = input<SiteRecord[]>([]);
   readonly embedded = input<boolean>(false);
   readonly view = input<
-    'full' | 'general' | 'salas' | 'compliance' | 'taps' | 'eventos' | 'contacts'
+    'full' | 'general' | 'salas' | 'compliance' | 'taps' | 'alarmas' | 'contacts'
   >('full');
 
   readonly tapSiteMap = computed<Record<TapKey, string>>(() => {
@@ -3920,10 +4821,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return ['/companies', tapSiteId, 'tap', tap.replace(' ', '-')];
   }
 
-  tapDiagRouterLink(tap: TapKey): string[] {
-    const tapSiteId = this.tapSiteMap()[tap] ?? this.siteId();
-    return ['/companies', tapSiteId, 'tap', tap.replace(' ', '-'), 'diag'];
-  }
 
   isTapStale(tap: TapKey): boolean {
     const age = this.tapLastSeenAgeMs()[tap];
@@ -3962,7 +4859,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       v === 'salas' ||
       v === 'compliance' ||
       v === 'taps' ||
-      v === 'eventos' ||
+      v === 'alarmas' ||
       v === 'contacts'
     )
       return v;
@@ -4041,11 +4938,15 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     };
   });
 
-  readonly subTabs = computed<SubTab[]>(() => [
-    { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
-    { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
-    { key: 'taps', icon: 'memory', label: 'TAP (técnico)' },
-  ]);
+  readonly subTabs = computed<SubTab[]>(() => {
+    const c = this.alarmsCounts();
+    return [
+      { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
+      { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
+      { key: 'alarmas', icon: 'notifications_active', label: 'Alarmas', badge: c.total },
+      { key: 'taps', icon: 'memory', label: 'TAP (técnico)' },
+    ];
+  });
 
   salaSlug(area: string): string {
     return area
@@ -4504,6 +5405,30 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return '#EF4444';
   }
 
+  // Escala Y focada: baseline en min(80, lowestPct - 5). Si todos están en
+  // 95-100%, no aplasta las diferencias contra una escala 0-100%.
+  trendYAxisMin(): number {
+    const cm = this.complianceMetrics();
+    if (!cm.hourlyTrend.length) return 0;
+    const lowest = Math.min(...cm.hourlyTrend.map((b) => b.pct));
+    const floor = Math.max(0, Math.min(90, Math.floor(lowest - 5)));
+    return floor;
+  }
+
+  trendYAxisMid(): number {
+    const min = this.trendYAxisMin();
+    return Math.round((min + 100) / 2);
+  }
+
+  // Convierte pct (0-100) a posición Y en porcentaje del chart (0=bottom, 100=top)
+  // usando la escala focada [yMin, 100].
+  trendPctToY(pct: number): number {
+    const yMin = this.trendYAxisMin();
+    if (pct <= yMin) return 0;
+    if (pct >= 100) return 100;
+    return ((pct - yMin) / (100 - yMin)) * 100;
+  }
+
   fmtComplianceMin(min: number): string {
     if (!min) return '0m';
     if (min < 60) return `${Math.round(min)}m`;
@@ -4647,6 +5572,313 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly auditEntries = computed(() => this.auditSvc.entries());
 
+  // === Alarmas operacionales HACCP ===
+  readonly alarmsList = computed(() => {
+    this.now();
+    const nowMs = Date.now();
+    const out: {
+      id: string;
+      type: 'deviation' | 'sensor-down' | 'tap-down' | 'sensor-fault' | 'sin-umbral';
+      severity: 'crit' | 'warn' | 'info';
+      icon: string;
+      title: string;
+      detail: string;
+      area: string | null;
+      sensorId: string | null;
+      tap: string | null;
+      sinceMs: number | null;
+      areaSlug: string | null;
+    }[] = [];
+
+    // 1. Desviaciones abiertas (sensor sobre/bajo umbral).
+    const devs = this.deviationsSvc.detect(this.coldRoomSensors());
+    for (const d of devs) {
+      if (!this.deviationsSvc.isOpen(d)) continue;
+      const sinceMs = nowMs - new Date(d.startTs).getTime();
+      const sevMap: Record<string, 'crit' | 'warn'> = { severe: 'crit', crit: 'crit', warn: 'warn' };
+      out.push({
+        id: `dev-${d.id}`,
+        type: 'deviation',
+        severity: sevMap[d.level] || 'warn',
+        icon: 'warning',
+        title: `Desviación ${d.level === 'severe' ? 'severa' : d.level === 'crit' ? 'sostenida' : 'breve'} · ${d.sensorId}`,
+        detail: `Peak ${d.peakT.toFixed(1)}°C · umbral ${d.thresholdMax.toFixed(1)}°C · ${this.fmtMinutes(d.durationMin)}`,
+        area: d.area,
+        sensorId: d.sensorId,
+        tap: d.tap,
+        sinceMs,
+        areaSlug: this.salaSlug(d.area),
+      });
+    }
+
+    // 2. TAP caído (>5min sin transmitir).
+    const ageMap = this.tapLastSeenAgeMs();
+    for (const tap of Object.keys(ageMap)) {
+      const age = ageMap[tap];
+      if (age === null || age === undefined) continue;
+      if (age < 5 * 60_000) continue;
+      const sev: 'crit' | 'warn' = age > 30 * 60_000 ? 'crit' : 'warn';
+      out.push({
+        id: `tap-${tap}`,
+        type: 'tap-down',
+        severity: sev,
+        icon: 'cell_tower',
+        title: `${tap} sin transmitir`,
+        detail: `Última transmisión hace ${this.relativeMs(age)} · concentrador puede estar caído`,
+        area: null,
+        sensorId: null,
+        tap,
+        sinceMs: age,
+        areaSlug: null,
+      });
+    }
+
+    // 3. Sensor en falla (defective marcado).
+    for (const s of this.coldRoomSensors()) {
+      if (!s.defective) continue;
+      out.push({
+        id: `fault-${s.id}`,
+        type: 'sensor-fault',
+        severity: 'warn',
+        icon: 'sensors_off',
+        title: `${s.id} fuera de servicio`,
+        detail: s.defectiveReason || 'Marcado como defectivo — excluido del cómputo',
+        area: s.area,
+        sensorId: s.id,
+        tap: s.tap,
+        sinceMs: null,
+        areaSlug: this.salaSlug(s.area),
+      });
+    }
+
+    // 4. Sensor sin lectura reciente (stale individual, no por TAP).
+    const STALE_MS_ALARM = 10 * 60_000;
+    for (const s of this.coldRoomSensors()) {
+      if (s.defective) continue;
+      if (!s.lastSeen) continue;
+      const ts = new Date(s.lastSeen).getTime();
+      if (!Number.isFinite(ts) || ts <= 0) continue;
+      const age = nowMs - ts;
+      if (age < STALE_MS_ALARM) continue;
+      // Si TAP entero caído, no duplicar (ya está la alarma TAP).
+      const tapAge = ageMap[s.tap];
+      if (tapAge !== null && tapAge !== undefined && tapAge >= 5 * 60_000) continue;
+      out.push({
+        id: `stale-${s.id}`,
+        type: 'sensor-down',
+        severity: 'warn',
+        icon: 'signal_disconnected',
+        title: `${s.id} sin lectura reciente`,
+        detail: `Última lectura hace ${this.relativeMs(age)} · TAP transmite, sensor podría haberse caído`,
+        area: s.area,
+        sensorId: s.id,
+        tap: s.tap,
+        sinceMs: age,
+        areaSlug: this.salaSlug(s.area),
+      });
+    }
+
+    // 5. Salas sin umbral configurado (compliance no calculable).
+    for (const sa of this.salaAggregates()) {
+      if (sa.thresholdMax !== null) continue;
+      out.push({
+        id: `noumb-${sa.slug}`,
+        type: 'sin-umbral',
+        severity: 'info',
+        icon: 'tune',
+        title: `${sa.area} sin umbral configurado`,
+        detail: 'Configurar Umbrales para habilitar monitoreo HACCP de esta sala',
+        area: sa.area,
+        sensorId: null,
+        tap: null,
+        sinceMs: null,
+        areaSlug: sa.slug,
+      });
+    }
+
+    // Sort: crit primero, luego warn, luego info. Dentro de severidad por sinceMs desc.
+    const sevRank = { crit: 0, warn: 1, info: 2 } as const;
+    out.sort((a, b) => {
+      if (sevRank[a.severity] !== sevRank[b.severity]) return sevRank[a.severity] - sevRank[b.severity];
+      return (b.sinceMs ?? 0) - (a.sinceMs ?? 0);
+    });
+    return out;
+  });
+
+  readonly alarmsCounts = computed(() => {
+    const list = this.alarmsList();
+    return {
+      total: list.length,
+      crit: list.filter((a) => a.severity === 'crit').length,
+      warn: list.filter((a) => a.severity === 'warn').length,
+      info: list.filter((a) => a.severity === 'info').length,
+    };
+  });
+
+  readonly alarmsFilter = signal<'all' | 'crit' | 'warn' | 'info'>('all');
+
+  readonly alarmsFiltered = computed(() => {
+    const f = this.alarmsFilter();
+    if (f === 'all') return this.alarmsList();
+    return this.alarmsList().filter((a) => a.severity === f);
+  });
+
+  alarmAreaLink(slug: string | null): string[] | null {
+    if (!slug) return null;
+    return ['/companies', this.siteId(), 'sala', slug];
+  }
+
+  // === Descargar historial (modal) ===
+  readonly historyExportOpen = signal<boolean>(false);
+  readonly historyExportSelectedSalas = signal<Set<string>>(new Set<string>());
+  readonly historyExportSelectedSensors = signal<Set<string>>(new Set<string>());
+  readonly historyExportFrom = signal<string>('');
+  readonly historyExportTo = signal<string>('');
+  readonly historyExportLoading = signal<boolean>(false);
+  readonly historyExportError = signal<string | null>(null);
+
+  openHistoryExport(): void {
+    // Default: hoy 00:00 → ahora.
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    this.historyExportFrom.set(this.toDatetimeLocal(startOfToday));
+    this.historyExportTo.set(this.toDatetimeLocal(now));
+    this.historyExportSelectedSalas.set(new Set());
+    this.historyExportSelectedSensors.set(new Set());
+    this.historyExportError.set(null);
+    this.historyExportOpen.set(true);
+  }
+
+  closeHistoryExport(): void {
+    this.historyExportOpen.set(false);
+  }
+
+  private toDatetimeLocal(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  toggleExportSala(slug: string): void {
+    const cur = new Set(this.historyExportSelectedSalas());
+    if (cur.has(slug)) cur.delete(slug);
+    else cur.add(slug);
+    this.historyExportSelectedSalas.set(cur);
+    // Limpia sensores cuyo área ya no está seleccionada.
+    const validIds = new Set(this.exportAvailableSensors().map((s) => s.id));
+    const cleanSensors = new Set([...this.historyExportSelectedSensors()].filter((id) => validIds.has(id)));
+    this.historyExportSelectedSensors.set(cleanSensors);
+  }
+
+  toggleExportSensor(id: string): void {
+    const cur = new Set(this.historyExportSelectedSensors());
+    if (cur.has(id)) cur.delete(id);
+    else cur.add(id);
+    this.historyExportSelectedSensors.set(cur);
+  }
+
+  toggleExportSelectAllSalas(): void {
+    const all = this.salaAggregates().map((sa) => sa.slug);
+    const cur = this.historyExportSelectedSalas();
+    if (cur.size === all.length) this.historyExportSelectedSalas.set(new Set());
+    else this.historyExportSelectedSalas.set(new Set(all));
+    // Reset sensores.
+    this.historyExportSelectedSensors.set(new Set());
+  }
+
+  toggleExportSelectAllSensors(): void {
+    const available = this.exportAvailableSensors().map((s) => s.id);
+    const cur = this.historyExportSelectedSensors();
+    if (cur.size === available.length) this.historyExportSelectedSensors.set(new Set());
+    else this.historyExportSelectedSensors.set(new Set(available));
+  }
+
+  readonly exportAvailableSensors = computed(() => {
+    const salaSlugs = this.historyExportSelectedSalas();
+    if (salaSlugs.size === 0) return [];
+    return this.coldRoomSensors().filter((s) => salaSlugs.has(this.salaSlug(s.area)));
+  });
+
+  setHistoryExportFrom(ev: Event): void {
+    this.historyExportFrom.set((ev.target as HTMLInputElement).value);
+  }
+  setHistoryExportTo(ev: Event): void {
+    this.historyExportTo.set((ev.target as HTMLInputElement).value);
+  }
+
+  async confirmHistoryExport(): Promise<void> {
+    this.historyExportError.set(null);
+    const sensors = [...this.historyExportSelectedSensors()];
+    if (sensors.length === 0) {
+      this.historyExportError.set('Selecciona al menos un sensor.');
+      return;
+    }
+    const fromStr = this.historyExportFrom();
+    const toStr = this.historyExportTo();
+    if (!fromStr || !toStr) {
+      this.historyExportError.set('Rango de fechas inválido.');
+      return;
+    }
+    const from = new Date(fromStr);
+    const to = new Date(toStr);
+    if (to <= from) {
+      this.historyExportError.set('La fecha "Hasta" debe ser mayor que "Desde".');
+      return;
+    }
+
+    const sid = this.siteId();
+    const related = this.coldRoomSites().map((s) => s.id);
+    const allIds = related.length > 0 ? [...new Set([sid, ...related])] : [sid];
+
+    this.historyExportLoading.set(true);
+    this.coldRoom.exportHistory(sid, from.toISOString(), to.toISOString(), allIds, sensors).subscribe({
+      next: (res) => {
+        this.historyExportLoading.set(false);
+        if (!res.ok) {
+          this.historyExportError.set(res.error || 'Error al obtener datos.');
+          return;
+        }
+        if (res.data.points.length === 0) {
+          this.historyExportError.set('Sin datos en el rango seleccionado.');
+          return;
+        }
+        this.downloadHistoryCsv(res.data.points, from, to, res.meta.view);
+        this.closeHistoryExport();
+      },
+      error: (err) => {
+        this.historyExportLoading.set(false);
+        this.historyExportError.set('Error HTTP: ' + (err?.error?.error || err?.message || 'desconocido'));
+      },
+    });
+  }
+
+  private downloadHistoryCsv(
+    points: Array<{ ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }>,
+    from: Date,
+    to: Date,
+    view: string,
+  ): void {
+    const lines = ['timestamp,sensor,area,tap,temperatura_C,humedad_pct'];
+    for (const p of points) {
+      const t = p.t !== null ? p.t.toFixed(2) : '';
+      const h = p.h !== null ? p.h.toFixed(2) : '';
+      const area = `"${(p.area || '').replace(/"/g, '""')}"`;
+      const tap = `"${(p.tap || '').replace(/"/g, '""')}"`;
+      lines.push(`${p.ts},${p.sensorId},${area},${tap},${t},${h}`);
+    }
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    a.download = `ventisqueros-historial-${fmt(from)}-${fmt(to)}-${view}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   readonly salasSinUmbralCount = computed(
     () => this.salaAggregates().filter((sa) => sa.thresholdMax === null).length,
   );
@@ -4668,23 +5900,44 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     });
   });
 
+  // Paginación visual: muestra solo primeras N entradas con botón "Cargar más".
+  // Evita renderizar 2000 rows en DOM cuando audit log crece.
+  readonly auditPageSize = 10;
+  readonly auditDisplayCount = signal<number>(this.auditPageSize);
+
+  readonly auditPaged = computed(() => {
+    return this.auditFiltered().slice(0, this.auditDisplayCount());
+  });
+
+  loadMoreAudit(): void {
+    this.auditDisplayCount.update((n) => n + this.auditPageSize);
+  }
+
+  resetAuditPaging(): void {
+    this.auditDisplayCount.set(this.auditPageSize);
+  }
+
   setAuditCategory(ev: Event): void {
     const target = ev.target as HTMLSelectElement | null;
     this.auditFilterCategory.set((target?.value as ColdRoomAuditCategory) || '');
+    this.resetAuditPaging();
   }
 
   setAuditQuery(value: string): void {
     this.auditFilterQuery.set(value);
+    this.resetAuditPaging();
   }
 
   setAuditFrom(ev: Event): void {
     const target = ev.target as HTMLInputElement | null;
     this.auditFilterFrom.set(target?.value || '');
+    this.resetAuditPaging();
   }
 
   setAuditTo(ev: Event): void {
     const target = ev.target as HTMLInputElement | null;
     this.auditFilterTo.set(target?.value || '');
+    this.resetAuditPaging();
   }
 
   exportAuditCsv(): void {
@@ -4850,54 +6103,79 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return `hace ${Math.floor(diff / 86_400_000)}d`;
   }
 
-  // === TAP technical diagnostics (derived from concentrator channels) ===
-  readonly concentratorChannels = signal<ColdRoomConcentratorChannel[]>([]);
+  // === TAP technical diagnostics (cagg-derived, Modbus wired) ===
   readonly diagFilter = signal<'all' | 'online' | 'degraded' | 'offline'>('all');
-  readonly diagSort = signal<'lastSeen' | 'rssi' | 'tap'>('tap');
+  readonly diagSort = signal<'lastSeen' | 'tap'>('tap');
 
   readonly tapDiagnostics = computed<TapDiagnostic[]>(() => {
-    const channels = this.concentratorChannels();
     const colors = this.tapColors();
     const taps = this.taps();
+    const ageMap = this.tapLastSeenAgeMs();
+    const coldSensors = this.coldRoomSensors();
     const now = Date.now();
+    const STALE_FRESH_MS = 5 * 60_000;
+    const STALE_OFFLINE_MS = 30 * 60_000;
     return taps.map((tap) => {
-      const tapChannels = channels.filter((c) => c.tap === tap);
-      const online = tapChannels.filter((c) => c.online);
-      const lastSeenTimes = tapChannels
-        .map((c) => (c.lastSeen ? new Date(c.lastSeen).getTime() : null))
-        .filter((n): n is number => n !== null);
-      const oldest = lastSeenTimes.length ? Math.min(...lastSeenTimes) : null;
-      const oldestMs = oldest !== null ? Math.max(0, now - oldest) : null;
-      const stale = lastSeenTimes.filter((t) => now - t > 60_000).length;
-      const rssis = tapChannels.map((c) => c.rssi).filter((r) => typeof r === 'number');
-      const avgRssi = rssis.length
-        ? Math.round(rssis.reduce((a, b) => a + b, 0) / rssis.length)
-        : null;
-      let worst: { ch: ColdRoomConcentratorChannel; rssi: number } | null = null;
-      let best: { ch: ColdRoomConcentratorChannel; rssi: number } | null = null;
-      for (const ch of tapChannels) {
-        if (typeof ch.rssi !== 'number') continue;
-        if (!worst || ch.rssi < worst.rssi) worst = { ch, rssi: ch.rssi };
-        if (!best || ch.rssi > best.rssi) best = { ch, rssi: ch.rssi };
+      // Sensores del TAP reportando reciente (cagg propio).
+      const tapSensors = coldSensors.filter((s) => s.tap === tap);
+      const sensorsReporting = tapSensors.filter((s) => {
+        if (!s.lastSeen) return false;
+        const ts = new Date(s.lastSeen).getTime();
+        return Number.isFinite(ts) && ts > 0 && now - ts < STALE_FRESH_MS;
+      }).length;
+
+      // Cobertura 24h: cuántos minutos del cagg tienen al menos una lectura.
+      // 1440 = 24h * 60min. Sparkline en 60 slots de 24min cada uno.
+      const cutoff = now - 24 * 3_600_000;
+      const slotsCount = 60;
+      const slotMs = (24 * 3_600_000) / slotsCount;
+      const coverageSlots = new Array<boolean>(slotsCount).fill(false);
+      const uniqueMinutes = new Set<number>();
+      for (const s of tapSensors) {
+        if (!s.histPoints || s.histPoints.length === 0) continue;
+        for (const p of s.histPoints) {
+          const ts = new Date(p.t).getTime();
+          if (!Number.isFinite(ts) || ts < cutoff) continue;
+          uniqueMinutes.add(Math.floor(ts / 60_000));
+          const slot = Math.floor((ts - cutoff) / slotMs);
+          if (slot >= 0 && slot < slotsCount) coverageSlots[slot] = true;
+        }
       }
+      const coverageMinutes = uniqueMinutes.size;
+      const coveragePct = (coverageMinutes / 1440) * 100;
+
+      // Edad de transmisión: directo del cagg.
+      const caggAge = ageMap[tap];
+      const transmissionAgeMs = caggAge !== null && caggAge !== undefined ? caggAge : null;
+
+      // Status puramente cagg-derived (Modbus wired, sin concentrador maestro).
       let status: TapTechStatus = 'unknown';
-      if (tapChannels.length === 0) status = 'unknown';
-      else if (online.length === 0) status = 'offline';
-      else if (online.length < tapChannels.length || stale > 0) status = 'degraded';
-      else status = 'online';
+      if (transmissionAgeMs === null) {
+        status = 'unknown';
+      } else if (transmissionAgeMs < STALE_FRESH_MS) {
+        status = 'online';
+      } else if (transmissionAgeMs < STALE_OFFLINE_MS) {
+        status = 'degraded';
+      } else {
+        status = 'offline';
+      }
+
+      const oldestIso =
+        transmissionAgeMs !== null
+          ? new Date(now - transmissionAgeMs).toISOString()
+          : null;
+
       return {
         tap,
         color: colors[tap],
         status,
-        channels: tapChannels,
-        channelsOnline: online.length,
-        channelsTotal: tapChannels.length,
-        channelsStale: stale,
-        oldestSeenIso: oldest !== null ? new Date(oldest).toISOString() : null,
-        oldestSeenMs: oldestMs,
-        avgRssi,
-        worstRssi: worst,
-        bestRssi: best,
+        oldestSeenIso: oldestIso,
+        oldestSeenMs: transmissionAgeMs,
+        sensorsReporting,
+        sensorsTotal: tapSensors.length,
+        coveragePct,
+        coverageMinutes,
+        coverageSlots,
       };
     });
   });
@@ -4911,9 +6189,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       if (sort === 'lastSeen') {
         return (b.oldestSeenMs ?? -1) - (a.oldestSeenMs ?? -1);
       }
-      if (sort === 'rssi') {
-        return (a.avgRssi ?? 0) - (b.avgRssi ?? 0);
-      }
       return a.tap.localeCompare(b.tap);
     });
     return filtered;
@@ -4924,30 +6199,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     const online = list.filter((d) => d.status === 'online').length;
     const degraded = list.filter((d) => d.status === 'degraded').length;
     const offline = list.filter((d) => d.status === 'offline').length;
-    const allRssis: number[] = [];
-    for (const d of list) {
-      if (d.avgRssi !== null) allRssis.push(d.avgRssi);
-    }
-    const avgRssi = allRssis.length
-      ? Math.round(allRssis.reduce((a, b) => a + b, 0) / allRssis.length)
-      : null;
-    const stale = list.reduce((a, d) => a + d.channelsStale, 0);
-    return { online, degraded, offline, total: list.length, avgRssi, stale };
+    return { online, degraded, offline, total: list.length };
   });
-
-  rssiLabel(rssi: number | null): string {
-    if (rssi === null) return '—';
-    if (rssi > -60) return 'Excelente';
-    if (rssi > -75) return 'Bueno';
-    if (rssi > -85) return 'Regular';
-    return 'Pobre';
-  }
-
-  rssiBarPct(rssi: number | null): number {
-    if (rssi === null) return 0;
-    const clamped = Math.max(-100, Math.min(-30, rssi));
-    return Math.round(((clamped + 100) / 70) * 100);
-  }
 
   relativeMs(ms: number | null): string {
     if (ms === null) return '—';
@@ -4968,7 +6221,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   });
 
   private intervalId: ReturnType<typeof setInterval> | null = null;
-  private concIntervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     effect(() => {
@@ -4983,18 +6235,21 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      // Fetch concentrator only when TAP tab active to avoid extra traffic.
-      const tab = this.effectiveTab();
-      if (tab === 'taps') this.startConcentratorPolling();
-      else this.stopConcentratorPolling();
-    });
-
-    effect(() => {
       // Rich cold-room data when Salas or Compliance tab active.
       const tab = this.effectiveTab();
-      // Pollear también en General — el floor map ahora usa coldRoomSensors.
-      if (tab === 'general' || tab === 'salas' || tab === 'compliance') this.startColdRoomPolling();
-      else this.stopColdRoomPolling();
+      // Pollear en General, Salas, Compliance y TAP técnico — todos usan
+      // coldRoomSensors. Sin esto el TAP técnico queda congelado en datos
+      // iniciales y status no se refresca.
+      if (
+        tab === 'general' ||
+        tab === 'salas' ||
+        tab === 'compliance' ||
+        tab === 'taps'
+      ) {
+        this.startColdRoomPolling();
+      } else {
+        this.stopColdRoomPolling();
+      }
     });
   }
 
@@ -5013,7 +6268,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
     }
-    this.stopConcentratorPolling();
     this.stopColdRoomPolling();
     this.stopColdRoom7dPolling();
     this.service.stopPolling();
@@ -5130,36 +6384,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     const h = Math.floor(min / 60);
     const m = min % 60;
     return m === 0 ? `${h}h` : `${h}h ${m}m`;
-  }
-
-  private startConcentratorPolling(): void {
-    if (this.concIntervalId !== null) return;
-    this.fetchConcentrator();
-    this.concIntervalId = setInterval(() => this.fetchConcentrator(), 10_000);
-  }
-
-  private stopConcentratorPolling(): void {
-    if (this.concIntervalId !== null) {
-      clearInterval(this.concIntervalId);
-      this.concIntervalId = null;
-    }
-  }
-
-  fetchConcentratorManual(): void {
-    this.fetchConcentrator();
-  }
-
-  private fetchConcentrator(): void {
-    const id = this.siteId();
-    if (!id) return;
-    this.coldRoom.getConcentrator(id).subscribe({
-      next: (res) => {
-        if (res.ok) this.concentratorChannels.set(res.data?.channels || []);
-      },
-      error: () => {
-        // keep last known channels
-      },
-    });
   }
 
   fmtTemp = fmtTemp;
