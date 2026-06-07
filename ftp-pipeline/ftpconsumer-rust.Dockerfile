@@ -6,12 +6,12 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends protobuf-compiler \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ftsconsumer-rust/Cargo.toml ./ftsconsumer-rust/Cargo.toml
-COPY ftsconsumer-rust/build.rs ./ftsconsumer-rust/build.rs
-COPY ftsconsumer-rust/src ./ftsconsumer-rust/src
+COPY ftpconsumer-rust/Cargo.toml ./ftpconsumer-rust/Cargo.toml
+COPY ftpconsumer-rust/build.rs ./ftpconsumer-rust/build.rs
+COPY ftpconsumer-rust/src ./ftpconsumer-rust/src
 COPY proto ./proto
 
-WORKDIR /app/ftsconsumer-rust
+WORKDIR /app/ftpconsumer-rust
 RUN cargo build --release
 
 FROM --platform=linux/amd64 debian:bookworm-slim
@@ -20,10 +20,10 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates wget \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/ftsconsumer-rust/target/release/ftsconsumer /usr/local/bin/ftsconsumer
+COPY --from=builder /app/ftpconsumer-rust/target/release/ftpconsumer /usr/local/bin/ftpconsumer
 
 USER nobody
 
 EXPOSE 50061
 
-CMD ["ftsconsumer"]
+CMD ["ftpconsumer"]

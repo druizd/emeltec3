@@ -513,7 +513,9 @@ function slugify(area: string): string {
               }
               @if (deviationsFiltered().length === 0) {
                 <div class="dev-filter-empty">
-                  <span class="material-symbols-outlined text-[20px] text-slate-300">filter_alt</span>
+                  <span class="material-symbols-outlined text-[20px] text-slate-300"
+                    >filter_alt</span
+                  >
                   Sin desviaciones en este filtro.
                 </div>
               }
@@ -563,7 +565,12 @@ function slugify(area: string): string {
       <!-- Modal nota HACCP (reconocer / clasificar / resolver) -->
       @if (noteModal(); as nm) {
         <div class="note-modal-backdrop" (click)="closeNoteModal()" aria-hidden="true"></div>
-        <aside class="note-modal" role="dialog" aria-modal="true" aria-label="Registrar acción HACCP">
+        <aside
+          class="note-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Registrar acción HACCP"
+        >
           <header class="note-modal-head">
             <div class="note-modal-title">
               @switch (nm.action) {
@@ -601,7 +608,6 @@ function slugify(area: string): string {
               placeholder="Ej: defrost programado de 03:00–03:15. Producto bajo control."
               [value]="nm.note"
               (input)="updateNoteModalText($event)"
-              autofocus
             ></textarea>
             <div class="note-modal-hint">
               Esta acción queda registrada en el audit log HACCP (inmutable).
@@ -1004,7 +1010,7 @@ function slugify(area: string): string {
         font-size: 9.5px;
         font-weight: 600;
         background: rgba(148, 163, 184, 0.18);
-        border: 1px solid rgba(148, 163, 184, 0.40);
+        border: 1px solid rgba(148, 163, 184, 0.4);
         color: #475569;
         border-radius: 4px;
         padding: 1px 5px;
@@ -1021,17 +1027,19 @@ function slugify(area: string): string {
         border: 0;
         color: #94a3b8;
         cursor: pointer;
-        transition: background 0.15s ease, color 0.15s ease;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
       }
       .sensor-defective-toggle:hover {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
       }
       .sensor-defective-toggle--active {
         color: #0d99a5;
       }
       .sensor-defective-toggle--active:hover {
-        background: rgba(13, 175, 189, 0.10);
+        background: rgba(13, 175, 189, 0.1);
         color: #0d99a5;
       }
       .sensor-id-chip {
@@ -1150,11 +1158,14 @@ function slugify(area: string): string {
         font-family: var(--font-dm);
         font-size: 11.5px;
         font-weight: 500;
-        transition: color 0.15s, border-color 0.15s, background 0.15s;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          background 0.15s;
       }
       .dev-filter-chip:hover {
         color: #0d99a5;
-        border-color: rgba(13, 175, 189, 0.30);
+        border-color: rgba(13, 175, 189, 0.3);
       }
       .dev-filter-chip strong {
         font-family: var(--font-mono);
@@ -1163,7 +1174,7 @@ function slugify(area: string): string {
         color: #94a3b8;
       }
       .dev-filter-chip--active {
-        background: rgba(13, 175, 189, 0.10);
+        background: rgba(13, 175, 189, 0.1);
         color: #0d99a5;
         border-color: rgba(13, 175, 189, 0.35);
       }
@@ -1515,7 +1526,7 @@ function slugify(area: string): string {
       .note-modal-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.50);
+        background: rgba(15, 23, 42, 0.5);
         z-index: 50;
         animation: salaFadeIn 0.15s ease-out;
       }
@@ -1528,19 +1539,29 @@ function slugify(area: string): string {
         background: #ffffff;
         border-radius: 12px;
         border: 1px solid #e2e8f0;
-        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.20);
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
         z-index: 51;
         display: flex;
         flex-direction: column;
-        animation: salaScaleIn 0.20s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: salaScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes salaScaleIn {
-        from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
-        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        from {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
       }
       @keyframes salaFadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       .note-modal-head {
         display: flex;
@@ -1919,7 +1940,10 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   // === Cause classification (híbrido) ===
   readonly causes = (
-    Object.entries(DEVIATION_CAUSES) as [DeviationCause, (typeof DEVIATION_CAUSES)[DeviationCause]][]
+    Object.entries(DEVIATION_CAUSES) as [
+      DeviationCause,
+      (typeof DEVIATION_CAUSES)[DeviationCause],
+    ][]
   ).map(([key, meta]) => ({ key, ...meta }));
 
   effectiveCause(d: Deviation) {

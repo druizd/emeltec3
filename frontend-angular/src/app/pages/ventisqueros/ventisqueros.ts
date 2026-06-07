@@ -342,10 +342,7 @@ interface MetricOption {
                 <div class="flex-1 overflow-y-auto overflow-x-hidden pr-1">
                   @for (tap of taps(); track tap) {
                     @if ((groupedSensors()[tap] || []).length > 0) {
-                      <div
-                        class="vs-tap-group"
-                        [style.--tap-color]="tapColors()[tap] || '#94A3B8'"
-                      >
+                      <div class="vs-tap-group" [style.--tap-color]="tapColors()[tap] || '#94A3B8'">
                         <div class="vs-tap-group-head flex items-center justify-between gap-2">
                           <span class="vs-tap-group-name">
                             <span class="vs-tap-group-dot"></span>
@@ -439,8 +436,8 @@ interface MetricOption {
             <div>
               <h2 class="vs-h1 text-slate-800">Salas</h2>
               <p class="mt-1 text-[12px] text-slate-500">
-                {{ salaAggregates().length }} salas · {{ coldRoomSensors().length }} sensores · click
-                para ver histórico
+                {{ salaAggregates().length }} salas · {{ coldRoomSensors().length }} sensores ·
+                click para ver histórico
               </p>
             </div>
             <div class="flex items-center gap-2">
@@ -524,187 +521,213 @@ interface MetricOption {
               Cargando datos en vivo del cagg…
             </div>
           } @else {
-          <div class="vs-salas-grid grid gap-3">
-            @for (sa of salaAggregates(); track sa.slug) {
-              <button
-                type="button"
-                [routerLink]="salaRouterLink(sa.area)"
-                [queryParams]="salaQueryParams()"
-                class="sala-card group"
-                [attr.data-status]="sa.status"
-              >
-                <header class="sala-card-head">
-                  <div
-                    class="sala-card-icon"
-                    [style.background]="sa.status === 'crit' ? 'rgba(239,68,68,0.10)' : sa.status === 'warn' ? 'rgba(245,158,11,0.10)' : 'rgba(13,175,189,0.10)'"
-                    [style.border-color]="sa.status === 'crit' ? 'rgba(239,68,68,0.30)' : sa.status === 'warn' ? 'rgba(245,158,11,0.30)' : 'rgba(13,175,189,0.30)'"
-                  >
-                    <span
-                      class="material-symbols-outlined text-[18px]"
-                      [style.color]="sa.status === 'crit' ? '#DC2626' : sa.status === 'warn' ? '#D97706' : '#0D99A5'"
-                    >thermostat</span>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h3 class="sala-card-title truncate">{{ sa.area }}</h3>
-                    <p class="sala-card-sub truncate">
-                      {{ sa.count }} {{ sa.count === 1 ? 'sensor' : 'sensores' }} ·
-                      {{ sa.taps.join(' / ') || '—' }}
-                    </p>
-                  </div>
-                  <span
-                    class="sala-card-chev material-symbols-outlined"
-                    >chevron_right</span>
-                </header>
-
-                <div class="sala-card-hero">
-                  <div class="sala-actual">
+            <div class="vs-salas-grid grid gap-3">
+              @for (sa of salaAggregates(); track sa.slug) {
+                <button
+                  type="button"
+                  [routerLink]="salaRouterLink(sa.area)"
+                  [queryParams]="salaQueryParams()"
+                  class="sala-card group"
+                  [attr.data-status]="sa.status"
+                >
+                  <header class="sala-card-head">
                     <div
-                      class="sala-actual-val"
-                      [style.color]="sa.status === 'crit' ? '#DC2626' : tempColor(sa.actualTNum)"
-                    >
-                      {{ sa.actualT }}<span class="sala-actual-unit">°C</span>
-                    </div>
-                    <div class="sala-actual-lbl">Actual</div>
-                  </div>
-                  @if (sa.thresholdMax !== null) {
-                    <div class="sala-threshold-chip" [attr.data-status]="sa.status">
-                      <span class="sala-threshold-lbl">Umbral máx</span>
-                      <span class="sala-threshold-val">{{ sa.thresholdMax }}°C</span>
-                    </div>
-                  } @else {
-                    <div class="sala-threshold-chip" data-status="unset">
-                      <span class="sala-threshold-lbl">Umbral</span>
-                      <span class="sala-threshold-val">sin config</span>
-                    </div>
-                  }
-                </div>
-
-                <div class="sala-stats-row">
-                  <span class="sala-stat">
-                    <span class="sala-stat-lbl">Mín</span>
-                    <span class="sala-stat-val" [style.color]="tempColor(sa.minTNum)">
-                      {{ sa.minT }}°C
-                    </span>
-                  </span>
-                  <span class="sala-stat-divider"></span>
-                  <span class="sala-stat" title="Promedio últimas 24h (1min sample)">
-                    <span class="sala-stat-lbl">Prom 24h</span>
-                    <span class="sala-stat-val" [style.color]="tempColor(sa.avgTNum)">
-                      {{ sa.avgT }}°C
-                    </span>
-                  </span>
-                  <span class="sala-stat-divider"></span>
-                  <span class="sala-stat">
-                    <span class="sala-stat-lbl">Máx</span>
-                    <span
-                      class="sala-stat-val"
-                      [style.color]="sa.status === 'crit' ? '#DC2626' : tempColor(sa.maxTNum)"
-                    >{{ sa.maxT }}°C</span>
-                  </span>
-                </div>
-
-                <div class="sala-ops-row">
-                  <span
-                    class="sala-op-pill"
-                    [class.sala-op-pill--bad]="sa.outOfBandMin > 0"
-                    [title]="'Tiempo total sobre umbral en 24h (sample 1min, max entre sensores)'"
-                  >
-                    <span class="material-symbols-outlined text-[11px]">schedule</span>
-                    <span class="sala-op-lbl">Sobre umbral 24h</span>
-                    <strong>{{ fmtMinutes(sa.outOfBandMin) }}</strong>
-                  </span>
-                  <span
-                    class="sala-op-pill"
-                    [class.sala-op-pill--bad]="sa.deviationsOpenCount > 0"
-                    title="Desviaciones abiertas (no resueltas) en 24h"
-                  >
-                    <span class="material-symbols-outlined text-[11px]">flag</span>
-                    <span class="sala-op-lbl">Desviaciones</span>
-                    <strong>{{ sa.deviationsOpenCount }}</strong>
-                  </span>
-                  @if (sa.activeCount > 0) {
-                    <span
-                      class="sala-op-pill"
-                      [class.sala-op-pill--bad]="sa.reportingCount < sa.activeCount"
-                      [title]="
-                        'Sensores activos con lectura reciente (≤5 min) vs total activos. ' +
-                        (sa.reportingCount === 0 ? 'Ninguno reportando: sin lectura reciente o canal offline.' :
-                         sa.reportingCount < sa.activeCount ? 'Algunos sensores stale (>5 min sin transmitir).' :
-                         'Todos transmitiendo OK.')
+                      class="sala-card-icon"
+                      [style.background]="
+                        sa.status === 'crit'
+                          ? 'rgba(239,68,68,0.10)'
+                          : sa.status === 'warn'
+                            ? 'rgba(245,158,11,0.10)'
+                            : 'rgba(13,175,189,0.10)'
+                      "
+                      [style.border-color]="
+                        sa.status === 'crit'
+                          ? 'rgba(239,68,68,0.30)'
+                          : sa.status === 'warn'
+                            ? 'rgba(245,158,11,0.30)'
+                            : 'rgba(13,175,189,0.30)'
                       "
                     >
-                      <span class="material-symbols-outlined text-[11px]">sensors</span>
-                      <span class="sala-op-lbl">Reportando</span>
-                      <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
-                    </span>
-                  }
-                  @if (sa.defectiveCount > 0) {
-                    <span
-                      class="sala-op-pill sala-op-pill--bad"
-                      [title]="sa.defectiveReasons.join(' · ')"
-                    >
-                      <span class="material-symbols-outlined text-[11px]">sensors_off</span>
-                      <span class="sala-op-lbl">En falla</span>
-                      <strong>{{ sa.defectiveCount }}/{{ sa.count }}</strong>
-                    </span>
-                  }
-                </div>
+                      <span
+                        class="material-symbols-outlined text-[18px]"
+                        [style.color]="
+                          sa.status === 'crit'
+                            ? '#DC2626'
+                            : sa.status === 'warn'
+                              ? '#D97706'
+                              : '#0D99A5'
+                        "
+                        >thermostat</span
+                      >
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <h3 class="sala-card-title truncate">{{ sa.area }}</h3>
+                      <p class="sala-card-sub truncate">
+                        {{ sa.count }} {{ sa.count === 1 ? 'sensor' : 'sensores' }} ·
+                        {{ sa.taps.join(' / ') || '—' }}
+                      </p>
+                    </div>
+                    <span class="sala-card-chev material-symbols-outlined">chevron_right</span>
+                  </header>
 
-                <footer class="sala-card-foot">
-                  @switch (sa.level) {
-                    @case ('severe') {
-                      <span class="sala-status sala-status--severe">
-                        <span class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-700"></span>
-                        Crítico sostenido · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                  <div class="sala-card-hero">
+                    <div class="sala-actual">
+                      <div
+                        class="sala-actual-val"
+                        [style.color]="sa.status === 'crit' ? '#DC2626' : tempColor(sa.actualTNum)"
+                      >
+                        {{ sa.actualT }}<span class="sala-actual-unit">°C</span>
+                      </div>
+                      <div class="sala-actual-lbl">Actual</div>
+                    </div>
+                    @if (sa.thresholdMax !== null) {
+                      <div class="sala-threshold-chip" [attr.data-status]="sa.status">
+                        <span class="sala-threshold-lbl">Umbral máx</span>
+                        <span class="sala-threshold-val">{{ sa.thresholdMax }}°C</span>
+                      </div>
+                    } @else {
+                      <div class="sala-threshold-chip" data-status="unset">
+                        <span class="sala-threshold-lbl">Umbral</span>
+                        <span class="sala-threshold-val">sin config</span>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="sala-stats-row">
+                    <span class="sala-stat">
+                      <span class="sala-stat-lbl">Mín</span>
+                      <span class="sala-stat-val" [style.color]="tempColor(sa.minTNum)">
+                        {{ sa.minT }}°C
+                      </span>
+                    </span>
+                    <span class="sala-stat-divider"></span>
+                    <span class="sala-stat" title="Promedio últimas 24h (1min sample)">
+                      <span class="sala-stat-lbl">Prom 24h</span>
+                      <span class="sala-stat-val" [style.color]="tempColor(sa.avgTNum)">
+                        {{ sa.avgT }}°C
+                      </span>
+                    </span>
+                    <span class="sala-stat-divider"></span>
+                    <span class="sala-stat">
+                      <span class="sala-stat-lbl">Máx</span>
+                      <span
+                        class="sala-stat-val"
+                        [style.color]="sa.status === 'crit' ? '#DC2626' : tempColor(sa.maxTNum)"
+                        >{{ sa.maxT }}°C</span
+                      >
+                    </span>
+                  </div>
+
+                  <div class="sala-ops-row">
+                    <span
+                      class="sala-op-pill"
+                      [class.sala-op-pill--bad]="sa.outOfBandMin > 0"
+                      [title]="'Tiempo total sobre umbral en 24h (sample 1min, max entre sensores)'"
+                    >
+                      <span class="material-symbols-outlined text-[11px]">schedule</span>
+                      <span class="sala-op-lbl">Sobre umbral 24h</span>
+                      <strong>{{ fmtMinutes(sa.outOfBandMin) }}</strong>
+                    </span>
+                    <span
+                      class="sala-op-pill"
+                      [class.sala-op-pill--bad]="sa.deviationsOpenCount > 0"
+                      title="Desviaciones abiertas (no resueltas) en 24h"
+                    >
+                      <span class="material-symbols-outlined text-[11px]">flag</span>
+                      <span class="sala-op-lbl">Desviaciones</span>
+                      <strong>{{ sa.deviationsOpenCount }}</strong>
+                    </span>
+                    @if (sa.activeCount > 0) {
+                      <span
+                        class="sala-op-pill"
+                        [class.sala-op-pill--bad]="sa.reportingCount < sa.activeCount"
+                        [title]="
+                          'Sensores activos con lectura reciente (≤5 min) vs total activos. ' +
+                          (sa.reportingCount === 0
+                            ? 'Ninguno reportando: sin lectura reciente o canal offline.'
+                            : sa.reportingCount < sa.activeCount
+                              ? 'Algunos sensores stale (>5 min sin transmitir).'
+                              : 'Todos transmitiendo OK.')
+                        "
+                      >
+                        <span class="material-symbols-outlined text-[11px]">sensors</span>
+                        <span class="sala-op-lbl">Reportando</span>
+                        <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
                       </span>
                     }
-                    @case ('crit') {
-                      <span class="sala-status sala-status--crit">
-                        <span class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                        Desviación sostenida · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                    @if (sa.defectiveCount > 0) {
+                      <span
+                        class="sala-op-pill sala-op-pill--bad"
+                        [title]="sa.defectiveReasons.join(' · ')"
+                      >
+                        <span class="material-symbols-outlined text-[11px]">sensors_off</span>
+                        <span class="sala-op-lbl">En falla</span>
+                        <strong>{{ sa.defectiveCount }}/{{ sa.count }}</strong>
                       </span>
                     }
-                    @case ('warn') {
-                      <span class="sala-status sala-status--warn">
-                        <span class="material-symbols-outlined text-[12px]">warning</span>
-                        Desviación activa
-                      </span>
+                  </div>
+
+                  <footer class="sala-card-foot">
+                    @switch (sa.level) {
+                      @case ('severe') {
+                        <span class="sala-status sala-status--severe">
+                          <span
+                            class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-700"
+                          ></span>
+                          Crítico sostenido · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                        </span>
+                      }
+                      @case ('crit') {
+                        <span class="sala-status sala-status--crit">
+                          <span
+                            class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"
+                          ></span>
+                          Desviación sostenida · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                        </span>
+                      }
+                      @case ('warn') {
+                        <span class="sala-status sala-status--warn">
+                          <span class="material-symbols-outlined text-[12px]">warning</span>
+                          Desviación activa
+                        </span>
+                      }
+                      @case ('info') {
+                        <span class="sala-status sala-status--info">
+                          <span class="material-symbols-outlined text-[12px]">trending_up</span>
+                          Cerca del umbral
+                        </span>
+                      }
+                      @case ('ok') {
+                        <span class="sala-status sala-status--ok">
+                          <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                          Bajo umbral
+                        </span>
+                      }
+                      @default {
+                        <span class="sala-status sala-status--unknown">
+                          <span class="material-symbols-outlined text-[12px]">help</span>
+                          Esperando lectura
+                        </span>
+                      }
                     }
-                    @case ('info') {
-                      <span class="sala-status sala-status--info">
-                        <span class="material-symbols-outlined text-[12px]">trending_up</span>
-                        Cerca del umbral
-                      </span>
-                    }
-                    @case ('ok') {
-                      <span class="sala-status sala-status--ok">
-                        <span class="material-symbols-outlined text-[12px]">check_circle</span>
-                        Bajo umbral
-                      </span>
-                    }
-                    @default {
-                      <span class="sala-status sala-status--unknown">
-                        <span class="material-symbols-outlined text-[12px]">help</span>
-                        Esperando lectura
-                      </span>
-                    }
-                  }
-                  <span class="sala-hr" title="Humedad Relativa (promedio sensores)">
-                    <span class="material-symbols-outlined text-[12px]">water_drop</span>
-                    <span class="sala-hr-lbl">HR</span>
-                    {{ sa.avgH }}%
-                  </span>
-                </footer>
-              </button>
-            }
-            @if (salaAggregates().length === 0 && !isLoading()) {
-              <div class="vs-empty-overlay col-span-full">
-                <span class="material-symbols-outlined text-[28px] text-slate-400">sensors_off</span>
-                <div class="vs-empty-title">Sin salas con datos</div>
-                <div class="vs-empty-sub">Esperando lectura de los sensores.</div>
-              </div>
-            }
-          </div>
+                    <span class="sala-hr" title="Humedad Relativa (promedio sensores)">
+                      <span class="material-symbols-outlined text-[12px]">water_drop</span>
+                      <span class="sala-hr-lbl">HR</span>
+                      {{ sa.avgH }}%
+                    </span>
+                  </footer>
+                </button>
+              }
+              @if (salaAggregates().length === 0 && !isLoading()) {
+                <div class="vs-empty-overlay col-span-full">
+                  <span class="material-symbols-outlined text-[28px] text-slate-400"
+                    >sensors_off</span
+                  >
+                  <div class="vs-empty-title">Sin salas con datos</div>
+                  <div class="vs-empty-sub">Esperando lectura de los sensores.</div>
+                </div>
+              }
+            </div>
           }
         }
 
@@ -715,7 +738,8 @@ interface MetricOption {
               <div>
                 <h2 class="vs-h1 text-slate-800">Compliance HACCP</h2>
                 <p class="mt-1 text-[12px] text-slate-500">
-                  Reporte de cumplimiento cadena de frío · {{ cm.periodLabel }} · {{ cm.sensorCount }} sensores
+                  Reporte de cumplimiento cadena de frío · {{ cm.periodLabel }} ·
+                  {{ cm.sensorCount }} sensores
                 </p>
               </div>
               <div class="comp-period-pills">
@@ -724,13 +748,17 @@ interface MetricOption {
                   class="comp-pill"
                   [class.comp-pill--active]="compliancePeriod() === '24h'"
                   (click)="setCompliancePeriod('24h')"
-                >24h</button>
+                >
+                  24h
+                </button>
                 <button
                   type="button"
                   class="comp-pill"
                   [class.comp-pill--active]="compliancePeriod() === '7d'"
                   (click)="setCompliancePeriod('7d')"
-                >7d</button>
+                >
+                  7d
+                </button>
               </div>
             </div>
 
@@ -783,7 +811,10 @@ interface MetricOption {
                 <div
                   class="comp-hero-meta-item"
                   [title]="
-                    'Cobertura de datos: ' + cm.pointsPerSensor + '/' + cm.expectedPoints +
+                    'Cobertura de datos: ' +
+                    cm.pointsPerSensor +
+                    '/' +
+                    cm.expectedPoints +
                     ' muestras esperadas. Gaps cuentan como fuera-banda.'
                   "
                 >
@@ -891,8 +922,10 @@ interface MetricOption {
                       class="comp-rank-out"
                       [title]="
                         sa.gapMin > 0
-                          ? fmtComplianceMin(sa.gapMin) + ' por gap de datos · ' +
-                            fmtComplianceMin(sa.outMin - sa.gapMin) + ' sobre umbral'
+                          ? fmtComplianceMin(sa.gapMin) +
+                            ' por gap de datos · ' +
+                            fmtComplianceMin(sa.outMin - sa.gapMin) +
+                            ' sobre umbral'
                           : 'Tiempo total fuera de banda'
                       "
                     >
@@ -998,7 +1031,10 @@ interface MetricOption {
               <div class="vs-diag-kpi-lbl">RSSI prom.</div>
             </div>
             <div class="vs-diag-kpi-card">
-              <div class="vs-diag-kpi-val" [style.color]="diagKpis().stale > 0 ? '#DC2626' : '#1E293B'">
+              <div
+                class="vs-diag-kpi-val"
+                [style.color]="diagKpis().stale > 0 ? '#DC2626' : '#1E293B'"
+              >
                 {{ diagKpis().stale }}
               </div>
               <div class="vs-diag-kpi-lbl">Canales sin señal &gt;60s</div>
@@ -1076,7 +1112,8 @@ interface MetricOption {
                       [style.border]="'1px solid ' + d.color + '40'"
                     >
                       <span class="material-symbols-outlined text-[18px]" [style.color]="d.color"
-                        >memory</span>
+                        >memory</span
+                      >
                     </div>
                     <div class="min-w-0">
                       <h3 class="vs-tap-summary-title truncate text-slate-800">{{ d.tap }}</h3>
@@ -1137,20 +1174,27 @@ interface MetricOption {
                     </span>
                   </div>
                   <div class="vs-diag-rssi-bar">
-                    <div
-                      class="vs-diag-rssi-fill"
-                      [style.width.%]="rssiBarPct(d.avgRssi)"
-                    ></div>
+                    <div class="vs-diag-rssi-fill" [style.width.%]="rssiBarPct(d.avgRssi)"></div>
                   </div>
                   @if (d.worstRssi && d.bestRssi) {
                     <div class="vs-diag-rssi-meta">
-                      <span>Peor: <strong>{{ d.worstRssi.rssi }} dBm</strong> ({{ d.worstRssi.ch.id }})</span>
-                      <span>Mejor: <strong>{{ d.bestRssi.rssi }} dBm</strong> ({{ d.bestRssi.ch.id }})</span>
+                      <span
+                        >Peor: <strong>{{ d.worstRssi.rssi }} dBm</strong> ({{
+                          d.worstRssi.ch.id
+                        }})</span
+                      >
+                      <span
+                        >Mejor: <strong>{{ d.bestRssi.rssi }} dBm</strong> ({{
+                          d.bestRssi.ch.id
+                        }})</span
+                      >
                     </div>
                   }
                 </div>
 
-                <div class="relative z-10 mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2">
+                <div
+                  class="relative z-10 mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-2"
+                >
                   <a
                     [routerLink]="tapDiagRouterLink(d.tap)"
                     class="vs-tap-diag-btn"
@@ -1159,19 +1203,24 @@ interface MetricOption {
                     <span class="material-symbols-outlined text-[13px]">network_check</span>
                     Diag red
                   </a>
-                  <span class="inline-flex items-center gap-1 text-[10.5px] text-slate-400 font-mono">
+                  <span
+                    class="inline-flex items-center gap-1 text-[10.5px] text-slate-400 font-mono"
+                  >
                     Ver TAP
                     <span
                       class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5"
                       [style.color]="d.color"
-                      >chevron_right</span>
+                      >chevron_right</span
+                    >
                   </span>
                 </div>
               </div>
             }
             @if (tapDiagFiltered().length === 0) {
               <div class="vs-empty-overlay col-span-full">
-                <span class="material-symbols-outlined text-[28px] text-slate-400">network_check</span>
+                <span class="material-symbols-outlined text-[28px] text-slate-400"
+                  >network_check</span
+                >
                 <div class="vs-empty-title">Sin TAPs con ese filtro</div>
                 <div class="vs-empty-sub">Cambia el filtro o espera la próxima lectura.</div>
               </div>
@@ -1199,9 +1248,7 @@ interface MetricOption {
           <header class="vs-drawer-head">
             <div class="min-w-0">
               <div class="vs-drawer-title">Umbrales por sala</div>
-              <div class="vs-drawer-sub">
-                Temperatura máxima permitida por área (°C). Editable.
-              </div>
+              <div class="vs-drawer-sub">Temperatura máxima permitida por área (°C). Editable.</div>
             </div>
             <button
               type="button"
@@ -1292,9 +1339,7 @@ interface MetricOption {
                 <span class="material-symbols-outlined text-[14px]">restart_alt</span>
                 Restaurar defaults cliente
               </button>
-              <span class="vs-thresholds-hint">
-                Cambios se guardan automáticamente (local).
-              </span>
+              <span class="vs-thresholds-hint"> Cambios se guardan automáticamente (local). </span>
             </div>
           </div>
         </aside>
@@ -1303,12 +1348,18 @@ interface MetricOption {
       <!-- Defrost drawer -->
       @if (defrostOpen()) {
         <div class="vs-drawer-backdrop" (click)="defrostOpen.set(false)" aria-hidden="true"></div>
-        <aside class="vs-drawer vs-drawer--wide" role="dialog" aria-modal="true" aria-label="Ventanas defrost">
+        <aside
+          class="vs-drawer vs-drawer--wide"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ventanas defrost"
+        >
           <header class="vs-drawer-head">
             <div class="min-w-0">
               <div class="vs-drawer-title">Ventanas defrost</div>
               <div class="vs-drawer-sub">
-                Programá ciclos de descongelado por sala. Desviaciones dentro de la ventana se marcan como esperadas (no cuentan como crítico HACCP).
+                Programá ciclos de descongelado por sala. Desviaciones dentro de la ventana se
+                marcan como esperadas (no cuentan como crítico HACCP).
               </div>
             </div>
             <button
@@ -1355,7 +1406,10 @@ interface MetricOption {
                   </div>
                 } @else {
                   @for (w of ds.windows; track w.id) {
-                    <article class="vs-defrost-window" [class.vs-defrost-window--disabled]="!w.enabled">
+                    <article
+                      class="vs-defrost-window"
+                      [class.vs-defrost-window--disabled]="!w.enabled"
+                    >
                       <header class="vs-defrost-window-head">
                         <label class="vs-defrost-toggle">
                           <input
@@ -1393,7 +1447,9 @@ interface MetricOption {
                             step="1"
                             class="vs-defrost-input vs-defrost-input--num"
                             [value]="w.durationMin"
-                            (change)="updateDefrostWindowField(ds.area, w.id, 'durationMin', $event)"
+                            (change)="
+                              updateDefrostWindowField(ds.area, w.id, 'durationMin', $event)
+                            "
                           />
                         </div>
                       </div>
@@ -1429,12 +1485,18 @@ interface MetricOption {
       <!-- Audit log drawer -->
       @if (auditOpen()) {
         <div class="vs-drawer-backdrop" (click)="auditOpen.set(false)" aria-hidden="true"></div>
-        <aside class="vs-drawer vs-drawer--wide" role="dialog" aria-modal="true" aria-label="Audit log">
+        <aside
+          class="vs-drawer vs-drawer--wide"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Audit log"
+        >
           <header class="vs-drawer-head">
             <div class="min-w-0">
               <div class="vs-drawer-title">Auditoría HACCP</div>
               <div class="vs-drawer-sub">
-                Registro de cambios: umbrales, defrost schedules, desviaciones. Trazabilidad SERNAPESCA.
+                Registro de cambios: umbrales, defrost schedules, desviaciones. Trazabilidad
+                SERNAPESCA.
               </div>
             </div>
             <button
@@ -1500,14 +1562,19 @@ interface MetricOption {
             </div>
 
             <div class="vs-audit-meta">
-              {{ auditFiltered().length }} de {{ auditEntries().length }} entradas · persistido en DB
+              {{ auditFiltered().length }} de {{ auditEntries().length }} entradas · persistido en
+              DB
             </div>
 
             @if (auditFiltered().length === 0) {
               <div class="vs-audit-empty">
                 <span class="material-symbols-outlined text-[28px] text-slate-300">history</span>
                 <div class="mt-2 text-[13px] font-medium text-slate-500">
-                  {{ auditEntries().length === 0 ? 'Sin registros aún' : 'Sin resultados con esos filtros' }}
+                  {{
+                    auditEntries().length === 0
+                      ? 'Sin registros aún'
+                      : 'Sin resultados con esos filtros'
+                  }}
                 </div>
               </div>
             } @else {
@@ -1956,7 +2023,7 @@ interface MetricOption {
         gap: 2px;
         padding: 1px 6px;
         border-radius: 999px;
-        background: rgba(34, 197, 94, 0.10);
+        background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
         font-family: var(--font-dm);
@@ -1967,7 +2034,7 @@ interface MetricOption {
         white-space: nowrap;
       }
       .vs-tap-group-age--stale {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
         border-color: rgba(239, 68, 68, 0.25);
       }
@@ -2036,16 +2103,29 @@ interface MetricOption {
         width: min(540px, 96vw);
         background: #ffffff;
         border-left: 1px solid #e2e8f0;
-        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.10);
+        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.1);
         z-index: 41;
         display: flex;
         flex-direction: column;
         animation: vsSlideIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
       }
-      @keyframes vsFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes vsFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
       @keyframes vsSlideIn {
-        from { transform: translateX(24px); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
+        from {
+          transform: translateX(24px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
       }
       .vs-drawer-head {
         padding: 14px 16px;
@@ -2079,8 +2159,15 @@ interface MetricOption {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
       }
-      .vs-drawer-close:hover { color: #1e293b; background: #f1f5f9; }
-      .vs-drawer-body { padding: 16px; overflow-y: auto; flex: 1; }
+      .vs-drawer-close:hover {
+        color: #1e293b;
+        background: #f1f5f9;
+      }
+      .vs-drawer-body {
+        padding: 16px;
+        overflow-y: auto;
+        flex: 1;
+      }
 
       .vs-thresholds-list {
         display: flex;
@@ -2098,7 +2185,7 @@ interface MetricOption {
       }
       .vs-thresholds-card--missing {
         background: rgba(251, 191, 36, 0.04);
-        border-color: rgba(251, 191, 36, 0.40);
+        border-color: rgba(251, 191, 36, 0.4);
       }
       .vs-thresholds-card-head {
         display: flex;
@@ -2129,7 +2216,9 @@ interface MetricOption {
         flex-direction: column;
         gap: 3px;
       }
-      .vs-thresholds-field--full { grid-column: span 2; }
+      .vs-thresholds-field--full {
+        grid-column: span 2;
+      }
       .vs-thresholds-field-lbl {
         font-family: var(--font-dm);
         font-size: 9.5px;
@@ -2163,14 +2252,14 @@ interface MetricOption {
         border-color: #0d99a5;
       }
       .vs-thresholds-card--missing .vs-thresholds-input {
-        border-color: rgba(251, 191, 36, 0.40);
+        border-color: rgba(251, 191, 36, 0.4);
       }
       .vs-thresholds-pending {
         font-family: var(--font-mono);
         font-size: 10px;
         color: #b45309;
         background: rgba(251, 191, 36, 0.12);
-        border: 1px solid rgba(251, 191, 36, 0.30);
+        border: 1px solid rgba(251, 191, 36, 0.3);
         border-radius: 4px;
         padding: 1px 5px;
         text-transform: uppercase;
@@ -2210,7 +2299,10 @@ interface MetricOption {
         font-size: 11.5px;
         font-weight: 500;
       }
-      .vs-thresholds-reset:hover { color: #0d99a5; background: rgba(13, 175, 189, 0.06); }
+      .vs-thresholds-reset:hover {
+        color: #0d99a5;
+        background: rgba(13, 175, 189, 0.06);
+      }
       .vs-thresholds-hint {
         font-family: var(--font-dm);
         font-size: 11px;
@@ -2242,14 +2334,16 @@ interface MetricOption {
         border: 1px solid transparent;
         background: transparent;
         font-family: var(--font-dm);
-        transition: background 0.15s ease, border-color 0.15s ease;
+        transition:
+          background 0.15s ease,
+          border-color 0.15s ease;
       }
       .vs-defrost-sala-btn:hover {
         background: #f1f5f9;
       }
       .vs-defrost-sala-btn--active {
-        background: rgba(13, 175, 189, 0.10);
-        border-color: rgba(13, 175, 189, 0.30);
+        background: rgba(13, 175, 189, 0.1);
+        border-color: rgba(13, 175, 189, 0.3);
       }
       .vs-defrost-sala-name {
         font-size: 12.5px;
@@ -2295,7 +2389,10 @@ interface MetricOption {
         font-weight: 600;
         border: 1px solid #0d99a5;
       }
-      .vs-defrost-add-btn:hover { background: #0a7d87; border-color: #0a7d87; }
+      .vs-defrost-add-btn:hover {
+        background: #0a7d87;
+        border-color: #0a7d87;
+      }
       .vs-defrost-empty {
         padding: 28px 16px;
         text-align: center;
@@ -2335,7 +2432,9 @@ interface MetricOption {
         color: #475569;
         cursor: pointer;
       }
-      .vs-defrost-toggle input { accent-color: #0d99a5; }
+      .vs-defrost-toggle input {
+        accent-color: #0d99a5;
+      }
       .vs-defrost-remove {
         width: 26px;
         height: 26px;
@@ -2344,7 +2443,10 @@ interface MetricOption {
         color: #94a3b8;
         border: 0;
       }
-      .vs-defrost-remove:hover { color: #dc2626; background: rgba(239, 68, 68, 0.08); }
+      .vs-defrost-remove:hover {
+        color: #dc2626;
+        background: rgba(239, 68, 68, 0.08);
+      }
 
       .vs-defrost-fields {
         display: flex;
@@ -2373,7 +2475,9 @@ interface MetricOption {
         background: #ffffff;
         color: #1e293b;
       }
-      .vs-defrost-input--num { width: 90px; }
+      .vs-defrost-input--num {
+        width: 90px;
+      }
       .vs-defrost-input:focus {
         outline: 2px solid #0d99a5;
         outline-offset: 1px;
@@ -2404,10 +2508,12 @@ interface MetricOption {
         color: #94a3b8;
         cursor: pointer;
       }
-      .vs-defrost-day:hover { color: #475569; }
+      .vs-defrost-day:hover {
+        color: #475569;
+      }
       .vs-defrost-day--active {
-        background: rgba(13, 175, 189, 0.10);
-        border-color: rgba(13, 175, 189, 0.40);
+        background: rgba(13, 175, 189, 0.1);
+        border-color: rgba(13, 175, 189, 0.4);
         color: #0d99a5;
       }
 
@@ -2429,9 +2535,11 @@ interface MetricOption {
         color: #64748b;
         background: transparent;
       }
-      .comp-pill:hover { color: #1e293b; }
+      .comp-pill:hover {
+        color: #1e293b;
+      }
       .comp-pill--active {
-        background: rgba(13, 175, 189, 0.10);
+        background: rgba(13, 175, 189, 0.1);
         color: #0d99a5;
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
       }
@@ -2448,14 +2556,19 @@ interface MetricOption {
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
       }
       @media (max-width: 720px) {
-        .comp-hero { grid-template-columns: 1fr; }
+        .comp-hero {
+          grid-template-columns: 1fr;
+        }
       }
       .comp-hero-main {
         border-right: 1px solid #f1f5f9;
         padding-right: 20px;
       }
       @media (max-width: 720px) {
-        .comp-hero-main { border-right: 0; padding-right: 0; }
+        .comp-hero-main {
+          border-right: 0;
+          padding-right: 0;
+        }
       }
       .comp-hero-pct {
         font-family: var(--font-mono);
@@ -2496,13 +2609,15 @@ interface MetricOption {
         align-items: start;
       }
       @media (max-width: 720px) {
-        .comp-hero-meta { grid-template-columns: 1fr; }
+        .comp-hero-meta {
+          grid-template-columns: 1fr;
+        }
       }
       .comp-hero-meta-lbl {
         font-family: var(--font-dm);
         font-size: 10px;
         text-transform: uppercase;
-        letter-spacing: 0.10em;
+        letter-spacing: 0.1em;
         color: #94a3b8;
       }
       .comp-hero-meta-val {
@@ -2611,7 +2726,9 @@ interface MetricOption {
         width: 100%;
         max-width: 28px;
         border-radius: 4px 4px 0 0;
-        transition: height 0.25s ease, background 0.25s ease;
+        transition:
+          height 0.25s ease,
+          background 0.25s ease;
       }
       .comp-trend-lbl {
         font-family: var(--font-mono);
@@ -2632,7 +2749,9 @@ interface MetricOption {
         padding: 8px 4px;
         border-bottom: 1px solid #f1f5f9;
       }
-      .comp-rank-row:last-child { border-bottom: 0; }
+      .comp-rank-row:last-child {
+        border-bottom: 0;
+      }
       .comp-rank-name {
         font-family: var(--font-dm);
         font-size: 12.5px;
@@ -2656,7 +2775,8 @@ interface MetricOption {
         height: 100%;
         transition: width 0.3s ease;
       }
-      .comp-rank-out, .comp-rank-devs {
+      .comp-rank-out,
+      .comp-rank-devs {
         font-family: var(--font-mono);
         font-size: 11px;
         color: #64748b;
@@ -2781,8 +2901,13 @@ interface MetricOption {
         outline-offset: 1px;
         border-color: #0d99a5;
       }
-      .vs-audit-filter--search { flex: 1; min-width: 200px; }
-      .vs-audit-filter--date { width: 140px; }
+      .vs-audit-filter--search {
+        flex: 1;
+        min-width: 200px;
+      }
+      .vs-audit-filter--date {
+        width: 140px;
+      }
       .vs-audit-btn {
         display: inline-flex;
         align-items: center;
@@ -2797,14 +2922,21 @@ interface MetricOption {
         font-weight: 600;
         cursor: pointer;
       }
-      .vs-audit-btn:hover { background: #f8fafc; }
-      .vs-audit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+      .vs-audit-btn:hover {
+        background: #f8fafc;
+      }
+      .vs-audit-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
       .vs-audit-btn--primary {
         background: #0d99a5;
         color: #ffffff;
         border-color: #0d99a5;
       }
-      .vs-audit-btn--primary:hover { background: #0a7d87; }
+      .vs-audit-btn--primary:hover {
+        background: #0a7d87;
+      }
       .vs-audit-locked {
         display: inline-flex;
         align-items: center;
@@ -2876,9 +3008,18 @@ interface MetricOption {
         padding: 2px 6px;
         border-radius: 999px;
       }
-      .vs-audit-cat[data-category='threshold'] { background: rgba(13, 175, 189, 0.10); color: #0d99a5; }
-      .vs-audit-cat[data-category='defrost'] { background: rgba(14, 165, 233, 0.10); color: #0369a1; }
-      .vs-audit-cat[data-category='deviation'] { background: rgba(239, 68, 68, 0.10); color: #b91c1c; }
+      .vs-audit-cat[data-category='threshold'] {
+        background: rgba(13, 175, 189, 0.1);
+        color: #0d99a5;
+      }
+      .vs-audit-cat[data-category='defrost'] {
+        background: rgba(14, 165, 233, 0.1);
+        color: #0369a1;
+      }
+      .vs-audit-cat[data-category='deviation'] {
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+      }
       .vs-audit-action {
         font-family: var(--font-dm);
         font-size: 11.5px;
@@ -2970,9 +3111,9 @@ interface MetricOption {
         border-radius: 10px;
         background: linear-gradient(
           90deg,
-          rgba(148, 163, 184, 0.10),
+          rgba(148, 163, 184, 0.1),
           rgba(148, 163, 184, 0.22),
-          rgba(148, 163, 184, 0.10)
+          rgba(148, 163, 184, 0.1)
         );
         background-size: 200% 100%;
         animation: salaSkelShimmer 1.4s linear infinite;
@@ -2982,16 +3123,20 @@ interface MetricOption {
         border-radius: 4px;
         background: linear-gradient(
           90deg,
-          rgba(148, 163, 184, 0.10),
+          rgba(148, 163, 184, 0.1),
           rgba(148, 163, 184, 0.22),
-          rgba(148, 163, 184, 0.10)
+          rgba(148, 163, 184, 0.1)
         );
         background-size: 200% 100%;
         animation: salaSkelShimmer 1.4s linear infinite;
       }
       @keyframes salaSkelShimmer {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+        0% {
+          background-position: 200% 0;
+        }
+        100% {
+          background-position: -200% 0;
+        }
       }
       .sala-skel-hint {
         display: inline-flex;
@@ -3000,14 +3145,17 @@ interface MetricOption {
         margin-top: 12px;
         padding: 6px 12px;
         background: rgba(13, 175, 189, 0.06);
-        border: 1px solid rgba(13, 175, 189, 0.20);
+        border: 1px solid rgba(13, 175, 189, 0.2);
         border-radius: 999px;
         font-family: var(--font-dm);
         font-size: 11px;
         color: #0d99a5;
       }
       @media (prefers-reduced-motion: reduce) {
-        .sala-skel-icon, .sala-skel-line { animation: none; }
+        .sala-skel-icon,
+        .sala-skel-line {
+          animation: none;
+        }
       }
       .vs-tap-summary-title {
         font-family: var(--font-josefin);
@@ -3034,22 +3182,25 @@ interface MetricOption {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
-        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.15s ease;
+        transition:
+          transform 0.18s ease,
+          box-shadow 0.18s ease,
+          border-color 0.15s ease;
       }
       .sala-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
       }
       .sala-card[data-status='crit'] {
-        border-color: rgba(239, 68, 68, 0.30);
-        box-shadow: 0 6px 18px rgba(239, 68, 68, 0.10);
+        border-color: rgba(239, 68, 68, 0.3);
+        box-shadow: 0 6px 18px rgba(239, 68, 68, 0.1);
       }
       .sala-card[data-status='crit']:hover {
         box-shadow: 0 12px 30px rgba(239, 68, 68, 0.15);
       }
       .sala-card[data-status='warn'] {
         border-color: rgba(245, 158, 11, 0.32);
-        box-shadow: 0 6px 18px rgba(245, 158, 11, 0.10);
+        box-shadow: 0 6px 18px rgba(245, 158, 11, 0.1);
       }
       .sala-card[data-status='ok']::before {
         content: '';
@@ -3117,7 +3268,9 @@ interface MetricOption {
       .sala-card-chev {
         font-size: 22px;
         color: #cbd5e1;
-        transition: transform 0.18s ease, color 0.15s ease;
+        transition:
+          transform 0.18s ease,
+          color 0.15s ease;
       }
       .sala-card:hover .sala-card-chev {
         transform: translateX(2px);
@@ -3180,7 +3333,7 @@ interface MetricOption {
         font-family: var(--font-dm);
         font-size: 9px;
         text-transform: uppercase;
-        letter-spacing: 0.10em;
+        letter-spacing: 0.1em;
         color: #94a3b8;
       }
       .sala-threshold-val {
@@ -3219,7 +3372,7 @@ interface MetricOption {
         font-family: var(--font-dm);
         font-size: 9px;
         text-transform: uppercase;
-        letter-spacing: 0.10em;
+        letter-spacing: 0.1em;
         color: #94a3b8;
       }
       .sala-stat-val {
@@ -3255,17 +3408,17 @@ interface MetricOption {
         border-radius: 999px;
       }
       .sala-status--crit {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
         border: 1px solid rgba(239, 68, 68, 0.22);
       }
       .sala-status--warn {
-        background: rgba(245, 158, 11, 0.10);
+        background: rgba(245, 158, 11, 0.1);
         color: #b45309;
         border: 1px solid rgba(245, 158, 11, 0.25);
       }
       .sala-status--ok {
-        background: rgba(34, 197, 94, 0.10);
+        background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
       }
@@ -3277,7 +3430,7 @@ interface MetricOption {
       .sala-status--info {
         background: rgba(56, 189, 248, 0.12);
         color: #0369a1;
-        border: 1px solid rgba(14, 165, 233, 0.30);
+        border: 1px solid rgba(14, 165, 233, 0.3);
       }
       .sala-status--severe {
         background: #b91c1c;
@@ -3286,19 +3439,26 @@ interface MetricOption {
         animation: salaSeverePulse 1.4s ease-in-out infinite;
       }
       @keyframes salaSeverePulse {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.55); }
-        70% { box-shadow: 0 0 0 6px rgba(185, 28, 28, 0); }
+        0%,
+        100% {
+          box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.55);
+        }
+        70% {
+          box-shadow: 0 0 0 6px rgba(185, 28, 28, 0);
+        }
       }
-      .sala-card[data-status='crit'] .sala-status--severe { color: #fff; }
+      .sala-card[data-status='crit'] .sala-status--severe {
+        color: #fff;
+      }
       .sala-hr {
         display: inline-flex;
         align-items: center;
         gap: 4px;
         padding: 3px 9px;
         border-radius: 999px;
-        background: rgba(14, 165, 233, 0.10);
+        background: rgba(14, 165, 233, 0.1);
         color: #0369a1;
-        border: 1px solid rgba(14, 165, 233, 0.30);
+        border: 1px solid rgba(14, 165, 233, 0.3);
         font-family: var(--font-mono);
         font-size: 11.5px;
         font-weight: 700;
@@ -3351,9 +3511,16 @@ interface MetricOption {
         background: rgba(239, 68, 68, 0.06);
         border-color: rgba(239, 68, 68, 0.22);
       }
-      .sala-op-pill--bad strong { color: #b91c1c; }
-      .sala-op-pill--bad .sala-op-lbl { color: #b91c1c; opacity: 0.7; }
-      .sala-op-pill--bad .material-symbols-outlined { color: #b91c1c; }
+      .sala-op-pill--bad strong {
+        color: #b91c1c;
+      }
+      .sala-op-pill--bad .sala-op-lbl {
+        color: #b91c1c;
+        opacity: 0.7;
+      }
+      .sala-op-pill--bad .material-symbols-outlined {
+        color: #b91c1c;
+      }
       .sala-op-pill--empty {
         background: rgba(148, 163, 184, 0.08);
         border-style: dashed;
@@ -3371,9 +3538,18 @@ interface MetricOption {
         border-radius: 10px;
         padding: 10px 12px;
       }
-      .vs-diag-kpi-card--ok { border-color: rgba(34, 197, 94, 0.25); background: rgba(34, 197, 94, 0.04); }
-      .vs-diag-kpi-card--warn { border-color: rgba(251, 191, 36, 0.30); background: rgba(251, 191, 36, 0.05); }
-      .vs-diag-kpi-card--err { border-color: rgba(239, 68, 68, 0.30); background: rgba(239, 68, 68, 0.05); }
+      .vs-diag-kpi-card--ok {
+        border-color: rgba(34, 197, 94, 0.25);
+        background: rgba(34, 197, 94, 0.04);
+      }
+      .vs-diag-kpi-card--warn {
+        border-color: rgba(251, 191, 36, 0.3);
+        background: rgba(251, 191, 36, 0.05);
+      }
+      .vs-diag-kpi-card--err {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.05);
+      }
       .vs-diag-kpi-val {
         font-family: var(--font-mono);
         font-size: 22px;
@@ -3424,13 +3600,18 @@ interface MetricOption {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #475569;
-        transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease,
+          border-color 0.15s ease;
       }
-      .vs-diag-pill:hover { color: #1e293b; }
+      .vs-diag-pill:hover {
+        color: #1e293b;
+      }
       .vs-diag-pill--active {
-        background: rgba(2, 132, 199, 0.10);
+        background: rgba(2, 132, 199, 0.1);
         color: #0284c7;
-        border-color: rgba(2, 132, 199, 0.30);
+        border-color: rgba(2, 132, 199, 0.3);
       }
       .vs-diag-select {
         font-family: var(--font-dm);
@@ -3451,7 +3632,7 @@ interface MetricOption {
         cursor: pointer;
       }
       .vs-tap-diag:hover {
-        border-color: rgba(13, 175, 189, 0.40);
+        border-color: rgba(13, 175, 189, 0.4);
       }
       .vs-tap-diag-btn {
         display: inline-flex;
@@ -3466,7 +3647,10 @@ interface MetricOption {
         font-size: 10.5px;
         font-weight: 600;
         line-height: 1;
-        transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+        transition:
+          color 0.15s ease,
+          border-color 0.15s ease,
+          background 0.15s ease;
       }
       .vs-tap-diag-btn:hover {
         color: #6366f1;
@@ -3474,11 +3658,11 @@ interface MetricOption {
         background: rgba(99, 102, 241, 0.06);
       }
       .vs-tap-diag[data-status='offline'] {
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
         box-shadow: 0 6px 18px rgba(239, 68, 68, 0.08);
       }
       .vs-tap-diag[data-status='degraded'] {
-        border-color: rgba(251, 191, 36, 0.30);
+        border-color: rgba(251, 191, 36, 0.3);
         box-shadow: 0 6px 18px rgba(251, 191, 36, 0.08);
       }
       .vs-status-pill {
@@ -3490,19 +3674,19 @@ interface MetricOption {
         font-family: var(--font-dm);
         font-size: 10.5px;
         font-weight: 600;
-        background: rgba(34, 197, 94, 0.10);
+        background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
       }
       .vs-status-pill[data-status='degraded'] {
         background: rgba(251, 191, 36, 0.12);
         color: #b45309;
-        border-color: rgba(251, 191, 36, 0.30);
+        border-color: rgba(251, 191, 36, 0.3);
       }
       .vs-status-pill[data-status='offline'] {
         background: rgba(239, 68, 68, 0.12);
         color: #b91c1c;
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
       }
       .vs-status-pill[data-status='unknown'] {
         background: #f1f5f9;
@@ -3520,8 +3704,13 @@ interface MetricOption {
         animation: vsLivePulse 1.6s ease-in-out infinite;
       }
       @keyframes vsLivePulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.35; }
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.35;
+        }
       }
 
       .vs-diag-channels-row,
@@ -3710,7 +3899,9 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly companyName = input<string>('');
   readonly coldRoomSites = input<SiteRecord[]>([]);
   readonly embedded = input<boolean>(false);
-  readonly view = input<'full' | 'general' | 'salas' | 'compliance' | 'taps' | 'eventos' | 'contacts'>('full');
+  readonly view = input<
+    'full' | 'general' | 'salas' | 'compliance' | 'taps' | 'eventos' | 'contacts'
+  >('full');
 
   readonly tapSiteMap = computed<Record<TapKey, string>>(() => {
     const sites = this.coldRoomSites();
@@ -3806,9 +3997,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   // Source unificado: prefiere ColdRoom (cagg, real) cuando disponible,
   // fallback a VentisquerosService legacy. Excluye defective de stats/alerts.
-  readonly alerts = computed(() =>
-    this.floorMapSensors().filter((s) => !s.defective && s.alerted),
-  );
+  readonly alerts = computed(() => this.floorMapSensors().filter((s) => !s.defective && s.alerted));
   readonly alertSnippet = computed(() => this.alerts().slice(0, 2));
   readonly extraAlerts = computed(() => Math.max(0, this.alerts().length - 2));
 
@@ -3981,9 +4170,10 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       const ongoing = deviations.filter((e) => e.ongoing);
       const open = deviations.filter((e) => this.deviationsSvc.isOpen(e));
       const longestOngoing = ongoing.reduce((m, e) => Math.max(m, e.durationMin), 0);
-      const level = active.length === 0
-        ? 'unknown'
-        : this.thresholdsSvc.evaluateLevel(area, maxTNum, longestOngoing);
+      const level =
+        active.length === 0
+          ? 'unknown'
+          : this.thresholdsSvc.evaluateLevel(area, maxTNum, longestOngoing);
       const status: SalaAggregate['status'] =
         level === 'severe' || level === 'crit'
           ? 'crit'
@@ -4037,7 +4227,17 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
     out.sort((a, b) => {
       const rank = (l: SalaAggregate['level']) =>
-        l === 'severe' ? 0 : l === 'crit' ? 1 : l === 'warn' ? 2 : l === 'info' ? 3 : l === 'unknown' ? 4 : 5;
+        l === 'severe'
+          ? 0
+          : l === 'crit'
+            ? 1
+            : l === 'warn'
+              ? 2
+              : l === 'info'
+                ? 3
+                : l === 'unknown'
+                  ? 4
+                  : 5;
       if (rank(a.level) !== rank(b.level)) return rank(a.level) - rank(b.level);
       return a.area.localeCompare(b.area);
     });
@@ -4119,20 +4319,19 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         // Sin umbral configurado → sala excluida del cómputo (100% neutral).
       }
       const totalMin = totalMinPerSensor;
-      const compliancePct = totalMin > 0 && th
-        ? ((totalMin - outMin) / totalMin) * 100
-        : 100;
+      const compliancePct = totalMin > 0 && th ? ((totalMin - outMin) / totalMin) * 100 : 100;
       const devsCount = devsAll.filter((d) => d.area === area).length;
       const longest = devsAll
         .filter((d) => d.area === area && d.ongoing)
         .reduce((m, d) => Math.max(m, d.durationMin), 0);
-      const level = list.length === 0
-        ? 'unknown' as const
-        : (() => {
-            const maxT = Math.max(...list.map((s) => s.t));
-            const l = this.thresholdsSvc.evaluateLevel(area, maxT, longest);
-            return l === 'info' ? 'ok' : l;
-          })();
+      const level =
+        list.length === 0
+          ? ('unknown' as const)
+          : (() => {
+              const maxT = Math.max(...list.map((s) => s.t));
+              const l = this.thresholdsSvc.evaluateLevel(area, maxT, longest);
+              return l === 'info' ? 'ok' : l;
+            })();
       salaMetrics.push({
         area,
         slug: this.salaSlug(area),
@@ -4318,8 +4517,9 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     // Merge live sensor areas with stored thresholds. Missing ones show empty.
     const stored = this.thresholdsSvc.list();
     const storedSlugs = new Set(stored.map((t) => this.salaSlug(t.area)));
-    const liveAreas = Array.from(new Set(this.floorMapSensors().map((s) => (s.area || '').trim())))
-      .filter((a) => a && !storedSlugs.has(this.salaSlug(a)));
+    const liveAreas = Array.from(
+      new Set(this.floorMapSensors().map((s) => (s.area || '').trim())),
+    ).filter((a) => a && !storedSlugs.has(this.salaSlug(a)));
     const extras: SalaThreshold[] = liveAreas.map((area) => ({
       area,
       tMax: NaN,
@@ -4502,11 +4702,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   auditCategoryLabel(c: ColdRoomAuditCategory): string {
-    return c === 'threshold'
-      ? 'Umbral'
-      : c === 'defrost'
-        ? 'Defrost'
-        : 'Desviación';
+    return c === 'threshold' ? 'Umbral' : c === 'defrost' ? 'Defrost' : 'Desviación';
   }
 
   auditActionLabel(a: ColdRoomAuditEntry['action']): string {
@@ -4712,8 +4908,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       // Rich cold-room data when Salas or Compliance tab active.
       const tab = this.effectiveTab();
       // Pollear también en General — el floor map ahora usa coldRoomSensors.
-      if (tab === 'general' || tab === 'salas' || tab === 'compliance')
-        this.startColdRoomPolling();
+      if (tab === 'general' || tab === 'salas' || tab === 'compliance') this.startColdRoomPolling();
       else this.stopColdRoomPolling();
     });
   }
@@ -4800,10 +4995,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
   }
 
-  private computeOutOfBandMin(
-    sensors: ColdRoomSensor[],
-    threshold: number | null,
-  ): number {
+  private computeOutOfBandMin(sensors: ColdRoomSensor[], threshold: number | null): number {
     if (sensors.length === 0 || threshold === null) return 0;
     const first = sensors[0];
     const points = first.hist?.length || 0;

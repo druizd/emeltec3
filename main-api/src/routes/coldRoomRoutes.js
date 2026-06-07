@@ -858,8 +858,7 @@ function buildHist(baseT, range) {
     const minuteOfHour = d.getMinutes();
 
     // Compresor cycle ~30 min, amplitud 0.8°C.
-    const compressorPhase =
-      Math.sin((d.getMinutes() + d.getHours() * 60) / 4.77) * 0.8;
+    const compressorPhase = Math.sin((d.getMinutes() + d.getHours() * 60) / 4.77) * 0.8;
 
     // Defrost spike si estamos en ventana defrost.
     let defrostSpike = 0;
@@ -1105,15 +1104,11 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
     // Resolved later via threshold table — for now use defaults from DEFAULT_THRESHOLDS.
-    const defaultThr = DEFAULT_THRESHOLDS.find(
-      (d) => slugifyArea(d.area) === slug,
-    );
+    const defaultThr = DEFAULT_THRESHOLDS.find((d) => slugifyArea(d.area) === slug);
     const tMax = defaultThr?.tMax ?? null;
     const tMin = defaultThr?.tMin ?? null;
-    const alerted = !s.defective && (
-      (tMax !== null && lastT > tMax) ||
-      (tMin !== null && lastT < tMin)
-    );
+    const alerted =
+      !s.defective && ((tMax !== null && lastT > tMax) || (tMin !== null && lastT < tMin));
 
     out.push({
       id: s.id,
