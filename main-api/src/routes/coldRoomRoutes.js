@@ -1659,7 +1659,7 @@ router.get('/:siteId/alarm-eligible-users', async (req, res) => {
     // tipo). SuperAdmins excluidos: son staff Emeltec, no destinatarios
     // operacionales del cliente.
     const { rows } = await pool.query(
-      `SELECT DISTINCT id, nombre, COALESCE(apellido,'') AS apellido, email,
+      `SELECT id, nombre, COALESCE(apellido,'') AS apellido, email,
               cargo, tipo, sub_empresa_id, empresa_id
        FROM usuario
        WHERE email IS NOT NULL AND email != ''
@@ -1670,7 +1670,7 @@ router.get('/:siteId/alarm-eligible-users', async (req, res) => {
            WHEN 'Admin' THEN 3
            WHEN 'Gerente' THEN 2
            ELSE 1
-         END,
+         END DESC,
          nombre`,
       [empresa_id],
     );
