@@ -1,5 +1,5 @@
--- Cold-room alarm rules + recipients + event log.
--- Sustento: alarmas configurables HACCP (T> X, T< X, HR, sin transmisión).
+-- Cold-room alarm rules: reglas configurables HACCP con destinatarios
+-- vinculados a usuarios de la plataforma (no emails arbitrarios).
 
 CREATE TABLE IF NOT EXISTS cold_room_alarm_rule (
   id VARCHAR(80) PRIMARY KEY,
@@ -15,24 +15,12 @@ CREATE TABLE IF NOT EXISTS cold_room_alarm_rule (
   severity VARCHAR(10) NOT NULL DEFAULT 'warn',
   notify_email BOOLEAN NOT NULL DEFAULT FALSE,
   notify_ui BOOLEAN NOT NULL DEFAULT TRUE,
+  recipient_user_ids VARCHAR(10)[] NOT NULL DEFAULT '{}',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_cold_room_alarm_rule_site
   ON cold_room_alarm_rule(site_id, enabled);
-
-CREATE TABLE IF NOT EXISTS cold_room_alarm_recipient (
-  id BIGSERIAL PRIMARY KEY,
-  site_id VARCHAR(40) NOT NULL,
-  email VARCHAR(250) NOT NULL,
-  name VARCHAR(150),
-  enabled BOOLEAN NOT NULL DEFAULT TRUE,
-  min_severity VARCHAR(10) NOT NULL DEFAULT 'warn',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(site_id, email)
-);
-CREATE INDEX IF NOT EXISTS idx_cold_room_alarm_recipient_site
-  ON cold_room_alarm_recipient(site_id);
 
 CREATE TABLE IF NOT EXISTS cold_room_alarm_event (
   id BIGSERIAL PRIMARY KEY,
