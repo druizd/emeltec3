@@ -44,8 +44,8 @@ export class ColdRoomAlarmRulesService {
   readonly eligibleUsers = computed(() => this.usersSignal());
 
   setSiteId(siteId: string): void {
-    if (this.currentSiteId === siteId) return;
     this.currentSiteId = siteId;
+    if (!siteId) return;
     this.refresh();
     this.refreshEligibleUsers();
   }

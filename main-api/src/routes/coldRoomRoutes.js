@@ -1655,17 +1655,18 @@ router.get('/:siteId/alarm-eligible-users', async (req, res) => {
     }
     const { sub_empresa_id, empresa_id } = siteRes.rows[0];
 
-    // Incluir TODOS los usuarios de la empresa + TODOS los Admin/SuperAdmin
-    // (independiente de empresa, son operadores transversales del sistema).
+    // Incluir usuarios de la empresa del sitio (cualquier sub_empresa, cualquier
+    // tipo). SuperAdmins excluidos: son staff Emeltec, no destinatarios
+    // operacionales del cliente.
     const { rows } = await pool.query(
       `SELECT DISTINCT id, nombre, COALESCE(apellido,'') AS apellido, email,
               cargo, tipo, sub_empresa_id, empresa_id
        FROM usuario
        WHERE email IS NOT NULL AND email != ''
-         AND (empresa_id = $1 OR tipo IN ('SuperAdmin','Admin'))
+         AND empresa_id = $1
+         AND tipo != 'SuperAdmin'
        ORDER BY
          CASE tipo
-           WHEN 'SuperAdmin' THEN 4
            WHEN 'Admin' THEN 3
            WHEN 'Gerente' THEN 2
            ELSE 1
