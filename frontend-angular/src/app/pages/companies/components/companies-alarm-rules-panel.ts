@@ -7,6 +7,7 @@ import {
   OnChanges,
   SimpleChanges,
   computed,
+  effect,
   inject,
   signal,
 } from '@angular/core';
@@ -1451,8 +1452,32 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
   private readonly svc = inject(ColdRoomAlarmRulesService);
   private readonly coldRoom = inject(ColdRoomService);
 
-  @Input() coldRoomSiteIds: string[] = [];
-  @Input() siteId: string = '';
+  private readonly _coldRoomSiteIds = signal<string[]>([]);
+  private readonly _siteId = signal<string>('');
+
+  @Input() set coldRoomSiteIds(v: string[]) {
+    this._coldRoomSiteIds.set(v || []);
+  }
+  @Input() set siteId(v: string) {
+    this._siteId.set(v || '');
+  }
+  get coldRoomSiteIds(): string[] {
+    return this._coldRoomSiteIds();
+  }
+  get siteId(): string {
+    return this._siteId();
+  }
+
+  constructor() {
+    effect(() => {
+      const sid = this._siteId();
+      if (sid) this.svc.setSiteId(sid);
+    });
+    effect(() => {
+      const ids = this._coldRoomSiteIds();
+      if (ids.length > 0) this.fetchSensorsFromIds(ids);
+    });
+  }
 
   readonly rules = this.svc.rules;
   readonly formOpen = signal(false);
@@ -1462,9 +1487,8 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
   readonly availableSensors = signal<{ id: string; area: string; tap: string }[]>([]);
   draft: DraftRule = { ...DEFAULT_DRAFT };
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['coldRoomSiteIds']) this.fetchSensors();
-    if (changes['siteId'] && this.siteId) this.svc.setSiteId(this.siteId);
+  ngOnChanges(_changes: SimpleChanges): void {
+    // Effects ya manejan la reactividad de coldRoomSiteIds y siteId.
   }
 
   readonly eligibleUsers = this.svc.eligibleUsers;
@@ -1557,10 +1581,10 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
     }
   }
 
-  private fetchSensors(): void {
-    if (this.coldRoomSiteIds.length === 0) return;
-    const primary = this.coldRoomSiteIds[0];
-    this.coldRoom.getSensors(primary, null, '24h', this.coldRoomSiteIds).subscribe({
+  private fetchSensorsFromIds(ids: string[]): void {
+    if (ids.length === 0) return;
+    const primary = ids[0];
+    this.coldRoom.getSensors(primary, null, '24h', ids).subscribe({
       next: (res) => {
         if (!res.ok) return;
         const sensors = (res.data || []).filter((s) => !s.defective);
