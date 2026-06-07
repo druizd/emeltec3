@@ -1530,16 +1530,10 @@ interface MetricOption {
                           <span class="vs-audit-role">{{ e.actorRole }}</span>
                         }
                       </span>
-                      @if (e.prev !== undefined && e.prev !== null) {
-                        <span class="vs-audit-change">
-                          <span class="vs-audit-prev">{{ auditFmtValue(e.prev) }}</span>
-                          <span class="material-symbols-outlined text-[12px]">arrow_right_alt</span>
-                          <span class="vs-audit-next">{{ auditFmtValue(e.next) }}</span>
-                        </span>
-                      } @else if (e.next !== undefined && e.next !== null) {
-                        <span class="vs-audit-change">
-                          <span class="vs-audit-next">{{ auditFmtValue(e.next) }}</span>
-                        </span>
+                      @if (auditFmtSummary(e); as summary) {
+                        @if (summary) {
+                          <span class="vs-audit-summary">{{ summary }}</span>
+                        }
                       }
                       @if (e.note) {
                         <span class="vs-audit-note">"{{ e.note }}"</span>
@@ -2944,6 +2938,15 @@ interface MetricOption {
       .vs-audit-note {
         font-style: italic;
         color: #64748b;
+      }
+      .vs-audit-summary {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #475569;
+        background: #f8fafc;
+        padding: 2px 7px;
+        border-radius: 6px;
+        border: 1px solid #e2e8f0;
       }
 
       /* TAPS tab grid */
@@ -4540,6 +4543,88 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     } catch {
       return String(v);
     }
+  }
+
+  // Render humano del diff de un audit entry (sin dump JSON). Usa category+action
+  // para decidir qué campos mostrar. Fallback al JSON crudo si no se reconoce.
+  auditFmtSummary(e: ColdRoomAuditEntry): string {
+    const prev = (e.prev || {}) as Record<string, unknown>;
+    const next = (e.next || {}) as Record<string, unknown>;
+    const get = (obj: Record<string, unknown>, ...keys: string[]): string | null => {
+      for (const k of keys) {
+        const v = obj[k];
+        if (v !== undefined && v !== null && v !== '') return String(v);
+      }
+      return null;
+    };
+    const diffField = (label: string, key: string, ...altKeys: string[]): string | null => {
+      const p = get(prev, key, ...altKeys);
+      const n = get(next, key, ...altKeys);
+      if (p === n) return null;
+      if (p === null && n !== null) return `${label}: ${n}`;
+      if (p !== null && n === null) return `${label}: ${p} → —`;
+      return `${label}: ${p} → ${n}`;
+    };
+
+    if (e.category === 'deviation') {
+      if (e.action === 'ack') return 'Reconocida';
+      if (e.action === 'resolve') return 'Marcada como resuelta';
+      if (e.action === 'clear-cause') return 'Causa retirada';
+      if (e.action === 'classify-cause') {
+        const causePrev = get(prev, 'cause');
+        const causeNext = get(next, 'cause');
+        const lbl = causeNext ? (this.causeLabel(causeNext) || causeNext) : '—';
+        if (causePrev && causePrev !== causeNext) {
+          return `Causa: ${this.causeLabel(causePrev)} → ${lbl}`;
+        }
+        return `Causa: ${lbl}`;
+      }
+    }
+
+    if (e.category === 'threshold') {
+      const parts: string[] = [];
+      const tMax = diffField('Tmáx', 'tMax', 't_max');
+      const tMin = diffField('Tmín', 'tMin', 't_min');
+      if (tMax) parts.push(tMax);
+      if (tMin) parts.push(tMin);
+      if (parts.length === 0 && e.action === 'create') return 'Umbral creado';
+      if (parts.length === 0 && e.action === 'delete') return 'Umbral eliminado';
+      if (parts.length === 0 && e.action === 'reset') return 'Restaurado a defaults';
+      return parts.join(' · ') || 'Actualizado';
+    }
+
+    if (e.category === 'defrost') {
+      if (e.action === 'create') {
+        const start = get(next, 'startHHmm', 'start_hhmm');
+        const dur = get(next, 'durationMin', 'duration_min');
+        return `Ventana ${start || '?'} · ${dur || '?'}min`;
+      }
+      if (e.action === 'delete') return 'Ventana eliminada';
+      if (e.action === 'update') {
+        const parts: string[] = [];
+        const start = diffField('Inicio', 'startHHmm', 'start_hhmm');
+        const dur = diffField('Duración', 'durationMin', 'duration_min');
+        const enabled = diffField('Activa', 'enabled');
+        if (start) parts.push(start);
+        if (dur) parts.push(dur);
+        if (enabled) parts.push(enabled);
+        return parts.join(' · ') || 'Actualizada';
+      }
+    }
+
+    return '';
+  }
+
+  causeLabel(key: string): string {
+    const labels: Record<string, string> = {
+      defrost: 'Defrost',
+      'door-open': 'Apertura puerta',
+      'load-unload': 'Carga/descarga',
+      cleaning: 'Limpieza/mantención',
+      other: 'Otra',
+      unclassified: 'Sin clasificar',
+    };
+    return labels[key] || key;
   }
 
   auditFmtTs(iso: string): string {
