@@ -20,6 +20,7 @@ import { Chart, registerables } from 'chart.js';
 import annotationPlugin, { type AnnotationOptions } from 'chartjs-plugin-annotation';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import type { CompanyNode, SiteRecord } from '@emeltec/shared';
+import { AuthService } from '../../services/auth.service';
 import { CompanyService } from '../../services/company.service';
 import {
   ColdRoomService,
@@ -323,8 +324,42 @@ function slugify(area: string): string {
                 {{ deviationsOpen().length }} abiertas · {{ deviationsOngoing().length }} en curso
               </span>
             </div>
+            <div class="dev-filter-row" role="tablist" aria-label="Filtro desviaciones">
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'all'"
+                (click)="setDeviationFilter('all')"
+              >
+                Todas <strong>{{ deviationCounts().all }}</strong>
+              </button>
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'open'"
+                (click)="setDeviationFilter('open')"
+              >
+                Abiertas <strong>{{ deviationCounts().open }}</strong>
+              </button>
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'acked'"
+                (click)="setDeviationFilter('acked')"
+              >
+                Reconocidas <strong>{{ deviationCounts().acked }}</strong>
+              </button>
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'closed'"
+                (click)="setDeviationFilter('closed')"
+              >
+                Cerradas <strong>{{ deviationCounts().closed }}</strong>
+              </button>
+            </div>
             <div class="deviation-list">
-              @for (ex of deviations(); track ex.id) {
+              @for (ex of deviationsFiltered(); track ex.id) {
                 <article
                   class="deviation-card"
                   [attr.data-level]="effectiveCause(ex)?.cause === 'defrost' ? 'defrost' : ex.level"
@@ -419,7 +454,7 @@ function slugify(area: string): string {
                   <footer class="deviation-foot">
                     <select
                       class="deviation-cause-select"
-                      (change)="onCauseChange(ex.id, $event)"
+                      (change)="onCauseSelectModal(ex.id, $event)"
                       (click)="$event.stopPropagation()"
                       [attr.aria-label]="'Clasificar desviación ' + ex.id"
                     >
@@ -451,7 +486,7 @@ function slugify(area: string): string {
                         <button
                           type="button"
                           class="deviation-btn deviation-btn--primary"
-                          (click)="ackDeviation(ex.id, $event)"
+                          (click)="openAckModal(ex.id, $event)"
                         >
                           <span class="material-symbols-outlined text-[14px]">visibility</span>
                           Reconocer
@@ -461,7 +496,7 @@ function slugify(area: string): string {
                         <button
                           type="button"
                           class="deviation-btn"
-                          (click)="resolveDeviation(ex.id, $event)"
+                          (click)="openResolveModal(ex.id, $event)"
                         >
                           <span class="material-symbols-outlined text-[14px]">check</span>
                           Marcar resuelta
@@ -475,6 +510,12 @@ function slugify(area: string): string {
                     }
                   </footer>
                 </article>
+              }
+              @if (deviationsFiltered().length === 0) {
+                <div class="dev-filter-empty">
+                  <span class="material-symbols-outlined text-[20px] text-slate-300">filter_alt</span>
+                  Sin desviaciones en este filtro.
+                </div>
               }
             </div>
           </section>
@@ -518,6 +559,78 @@ function slugify(area: string): string {
           </section>
         }
       </div>
+
+      <!-- Modal nota HACCP (reconocer / clasificar / resolver) -->
+      @if (noteModal(); as nm) {
+        <div class="note-modal-backdrop" (click)="closeNoteModal()" aria-hidden="true"></div>
+        <aside class="note-modal" role="dialog" aria-modal="true" aria-label="Registrar acción HACCP">
+          <header class="note-modal-head">
+            <div class="note-modal-title">
+              @switch (nm.action) {
+                @case ('ack') {
+                  <span>Reconocer desviación</span>
+                }
+                @case ('resolve') {
+                  <span>Marcar desviación resuelta</span>
+                }
+                @case ('classify') {
+                  <span>Clasificar causa · {{ causeLabel(nm.cause || '') }}</span>
+                }
+              }
+            </div>
+            <button
+              type="button"
+              class="note-modal-close"
+              (click)="closeNoteModal()"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </header>
+          <div class="note-modal-body">
+            <div class="note-modal-meta">
+              <span class="material-symbols-outlined text-[13px]">person</span>
+              Acción registrada como <strong>{{ actorLabelDisplay() }}</strong>
+            </div>
+            <label class="note-modal-label">
+              Nota (opcional pero recomendada para auditoría HACCP)
+            </label>
+            <textarea
+              class="note-modal-textarea"
+              rows="4"
+              placeholder="Ej: defrost programado de 03:00–03:15. Producto bajo control."
+              [value]="nm.note"
+              (input)="updateNoteModalText($event)"
+              autofocus
+            ></textarea>
+            <div class="note-modal-hint">
+              Esta acción queda registrada en el audit log HACCP (inmutable).
+            </div>
+          </div>
+          <footer class="note-modal-foot">
+            <button type="button" class="note-modal-btn" (click)="closeNoteModal()">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="note-modal-btn note-modal-btn--primary"
+              (click)="confirmNoteModal()"
+            >
+              @switch (nm.action) {
+                @case ('ack') {
+                  <span>Reconocer</span>
+                }
+                @case ('resolve') {
+                  <span>Resolver</span>
+                }
+                @case ('classify') {
+                  <span>Clasificar</span>
+                }
+              }
+            </button>
+          </footer>
+        </aside>
+      }
 
       <!-- Drilldown drawer -->
       @if (drilldownSensorId()) {
@@ -1019,6 +1132,56 @@ function slugify(area: string): string {
       }
 
       /* Deviations */
+      .dev-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .dev-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        font-weight: 500;
+        transition: color 0.15s, border-color 0.15s, background 0.15s;
+      }
+      .dev-filter-chip:hover {
+        color: #0d99a5;
+        border-color: rgba(13, 175, 189, 0.30);
+      }
+      .dev-filter-chip strong {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 10.5px;
+        color: #94a3b8;
+      }
+      .dev-filter-chip--active {
+        background: rgba(13, 175, 189, 0.10);
+        color: #0d99a5;
+        border-color: rgba(13, 175, 189, 0.35);
+      }
+      .dev-filter-chip--active strong {
+        color: #0d99a5;
+      }
+      .dev-filter-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 18px;
+        border: 1px dashed #e2e8f0;
+        border-radius: 10px;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        color: #94a3b8;
+      }
       .deviation-list {
         display: grid;
         gap: 10px;
@@ -1348,6 +1511,146 @@ function slugify(area: string): string {
         }
       }
 
+      /* Note modal (HACCP) */
+      .note-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.50);
+        z-index: 50;
+        animation: salaFadeIn 0.15s ease-out;
+      }
+      .note-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(520px, 92vw);
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.20);
+        z-index: 51;
+        display: flex;
+        flex-direction: column;
+        animation: salaScaleIn 0.20s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes salaScaleIn {
+        from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+      }
+      @keyframes salaFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .note-modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .note-modal-title {
+        font-family: 'Josefin Sans', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .note-modal-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #64748b;
+      }
+      .note-modal-close:hover {
+        background: rgba(15, 23, 42, 0.06);
+        color: #1e293b;
+      }
+      .note-modal-body {
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .note-modal-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #475569;
+      }
+      .note-modal-meta strong {
+        color: #0d99a5;
+        font-weight: 600;
+      }
+      .note-modal-label {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #1e293b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .note-modal-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: var(--font-dm);
+        font-size: 13px;
+        color: #1e293b;
+        resize: vertical;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .note-modal-textarea:focus {
+        border-color: #0d99a5;
+      }
+      .note-modal-hint {
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .note-modal-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 18px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 0 0 12px 12px;
+      }
+      .note-modal-btn {
+        padding: 7px 14px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .note-modal-btn:hover {
+        background: #f1f5f9;
+      }
+      .note-modal-btn--primary {
+        background: #0d99a5;
+        color: #ffffff;
+        border-color: #0d99a5;
+      }
+      .note-modal-btn--primary:hover {
+        background: #0c8b96;
+        color: #ffffff;
+      }
+
       /* Drawer */
       .drawer-backdrop {
         position: fixed;
@@ -1461,6 +1764,68 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   private readonly location = inject(Location);
   private readonly thresholdsSvc = inject(ColdRoomThresholdsService);
   private readonly deviationsSvc = inject(ColdRoomDeviationsService);
+  private readonly auth = inject(AuthService);
+
+  private actorLabel(): string {
+    const u = this.auth.user();
+    if (!u) return 'operador';
+    const full = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+    return full || u.email || 'operador';
+  }
+
+  actorLabelDisplay(): string {
+    return this.actorLabel();
+  }
+
+  // === Modal de nota para ack/resolve/classify ===
+  readonly noteModal = signal<{
+    open: boolean;
+    action: 'ack' | 'resolve' | 'classify';
+    devId: string;
+    cause?: DeviationCause;
+    note: string;
+  } | null>(null);
+
+  openAckModal(devId: string, ev: Event): void {
+    ev.stopPropagation();
+    this.noteModal.set({ open: true, action: 'ack', devId, note: '' });
+  }
+
+  openResolveModal(devId: string, ev: Event): void {
+    ev.stopPropagation();
+    this.noteModal.set({ open: true, action: 'resolve', devId, note: '' });
+  }
+
+  openClassifyModal(devId: string, cause: DeviationCause, ev: Event): void {
+    ev.stopPropagation();
+    this.noteModal.set({ open: true, action: 'classify', devId, cause, note: '' });
+  }
+
+  closeNoteModal(): void {
+    this.noteModal.set(null);
+  }
+
+  updateNoteModalText(ev: Event): void {
+    const target = ev.target as HTMLTextAreaElement | null;
+    const cur = this.noteModal();
+    if (!cur || !target) return;
+    this.noteModal.set({ ...cur, note: target.value });
+  }
+
+  confirmNoteModal(): void {
+    const m = this.noteModal();
+    if (!m) return;
+    const by = this.actorLabel();
+    const note = m.note.trim() || undefined;
+    if (m.action === 'ack') {
+      this.deviationsSvc.acknowledge(m.devId, by, note);
+    } else if (m.action === 'resolve') {
+      this.deviationsSvc.resolve(m.devId, by, note);
+    } else if (m.action === 'classify' && m.cause) {
+      this.deviationsSvc.setCause(m.devId, m.cause, 'manual', by, note);
+    }
+    this.closeNoteModal();
+  }
 
   readonly deviations = computed<Deviation[]>(() => {
     this.thresholdsSvc.thresholds();
@@ -1473,6 +1838,41 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly deviationsOpen = computed(() =>
     this.deviations().filter((e) => this.deviationsSvc.isOpen(e)),
   );
+
+  readonly deviationFilter = signal<'all' | 'open' | 'acked' | 'closed'>('all');
+
+  readonly deviationsFiltered = computed<Deviation[]>(() => {
+    const all = this.deviations();
+    const f = this.deviationFilter();
+    if (f === 'all') return all;
+    if (f === 'open') return all.filter((d) => this.deviationsSvc.isOpen(d));
+    if (f === 'acked') {
+      return all.filter((d) => {
+        const a = this.deviationsSvc.getAck(d.id);
+        return a?.acknowledged && !a.resolved;
+      });
+    }
+    // closed
+    return all.filter((d) => !this.deviationsSvc.isOpen(d));
+  });
+
+  readonly deviationCounts = computed(() => {
+    const all = this.deviations();
+    let open = 0;
+    let acked = 0;
+    let closed = 0;
+    for (const d of all) {
+      const a = this.deviationsSvc.getAck(d.id);
+      if (this.deviationsSvc.isOpen(d)) open++;
+      else closed++;
+      if (a?.acknowledged && !a.resolved) acked++;
+    }
+    return { all: all.length, open, acked, closed };
+  });
+
+  setDeviationFilter(f: 'all' | 'open' | 'acked' | 'closed'): void {
+    this.deviationFilter.set(f);
+  }
 
   getAck(id: string) {
     return this.deviationsSvc.getAck(id);
@@ -1542,8 +1942,17 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     ev.stopPropagation();
     const target = ev.target as HTMLSelectElement | null;
     if (!target || !target.value) return;
-    this.deviationsSvc.setCause(id, target.value as DeviationCause, 'manual');
+    this.deviationsSvc.setCause(id, target.value as DeviationCause, 'manual', this.actorLabel());
     target.value = '';
+  }
+
+  onCauseSelectModal(id: string, ev: Event): void {
+    ev.stopPropagation();
+    const target = ev.target as HTMLSelectElement | null;
+    if (!target || !target.value) return;
+    const cause = target.value as DeviationCause;
+    target.value = '';
+    this.openClassifyModal(id, cause, ev);
   }
 
   clearCause(id: string, ev: Event): void {
@@ -1568,8 +1977,26 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     initialValue: this.route.snapshot.paramMap,
   });
 
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
   readonly siteId = computed(() => this.params().get('siteId') || '');
   readonly salaSlug = computed(() => (this.params().get('salaSlug') || '').toLowerCase());
+
+  // siteIds del bundle cold-room (concentrador maestro + TAPs). Si no se
+  // pasaron via query, cae al siteId primary únicamente — funciona si el
+  // siteId tiene sus propios STH-* en reg_map.
+  readonly bundleSiteIds = computed<string[]>(() => {
+    const raw = this.queryParams().get('siteIds') || '';
+    const ids = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (ids.length > 0) return ids;
+    const sid = this.siteId();
+    return sid ? [sid] : [];
+  });
   readonly siteRecord = signal<SiteRecord | null>(null);
   readonly now = signal<number>(Date.now());
 
@@ -1929,8 +2356,9 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     const id = this.siteId();
     if (!id) return;
     this.isLoading.set(true);
-    // Sin filtro tap → trae todos los sensores del sitio. Cliente filtra por area.
-    this.coldRoom.getSensors(id, null, this.range()).subscribe({
+    // Pasa bundle de siteIds para que backend cubra concentrador + TAPs reales.
+    // Sin esto, si siteId es el maestro (sin STH-*), backend devuelve [].
+    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds()).subscribe({
       next: (res) => {
         if (res.ok) {
           this.allSensors.set(res.data || []);

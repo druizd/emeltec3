@@ -66,6 +66,7 @@ export interface DeviationAck {
   note?: string;
   resolved?: boolean;
   resolvedAt?: string;
+  resolvedBy?: string;
   cause?: DeviationCause;
   causeSource?: DeviationCauseSource;
   causeBy?: string;
@@ -209,15 +210,16 @@ export class ColdRoomDeviationsService {
     this.pushAck(id, ack);
   }
 
-  resolve(id: string, note?: string): void {
+  resolve(id: string, by = 'operator', note?: string): void {
     const cur = this.acks()[id];
     const ack: DeviationAck = {
       ...(cur || { acknowledged: false }),
       acknowledged: cur?.acknowledged ?? true,
       ackedAt: cur?.ackedAt ?? new Date().toISOString(),
-      ackedBy: cur?.ackedBy ?? 'operator',
+      ackedBy: cur?.ackedBy ?? by,
       resolved: true,
       resolvedAt: new Date().toISOString(),
+      resolvedBy: by,
       note: note ?? cur?.note,
     };
     const next: AckMap = { ...this.acks(), [id]: ack };

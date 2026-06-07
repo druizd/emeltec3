@@ -50,17 +50,6 @@ import {
   tempColor,
 } from './ventisqueros-data';
 
-interface KpiDef {
-  label: string;
-  icon: string;
-  value: string;
-  unit: string;
-  sub: string;
-  accent: string;
-  accentBg: string;
-  highlight: boolean;
-}
-
 type TabKey = 'general' | 'salas' | 'compliance' | 'taps' | 'eventos' | 'contacts';
 
 interface SubTab {
@@ -68,18 +57,6 @@ interface SubTab {
   icon: string;
   label: string;
   badge?: number;
-}
-
-interface TapAggregate {
-  tap: TapKey;
-  color: string;
-  count: number;
-  alerts: number;
-  avgT: string;
-  avgH: number;
-  minT: string;
-  maxT: string;
-  sensors: Sensor[];
 }
 
 interface SalaAggregate {
@@ -106,7 +83,6 @@ interface SalaAggregate {
   level: 'ok' | 'info' | 'warn' | 'crit' | 'severe' | 'unknown';
   /** Coarse status mapping for legacy CSS bindings: ok|warn|crit|unknown. */
   status: 'ok' | 'warn' | 'crit' | 'unknown';
-  spark: number[];
   outOfBandMin: number;
   reportingCount: number;
   deviationsOpenCount: number;
@@ -166,7 +142,7 @@ interface MetricOption {
           <div>
             <div class="vs-site-title">{{ siteTitle() }}</div>
             <div class="vs-site-subtitle">
-              Cámara frío · {{ sensors().length }} sensores THM activos
+              Cámara frío · {{ floorMapSensors().length }} sensores THM activos
             </div>
           </div>
         </div>
@@ -370,10 +346,26 @@ interface MetricOption {
                         class="vs-tap-group"
                         [style.--tap-color]="tapColors()[tap] || '#94A3B8'"
                       >
-                        <div class="vs-tap-group-head flex items-center justify-between">
+                        <div class="vs-tap-group-head flex items-center justify-between gap-2">
                           <span class="vs-tap-group-name">
                             <span class="vs-tap-group-dot"></span>
                             {{ tap }}
+                          </span>
+                          <span
+                            class="vs-tap-group-age"
+                            [class.vs-tap-group-age--stale]="isTapStale(tap)"
+                            [title]="
+                              tapLastSeenAgeMs()[tap] === null
+                                ? 'Sin transmisión registrada'
+                                : 'Última comunicación · ' + relativeMs(tapLastSeenAgeMs()[tap])
+                            "
+                          >
+                            <span class="material-symbols-outlined text-[10px]">schedule</span>
+                            {{
+                              tapLastSeenAgeMs()[tap] === null
+                                ? '—'
+                                : relativeMs(tapLastSeenAgeMs()[tap])
+                            }}
                           </span>
                           <span class="vs-tap-group-count">
                             {{ groupedSensors()[tap]?.length || 0 }}
@@ -433,7 +425,7 @@ interface MetricOption {
           <!-- Sensor visibility panel -->
           <app-ventisqueros-visibility-panel
             class="mt-3.5 block"
-            [sensors]="sensors()"
+            [sensors]="floorMapSensors()"
             [hidden]="hiddenSensors()"
             [taps]="taps()"
             [tapColors]="tapColors()"
@@ -537,6 +529,7 @@ interface MetricOption {
               <button
                 type="button"
                 [routerLink]="salaRouterLink(sa.area)"
+                [queryParams]="salaQueryParams()"
                 class="sala-card group"
                 [attr.data-status]="sa.status"
               >
@@ -585,90 +578,6 @@ interface MetricOption {
                     </div>
                   }
                 </div>
-
-                <!-- Spark chart oculto temporalmente (preview sin gráfico). Restaurar cambiando false → sa.spark.length > 1 -->
-                @if (false) {
-                  <div class="sala-spark-wrap" (mouseleave)="onSparkLeave()">
-                    <svg
-                      viewBox="0 0 120 32"
-                      class="sala-spark"
-                      preserveAspectRatio="none"
-                      (mousemove)="onSparkMove($event, sa)"
-                    >
-                      <defs>
-                        <linearGradient
-                          [attr.id]="'spark-' + sa.slug"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="0%"
-                            [attr.stop-color]="sa.status === 'crit' ? '#EF4444' : sa.status === 'warn' ? '#F59E0B' : '#0DAFBD'"
-                            stop-opacity="0.30"
-                          />
-                          <stop offset="100%" stop-color="#fff" stop-opacity="0" />
-                        </linearGradient>
-                      </defs>
-                      @if (sa.thresholdMax !== null) {
-                        <line
-                          [attr.x1]="0"
-                          [attr.x2]="120"
-                          [attr.y1]="thresholdYPos(sa.spark, sa.thresholdMax!, 32)"
-                          [attr.y2]="thresholdYPos(sa.spark, sa.thresholdMax!, 32)"
-                          stroke="rgba(239, 68, 68, 0.45)"
-                          stroke-width="0.8"
-                          stroke-dasharray="3 2"
-                        />
-                      }
-                      <path
-                        [attr.d]="sparkAreaPath(sa.spark, 120, 32)"
-                        [attr.fill]="'url(#spark-' + sa.slug + ')'"
-                      />
-                      <path
-                        [attr.d]="sparkPath(sa.spark, 120, 32)"
-                        fill="none"
-                        [attr.stroke]="sa.status === 'crit' ? '#EF4444' : sa.status === 'warn' ? '#F59E0B' : '#0DAFBD'"
-                        stroke-width="1.4"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      />
-                      @if (sparkHoverSlug() === sa.slug) {
-                        <line
-                          [attr.x1]="sparkHoverXPct(sa) * 1.2"
-                          [attr.x2]="sparkHoverXPct(sa) * 1.2"
-                          y1="0"
-                          y2="32"
-                          stroke="rgba(15, 23, 42, 0.45)"
-                          stroke-width="0.6"
-                        />
-                      }
-                    </svg>
-                    @if (sparkHoverSlug() === sa.slug && sparkHoverValue(sa) !== null) {
-                      <div
-                        class="sala-spark-tooltip"
-                        [style.left.%]="sparkHoverXPct(sa)"
-                        [style.transform]="
-                          sparkHoverXPct(sa) > 70
-                            ? 'translate(-100%, -100%)'
-                            : sparkHoverXPct(sa) < 30
-                              ? 'translate(0, -100%)'
-                              : 'translate(-50%, -100%)'
-                        "
-                      >
-                        <strong>{{ sparkHoverValue(sa)!.toFixed(1) }}°C</strong>
-                        <span>{{ sparkHoverTime(sa) }}</span>
-                      </div>
-                    }
-                    <div class="sala-spark-axis">
-                      <span>hace 24h</span>
-                      <span>12h</span>
-                      <span>ahora</span>
-                    </div>
-                  </div>
-                }
-                <!-- @else { sala-spark-empty } también oculto en preview -->
 
                 <div class="sala-stats-row">
                   <span class="sala-stat">
@@ -855,10 +764,39 @@ interface MetricOption {
                     {{ cm.devsOpen }} abiertas · {{ cm.devsClosed }} cerradas
                   </div>
                 </div>
-                <div class="comp-hero-meta-item">
+                <div
+                  class="comp-hero-meta-item"
+                  [title]="
+                    cm.mttrMin === null
+                      ? 'MTTR sólo disponible cuando se cierran desviaciones manualmente (acks resueltos).'
+                      : 'Tiempo medio para resolver desviaciones (basado en acks cerrados)'
+                  "
+                >
                   <div class="comp-hero-meta-lbl">MTTR resolución</div>
                   <div class="comp-hero-meta-val">
                     {{ cm.mttrMin !== null ? fmtComplianceMin(cm.mttrMin) : '—' }}
+                  </div>
+                  @if (cm.mttrMin === null) {
+                    <div class="comp-hero-meta-sub">requiere cerrar desviaciones</div>
+                  }
+                </div>
+                <div
+                  class="comp-hero-meta-item"
+                  [title]="
+                    'Cobertura de datos: ' + cm.pointsPerSensor + '/' + cm.expectedPoints +
+                    ' muestras esperadas. Gaps cuentan como fuera-banda.'
+                  "
+                >
+                  <div class="comp-hero-meta-lbl">Cobertura datos</div>
+                  <div class="comp-hero-meta-val">
+                    {{
+                      cm.expectedPoints > 0
+                        ? ((cm.pointsPerSensor / cm.expectedPoints) * 100).toFixed(0)
+                        : '0'
+                    }}%
+                  </div>
+                  <div class="comp-hero-meta-sub">
+                    {{ cm.pointsPerSensor }}/{{ cm.expectedPoints }} muestras
                   </div>
                 </div>
               </div>
@@ -868,19 +806,31 @@ interface MetricOption {
             <div class="comp-section">
               <h3 class="comp-section-title">Severidad de desviaciones</h3>
               <div class="comp-severity-row">
-                <div class="comp-severity-card comp-severity-card--info">
-                  <div class="comp-severity-val">{{ cm.devsByLevel.info }}</div>
-                  <div class="comp-severity-lbl">Defrost / esperadas</div>
+                <div
+                  class="comp-severity-card comp-severity-card--info"
+                  title="Clasificadas como Defrost (causa operacional esperada). No cuentan en HACCP."
+                >
+                  <div class="comp-severity-val">{{ cm.devsDefrost }}</div>
+                  <div class="comp-severity-lbl">Defrost (excluidas)</div>
                 </div>
-                <div class="comp-severity-card comp-severity-card--warn">
+                <div
+                  class="comp-severity-card comp-severity-card--warn"
+                  title="Desviaciones < 5 minutos sostenidas"
+                >
                   <div class="comp-severity-val">{{ cm.devsByLevel.warn }}</div>
                   <div class="comp-severity-lbl">Breves &lt; 5min</div>
                 </div>
-                <div class="comp-severity-card comp-severity-card--crit">
+                <div
+                  class="comp-severity-card comp-severity-card--crit"
+                  title="Desviaciones sostenidas ≥ 5min"
+                >
                   <div class="comp-severity-val">{{ cm.devsByLevel.crit }}</div>
                   <div class="comp-severity-lbl">Sostenidas ≥ 5min</div>
                 </div>
-                <div class="comp-severity-card comp-severity-card--severe">
+                <div
+                  class="comp-severity-card comp-severity-card--severe"
+                  title="Desviaciones severas ≥ 30min"
+                >
                   <div class="comp-severity-val">{{ cm.devsByLevel.severe }}</div>
                   <div class="comp-severity-lbl">Severas ≥ 30min</div>
                 </div>
@@ -918,20 +868,41 @@ interface MetricOption {
                 @for (sa of cm.salas; track sa.slug) {
                   <div class="comp-rank-row">
                     <span class="comp-rank-name truncate">{{ sa.area }}</span>
-                    <span
-                      class="comp-rank-pct"
-                      [style.color]="compliancePctColor(sa.compliancePct)"
-                    >
-                      {{ sa.compliancePct.toFixed(2) }}%
-                    </span>
-                    <span class="comp-rank-bar-wrap">
+                    @if (!sa.hasThreshold) {
+                      <span class="comp-rank-pct" style="color: #94A3B8">sin umbral</span>
+                    } @else {
                       <span
-                        class="comp-rank-bar"
-                        [style.width.%]="sa.compliancePct"
-                        [style.background]="compliancePctColor(sa.compliancePct)"
-                      ></span>
+                        class="comp-rank-pct"
+                        [style.color]="compliancePctColor(sa.compliancePct)"
+                      >
+                        {{ sa.compliancePct.toFixed(2) }}%
+                      </span>
+                    }
+                    <span class="comp-rank-bar-wrap">
+                      @if (sa.hasThreshold) {
+                        <span
+                          class="comp-rank-bar"
+                          [style.width.%]="sa.compliancePct"
+                          [style.background]="compliancePctColor(sa.compliancePct)"
+                        ></span>
+                      }
                     </span>
-                    <span class="comp-rank-out">{{ fmtComplianceMin(sa.outMin) }}</span>
+                    <span
+                      class="comp-rank-out"
+                      [title]="
+                        sa.gapMin > 0
+                          ? fmtComplianceMin(sa.gapMin) + ' por gap de datos · ' +
+                            fmtComplianceMin(sa.outMin - sa.gapMin) + ' sobre umbral'
+                          : 'Tiempo total fuera de banda'
+                      "
+                    >
+                      {{ fmtComplianceMin(sa.outMin) }}
+                      @if (sa.gapMin > 0) {
+                        <span class="comp-rank-gap" title="Tiempo sin lectura (gap)">
+                          ({{ fmtComplianceMin(sa.gapMin) }} gap)
+                        </span>
+                      }
+                    </span>
                     <span class="comp-rank-devs">
                       {{ sa.devs }} {{ sa.devs === 1 ? 'desv' : 'desvs' }}
                     </span>
@@ -1979,6 +1950,27 @@ interface MetricOption {
         font-family: var(--font-mono);
         color: #cbd5e1;
       }
+      .vs-tap-group-age {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: rgba(34, 197, 94, 0.10);
+        color: #15803d;
+        border: 1px solid rgba(34, 197, 94, 0.22);
+        font-family: var(--font-dm);
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .vs-tap-group-age--stale {
+        background: rgba(239, 68, 68, 0.10);
+        color: #b91c1c;
+        border-color: rgba(239, 68, 68, 0.25);
+      }
       .vs-sensor-row {
         grid-template-columns: 8px 1fr auto;
         padding: 8px 10px;
@@ -2671,6 +2663,11 @@ interface MetricOption {
         text-align: right;
         font-variant-numeric: tabular-nums;
       }
+      .comp-rank-gap {
+        font-size: 9.5px;
+        color: #b45309;
+        margin-left: 4px;
+      }
 
       .comp-causes {
         display: flex;
@@ -3317,68 +3314,6 @@ interface MetricOption {
         opacity: 0.75;
       }
 
-      .sala-spark-wrap {
-        position: relative;
-        margin-top: -2px;
-      }
-      .sala-spark {
-        width: 100%;
-        height: 32px;
-        cursor: crosshair;
-        display: block;
-      }
-      .sala-spark-axis {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 1px;
-        font-family: var(--font-dm);
-        font-size: 9px;
-        color: #cbd5e1;
-        letter-spacing: 0.04em;
-      }
-      .sala-spark-tooltip {
-        position: absolute;
-        top: -2px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 4px 7px;
-        border-radius: 6px;
-        background: #1e293b;
-        color: #f8fafc;
-        font-family: var(--font-dm);
-        font-size: 10px;
-        line-height: 1.2;
-        white-space: nowrap;
-        pointer-events: none;
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.20);
-        z-index: 3;
-      }
-      .sala-spark-tooltip strong {
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        font-weight: 700;
-      }
-      .sala-spark-tooltip span {
-        font-size: 9px;
-        opacity: 0.7;
-        margin-top: 1px;
-      }
-      .sala-spark-empty {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 5px;
-        height: 32px;
-        font-family: var(--font-dm);
-        font-size: 10.5px;
-        color: #cbd5e1;
-        font-style: italic;
-      }
-      .sala-spark-empty .material-symbols-outlined {
-        color: #cbd5e1;
-      }
-
       .sala-ops-row {
         display: flex;
         flex-wrap: wrap;
@@ -3796,6 +3731,29 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return ['/companies', tapSiteId, 'tap', tap.replace(' ', '-'), 'diag'];
   }
 
+  isTapStale(tap: TapKey): boolean {
+    const age = this.tapLastSeenAgeMs()[tap];
+    return age === null || age === undefined ? true : age > 300_000;
+  }
+
+  // Antigüedad del último bucket cagg por TAP. Toma el MÁS reciente entre
+  // sensores del TAP (un sensor que reportó hace 1min implica concentrador
+  // activo). null cuando ningún sensor del TAP reportó jamás.
+  readonly tapLastSeenAgeMs = computed<Record<TapKey, number | null>>(() => {
+    const nowMs = this.now();
+    const out: Record<TapKey, number | null> = {};
+    for (const s of this.coldRoomSensors()) {
+      if (!(s.tap in out)) out[s.tap] = null;
+      if (!s.lastSeen) continue;
+      const ts = new Date(s.lastSeen).getTime();
+      if (!Number.isFinite(ts) || ts <= 0) continue;
+      const age = nowMs - ts;
+      const cur = out[s.tap];
+      if (cur === null || age < cur) out[s.tap] = age;
+    }
+    return out;
+  });
+
   readonly siteTitle = computed(() => {
     const name = this.siteName().trim();
     const company = this.companyName().trim();
@@ -3891,72 +3849,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     };
   });
 
-  readonly kpis = computed<KpiDef[]>(() => {
-    const s = this.stats();
-    return [
-      {
-        label: 'Sensores activos',
-        icon: 'memory',
-        value: `${s.active}`,
-        unit: `/ ${s.total}`,
-        sub: 'monitoreo activo',
-        accent: '#0DAFBD',
-        accentBg: 'rgba(13,175,189,0.08)',
-        highlight: true,
-      },
-      {
-        label: 'Temperatura prom.',
-        icon: 'thermostat',
-        value: s.avgT,
-        unit: '°C',
-        sub: 'planta completa',
-        accent: '#16A34A',
-        accentBg: 'rgba(22,163,74,0.08)',
-        highlight: false,
-      },
-      {
-        label: 'Humedad prom.',
-        icon: 'water_drop',
-        value: `${s.avgH}`,
-        unit: '%',
-        sub: 'planta completa',
-        accent: '#2563EB',
-        accentBg: 'rgba(37,99,235,0.08)',
-        highlight: false,
-      },
-      {
-        label: 'Última act.',
-        icon: 'schedule',
-        value: '00:32',
-        unit: 's',
-        sub: 'sondeo automático',
-        accent: '#7C3AED',
-        accentBg: 'rgba(124,58,237,0.08)',
-        highlight: false,
-      },
-      {
-        label: s.maxDev.sensor ? `Mayor desv. · ${s.maxDev.sensor.id}` : 'Mayor desv.',
-        icon: 'trending_up',
-        value: s.maxDev.sensor ? `±${s.maxDev.dev.toFixed(1)}` : '—',
-        unit: '°C',
-        sub: s.maxDev.sensor ? s.maxDev.sensor.area : 'sin desviaciones',
-        accent: s.maxDev.dev > 4 ? '#EF4444' : '#F59E0B',
-        accentBg: s.maxDev.dev > 4 ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
-        highlight: s.maxDev.dev > 4,
-      },
-      {
-        label: 'Desde últ. alerta',
-        icon: 'verified_user',
-        value: s.alerts.length > 0 ? 'AHORA' : '14h 22m',
-        unit: '',
-        sub: s.alerts.length > 0 ? `${s.alerts.length} en curso` : 'planta sin alertas',
-        accent: s.alerts.length > 0 ? '#EF4444' : '#22C55E',
-        accentBg: s.alerts.length > 0 ? 'rgba(239,68,68,0.08)' : 'rgba(34,197,94,0.08)',
-        highlight: s.alerts.length > 0,
-      },
-    ];
-  });
-
   readonly subTabs = computed<SubTab[]>(() => [
     { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
     { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
@@ -3976,9 +3868,23 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return ['/companies', this.siteId(), 'sala', this.salaSlug(area)];
   }
 
+  // Query params para sala-detail. Pasa bundle de siteIds cold-room para que
+  // el detalle no consulte solo el siteId primary (que puede no tener reg_map
+  // STH-* si es concentrador maestro sin sensores propios).
+  readonly salaQueryParams = computed(() => {
+    const sid = this.siteId();
+    const related = this.coldRoomSites().map((s) => s.id);
+    const all = related.length > 0 ? [...new Set([sid, ...related])] : [sid];
+    return { siteIds: all.filter(Boolean).join(',') };
+  });
+
   // Rich data (with histPoints + lastSeen). Fed when Salas tab active.
   readonly coldRoomSensors = signal<ColdRoomSensor[]>([]);
+  // Datos separados para tab Compliance cuando period=7d. Backend usa cagg
+  // equipo_hourly (168 puntos) vs equipo_1min de Salas.
+  readonly coldRoomSensors7d = signal<ColdRoomSensor[]>([]);
   private coldRoomPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private coldRoom7dPollTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * Fuente unificada del floor map: prefiere ColdRoom (real, con defective)
@@ -4027,12 +3933,26 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       byArea.set(key, list);
     }
 
+    // Sensor cuenta como "activo para cómputo" sólo si:
+    //  - no está defective
+    //  - reportó alguna vez (lastSeen > epoch)
+    //  - su última lectura no es muy vieja (TAP caído >15min → "—" en UI)
+    // Sensor stale prolongado suele reportar ceros antes de morir; mostrarlos
+    // en el big number engaña al operador. UI cae a "—" + pill Reportando ya
+    // señala el stale.
+    const STALE_THRESHOLD_MS = 15 * 60_000;
+    const nowMs = Date.now();
+    const isFreshish = (s: ColdRoomSensor): boolean => {
+      if (s.defective) return false;
+      if (!s.lastSeen) return false;
+      const ts = new Date(s.lastSeen).getTime();
+      if (!Number.isFinite(ts) || ts <= 0) return false;
+      return nowMs - ts < STALE_THRESHOLD_MS;
+    };
+
     const out: SalaAggregate[] = [];
     for (const [area, sensors] of byArea) {
-      // Excluir sensores defectuosos del cómputo de agregados. Sensores rotos
-      // (reg_map.parametros.defective=true) reportan ceros/basura y diluyen
-      // promedios. Se cuentan separados para UI ("N en falla").
-      const active = sensors.filter((s) => !s.defective);
+      const active = sensors.filter(isFreshish);
       const defectiveSensors = sensors.filter((s) => s.defective);
       const defectiveReasons = defectiveSensors
         .map((s) => `${s.id}: ${s.defectiveReason || 'fuera de servicio'}`)
@@ -4055,7 +3975,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       const histAvg = allHist.length
         ? allHist.reduce((a, b) => a + b, 0) / allHist.length
         : actualNum;
-      const { spark, outOfBandMin } = this.computeSparkAndOutOfBand(active, th?.tMax ?? null);
+      const outOfBandMin = this.computeOutOfBandMin(active, th?.tMax ?? null);
       const reportingCount = this.computeReportingCount(active);
       const deviations = this.deviationsSvc.detect(active);
       const ongoing = deviations.filter((e) => e.ongoing);
@@ -4109,7 +4029,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         thresholdMax: th?.tMax ?? null,
         level,
         status,
-        spark,
         outOfBandMin,
         reportingCount,
         deviationsOpenCount: open.length,
@@ -4131,23 +4050,22 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly complianceMetrics = computed(() => {
     this.thresholdsSvc.thresholds();
     this.now();
-    const sensors = this.coldRoomSensors();
-    const devsAll = this.deviationsSvc.detect(sensors);
     const period = this.compliancePeriod();
+    // Dataset según período. 7d viene de fetch separado (equipo_hourly cagg).
+    const sensors = period === '7d' ? this.coldRoomSensors7d() : this.coldRoomSensors();
+    const devsAll = this.deviationsSvc.detect(sensors);
 
-    // Sample-based computation: each histPoint is 1min (24h) or 1h (7d).
-    let sampleIntervalMin = 1;
+    // Ventana FIJA según período (no derivada de histPoints). Penaliza
+    // implícitamente datos faltantes: si histPoints < expected → gaps cuentan
+    // como "fuera de banda" (sin lectura = no podemos verificar compliance).
+    const sampleIntervalMin = period === '24h' ? 1 : 60;
+    const expectedPoints = period === '24h' ? 1440 : 168;
+    const windowMin = expectedPoints * sampleIntervalMin;
     let pointsPerSensor = 0;
     if (sensors.length > 0 && sensors[0].histPoints?.length) {
-      const pts = sensors[0].histPoints;
-      pointsPerSensor = pts.length;
-      if (pts.length >= 2) {
-        const a = new Date(pts[0].t).getTime();
-        const b = new Date(pts[1].t).getTime();
-        if (b > a) sampleIntervalMin = (b - a) / 60000;
-      }
+      pointsPerSensor = sensors[0].histPoints.length;
     }
-    const totalMinPerSensor = pointsPerSensor * sampleIntervalMin;
+    const totalMinPerSensor = windowMin;
 
     // Group sensors by area for per-sala compliance.
     const byArea = new Map<string, typeof sensors>();
@@ -4163,27 +4081,47 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       area: string;
       slug: string;
       outMin: number;
+      gapMin: number;
       compliancePct: number;
       devs: number;
       level: 'ok' | 'warn' | 'crit' | 'severe' | 'unknown';
+      hasThreshold: boolean;
     }[] = [];
 
     for (const [area, list] of byArea) {
       const th = this.thresholdsSvc.get(area);
       let outMin = 0;
-      if (th && list[0]?.histPoints?.length) {
-        const N = list[0].histPoints.length;
+      let gapMin = 0;
+      if (th) {
+        const N = expectedPoints;
+        // Sólo activos no defective contribuyen. Sensor defectivo = sin data.
+        const active = list.filter((s) => !s.defective);
         for (let i = 0; i < N; i++) {
           let maxV = -Infinity;
-          for (const s of list) {
+          let hasReading = false;
+          for (const s of active) {
             const v = s.histPoints?.[i]?.v;
-            if (typeof v === 'number' && v > maxV) maxV = v;
+            if (typeof v === 'number' && Number.isFinite(v)) {
+              hasReading = true;
+              if (v > maxV) maxV = v;
+            }
           }
-          if (maxV > th.tMax) outMin += sampleIntervalMin;
+          if (!hasReading) {
+            // Gap → "fuera de banda" (no podemos verificar). Compliance HACCP
+            // exige registro continuo; falta de lectura = no conforme.
+            gapMin += sampleIntervalMin;
+            outMin += sampleIntervalMin;
+          } else if (maxV > th.tMax) {
+            outMin += sampleIntervalMin;
+          }
         }
+      } else {
+        // Sin umbral configurado → sala excluida del cómputo (100% neutral).
       }
       const totalMin = totalMinPerSensor;
-      const compliancePct = totalMin > 0 ? ((totalMin - outMin) / totalMin) * 100 : 100;
+      const compliancePct = totalMin > 0 && th
+        ? ((totalMin - outMin) / totalMin) * 100
+        : 100;
       const devsCount = devsAll.filter((d) => d.area === area).length;
       const longest = devsAll
         .filter((d) => d.area === area && d.ongoing)
@@ -4195,26 +4133,44 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
             const l = this.thresholdsSvc.evaluateLevel(area, maxT, longest);
             return l === 'info' ? 'ok' : l;
           })();
-      salaMetrics.push({ area, slug: this.salaSlug(area), outMin, compliancePct, devs: devsCount, level });
-      globalOutMin += outMin;
-      globalTotalMin += totalMin;
+      salaMetrics.push({
+        area,
+        slug: this.salaSlug(area),
+        outMin,
+        gapMin,
+        compliancePct,
+        devs: devsCount,
+        level,
+        hasThreshold: !!th,
+      });
+      if (th) {
+        globalOutMin += outMin;
+        globalTotalMin += totalMin;
+      }
     }
     salaMetrics.sort((a, b) => b.outMin - a.outMin || b.devs - a.devs);
 
     const globalCompliancePct =
       globalTotalMin > 0 ? ((globalTotalMin - globalOutMin) / globalTotalMin) * 100 : 100;
 
-    // Deviations breakdown.
-    const devsByLevel = { warn: 0, crit: 0, severe: 0, info: 0 };
+    // Deviations breakdown. devsByLevel cuenta por severidad de duración;
+    // devsDefrost cuenta separado las clasificadas como defrost (causa
+    // operacional esperada, no riesgo HACCP).
+    const devsByLevel = { warn: 0, crit: 0, severe: 0 };
+    let devsDefrost = 0;
     let devsOpen = 0;
     let devsClosed = 0;
     let mttrSum = 0;
     let mttrCount = 0;
     for (const d of devsAll) {
-      if (d.level === 'warn') devsByLevel.warn++;
-      else if (d.level === 'crit') devsByLevel.crit++;
-      else if (d.level === 'severe') devsByLevel.severe++;
-      else if (d.level === 'info') devsByLevel.info++;
+      const eff = this.deviationsSvc.effectiveCause(d);
+      if (eff && eff.cause === 'defrost') {
+        devsDefrost++;
+      } else {
+        if (d.level === 'warn') devsByLevel.warn++;
+        else if (d.level === 'crit') devsByLevel.crit++;
+        else if (d.level === 'severe') devsByLevel.severe++;
+      }
       if (this.deviationsSvc.isOpen(d)) devsOpen++;
       else devsClosed++;
       const ack = this.deviationsSvc.getAck(d.id);
@@ -4257,47 +4213,52 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
     causes.sort((a, b) => b.count - a.count);
 
-    // Hourly/daily trend: bucketize sample points and compute % in-band per bucket.
+    // Hourly/daily trend: bucketize sobre VENTANA FIJA expected, no sobre
+    // pointsPerSensor. Buckets sin samples cuentan como gap → fuera banda.
     const trendBuckets = period === '24h' ? 24 : 7;
     const hourlyTrend: { label: string; pct: number }[] = [];
-    if (pointsPerSensor > 0) {
-      const ptsPerBucket = Math.max(1, Math.floor(pointsPerSensor / trendBuckets));
-      for (let b = 0; b < trendBuckets; b++) {
-        const startIdx = b * ptsPerBucket;
-        const endIdx = Math.min(pointsPerSensor, startIdx + ptsPerBucket);
-        let totalSamples = 0;
-        let outSamples = 0;
-        for (const [area, list] of byArea) {
-          const th = this.thresholdsSvc.get(area);
-          if (!th) continue;
-          for (let i = startIdx; i < endIdx; i++) {
-            let maxV = -Infinity;
-            for (const s of list) {
-              const v = s.histPoints?.[i]?.v;
-              if (typeof v === 'number' && v > maxV) maxV = v;
-            }
-            if (maxV > -Infinity) {
-              totalSamples++;
-              if (maxV > th.tMax) outSamples++;
+    const ptsPerBucket = Math.max(1, Math.floor(expectedPoints / trendBuckets));
+    for (let b = 0; b < trendBuckets; b++) {
+      const startIdx = b * ptsPerBucket;
+      const endIdx = Math.min(expectedPoints, startIdx + ptsPerBucket);
+      let totalSamples = 0;
+      let outSamples = 0;
+      for (const [area, list] of byArea) {
+        const th = this.thresholdsSvc.get(area);
+        if (!th) continue;
+        const activeArea = list.filter((s) => !s.defective);
+        for (let i = startIdx; i < endIdx; i++) {
+          totalSamples++;
+          let maxV = -Infinity;
+          let hasReading = false;
+          for (const s of activeArea) {
+            const v = s.histPoints?.[i]?.v;
+            if (typeof v === 'number' && Number.isFinite(v)) {
+              hasReading = true;
+              if (v > maxV) maxV = v;
             }
           }
+          if (!hasReading || maxV > th.tMax) outSamples++;
         }
-        const pct = totalSamples > 0 ? ((totalSamples - outSamples) / totalSamples) * 100 : 100;
-        const label = period === '24h' ? `${String(b).padStart(2, '0')}h` : `d-${trendBuckets - b}`;
-        hourlyTrend.push({ label, pct });
       }
+      const pct = totalSamples > 0 ? ((totalSamples - outSamples) / totalSamples) * 100 : 100;
+      const label = period === '24h' ? `${String(b).padStart(2, '0')}h` : `d-${trendBuckets - b}`;
+      hourlyTrend.push({ label, pct });
     }
 
     return {
       periodLabel: period === '24h' ? 'últimas 24h' : 'últimos 7d',
       windowMin: globalTotalMin,
       sensorCount: sensors.length,
+      pointsPerSensor,
+      expectedPoints,
       globalCompliancePct,
       globalOutMin,
       devsTotal: devsAll.length,
       devsOpen,
       devsClosed,
       devsByLevel,
+      devsDefrost,
       mttrMin,
       salas: salaMetrics,
       causes,
@@ -4308,8 +4269,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   setCompliancePeriod(p: '24h' | '7d'): void {
     if (this.compliancePeriod() === p) return;
     this.compliancePeriod.set(p);
-    // Re-fetch coldRoom data for new range (24h is current default).
-    // 7d would require extending fetchColdRoomSensors to accept range param.
+    if (p === '7d') {
+      this.startColdRoom7dPolling();
+    } else {
+      this.stopColdRoom7dPolling();
+    }
   }
 
   compliancePctColor(pct: number): string {
@@ -4349,56 +4313,12 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   // === Umbrales drawer ===
   readonly umbralesOpen = signal<boolean>(false);
 
-  // === Spark hover interactivo ===
-  readonly sparkHoverSlug = signal<string | null>(null);
-  readonly sparkHoverIdx = signal<number>(0);
-
-  onSparkMove(ev: MouseEvent, sa: SalaAggregate): void {
-    if (sa.spark.length < 2) return;
-    const target = ev.currentTarget as SVGElement | null;
-    if (!target) return;
-    const rect = target.getBoundingClientRect();
-    if (rect.width <= 0) return;
-    const x = ev.clientX - rect.left;
-    const pct = Math.max(0, Math.min(1, x / rect.width));
-    const idx = Math.round(pct * (sa.spark.length - 1));
-    this.sparkHoverSlug.set(sa.slug);
-    this.sparkHoverIdx.set(idx);
-  }
-
-  onSparkLeave(): void {
-    this.sparkHoverSlug.set(null);
-  }
-
-  sparkHoverValue(sa: SalaAggregate): number | null {
-    if (this.sparkHoverSlug() !== sa.slug || sa.spark.length === 0) return null;
-    const idx = Math.max(0, Math.min(sa.spark.length - 1, this.sparkHoverIdx()));
-    return sa.spark[idx];
-  }
-
-  sparkHoverTime(sa: SalaAggregate): string {
-    if (this.sparkHoverSlug() !== sa.slug || sa.spark.length === 0) return '';
-    const idx = Math.max(0, Math.min(sa.spark.length - 1, this.sparkHoverIdx()));
-    // 24h preset = 1 sample/min. Newer = higher idx.
-    const minutesAgo = sa.spark.length - 1 - idx;
-    if (minutesAgo < 1) return 'ahora';
-    if (minutesAgo < 60) return `hace ${minutesAgo}m`;
-    const h = Math.floor(minutesAgo / 60);
-    const m = minutesAgo % 60;
-    return m === 0 ? `hace ${h}h` : `hace ${h}h ${m}m`;
-  }
-
-  sparkHoverXPct(sa: SalaAggregate): number {
-    if (this.sparkHoverSlug() !== sa.slug || sa.spark.length === 0) return 0;
-    const idx = Math.max(0, Math.min(sa.spark.length - 1, this.sparkHoverIdx()));
-    return (idx / (sa.spark.length - 1)) * 100;
-  }
   readonly thresholdsList = computed(() => {
     this.thresholdsSvc.thresholds();
     // Merge live sensor areas with stored thresholds. Missing ones show empty.
     const stored = this.thresholdsSvc.list();
     const storedSlugs = new Set(stored.map((t) => this.salaSlug(t.area)));
-    const liveAreas = Array.from(new Set(this.sensors().map((s) => (s.area || '').trim())))
+    const liveAreas = Array.from(new Set(this.floorMapSensors().map((s) => (s.area || '').trim())))
       .filter((a) => a && !storedSlugs.has(this.salaSlug(a)));
     const extras: SalaThreshold[] = liveAreas.map((area) => ({
       area,
@@ -4756,27 +4676,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return `${Math.floor(ms / 3_600_000)}h`;
   }
 
-  readonly tapAggregates = computed<TapAggregate[]>(() => {
-    const taps = this.taps();
-    const colors = this.tapColors();
-    return taps.map((tap) => {
-      const sensors = this.sensors().filter((s) => s.tap === tap);
-      const ts = sensors.map((s) => s.t);
-      const hs = sensors.map((s) => s.h);
-      return {
-        tap,
-        color: colors[tap],
-        count: sensors.length,
-        alerts: sensors.filter((s) => s.alerted).length,
-        avgT: sensors.length ? (ts.reduce((a, b) => a + b, 0) / ts.length).toFixed(1) : '—',
-        avgH: sensors.length ? Math.round(hs.reduce((a, b) => a + b, 0) / hs.length) : 0,
-        minT: sensors.length ? Math.min(...ts).toFixed(1) : '—',
-        maxT: sensors.length ? Math.max(...ts).toFixed(1) : '—',
-        sensors,
-      };
-    });
-  });
-
   readonly liveLabel = computed(() => {
     if (this.serviceError()) return 'Sin conexión · reintentando';
     const last = this.lastUpdate();
@@ -4836,6 +4735,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
     this.stopConcentratorPolling();
     this.stopColdRoomPolling();
+    this.stopColdRoom7dPolling();
     this.service.stopPolling();
   }
 
@@ -4871,17 +4771,45 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     });
   }
 
-  private computeSparkAndOutOfBand(
+  private fetchColdRoom7d(): void {
+    const id = this.siteId();
+    if (!id) return;
+    const related = this.coldRoomSites().map((s) => s.id);
+    const allIds = related.length > 0 ? [...new Set([id, ...related])] : [id];
+    this.coldRoom.getSensors(id, null, '7d', allIds).subscribe({
+      next: (res) => {
+        if (res.ok) this.coldRoomSensors7d.set(res.data || []);
+      },
+      error: () => {
+        /* keep last known */
+      },
+    });
+  }
+
+  private startColdRoom7dPolling(): void {
+    if (this.coldRoom7dPollTimer !== null) return;
+    this.fetchColdRoom7d();
+    // 5 min refresh: 7d data cambia lento, no necesita poll agresivo.
+    this.coldRoom7dPollTimer = setInterval(() => this.fetchColdRoom7d(), 300_000);
+  }
+
+  private stopColdRoom7dPolling(): void {
+    if (this.coldRoom7dPollTimer !== null) {
+      clearInterval(this.coldRoom7dPollTimer);
+      this.coldRoom7dPollTimer = null;
+    }
+  }
+
+  private computeOutOfBandMin(
     sensors: ColdRoomSensor[],
     threshold: number | null,
-  ): { spark: number[]; outOfBandMin: number } {
-    if (sensors.length === 0) return { spark: [], outOfBandMin: 0 };
+  ): number {
+    if (sensors.length === 0 || threshold === null) return 0;
     const first = sensors[0];
     const points = first.hist?.length || 0;
-    if (points === 0) return { spark: [], outOfBandMin: 0 };
+    if (points === 0) return 0;
 
-    // Interval ms derived from first sensor histPoints.
-    let intervalMs = 15 * 60 * 1000; // default 24h preset
+    let intervalMs = 15 * 60 * 1000;
     const pts = first.histPoints;
     if (pts && pts.length >= 2) {
       const a = new Date(pts[0].t).getTime();
@@ -4889,23 +4817,17 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       if (isFinite(a) && isFinite(b) && b > a) intervalMs = b - a;
     }
 
-    const spark: number[] = [];
     let outOfBandPts = 0;
     for (let i = 0; i < points; i++) {
-      let sum = 0;
-      let count = 0;
       let maxV = -Infinity;
       for (const s of sensors) {
         const v = s.hist[i];
         if (typeof v !== 'number' || !isFinite(v)) continue;
-        sum += v;
-        count++;
         if (v > maxV) maxV = v;
       }
-      spark.push(count > 0 ? sum / count : 0);
-      if (threshold !== null && maxV > threshold) outOfBandPts++;
+      if (maxV > threshold) outOfBandPts++;
     }
-    return { spark, outOfBandMin: Math.round((outOfBandPts * intervalMs) / 60000) };
+    return Math.round((outOfBandPts * intervalMs) / 60000);
   }
 
   private computeReportingCount(sensors: ColdRoomSensor[]): number {
@@ -4917,37 +4839,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       if (!s.lastSeen) return false;
       return now - new Date(s.lastSeen).getTime() < this.STALE_MS;
     }).length;
-  }
-
-  sparkPath(values: number[], width: number, height: number): string {
-    if (!values || values.length < 2) return '';
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const range = max - min || 1;
-    const stepX = width / (values.length - 1);
-    const pad = 2;
-    return values
-      .map((v, i) => {
-        const x = i * stepX;
-        const y = pad + (1 - (v - min) / range) * (height - pad * 2);
-        return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
-      })
-      .join(' ');
-  }
-
-  sparkAreaPath(values: number[], width: number, height: number): string {
-    if (!values || values.length < 2) return '';
-    const line = this.sparkPath(values, width, height);
-    return `${line} L ${width} ${height} L 0 ${height} Z`;
-  }
-
-  thresholdYPos(values: number[], threshold: number, height: number): number {
-    if (!values || values.length === 0) return height / 2;
-    const min = Math.min(...values, threshold);
-    const max = Math.max(...values, threshold);
-    const range = max - min || 1;
-    const pad = 2;
-    return pad + (1 - (threshold - min) / range) * (height - pad * 2);
   }
 
   longestOngoingMin(sa: SalaAggregate): number {
