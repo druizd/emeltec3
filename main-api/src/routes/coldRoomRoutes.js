@@ -1643,10 +1643,9 @@ router.delete('/:siteId/alarm-rules/:ruleId', async (req, res) => {
   }
 });
 
-// --- Usuarios elegibles del sitio (sub_empresa) ---
+// --- Usuarios elegibles del sitio: sub_empresa + admins de la empresa + SuperAdmin ---
 router.get('/:siteId/alarm-eligible-users', async (req, res) => {
   try {
-    // Sitio → sub_empresa.
     const siteRes = await pool.query(
       `SELECT sub_empresa_id, empresa_id FROM sitio WHERE id = $1`,
       [req.params.siteId],
@@ -1656,16 +1655,24 @@ router.get('/:siteId/alarm-eligible-users', async (req, res) => {
     }
     const { sub_empresa_id, empresa_id } = siteRes.rows[0];
 
-    // Usuarios de la sub_empresa (o empresa si sub_empresa_id null) con email válido.
-    const userQuery = sub_empresa_id
-      ? `SELECT id, nombre, COALESCE(apellido,'') AS apellido, email, cargo, tipo
-         FROM usuario WHERE sub_empresa_id = $1 AND email IS NOT NULL AND email != ''
-         ORDER BY nombre`
-      : `SELECT id, nombre, COALESCE(apellido,'') AS apellido, email, cargo, tipo
-         FROM usuario WHERE empresa_id = $1 AND email IS NOT NULL AND email != ''
-         ORDER BY nombre`;
-    const param = sub_empresa_id || empresa_id;
-    const { rows } = await pool.query(userQuery, [param]);
+    // Incluir TODOS los usuarios de la empresa + TODOS los Admin/SuperAdmin
+    // (independiente de empresa, son operadores transversales del sistema).
+    const { rows } = await pool.query(
+      `SELECT DISTINCT id, nombre, COALESCE(apellido,'') AS apellido, email,
+              cargo, tipo, sub_empresa_id, empresa_id
+       FROM usuario
+       WHERE email IS NOT NULL AND email != ''
+         AND (empresa_id = $1 OR tipo IN ('SuperAdmin','Admin'))
+       ORDER BY
+         CASE tipo
+           WHEN 'SuperAdmin' THEN 4
+           WHEN 'Admin' THEN 3
+           WHEN 'Gerente' THEN 2
+           ELSE 1
+         END,
+         nombre`,
+      [empresa_id],
+    );
     res.json({ ok: true, data: rows });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });

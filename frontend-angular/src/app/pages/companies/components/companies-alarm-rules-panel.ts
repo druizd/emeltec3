@@ -55,173 +55,324 @@ const DEFAULT_DRAFT: DraftRule = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="ar-page">
-      <div class="ar-head">
-        <div>
-          <h2 class="ar-title">Reglas de alarma</h2>
+      <div class="ar-hero">
+        <div class="ar-hero-icon">
+          <span class="material-symbols-outlined">notifications_active</span>
+        </div>
+        <div class="ar-hero-text">
+          <h2 class="ar-title">Alarmas</h2>
           <p class="ar-sub">
-            Configura condiciones personalizadas (temperatura, humedad, sin transmitir) por sala o
-            sensor. Las reglas activas se evalúan continuamente y aparecen en la pestaña Alarmas
-            de cada sitio.
+            Configura avisos por temperatura, humedad o pérdida de transmisión. Notifica por email
+            a usuarios seleccionados.
           </p>
         </div>
         <button
           type="button"
-          class="ar-btn ar-btn--primary"
+          class="ar-btn ar-btn--primary ar-btn--big"
           (click)="openCreate()"
           [disabled]="formOpen()"
         >
-          <span class="material-symbols-outlined text-[16px]">add</span>
-          Nueva regla
+          <span class="material-symbols-outlined text-[18px]">add_alert</span>
+          Crear alarma
         </button>
       </div>
+
+      @if (!formOpen() && rules().length === 0) {
+        <div class="ar-templates">
+          <div class="ar-templates-title">Plantillas</div>
+          <div class="ar-templates-grid">
+            <button type="button" class="ar-template-card" (click)="useTemplate('temp-alta')">
+              <span class="material-symbols-outlined text-[22px] text-rose-500">thermostat</span>
+              <div class="ar-template-name">Temperatura alta</div>
+              <div class="ar-template-desc">Sensor supera su umbral máximo.</div>
+            </button>
+            <button type="button" class="ar-template-card" (click)="useTemplate('temp-baja')">
+              <span class="material-symbols-outlined text-[22px] text-sky-500">ac_unit</span>
+              <div class="ar-template-name">Temperatura baja</div>
+              <div class="ar-template-desc">Riesgo de congelación o sobre-frío.</div>
+            </button>
+            <button type="button" class="ar-template-card" (click)="useTemplate('hr-alta')">
+              <span class="material-symbols-outlined text-[22px] text-blue-500">water_drop</span>
+              <div class="ar-template-name">Humedad alta</div>
+              <div class="ar-template-desc">HR sobre el límite tolerado.</div>
+            </button>
+            <button type="button" class="ar-template-card" (click)="useTemplate('sin-transmitir')">
+              <span class="material-symbols-outlined text-[22px] text-amber-500">signal_disconnected</span>
+              <div class="ar-template-name">Sin transmitir</div>
+              <div class="ar-template-desc">Sensor sin lectura por minutos.</div>
+            </button>
+          </div>
+        </div>
+      }
 
       @if (formOpen()) {
         <div class="ar-form-card">
           <div class="ar-form-head">
-            <div class="ar-form-title">{{ editingId() ? 'Editar regla' : 'Nueva regla' }}</div>
-            <button type="button" class="ar-form-close" (click)="closeForm()">
-              <span class="material-symbols-outlined text-[16px]">close</span>
-            </button>
+            <div class="ar-form-title">
+              <span class="material-symbols-outlined text-[18px]">edit_notifications</span>
+              {{ editingId() ? 'Editar alarma' : 'Nueva alarma' }}
+            </div>
+            <div class="ar-form-head-actions">
+              <label class="ar-toggle ar-toggle--compact">
+                <input type="checkbox" [(ngModel)]="draft.enabled" />
+                <span class="ar-toggle-track"></span>
+                <span class="ar-toggle-label">
+                  {{ draft.enabled ? 'Activa' : 'Pausada' }}
+                </span>
+              </label>
+              <button type="button" class="ar-form-close" (click)="closeForm()" title="Cerrar">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
           </div>
+
           <div class="ar-form-body">
-            <label class="ar-field ar-field--full">
-              <span>Nombre</span>
+            <!-- STEP 1: Nombre -->
+            <section class="ar-step">
+              <div class="ar-step-head">
+                <span class="ar-step-num">1</span>
+                <div>
+                  <div class="ar-step-title">Nombre</div>
+                </div>
+              </div>
               <input
                 type="text"
+                class="ar-input-big"
                 [(ngModel)]="draft.name"
-                placeholder="Ej. Temperatura alta Matanza"
+                placeholder="Ej. Temperatura alta en Cámara Primaria"
               />
-            </label>
+            </section>
 
-            <label class="ar-field">
-              <span>Métrica</span>
-              <select [(ngModel)]="draft.metric" (change)="onMetricChange()">
-                <option value="temperatura">Temperatura</option>
-                <option value="humedad">Humedad relativa</option>
-                <option value="transmision">Sin transmitir</option>
-              </select>
-            </label>
+            <!-- STEP 2: Qué medir -->
+            <section class="ar-step">
+              <div class="ar-step-head">
+                <span class="ar-step-num">2</span>
+                <div>
+                  <div class="ar-step-title">Métrica</div>
+                </div>
+              </div>
+              <div class="ar-choice-row">
+                <button
+                  type="button"
+                  class="ar-choice"
+                  [class.ar-choice--active]="draft.metric === 'temperatura'"
+                  (click)="setMetric('temperatura')"
+                >
+                  <span class="material-symbols-outlined text-[20px]">thermostat</span>
+                  Temperatura
+                </button>
+                <button
+                  type="button"
+                  class="ar-choice"
+                  [class.ar-choice--active]="draft.metric === 'humedad'"
+                  (click)="setMetric('humedad')"
+                >
+                  <span class="material-symbols-outlined text-[20px]">water_drop</span>
+                  Humedad
+                </button>
+                <button
+                  type="button"
+                  class="ar-choice"
+                  [class.ar-choice--active]="draft.metric === 'transmision'"
+                  (click)="setMetric('transmision')"
+                >
+                  <span class="material-symbols-outlined text-[20px]">signal_disconnected</span>
+                  Sin transmitir
+                </button>
+              </div>
+            </section>
 
-            <label class="ar-field">
-              <span>Operador</span>
-              <select [(ngModel)]="draft.op">
-                <option value=">">Mayor que (&gt;)</option>
-                <option value=">=">Mayor o igual (&ge;)</option>
-                <option value="<">Menor que (&lt;)</option>
-                <option value="<=">Menor o igual (&le;)</option>
-              </select>
-            </label>
+            <!-- STEP 3: Condición -->
+            <section class="ar-step">
+              <div class="ar-step-head">
+                <span class="ar-step-num">3</span>
+                <div>
+                  <div class="ar-step-title">Condición</div>
+                </div>
+              </div>
+              <div class="ar-cond-row">
+                <span class="ar-cond-lbl">Si el valor es</span>
+                <select class="ar-cond-select" [(ngModel)]="draft.op">
+                  <option value=">">mayor que</option>
+                  <option value=">=">mayor o igual a</option>
+                  <option value="<">menor que</option>
+                  <option value="<=">menor o igual a</option>
+                </select>
+                <input
+                  type="number"
+                  step="0.1"
+                  class="ar-cond-input"
+                  [(ngModel)]="draft.threshold"
+                />
+                <span class="ar-cond-unit">{{ thresholdUnit() }}</span>
+              </div>
+              <div class="ar-sustained">
+                <label class="ar-check">
+                  <input
+                    type="checkbox"
+                    [checked]="draft.sustainedMin > 0"
+                    (change)="toggleSustained()"
+                  />
+                  Solo si se mantiene por
+                </label>
+                @if (draft.sustainedMin > 0) {
+                  <input
+                    type="number"
+                    min="1"
+                    class="ar-cond-input ar-cond-input--small"
+                    [(ngModel)]="draft.sustainedMin"
+                  />
+                  <span class="ar-cond-unit">minutos</span>
+                }
+                @if (draft.sustainedMin === 0) {
+                  <span class="ar-sustained-hint">dispara apenas se detecta</span>
+                }
+              </div>
+            </section>
 
-            <label class="ar-field">
-              <span>{{ thresholdLabel() }}</span>
-              <input
-                type="number"
-                step="0.1"
-                [(ngModel)]="draft.threshold"
-              />
-            </label>
-
-            <label class="ar-field">
-              <span>Sostenida (min)</span>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                [(ngModel)]="draft.sustainedMin"
-                [title]="
-                  '0 = dispara inmediato. > 0 = la condición debe mantenerse N minutos antes de disparar.'
-                "
-              />
-            </label>
-
-            <label class="ar-field">
-              <span>Objetivo</span>
-              <select [(ngModel)]="draft.targetKind" (change)="onTargetKindChange()">
-                <option value="all">Todos los sensores</option>
-                <option value="sala">Sala específica</option>
-                <option value="sensor">Sensor específico</option>
-              </select>
-            </label>
-
-            @if (draft.targetKind === 'sala') {
-              <label class="ar-field">
-                <span>Sala</span>
-                <select [(ngModel)]="draft.targetValue">
-                  <option value="">— Selecciona sala —</option>
+            <!-- STEP 4: Dónde -->
+            <section class="ar-step">
+              <div class="ar-step-head">
+                <span class="ar-step-num">4</span>
+                <div>
+                  <div class="ar-step-title">Alcance</div>
+                </div>
+              </div>
+              <div class="ar-choice-row">
+                <button
+                  type="button"
+                  class="ar-choice"
+                  [class.ar-choice--active]="draft.targetKind === 'all'"
+                  (click)="setTargetKind('all')"
+                >
+                  <span class="material-symbols-outlined text-[18px]">select_all</span>
+                  Todos los sensores
+                </button>
+                <button
+                  type="button"
+                  class="ar-choice"
+                  [class.ar-choice--active]="draft.targetKind === 'sala'"
+                  (click)="setTargetKind('sala')"
+                >
+                  <span class="material-symbols-outlined text-[18px]">meeting_room</span>
+                  Una sala
+                </button>
+                <button
+                  type="button"
+                  class="ar-choice"
+                  [class.ar-choice--active]="draft.targetKind === 'sensor'"
+                  (click)="setTargetKind('sensor')"
+                >
+                  <span class="material-symbols-outlined text-[18px]">sensors</span>
+                  Un sensor
+                </button>
+              </div>
+              @if (draft.targetKind === 'sala') {
+                <select class="ar-input-big" [(ngModel)]="draft.targetValue">
+                  <option value="">Selecciona una sala</option>
                   @for (s of availableSalas(); track s.slug) {
                     <option [value]="s.slug">{{ s.area }} ({{ s.sensorCount }} sensores)</option>
                   }
                 </select>
-                @if (availableSalas().length === 0) {
-                  <small class="ar-hint">Cargando salas… si no aparecen, no hay sitios cold-room.</small>
-                }
-              </label>
-            }
-            @if (draft.targetKind === 'sensor') {
-              <label class="ar-field">
-                <span>Sensor</span>
-                <select [(ngModel)]="draft.targetValue">
-                  <option value="">— Selecciona sensor —</option>
+              }
+              @if (draft.targetKind === 'sensor') {
+                <select class="ar-input-big" [(ngModel)]="draft.targetValue">
+                  <option value="">Selecciona un sensor</option>
                   @for (s of availableSensors(); track s.id) {
                     <option [value]="s.id">{{ s.id }} · {{ s.area }} · {{ s.tap }}</option>
                   }
                 </select>
-                @if (availableSensors().length === 0) {
-                  <small class="ar-hint">Cargando sensores…</small>
-                }
-              </label>
-            }
+              }
+            </section>
 
-            <label class="ar-field">
-              <span>Severidad</span>
-              <select [(ngModel)]="draft.severity">
-                <option value="info">Info</option>
-                <option value="warn">Advertencia</option>
-                <option value="crit">Crítica</option>
-              </select>
-            </label>
+            <!-- STEP 5: Prioridad -->
+            <section class="ar-step">
+              <div class="ar-step-head">
+                <span class="ar-step-num">5</span>
+                <div>
+                  <div class="ar-step-title">Severidad</div>
+                </div>
+              </div>
+              <div class="ar-choice-row">
+                <button
+                  type="button"
+                  class="ar-choice ar-choice--info"
+                  [class.ar-choice--active]="draft.severity === 'info'"
+                  (click)="setSeverity('info')"
+                >
+                  <span class="material-symbols-outlined text-[18px]">info</span>
+                  Info
+                </button>
+                <button
+                  type="button"
+                  class="ar-choice ar-choice--warn"
+                  [class.ar-choice--active]="draft.severity === 'warn'"
+                  (click)="setSeverity('warn')"
+                >
+                  <span class="material-symbols-outlined text-[18px]">warning</span>
+                  Advertencia
+                </button>
+                <button
+                  type="button"
+                  class="ar-choice ar-choice--crit"
+                  [class.ar-choice--active]="draft.severity === 'crit'"
+                  (click)="setSeverity('crit')"
+                >
+                  <span class="material-symbols-outlined text-[18px]">error</span>
+                  Crítica
+                </button>
+              </div>
+            </section>
 
-            <div class="ar-field ar-field--full">
-              <span>¿A quién avisamos por email?</span>
+            <!-- STEP 6: A quién -->
+            <section class="ar-step">
+              <div class="ar-step-head">
+                <span class="ar-step-num">6</span>
+                <div>
+                  <div class="ar-step-title">Destinatarios</div>
+                  <div class="ar-step-hint">Sin destinatarios, la alarma solo aparece en la UI.</div>
+                </div>
+              </div>
               @if (eligibleUsers().length === 0) {
                 <div class="ar-empty-inline">
-                  No hay usuarios asignados a esta instalación. Agrega usuarios en
-                  <strong>Gestión Usuarios</strong> para poder elegirlos como destinatarios.
+                  No hay usuarios disponibles. Agrega usuarios en
+                  <strong>Gestión Usuarios</strong> primero.
                 </div>
               } @else {
                 <div class="ar-recipient-picker">
                   @for (u of eligibleUsers(); track u.id) {
-                    <label class="ar-recipient-check">
-                      <input
-                        type="checkbox"
-                        [checked]="isDraftUser(u.id)"
-                        (change)="toggleDraftUser(u.id)"
-                      />
-                      <span class="ar-recipient-check-info">
-                        <span class="ar-recipient-check-email">{{ userLabel(u) }}</span>
-                        <span class="ar-recipient-check-name">
-                          {{ u.email }}
+                    <label
+                      class="ar-user-card"
+                      [class.ar-user-card--active]="isDraftUser(u.id)"
+                      (click)="toggleDraftUser(u.id)"
+                    >
+                      @if (isDraftUser(u.id)) {
+                        <span class="ar-user-check-overlay">
+                          <span class="material-symbols-outlined text-[16px]">check</span>
+                        </span>
+                      }
+                      <span class="ar-user-avatar" [style.background]="avatarColor(u.id)">
+                        {{ userInitials(u) }}
+                      </span>
+                      <span class="ar-user-info">
+                        <span class="ar-user-name">{{ userLabel(u) }}</span>
+                        <span class="ar-user-email">{{ u.email }}</span>
+                        <span class="ar-user-tags">
+                          @if (u.tipo && u.tipo !== 'Cliente') {
+                            <span class="ar-user-tag ar-user-tag--{{ u.tipo.toLowerCase() }}">
+                              {{ u.tipo }}
+                            </span>
+                          }
                           @if (u.cargo) {
-                            · {{ u.cargo }}
+                            <span class="ar-user-tag">{{ u.cargo }}</span>
                           }
                         </span>
                       </span>
                     </label>
                   }
                 </div>
-                <small class="ar-hint">
-                  Si no marcas a nadie, esta regla sólo aparecerá en UI (sin enviar email).
-                </small>
               }
-            </div>
-
-            <label class="ar-field ar-field--full">
-              <span>Estado</span>
-              <label class="ar-check">
-                <input type="checkbox" [(ngModel)]="draft.enabled" />
-                Activa
-              </label>
-            </label>
+            </section>
 
             @if (formError(); as err) {
               <div class="ar-error">
@@ -230,6 +381,7 @@ const DEFAULT_DRAFT: DraftRule = {
               </div>
             }
           </div>
+
           <div class="ar-form-foot">
             <button type="button" class="ar-btn" (click)="closeForm()">Cancelar</button>
             <button
@@ -237,8 +389,8 @@ const DEFAULT_DRAFT: DraftRule = {
               class="ar-btn ar-btn--primary"
               (click)="saveRule()"
             >
-              <span class="material-symbols-outlined text-[14px]">save</span>
-              {{ editingId() ? 'Guardar cambios' : 'Crear regla' }}
+              <span class="material-symbols-outlined text-[14px]">check</span>
+              {{ editingId() ? 'Guardar cambios' : 'Crear alarma' }}
             </button>
           </div>
         </div>
@@ -347,17 +499,38 @@ const DEFAULT_DRAFT: DraftRule = {
         background: #f0f2f5;
         min-height: 100%;
       }
-      .ar-head {
+      .ar-hero {
         display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
+        align-items: center;
+        gap: 20px;
+        padding: 24px 28px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        margin-bottom: 20px;
+      }
+      .ar-hero-icon {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
+      }
+      .ar-hero-icon .material-symbols-outlined {
+        font-size: 24px;
+      }
+      .ar-hero-text {
+        flex: 1;
+        min-width: 0;
       }
       .ar-title {
         font-family: 'Josefin Sans', sans-serif;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 600;
         color: #1e293b;
         letter-spacing: 0.02em;
@@ -365,10 +538,60 @@ const DEFAULT_DRAFT: DraftRule = {
       .ar-sub {
         margin-top: 4px;
         font-family: var(--font-dm);
-        font-size: 12px;
+        font-size: 12.5px;
         color: #64748b;
-        max-width: 640px;
-        line-height: 1.4;
+        max-width: 720px;
+        line-height: 1.45;
+      }
+
+      .ar-templates {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+      .ar-templates-title {
+        font-family: 'Josefin Sans', sans-serif;
+        font-size: 10px;
+        color: #94a3b8;
+        margin-bottom: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+      }
+      .ar-templates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 8px;
+      }
+      .ar-template-card {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        text-align: left;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .ar-template-card:hover {
+        border-color: var(--color-primary-tint-40);
+        background: var(--color-primary-tint-04);
+      }
+      .ar-template-name {
+        font-family: 'Josefin Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .ar-template-desc {
+        font-family: var(--font-dm);
+        font-size: 11px;
+        color: #64748b;
+        line-height: 1.3;
       }
       .ar-btn {
         display: inline-flex;
@@ -391,27 +614,424 @@ const DEFAULT_DRAFT: DraftRule = {
         cursor: not-allowed;
       }
       .ar-btn--primary {
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #ffffff;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .ar-btn--primary:hover:not(:disabled) {
-        background: #0c8b96;
+        background: var(--color-primary-container);
+      }
+      .ar-btn:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-primary-tint-25);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .ar-choice,
+        .ar-template-card,
+        .ar-user-card,
+        .ar-toggle-track,
+        .ar-toggle-track::after {
+          transition: none;
+        }
+      }
+      .ar-btn--big {
+        padding: 10px 18px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      /* Steps */
+      .ar-step {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .ar-step:last-child {
+        border-bottom: none;
+      }
+      .ar-step--final {
+        background: #f8fafc;
+        border-radius: 0 0 12px 12px;
+      }
+      .ar-step-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .ar-step-num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--color-on-surface-muted);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 600;
+        flex-shrink: 0;
+        border: 1px solid var(--color-outline-variant);
+      }
+      .ar-step-title {
+        font-family: var(--font-josefin);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--color-on-surface);
+        letter-spacing: 0.01em;
+      }
+      .ar-step-hint {
+        font-family: var(--font-body);
+        font-size: 12px;
+        color: var(--color-on-surface-variant);
+        margin-top: 2px;
+      }
+
+      .ar-input-big {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: var(--font-dm);
+        font-size: 13px;
+        color: #1e293b;
+        background: #ffffff;
+        outline: none;
+      }
+      .ar-step .ar-input-big + .ar-input-big,
+      .ar-choice-row + .ar-input-big {
+        margin-top: 8px;
+      }
+      .ar-input-big:focus-visible {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-tint-25);
+      }
+
+      .ar-choice-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .ar-choice {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 16px;
+        background: var(--color-surface);
+        border: 1px solid var(--color-outline-variant);
+        border-radius: 9px;
+        color: var(--color-on-surface-variant);
+        font-family: var(--font-body);
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+          border-color 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+          background 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .ar-choice:hover {
+        border-color: var(--color-primary-tint-30);
+        color: var(--color-primary);
+      }
+      .ar-choice:focus-visible {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-tint-25);
+      }
+      .ar-choice--active {
+        background: var(--color-primary-tint-10);
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+        font-weight: 600;
+      }
+      .ar-choice--warn.ar-choice--active {
+        background: rgba(245, 158, 11, 0.10);
+        border-color: #d97706;
+        color: #d97706;
+      }
+      .ar-choice--crit.ar-choice--active {
+        background: rgba(239, 68, 68, 0.10);
+        border-color: #dc2626;
+        color: #dc2626;
+      }
+      .ar-choice--info.ar-choice--active {
+        background: var(--color-primary-tint-10);
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+      }
+
+      .ar-cond-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .ar-cond-lbl {
+        font-family: var(--font-dm);
+        font-size: 12.5px;
+        color: #475569;
+      }
+      .ar-cond-select {
+        padding: 7px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-family: var(--font-dm);
+        font-size: 12.5px;
+        color: #1e293b;
+        background: #ffffff;
+        outline: none;
+      }
+      .ar-cond-input {
+        width: 90px;
+        padding: 7px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+        background: #ffffff;
+        outline: none;
+        text-align: right;
+      }
+      .ar-cond-input--small {
+        width: 70px;
+      }
+      .ar-cond-input:focus-visible,
+      .ar-cond-select:focus-visible {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-tint-25);
+      }
+      .ar-cond-unit {
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        color: #64748b;
+        font-weight: 600;
+      }
+      .ar-sustained {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .ar-sustained-hint {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+
+      /* User cards (recipients) — horizontal scrollable list */
+      .ar-recipient-picker {
+        display: flex;
+        gap: 10px;
+        overflow-x: auto;
+        overflow-y: visible;
+        padding: 8px 16px 12px 4px;
+        margin-right: -16px;
+        scroll-snap-type: x mandatory;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
+      }
+      .ar-recipient-picker::-webkit-scrollbar {
+        height: 8px;
+      }
+      .ar-recipient-picker::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .ar-recipient-picker::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 999px;
+      }
+      .ar-recipient-picker::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .ar-user-card {
+        position: relative;
+        flex: 0 0 280px;
+        min-width: 280px;
+        max-width: 280px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+        scroll-snap-align: start;
+      }
+      .ar-user-check-overlay {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--color-success);
+        color: var(--color-surface);
+        box-shadow: 0 1px 4px rgba(34, 197, 94, 0.40);
+      }
+      .ar-user-card:hover {
+        border-color: var(--color-primary-tint-40);
+        background: var(--color-primary-tint-04);
+      }
+      .ar-user-card--active {
+        border-color: var(--color-primary);
+        background: var(--color-primary-tint-08);
+        box-shadow: 0 0 0 2px var(--color-primary-tint-15);
+      }
+      .ar-user-avatar {
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        color: #ffffff;
+        font-family: 'Josefin Sans', sans-serif;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .ar-user-info {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .ar-user-name {
+        font-family: var(--font-dm);
+        font-size: 13px;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .ar-user-email {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        color: #64748b;
+      }
+      .ar-user-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 3px;
+      }
+      .ar-user-tag {
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 9.5px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .ar-user-tag--superadmin {
+        background: rgba(124, 58, 237, 0.12);
+        color: var(--color-accent-container);
+      }
+      .ar-user-tag--admin {
+        background: var(--color-primary-tint-15);
+        color: var(--color-primary);
+      }
+      .ar-user-tag--gerente {
+        background: rgba(245, 158, 11, 0.12);
+        color: #b45309;
+      }
+      /* Toggle (enabled switch) */
+      .ar-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+      }
+      .ar-toggle--compact .ar-toggle-track {
+        width: 32px;
+        height: 18px;
+      }
+      .ar-toggle--compact .ar-toggle-track::after {
+        width: 14px;
+        height: 14px;
+      }
+      .ar-toggle--compact input:checked + .ar-toggle-track::after {
+        transform: translateX(14px);
+      }
+      .ar-toggle--compact .ar-toggle-label {
+        font-size: 11.5px;
+        color: #475569;
+      }
+      .ar-toggle input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .ar-toggle-track {
+        position: relative;
+        display: inline-block;
+        width: 38px;
+        height: 22px;
+        background: #cbd5e1;
+        border-radius: 999px;
+        transition: background 0.18s;
+      }
+      .ar-toggle-track::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 18px;
+        height: 18px;
+        background: #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.20);
+        transition: transform 0.18s;
+      }
+      .ar-toggle input:checked + .ar-toggle-track {
+        background: var(--color-primary);
+      }
+      .ar-toggle input:checked + .ar-toggle-track::after {
+        transform: translateX(16px);
+      }
+      .ar-toggle-label {
+        font-family: var(--font-dm);
+        font-size: 12.5px;
+        font-weight: 500;
+        color: #1e293b;
       }
 
       .ar-form-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: var(--color-surface);
+        border: 1px solid var(--color-outline-variant);
         border-radius: 12px;
         margin-bottom: 16px;
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 160px);
       }
       .ar-form-head {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 16px;
+        padding: 16px;
         border-bottom: 1px solid #e2e8f0;
+      }
+      .ar-form-head-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
       }
       .ar-form-title {
         font-family: 'Josefin Sans', sans-serif;
@@ -430,6 +1050,9 @@ const DEFAULT_DRAFT: DraftRule = {
         grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 12px;
         padding: 16px;
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
       }
       .ar-field {
         display: flex;
@@ -455,7 +1078,7 @@ const DEFAULT_DRAFT: DraftRule = {
       }
       .ar-field input:focus,
       .ar-field select:focus {
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .ar-checks {
         display: flex;
@@ -504,7 +1127,7 @@ const DEFAULT_DRAFT: DraftRule = {
         display: flex;
         justify-content: flex-end;
         gap: 8px;
-        padding: 12px 16px;
+        padding: 16px;
         border-top: 1px solid #e2e8f0;
         background: #f8fafc;
         border-radius: 0 0 12px 12px;
@@ -556,15 +1179,15 @@ const DEFAULT_DRAFT: DraftRule = {
         transition: border-color 0.15s, background 0.15s;
       }
       .ar-recipient-check:hover {
-        border-color: rgba(13, 175, 189, 0.30);
-        background: rgba(13, 175, 189, 0.04);
+        border-color: var(--color-primary-tint-30);
+        background: var(--color-primary-tint-04);
       }
       .ar-recipient-check--off {
         opacity: 0.5;
         cursor: not-allowed;
       }
       .ar-recipient-check input {
-        accent-color: #0d99a5;
+        accent-color: var(--color-primary);
       }
       .ar-recipient-check-info {
         display: flex;
@@ -656,7 +1279,7 @@ const DEFAULT_DRAFT: DraftRule = {
         letter-spacing: 0.04em;
       }
       .ar-recipient-sev strong {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
 
       .ar-list {
@@ -712,8 +1335,8 @@ const DEFAULT_DRAFT: DraftRule = {
         height: 36px;
         border-radius: 9px;
         flex-shrink: 0;
-        background: rgba(13, 175, 189, 0.10);
-        color: #0d99a5;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
       }
       .ar-card-icon[data-severity='crit'] {
         background: rgba(239, 68, 68, 0.10);
@@ -757,8 +1380,8 @@ const DEFAULT_DRAFT: DraftRule = {
         color: #b45309;
       }
       .ar-card-sev[data-severity='info'] {
-        background: rgba(13, 175, 189, 0.12);
-        color: #0d99a5;
+        background: var(--color-primary-tint-15);
+        color: var(--color-primary);
       }
       .ar-card-tag {
         padding: 1px 7px;
@@ -812,9 +1435,9 @@ const DEFAULT_DRAFT: DraftRule = {
         transition: color 0.15s, border-color 0.15s, background 0.15s;
       }
       .ar-icon-btn:hover {
-        color: #0d99a5;
-        border-color: rgba(13, 175, 189, 0.30);
-        background: rgba(13, 175, 189, 0.04);
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-30);
+        background: var(--color-primary-tint-04);
       }
       .ar-icon-btn--danger:hover {
         color: #dc2626;
@@ -851,8 +1474,87 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
     return name || u.email;
   }
 
+  userInitials(u: { nombre: string; apellido: string; email: string }): string {
+    const n = (u.nombre || '').trim();
+    const a = (u.apellido || '').trim();
+    if (n && a) return (n[0] + a[0]).toUpperCase();
+    if (n) return n.slice(0, 2).toUpperCase();
+    if (u.email) return u.email.slice(0, 2).toUpperCase();
+    return '??';
+  }
+
+  avatarColor(id: string): string {
+    // Genera color HSL determinista desde el id para consistencia.
+    let hash = 0;
+    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 55%, 55%)`;
+  }
+
   userById(id: string) {
     return this.eligibleUsers().find((u) => u.id === id);
+  }
+
+  setMetric(m: AlarmMetric): void {
+    this.draft.metric = m;
+    this.onMetricChange();
+  }
+
+  setTargetKind(k: AlarmTargetKind): void {
+    this.draft.targetKind = k;
+    this.onTargetKindChange();
+  }
+
+  setSeverity(s: AlarmSeverity): void {
+    this.draft.severity = s;
+  }
+
+  toggleSustained(): void {
+    this.draft.sustainedMin = this.draft.sustainedMin > 0 ? 0 : 5;
+  }
+
+  thresholdUnit(): string {
+    if (this.draft.metric === 'temperatura') return '°C';
+    if (this.draft.metric === 'humedad') return '%';
+    return 'min';
+  }
+
+  useTemplate(key: 'temp-alta' | 'temp-baja' | 'hr-alta' | 'sin-transmitir'): void {
+    this.openCreate();
+    switch (key) {
+      case 'temp-alta':
+        this.draft.name = 'Temperatura alta';
+        this.draft.metric = 'temperatura';
+        this.draft.op = '>';
+        this.draft.threshold = 10;
+        this.draft.severity = 'warn';
+        this.draft.sustainedMin = 5;
+        break;
+      case 'temp-baja':
+        this.draft.name = 'Temperatura baja';
+        this.draft.metric = 'temperatura';
+        this.draft.op = '<';
+        this.draft.threshold = -25;
+        this.draft.severity = 'warn';
+        this.draft.sustainedMin = 5;
+        break;
+      case 'hr-alta':
+        this.draft.name = 'Humedad alta';
+        this.draft.metric = 'humedad';
+        this.draft.op = '>';
+        this.draft.threshold = 85;
+        this.draft.severity = 'info';
+        this.draft.sustainedMin = 0;
+        break;
+      case 'sin-transmitir':
+        this.draft.name = 'Sensor sin transmitir';
+        this.draft.metric = 'transmision';
+        this.draft.op = '>';
+        this.draft.threshold = 15;
+        this.draft.severity = 'crit';
+        this.draft.sustainedMin = 0;
+        break;
+    }
   }
 
   private fetchSensors(): void {
