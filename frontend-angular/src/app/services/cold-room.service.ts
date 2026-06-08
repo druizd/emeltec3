@@ -130,7 +130,7 @@ export class ColdRoomService {
   ): Observable<{
     ok: boolean;
     data: {
-      points: Array<{ ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }>;
+      points: { ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }[];
     };
     meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
     error?: string;
@@ -143,14 +143,14 @@ export class ColdRoomService {
     return this.http.get<{
       ok: boolean;
       data: {
-        points: Array<{
+        points: {
           ts: string;
           sensorId: string;
           area: string;
           tap: string;
           t: number | null;
           h: number | null;
-        }>;
+        }[];
       };
       meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
       error?: string;

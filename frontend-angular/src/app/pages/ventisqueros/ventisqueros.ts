@@ -5923,7 +5923,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   private async downloadHistoryXlsx(
-    points: Array<{ ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }>,
+    points: { ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }[],
     from: Date,
     to: Date,
     view: string,

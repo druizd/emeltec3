@@ -5,8 +5,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   Input,
-  OnChanges,
-  SimpleChanges,
   computed,
   effect,
   inject,
@@ -1484,7 +1482,7 @@ const DEFAULT_DRAFT: DraftRule = {
     `,
   ],
 })
-export class CompaniesAlarmRulesPanelComponent implements OnChanges {
+export class CompaniesAlarmRulesPanelComponent {
   private readonly svc = inject(ColdRoomAlarmRulesService);
   private readonly coldRoom = inject(ColdRoomService);
   private readonly http = inject(HttpClient);
@@ -1534,11 +1532,11 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
   @Input() set coldRoomSiteIds(v: string[]) {
     this._coldRoomSiteIds.set(v || []);
   }
-  @Input() set siteId(v: string) {
-    this._siteId.set(v || '');
-  }
   get coldRoomSiteIds(): string[] {
     return this._coldRoomSiteIds();
+  }
+  @Input() set siteId(v: string) {
+    this._siteId.set(v || '');
   }
   get siteId(): string {
     return this._siteId();
@@ -1562,10 +1560,6 @@ export class CompaniesAlarmRulesPanelComponent implements OnChanges {
   readonly availableSalas = signal<{ slug: string; area: string; sensorCount: number }[]>([]);
   readonly availableSensors = signal<{ id: string; area: string; tap: string }[]>([]);
   draft: DraftRule = { ...DEFAULT_DRAFT };
-
-  ngOnChanges(_changes: SimpleChanges): void {
-    // Effects ya manejan la reactividad de coldRoomSiteIds y siteId.
-  }
 
   readonly eligibleUsers = this.svc.eligibleUsers;
 

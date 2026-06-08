@@ -1783,7 +1783,15 @@ async function evalRulesForSite(siteId) {
         );
         const eventId = insRes.rows[0].id;
         if (rule.notifyEmail) {
-          await sendAlarmEmailForRule(siteId, rule, value, label, eventId).catch((err) =>
+          // Antigüedad del sensor (para indicar si la lectura es stale).
+          let staleMin = null;
+          if (m.lastSeen) {
+            const ts = new Date(m.lastSeen).getTime();
+            if (Number.isFinite(ts) && ts > 0) {
+              staleMin = Math.floor((nowMs - ts) / 60_000);
+            }
+          }
+          await sendAlarmEmailForRule(siteId, rule, value, label, eventId, staleMin).catch((err) =>
             console.error('[alarm email] error:', err.message),
           );
         }
@@ -1840,7 +1848,16 @@ function evalRuleOp(rule, v) {
   return false;
 }
 
-async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId) {
+function fmtStaleAgo(min) {
+  if (min === null || min === undefined) return null;
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `hace ${h}h` : `hace ${h}h ${m}min`;
+}
+
+async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId, staleMin = null) {
   if (!rule.recipientUserIds || rule.recipientUserIds.length === 0) return;
   // Destinatarios = usuarios de la plataforma elegidos para esta regla.
   const recRes = await pool.query(
@@ -1862,17 +1879,23 @@ async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId) 
   const unit =
     rule.metric === 'temperatura' ? '°C' : rule.metric === 'humedad' ? '%' : 'min';
   const condicionTexto = `${rule.metric} ${rule.op} ${rule.threshold}${unit}`;
+  // Si la última lectura es vieja, marcar valor como stale en el email.
+  const STALE_EMAIL_MIN = 5;
+  const isStale = staleMin !== null && staleMin > STALE_EMAIL_MIN;
+  const staleLabel = isStale ? ` (última lectura ${fmtStaleAgo(staleMin)})` : '';
   const reglaPayload = {
     severidad: rule.severity,
     reg_alias: targetLabel,
     sitio_desc: site.descripcion,
     sitio_id: siteId,
-    valor_detectado: `${Number(value).toFixed(2)}${unit}`,
+    valor_detectado: `${Number(value).toFixed(2)}${unit}${staleLabel}`,
     condicion_texto: condicionTexto,
     id_serial: site.id_serial,
     nombre: rule.name,
   };
-  const mensaje = `se activó la regla "${rule.name}" en ${targetLabel}.`;
+  const mensaje = isStale
+    ? `se activó la regla "${rule.name}" en ${targetLabel}. ATENCIÓN: el sensor no transmite ${fmtStaleAgo(staleMin)}; el valor mostrado es la última lectura conocida.`
+    : `se activó la regla "${rule.name}" en ${targetLabel}.`;
 
   const sent = [];
   for (const r of recipients) {
