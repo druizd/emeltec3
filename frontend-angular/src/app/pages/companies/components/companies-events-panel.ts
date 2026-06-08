@@ -66,9 +66,7 @@ export class CompaniesEventsPanelComponent {
   // El panel de reglas es transversal (no por sitio), evalúa todas las salas.
   readonly isColdRoomContext = computed<boolean>(() => this.coldRoomSites().length > 0);
 
-  readonly coldRoomSiteIdList = computed<string[]>(() =>
-    this.coldRoomSites().map((s) => s.id),
-  );
+  readonly coldRoomSiteIdList = computed<string[]>(() => this.coldRoomSites().map((s) => s.id));
 
   readonly primarySiteId = computed<string>(() => this.coldRoomSites()[0]?.id || '');
 }

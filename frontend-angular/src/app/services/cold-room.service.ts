@@ -84,7 +84,6 @@ export interface ColdRoomBackupSensor {
   hist: number[];
 }
 
-
 @Injectable({ providedIn: 'root' })
 export class ColdRoomService {
   private http = inject(HttpClient);
@@ -120,7 +119,14 @@ export class ColdRoomService {
   ): Observable<{
     ok: boolean;
     data: {
-      points: { ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }[];
+      points: {
+        ts: string;
+        sensorId: string;
+        area: string;
+        tap: string;
+        t: number | null;
+        h: number | null;
+      }[];
     };
     meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
     error?: string;
@@ -200,7 +206,6 @@ export class ColdRoomService {
       `/api/cold-room/${encodeURIComponent(siteId)}/backup?${params.toString()}`,
     );
   }
-
 
   exportCsvUrl(siteId: string, tap: string | null, range: ColdRoomRange = '24h'): string {
     const params = new URLSearchParams();

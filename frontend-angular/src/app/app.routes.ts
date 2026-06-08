@@ -56,8 +56,8 @@ export const routes: Routes = [
         path: 'companies/:siteId/riles',
         data: { siteType: 'riles' },
         loadComponent: () =>
-          import('./pages/companies/company-site-coming-soon-detail').then(
-            (m) => m.CompanySiteComingSoonDetailComponent,
+          import('./pages/companies/company-site-riles-detail').then(
+            (m) => m.CompanySiteRilesDetailComponent,
           ),
       },
       {
