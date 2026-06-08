@@ -1409,8 +1409,8 @@ interface MetricOption {
                         <span class="vs-thresholds-pending">sin config</span>
                       } @else if (t.updatedAt) {
                         Actualizado {{ relativeIso(t.updatedAt) }}
-                        @if (t.updatedBy) {
-                          · {{ t.updatedBy }}
+                        @if ($any(t).updatedBy) {
+                          · {{ $any(t).updatedBy }}
                         }
                       }
                     </span>
@@ -1456,7 +1456,7 @@ interface MetricOption {
                     <input
                       type="text"
                       class="vs-thresholds-input vs-thresholds-input--text"
-                      [value]="t.note ?? ''"
+                      [value]="$any(t).note ?? ''"
                       placeholder="Justificación HACCP…"
                       (change)="onThresholdNoteChange(t.area, $event)"
                     />
@@ -5476,7 +5476,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   // === Umbrales drawer ===
   readonly umbralesOpen = signal<boolean>(false);
 
-  readonly thresholdsList = computed(() => {
+  readonly thresholdsList = computed<SalaThreshold[]>(() => {
     this.thresholdsSvc.thresholds();
     // Merge live sensor areas with stored thresholds. Missing ones show empty.
     const stored = this.thresholdsSvc.list();
