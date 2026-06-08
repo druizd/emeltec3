@@ -1,10 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/authMiddleware');
+const { requireSiteAccess, requireRole } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
 const { sendAlertEmail } = require('../services/emailService');
 
+const ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
+const OPERATOR_ROLES = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
+
 router.use(protect);
+
+// Todas las rutas /:siteId/* requieren acceso al sitio (empresa/sub_empresa match).
+// SuperAdmin bypass. Resto: empresa_id (Admin/Cliente) o sub_empresa_id (Gerente).
+router.use('/:siteId', requireSiteAccess('siteId'));
 
 // === HACCP config endpoints (thresholds, defrost, acks, audit) ===
 // Storage: Postgres tables created in migration 006.
@@ -215,7 +223,7 @@ router.get('/:siteId/thresholds', async (req, res) => {
   }
 });
 
-router.put('/:siteId/thresholds/:slug', async (req, res) => {
+router.put('/:siteId/thresholds/:slug', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, slug } = req.params;
   const {
     area,
@@ -280,7 +288,7 @@ router.put('/:siteId/thresholds/:slug', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/thresholds/:slug', async (req, res) => {
+router.delete('/:siteId/thresholds/:slug', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, slug } = req.params;
   try {
     const actor = actorFromReq(req);
@@ -310,7 +318,7 @@ router.delete('/:siteId/thresholds/:slug', async (req, res) => {
   }
 });
 
-router.post('/:siteId/thresholds/reset', async (req, res) => {
+router.post('/:siteId/thresholds/reset', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const actor = actorFromReq(req);
     await pool.query(`DELETE FROM cold_room_threshold WHERE site_id=$1`, [req.params.siteId]);
@@ -361,7 +369,7 @@ router.get('/:siteId/defrost', async (req, res) => {
   }
 });
 
-router.post('/:siteId/defrost', async (req, res) => {
+router.post('/:siteId/defrost', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId } = req.params;
   const {
     id,
@@ -398,7 +406,7 @@ router.post('/:siteId/defrost', async (req, res) => {
   }
 });
 
-router.put('/:siteId/defrost/:id', async (req, res) => {
+router.put('/:siteId/defrost/:id', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, id } = req.params;
   const patch = req.body || {};
   try {
@@ -443,7 +451,7 @@ router.put('/:siteId/defrost/:id', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/defrost/:id', async (req, res) => {
+router.delete('/:siteId/defrost/:id', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, id } = req.params;
   try {
     const actor = actorFromReq(req);
@@ -511,7 +519,7 @@ router.get('/:siteId/acks', async (req, res) => {
   }
 });
 
-router.put('/:siteId/acks/:devId', async (req, res) => {
+router.put('/:siteId/acks/:devId', requireRole(...OPERATOR_ROLES), async (req, res) => {
   const { siteId, devId } = req.params;
   const a = req.body || {};
   try {
@@ -557,7 +565,7 @@ router.put('/:siteId/acks/:devId', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/acks/:devId', async (req, res) => {
+router.delete('/:siteId/acks/:devId', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const actor = actorFromReq(req);
     await pool.query(`DELETE FROM cold_room_deviation_ack WHERE site_id=$1 AND deviation_id=$2`, [
@@ -630,7 +638,7 @@ router.get('/:siteId/audit', async (req, res) => {
   }
 });
 
-router.post('/:siteId/audit', async (req, res) => {
+router.post('/:siteId/audit', requireRole(...OPERATOR_ROLES), async (req, res) => {
   // Client-initiated explicit audit entry (rare; most logging happens via mutations).
   const { siteId } = req.params;
   const { category, action, target, prev, next, note } = req.body || {};
@@ -1201,7 +1209,7 @@ router.get('/:siteId/sensors', async (req, res) => {
  * en reg_map de ambos aliases (.T y .H) del sensor para mantener consistencia.
  * Body: { defective: boolean, reason?: string }
  */
-router.put('/:siteId/sensors/:sensorId/defective', async (req, res) => {
+router.put('/:siteId/sensors/:sensorId/defective', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, sensorId } = req.params;
   const { defective, reason } = req.body || {};
   if (typeof defective !== 'boolean') {
@@ -1544,7 +1552,7 @@ router.get('/:siteId/alarm-rules', async (req, res) => {
   }
 });
 
-router.post('/:siteId/alarm-rules', async (req, res) => {
+router.post('/:siteId/alarm-rules', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const b = req.body || {};
     const id = b.id || `alarm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -1579,7 +1587,7 @@ router.post('/:siteId/alarm-rules', async (req, res) => {
   }
 });
 
-router.put('/:siteId/alarm-rules/:ruleId', async (req, res) => {
+router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const b = req.body || {};
     const recUserIds = Array.isArray(b.recipientUserIds)
@@ -1614,7 +1622,7 @@ router.put('/:siteId/alarm-rules/:ruleId', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/alarm-rules/:ruleId', async (req, res) => {
+router.delete('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     await pool.query(
       `DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`,
@@ -1886,7 +1894,7 @@ async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId, 
       await sendAlertEmail(r.email, r.name || '', mensaje, reglaPayload);
       sent.push(r.email);
     } catch (err) {
-      console.error('[alarm email] failed', r.email, err.message);
+      console.error('[alarm email] failed for recipient id', r.id, err.message);
     }
   }
   if (sent.length > 0) {
