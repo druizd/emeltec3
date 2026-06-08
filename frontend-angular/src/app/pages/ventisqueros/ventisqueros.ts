@@ -193,10 +193,6 @@ interface MetricOption {
                   </button>
                 }
               </div>
-              <button class="vs-ghost-btn inline-flex items-center gap-1.25">
-                <span class="material-symbols-outlined text-[13px]">download</span>
-                Exportar
-              </button>
             </div>
           </div>
 
@@ -2134,21 +2130,6 @@ interface MetricOption {
         font-weight: 600;
         box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
       }
-      .vs-ghost-btn {
-        padding: 7px 12px;
-        border-radius: 8px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        font-family: var(--font-body);
-        font-size: 12px;
-        color: #475569;
-        cursor: pointer;
-        transition: background 0.12s ease;
-      }
-      .vs-ghost-btn:hover {
-        background: #f8fafc;
-      }
-
       /* Alert banner */
       .vs-alert-banner {
         background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.04) 80%);
