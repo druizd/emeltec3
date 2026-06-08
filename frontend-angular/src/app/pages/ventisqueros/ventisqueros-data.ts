@@ -18,6 +18,8 @@ export interface Sensor extends SensorBase {
   h: number;
   hist: number[];
   alerted: boolean;
+  defective?: boolean;
+  defectiveReason?: string;
 }
 
 const TAP_COLOR_PALETTE = [
@@ -62,7 +64,7 @@ export function tapIndexFromKey(key: TapKey | null | undefined): number {
 // Paleta Pharma cold-chain (WHO PQS-inspired): mapea zonas reales del proceso.
 // Freezer profundo (azul oscuro) → refrigerado (cyan/teal) → cool target (emerald/lime)
 // → warn (amber) → peligro (rojo). Semánticamente alineado a HACCP.
-const TEMP_STOPS: Array<[number, [number, number, number]]> = [
+const TEMP_STOPS: [number, [number, number, number]][] = [
   [-40, [30, 58, 138]], // #1E3A8A blue-900 (freezer profundo)
   [-25, [37, 99, 235]], // #2563EB blue-600 (freezer)
   [-18, [14, 165, 233]], // #0EA5E9 sky-500 (umbral freezer)
@@ -74,7 +76,7 @@ const TEMP_STOPS: Array<[number, [number, number, number]]> = [
   [28, [153, 27, 27]], // #991B1B red-800 (severe)
 ];
 
-const HUM_STOPS: Array<[number, [number, number, number]]> = [
+const HUM_STOPS: [number, [number, number, number]][] = [
   [40, [254, 243, 199]],
   [60, [167, 243, 208]],
   [75, [103, 232, 249]],
@@ -82,7 +84,7 @@ const HUM_STOPS: Array<[number, [number, number, number]]> = [
   [100, [29, 78, 216]],
 ];
 
-function interpolate(value: number, stops: Array<[number, [number, number, number]]>): string {
+function interpolate(value: number, stops: [number, [number, number, number]][]): string {
   if (value <= stops[0][0]) return rgbStr(stops[0][1]);
   if (value >= stops[stops.length - 1][0]) return rgbStr(stops[stops.length - 1][1]);
   for (let i = 0; i < stops.length - 1; i++) {

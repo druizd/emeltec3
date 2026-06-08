@@ -801,13 +801,13 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   // poblar la tabla "Resumen diario". Endpoint dedicado lee equipo_5min y
   // agrupa por día Chile en backend → 1 fila por día visible.
   private readonly dailyAggregates = signal<
-    Array<{
+    {
       dia: string;
       caudal: { max: number | null; avg: number | null; n: number };
       nivel: { max: number | null; avg: number | null; n: number };
       nivel_freatico: { max: number | null; avg: number | null; n: number };
       muestras: number;
-    }>
+    }[]
   >([]);
   readonly dailyAggregatesLoading = signal(false);
   // Tooltip de chart: índice de barra sobre la que hover. null = sin hover.
@@ -1777,7 +1777,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     labels: string[],
     xStep: number,
     tooltipLabels: string[] = labels,
-    unidad: string = 'm³',
+    unidad = 'm³',
   ): BarChart {
     const maxVal = Math.max(...vals) || 1;
     const slotW = this.DW / vals.length;

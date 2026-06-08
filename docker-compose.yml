@@ -206,16 +206,16 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  ftsconsumer:
+  ftpconsumer:
     build:
-      context: ./fts-pipeline
-      dockerfile: ftsconsumer-rust.Dockerfile
-    container_name: emeltec-ftsconsumer
+      context: ./ftp-pipeline
+      dockerfile: ftpconsumer-rust.Dockerfile
+    container_name: emeltec-ftpconsumer
     ports:
-      - '${FTSCONSUMER_HOST_PORT:-50061}:50061'
+      - '${FTPCONSUMER_HOST_PORT:-50061}:50061'
     environment:
       <<: *db-env
-      FTS_CONSUMER_PORT: 50061
+      FTP_CONSUMER_PORT: 50061
       RUST_LOG: info
     depends_on:
       timescaledb:

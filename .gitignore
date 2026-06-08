@@ -56,3 +56,12 @@ Thumbs.db
 sbom.json
 trivy-report.json
 gitleaks-report.json
+
+# Unlighthouse
+unlighthouse/
+**/unlighthouse/
+.unlighthouse/
+**/.unlighthouse/
+unlighthouse.config.ts
+**/unlighthouse.config.ts
+

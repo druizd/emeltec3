@@ -20,6 +20,7 @@ import { Chart, registerables } from 'chart.js';
 import annotationPlugin, { type AnnotationOptions } from 'chartjs-plugin-annotation';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import type { CompanyNode, SiteRecord } from '@emeltec/shared';
+import { AuthService } from '../../services/auth.service';
 import { CompanyService } from '../../services/company.service';
 import {
   ColdRoomService,
@@ -65,11 +66,11 @@ function slugify(area: string): string {
         <div
           class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg"
           [style.background]="
-            statusLevel() === 'critical' ? 'rgba(239,68,68,0.10)' : 'rgba(13,175,189,0.10)'
+            statusLevel() === 'critical' ? 'rgba(239,68,68,0.10)' : 'var(--color-primary-tint-10)'
           "
           [style.border]="
             '1px solid ' +
-            (statusLevel() === 'critical' ? 'rgba(239,68,68,0.30)' : 'rgba(13,175,189,0.30)')
+            (statusLevel() === 'critical' ? 'rgba(239,68,68,0.30)' : 'var(--color-primary-tint-30)')
           "
         >
           <span
@@ -219,6 +220,7 @@ function slugify(area: string): string {
                 <article
                   class="sensor-card anim-stagger"
                   [class.sensor-card--alert]="s.alerted"
+                  [class.sensor-card--defective]="s.defective"
                   [style.--i]="i"
                   (click)="openSensorDrilldown(s.id)"
                   (keydown.enter)="openSensorDrilldown(s.id)"
@@ -229,11 +231,34 @@ function slugify(area: string): string {
                   <header class="flex items-center justify-between gap-2">
                     <div class="flex items-center gap-1.5">
                       <span class="sensor-id-chip">{{ s.id }}</span>
-                      @if (s.alerted) {
+                      @if (s.alerted && !s.defective) {
                         <span class="sensor-alert-chip">ALERTA</span>
                       }
+                      @if (s.defective) {
+                        <span class="sensor-defective-chip" [title]="s.defectiveReason || ''">
+                          <span class="material-symbols-outlined text-[10px]">sensors_off</span>
+                          EN FALLA
+                        </span>
+                      }
                     </div>
-                    <span class="tap-tag">{{ s.tap }}</span>
+                    <div class="flex items-center gap-1">
+                      <span class="tap-tag">{{ s.tap }}</span>
+                      <button
+                        type="button"
+                        class="sensor-defective-toggle"
+                        [class.sensor-defective-toggle--active]="s.defective"
+                        (click)="toggleSensorDefective(s, $event)"
+                        [title]="
+                          s.defective
+                            ? 'Click para reactivar sensor'
+                            : 'Click para marcar fuera de servicio (excluye del promedio)'
+                        "
+                      >
+                        <span class="material-symbols-outlined text-[12px]">
+                          {{ s.defective ? 'restart_alt' : 'power_settings_new' }}
+                        </span>
+                      </button>
+                    </div>
                   </header>
                   <div class="mt-2 flex items-baseline gap-4">
                     <div>
@@ -299,8 +324,42 @@ function slugify(area: string): string {
                 {{ deviationsOpen().length }} abiertas · {{ deviationsOngoing().length }} en curso
               </span>
             </div>
+            <div class="dev-filter-row" role="tablist" aria-label="Filtro desviaciones">
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'all'"
+                (click)="setDeviationFilter('all')"
+              >
+                Todas <strong>{{ deviationCounts().all }}</strong>
+              </button>
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'open'"
+                (click)="setDeviationFilter('open')"
+              >
+                Abiertas <strong>{{ deviationCounts().open }}</strong>
+              </button>
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'acked'"
+                (click)="setDeviationFilter('acked')"
+              >
+                Reconocidas <strong>{{ deviationCounts().acked }}</strong>
+              </button>
+              <button
+                type="button"
+                class="dev-filter-chip"
+                [class.dev-filter-chip--active]="deviationFilter() === 'closed'"
+                (click)="setDeviationFilter('closed')"
+              >
+                Cerradas <strong>{{ deviationCounts().closed }}</strong>
+              </button>
+            </div>
             <div class="deviation-list">
-              @for (ex of deviations(); track ex.id) {
+              @for (ex of deviationsFiltered(); track ex.id) {
                 <article
                   class="deviation-card"
                   [attr.data-level]="effectiveCause(ex)?.cause === 'defrost' ? 'defrost' : ex.level"
@@ -395,7 +454,7 @@ function slugify(area: string): string {
                   <footer class="deviation-foot">
                     <select
                       class="deviation-cause-select"
-                      (change)="onCauseChange(ex.id, $event)"
+                      (change)="onCauseSelectModal(ex.id, $event)"
                       (click)="$event.stopPropagation()"
                       [attr.aria-label]="'Clasificar desviación ' + ex.id"
                     >
@@ -427,7 +486,7 @@ function slugify(area: string): string {
                         <button
                           type="button"
                           class="deviation-btn deviation-btn--primary"
-                          (click)="ackDeviation(ex.id, $event)"
+                          (click)="openAckModal(ex.id, $event)"
                         >
                           <span class="material-symbols-outlined text-[14px]">visibility</span>
                           Reconocer
@@ -437,7 +496,7 @@ function slugify(area: string): string {
                         <button
                           type="button"
                           class="deviation-btn"
-                          (click)="resolveDeviation(ex.id, $event)"
+                          (click)="openResolveModal(ex.id, $event)"
                         >
                           <span class="material-symbols-outlined text-[14px]">check</span>
                           Marcar resuelta
@@ -451,6 +510,14 @@ function slugify(area: string): string {
                     }
                   </footer>
                 </article>
+              }
+              @if (deviationsFiltered().length === 0) {
+                <div class="dev-filter-empty">
+                  <span class="material-symbols-outlined text-[20px] text-slate-300"
+                    >filter_alt</span
+                  >
+                  Sin desviaciones en este filtro.
+                </div>
               }
             </div>
           </section>
@@ -494,6 +561,82 @@ function slugify(area: string): string {
           </section>
         }
       </div>
+
+      <!-- Modal nota HACCP (reconocer / clasificar / resolver) -->
+      @if (noteModal(); as nm) {
+        <div class="note-modal-backdrop" (click)="closeNoteModal()" aria-hidden="true"></div>
+        <aside
+          class="note-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Registrar acción HACCP"
+        >
+          <header class="note-modal-head">
+            <div class="note-modal-title">
+              @switch (nm.action) {
+                @case ('ack') {
+                  <span>Reconocer desviación</span>
+                }
+                @case ('resolve') {
+                  <span>Marcar desviación resuelta</span>
+                }
+                @case ('classify') {
+                  <span>Clasificar causa · {{ causeLabel(nm.cause || '') }}</span>
+                }
+              }
+            </div>
+            <button
+              type="button"
+              class="note-modal-close"
+              (click)="closeNoteModal()"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </header>
+          <div class="note-modal-body">
+            <div class="note-modal-meta">
+              <span class="material-symbols-outlined text-[13px]">person</span>
+              Acción registrada como <strong>{{ actorLabelDisplay() }}</strong>
+            </div>
+            <label class="note-modal-label">
+              Nota (opcional pero recomendada para auditoría HACCP)
+            </label>
+            <textarea
+              class="note-modal-textarea"
+              rows="4"
+              placeholder="Ej: defrost programado de 03:00–03:15. Producto bajo control."
+              [value]="nm.note"
+              (input)="updateNoteModalText($event)"
+            ></textarea>
+            <div class="note-modal-hint">
+              Esta acción queda registrada en el audit log HACCP (inmutable).
+            </div>
+          </div>
+          <footer class="note-modal-foot">
+            <button type="button" class="note-modal-btn" (click)="closeNoteModal()">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="note-modal-btn note-modal-btn--primary"
+              (click)="confirmNoteModal()"
+            >
+              @switch (nm.action) {
+                @case ('ack') {
+                  <span>Reconocer</span>
+                }
+                @case ('resolve') {
+                  <span>Resolver</span>
+                }
+                @case ('classify') {
+                  <span>Clasificar</span>
+                }
+              }
+            </button>
+          </footer>
+        </aside>
+      }
 
       <!-- Drilldown drawer -->
       @if (drilldownSensorId()) {
@@ -576,7 +719,7 @@ function slugify(area: string): string {
         background: linear-gradient(180deg, #fbfcfd, #f8fafc);
         border-bottom-width: 2px;
         border-top-color: #e2e8f0;
-        border-bottom-color: #0d99a5;
+        border-bottom-color: var(--color-primary);
       }
       .sala-icon-btn {
         display: inline-flex;
@@ -594,7 +737,7 @@ function slugify(area: string): string {
           transform 0.18s ease;
       }
       .sala-icon-btn:hover {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       .sala-icon-btn:active {
         transform: translateY(1px);
@@ -612,7 +755,7 @@ function slugify(area: string): string {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #475569;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         font-weight: 500;
         transition:
@@ -621,8 +764,8 @@ function slugify(area: string): string {
           transform 0.18s ease;
       }
       .sala-btn:hover {
-        color: #0d99a5;
-        background: rgba(13, 175, 189, 0.05);
+        color: var(--color-primary);
+        background: var(--color-primary-tint-06);
       }
       .sala-btn:active {
         transform: translateY(1px);
@@ -632,7 +775,7 @@ function slugify(area: string): string {
       }
 
       .sala-title {
-        font-family: 'Josefin Sans', sans-serif;
+        font-family: var(--font-josefin), sans-serif;
         font-size: 16px;
         font-weight: 600;
         color: #1e293b;
@@ -642,7 +785,7 @@ function slugify(area: string): string {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 500;
         color: #475569;
@@ -661,7 +804,7 @@ function slugify(area: string): string {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #22c55e;
+        background: var(--color-success);
       }
       .sala-live-dot--err {
         background: #ef4444;
@@ -712,13 +855,13 @@ function slugify(area: string): string {
       }
       .status-icon {
         font-size: 22px;
-        color: #16a34a;
+        color: var(--color-success);
       }
       .status-banner[data-level='warning'] .status-icon {
-        color: #d97706;
+        color: var(--color-warning);
       }
       .status-banner[data-level='critical'] .status-icon {
-        color: #dc2626;
+        color: var(--color-danger);
       }
       .status-banner[data-level='unknown'] .status-banner-inner {
         background: #f8fafc;
@@ -728,13 +871,13 @@ function slugify(area: string): string {
         color: #94a3b8;
       }
       .status-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 13.5px;
         font-weight: 600;
         color: #1e293b;
       }
       .status-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         margin-top: 1px;
@@ -749,7 +892,7 @@ function slugify(area: string): string {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         color: #94a3b8;
       }
@@ -774,7 +917,7 @@ function slugify(area: string): string {
         letter-spacing: -0.02em;
       }
       .kpi-hero-label {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 500;
         text-transform: uppercase;
@@ -783,7 +926,7 @@ function slugify(area: string): string {
         margin-top: 6px;
       }
       .kpi-meta {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12.5px;
         color: #64748b;
         padding-bottom: 4px;
@@ -803,7 +946,7 @@ function slugify(area: string): string {
       }
 
       .section-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
@@ -848,6 +991,57 @@ function slugify(area: string): string {
         border-color: rgba(239, 68, 68, 0.3);
         background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent 70%);
       }
+      .sensor-card--defective {
+        opacity: 0.6;
+        background: repeating-linear-gradient(
+          45deg,
+          #ffffff,
+          #ffffff 6px,
+          #f8fafc 6px,
+          #f8fafc 12px
+        );
+        border-color: #cbd5e1;
+      }
+      .sensor-defective-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9.5px;
+        font-weight: 600;
+        background: rgba(148, 163, 184, 0.18);
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        color: #475569;
+        border-radius: 4px;
+        padding: 1px 5px;
+        letter-spacing: 0.04em;
+      }
+      .sensor-defective-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: transparent;
+        border: 0;
+        color: #94a3b8;
+        cursor: pointer;
+        transition:
+          background 0.15s ease,
+          color 0.15s ease;
+      }
+      .sensor-defective-toggle:hover {
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+      }
+      .sensor-defective-toggle--active {
+        color: var(--color-primary);
+      }
+      .sensor-defective-toggle--active:hover {
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
+      }
       .sensor-id-chip {
         font-family: 'JetBrains Mono', monospace;
         font-size: 10.5px;
@@ -881,7 +1075,7 @@ function slugify(area: string): string {
         font-variant-numeric: tabular-nums;
       }
       .sensor-metric-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10.5px;
         color: #94a3b8;
         margin-top: 3px;
@@ -913,20 +1107,20 @@ function slugify(area: string): string {
       }
       .range-pill--active {
         background: #ffffff;
-        color: #0d99a5;
+        color: var(--color-primary);
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
       }
       .band-toggle {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         cursor: pointer;
       }
       .band-toggle input {
-        accent-color: #0d99a5;
+        accent-color: var(--color-primary);
       }
 
       .chart-shell {
@@ -940,12 +1134,65 @@ function slugify(area: string): string {
         position: absolute;
         bottom: 6px;
         right: 14px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         color: #94a3b8;
       }
 
       /* Deviations */
+      .dev-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .dev-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        font-weight: 500;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .dev-filter-chip:hover {
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-30);
+      }
+      .dev-filter-chip strong {
+        font-family: 'JetBrains Mono';
+        font-weight: 700;
+        font-size: 10.5px;
+        color: #94a3b8;
+      }
+      .dev-filter-chip--active {
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-35);
+      }
+      .dev-filter-chip--active strong {
+        color: var(--color-primary);
+      }
+      .dev-filter-empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 18px;
+        border: 1px dashed #e2e8f0;
+        border-radius: 10px;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        color: #94a3b8;
+      }
       .deviation-list {
         display: grid;
         gap: 10px;
@@ -979,7 +1226,7 @@ function slugify(area: string): string {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
       }
       .deviation-level-pill {
         display: inline-flex;
@@ -1026,7 +1273,7 @@ function slugify(area: string): string {
       }
       .deviation-stat-sub {
         display: block;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         font-weight: 500;
         color: #0369a1;
@@ -1048,7 +1295,7 @@ function slugify(area: string): string {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.08em;
@@ -1082,7 +1329,7 @@ function slugify(area: string): string {
         gap: 2px;
       }
       .deviation-stat-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 9.5px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -1104,7 +1351,7 @@ function slugify(area: string): string {
         background: rgba(34, 197, 94, 0.08);
         border: 1px solid rgba(34, 197, 94, 0.2);
         color: #15803d;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
       }
       .deviation-foot {
@@ -1121,7 +1368,7 @@ function slugify(area: string): string {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #475569;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         font-weight: 500;
         cursor: pointer;
@@ -1131,9 +1378,9 @@ function slugify(area: string): string {
         background: #f8fafc;
       }
       .deviation-btn--primary {
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #fff;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .deviation-btn--primary:hover {
         background: #0a7d87;
@@ -1152,7 +1399,7 @@ function slugify(area: string): string {
         gap: 4px;
         padding: 3px 8px;
         border-radius: 999px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10.5px;
         font-weight: 600;
       }
@@ -1190,7 +1437,7 @@ function slugify(area: string): string {
       }
 
       .deviation-cause-select {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         padding: 5px 8px;
         border: 1px solid #e2e8f0;
@@ -1200,9 +1447,9 @@ function slugify(area: string): string {
         max-width: 220px;
       }
       .deviation-cause-select:focus {
-        outline: 2px solid #0d99a5;
+        outline: 2px solid var(--color-primary);
         outline-offset: 1px;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
 
       .deviation-foot-spacer {
@@ -1217,7 +1464,7 @@ function slugify(area: string): string {
         background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 600;
       }
@@ -1238,14 +1485,14 @@ function slugify(area: string): string {
         border-radius: 14px;
       }
       .empty-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 14px;
         font-weight: 600;
         color: #475569;
         margin-top: 8px;
       }
       .empty-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #94a3b8;
         margin-top: 4px;
@@ -1273,6 +1520,156 @@ function slugify(area: string): string {
         .sala-spin {
           animation: none;
         }
+      }
+
+      /* Note modal (HACCP) */
+      .note-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        z-index: 50;
+        animation: salaFadeIn 0.15s ease-out;
+      }
+      .note-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(520px, 92vw);
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+        z-index: 51;
+        display: flex;
+        flex-direction: column;
+        animation: salaScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes salaScaleIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+      @keyframes salaFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .note-modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .note-modal-title {
+        font-family: var(--font-josefin), sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .note-modal-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #64748b;
+      }
+      .note-modal-close:hover {
+        background: rgba(15, 23, 42, 0.06);
+        color: #1e293b;
+      }
+      .note-modal-body {
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .note-modal-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #475569;
+      }
+      .note-modal-meta strong {
+        color: var(--color-primary);
+        font-weight: 600;
+      }
+      .note-modal-label {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #1e293b;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .note-modal-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: var(--font-dm);
+        font-size: 13px;
+        color: #1e293b;
+        resize: vertical;
+        outline: none;
+        transition: border-color 0.15s;
+      }
+      .note-modal-textarea:focus {
+        border-color: var(--color-primary);
+      }
+      .note-modal-hint {
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .note-modal-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 18px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 0 0 12px 12px;
+      }
+      .note-modal-btn {
+        padding: 7px 14px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .note-modal-btn:hover {
+        background: #f1f5f9;
+      }
+      .note-modal-btn--primary {
+        background: var(--color-primary);
+        color: #ffffff;
+        border-color: var(--color-primary);
+      }
+      .note-modal-btn--primary:hover {
+        background: #0c8b96;
+        color: #ffffff;
       }
 
       /* Drawer */
@@ -1320,7 +1717,7 @@ function slugify(area: string): string {
         color: #1e293b;
       }
       .drawer-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         margin-top: 1px;
@@ -1358,7 +1755,7 @@ function slugify(area: string): string {
         gap: 10px;
       }
       .drawer-kpi-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 9.5px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -1388,6 +1785,68 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   private readonly location = inject(Location);
   private readonly thresholdsSvc = inject(ColdRoomThresholdsService);
   private readonly deviationsSvc = inject(ColdRoomDeviationsService);
+  private readonly auth = inject(AuthService);
+
+  private actorLabel(): string {
+    const u = this.auth.user();
+    if (!u) return 'operador';
+    const full = `${u.nombre || ''} ${u.apellido || ''}`.trim();
+    return full || u.email || 'operador';
+  }
+
+  actorLabelDisplay(): string {
+    return this.actorLabel();
+  }
+
+  // === Modal de nota para ack/resolve/classify ===
+  readonly noteModal = signal<{
+    open: boolean;
+    action: 'ack' | 'resolve' | 'classify';
+    devId: string;
+    cause?: DeviationCause;
+    note: string;
+  } | null>(null);
+
+  openAckModal(devId: string, ev: Event): void {
+    ev.stopPropagation();
+    this.noteModal.set({ open: true, action: 'ack', devId, note: '' });
+  }
+
+  openResolveModal(devId: string, ev: Event): void {
+    ev.stopPropagation();
+    this.noteModal.set({ open: true, action: 'resolve', devId, note: '' });
+  }
+
+  openClassifyModal(devId: string, cause: DeviationCause, ev: Event): void {
+    ev.stopPropagation();
+    this.noteModal.set({ open: true, action: 'classify', devId, cause, note: '' });
+  }
+
+  closeNoteModal(): void {
+    this.noteModal.set(null);
+  }
+
+  updateNoteModalText(ev: Event): void {
+    const target = ev.target as HTMLTextAreaElement | null;
+    const cur = this.noteModal();
+    if (!cur || !target) return;
+    this.noteModal.set({ ...cur, note: target.value });
+  }
+
+  confirmNoteModal(): void {
+    const m = this.noteModal();
+    if (!m) return;
+    const by = this.actorLabel();
+    const note = m.note.trim() || undefined;
+    if (m.action === 'ack') {
+      this.deviationsSvc.acknowledge(m.devId, by, note);
+    } else if (m.action === 'resolve') {
+      this.deviationsSvc.resolve(m.devId, by, note);
+    } else if (m.action === 'classify' && m.cause) {
+      this.deviationsSvc.setCause(m.devId, m.cause, 'manual', by, note);
+    }
+    this.closeNoteModal();
+  }
 
   readonly deviations = computed<Deviation[]>(() => {
     this.thresholdsSvc.thresholds();
@@ -1400,6 +1859,41 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly deviationsOpen = computed(() =>
     this.deviations().filter((e) => this.deviationsSvc.isOpen(e)),
   );
+
+  readonly deviationFilter = signal<'all' | 'open' | 'acked' | 'closed'>('all');
+
+  readonly deviationsFiltered = computed<Deviation[]>(() => {
+    const all = this.deviations();
+    const f = this.deviationFilter();
+    if (f === 'all') return all;
+    if (f === 'open') return all.filter((d) => this.deviationsSvc.isOpen(d));
+    if (f === 'acked') {
+      return all.filter((d) => {
+        const a = this.deviationsSvc.getAck(d.id);
+        return a?.acknowledged && !a.resolved;
+      });
+    }
+    // closed
+    return all.filter((d) => !this.deviationsSvc.isOpen(d));
+  });
+
+  readonly deviationCounts = computed(() => {
+    const all = this.deviations();
+    let open = 0;
+    let acked = 0;
+    let closed = 0;
+    for (const d of all) {
+      const a = this.deviationsSvc.getAck(d.id);
+      if (this.deviationsSvc.isOpen(d)) open++;
+      else closed++;
+      if (a?.acknowledged && !a.resolved) acked++;
+    }
+    return { all: all.length, open, acked, closed };
+  });
+
+  setDeviationFilter(f: 'all' | 'open' | 'acked' | 'closed'): void {
+    this.deviationFilter.set(f);
+  }
 
   getAck(id: string) {
     return this.deviationsSvc.getAck(id);
@@ -1424,10 +1918,12 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   fmtDeviationTime(iso: string): string {
     return new Date(iso).toLocaleString('es-CL', {
+      timeZone: 'America/Santiago',
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     });
   }
 
@@ -1446,9 +1942,10 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   // === Cause classification (híbrido) ===
   readonly causes = (
-    Object.entries(DEVIATION_CAUSES) as Array<
-      [DeviationCause, (typeof DEVIATION_CAUSES)[DeviationCause]]
-    >
+    Object.entries(DEVIATION_CAUSES) as [
+      DeviationCause,
+      (typeof DEVIATION_CAUSES)[DeviationCause],
+    ][]
   ).map(([key, meta]) => ({ key, ...meta }));
 
   effectiveCause(d: Deviation) {
@@ -1471,8 +1968,17 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     ev.stopPropagation();
     const target = ev.target as HTMLSelectElement | null;
     if (!target || !target.value) return;
-    this.deviationsSvc.setCause(id, target.value as DeviationCause, 'manual');
+    this.deviationsSvc.setCause(id, target.value as DeviationCause, 'manual', this.actorLabel());
     target.value = '';
+  }
+
+  onCauseSelectModal(id: string, ev: Event): void {
+    ev.stopPropagation();
+    const target = ev.target as HTMLSelectElement | null;
+    if (!target || !target.value) return;
+    const cause = target.value as DeviationCause;
+    target.value = '';
+    this.openClassifyModal(id, cause, ev);
   }
 
   clearCause(id: string, ev: Event): void {
@@ -1497,8 +2003,26 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     initialValue: this.route.snapshot.paramMap,
   });
 
+  private readonly queryParams = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+
   readonly siteId = computed(() => this.params().get('siteId') || '');
   readonly salaSlug = computed(() => (this.params().get('salaSlug') || '').toLowerCase());
+
+  // siteIds del bundle cold-room (concentrador maestro + TAPs). Si no se
+  // pasaron via query, cae al siteId primary únicamente — funciona si el
+  // siteId tiene sus propios STH-* en reg_map.
+  readonly bundleSiteIds = computed<string[]>(() => {
+    const raw = this.queryParams().get('siteIds') || '';
+    const ids = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (ids.length > 0) return ids;
+    const sid = this.siteId();
+    return sid ? [sid] : [];
+  });
   readonly siteRecord = signal<SiteRecord | null>(null);
   readonly now = signal<number>(Date.now());
 
@@ -1731,6 +2255,33 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     this.drilldownRange.set(r);
   }
 
+  toggleSensorDefective(s: ColdRoomSensor, ev: Event): void {
+    ev.stopPropagation();
+    const sid = this.siteId();
+    if (!sid) return;
+    const next = !s.defective;
+    let reason: string | undefined;
+    if (next) {
+      const input = window.prompt(
+        `Marcar sensor ${s.id} como fuera de servicio.\nMotivo (opcional):`,
+        '',
+      );
+      if (input === null) return; // cancelado
+      reason = input || undefined;
+    } else if (!window.confirm(`¿Reactivar sensor ${s.id}?`)) {
+      return;
+    }
+    this.coldRoom.setSensorDefective(sid, s.id, next, reason).subscribe({
+      next: () => {
+        // Refrescar fetch para reflejar nuevo estado.
+        this.fetchData();
+      },
+      error: (err) => {
+        console.error('[setSensorDefective] failed:', err?.status, err?.error || err?.message);
+      },
+    });
+  }
+
   openSensorDrilldown(id: string): void {
     this.drilldownSensorId.set(id);
     this.drilldownRange.set(this.range());
@@ -1831,8 +2382,9 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     const id = this.siteId();
     if (!id) return;
     this.isLoading.set(true);
-    // Sin filtro tap → trae todos los sensores del sitio. Cliente filtra por area.
-    this.coldRoom.getSensors(id, null, this.range()).subscribe({
+    // Pasa bundle de siteIds para que backend cubra concentrador + TAPs reales.
+    // Sin esto, si siteId es el maestro (sin STH-*), backend devuelve [].
+    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds()).subscribe({
       next: (res) => {
         if (res.ok) {
           this.allSensors.set(res.data || []);
@@ -1911,7 +2463,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
         type: 'line',
         yMin: setAvg,
         yMax: setAvg,
-        borderColor: 'rgba(13, 175, 189, 0.7)',
+        borderColor: 'var(--color-primary-tint-55)',
         borderWidth: 1.2,
         borderDash: [6, 4],
         label: {

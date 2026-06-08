@@ -3087,7 +3087,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     });
   }
 
-  private matchesSearch(query: string, values: Array<string | number | null | undefined>): boolean {
+  private matchesSearch(query: string, values: (string | number | null | undefined)[]): boolean {
     const normalizedQuery = this.normalizeSearchText(query);
     if (!normalizedQuery) return true;
     const haystack = this.normalizeSearchText(...values.map((value) => String(value ?? '')));

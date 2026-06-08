@@ -88,7 +88,13 @@ async fn insert_records(
     let statement = transaction
         .prepare(
             "INSERT INTO equipo (time, id_serial, data)
-             VALUES (($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC', $3, $4)",
+             SELECT ($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC', $3::varchar(50), $4
+             WHERE NOT EXISTS (
+                 SELECT 1
+                 FROM equipo
+                 WHERE time = (($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC')
+                   AND id_serial = $3::varchar(50)
+             )",
         )
         .await?;
 
@@ -177,14 +183,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(get_env("RUST_LOG", "info"))
         .init();
 
-    let port = get_env("FTS_CONSUMER_PORT", "50061");
+    let port = get_env("FTP_CONSUMER_PORT", "50061");
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;
     let db = connect_db().await?;
     let service = ConsumerService {
         db: Arc::new(Mutex::new(db)),
     };
 
-    info!("ftsconsumer gRPC escuchando en {}", addr);
+    info!("ftpconsumer gRPC escuchando en {}", addr);
 
     Server::builder()
         .add_service(LogIngestionServer::new(service))

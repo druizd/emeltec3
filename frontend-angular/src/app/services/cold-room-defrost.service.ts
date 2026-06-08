@@ -35,7 +35,7 @@ export class ColdRoomDefrostService {
     this.http
       .get<{
         ok: boolean;
-        data: Array<DefrostWindow & { slug: string }>;
+        data: (DefrostWindow & { slug: string })[];
       }>(`/api/cold-room/${encodeURIComponent(siteId)}/defrost`)
       .subscribe({
         next: (res) => {
@@ -177,7 +177,8 @@ export class ColdRoomDefrostService {
     }
     const slug = slugifyArea(area);
     const current = this.list(area);
-    const { [slug]: _drop, ...rest } = this.map();
+    const rest = { ...this.map() };
+    delete rest[slug];
     this.map.set(rest);
     this.persistLocalCache(rest);
     const siteId = this.currentSiteId;

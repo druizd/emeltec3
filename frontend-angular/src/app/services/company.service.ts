@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { HttpClient, HttpResponse } from '@angular/common/http';
 import { Observable, of, tap } from 'rxjs';
 import { finalize, shareReplay } from 'rxjs/operators';
@@ -194,6 +194,14 @@ export interface PasteurizadorDailyKpisResponse {
 @Injectable({ providedIn: 'root' })
 export class CompanyService {
   private http = inject(HttpClient);
+
+  constructor() {
+    // Persistir selección de sub-empresa / módulo / tipo en localStorage para
+    // sobrevivir refresh. Restauración hecha en initial signal value (arriba).
+    effect(() => this.lsWrite('cs:subCompanyId', this.selectedSubCompanyId()));
+    effect(() => this.lsWrite('cs:moduleKey', this.selectedSiteModuleKey()));
+    effect(() => this.lsWrite('cs:typeFilter', this.selectedSiteTypeFilter()));
+  }
   private auth = inject(AuthService);
 
   private readonly siteCache = new Map<
@@ -208,10 +216,44 @@ export class CompanyService {
   visibleHierarchy = computed<CompanyNode[]>(() =>
     this.applyPreviewScope(this.hierarchy(), this.auth.viewAsContext()),
   );
-  selectedSubCompanyId = signal<string | null>(null);
-  selectedSiteModuleKey = signal<string | null>(null);
-  selectedSiteTypeFilter = signal<string[] | null>(null);
+  // Restauración persistente: el refresh de la página no debería sacar al
+  // operario de la sub-empresa/módulo en que estaba trabajando.
+  selectedSubCompanyId = signal<string | null>(this.lsRead('cs:subCompanyId'));
+  selectedSiteModuleKey = signal<string | null>(this.lsRead('cs:moduleKey'));
+  selectedSiteTypeFilter = signal<string[] | null>(this.lsReadArray('cs:typeFilter'));
   loading = signal(false);
+
+  private lsRead(key: string): string | null {
+    try {
+      const v = localStorage.getItem(key);
+      return v && v.length > 0 ? v : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private lsReadArray(key: string): string[] | null {
+    try {
+      const v = localStorage.getItem(key);
+      if (!v) return null;
+      const arr = JSON.parse(v);
+      return Array.isArray(arr) && arr.length > 0 ? arr.filter((x) => typeof x === 'string') : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private lsWrite(key: string, value: string | string[] | null): void {
+    try {
+      if (value === null || (Array.isArray(value) && value.length === 0)) {
+        localStorage.removeItem(key);
+        return;
+      }
+      localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+    } catch {
+      /* ignore */
+    }
+  }
 
   fetchCompanies(): Observable<ApiResponse<Company[]>> {
     this.loading.set(true);
@@ -480,13 +522,13 @@ export class CompanyService {
     hasta: string,
   ): Observable<
     ApiResponse<{
-      dias: Array<{
+      dias: {
         dia: string;
         caudal: { max: number | null; avg: number | null; n: number };
         nivel: { max: number | null; avg: number | null; n: number };
         nivel_freatico: { max: number | null; avg: number | null; n: number };
         muestras: number;
-      }>;
+      }[];
     }>
   > {
     const params = new URLSearchParams();
@@ -495,13 +537,13 @@ export class CompanyService {
     params.set('t', String(Date.now()));
     return this.http.get<
       ApiResponse<{
-        dias: Array<{
+        dias: {
           dia: string;
           caudal: { max: number | null; avg: number | null; n: number };
           nivel: { max: number | null; avg: number | null; n: number };
           nivel_freatico: { max: number | null; avg: number | null; n: number };
           muestras: number;
-        }>;
+        }[];
       }>
     >(`/api/companies/sites/${siteId}/period-aggregates-daily?${params.toString()}`);
   }

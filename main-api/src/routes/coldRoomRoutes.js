@@ -1,9 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/authMiddleware');
+const { requireSiteAccess, requireRole } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
+const { sendAlertEmail } = require('../services/emailService');
+
+const ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
+const OPERATOR_ROLES = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
 
 router.use(protect);
+
+// Todas las rutas /:siteId/* requieren acceso al sitio (empresa/sub_empresa match).
+// SuperAdmin bypass. Resto: empresa_id (Admin/Cliente) o sub_empresa_id (Gerente).
+router.use('/:siteId', requireSiteAccess('siteId'));
 
 // === HACCP config endpoints (thresholds, defrost, acks, audit) ===
 // Storage: Postgres tables created in migration 006.
@@ -152,7 +161,8 @@ function actorFromReq(req) {
   const u = req.user;
   if (!u) return { name: 'operador', role: null };
   const name = `${u.nombre || ''} ${u.apellido || ''}`.trim() || u.email || u.id || 'operador';
-  return { name, role: u.tipo || null };
+  // Preferir cargo (rol funcional, ej. "Jefe Calidad") sobre tipo (rol sistema).
+  return { name, role: u.cargo || u.tipo || null };
 }
 
 async function logAudit(siteId, actor, category, action, target, prev, next, note) {
@@ -213,7 +223,7 @@ router.get('/:siteId/thresholds', async (req, res) => {
   }
 });
 
-router.put('/:siteId/thresholds/:slug', async (req, res) => {
+router.put('/:siteId/thresholds/:slug', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, slug } = req.params;
   const {
     area,
@@ -278,7 +288,7 @@ router.put('/:siteId/thresholds/:slug', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/thresholds/:slug', async (req, res) => {
+router.delete('/:siteId/thresholds/:slug', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, slug } = req.params;
   try {
     const actor = actorFromReq(req);
@@ -308,7 +318,7 @@ router.delete('/:siteId/thresholds/:slug', async (req, res) => {
   }
 });
 
-router.post('/:siteId/thresholds/reset', async (req, res) => {
+router.post('/:siteId/thresholds/reset', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const actor = actorFromReq(req);
     await pool.query(`DELETE FROM cold_room_threshold WHERE site_id=$1`, [req.params.siteId]);
@@ -359,7 +369,7 @@ router.get('/:siteId/defrost', async (req, res) => {
   }
 });
 
-router.post('/:siteId/defrost', async (req, res) => {
+router.post('/:siteId/defrost', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId } = req.params;
   const {
     id,
@@ -396,7 +406,7 @@ router.post('/:siteId/defrost', async (req, res) => {
   }
 });
 
-router.put('/:siteId/defrost/:id', async (req, res) => {
+router.put('/:siteId/defrost/:id', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, id } = req.params;
   const patch = req.body || {};
   try {
@@ -441,7 +451,7 @@ router.put('/:siteId/defrost/:id', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/defrost/:id', async (req, res) => {
+router.delete('/:siteId/defrost/:id', requireRole(...ADMIN_ROLES), async (req, res) => {
   const { siteId, id } = req.params;
   try {
     const actor = actorFromReq(req);
@@ -509,7 +519,7 @@ router.get('/:siteId/acks', async (req, res) => {
   }
 });
 
-router.put('/:siteId/acks/:devId', async (req, res) => {
+router.put('/:siteId/acks/:devId', requireRole(...OPERATOR_ROLES), async (req, res) => {
   const { siteId, devId } = req.params;
   const a = req.body || {};
   try {
@@ -555,7 +565,7 @@ router.put('/:siteId/acks/:devId', async (req, res) => {
   }
 });
 
-router.delete('/:siteId/acks/:devId', async (req, res) => {
+router.delete('/:siteId/acks/:devId', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const actor = actorFromReq(req);
     await pool.query(`DELETE FROM cold_room_deviation_ack WHERE site_id=$1 AND deviation_id=$2`, [
@@ -628,7 +638,7 @@ router.get('/:siteId/audit', async (req, res) => {
   }
 });
 
-router.post('/:siteId/audit', async (req, res) => {
+router.post('/:siteId/audit', requireRole(...OPERATOR_ROLES), async (req, res) => {
   // Client-initiated explicit audit entry (rare; most logging happens via mutations).
   const { siteId } = req.params;
   const { category, action, target, prev, next, note } = req.body || {};
@@ -836,34 +846,88 @@ function normalizeRange(raw) {
   return RANGE_PRESETS[key] ? key : '24h';
 }
 
+/**
+ * Sintetiza histórico realista de refrigeración:
+ *   - Ciclo compresor (~30min on/off, ±0.8°C sine slow)
+ *   - Defrost programado 02:00 / 10:00 / 18:00 (spike +2.5°C por 20min)
+ *   - Drift lento day-night (±0.3°C)
+ *   - Ruido sensor mínimo (±0.05°C)
+ */
 function buildHist(baseT, range) {
   const preset = RANGE_PRESETS[range] || RANGE_PRESETS['24h'];
   const { points, intervalMs } = preset;
   const now = Date.now();
   const data = [];
+  const defrostHours = [2, 10, 18];
+  const defrostDurationMin = 18;
+  let drift = 0;
   for (let i = 0; i < points; i++) {
-    const phase = Math.sin((i + 5) / Math.max(points / 12, 1)) * 0.8;
-    const jitter = (Math.random() - 0.5) * 0.4;
-    const drift = Math.cos(i / Math.max(points / 4, 1)) * 0.3;
+    const ts = now - (points - 1 - i) * intervalMs;
+    const d = new Date(ts);
+    const hourOfDay = d.getHours();
+    const minuteOfHour = d.getMinutes();
+
+    // Compresor cycle ~30 min, amplitud 0.8°C.
+    const compressorPhase = Math.sin((d.getMinutes() + d.getHours() * 60) / 4.77) * 0.8;
+
+    // Defrost spike si estamos en ventana defrost.
+    let defrostSpike = 0;
+    if (defrostHours.includes(hourOfDay) && minuteOfHour < defrostDurationMin) {
+      const t = minuteOfHour / defrostDurationMin;
+      // Curva campana: sube y baja en 20 min, peak ~2.5°C
+      defrostSpike = Math.sin(t * Math.PI) * 2.5;
+    }
+
+    // Drift lento (random walk acotado).
+    drift += (Math.random() - 0.5) * 0.01;
+    drift = Math.max(-0.4, Math.min(0.4, drift));
+
+    // Ruido sensor (mínimo, refleja resolución sonda).
+    const noise = (Math.random() - 0.5) * 0.1;
+
+    const v = baseT + compressorPhase + defrostSpike + drift + noise;
     data.push({
-      t: new Date(now - (points - 1 - i) * intervalMs).toISOString(),
-      v: +(baseT + phase + drift + jitter).toFixed(2),
+      t: new Date(ts).toISOString(),
+      v: +v.toFixed(2),
     });
   }
   return data;
 }
 
+/**
+ * HR: cambia más lento que T. Drops durante defrost (puerta + evaporador caliente).
+ */
 function buildHistHum(baseH, range) {
   const preset = RANGE_PRESETS[range] || RANGE_PRESETS['24h'];
   const { points, intervalMs } = preset;
   const now = Date.now();
   const data = [];
+  const defrostHours = [2, 10, 18];
+  let drift = 0;
   for (let i = 0; i < points; i++) {
-    const phase = Math.sin((i + 3) / Math.max(points / 10, 1)) * 2;
-    const jitter = (Math.random() - 0.5) * 1.2;
-    const v = Math.max(30, Math.min(99, baseH + phase + jitter));
+    const ts = now - (points - 1 - i) * intervalMs;
+    const d = new Date(ts);
+    const hourOfDay = d.getHours();
+    const minuteOfHour = d.getMinutes();
+
+    // Ondulación lenta ~2h período, ±1.5%
+    const phase = Math.sin((d.getMinutes() + d.getHours() * 60) / 19) * 1.5;
+
+    // Defrost: HR cae 3-5% por 20min (aire seco evaporador caliente).
+    let defrostDrop = 0;
+    if (defrostHours.includes(hourOfDay) && minuteOfHour < 20) {
+      const t = minuteOfHour / 20;
+      defrostDrop = -Math.sin(t * Math.PI) * 4;
+    }
+
+    // Drift muy lento (random walk acotado).
+    drift += (Math.random() - 0.5) * 0.02;
+    drift = Math.max(-1, Math.min(1, drift));
+
+    const noise = (Math.random() - 0.5) * 0.2;
+    const v = Math.max(30, Math.min(99, baseH + phase + defrostDrop + drift + noise));
     data.push({
-      t: new Date(now - (points - 1 - i) * intervalMs).toISOString(),
+      t: new Date(ts).toISOString(),
       v: +v.toFixed(2),
     });
   }
@@ -905,16 +969,443 @@ function sensorSnapshot(s, range) {
   };
 }
 
-router.get('/:siteId/sensors', (req, res) => {
+/**
+ * Mapeo range → cagg view + intervalo. Aprovecha continuous aggregates Timescale
+ * (equipo_1min/5min/hourly/daily). El cagg ya está materializado y indexado por
+ * (id_serial, bucket DESC) → lookups sub-segundo incluso con millones de filas.
+ */
+const RANGE_CAGG_MAP = {
+  '1h': { view: 'equipo_1min', bucketInterval: '1 minute', points: 60 },
+  '6h': { view: 'equipo_1min', bucketInterval: '1 minute', points: 360 },
+  '24h': { view: 'equipo_1min', bucketInterval: '1 minute', points: 1440 },
+  '7d': { view: 'equipo_hourly', bucketInterval: '1 hour', points: 168 },
+};
+
+/**
+ * Lee reg_map de los sites + cagg correspondiente y pivota a histPoints por sensor.
+ * Aplica factor*raw + offset. Marca sensores `defective` desde parametros.
+ *
+ * @param {string[]} siteIds - Lista de site ids a cargar.
+ * @param {string} range - '1h'|'6h'|'24h'|'7d'
+ * @param {string|null} tapFilter - Filtra por TAP label si se pasa (ej. 'TAP 2').
+ * @returns {Promise<Array>} Array de sensores con histPoints + snapshot.
+ */
+async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
+  if (!siteIds || siteIds.length === 0) return null;
+  const cfg = RANGE_CAGG_MAP[range] || RANGE_CAGG_MAP['24h'];
+
+  // 1. Sitios → id_serial + descripcion (= TAP label).
+  const sitesRes = await pool.query(
+    `SELECT id, descripcion, id_serial FROM sitio WHERE id = ANY($1)`,
+    [siteIds],
+  );
+  if (sitesRes.rowCount === 0) return null;
+  const siteById = new Map(sitesRes.rows.map((r) => [r.id, r]));
+  const idSerials = sitesRes.rows.map((r) => r.id_serial).filter(Boolean);
+  if (idSerials.length === 0) return null;
+
+  // 2. reg_map filtrado a aliases STH-XX.
+  const mapRes = await pool.query(
+    `SELECT sitio_id, alias, d1, parametros
+     FROM reg_map
+     WHERE sitio_id = ANY($1) AND alias LIKE 'STH-%' AND d1 IS NOT NULL`,
+    [siteIds],
+  );
+  if (mapRes.rowCount === 0) return null;
+
+  // 3. Agrupar aliases por sensorId (STH-01, STH-02, etc.) + parametros.
+  // Cada sensor tiene 2 aliases (.T y .H) que comparten parametros.
+  const sensors = new Map(); // sensorId+'@'+siteId → { id, tap, area, cx, cy, r, regT, regH, factor, defective, ... }
+  for (const m of mapRes.rows) {
+    const match = m.alias.match(/^(STH-\d+)\.(T|H)$/);
+    if (!match) continue;
+    const sensorId = match[1];
+    const channel = match[2]; // 'T' or 'H'
+    const params = m.parametros || {};
+    const key = `${sensorId}@${m.sitio_id}`;
+    let s = sensors.get(key);
+    if (!s) {
+      const site = siteById.get(m.sitio_id);
+      s = {
+        id: sensorId,
+        tap: site ? site.descripcion : '',
+        siteId: m.sitio_id,
+        idSerial: site ? site.id_serial : null,
+        area: (params.area || '').replace(/\s+/g, ' ').trim(),
+        cx: Number(params.cx) || 0,
+        cy: Number(params.cy) || 0,
+        r: Number(params.r) || 60,
+        factor: typeof params.factor === 'number' ? params.factor : Number(params.factor) || 0.01,
+        offset: typeof params.offset === 'number' ? params.offset : Number(params.offset) || 0,
+        defective: !!params.defective,
+        defectiveReason: params.defective_reason || null,
+        regT: null,
+        regH: null,
+      };
+      sensors.set(key, s);
+    }
+    if (channel === 'T') s.regT = m.d1;
+    if (channel === 'H') s.regH = m.d1;
+  }
+
+  // Filter por TAP si se pasó.
+  let sensorList = [...sensors.values()];
+  if (tapFilter) sensorList = sensorList.filter((s) => s.tap === tapFilter);
+  if (sensorList.length === 0) return [];
+
+  // 4. Query cagg para last N points.
+  const cutoffMs = Date.now() - cfg.points * (cfg.view === 'equipo_1min' ? 60_000 : 3_600_000);
+  const cutoff = new Date(cutoffMs);
+  const histRes = await pool.query(
+    `SELECT id_serial, bucket, data
+     FROM ${cfg.view}
+     WHERE id_serial = ANY($1) AND bucket >= $2
+     ORDER BY id_serial, bucket ASC
+     LIMIT $3`,
+    [idSerials, cutoff, cfg.points * idSerials.length + 100],
+  );
+
+  // 5. Agrupar buckets por id_serial.
+  const bySerial = new Map();
+  for (const row of histRes.rows) {
+    const list = bySerial.get(row.id_serial) || [];
+    list.push({ t: row.bucket, data: row.data || {} });
+    bySerial.set(row.id_serial, list);
+  }
+
+  // 6. Construir respuesta por sensor.
+  // Modbus holding registers son 16-bit; valores negativos vienen como uint16
+  // (e.g. -2200 = 63336). Sin convertir a signed int16 las temps de freezer
+  // se inflan a +630°C. Conversión: si > 32767 → restar 65536.
+  const toSigned16 = (n) => (typeof n === 'number' && n > 32767 ? n - 65536 : n);
+
+  const out = [];
+  for (const s of sensorList) {
+    const buckets = bySerial.get(s.idSerial) || [];
+    const histPoints = s.regT
+      ? buckets
+          .map((b) => {
+            const raw = toSigned16(b.data[s.regT]);
+            if (typeof raw !== 'number') return null;
+            return { t: new Date(b.t).toISOString(), v: +(raw * s.factor + s.offset).toFixed(2) };
+          })
+          .filter((p) => p !== null)
+      : [];
+    const histHumPoints = s.regH
+      ? buckets
+          .map((b) => {
+            // HR es siempre 0-100% → naturalmente unsigned, no requiere conversión.
+            const raw = b.data[s.regH];
+            if (typeof raw !== 'number') return null;
+            return { t: new Date(b.t).toISOString(), v: +(raw * s.factor + s.offset).toFixed(2) };
+          })
+          .filter((p) => p !== null)
+      : [];
+
+    const lastT = histPoints.length ? histPoints[histPoints.length - 1].v : 0;
+    const lastH = histHumPoints.length ? histHumPoints[histHumPoints.length - 1].v : 0;
+    const lastBucket = buckets.length ? buckets[buckets.length - 1].t : null;
+
+    // Threshold lookup per sala_slug.
+    const slug = (s.area || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    // Resolved later via threshold table — for now use defaults from DEFAULT_THRESHOLDS.
+    const defaultThr = DEFAULT_THRESHOLDS.find((d) => slugifyArea(d.area) === slug);
+    const tMax = defaultThr?.tMax ?? null;
+    const tMin = defaultThr?.tMin ?? null;
+    const alerted =
+      !s.defective && ((tMax !== null && lastT > tMax) || (tMin !== null && lastT < tMin));
+
+    out.push({
+      id: s.id,
+      tap: s.tap,
+      area: s.area,
+      cx: s.cx,
+      cy: s.cy,
+      r: s.r,
+      t: lastT,
+      h: lastH,
+      alerted,
+      setpoint: defaultThr ? (defaultThr.tMax + (defaultThr.tMin ?? defaultThr.tMax)) / 2 : 0,
+      tMin: tMin !== null ? tMin : -50,
+      tMax: tMax !== null ? tMax : 50,
+      lastSeen: lastBucket ? new Date(lastBucket).toISOString() : new Date(0).toISOString(),
+      hist: histPoints.map((p) => p.v),
+      histPoints,
+      defective: s.defective || undefined,
+      defectiveReason: s.defectiveReason || undefined,
+    });
+  }
+  return out;
+}
+
+router.get('/:siteId/sensors', async (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
-  if (tap === 'TAP 1') return res.json({ ok: true, data: [] });
-  const filtered = tap ? PLACEHOLDER_SENSORS.filter((s) => s.tap === tap) : PLACEHOLDER_SENSORS;
+  // Support combo siteIds query for aggregation across multiple cold-room sites.
+  // Frontend pasa ?siteIds=S110,S111,S113 cuando Ventisqueros tiene 4 TAPs.
+  const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
+  const siteIds = siteIdsRaw
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  // Intentar datos reales primero (reg_map + equipo_1min cagg).
+  try {
+    const real = await loadRealColdRoomSensors(siteIds, range, tap);
+    if (real !== null && real.length > 0) {
+      return res.json({
+        ok: true,
+        data: real,
+        meta: {
+          range,
+          count: real.length,
+          serverTime: new Date().toISOString(),
+          source: 'cagg',
+        },
+      });
+    }
+  } catch (err) {
+    console.error('[cold-room sensors real] fallback to mock:', err.message);
+  }
+
+  // No fallback a mock en prod: confunde debugging y oculta config faltante
+  // de reg_map. Devolver array vacío + meta.source='no-data' para que UI
+  // muestre skeleton/empty state. Para dev/demo usar ?mock=1 explícito.
+  if (req.query.mock === '1') {
+    if (tap === 'TAP 1') return res.json({ ok: true, data: [] });
+    const filtered = tap ? PLACEHOLDER_SENSORS.filter((s) => s.tap === tap) : PLACEHOLDER_SENSORS;
+    return res.json({
+      ok: true,
+      data: filtered.map((s) => sensorSnapshot(s, range)),
+      meta: {
+        range,
+        count: filtered.length,
+        serverTime: new Date().toISOString(),
+        source: 'mock',
+      },
+    });
+  }
   res.json({
     ok: true,
-    data: filtered.map((s) => sensorSnapshot(s, range)),
-    meta: { range, count: filtered.length, serverTime: new Date().toISOString() },
+    data: [],
+    meta: {
+      range,
+      count: 0,
+      serverTime: new Date().toISOString(),
+      source: 'no-data',
+      hint: 'reg_map sin sensores STH-* o siteIds no incluye los TAPs cold-room',
+    },
   });
+});
+
+/**
+ * PUT /:siteId/sensors/:sensorId/defective
+ * Marca/desmarca sensor como fuera de servicio. Actualiza parametros.defective
+ * en reg_map de ambos aliases (.T y .H) del sensor para mantener consistencia.
+ * Body: { defective: boolean, reason?: string }
+ */
+router.put('/:siteId/sensors/:sensorId/defective', requireRole(...ADMIN_ROLES), async (req, res) => {
+  const { siteId, sensorId } = req.params;
+  const { defective, reason } = req.body || {};
+  if (typeof defective !== 'boolean') {
+    return res.status(400).json({ ok: false, error: 'defective (boolean) requerido' });
+  }
+  try {
+    const actor = actorFromReq(req);
+
+    // Aliases del sensor (ej. STH-02.T, STH-02.H).
+    const aliasFilter = `${sensorId}.%`;
+    const prevRes = await pool.query(
+      `SELECT alias, parametros FROM reg_map
+       WHERE sitio_id = $1 AND alias LIKE $2`,
+      [siteId, aliasFilter],
+    );
+    if (prevRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Sensor no encontrado en reg_map' });
+    }
+
+    // Aplicar patch a parametros JSONB de cada alias.
+    for (const row of prevRes.rows) {
+      const params = row.parametros || {};
+      if (defective) {
+        params.defective = true;
+        params.defective_since = new Date().toISOString().slice(0, 10);
+        params.defective_reason = reason || 'Marcado manualmente por operador';
+        params.defective_by = actor.name;
+      } else {
+        delete params.defective;
+        delete params.defective_since;
+        delete params.defective_reason;
+        delete params.defective_by;
+      }
+      await pool.query(
+        `UPDATE reg_map SET parametros = $1, updated_at = NOW()
+         WHERE sitio_id = $2 AND alias = $3`,
+        [JSON.stringify(params), siteId, row.alias],
+      );
+    }
+
+    // Audit log.
+    logAudit(
+      siteId,
+      actor,
+      'threshold', // categoría existente; usa target distintivo
+      defective ? 'update' : 'update',
+      `sensor:${sensorId}`,
+      { defective: !defective },
+      { defective, reason: reason || null },
+      defective ? `Marcado en falla: ${reason || 'sin razón'}` : 'Reactivado',
+    );
+
+    res.json({ ok: true, data: { sensorId, defective, reason: reason || null } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * GET /:siteId/history-export
+ * Query: from=ISO, to=ISO, siteIds=S109,S110, sensorIds=STH-01,STH-02
+ * Devuelve points por sensor con T y H desde cagg óptimo según duración.
+ */
+router.get('/:siteId/history-export', async (req, res) => {
+  try {
+    const from = req.query.from ? new Date(String(req.query.from)) : null;
+    const to = req.query.to ? new Date(String(req.query.to)) : null;
+    if (!from || !to || isNaN(from.getTime()) || isNaN(to.getTime())) {
+      return res.status(400).json({ ok: false, error: 'from/to inválidos (ISO date esperado)' });
+    }
+    if (to <= from) {
+      return res.status(400).json({ ok: false, error: 'to debe ser mayor que from' });
+    }
+    const durMs = to.getTime() - from.getTime();
+    const maxDays = 365;
+    if (durMs > maxDays * 86_400_000) {
+      return res.status(400).json({ ok: false, error: 'Rango máximo: 365 días' });
+    }
+
+    // Elegir cagg según rango.
+    let view = 'equipo_1min';
+    if (durMs > 7 * 86_400_000) view = 'equipo_daily';
+    else if (durMs > 2 * 86_400_000) view = 'equipo_hourly';
+    else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
+
+    const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
+    const siteIds = siteIdsRaw.split(',').map((s) => s.trim()).filter(Boolean);
+    if (siteIds.length === 0) {
+      return res.status(400).json({ ok: false, error: 'siteIds requerido' });
+    }
+
+    const sensorIdsRaw = String(req.query.sensorIds || '');
+    const sensorIds = sensorIdsRaw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+
+    // Sites → id_serial.
+    const sitesRes = await pool.query(
+      `SELECT id, descripcion, id_serial FROM sitio WHERE id = ANY($1)`,
+      [siteIds],
+    );
+    const siteById = new Map(sitesRes.rows.map((r) => [r.id, r]));
+    const idSerials = sitesRes.rows.map((r) => r.id_serial).filter(Boolean);
+    if (idSerials.length === 0) {
+      return res.json({ ok: true, data: { points: [] }, meta: { view, rows: 0 } });
+    }
+
+    // reg_map STH-*.
+    const mapRes = await pool.query(
+      `SELECT sitio_id, alias, d1, parametros
+       FROM reg_map
+       WHERE sitio_id = ANY($1) AND alias LIKE 'STH-%' AND d1 IS NOT NULL`,
+      [siteIds],
+    );
+
+    // Group sensorId → { siteId, idSerial, area, tap, regT, regH, factor, offset }.
+    const sensors = new Map();
+    for (const m of mapRes.rows) {
+      const match = m.alias.match(/^(STH-\d+)\.(T|H)$/);
+      if (!match) continue;
+      const sId = match[1];
+      if (sensorIds.length > 0 && !sensorIds.includes(sId)) continue;
+      const ch = match[2];
+      const params = m.parametros || {};
+      const key = `${sId}@${m.sitio_id}`;
+      let s = sensors.get(key);
+      if (!s) {
+        const site = siteById.get(m.sitio_id);
+        s = {
+          id: sId,
+          siteId: m.sitio_id,
+          idSerial: site ? site.id_serial : null,
+          area: (params.area || '').replace(/\s+/g, ' ').trim(),
+          tap: site ? site.descripcion : '',
+          factor: typeof params.factor === 'number' ? params.factor : Number(params.factor) || 0.01,
+          offset: typeof params.offset === 'number' ? params.offset : Number(params.offset) || 0,
+          regT: null,
+          regH: null,
+        };
+        sensors.set(key, s);
+      }
+      if (ch === 'T') s.regT = m.d1;
+      if (ch === 'H') s.regH = m.d1;
+    }
+    const sensorList = [...sensors.values()];
+    if (sensorList.length === 0) {
+      return res.json({ ok: true, data: { points: [] }, meta: { view, rows: 0 } });
+    }
+
+    // Cagg query.
+    const histRes = await pool.query(
+      `SELECT id_serial, bucket, data
+       FROM ${view}
+       WHERE id_serial = ANY($1) AND bucket >= $2 AND bucket <= $3
+       ORDER BY bucket ASC`,
+      [idSerials, from, to],
+    );
+
+    const toSigned16 = (n) => (typeof n === 'number' && n > 32767 ? n - 65536 : n);
+
+    // Pivot: por bucket+sensor.
+    const points = [];
+    for (const row of histRes.rows) {
+      for (const s of sensorList) {
+        if (s.idSerial !== row.id_serial) continue;
+        const rawT = s.regT ? toSigned16(row.data[s.regT]) : null;
+        const rawH = s.regH ? row.data[s.regH] : null;
+        const tVal =
+          typeof rawT === 'number' ? +(rawT * s.factor + s.offset).toFixed(2) : null;
+        const hVal =
+          typeof rawH === 'number' ? +(rawH * s.factor + s.offset).toFixed(2) : null;
+        if (tVal === null && hVal === null) continue;
+        points.push({
+          ts: new Date(row.bucket).toISOString(),
+          sensorId: s.id,
+          area: s.area,
+          tap: s.tap,
+          t: tVal,
+          h: hVal,
+        });
+      }
+    }
+
+    res.json({
+      ok: true,
+      data: { points },
+      meta: {
+        view,
+        rows: points.length,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        sensorCount: sensorList.length,
+      },
+    });
+  } catch (err) {
+    console.error('[history-export] error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 router.get('/:siteId/sensors/:sensorId/history', (req, res) => {
@@ -994,23 +1485,6 @@ router.get('/:siteId/backup', (req, res) => {
   res.json({ ok: true, data: backup });
 });
 
-router.get('/:siteId/alarms', (req, res) => {
-  const tap = normalizeTap(req.query.tap);
-  const items = PLACEHOLDER_SENSORS.filter((s) => !tap || s.tap === tap)
-    .filter(() => Math.random() < 0.18)
-    .map((s) => ({
-      id: `${s.id}-${Date.now()}`,
-      sensorId: s.id,
-      tap: s.tap,
-      area: s.area,
-      severity: Math.random() < 0.3 ? 'critical' : 'warning',
-      message: `Temperatura fuera de banda (${s.tMin}°C / ${s.tMax}°C)`,
-      since: new Date(Date.now() - Math.round(Math.random() * 1000 * 60 * 30)).toISOString(),
-      acknowledged: false,
-    }));
-  res.json({ ok: true, data: items });
-});
-
 router.get('/:siteId/export', (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
@@ -1039,5 +1513,425 @@ router.get('/:siteId/export', (req, res) => {
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.send(rows.join('\n'));
 });
+
+// =============================================================================
+// === ALARM RULES (configurables): CRUD + recipients + eval loop
+// =============================================================================
+
+function ruleRowToObj(r) {
+  return {
+    id: r.id,
+    siteId: r.site_id,
+    name: r.name,
+    enabled: r.enabled,
+    metric: r.metric,
+    op: r.op,
+    threshold: Number(r.threshold),
+    targetKind: r.target_kind,
+    targetValue: r.target_value,
+    sustainedMin: r.sustained_min,
+    severity: r.severity,
+    notifyEmail: r.notify_email,
+    notifyUi: r.notify_ui,
+    recipientUserIds: Array.isArray(r.recipient_user_ids) ? r.recipient_user_ids : [],
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+// --- Reglas CRUD ---
+router.get('/:siteId/alarm-rules', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
+      [req.params.siteId],
+    );
+    res.json({ ok: true, data: rows.map(ruleRowToObj) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.post('/:siteId/alarm-rules', requireRole(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const id = b.id || `alarm-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const recUserIds = Array.isArray(b.recipientUserIds)
+      ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
+      : [];
+    await pool.query(
+      `INSERT INTO cold_room_alarm_rule
+        (id, site_id, name, enabled, metric, op, threshold, target_kind, target_value,
+         sustained_min, severity, notify_email, notify_ui, recipient_user_ids, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())`,
+      [
+        id,
+        req.params.siteId,
+        b.name,
+        b.enabled !== false,
+        b.metric,
+        b.op,
+        b.threshold,
+        b.targetKind,
+        b.targetValue || null,
+        b.sustainedMin || 0,
+        b.severity || 'warn',
+        recUserIds.length > 0,
+        b.notifyUi !== false,
+        recUserIds,
+      ],
+    );
+    res.json({ ok: true, data: { id } });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const recUserIds = Array.isArray(b.recipientUserIds)
+      ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
+      : [];
+    await pool.query(
+      `UPDATE cold_room_alarm_rule SET
+        name=$1, enabled=$2, metric=$3, op=$4, threshold=$5, target_kind=$6, target_value=$7,
+        sustained_min=$8, severity=$9, notify_email=$10, notify_ui=$11, recipient_user_ids=$12,
+        updated_at=NOW()
+       WHERE id=$13 AND site_id=$14`,
+      [
+        b.name,
+        b.enabled !== false,
+        b.metric,
+        b.op,
+        b.threshold,
+        b.targetKind,
+        b.targetValue || null,
+        b.sustainedMin || 0,
+        b.severity || 'warn',
+        recUserIds.length > 0,
+        b.notifyUi !== false,
+        recUserIds,
+        req.params.ruleId,
+        req.params.siteId,
+      ],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+router.delete('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
+  try {
+    await pool.query(
+      `DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`,
+      [req.params.ruleId, req.params.siteId],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- Usuarios elegibles del sitio: sub_empresa + admins de la empresa + SuperAdmin ---
+router.get('/:siteId/alarm-eligible-users', async (req, res) => {
+  try {
+    const siteRes = await pool.query(
+      `SELECT sub_empresa_id, empresa_id FROM sitio WHERE id = $1`,
+      [req.params.siteId],
+    );
+    if (siteRes.rowCount === 0) {
+      return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
+    }
+    const { sub_empresa_id, empresa_id } = siteRes.rows[0];
+
+    // Incluir usuarios de la empresa del sitio (cualquier sub_empresa, cualquier
+    // tipo). SuperAdmins excluidos: son staff Emeltec, no destinatarios
+    // operacionales del cliente.
+    const { rows } = await pool.query(
+      `SELECT id, nombre, COALESCE(apellido,'') AS apellido, email,
+              cargo, tipo, sub_empresa_id, empresa_id
+       FROM usuario
+       WHERE email IS NOT NULL AND email != ''
+         AND empresa_id = $1
+         AND tipo != 'SuperAdmin'
+       ORDER BY
+         CASE tipo
+           WHEN 'Admin' THEN 3
+           WHEN 'Gerente' THEN 2
+           ELSE 1
+         END DESC,
+         nombre`,
+      [empresa_id],
+    );
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- Test email (admin diagnostic) ---
+router.post('/:siteId/alarm-test-email', async (req, res) => {
+  try {
+    const u = req.user || {};
+    if (u.tipo !== 'SuperAdmin' && u.tipo !== 'Admin') {
+      return res.status(403).json({ ok: false, error: 'Solo Admin/SuperAdmin' });
+    }
+    const toEmail = req.body?.to || u.email;
+    if (!toEmail) return res.status(400).json({ ok: false, error: 'Email destino requerido' });
+
+    const siteRes = await pool.query(
+      `SELECT descripcion, id_serial FROM sitio WHERE id = $1`,
+      [req.params.siteId],
+    );
+    const site = siteRes.rows[0] || { descripcion: req.params.siteId, id_serial: '—' };
+
+    const fakeRule = {
+      severidad: 'crit',
+      reg_alias: 'STH-01 · Matanza / Eviscerado',
+      sitio_desc: site.descripcion,
+      sitio_id: req.params.siteId,
+      valor_detectado: '12.4°C',
+      condicion_texto: 'temperatura > 10°C',
+      id_serial: site.id_serial,
+      nombre: 'TEST · Temperatura alta Matanza',
+    };
+    const userName = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'operador';
+
+    await sendAlertEmail(
+      toEmail,
+      userName,
+      'este es un correo de prueba del sistema de alarmas cold-room. Verifica que el formato se vea correcto.',
+      fakeRule,
+    );
+    res.json({ ok: true, sentTo: toEmail });
+  } catch (err) {
+    console.error('[alarm-test-email] error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// --- Events log (read-only) ---
+router.get('/:siteId/alarm-events', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT * FROM cold_room_alarm_event WHERE site_id=$1 ORDER BY triggered_at DESC LIMIT 100`,
+      [req.params.siteId],
+    );
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// =============================================================================
+// === ALARM EVAL LOOP (cron-like, in-process)
+// =============================================================================
+
+const SEVERITY_RANK = { info: 0, warn: 1, crit: 2 };
+
+async function evalRulesForSite(siteId) {
+  // Carga reglas habilitadas.
+  const rulesRes = await pool.query(
+    `SELECT * FROM cold_room_alarm_rule WHERE site_id=$1 AND enabled=TRUE`,
+    [siteId],
+  );
+  if (rulesRes.rowCount === 0) return;
+  const rules = rulesRes.rows.map(ruleRowToObj);
+
+  // Carga sensores del sitio (bundle expandido como en /sensors).
+  // Para simplicidad evaluamos sólo siteId param. Si quieres bundle multi-site,
+  // necesitamos un mapeo cliente→sitios o pasar siteIds en el cron config.
+  const sensors = await loadRealColdRoomSensors([siteId], '24h', null);
+  if (!sensors || sensors.length === 0) return;
+
+  const nowMs = Date.now();
+  for (const rule of rules) {
+    const matches = filterSensorsByTarget(sensors, rule);
+    for (const m of matches) {
+      const { value, label } = extractValueForRule(m, rule, nowMs);
+      if (value === null) continue;
+      const triggered = evalRuleOp(rule, value);
+
+      // Look up open event for this rule+target.
+      const eventKey = `${rule.id}::${label}`;
+      const openRes = await pool.query(
+        `SELECT * FROM cold_room_alarm_event
+         WHERE rule_id=$1 AND target_label=$2 AND resolved_at IS NULL
+         ORDER BY triggered_at DESC LIMIT 1`,
+        [rule.id, label],
+      );
+      const open = openRes.rows[0] || null;
+
+      if (triggered && !open) {
+        // Nuevo disparo: insertar evento y enviar email si aplica.
+        const insRes = await pool.query(
+          `INSERT INTO cold_room_alarm_event
+            (site_id, rule_id, current_value, target_label, email_sent)
+           VALUES ($1,$2,$3,$4,FALSE) RETURNING id`,
+          [siteId, rule.id, value, label],
+        );
+        const eventId = insRes.rows[0].id;
+        if (rule.notifyEmail) {
+          // Antigüedad del sensor (para indicar si la lectura es stale).
+          let staleMin = null;
+          if (m.lastSeen) {
+            const ts = new Date(m.lastSeen).getTime();
+            if (Number.isFinite(ts) && ts > 0) {
+              staleMin = Math.floor((nowMs - ts) / 60_000);
+            }
+          }
+          await sendAlarmEmailForRule(siteId, rule, value, label, eventId, staleMin).catch((err) =>
+            console.error('[alarm email] error:', err.message),
+          );
+        }
+      } else if (!triggered && open) {
+        // Condición se resolvió: cerrar evento.
+        await pool.query(
+          `UPDATE cold_room_alarm_event SET resolved_at=NOW() WHERE id=$1`,
+          [open.id],
+        );
+      }
+    }
+  }
+}
+
+function filterSensorsByTarget(sensors, rule) {
+  if (rule.targetKind === 'all') return sensors;
+  if (rule.targetKind === 'sala') {
+    return sensors.filter((s) => slugifyArea(s.area) === rule.targetValue);
+  }
+  if (rule.targetKind === 'sensor') {
+    return sensors.filter((s) => s.id === rule.targetValue);
+  }
+  return [];
+}
+
+function extractValueForRule(sensor, rule, nowMs) {
+  switch (rule.metric) {
+    case 'temperatura':
+      return { value: sensor.t, label: `${sensor.id} · ${sensor.area}` };
+    case 'humedad':
+      return { value: sensor.h, label: `${sensor.id} · ${sensor.area}` };
+    case 'transmision': {
+      if (!sensor.lastSeen) return { value: null, label: '' };
+      const ts = new Date(sensor.lastSeen).getTime();
+      if (!Number.isFinite(ts) || ts <= 0) return { value: null, label: '' };
+      const ageMin = Math.floor((nowMs - ts) / 60000);
+      return { value: ageMin, label: `${sensor.id} · ${sensor.area}` };
+    }
+  }
+  return { value: null, label: '' };
+}
+
+function evalRuleOp(rule, v) {
+  switch (rule.op) {
+    case '>':
+      return v > rule.threshold;
+    case '>=':
+      return v >= rule.threshold;
+    case '<':
+      return v < rule.threshold;
+    case '<=':
+      return v <= rule.threshold;
+  }
+  return false;
+}
+
+function fmtStaleAgo(min) {
+  if (min === null || min === undefined) return null;
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m === 0 ? `hace ${h}h` : `hace ${h}h ${m}min`;
+}
+
+async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId, staleMin = null) {
+  if (!rule.recipientUserIds || rule.recipientUserIds.length === 0) return;
+  // Destinatarios = usuarios de la plataforma elegidos para esta regla.
+  const recRes = await pool.query(
+    `SELECT id, email, COALESCE(nombre,'') || ' ' || COALESCE(apellido,'') AS name
+     FROM usuario
+     WHERE id = ANY($1::varchar[]) AND email IS NOT NULL AND email != ''`,
+    [rule.recipientUserIds],
+  );
+  const recipients = recRes.rows;
+  if (recipients.length === 0) return;
+
+  // Sitio descripción.
+  const siteRes = await pool.query(
+    `SELECT descripcion, id_serial FROM sitio WHERE id=$1`,
+    [siteId],
+  );
+  const site = siteRes.rows[0] || { descripcion: siteId, id_serial: siteId };
+
+  const unit =
+    rule.metric === 'temperatura' ? '°C' : rule.metric === 'humedad' ? '%' : 'min';
+  const condicionTexto = `${rule.metric} ${rule.op} ${rule.threshold}${unit}`;
+  // Si la última lectura es vieja, marcar valor como stale en el email.
+  const STALE_EMAIL_MIN = 5;
+  const isStale = staleMin !== null && staleMin > STALE_EMAIL_MIN;
+  const staleLabel = isStale ? ` (última lectura ${fmtStaleAgo(staleMin)})` : '';
+  const reglaPayload = {
+    severidad: rule.severity,
+    reg_alias: targetLabel,
+    sitio_desc: site.descripcion,
+    sitio_id: siteId,
+    valor_detectado: `${Number(value).toFixed(2)}${unit}${staleLabel}`,
+    condicion_texto: condicionTexto,
+    id_serial: site.id_serial,
+    nombre: rule.name,
+  };
+  const mensaje = isStale
+    ? `se activó la regla "${rule.name}" en ${targetLabel}. ATENCIÓN: el sensor no transmite ${fmtStaleAgo(staleMin)}; el valor mostrado es la última lectura conocida.`
+    : `se activó la regla "${rule.name}" en ${targetLabel}.`;
+
+  const sent = [];
+  for (const r of recipients) {
+    try {
+      await sendAlertEmail(r.email, r.name || '', mensaje, reglaPayload);
+      sent.push(r.email);
+    } catch (err) {
+      console.error('[alarm email] failed for recipient id', r.id, err.message);
+    }
+  }
+  if (sent.length > 0) {
+    await pool.query(
+      `UPDATE cold_room_alarm_event
+       SET email_sent=TRUE, email_sent_at=NOW(), email_recipients=$1
+       WHERE id=$2`,
+      [sent.join(','), eventId],
+    );
+  }
+}
+
+// Cron in-process: cada 60s evalúa todos los sitios con reglas activas.
+// Único nodo (no multi-instance); para HA migrar a worker dedicado o PG NOTIFY.
+let alarmCronStarted = false;
+function startAlarmCron() {
+  if (alarmCronStarted) return;
+  alarmCronStarted = true;
+  const tick = async () => {
+    try {
+      const { rows } = await pool.query(
+        `SELECT DISTINCT site_id FROM cold_room_alarm_rule WHERE enabled=TRUE`,
+      );
+      for (const r of rows) {
+        await evalRulesForSite(r.site_id).catch((err) =>
+          console.error('[alarm cron] eval', r.site_id, err.message),
+        );
+      }
+    } catch (err) {
+      console.error('[alarm cron] tick:', err.message);
+    }
+  };
+  // Primer tick en 30s, luego cada 60s.
+  setTimeout(tick, 30_000);
+  setInterval(tick, 60_000);
+  console.log('[alarm cron] started (60s interval)');
+}
+startAlarmCron();
 
 module.exports = router;
