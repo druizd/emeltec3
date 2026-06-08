@@ -61,7 +61,7 @@ const DEFAULT_DRAFT: DraftRule = {
           <span class="material-symbols-outlined">notifications_active</span>
         </div>
         <div class="ar-hero-text">
-          <h2 class="ar-title">Alarmas</h2>
+          <h2 class="ar-title">Configurar alarmas</h2>
           <p class="ar-sub">
             Configura avisos por temperatura, humedad o pérdida de transmisión. Notifica por email
             a usuarios seleccionados.

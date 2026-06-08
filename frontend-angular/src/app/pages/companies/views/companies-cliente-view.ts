@@ -92,13 +92,13 @@ export class CompaniesClienteViewComponent {
       cold
         ? { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' }
         : { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' },
-      { key: 'eventos', label: 'Alarmas', icon: 'notifications' },
+      { key: 'eventos', label: 'Configurar alarmas', icon: 'notifications' },
     ];
   });
 
   headerTitle(): string {
     if (this.activeTab === 'instalaciones') return this.isColdRoom() ? 'Salas' : 'Salas';
-    if (this.activeTab === 'eventos') return 'Alarmas';
+    if (this.activeTab === 'eventos') return 'Configurar alarmas';
     return 'General';
   }
 

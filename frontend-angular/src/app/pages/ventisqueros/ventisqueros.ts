@@ -306,6 +306,12 @@ interface MetricOption {
                 [hasAlerts]="alerts().length > 0"
                 (selectSensor)="selectedId.set($event)"
               ></app-ventisqueros-floor-map>
+              @if (focusSensor()) {
+                <app-ventisqueros-focus-card
+                  class="vs-focus-overlay"
+                  [focus]="focusSensor()"
+                ></app-ventisqueros-focus-card>
+              }
               @if (floorMapSensors().length === 0) {
                 <div class="vs-empty-overlay">
                   <span class="material-symbols-outlined text-[28px] text-slate-400">
@@ -326,9 +332,7 @@ interface MetricOption {
             </div>
 
             <!-- Sensor rail -->
-            <div class="vs-rail flex h-full shrink-0 flex-col gap-3 overflow-hidden">
-              <app-ventisqueros-focus-card [focus]="focusSensor()"></app-ventisqueros-focus-card>
-
+            <div class="vs-rail flex h-full shrink-0 flex-col overflow-hidden">
               <div class="vs-tap-panel flex min-h-0 flex-1 flex-col gap-1 overflow-hidden">
                 <div class="vs-tap-panel-head flex items-center justify-between">
                   <div class="vs-tap-panel-title">TAP</div>
@@ -544,14 +548,14 @@ interface MetricOption {
                           ? 'rgba(239,68,68,0.10)'
                           : sa.status === 'warn'
                             ? 'rgba(245,158,11,0.10)'
-                            : 'rgba(13,175,189,0.10)'
+                            : 'var(--color-primary-tint-10)'
                       "
                       [style.border-color]="
                         sa.status === 'crit'
                           ? 'rgba(239,68,68,0.30)'
                           : sa.status === 'warn'
                             ? 'rgba(245,158,11,0.30)'
-                            : 'rgba(13,175,189,0.30)'
+                            : 'var(--color-primary-tint-30)'
                       "
                     >
                       <span
@@ -906,7 +910,7 @@ interface MetricOption {
                   <!-- Barras -->
                   <div class="comp-trend-bars">
                     @for (b of cm.hourlyTrend; track $index) {
-                      <div class="comp-trend-col" [title]="b.label + ' — ' + b.pct.toFixed(2) + '%'">
+                      <div class="comp-trend-col" [title]="b.label + ': ' + b.pct.toFixed(2) + '%'">
                         <span
                           class="comp-trend-bar"
                           [style.height.%]="trendPctToY(b.pct)"
@@ -1015,7 +1019,7 @@ interface MetricOption {
                         class="comp-cause-seg"
                         [style.width.%]="c.pct"
                         [style.background]="c.color"
-                        [title]="c.label + ' — ' + c.count + ' (' + c.pct.toFixed(1) + '%)'"
+                        [title]="c.label + ': ' + c.count + ' (' + c.pct.toFixed(1) + '%)'"
                       ></span>
                     }
                   </div>
@@ -1130,7 +1134,7 @@ interface MetricOption {
                 <a
                   [routerLink]="tapRouterLink(d.tap)"
                   class="absolute inset-0 z-0 rounded-2xl"
-                  [attr.aria-label]="d.tap + ' — ver TAP y configurar'"
+                  [attr.aria-label]="d.tap + ': ver TAP y configurar'"
                 ></a>
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex min-w-0 items-start gap-3">
@@ -1253,7 +1257,7 @@ interface MetricOption {
         @if (effectiveTab() === 'alarmas') {
           <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 class="vs-h1 text-slate-800">Alarmas</h2>
+              <h2 class="vs-h1 text-slate-800">Alarmas activas</h2>
               <p class="mt-1 text-[12px] text-slate-500">
                 Eventos operacionales activos · {{ alarmsCounts().total }} total
               </p>
@@ -1358,7 +1362,7 @@ interface MetricOption {
 
         @if (effectiveTab() === 'contacts') {
           <div class="vs-placeholder flex items-center justify-center">
-            Contactos — vista por implementar
+            Contactos: vista por implementar
           </div>
         }
       </div>
@@ -1677,7 +1681,7 @@ interface MetricOption {
                 <span class="material-symbols-outlined text-[14px]">download</span>
                 CSV
               </button>
-              <span class="vs-audit-locked" title="Audit log inmutable — almacenado en DB (HACCP)">
+              <span class="vs-audit-locked" title="Audit log inmutable (almacenado en DB, HACCP)">
                 <span class="material-symbols-outlined text-[14px]">lock</span>
                 Inmutable
               </span>
@@ -1960,13 +1964,13 @@ interface MetricOption {
         padding: 4px 8px;
         font-size: 11px;
         font-weight: 500;
-        color: #16a34a;
+        color: var(--color-success);
       }
       .vs-chip-live-dot {
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: #22c55e;
+        background: var(--color-success);
         display: inline-block;
       }
       .vs-chip-time {
@@ -1996,7 +2000,7 @@ interface MetricOption {
         padding: 5px 14px;
         font-size: 11px;
         font-weight: 600;
-        color: #fff;
+        color: var(--color-surface);
         cursor: pointer;
         font-family: var(--font-josefin);
         letter-spacing: 0.08em;
@@ -2037,7 +2041,7 @@ interface MetricOption {
         font-size: 10px;
         font-weight: 600;
         background: #ef4444;
-        color: #fff;
+        color: var(--color-surface);
         border-radius: 999px;
         padding: 1px 6px;
       }
@@ -2051,7 +2055,7 @@ interface MetricOption {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #22c55e;
+        background: var(--color-success);
         margin-right: 5px;
         vertical-align: middle;
       }
@@ -2088,7 +2092,7 @@ interface MetricOption {
         font-family: var(--font-body);
         font-size: 12px;
         cursor: pointer;
-        transition: all 0.12s;
+        transition: color 0.12s, background 0.12s, border-color 0.12s;
         background: transparent;
         color: #64748b;
         font-weight: 500;
@@ -2177,7 +2181,7 @@ interface MetricOption {
         border: none;
         border-radius: 6px;
         padding: 6px 12px;
-        color: #fff;
+        color: var(--color-surface);
         font-family: var(--font-body);
         font-size: 12px;
         font-weight: 600;
@@ -2185,7 +2189,7 @@ interface MetricOption {
         transition: background 0.12s ease;
       }
       .vs-alert-btn:hover {
-        background: #dc2626;
+        background: var(--color-danger);
       }
 
       /* KPI strip: hero + meta inline */
@@ -2222,25 +2226,40 @@ interface MetricOption {
         font-variant-numeric: tabular-nums;
       }
 
+      .vs-focus-overlay {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 280px;
+        z-index: 5;
+        pointer-events: auto;
+      }
+
       /* Map + rail */
       .vs-map-grid {
         grid-template-columns: minmax(0, 1fr) 320px;
-        height: min(920px, calc(100vh - 240px));
-        min-height: 680px;
-        align-items: stretch;
+        grid-template-rows: 1fr;
+        height: min(1040px, calc(100vh - 200px));
+        min-height: 760px;
+      }
+      .vs-map-grid > * {
+        min-height: 0;
+        height: 100%;
       }
       .vs-rail {
         width: 320px;
         min-width: 320px;
-        height: 100%;
+        box-sizing: border-box;
       }
 
       /* TAP panel (rail) */
       .vs-tap-panel {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 12px 10px;
+        box-sizing: border-box;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
       }
       .vs-tap-panel-head {
         padding: 0 4px 4px;
@@ -2261,8 +2280,12 @@ interface MetricOption {
         position: relative;
         padding: 4px 4px 8px 10px;
         margin-bottom: 6px;
-        border-left: 2px solid var(--tap-color, #94a3b8);
-        border-radius: 3px 6px 6px 3px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+      .vs-tap-group-dot {
+        background: var(--tap-color, #94a3b8) !important;
       }
       .vs-tap-group:hover {
         background: rgba(15, 23, 42, 0.025);
@@ -2521,9 +2544,9 @@ interface MetricOption {
         font-size: 12px;
       }
       .vs-thresholds-input:focus {
-        outline: 2px solid #0d99a5;
+        outline: 2px solid var(--color-primary);
         outline-offset: 1px;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .vs-thresholds-card--missing .vs-thresholds-input {
         border-color: rgba(251, 191, 36, 0.4);
@@ -2550,7 +2573,7 @@ interface MetricOption {
         background: transparent;
       }
       .vs-thresholds-remove:hover {
-        color: #dc2626;
+        color: var(--color-danger);
         background: rgba(239, 68, 68, 0.08);
       }
       .vs-thresholds-footer {
@@ -2574,8 +2597,8 @@ interface MetricOption {
         font-weight: 500;
       }
       .vs-thresholds-reset:hover {
-        color: #0d99a5;
-        background: rgba(13, 175, 189, 0.06);
+        color: var(--color-primary);
+        background: var(--color-primary-tint-06);
       }
       .vs-thresholds-hint {
         font-family: var(--font-dm);
@@ -2616,8 +2639,8 @@ interface MetricOption {
         background: #f1f5f9;
       }
       .vs-defrost-sala-btn--active {
-        background: rgba(13, 175, 189, 0.1);
-        border-color: rgba(13, 175, 189, 0.3);
+        background: var(--color-primary-tint-10);
+        border-color: var(--color-primary-tint-30);
       }
       .vs-defrost-sala-name {
         font-size: 12.5px;
@@ -2656,12 +2679,12 @@ interface MetricOption {
         gap: 5px;
         padding: 5px 10px;
         border-radius: 8px;
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #ffffff;
         font-family: var(--font-dm);
         font-size: 11.5px;
         font-weight: 600;
-        border: 1px solid #0d99a5;
+        border: 1px solid var(--color-primary);
       }
       .vs-defrost-add-btn:hover {
         background: #0a7d87;
@@ -2707,7 +2730,7 @@ interface MetricOption {
         cursor: pointer;
       }
       .vs-defrost-toggle input {
-        accent-color: #0d99a5;
+        accent-color: var(--color-primary);
       }
       .vs-defrost-remove {
         width: 26px;
@@ -2718,7 +2741,7 @@ interface MetricOption {
         border: 0;
       }
       .vs-defrost-remove:hover {
-        color: #dc2626;
+        color: var(--color-danger);
         background: rgba(239, 68, 68, 0.08);
       }
 
@@ -2753,9 +2776,9 @@ interface MetricOption {
         width: 90px;
       }
       .vs-defrost-input:focus {
-        outline: 2px solid #0d99a5;
+        outline: 2px solid var(--color-primary);
         outline-offset: 1px;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
 
       .vs-defrost-days {
@@ -2786,9 +2809,9 @@ interface MetricOption {
         color: #475569;
       }
       .vs-defrost-day--active {
-        background: rgba(13, 175, 189, 0.1);
-        border-color: rgba(13, 175, 189, 0.4);
-        color: #0d99a5;
+        background: var(--color-primary-tint-10);
+        border-color: var(--color-primary-tint-40);
+        color: var(--color-primary);
       }
 
       /* Compliance dashboard */
@@ -2813,8 +2836,8 @@ interface MetricOption {
         color: #1e293b;
       }
       .comp-pill--active {
-        background: rgba(13, 175, 189, 0.1);
-        color: #0d99a5;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
       }
 
@@ -3020,8 +3043,8 @@ interface MetricOption {
         left: 2px;
         right: 2px;
         height: 1px;
-        background: rgba(13, 175, 189, 0.55);
-        border-top: 1px dashed rgba(13, 175, 189, 0.75);
+        background: var(--color-primary-tint-55);
+        border-top: 1px dashed var(--color-primary-tint-55);
         pointer-events: none;
       }
       .comp-trend-ref-lbl {
@@ -3031,7 +3054,7 @@ interface MetricOption {
         font-family: var(--font-mono);
         font-size: 9px;
         font-weight: 600;
-        color: #0d99a5;
+        color: var(--color-primary);
         background: #ffffff;
         padding: 0 4px;
       }
@@ -3235,8 +3258,8 @@ interface MetricOption {
         height: 16px;
         padding: 0 5px;
         border-radius: 999px;
-        background: rgba(13, 175, 189, 0.15);
-        color: #0d99a5;
+        background: var(--color-primary-tint-15);
+        color: var(--color-primary);
         font-family: var(--font-mono);
         font-size: 10px;
         font-weight: 700;
@@ -3286,7 +3309,7 @@ interface MetricOption {
         border-bottom: 1px solid #e2e8f0;
       }
       .vs-hx-title {
-        font-family: 'Josefin Sans', sans-serif;
+        font-family: var(--font-josefin), sans-serif;
         font-size: 15px;
         font-weight: 600;
         color: #1e293b;
@@ -3349,7 +3372,7 @@ interface MetricOption {
       .vs-hx-toggle-all {
         font-family: var(--font-dm);
         font-size: 10.5px;
-        color: #0d99a5;
+        color: var(--color-primary);
         background: transparent;
         border: none;
         font-weight: 500;
@@ -3380,7 +3403,7 @@ interface MetricOption {
         outline: none;
       }
       .vs-hx-field input:focus {
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .vs-hx-hint {
         margin-top: 6px;
@@ -3408,12 +3431,12 @@ interface MetricOption {
         transition: border-color 0.15s, background 0.15s;
       }
       .vs-hx-checkbox:hover {
-        border-color: rgba(13, 175, 189, 0.30);
-        background: rgba(13, 175, 189, 0.04);
+        border-color: var(--color-primary-tint-30);
+        background: var(--color-primary-tint-04);
       }
       .vs-hx-checkbox input {
         margin-top: 2px;
-        accent-color: #0d99a5;
+        accent-color: var(--color-primary);
       }
       .vs-hx-checkbox-lbl {
         display: flex;
@@ -3480,9 +3503,9 @@ interface MetricOption {
         cursor: not-allowed;
       }
       .vs-hx-btn--primary {
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #ffffff;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .vs-hx-btn--primary:hover:not(:disabled) {
         background: #0c8b96;
@@ -3533,16 +3556,16 @@ interface MetricOption {
         color: #ffffff;
       }
       .vs-alarms-chip--crit.vs-alarms-chip--active {
-        background: #dc2626;
-        border-color: #dc2626;
+        background: var(--color-danger);
+        border-color: var(--color-danger);
       }
       .vs-alarms-chip--warn.vs-alarms-chip--active {
-        background: #d97706;
-        border-color: #d97706;
+        background: var(--color-warning);
+        border-color: var(--color-warning);
       }
       .vs-alarms-chip--info.vs-alarms-chip--active {
-        background: #0d99a5;
-        border-color: #0d99a5;
+        background: var(--color-primary);
+        border-color: var(--color-primary);
       }
       .vs-alarms-empty {
         display: flex;
@@ -3587,13 +3610,13 @@ interface MetricOption {
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
       }
       .vs-alarm-card[data-severity='crit'] {
-        border-left-color: #dc2626;
+        border-left-color: var(--color-danger);
       }
       .vs-alarm-card[data-severity='warn'] {
-        border-left-color: #d97706;
+        border-left-color: var(--color-warning);
       }
       .vs-alarm-card[data-severity='info'] {
-        border-left-color: #0d99a5;
+        border-left-color: var(--color-primary);
       }
       .vs-alarm-icon {
         display: inline-flex;
@@ -3606,15 +3629,15 @@ interface MetricOption {
       }
       .vs-alarm-icon[data-severity='crit'] {
         background: rgba(239, 68, 68, 0.10);
-        color: #dc2626;
+        color: var(--color-danger);
       }
       .vs-alarm-icon[data-severity='warn'] {
         background: rgba(245, 158, 11, 0.10);
-        color: #d97706;
+        color: var(--color-warning);
       }
       .vs-alarm-icon[data-severity='info'] {
-        background: rgba(13, 175, 189, 0.10);
-        color: #0d99a5;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
       }
       .vs-alarm-icon .material-symbols-outlined {
         font-size: 18px;
@@ -3653,8 +3676,8 @@ interface MetricOption {
         color: #b45309;
       }
       .vs-alarm-sev[data-severity='info'] {
-        background: rgba(13, 175, 189, 0.12);
-        color: #0d99a5;
+        background: var(--color-primary-tint-14);
+        color: var(--color-primary);
       }
       .vs-alarm-detail {
         font-family: var(--font-dm);
@@ -3691,9 +3714,9 @@ interface MetricOption {
         transition: color 0.15s, border-color 0.15s, background 0.15s;
       }
       .vs-alarm-action:hover {
-        color: #0d99a5;
-        border-color: rgba(13, 175, 189, 0.35);
-        background: rgba(13, 175, 189, 0.04);
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-35);
+        background: var(--color-primary-tint-04);
       }
       .vs-audit-body {
         padding: 14px;
@@ -3717,9 +3740,9 @@ interface MetricOption {
         color: #1e293b;
       }
       .vs-audit-filter:focus {
-        outline: 2px solid #0d99a5;
+        outline: 2px solid var(--color-primary);
         outline-offset: 1px;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .vs-audit-filter--search {
         flex: 1;
@@ -3750,9 +3773,9 @@ interface MetricOption {
         cursor: not-allowed;
       }
       .vs-audit-btn--primary {
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #ffffff;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .vs-audit-btn--primary:hover {
         background: #0a7d87;
@@ -3763,9 +3786,9 @@ interface MetricOption {
         gap: 4px;
         padding: 5px 9px;
         border-radius: 8px;
-        background: rgba(13, 175, 189, 0.08);
-        border: 1px solid rgba(13, 175, 189, 0.22);
-        color: #0d99a5;
+        background: var(--color-primary-tint-08);
+        border: 1px solid var(--color-primary-tint-20);
+        color: var(--color-primary);
         font-family: var(--font-dm);
         font-size: 10.5px;
         font-weight: 600;
@@ -3808,9 +3831,9 @@ interface MetricOption {
         transition: color 0.15s, border-color 0.15s, background 0.15s;
       }
       .vs-audit-loadmore:hover {
-        color: #0d99a5;
-        border-color: rgba(13, 175, 189, 0.35);
-        background: rgba(13, 175, 189, 0.04);
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-35);
+        background: var(--color-primary-tint-04);
       }
 
       .vs-audit-list {
@@ -3827,14 +3850,17 @@ interface MetricOption {
         border-radius: 10px;
         background: #ffffff;
       }
-      .vs-audit-row[data-category='threshold'] {
-        border-left: 3px solid #0d99a5;
+      .vs-audit-row[data-category='threshold'] .vs-audit-cat {
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
       }
-      .vs-audit-row[data-category='defrost'] {
-        border-left: 3px solid #0ea5e9;
+      .vs-audit-row[data-category='defrost'] .vs-audit-cat {
+        background: rgba(14, 165, 233, 0.10);
+        color: #0369a1;
       }
-      .vs-audit-row[data-category='deviation'] {
-        border-left: 3px solid #ef4444;
+      .vs-audit-row[data-category='deviation'] .vs-audit-cat {
+        background: rgba(239, 68, 68, 0.10);
+        color: #b91c1c;
       }
       .vs-audit-row-head {
         display: flex;
@@ -3852,8 +3878,8 @@ interface MetricOption {
         border-radius: 999px;
       }
       .vs-audit-cat[data-category='threshold'] {
-        background: rgba(13, 175, 189, 0.1);
-        color: #0d99a5;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
       }
       .vs-audit-cat[data-category='defrost'] {
         background: rgba(14, 165, 233, 0.1);
@@ -3923,7 +3949,7 @@ interface MetricOption {
         text-decoration: line-through;
       }
       .vs-audit-next {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       .vs-audit-note {
         font-style: italic;
@@ -3996,12 +4022,12 @@ interface MetricOption {
         gap: 6px;
         margin-top: 12px;
         padding: 6px 12px;
-        background: rgba(13, 175, 189, 0.06);
-        border: 1px solid rgba(13, 175, 189, 0.2);
+        background: var(--color-primary-tint-06);
+        border: 1px solid var(--color-primary-tint-20);
         border-radius: 999px;
         font-family: var(--font-dm);
         font-size: 11px;
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       @media (prefers-reduced-motion: reduce) {
         .sala-skel-icon,
@@ -4062,7 +4088,7 @@ interface MetricOption {
         bottom: 16px;
         width: 3px;
         border-radius: 0 3px 3px 0;
-        background: linear-gradient(180deg, #22c55e, #16a34a);
+        background: linear-gradient(180deg, var(--color-success), var(--color-success));
         opacity: 0.85;
       }
       .sala-card[data-status='crit']::before {
@@ -4083,7 +4109,7 @@ interface MetricOption {
         bottom: 16px;
         width: 3px;
         border-radius: 0 3px 3px 0;
-        background: linear-gradient(180deg, #f59e0b, #d97706);
+        background: linear-gradient(180deg, #f59e0b, var(--color-warning));
       }
 
       .sala-card-head {
@@ -4300,7 +4326,7 @@ interface MetricOption {
         }
       }
       .sala-card[data-status='crit'] .sala-status--severe {
-        color: #fff;
+        color: var(--color-surface);
       }
       .sala-hr {
         display: inline-flex;
@@ -4484,7 +4510,7 @@ interface MetricOption {
         cursor: pointer;
       }
       .vs-tap-diag:hover {
-        border-color: rgba(13, 175, 189, 0.4);
+        border-color: var(--color-primary-tint-40);
       }
       .vs-tap-diag-btn {
         display: inline-flex;
@@ -4666,7 +4692,7 @@ interface MetricOption {
         font-variant-numeric: tabular-nums;
       }
       .vs-diag-stale {
-        color: #dc2626;
+        color: var(--color-danger);
         font-size: 10.5px;
         font-weight: 500;
       }
@@ -4744,22 +4770,21 @@ interface MetricOption {
         border: none;
         border-radius: 6px;
         padding: 5px 10px;
-        color: #fff;
+        color: var(--color-surface);
         font-family: var(--font-body);
         font-size: 11px;
         font-weight: 600;
         cursor: pointer;
       }
       .vs-error-retry:hover {
-        background: #dc2626;
+        background: var(--color-danger);
       }
 
       /* Empty state */
       .vs-empty-overlay {
         position: absolute;
         inset: 0;
-        background: rgba(255, 255, 255, 0.75);
-        backdrop-filter: blur(2px);
+        background: rgba(248, 250, 252, 0.92);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -4943,7 +4968,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return [
       { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
       { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
-      { key: 'alarmas', icon: 'notifications_active', label: 'Alarmas', badge: c.total },
+      { key: 'alarmas', icon: 'notifications_active', label: 'Alarmas activas', badge: c.total },
       { key: 'taps', icon: 'memory', label: 'TAP (técnico)' },
     ];
   });
@@ -5642,7 +5667,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         severity: 'warn',
         icon: 'sensors_off',
         title: `${s.id} fuera de servicio`,
-        detail: s.defectiveReason || 'Marcado como defectivo — excluido del cómputo',
+        detail: s.defectiveReason || 'Marcado como defectivo; excluido del cómputo',
         area: s.area,
         sensorId: s.id,
         tap: s.tap,
@@ -6254,7 +6279,22 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.intervalId = setInterval(() => this.now.set(Date.now()), 1000);
+    // Tick cada 5s en lugar de 1s: la mayoría de UI muestra antigüedad en
+    // minutos/horas, no segundos. Cada tick dispara recompute de ~10
+    // signals que iteran histPoints (1440pts × N sensores × M salas). Bajar
+    // a 5s reduce CPU/GC ~5x. Pausa cuando tab está oculto (Page Visibility).
+    const tick = () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      this.now.set(Date.now());
+    };
+    this.intervalId = setInterval(tick, 5000);
+    if (typeof document !== 'undefined') {
+      this.visibilityHandler = () => {
+        if (!document.hidden) this.now.set(Date.now());
+      };
+      document.addEventListener('visibilitychange', this.visibilityHandler);
+    }
+
     const sid = this.siteId();
     if (sid) {
       this.thresholdsSvc.setSiteId(sid);
@@ -6264,9 +6304,15 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     }
   }
 
+  private visibilityHandler: (() => void) | null = null;
+
   ngOnDestroy(): void {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
+    }
+    if (this.visibilityHandler && typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+      this.visibilityHandler = null;
     }
     this.stopColdRoomPolling();
     this.stopColdRoom7dPolling();
@@ -6392,7 +6438,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   humColor = humColor;
 
   rowBg(s: Sensor): string {
-    if (this.selectedId() === s.id) return 'rgba(13,175,189,0.07)';
+    if (this.selectedId() === s.id) return 'var(--color-primary-tint-08)';
     if (s.alerted) return 'rgba(239,68,68,0.04)';
     return 'transparent';
   }
@@ -6402,7 +6448,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   rowBorder(s: Sensor): string {
-    if (this.selectedId() === s.id) return '1px solid rgba(13,175,189,0.35)';
+    if (this.selectedId() === s.id) return '1px solid var(--color-primary-tint-35)';
     if (s.alerted) return '1px solid rgba(239,68,68,0.20)';
     return '1px solid transparent';
   }

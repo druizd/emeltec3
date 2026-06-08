@@ -120,11 +120,11 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
         font-size: 10px;
         font-weight: 600;
         color: var(--color-primary-container);
-        background: rgba(13, 175, 189, 0.1);
+        background: var(--color-primary-tint-10);
         border-radius: 4px;
         padding: 2px 6px;
         letter-spacing: 0.06em;
-        border: 1px solid rgba(13, 175, 189, 0.25);
+        border: 1px solid var(--color-primary-tint-25);
       }
       .vs-alert-mini-chip {
         font-family: var(--font-josefin);

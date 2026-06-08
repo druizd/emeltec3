@@ -1006,7 +1006,7 @@ interface SortState {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #475569;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         font-weight: 500;
         transition:
@@ -1031,7 +1031,7 @@ interface SortState {
       }
 
       .tap-title {
-        font-family: 'Josefin Sans', sans-serif;
+        font-family: var(--font-josefin), sans-serif;
         font-size: 16px;
         font-weight: 600;
         color: #1e293b;
@@ -1042,7 +1042,7 @@ interface SortState {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 500;
         color: #475569;
@@ -1061,7 +1061,7 @@ interface SortState {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #22c55e;
+        background: var(--color-success);
       }
       .cr-live-dot--err {
         background: #ef4444;
@@ -1105,25 +1105,25 @@ interface SortState {
       }
       .status-icon {
         font-size: 22px;
-        color: #16a34a;
+        color: var(--color-success);
       }
       .status-banner[data-level='warning'] .status-icon {
-        color: #d97706;
+        color: var(--color-warning);
       }
       .status-banner[data-level='critical'] .status-icon {
-        color: #dc2626;
+        color: var(--color-danger);
       }
       .status-text {
         min-width: 0;
       }
       .status-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 13.5px;
         font-weight: 600;
         color: #1e293b;
       }
       .status-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         margin-top: 1px;
@@ -1138,7 +1138,7 @@ interface SortState {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         color: #94a3b8;
       }
@@ -1184,7 +1184,7 @@ interface SortState {
         margin-left: 2px;
       }
       .kpi-hero-label {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 500;
         text-transform: uppercase;
@@ -1193,7 +1193,7 @@ interface SortState {
         margin-top: 6px;
       }
       .kpi-meta {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12.5px;
         color: #64748b;
         padding-bottom: 4px;
@@ -1218,7 +1218,7 @@ interface SortState {
         padding-bottom: 2px;
       }
       .kpi-distribution-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 9.5px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -1230,7 +1230,7 @@ interface SortState {
       }
 
       .section-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
@@ -1250,7 +1250,7 @@ interface SortState {
         text-transform: none;
       }
       .section-meta {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         color: #94a3b8;
       }
@@ -1299,7 +1299,7 @@ interface SortState {
         letter-spacing: 0.04em;
       }
       .sensor-area {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 13px;
         color: #1e293b;
       }
@@ -1311,7 +1311,7 @@ interface SortState {
         font-variant-numeric: tabular-nums;
       }
       .sensor-metric-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10.5px;
         color: #94a3b8;
         margin-top: 3px;
@@ -1324,9 +1324,7 @@ interface SortState {
         position: sticky;
         top: 0;
         z-index: 5;
-        background: rgba(240, 242, 245, 0.88);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: #f0f2f5;
         border-bottom: 1px solid #e2e8f0;
         margin-top: 4px;
       }
@@ -1358,7 +1356,7 @@ interface SortState {
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         background: #ffffff;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12.5px;
         color: #1e293b;
       }
@@ -1417,7 +1415,7 @@ interface SortState {
         background: rgba(2, 132, 199, 0.1);
         border: 1px solid rgba(2, 132, 199, 0.25);
         color: #0284c7;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         font-weight: 600;
       }
@@ -1457,7 +1455,7 @@ interface SortState {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         cursor: pointer;
@@ -1473,20 +1471,20 @@ interface SortState {
         align-items: center;
         gap: 6px;
         padding: 8px 10px;
-        background: linear-gradient(90deg, rgba(13, 175, 189, 0.06), transparent 70%);
-        border: 1px solid rgba(13, 175, 189, 0.2);
+        background: linear-gradient(90deg, var(--color-primary-tint-06), transparent 70%);
+        border: 1px solid var(--color-primary-tint-20);
         border-radius: 10px;
       }
       .pinned-lbl {
         display: inline-flex;
         align-items: center;
         gap: 4px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10.5px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       .pinned-chip {
         display: inline-flex;
@@ -1502,7 +1500,7 @@ interface SortState {
       }
       .pinned-chip:hover {
         transform: translateY(-1px);
-        border-color: rgba(13, 175, 189, 0.4);
+        border-color: var(--color-primary-tint-40);
       }
       .pinned-chip--alert {
         border-color: rgba(239, 68, 68, 0.3);
@@ -1525,7 +1523,7 @@ interface SortState {
         border-bottom: 1px solid #e2e8f0;
       }
       .sensor-table-head {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         font-weight: 600;
         text-transform: uppercase;
@@ -1548,7 +1546,7 @@ interface SortState {
         color: #475569;
       }
       .sensor-row {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 13px;
         color: #1e293b;
         transition: background 0.12s ease;
@@ -1580,7 +1578,7 @@ interface SortState {
         font-variant-numeric: tabular-nums;
       }
       .status-cell {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #475569;
         display: inline-flex;
@@ -1611,11 +1609,11 @@ interface SortState {
           background 0.15s ease;
       }
       .row-pin:hover {
-        color: #0d99a5;
-        background: rgba(13, 175, 189, 0.1);
+        color: var(--color-primary);
+        background: var(--color-primary-tint-10);
       }
       .row-pin--on {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
 
       /* Grid view */
@@ -1661,13 +1659,13 @@ interface SortState {
         margin: 0 auto 8px;
       }
       .empty-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 13px;
         font-weight: 600;
         color: #475569;
       }
       .empty-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #94a3b8;
         margin-top: 2px;
@@ -1692,7 +1690,7 @@ interface SortState {
         position: absolute;
         bottom: 6px;
         right: 14px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         color: #94a3b8;
       }
@@ -1786,7 +1784,7 @@ interface SortState {
         display: flex;
         flex-direction: column;
         gap: 4px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         color: #64748b;
       }
@@ -1811,7 +1809,7 @@ interface SortState {
         align-items: center;
         padding: 10px 0;
         border-bottom: 1px solid #f1f5f9;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
       }
       .conc-channels-head {
@@ -1864,7 +1862,7 @@ interface SortState {
         padding: 9px 14px;
         background: #1e293b;
         color: #f8fafc;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12.5px;
         border-radius: 999px;
         box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
@@ -1936,7 +1934,7 @@ interface SortState {
         color: #1e293b;
       }
       .drawer-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         margin-top: 1px;
@@ -1974,7 +1972,7 @@ interface SortState {
         gap: 10px;
       }
       .drawer-kpi-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 9.5px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -2689,7 +2687,7 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
         type: 'line',
         yMin: setpointAvg,
         yMax: setpointAvg,
-        borderColor: 'rgba(13, 175, 189, 0.7)',
+        borderColor: 'var(--color-primary-tint-55)',
         borderWidth: 1.2,
         borderDash: [6, 4],
         label: {
@@ -2842,7 +2840,7 @@ export class VentisquerosTapDetailComponent implements OnInit, OnDestroy, AfterV
                 type: 'line',
                 yMin: data.setpoint,
                 yMax: data.setpoint,
-                borderColor: 'rgba(13, 175, 189, 0.7)',
+                borderColor: 'var(--color-primary-tint-55)',
                 borderWidth: 1.2,
                 borderDash: [6, 4],
                 label: {

@@ -118,7 +118,7 @@ export class CompaniesSuperAdminViewComponent {
       cold
         ? { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' }
         : { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' },
-      { key: 'eventos', label: 'Alarmas', icon: 'notifications' },
+      { key: 'eventos', label: 'Configurar alarmas', icon: 'notifications' },
       { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
       { key: 'usuarios', label: 'Gestión usuarios', icon: 'person_add' },
     ];

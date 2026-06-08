@@ -248,71 +248,59 @@ const ZOOM_STEP = 1.25;
 
       <!-- Zoom controls -->
       <div
-        class="absolute flex flex-col gap-1"
-        style="top: 14px; right: 14px; background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); border: 1px solid #E2E8F0; border-radius: 10px; padding: 4px; box-shadow: 0 4px 14px rgba(15,23,42,0.08);"
+        class="vs-fm-zoom-stack absolute flex flex-col gap-1"
         (pointerdown)="$event.stopPropagation()"
         (wheel)="$event.stopPropagation()"
       >
         <button
+          type="button"
           (click)="zoomIn()"
           [disabled]="zoom() >= ZOOM_MAX"
-          class="flex h-7 w-7 items-center justify-center rounded-md"
-          style="background: #FFFFFF; border: 1px solid #E2E8F0; color: #475569; cursor: pointer;"
-          [style.opacity]="zoom() >= ZOOM_MAX ? 0.4 : 1"
+          class="vs-fm-zbtn"
           title="Zoom in"
+          aria-label="Acercar"
         >
           <span class="material-symbols-outlined text-[15px]">add</span>
         </button>
         <button
+          type="button"
           (click)="zoomOut()"
           [disabled]="zoom() <= ZOOM_MIN"
-          class="flex h-7 w-7 items-center justify-center rounded-md"
-          style="background: #FFFFFF; border: 1px solid #E2E8F0; color: #475569; cursor: pointer;"
-          [style.opacity]="zoom() <= ZOOM_MIN ? 0.4 : 1"
+          class="vs-fm-zbtn"
           title="Zoom out"
+          aria-label="Alejar"
         >
           <span class="material-symbols-outlined text-[15px]">remove</span>
         </button>
         <button
+          type="button"
           (click)="resetZoom()"
-          class="flex h-7 w-7 items-center justify-center rounded-md"
-          style="background: #FFFFFF; border: 1px solid #E2E8F0; color: #475569; cursor: pointer;"
+          class="vs-fm-zbtn"
           title="Restablecer zoom (0)"
+          aria-label="Restablecer zoom"
         >
           <span class="material-symbols-outlined text-[15px]">center_focus_strong</span>
         </button>
         <button
+          type="button"
           (click)="toggleFullscreen()"
-          class="flex h-7 w-7 items-center justify-center rounded-md"
-          [style.background]="fullscreen() ? '#0DAFBD' : '#FFFFFF'"
-          [style.color]="fullscreen() ? '#FFFFFF' : '#475569'"
-          style="border: 1px solid #E2E8F0; cursor: pointer;"
+          class="vs-fm-zbtn"
+          [class.vs-fm-zbtn--on]="fullscreen()"
           [title]="fullscreen() ? 'Salir pantalla completa (Esc)' : 'Pantalla completa (F)'"
+          [attr.aria-label]="fullscreen() ? 'Salir pantalla completa' : 'Pantalla completa'"
+          [attr.aria-pressed]="fullscreen()"
         >
           <span class="material-symbols-outlined text-[15px]">{{
             fullscreen() ? 'fullscreen_exit' : 'fullscreen'
           }}</span>
         </button>
-        <div
-          style="font-family: 'JetBrains Mono'; font-size: 9px; color: #94A3B8; text-align: center; padding-top: 2px;"
-        >
+        <div class="vs-fm-zoom-pct">
           {{ zoomPercent() }}%
         </div>
       </div>
 
       <!-- Legend -->
-      <div
-        style="
-          position: absolute; right: 14px; bottom: 14px;
-          background: rgba(255,255,255,0.92);
-          backdrop-filter: blur(6px);
-          border: 1px solid #E2E8F0;
-          border-radius: 10px;
-          padding: 8px 12px;
-          font-family: 'DM Sans';
-          box-shadow: 0 4px 14px rgba(15,23,42,0.08);
-        "
-      >
+      <div class="vs-fm-legend">
         <div
           style="font-size: 9px; font-weight: 700; color: #94A3B8; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px;"
         >
@@ -373,6 +361,83 @@ const ZOOM_STEP = 1.25;
       .vs-alert-frame {
         border-width: 2px !important;
         animation: vsAlertFrame 1.2s ease-in-out infinite;
+      }
+
+      /* Zoom controls */
+      .vs-fm-zoom-stack {
+        top: 14px;
+        right: 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      }
+      .vs-fm-zbtn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 7px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        cursor: pointer;
+        transition:
+          color 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+          background 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+          border-color 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      .vs-fm-zbtn:hover:not(:disabled) {
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-30);
+      }
+      .vs-fm-zbtn:focus-visible {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-tint-25);
+      }
+      .vs-fm-zbtn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+      .vs-fm-zbtn--on {
+        background: var(--color-primary);
+        color: #ffffff;
+        border-color: var(--color-primary);
+      }
+      .vs-fm-zbtn--on:hover:not(:disabled) {
+        color: #ffffff;
+        background: var(--color-primary-container);
+      }
+      .vs-fm-zoom-pct {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        color: #94a3b8;
+        text-align: center;
+        padding-top: 2px;
+      }
+
+      /* Legend */
+      .vs-fm-legend {
+        position: absolute;
+        right: 14px;
+        bottom: 14px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-family: var(--font-body);
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .vs-fm-zbtn,
+        .vs-alert-frame {
+          transition: none;
+          animation: none;
+        }
       }
     `,
   ],
