@@ -38,10 +38,14 @@ export class ColdRoomAlarmRulesService {
   private readonly http = inject(HttpClient);
   private readonly rulesSignal = signal<AlarmRule[]>([]);
   private readonly usersSignal = signal<EligibleUser[]>([]);
+  private readonly rulesLoadedSignal = signal<boolean>(false);
+  private readonly usersLoadedSignal = signal<boolean>(false);
   private currentSiteId: string | null = null;
 
   readonly rules = computed(() => this.rulesSignal());
   readonly eligibleUsers = computed(() => this.usersSignal());
+  readonly rulesLoaded = computed(() => this.rulesLoadedSignal());
+  readonly usersLoaded = computed(() => this.usersLoadedSignal());
 
   setSiteId(siteId: string): void {
     this.currentSiteId = siteId;
@@ -60,7 +64,9 @@ export class ColdRoomAlarmRulesService {
       .subscribe({
         next: (res) => {
           if (res.ok) this.rulesSignal.set(res.data || []);
+          this.rulesLoadedSignal.set(true);
         },
+        error: () => this.rulesLoadedSignal.set(true),
       });
   }
 
@@ -74,7 +80,9 @@ export class ColdRoomAlarmRulesService {
       .subscribe({
         next: (res) => {
           if (res.ok) this.usersSignal.set(res.data || []);
+          this.usersLoadedSignal.set(true);
         },
+        error: () => this.usersLoadedSignal.set(true),
       });
   }
 

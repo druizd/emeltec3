@@ -353,7 +353,20 @@ const DEFAULT_DRAFT: DraftRule = {
                   <div class="ar-step-hint">Sin destinatarios, la alarma solo aparece en la UI.</div>
                 </div>
               </div>
-              @if (eligibleUsers().length === 0) {
+              @if (!usersLoaded()) {
+                <div class="ar-recipient-picker">
+                  @for (i of [1, 2, 3]; track i) {
+                    <div class="ar-user-card ar-user-card--skel">
+                      <div class="ar-skel ar-skel--avatar"></div>
+                      <div class="ar-user-info">
+                        <div class="ar-skel ar-skel--line" style="width: 70%; height: 12px"></div>
+                        <div class="ar-skel ar-skel--line" style="width: 90%; height: 9px; margin-top: 4px"></div>
+                        <div class="ar-skel ar-skel--line" style="width: 40%; height: 9px; margin-top: 4px"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              } @else if (eligibleUsers().length === 0) {
                 <div class="ar-empty-inline">
                   No hay usuarios disponibles. Agrega usuarios en
                   <strong>Gestión Usuarios</strong> primero.
@@ -417,7 +430,25 @@ const DEFAULT_DRAFT: DraftRule = {
       }
 
       <div class="ar-list">
-        @if (rules().length === 0) {
+        @if (!rulesLoaded()) {
+          @for (i of [1, 2, 3]; track i) {
+            <article class="ar-card ar-card--skel">
+              <div class="ar-card-head">
+                <div class="ar-skel ar-skel--icon"></div>
+                <div class="ar-card-body">
+                  <div class="ar-skel ar-skel--line" style="width: 50%; height: 14px"></div>
+                  <div class="ar-skel ar-skel--line" style="width: 80%; height: 10px; margin-top: 6px"></div>
+                  <div class="ar-skel ar-skel--line" style="width: 40%; height: 10px; margin-top: 6px"></div>
+                </div>
+                <div class="ar-card-actions">
+                  <div class="ar-skel ar-skel--btn"></div>
+                  <div class="ar-skel ar-skel--btn"></div>
+                  <div class="ar-skel ar-skel--btn"></div>
+                </div>
+              </div>
+            </article>
+          }
+        } @else if (rules().length === 0) {
           <div class="ar-empty">
             <span class="material-symbols-outlined text-[36px] text-slate-300">notifications_off</span>
             <div class="ar-empty-title">Sin reglas configuradas</div>
@@ -1322,6 +1353,54 @@ const DEFAULT_DRAFT: DraftRule = {
         flex-direction: column;
         gap: 8px;
       }
+
+      /* Skeleton */
+      @keyframes arSkelShimmer {
+        0% { background-position: -200px 0; }
+        100% { background-position: calc(200px + 100%) 0; }
+      }
+      .ar-skel {
+        background: linear-gradient(
+          90deg,
+          #f1f5f9 0px,
+          #e2e8f0 80px,
+          #f1f5f9 160px
+        );
+        background-size: 200px 100%;
+        background-repeat: no-repeat;
+        animation: arSkelShimmer 1.4s linear infinite;
+        border-radius: 4px;
+      }
+      .ar-skel--line {
+        width: 100%;
+        height: 12px;
+      }
+      .ar-skel--icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        flex-shrink: 0;
+      }
+      .ar-skel--avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .ar-skel--btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 7px;
+      }
+      .ar-card--skel,
+      .ar-user-card--skel {
+        pointer-events: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .ar-skel {
+          animation: none;
+        }
+      }
       .ar-empty {
         display: flex;
         flex-direction: column;
@@ -1562,6 +1641,8 @@ export class CompaniesAlarmRulesPanelComponent {
   draft: DraftRule = { ...DEFAULT_DRAFT };
 
   readonly eligibleUsers = this.svc.eligibleUsers;
+  readonly rulesLoaded = this.svc.rulesLoaded;
+  readonly usersLoaded = this.svc.usersLoaded;
 
   userLabel(u: { nombre: string; apellido: string; email: string }): string {
     const name = `${u.nombre} ${u.apellido}`.trim();

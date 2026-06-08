@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
+import { Sensor, humColor, tempColor } from './ventisqueros-data';
 
 @Component({
   selector: 'app-ventisqueros-focus-card',
@@ -217,7 +217,6 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
 export class VentisquerosFocusCardComponent {
   readonly focus = input.required<Sensor | undefined>();
 
-  readonly fmtTemp = fmtTemp;
 
   fmtHumValue(h: number): number {
     return Number(h.toFixed(2));

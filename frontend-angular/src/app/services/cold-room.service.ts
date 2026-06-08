@@ -84,16 +84,6 @@ export interface ColdRoomBackupSensor {
   hist: number[];
 }
 
-export interface ColdRoomAlarm {
-  id: string;
-  sensorId: string;
-  tap: string;
-  area: string;
-  severity: 'warning' | 'critical';
-  message: string;
-  since: string;
-  acknowledged: boolean;
-}
 
 @Injectable({ providedIn: 'root' })
 export class ColdRoomService {
@@ -211,14 +201,6 @@ export class ColdRoomService {
     );
   }
 
-  getAlarms(siteId: string, tap: string | null): Observable<ApiResponse<ColdRoomAlarm[]>> {
-    const params = new URLSearchParams();
-    if (tap) params.set('tap', tap);
-    params.set('t', String(Date.now()));
-    return this.http.get<ApiResponse<ColdRoomAlarm[]>>(
-      `/api/cold-room/${encodeURIComponent(siteId)}/alarms?${params.toString()}`,
-    );
-  }
 
   exportCsvUrl(siteId: string, tap: string | null, range: ColdRoomRange = '24h'): string {
     const params = new URLSearchParams();

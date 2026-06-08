@@ -1477,23 +1477,6 @@ router.get('/:siteId/backup', (req, res) => {
   res.json({ ok: true, data: backup });
 });
 
-router.get('/:siteId/alarms', (req, res) => {
-  const tap = normalizeTap(req.query.tap);
-  const items = PLACEHOLDER_SENSORS.filter((s) => !tap || s.tap === tap)
-    .filter(() => Math.random() < 0.18)
-    .map((s) => ({
-      id: `${s.id}-${Date.now()}`,
-      sensorId: s.id,
-      tap: s.tap,
-      area: s.area,
-      severity: Math.random() < 0.3 ? 'critical' : 'warning',
-      message: `Temperatura fuera de banda (${s.tMin}°C / ${s.tMax}°C)`,
-      since: new Date(Date.now() - Math.round(Math.random() * 1000 * 60 * 30)).toISOString(),
-      acknowledged: false,
-    }));
-  res.json({ ok: true, data: items });
-});
-
 router.get('/:siteId/export', (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
