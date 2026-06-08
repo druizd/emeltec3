@@ -309,7 +309,7 @@ const ZOOM_STEP = 1.25;
         @if (metric() === 'A') {
           <div class="flex items-center">
             @for (s of legendStops(); track $index) {
-              <div class="mr-3 flex items-center gap-[5px]">
+              <div class="mr-3 flex items-center gap-1.25">
                 <span
                   style="width: 9px; height: 9px; border-radius: 50%;"
                   [style.background]="s.color"
