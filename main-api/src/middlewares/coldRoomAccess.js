@@ -11,10 +11,9 @@ async function lookupSite(siteId) {
   const now = Date.now();
   const cached = siteCache.get(siteId);
   if (cached && cached.exp > now) return cached;
-  const { rows } = await pool.query(
-    `SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1`,
-    [siteId],
-  );
+  const { rows } = await pool.query(`SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1`, [
+    siteId,
+  ]);
   if (rows.length === 0) return null;
   const entry = { ...rows[0], exp: now + CACHE_TTL };
   siteCache.set(siteId, entry);

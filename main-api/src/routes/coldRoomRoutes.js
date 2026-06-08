@@ -1209,64 +1209,68 @@ router.get('/:siteId/sensors', async (req, res) => {
  * en reg_map de ambos aliases (.T y .H) del sensor para mantener consistencia.
  * Body: { defective: boolean, reason?: string }
  */
-router.put('/:siteId/sensors/:sensorId/defective', requireRole(...ADMIN_ROLES), async (req, res) => {
-  const { siteId, sensorId } = req.params;
-  const { defective, reason } = req.body || {};
-  if (typeof defective !== 'boolean') {
-    return res.status(400).json({ ok: false, error: 'defective (boolean) requerido' });
-  }
-  try {
-    const actor = actorFromReq(req);
+router.put(
+  '/:siteId/sensors/:sensorId/defective',
+  requireRole(...ADMIN_ROLES),
+  async (req, res) => {
+    const { siteId, sensorId } = req.params;
+    const { defective, reason } = req.body || {};
+    if (typeof defective !== 'boolean') {
+      return res.status(400).json({ ok: false, error: 'defective (boolean) requerido' });
+    }
+    try {
+      const actor = actorFromReq(req);
 
-    // Aliases del sensor (ej. STH-02.T, STH-02.H).
-    const aliasFilter = `${sensorId}.%`;
-    const prevRes = await pool.query(
-      `SELECT alias, parametros FROM reg_map
+      // Aliases del sensor (ej. STH-02.T, STH-02.H).
+      const aliasFilter = `${sensorId}.%`;
+      const prevRes = await pool.query(
+        `SELECT alias, parametros FROM reg_map
        WHERE sitio_id = $1 AND alias LIKE $2`,
-      [siteId, aliasFilter],
-    );
-    if (prevRes.rowCount === 0) {
-      return res.status(404).json({ ok: false, error: 'Sensor no encontrado en reg_map' });
-    }
-
-    // Aplicar patch a parametros JSONB de cada alias.
-    for (const row of prevRes.rows) {
-      const params = row.parametros || {};
-      if (defective) {
-        params.defective = true;
-        params.defective_since = new Date().toISOString().slice(0, 10);
-        params.defective_reason = reason || 'Marcado manualmente por operador';
-        params.defective_by = actor.name;
-      } else {
-        delete params.defective;
-        delete params.defective_since;
-        delete params.defective_reason;
-        delete params.defective_by;
-      }
-      await pool.query(
-        `UPDATE reg_map SET parametros = $1, updated_at = NOW()
-         WHERE sitio_id = $2 AND alias = $3`,
-        [JSON.stringify(params), siteId, row.alias],
+        [siteId, aliasFilter],
       );
+      if (prevRes.rowCount === 0) {
+        return res.status(404).json({ ok: false, error: 'Sensor no encontrado en reg_map' });
+      }
+
+      // Aplicar patch a parametros JSONB de cada alias.
+      for (const row of prevRes.rows) {
+        const params = row.parametros || {};
+        if (defective) {
+          params.defective = true;
+          params.defective_since = new Date().toISOString().slice(0, 10);
+          params.defective_reason = reason || 'Marcado manualmente por operador';
+          params.defective_by = actor.name;
+        } else {
+          delete params.defective;
+          delete params.defective_since;
+          delete params.defective_reason;
+          delete params.defective_by;
+        }
+        await pool.query(
+          `UPDATE reg_map SET parametros = $1, updated_at = NOW()
+         WHERE sitio_id = $2 AND alias = $3`,
+          [JSON.stringify(params), siteId, row.alias],
+        );
+      }
+
+      // Audit log.
+      logAudit(
+        siteId,
+        actor,
+        'threshold', // categoría existente; usa target distintivo
+        defective ? 'update' : 'update',
+        `sensor:${sensorId}`,
+        { defective: !defective },
+        { defective, reason: reason || null },
+        defective ? `Marcado en falla: ${reason || 'sin razón'}` : 'Reactivado',
+      );
+
+      res.json({ ok: true, data: { sensorId, defective, reason: reason || null } });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
     }
-
-    // Audit log.
-    logAudit(
-      siteId,
-      actor,
-      'threshold', // categoría existente; usa target distintivo
-      defective ? 'update' : 'update',
-      `sensor:${sensorId}`,
-      { defective: !defective },
-      { defective, reason: reason || null },
-      defective ? `Marcado en falla: ${reason || 'sin razón'}` : 'Reactivado',
-    );
-
-    res.json({ ok: true, data: { sensorId, defective, reason: reason || null } });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+  },
+);
 
 /**
  * GET /:siteId/history-export
@@ -1296,13 +1300,19 @@ router.get('/:siteId/history-export', async (req, res) => {
     else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
 
     const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
-    const siteIds = siteIdsRaw.split(',').map((s) => s.trim()).filter(Boolean);
+    const siteIds = siteIdsRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (siteIds.length === 0) {
       return res.status(400).json({ ok: false, error: 'siteIds requerido' });
     }
 
     const sensorIdsRaw = String(req.query.sensorIds || '');
-    const sensorIds = sensorIdsRaw.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+    const sensorIds = sensorIdsRaw
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
 
     // Sites → id_serial.
     const sitesRes = await pool.query(
@@ -1375,10 +1385,8 @@ router.get('/:siteId/history-export', async (req, res) => {
         if (s.idSerial !== row.id_serial) continue;
         const rawT = s.regT ? toSigned16(row.data[s.regT]) : null;
         const rawH = s.regH ? row.data[s.regH] : null;
-        const tVal =
-          typeof rawT === 'number' ? +(rawT * s.factor + s.offset).toFixed(2) : null;
-        const hVal =
-          typeof rawH === 'number' ? +(rawH * s.factor + s.offset).toFixed(2) : null;
+        const tVal = typeof rawT === 'number' ? +(rawT * s.factor + s.offset).toFixed(2) : null;
+        const hVal = typeof rawH === 'number' ? +(rawH * s.factor + s.offset).toFixed(2) : null;
         if (tVal === null && hVal === null) continue;
         points.push({
           ts: new Date(row.bucket).toISOString(),
@@ -1624,10 +1632,10 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
 
 router.delete('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
-    await pool.query(
-      `DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`,
-      [req.params.ruleId, req.params.siteId],
-    );
+    await pool.query(`DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`, [
+      req.params.ruleId,
+      req.params.siteId,
+    ]);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -1637,10 +1645,9 @@ router.delete('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async
 // --- Usuarios elegibles del sitio: sub_empresa + admins de la empresa + SuperAdmin ---
 router.get('/:siteId/alarm-eligible-users', async (req, res) => {
   try {
-    const siteRes = await pool.query(
-      `SELECT sub_empresa_id, empresa_id FROM sitio WHERE id = $1`,
-      [req.params.siteId],
-    );
+    const siteRes = await pool.query(`SELECT sub_empresa_id, empresa_id FROM sitio WHERE id = $1`, [
+      req.params.siteId,
+    ]);
     if (siteRes.rowCount === 0) {
       return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
     }
@@ -1681,10 +1688,9 @@ router.post('/:siteId/alarm-test-email', async (req, res) => {
     const toEmail = req.body?.to || u.email;
     if (!toEmail) return res.status(400).json({ ok: false, error: 'Email destino requerido' });
 
-    const siteRes = await pool.query(
-      `SELECT descripcion, id_serial FROM sitio WHERE id = $1`,
-      [req.params.siteId],
-    );
+    const siteRes = await pool.query(`SELECT descripcion, id_serial FROM sitio WHERE id = $1`, [
+      req.params.siteId,
+    ]);
     const site = siteRes.rows[0] || { descripcion: req.params.siteId, id_serial: '—' };
 
     const fakeRule = {
@@ -1788,10 +1794,9 @@ async function evalRulesForSite(siteId) {
         }
       } else if (!triggered && open) {
         // Condición se resolvió: cerrar evento.
-        await pool.query(
-          `UPDATE cold_room_alarm_event SET resolved_at=NOW() WHERE id=$1`,
-          [open.id],
-        );
+        await pool.query(`UPDATE cold_room_alarm_event SET resolved_at=NOW() WHERE id=$1`, [
+          open.id,
+        ]);
       }
     }
   }
@@ -1861,14 +1866,12 @@ async function sendAlarmEmailForRule(siteId, rule, value, targetLabel, eventId, 
   if (recipients.length === 0) return;
 
   // Sitio descripción.
-  const siteRes = await pool.query(
-    `SELECT descripcion, id_serial FROM sitio WHERE id=$1`,
-    [siteId],
-  );
+  const siteRes = await pool.query(`SELECT descripcion, id_serial FROM sitio WHERE id=$1`, [
+    siteId,
+  ]);
   const site = siteRes.rows[0] || { descripcion: siteId, id_serial: siteId };
 
-  const unit =
-    rule.metric === 'temperatura' ? '°C' : rule.metric === 'humedad' ? '%' : 'min';
+  const unit = rule.metric === 'temperatura' ? '°C' : rule.metric === 'humedad' ? '%' : 'min';
   const condicionTexto = `${rule.metric} ${rule.op} ${rule.threshold}${unit}`;
   // Si la última lectura es vieja, marcar valor como stale en el email.
   const STALE_EMAIL_MIN = 5;

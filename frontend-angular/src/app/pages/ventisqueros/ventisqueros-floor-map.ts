@@ -294,9 +294,7 @@ const ZOOM_STEP = 1.25;
             fullscreen() ? 'fullscreen_exit' : 'fullscreen'
           }}</span>
         </button>
-        <div class="vs-fm-zoom-pct">
-          {{ zoomPercent() }}%
-        </div>
+        <div class="vs-fm-zoom-pct">{{ zoomPercent() }}%</div>
       </div>
 
       <!-- Legend -->

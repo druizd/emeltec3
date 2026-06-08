@@ -62,8 +62,8 @@ const DEFAULT_DRAFT: DraftRule = {
         <div class="ar-hero-text">
           <h2 class="ar-title">Configurar alarmas</h2>
           <p class="ar-sub">
-            Configura avisos por temperatura, humedad o pérdida de transmisión. Notifica por email
-            a usuarios seleccionados.
+            Configura avisos por temperatura, humedad o pérdida de transmisión. Notifica por email a
+            usuarios seleccionados.
           </p>
         </div>
         <div class="flex items-center gap-2">
@@ -75,7 +75,9 @@ const DEFAULT_DRAFT: DraftRule = {
             title="Envía un email de prueba a tu correo para verificar el formato"
           >
             @if (testEmailLoading()) {
-              <span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+              <span class="material-symbols-outlined text-[14px] animate-spin"
+                >progress_activity</span
+              >
               Enviando…
             } @else {
               <span class="material-symbols-outlined text-[14px]">mail</span>
@@ -117,7 +119,9 @@ const DEFAULT_DRAFT: DraftRule = {
               <div class="ar-template-desc">HR sobre el límite tolerado.</div>
             </button>
             <button type="button" class="ar-template-card" (click)="useTemplate('sin-transmitir')">
-              <span class="material-symbols-outlined text-[22px] text-amber-500">signal_disconnected</span>
+              <span class="material-symbols-outlined text-[22px] text-amber-500"
+                >signal_disconnected</span
+              >
               <div class="ar-template-name">Sin transmitir</div>
               <div class="ar-template-desc">Sensor sin lectura por minutos.</div>
             </button>
@@ -350,7 +354,9 @@ const DEFAULT_DRAFT: DraftRule = {
                 <span class="ar-step-num">6</span>
                 <div>
                   <div class="ar-step-title">Destinatarios</div>
-                  <div class="ar-step-hint">Sin destinatarios, la alarma solo aparece en la UI.</div>
+                  <div class="ar-step-hint">
+                    Sin destinatarios, la alarma solo aparece en la UI.
+                  </div>
                 </div>
               </div>
               @if (!usersLoaded()) {
@@ -360,8 +366,14 @@ const DEFAULT_DRAFT: DraftRule = {
                       <div class="ar-skel ar-skel--avatar"></div>
                       <div class="ar-user-info">
                         <div class="ar-skel ar-skel--line" style="width: 70%; height: 12px"></div>
-                        <div class="ar-skel ar-skel--line" style="width: 90%; height: 9px; margin-top: 4px"></div>
-                        <div class="ar-skel ar-skel--line" style="width: 40%; height: 9px; margin-top: 4px"></div>
+                        <div
+                          class="ar-skel ar-skel--line"
+                          style="width: 90%; height: 9px; margin-top: 4px"
+                        ></div>
+                        <div
+                          class="ar-skel ar-skel--line"
+                          style="width: 40%; height: 9px; margin-top: 4px"
+                        ></div>
                       </div>
                     </div>
                   }
@@ -417,11 +429,7 @@ const DEFAULT_DRAFT: DraftRule = {
 
           <div class="ar-form-foot">
             <button type="button" class="ar-btn" (click)="closeForm()">Cancelar</button>
-            <button
-              type="button"
-              class="ar-btn ar-btn--primary"
-              (click)="saveRule()"
-            >
+            <button type="button" class="ar-btn ar-btn--primary" (click)="saveRule()">
               <span class="material-symbols-outlined text-[14px]">check</span>
               {{ editingId() ? 'Guardar cambios' : 'Crear alarma' }}
             </button>
@@ -437,8 +445,14 @@ const DEFAULT_DRAFT: DraftRule = {
                 <div class="ar-skel ar-skel--icon"></div>
                 <div class="ar-card-body">
                   <div class="ar-skel ar-skel--line" style="width: 50%; height: 14px"></div>
-                  <div class="ar-skel ar-skel--line" style="width: 80%; height: 10px; margin-top: 6px"></div>
-                  <div class="ar-skel ar-skel--line" style="width: 40%; height: 10px; margin-top: 6px"></div>
+                  <div
+                    class="ar-skel ar-skel--line"
+                    style="width: 80%; height: 10px; margin-top: 6px"
+                  ></div>
+                  <div
+                    class="ar-skel ar-skel--line"
+                    style="width: 40%; height: 10px; margin-top: 6px"
+                  ></div>
                 </div>
                 <div class="ar-card-actions">
                   <div class="ar-skel ar-skel--btn"></div>
@@ -450,7 +464,9 @@ const DEFAULT_DRAFT: DraftRule = {
           }
         } @else if (rules().length === 0) {
           <div class="ar-empty">
-            <span class="material-symbols-outlined text-[36px] text-slate-300">notifications_off</span>
+            <span class="material-symbols-outlined text-[36px] text-slate-300"
+              >notifications_off</span
+            >
             <div class="ar-empty-title">Sin reglas configuradas</div>
             <div class="ar-empty-sub">
               Crea la primera para empezar a recibir alarmas personalizadas.
@@ -489,7 +505,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   <div class="ar-card-meta">
                     <span class="ar-meta-tag">
                       @if (r.notifyUi) {
-                        <span class="material-symbols-outlined text-[11px]">notifications_active</span>
+                        <span class="material-symbols-outlined text-[11px]"
+                          >notifications_active</span
+                        >
                         UI
                       }
                     </span>
@@ -516,12 +534,7 @@ const DEFAULT_DRAFT: DraftRule = {
                       {{ r.enabled ? 'toggle_on' : 'toggle_off' }}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    class="ar-icon-btn"
-                    (click)="openEdit(r)"
-                    title="Editar"
-                  >
+                  <button type="button" class="ar-icon-btn" (click)="openEdit(r)" title="Editar">
                     <span class="material-symbols-outlined text-[16px]">edit</span>
                   </button>
                   <button
@@ -606,7 +619,7 @@ const DEFAULT_DRAFT: DraftRule = {
         font-size: 12px;
       }
       .ar-test-msg--err {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
         border-color: rgba(239, 68, 68, 0.25);
       }
@@ -641,7 +654,9 @@ const DEFAULT_DRAFT: DraftRule = {
         border: 1px solid #e2e8f0;
         border-radius: 8px;
         text-align: left;
-        transition: border-color 0.15s, background 0.15s;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
       }
       .ar-template-card:hover {
         border-color: var(--color-primary-tint-40);
@@ -815,12 +830,12 @@ const DEFAULT_DRAFT: DraftRule = {
         font-weight: 600;
       }
       .ar-choice--warn.ar-choice--active {
-        background: rgba(245, 158, 11, 0.10);
+        background: rgba(245, 158, 11, 0.1);
         border-color: #d97706;
         color: #d97706;
       }
       .ar-choice--crit.ar-choice--active {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         border-color: #dc2626;
         color: #dc2626;
       }
@@ -945,7 +960,7 @@ const DEFAULT_DRAFT: DraftRule = {
         border-radius: 50%;
         background: var(--color-success);
         color: var(--color-surface);
-        box-shadow: 0 1px 4px rgba(34, 197, 94, 0.40);
+        box-shadow: 0 1px 4px rgba(34, 197, 94, 0.4);
       }
       .ar-user-card:hover {
         border-color: var(--color-primary-tint-40);
@@ -1061,7 +1076,7 @@ const DEFAULT_DRAFT: DraftRule = {
         height: 18px;
         background: #ffffff;
         border-radius: 50%;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.20);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
         transition: transform 0.18s;
       }
       .ar-toggle input:checked + .ar-toggle-track {
@@ -1182,7 +1197,7 @@ const DEFAULT_DRAFT: DraftRule = {
         align-items: center;
         gap: 5px;
         padding: 7px 10px;
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
         border: 1px solid rgba(239, 68, 68, 0.25);
         border-radius: 7px;
@@ -1242,7 +1257,9 @@ const DEFAULT_DRAFT: DraftRule = {
         border: 1px solid #e2e8f0;
         border-radius: 7px;
         cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
       }
       .ar-recipient-check:hover {
         border-color: var(--color-primary-tint-30);
@@ -1356,16 +1373,15 @@ const DEFAULT_DRAFT: DraftRule = {
 
       /* Skeleton */
       @keyframes arSkelShimmer {
-        0% { background-position: -200px 0; }
-        100% { background-position: calc(200px + 100%) 0; }
+        0% {
+          background-position: -200px 0;
+        }
+        100% {
+          background-position: calc(200px + 100%) 0;
+        }
       }
       .ar-skel {
-        background: linear-gradient(
-          90deg,
-          #f1f5f9 0px,
-          #e2e8f0 80px,
-          #f1f5f9 160px
-        );
+        background: linear-gradient(90deg, #f1f5f9 0px, #e2e8f0 80px, #f1f5f9 160px);
         background-size: 200px 100%;
         background-repeat: no-repeat;
         animation: arSkelShimmer 1.4s linear infinite;
@@ -1428,7 +1444,9 @@ const DEFAULT_DRAFT: DraftRule = {
         border: 1px solid #e2e8f0;
         border-radius: 10px;
         padding: 12px 14px;
-        transition: opacity 0.15s, box-shadow 0.15s;
+        transition:
+          opacity 0.15s,
+          box-shadow 0.15s;
       }
       .ar-card:hover {
         box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
@@ -1453,11 +1471,11 @@ const DEFAULT_DRAFT: DraftRule = {
         color: var(--color-primary);
       }
       .ar-card-icon[data-severity='crit'] {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #dc2626;
       }
       .ar-card-icon[data-severity='warn'] {
-        background: rgba(245, 158, 11, 0.10);
+        background: rgba(245, 158, 11, 0.1);
         color: #d97706;
       }
       .ar-card-icon .material-symbols-outlined {
@@ -1546,7 +1564,10 @@ const DEFAULT_DRAFT: DraftRule = {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #64748b;
-        transition: color 0.15s, border-color 0.15s, background 0.15s;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          background 0.15s;
       }
       .ar-icon-btn:hover {
         color: var(--color-primary);
@@ -1555,7 +1576,7 @@ const DEFAULT_DRAFT: DraftRule = {
       }
       .ar-icon-btn--danger:hover {
         color: #dc2626;
-        border-color: rgba(239, 68, 68, 0.30);
+        border-color: rgba(239, 68, 68, 0.3);
         background: rgba(239, 68, 68, 0.05);
       }
     `,
@@ -1581,10 +1602,11 @@ export class CompaniesAlarmRulesPanelComponent {
     this.testEmailMsg.set(null);
     this.testEmailError.set(false);
     this.http
-      .post<{ ok: boolean; sentTo?: string; error?: string }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-test-email`,
-        {},
-      )
+      .post<{
+        ok: boolean;
+        sentTo?: string;
+        error?: string;
+      }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-test-email`, {})
       .subscribe({
         next: (res) => {
           this.testEmailLoading.set(false);
@@ -1862,8 +1884,7 @@ export class CompaniesAlarmRulesPanelComponent {
       op: this.draft.op,
       threshold: this.draft.threshold,
       targetKind: this.draft.targetKind,
-      targetValue:
-        this.draft.targetKind === 'all' ? null : this.draft.targetValue.trim(),
+      targetValue: this.draft.targetKind === 'all' ? null : this.draft.targetValue.trim(),
       sustainedMin: this.draft.sustainedMin,
       severity: this.draft.severity,
       notifyEmail: this.draft.recipientUserIds.length > 0,

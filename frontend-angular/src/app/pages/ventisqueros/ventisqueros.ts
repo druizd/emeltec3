@@ -686,7 +686,10 @@ interface MetricOption {
                           ></span>
                           Crítico sostenido · {{ fmtMinutes(longestOngoingMin(sa)) }}
                           @if (isSalaStale(sa)) {
-                            <span class="sala-status-stale" title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida">
+                            <span
+                              class="sala-status-stale"
+                              title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida"
+                            >
                               · sin lectura reciente
                             </span>
                           }
@@ -699,7 +702,10 @@ interface MetricOption {
                           ></span>
                           Desviación sostenida · {{ fmtMinutes(longestOngoingMin(sa)) }}
                           @if (isSalaStale(sa)) {
-                            <span class="sala-status-stale" title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida">
+                            <span
+                              class="sala-status-stale"
+                              title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida"
+                            >
                               · sin lectura reciente
                             </span>
                           }
@@ -1064,8 +1070,7 @@ interface MetricOption {
                 Estado de red, señal y transmisión por concentrador
               </p>
             </div>
-            <div class="flex items-center gap-2">
-            </div>
+            <div class="flex items-center gap-2"></div>
           </div>
 
           <!-- Diag KPI strip -->
@@ -1216,9 +1221,7 @@ interface MetricOption {
                   </div>
                   <div
                     class="vs-tap-cov-spark"
-                    [title]="
-                      'Sparkline transmisión 24h · cada barra = 24min. Verde = al menos 1 lectura, gris = gap'
-                    "
+                    [title]="'Sparkline transmisión 24h · cada barra = 24min. Verde = al menos 1 lectura, gris = gap'"
                   >
                     @for (s of d.coverageSlots; track $index) {
                       <span
@@ -1234,7 +1237,6 @@ interface MetricOption {
                     <span>ahora</span>
                   </div>
                 </div>
-
 
                 <div
                   class="relative z-10 mt-3 flex items-center justify-end gap-2 border-t border-slate-100 pt-2"
@@ -1310,12 +1312,18 @@ interface MetricOption {
 
           @if (alarmsFiltered().length === 0) {
             <div class="vs-alarms-empty">
-              <span class="material-symbols-outlined text-[32px] text-emerald-300">check_circle</span>
+              <span class="material-symbols-outlined text-[32px] text-emerald-300"
+                >check_circle</span
+              >
               <div class="vs-alarms-empty-title">
-                {{ alarmsCounts().total === 0 ? 'Sin alarmas activas' : 'Sin alarmas en este filtro' }}
+                {{
+                  alarmsCounts().total === 0 ? 'Sin alarmas activas' : 'Sin alarmas en este filtro'
+                }}
               </div>
               @if (alarmsCounts().total === 0) {
-                <div class="vs-alarms-empty-sub">Todos los sensores dentro de banda y reportando.</div>
+                <div class="vs-alarms-empty-sub">
+                  Todos los sensores dentro de banda y reportando.
+                </div>
               }
             </div>
           } @else {
@@ -1329,7 +1337,13 @@ interface MetricOption {
                     <div class="vs-alarm-head">
                       <span class="vs-alarm-title">{{ al.title }}</span>
                       <span class="vs-alarm-sev" [attr.data-severity]="al.severity">
-                        {{ al.severity === 'crit' ? 'Crítica' : al.severity === 'warn' ? 'Advertencia' : 'Info' }}
+                        {{
+                          al.severity === 'crit'
+                            ? 'Crítica'
+                            : al.severity === 'warn'
+                              ? 'Advertencia'
+                              : 'Info'
+                        }}
                       </span>
                     </div>
                     <div class="vs-alarm-detail">{{ al.detail }}</div>
@@ -1746,11 +1760,7 @@ interface MetricOption {
                 }
               </div>
               @if (auditFiltered().length > auditPaged().length) {
-                <button
-                  type="button"
-                  class="vs-audit-loadmore"
-                  (click)="loadMoreAudit()"
-                >
+                <button type="button" class="vs-audit-loadmore" (click)="loadMoreAudit()">
                   <span class="material-symbols-outlined text-[14px]">expand_more</span>
                   Cargar más ({{ auditFiltered().length - auditPaged().length }} restantes)
                 </button>
@@ -1766,7 +1776,12 @@ interface MetricOption {
         <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
           <header class="vs-hx-head">
             <div class="vs-hx-title">Descargar historial</div>
-            <button type="button" class="vs-hx-close" (click)="closeHistoryExport()" aria-label="Cerrar">
+            <button
+              type="button"
+              class="vs-hx-close"
+              (click)="closeHistoryExport()"
+              aria-label="Cerrar"
+            >
               <span class="material-symbols-outlined text-[18px]">close</span>
             </button>
           </header>
@@ -1842,7 +1857,8 @@ interface MetricOption {
                 <div class="vs-hx-section-title">
                   3. Sensores
                   <span class="vs-hx-count">
-                    {{ historyExportSelectedSensors().size }} / {{ exportAvailableSensors().length }}
+                    {{ historyExportSelectedSensors().size }} /
+                    {{ exportAvailableSensors().length }}
                   </span>
                 </div>
                 @if (exportAvailableSensors().length > 0) {
@@ -1897,7 +1913,9 @@ interface MetricOption {
               (click)="confirmHistoryExport()"
             >
               @if (historyExportLoading()) {
-                <span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                <span class="material-symbols-outlined text-[14px] animate-spin"
+                  >progress_activity</span
+                >
                 Generando…
               } @else {
                 <span class="material-symbols-outlined text-[14px]">download</span>
@@ -2102,7 +2120,10 @@ interface MetricOption {
         font-family: var(--font-body);
         font-size: 12px;
         cursor: pointer;
-        transition: color 0.12s, background 0.12s, border-color 0.12s;
+        transition:
+          color 0.12s,
+          background 0.12s,
+          border-color 0.12s;
         background: transparent;
         color: #64748b;
         font-weight: 500;
@@ -2269,7 +2290,9 @@ interface MetricOption {
         border-radius: 14px;
         padding: 12px 10px;
         box-sizing: border-box;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+        box-shadow:
+          0 1px 4px rgba(0, 0, 0, 0.04),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.6);
       }
       .vs-tap-panel-head {
         padding: 0 4px 4px;
@@ -3046,7 +3069,7 @@ interface MetricOption {
       }
       .comp-trend-grid-line {
         height: 1px;
-        background: rgba(148, 163, 184, 0.20);
+        background: rgba(148, 163, 184, 0.2);
       }
       .comp-trend-ref {
         position: absolute;
@@ -3283,13 +3306,17 @@ interface MetricOption {
       .vs-hx-backdrop {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.50);
+        background: rgba(15, 23, 42, 0.5);
         z-index: 50;
         animation: hxFadeIn 0.15s ease-out;
       }
       @keyframes hxFadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
       }
       .vs-hx-modal {
         position: fixed;
@@ -3305,11 +3332,17 @@ interface MetricOption {
         z-index: 51;
         display: flex;
         flex-direction: column;
-        animation: hxScaleIn 0.20s cubic-bezier(0.16, 1, 0.3, 1);
+        animation: hxScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
       @keyframes hxScaleIn {
-        from { opacity: 0; transform: translate(-50%, -50%) scale(0.96); }
-        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        from {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
       }
       .vs-hx-head {
         display: flex;
@@ -3438,7 +3471,9 @@ interface MetricOption {
         border: 1px solid #e2e8f0;
         border-radius: 7px;
         cursor: pointer;
-        transition: border-color 0.15s, background 0.15s;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
       }
       .vs-hx-checkbox:hover {
         border-color: var(--color-primary-tint-30);
@@ -3476,7 +3511,7 @@ interface MetricOption {
         align-items: center;
         gap: 5px;
         padding: 8px 10px;
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
         border: 1px solid rgba(239, 68, 68, 0.25);
         border-radius: 7px;
@@ -3524,7 +3559,9 @@ interface MetricOption {
         animation: hxSpin 0.9s linear infinite;
       }
       @keyframes hxSpin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       /* Alarmas tab */
@@ -3545,7 +3582,10 @@ interface MetricOption {
         font-family: var(--font-dm);
         font-size: 11.5px;
         font-weight: 500;
-        transition: color 0.15s, border-color 0.15s, background 0.15s;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          background 0.15s;
       }
       .vs-alarms-chip strong {
         font-family: var(--font-mono);
@@ -3638,11 +3678,11 @@ interface MetricOption {
         flex-shrink: 0;
       }
       .vs-alarm-icon[data-severity='crit'] {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: var(--color-danger);
       }
       .vs-alarm-icon[data-severity='warn'] {
-        background: rgba(245, 158, 11, 0.10);
+        background: rgba(245, 158, 11, 0.1);
         color: var(--color-warning);
       }
       .vs-alarm-icon[data-severity='info'] {
@@ -3721,7 +3761,10 @@ interface MetricOption {
         color: #64748b;
         align-self: center;
         flex-shrink: 0;
-        transition: color 0.15s, border-color 0.15s, background 0.15s;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          background 0.15s;
       }
       .vs-alarm-action:hover {
         color: var(--color-primary);
@@ -3838,7 +3881,10 @@ interface MetricOption {
         font-size: 12px;
         font-weight: 500;
         border-radius: 8px;
-        transition: color 0.15s, border-color 0.15s, background 0.15s;
+        transition:
+          color 0.15s,
+          border-color 0.15s,
+          background 0.15s;
       }
       .vs-audit-loadmore:hover {
         color: var(--color-primary);
@@ -3865,11 +3911,11 @@ interface MetricOption {
         color: var(--color-primary);
       }
       .vs-audit-row[data-category='defrost'] .vs-audit-cat {
-        background: rgba(14, 165, 233, 0.10);
+        background: rgba(14, 165, 233, 0.1);
         color: #0369a1;
       }
       .vs-audit-row[data-category='deviation'] .vs-audit-cat {
-        background: rgba(239, 68, 68, 0.10);
+        background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
       }
       .vs-audit-row-head {
@@ -4861,7 +4907,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return ['/companies', tapSiteId, 'tap', tap.replace(' ', '-')];
   }
 
-
   isTapStale(tap: TapKey): boolean {
     const age = this.tapLastSeenAgeMs()[tap];
     return age === null || age === undefined ? true : age > 300_000;
@@ -5631,7 +5676,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     for (const d of devs) {
       if (!this.deviationsSvc.isOpen(d)) continue;
       const sinceMs = nowMs - new Date(d.startTs).getTime();
-      const sevMap: Record<string, 'crit' | 'warn'> = { severe: 'crit', crit: 'crit', warn: 'warn' };
+      const sevMap: Record<string, 'crit' | 'warn'> = {
+        severe: 'crit',
+        crit: 'crit',
+        warn: 'warn',
+      };
       out.push({
         id: `dev-${d.id}`,
         type: 'deviation',
@@ -5735,7 +5784,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     // Sort: crit primero, luego warn, luego info. Dentro de severidad por sinceMs desc.
     const sevRank = { crit: 0, warn: 1, info: 2 } as const;
     out.sort((a, b) => {
-      if (sevRank[a.severity] !== sevRank[b.severity]) return sevRank[a.severity] - sevRank[b.severity];
+      if (sevRank[a.severity] !== sevRank[b.severity])
+        return sevRank[a.severity] - sevRank[b.severity];
       return (b.sinceMs ?? 0) - (a.sinceMs ?? 0);
     });
     return out;
@@ -5801,7 +5851,9 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     this.historyExportSelectedSalas.set(cur);
     // Limpia sensores cuyo área ya no está seleccionada.
     const validIds = new Set(this.exportAvailableSensors().map((s) => s.id));
-    const cleanSensors = new Set([...this.historyExportSelectedSensors()].filter((id) => validIds.has(id)));
+    const cleanSensors = new Set(
+      [...this.historyExportSelectedSensors()].filter((id) => validIds.has(id)),
+    );
     this.historyExportSelectedSensors.set(cleanSensors);
   }
 
@@ -5866,29 +5918,35 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     const allIds = related.length > 0 ? [...new Set([sid, ...related])] : [sid];
 
     this.historyExportLoading.set(true);
-    this.coldRoom.exportHistory(sid, from.toISOString(), to.toISOString(), allIds, sensors).subscribe({
-      next: async (res) => {
-        this.historyExportLoading.set(false);
-        if (!res.ok) {
-          this.historyExportError.set(res.error || 'Error al obtener datos.');
-          return;
-        }
-        if (res.data.points.length === 0) {
-          this.historyExportError.set('Sin datos en el rango seleccionado.');
-          return;
-        }
-        try {
-          await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
-          this.closeHistoryExport();
-        } catch (err) {
-          this.historyExportError.set('Error al generar Excel: ' + (err instanceof Error ? err.message : String(err)));
-        }
-      },
-      error: (err) => {
-        this.historyExportLoading.set(false);
-        this.historyExportError.set('Error HTTP: ' + (err?.error?.error || err?.message || 'desconocido'));
-      },
-    });
+    this.coldRoom
+      .exportHistory(sid, from.toISOString(), to.toISOString(), allIds, sensors)
+      .subscribe({
+        next: async (res) => {
+          this.historyExportLoading.set(false);
+          if (!res.ok) {
+            this.historyExportError.set(res.error || 'Error al obtener datos.');
+            return;
+          }
+          if (res.data.points.length === 0) {
+            this.historyExportError.set('Sin datos en el rango seleccionado.');
+            return;
+          }
+          try {
+            await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
+            this.closeHistoryExport();
+          } catch (err) {
+            this.historyExportError.set(
+              'Error al generar Excel: ' + (err instanceof Error ? err.message : String(err)),
+            );
+          }
+        },
+        error: (err) => {
+          this.historyExportLoading.set(false);
+          this.historyExportError.set(
+            'Error HTTP: ' + (err?.error?.error || err?.message || 'desconocido'),
+          );
+        },
+      });
   }
 
   // Lazy load xlsx — primer click paga la descarga (~150 kB), siguientes
@@ -5923,7 +5981,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   private async downloadHistoryXlsx(
-    points: { ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }[],
+    points: {
+      ts: string;
+      sensorId: string;
+      area: string;
+      tap: string;
+      t: number | null;
+      h: number | null;
+    }[],
     from: Date,
     to: Date,
     view: string,
@@ -6268,9 +6333,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       }
 
       const oldestIso =
-        transmissionAgeMs !== null
-          ? new Date(now - transmissionAgeMs).toISOString()
-          : null;
+        transmissionAgeMs !== null ? new Date(now - transmissionAgeMs).toISOString() : null;
 
       return {
         tap,
@@ -6347,12 +6410,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       // Pollear en General, Salas, Compliance y TAP técnico — todos usan
       // coldRoomSensors. Sin esto el TAP técnico queda congelado en datos
       // iniciales y status no se refresca.
-      if (
-        tab === 'general' ||
-        tab === 'salas' ||
-        tab === 'compliance' ||
-        tab === 'taps'
-      ) {
+      if (tab === 'general' || tab === 'salas' || tab === 'compliance' || tab === 'taps') {
         this.startColdRoomPolling();
       } else {
         this.stopColdRoomPolling();

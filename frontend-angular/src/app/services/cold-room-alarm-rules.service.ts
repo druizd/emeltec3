@@ -58,9 +58,10 @@ export class ColdRoomAlarmRulesService {
     const sid = this.currentSiteId;
     if (!sid) return;
     this.http
-      .get<{ ok: boolean; data: AlarmRule[] }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-rules`,
-      )
+      .get<{
+        ok: boolean;
+        data: AlarmRule[];
+      }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-rules`)
       .subscribe({
         next: (res) => {
           if (res.ok) this.rulesSignal.set(res.data || []);
@@ -74,9 +75,10 @@ export class ColdRoomAlarmRulesService {
     const sid = this.currentSiteId;
     if (!sid) return;
     this.http
-      .get<{ ok: boolean; data: EligibleUser[] }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-eligible-users`,
-      )
+      .get<{
+        ok: boolean;
+        data: EligibleUser[];
+      }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-eligible-users`)
       .subscribe({
         next: (res) => {
           if (res.ok) this.usersSignal.set(res.data || []);
@@ -90,10 +92,7 @@ export class ColdRoomAlarmRulesService {
     const sid = this.currentSiteId;
     if (!sid) return;
     this.http
-      .post<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-rules`,
-        rule,
-      )
+      .post<{ ok: boolean }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-rules`, rule)
       .subscribe({ next: () => this.refresh() });
   }
 
@@ -104,10 +103,9 @@ export class ColdRoomAlarmRulesService {
     if (!cur) return;
     const merged = { ...cur, ...patch };
     this.http
-      .put<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-rules/${encodeURIComponent(id)}`,
-        merged,
-      )
+      .put<{
+        ok: boolean;
+      }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-rules/${encodeURIComponent(id)}`, merged)
       .subscribe({ next: () => this.refresh() });
   }
 
@@ -115,9 +113,9 @@ export class ColdRoomAlarmRulesService {
     const sid = this.currentSiteId;
     if (!sid) return;
     this.http
-      .delete<{ ok: boolean }>(
-        `/api/cold-room/${encodeURIComponent(sid)}/alarm-rules/${encodeURIComponent(id)}`,
-      )
+      .delete<{
+        ok: boolean;
+      }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-rules/${encodeURIComponent(id)}`)
       .subscribe({ next: () => this.refresh() });
   }
 
@@ -133,8 +131,7 @@ export class ColdRoomAlarmRulesService {
       humedad: 'Humedad',
       transmision: 'Sin transmitir (min)',
     };
-    const unit =
-      rule.metric === 'temperatura' ? '°C' : rule.metric === 'humedad' ? '%' : 'min';
+    const unit = rule.metric === 'temperatura' ? '°C' : rule.metric === 'humedad' ? '%' : 'min';
     const targetLabel =
       rule.targetKind === 'all'
         ? 'Todos los sensores'

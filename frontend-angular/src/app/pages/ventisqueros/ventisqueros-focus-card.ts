@@ -217,7 +217,6 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
 export class VentisquerosFocusCardComponent {
   readonly focus = input.required<Sensor | undefined>();
 
-
   fmtHumValue(h: number): number {
     return Number(h.toFixed(2));
   }
