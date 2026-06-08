@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import {
   ChangeDetectionStrategy,
@@ -67,16 +68,36 @@ const DEFAULT_DRAFT: DraftRule = {
             a usuarios seleccionados.
           </p>
         </div>
-        <button
-          type="button"
-          class="ar-btn ar-btn--primary ar-btn--big"
-          (click)="openCreate()"
-          [disabled]="formOpen()"
-        >
-          <span class="material-symbols-outlined text-[18px]">add_alert</span>
-          Crear alarma
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="ar-btn"
+            (click)="sendTestEmail()"
+            [disabled]="testEmailLoading()"
+            title="Envía un email de prueba a tu correo para verificar el formato"
+          >
+            @if (testEmailLoading()) {
+              <span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+              Enviando…
+            } @else {
+              <span class="material-symbols-outlined text-[14px]">mail</span>
+              Test email
+            }
+          </button>
+          <button
+            type="button"
+            class="ar-btn ar-btn--primary ar-btn--big"
+            (click)="openCreate()"
+            [disabled]="formOpen()"
+          >
+            <span class="material-symbols-outlined text-[18px]">add_alert</span>
+            Crear alarma
+          </button>
+        </div>
       </div>
+      @if (testEmailMsg(); as msg) {
+        <div class="ar-test-msg" [class.ar-test-msg--err]="testEmailError()">{{ msg }}</div>
+      }
 
       @if (!formOpen() && rules().length === 0) {
         <div class="ar-templates">
@@ -545,6 +566,21 @@ const DEFAULT_DRAFT: DraftRule = {
         line-height: 1.45;
       }
 
+      .ar-test-msg {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary-container);
+        border: 1px solid var(--color-primary-tint-30);
+        border-radius: 8px;
+        font-family: var(--font-body);
+        font-size: 12px;
+      }
+      .ar-test-msg--err {
+        background: rgba(239, 68, 68, 0.10);
+        color: #b91c1c;
+        border-color: rgba(239, 68, 68, 0.25);
+      }
       .ar-templates {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -1451,6 +1487,46 @@ const DEFAULT_DRAFT: DraftRule = {
 export class CompaniesAlarmRulesPanelComponent implements OnChanges {
   private readonly svc = inject(ColdRoomAlarmRulesService);
   private readonly coldRoom = inject(ColdRoomService);
+  private readonly http = inject(HttpClient);
+
+  readonly testEmailLoading = signal<boolean>(false);
+  readonly testEmailMsg = signal<string | null>(null);
+  readonly testEmailError = signal<boolean>(false);
+
+  sendTestEmail(): void {
+    const sid = this._siteId();
+    if (!sid) {
+      this.testEmailMsg.set('Sin sitio seleccionado.');
+      this.testEmailError.set(true);
+      return;
+    }
+    this.testEmailLoading.set(true);
+    this.testEmailMsg.set(null);
+    this.testEmailError.set(false);
+    this.http
+      .post<{ ok: boolean; sentTo?: string; error?: string }>(
+        `/api/cold-room/${encodeURIComponent(sid)}/alarm-test-email`,
+        {},
+      )
+      .subscribe({
+        next: (res) => {
+          this.testEmailLoading.set(false);
+          if (res.ok) {
+            this.testEmailMsg.set(`Email de prueba enviado a ${res.sentTo}`);
+            this.testEmailError.set(false);
+            setTimeout(() => this.testEmailMsg.set(null), 6000);
+          } else {
+            this.testEmailMsg.set(res.error || 'Error al enviar.');
+            this.testEmailError.set(true);
+          }
+        },
+        error: (err) => {
+          this.testEmailLoading.set(false);
+          this.testEmailMsg.set('Error: ' + (err?.error?.error || err?.message || 'desconocido'));
+          this.testEmailError.set(true);
+        },
+      });
+  }
 
   private readonly _coldRoomSiteIds = signal<string[]>([]);
   private readonly _siteId = signal<string>('');

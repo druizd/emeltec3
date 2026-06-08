@@ -492,7 +492,7 @@ interface MetricOption {
                 type="button"
                 class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="openHistoryExport()"
-                title="Descargar historial CSV con rango y sensores configurables"
+                title="Descargar historial Excel con rango y sensores configurables"
               >
                 <span class="material-symbols-outlined text-[14px]">download</span>
                 Descargar historial
@@ -685,6 +685,11 @@ interface MetricOption {
                             class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-700"
                           ></span>
                           Crítico sostenido · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                          @if (isSalaStale(sa)) {
+                            <span class="sala-status-stale" title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida">
+                              · sin lectura reciente
+                            </span>
+                          }
                         </span>
                       }
                       @case ('crit') {
@@ -693,6 +698,11 @@ interface MetricOption {
                             class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"
                           ></span>
                           Desviación sostenida · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                          @if (isSalaStale(sa)) {
+                            <span class="sala-status-stale" title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida">
+                              · sin lectura reciente
+                            </span>
+                          }
                         </span>
                       }
                       @case ('warn') {
@@ -1891,7 +1901,7 @@ interface MetricOption {
                 Generando…
               } @else {
                 <span class="material-symbols-outlined text-[14px]">download</span>
-                Descargar CSV
+                Descargar Excel
               }
             </button>
           </footer>
@@ -4285,6 +4295,11 @@ interface MetricOption {
         padding: 3px 8px;
         border-radius: 999px;
       }
+      .sala-status-stale {
+        font-style: italic;
+        font-weight: 500;
+        opacity: 0.85;
+      }
       .sala-status--crit {
         background: rgba(239, 68, 68, 0.1);
         color: #b91c1c;
@@ -5051,26 +5066,22 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       byArea.set(key, list);
     }
 
-    // Sensor cuenta como "activo para cómputo" sólo si:
+    // Sensor cuenta como "activo para cómputo" si:
     //  - no está defective
     //  - reportó alguna vez (lastSeen > epoch)
-    //  - su última lectura no es muy vieja (TAP caído >15min → "—" en UI)
-    // Sensor stale prolongado suele reportar ceros antes de morir; mostrarlos
-    // en el big number engaña al operador. UI cae a "—" + pill Reportando ya
-    // señala el stale.
-    const STALE_THRESHOLD_MS = 15 * 60_000;
-    const nowMs = Date.now();
-    const isFreshish = (s: ColdRoomSensor): boolean => {
+    // No filtramos por staleness aquí: si el TAP cayó hace rato, mostrar la
+    // última lectura conocida (mejor que "—" en blanco). Pill "Reportando" ya
+    // señala visualmente cuántos están reportando reciente vs total.
+    const isActiveSensor = (s: ColdRoomSensor): boolean => {
       if (s.defective) return false;
       if (!s.lastSeen) return false;
       const ts = new Date(s.lastSeen).getTime();
-      if (!Number.isFinite(ts) || ts <= 0) return false;
-      return nowMs - ts < STALE_THRESHOLD_MS;
+      return Number.isFinite(ts) && ts > 0;
     };
 
     const out: SalaAggregate[] = [];
     for (const [area, sensors] of byArea) {
-      const active = sensors.filter(isFreshish);
+      const active = sensors.filter(isActiveSensor);
       const defectiveSensors = sensors.filter((s) => s.defective);
       const defectiveReasons = defectiveSensors
         .map((s) => `${s.id}: ${s.defectiveReason || 'fuera de servicio'}`)
@@ -5856,7 +5867,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
     this.historyExportLoading.set(true);
     this.coldRoom.exportHistory(sid, from.toISOString(), to.toISOString(), allIds, sensors).subscribe({
-      next: (res) => {
+      next: async (res) => {
         this.historyExportLoading.set(false);
         if (!res.ok) {
           this.historyExportError.set(res.error || 'Error al obtener datos.');
@@ -5866,8 +5877,12 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
           this.historyExportError.set('Sin datos en el rango seleccionado.');
           return;
         }
-        this.downloadHistoryCsv(res.data.points, from, to, res.meta.view);
-        this.closeHistoryExport();
+        try {
+          await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
+          this.closeHistoryExport();
+        } catch (err) {
+          this.historyExportError.set('Error al generar Excel: ' + (err instanceof Error ? err.message : String(err)));
+        }
       },
       error: (err) => {
         this.historyExportLoading.set(false);
@@ -5876,32 +5891,99 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     });
   }
 
-  private downloadHistoryCsv(
+  // Lazy load xlsx — primer click paga la descarga (~150 kB), siguientes
+  // clicks reusan el módulo en memoria.
+  private xlsxLoader?: Promise<typeof import('xlsx')>;
+  private async loadXlsx(): Promise<typeof import('xlsx')> {
+    if (!this.xlsxLoader) this.xlsxLoader = import('xlsx');
+    return this.xlsxLoader;
+  }
+
+  private formatChileShort(ts: string): string {
+    const { date, time } = this.formatChileParts(ts);
+    return `${date} ${time}`;
+  }
+
+  private formatChileParts(ts: string): { date: string; time: string } {
+    const d = new Date(ts);
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return {
+      date: `${get('year')}-${get('month')}-${get('day')}`,
+      time: `${get('hour')}:${get('minute')}`,
+    };
+  }
+
+  private async downloadHistoryXlsx(
     points: Array<{ ts: string; sensorId: string; area: string; tap: string; t: number | null; h: number | null }>,
     from: Date,
     to: Date,
     view: string,
-  ): void {
-    const lines = ['timestamp,sensor,area,tap,temperatura_C,humedad_pct'];
-    for (const p of points) {
-      const t = p.t !== null ? p.t.toFixed(2) : '';
-      const h = p.h !== null ? p.h.toFixed(2) : '';
-      const area = `"${(p.area || '').replace(/"/g, '""')}"`;
-      const tap = `"${(p.tap || '').replace(/"/g, '""')}"`;
-      lines.push(`${p.ts},${p.sensorId},${area},${tap},${t},${h}`);
-    }
-    const csv = lines.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    sensorIds: string[],
+  ): Promise<void> {
+    const XLSX = await this.loadXlsx();
+    const wb = XLSX.utils.book_new();
+
+    // Hoja 1: Lecturas (datos crudos).
+    const rows = points.map((p) => {
+      const dt = this.formatChileParts(p.ts);
+      return {
+        Fecha: dt.date,
+        Hora: dt.time,
+        Sensor: p.sensorId,
+        Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
+        TAP: p.tap,
+        'Temperatura (°C)': p.t !== null ? Math.round(p.t * 100) / 100 : null,
+        'Humedad (%)': p.h !== null ? Math.round(p.h * 100) / 100 : null,
+      };
+    });
+    const sheet1 = XLSX.utils.json_to_sheet(rows);
+    sheet1['!cols'] = [
+      { wch: 12 }, // Fecha
+      { wch: 8 }, // Hora
+      { wch: 10 }, // Sensor
+      { wch: 28 }, // Sala
+      { wch: 8 }, // TAP
+      { wch: 16 }, // Temperatura
+      { wch: 14 }, // Humedad
+    ];
+    // Freeze header row.
+    sheet1['!freeze'] = { xSplit: 0, ySplit: 1 };
+    XLSX.utils.book_append_sheet(wb, sheet1, 'Lecturas');
+
+    // Hoja 2: Resumen.
+    const fmtRange = (d: Date) => this.formatChileShort(d.toISOString());
+    const cagg: Record<string, string> = {
+      equipo_1min: '1 minuto',
+      equipo_5min: '5 minutos',
+      equipo_hourly: '1 hora',
+      equipo_daily: '1 día',
+    };
+    const summary = [
+      { Campo: 'Sitio', Valor: 'Ventisqueros' },
+      { Campo: 'Generado', Valor: this.formatChileShort(new Date().toISOString()) },
+      { Campo: 'Rango desde', Valor: fmtRange(from) },
+      { Campo: 'Rango hasta', Valor: fmtRange(to) },
+      { Campo: 'Granularidad', Valor: cagg[view] || view },
+      { Campo: 'Sensores', Valor: sensorIds.join(', ') },
+      { Campo: 'Total lecturas', Valor: points.length },
+    ];
+    const sheet2 = XLSX.utils.json_to_sheet(summary);
+    sheet2['!cols'] = [{ wch: 18 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, sheet2, 'Resumen');
+
     const fmt = (d: Date) =>
       `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-    a.download = `ventisqueros-historial-${fmt(from)}-${fmt(to)}-${view}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = `ventisqueros-historial-${fmt(from)}-${fmt(to)}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   }
 
   readonly salasSinUmbralCount = computed(
@@ -6422,6 +6504,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     const rich = this.coldRoomSensors().filter((s) => s.area === sa.area);
     const exs = this.deviationsSvc.detect(rich).filter((e) => e.ongoing);
     return exs.reduce((m, e) => Math.max(m, e.durationMin), 0);
+  }
+
+  isSalaStale(sa: SalaAggregate): boolean {
+    // Sala stale si ningún sensor activo reportó en últimos 5 min.
+    return sa.activeCount > 0 && sa.reportingCount === 0;
   }
 
   fmtMinutes(min: number): string {

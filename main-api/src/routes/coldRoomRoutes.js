@@ -1680,6 +1680,47 @@ router.get('/:siteId/alarm-eligible-users', async (req, res) => {
   }
 });
 
+// --- Test email (admin diagnostic) ---
+router.post('/:siteId/alarm-test-email', async (req, res) => {
+  try {
+    const u = req.user || {};
+    if (u.tipo !== 'SuperAdmin' && u.tipo !== 'Admin') {
+      return res.status(403).json({ ok: false, error: 'Solo Admin/SuperAdmin' });
+    }
+    const toEmail = req.body?.to || u.email;
+    if (!toEmail) return res.status(400).json({ ok: false, error: 'Email destino requerido' });
+
+    const siteRes = await pool.query(
+      `SELECT descripcion, id_serial FROM sitio WHERE id = $1`,
+      [req.params.siteId],
+    );
+    const site = siteRes.rows[0] || { descripcion: req.params.siteId, id_serial: '—' };
+
+    const fakeRule = {
+      severidad: 'crit',
+      reg_alias: 'STH-01 · Matanza / Eviscerado',
+      sitio_desc: site.descripcion,
+      sitio_id: req.params.siteId,
+      valor_detectado: '12.4°C',
+      condicion_texto: 'temperatura > 10°C',
+      id_serial: site.id_serial,
+      nombre: 'TEST · Temperatura alta Matanza',
+    };
+    const userName = `${u.nombre || ''} ${u.apellido || ''}`.trim() || 'operador';
+
+    await sendAlertEmail(
+      toEmail,
+      userName,
+      'este es un correo de prueba del sistema de alarmas cold-room. Verifica que el formato se vea correcto.',
+      fakeRule,
+    );
+    res.json({ ok: true, sentTo: toEmail });
+  } catch (err) {
+    console.error('[alarm-test-email] error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // --- Events log (read-only) ---
 router.get('/:siteId/alarm-events', async (req, res) => {
   try {
