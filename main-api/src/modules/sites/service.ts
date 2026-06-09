@@ -303,24 +303,21 @@ function findHistoricalVariable(
   role: keyof typeof HISTORICAL_ROLE_TOKENS,
 ): DashboardVariable | null {
   const tokens = HISTORICAL_ROLE_TOKENS[role] ?? [normalizeSearchText(role)];
-  return (
-    variables.find((variable) => {
-      if (role === 'nivel_freatico') {
-        const text = normalizeSearchText(
-          variable.key,
-          variable.alias,
-          variable.rol_dashboard,
-          variable.transformacion,
-        );
-        return text.includes('nivel freatico');
-      }
-      if (variable.rol_dashboard === role || variable.key === role) return true;
-      if (
-        role === 'totalizador' &&
-        ['uint32_registros', 'uint32'].includes(variable.transformacion)
-      ) {
-        return true;
-      }
+  let best: DashboardVariable | null = null;
+  let bestScore = 0;
+
+  for (const variable of variables) {
+    let score = 0;
+
+    if (role === 'nivel_freatico') {
+      const text = normalizeSearchText(
+        variable.key,
+        variable.alias,
+        variable.rol_dashboard,
+        variable.transformacion,
+      );
+      score = text.includes('nivel freatico') ? 80 : 0;
+    } else {
       const text = normalizeSearchText(
         variable.key,
         variable.alias,
@@ -328,9 +325,31 @@ function findHistoricalVariable(
         variable.fuente?.d1,
         variable.fuente?.d2,
       );
-      return tokens.some((t) => text.includes(t));
-    }) ?? null
-  );
+      const matchesText = tokens.some((t) => text.includes(t));
+      const isUInt32Totalizer =
+        role === 'totalizador' && ['uint32_registros', 'uint32'].includes(variable.transformacion);
+
+      if (
+        isUInt32Totalizer &&
+        (variable.rol_dashboard === role || variable.key === role || matchesText)
+      ) {
+        score = 110;
+      } else if (variable.rol_dashboard === role) {
+        score = 90;
+      } else if (variable.key === role) {
+        score = 70;
+      } else if (matchesText) {
+        score = 30;
+      }
+    }
+
+    if (score > bestScore) {
+      best = variable;
+      bestScore = score;
+    }
+  }
+
+  return best;
 }
 
 function serializeHistoricalVariable(variable: DashboardVariable | null): HistoricalCell {

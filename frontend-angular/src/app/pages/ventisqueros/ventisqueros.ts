@@ -572,10 +572,7 @@ interface MetricOption {
                       <div class="flex items-center gap-1.5">
                         <h3 class="sala-card-title truncate">{{ sa.area }}</h3>
                         @if (sa.maintenance) {
-                          <span
-                            class="sala-maint-badge"
-                            [title]="sa.defectiveReasons.join(' · ')"
-                          >
+                          <span class="sala-maint-badge" [title]="sa.defectiveReasons.join(' · ')">
                             <span class="material-symbols-outlined text-[11px]">build</span>
                             En mantención
                           </span>
@@ -693,64 +690,64 @@ interface MetricOption {
                         En mantención · {{ sa.defectiveCount }}/{{ sa.count }} fuera de servicio
                       </span>
                     } @else {
-                    @switch (sa.level) {
-                      @case ('severe') {
-                        <span class="sala-status sala-status--severe">
-                          <span
-                            class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-700"
-                          ></span>
-                          Crítico sostenido · {{ fmtMinutes(longestOngoingMin(sa)) }}
-                          @if (isSalaStale(sa)) {
+                      @switch (sa.level) {
+                        @case ('severe') {
+                          <span class="sala-status sala-status--severe">
                             <span
-                              class="sala-status-stale"
-                              title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida"
-                            >
-                              · sin lectura reciente
-                            </span>
-                          }
-                        </span>
-                      }
-                      @case ('crit') {
-                        <span class="sala-status sala-status--crit">
-                          <span
-                            class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"
-                          ></span>
-                          Desviación sostenida · {{ fmtMinutes(longestOngoingMin(sa)) }}
-                          @if (isSalaStale(sa)) {
+                              class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-700"
+                            ></span>
+                            Crítico sostenido · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                            @if (isSalaStale(sa)) {
+                              <span
+                                class="sala-status-stale"
+                                title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida"
+                              >
+                                · sin lectura reciente
+                              </span>
+                            }
+                          </span>
+                        }
+                        @case ('crit') {
+                          <span class="sala-status sala-status--crit">
                             <span
-                              class="sala-status-stale"
-                              title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida"
-                            >
-                              · sin lectura reciente
-                            </span>
-                          }
-                        </span>
+                              class="vs-pulse-dot inline-block h-1.5 w-1.5 rounded-full bg-rose-500"
+                            ></span>
+                            Desviación sostenida · {{ fmtMinutes(longestOngoingMin(sa)) }}
+                            @if (isSalaStale(sa)) {
+                              <span
+                                class="sala-status-stale"
+                                title="Sensores no han transmitido recientemente; valor mostrado es la última lectura conocida"
+                              >
+                                · sin lectura reciente
+                              </span>
+                            }
+                          </span>
+                        }
+                        @case ('warn') {
+                          <span class="sala-status sala-status--warn">
+                            <span class="material-symbols-outlined text-[12px]">warning</span>
+                            Desviación activa
+                          </span>
+                        }
+                        @case ('info') {
+                          <span class="sala-status sala-status--info">
+                            <span class="material-symbols-outlined text-[12px]">trending_up</span>
+                            Cerca del umbral
+                          </span>
+                        }
+                        @case ('ok') {
+                          <span class="sala-status sala-status--ok">
+                            <span class="material-symbols-outlined text-[12px]">check_circle</span>
+                            Bajo umbral
+                          </span>
+                        }
+                        @default {
+                          <span class="sala-status sala-status--unknown">
+                            <span class="material-symbols-outlined text-[12px]">help</span>
+                            Esperando lectura
+                          </span>
+                        }
                       }
-                      @case ('warn') {
-                        <span class="sala-status sala-status--warn">
-                          <span class="material-symbols-outlined text-[12px]">warning</span>
-                          Desviación activa
-                        </span>
-                      }
-                      @case ('info') {
-                        <span class="sala-status sala-status--info">
-                          <span class="material-symbols-outlined text-[12px]">trending_up</span>
-                          Cerca del umbral
-                        </span>
-                      }
-                      @case ('ok') {
-                        <span class="sala-status sala-status--ok">
-                          <span class="material-symbols-outlined text-[12px]">check_circle</span>
-                          Bajo umbral
-                        </span>
-                      }
-                      @default {
-                        <span class="sala-status sala-status--unknown">
-                          <span class="material-symbols-outlined text-[12px]">help</span>
-                          Esperando lectura
-                        </span>
-                      }
-                    }
                     }
                     <span class="sala-hr" title="Humedad Relativa (promedio sensores)">
                       <span class="material-symbols-outlined text-[12px]">water_drop</span>
@@ -4160,11 +4157,7 @@ interface MetricOption {
         bottom: 16px;
         width: 3px;
         border-radius: 0 3px 3px 0;
-        background: repeating-linear-gradient(
-          135deg,
-          #94a3b8 0 4px,
-          #cbd5e1 4px 8px
-        );
+        background: repeating-linear-gradient(135deg, #94a3b8 0 4px, #cbd5e1 4px 8px);
       }
       .sala-maint-badge {
         display: inline-flex;
