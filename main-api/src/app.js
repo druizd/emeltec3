@@ -26,6 +26,10 @@ const { auditMutations } = require('./services/auditLog');
 
 const app = express();
 
+// Detrás de reverse proxy (nginx). Para que req.ip sea el origen real
+// (audit_log con IP del cliente) habilitamos confianza en 1 hop.
+app.set('trust proxy', 1);
+
 // Capa basica de seguridad HTTP.
 app.use(helmet());
 

@@ -3,22 +3,25 @@
  * valores, descartar slot). Mantiene el alcance simple: 6 dígitos, TTL 5min,
  * almacenamiento en memoria (suficiente para single-instance).
  *
+ * El código se envía al email del usuario que lo solicita (no a un admin
+ * global), de modo que quien va a ejecutar la acción es quien lo recibe.
+ *
  * Multi-instance: migrar a Redis cuando el deploy lo requiera. Cambiar
  * `pendingCodes` Map por get/set con TTL en Redis.
  *
  * Patrón de uso:
- *   1. Admin → POST /api/v2/dga/2fa/request → genera + envía email.
- *   2. Admin → POST /api/v2/dga/review-queue/* con header X-DGA-2FA-Code.
+ *   1. Usuario → POST /api/v2/dga/2fa/request → genera + envía email al solicitante.
+ *   2. Usuario → POST /api/v2/dga/review-queue/* con header X-DGA-2FA-Code.
  *   3. requireDgaTwoFactor middleware valida y consume el código.
  *
  * Códigos son single-use para evitar reuso si el header se loguea.
  */
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
-import { UnauthorizedError, ValidationError } from '../../shared/errors';
+import { InternalError, UnauthorizedError, ValidationError } from '../../shared/errors';
 import type { AuthUser } from '../../shared/permissions';
 import { logger } from '../../config/logger';
-import { sendDgaAdminAlert } from './notifier';
+import { sendDgaUserEmail } from './notifier';
 
 const CODE_TTL_MS = 5 * 60 * 1000;
 const CODE_LENGTH = 6;
@@ -38,25 +41,44 @@ function generateCode(): string {
 }
 
 /**
- * Genera un código nuevo (invalida el anterior si existía), lo guarda con
- * TTL y lo envía al admin email configurado. NO devuelve el código al
- * cliente — solo viaja por email.
+ * Genera un código nuevo (invalida el anterior si existía) y lo envía al
+ * email del solicitante. NO devuelve el código al cliente — solo viaja
+ * por email. Solo guarda el código en `pendingCodes` si el envío fue
+ * exitoso (evita que el endpoint reporte 200 sin haber entregado nada).
  */
 export async function requestDgaCode(user: AuthUser): Promise<void> {
   const userId = String(user.id ?? user.email ?? 'unknown');
+  const to = user.email;
+  if (!to) {
+    throw new ValidationError('Usuario sin email; no se puede enviar código 2FA', {
+      code: 'DGA_2FA_NO_EMAIL',
+    });
+  }
   const code = generateCode();
+  try {
+    await sendDgaUserEmail({
+      to,
+      subject: `[DGA] Código de verificación 2FA`,
+      body:
+        `Código: ${code}\n\n` +
+        `Vence en 5 minutos. Single-use.\n` +
+        `Solicitado por: ${to}\n\n` +
+        `Si no fuiste vos, ignora este email y revisa accesos a la cuenta.`,
+    });
+  } catch (err) {
+    logger.error(
+      { err: (err as Error).message, userId, to },
+      'DGA 2FA: fallo al enviar email — código no emitido',
+    );
+    throw new InternalError('No se pudo enviar el código 2FA por email', {
+      code: 'DGA_2FA_EMAIL_FAILED',
+      cause: err,
+    });
+  }
   pendingCodes.set(userId, {
     code,
     expiresAt: Date.now() + CODE_TTL_MS,
     userId,
-  });
-  await sendDgaAdminAlert({
-    subject: `[DGA] Código de verificación 2FA`,
-    body:
-      `Código: ${code}\n\n` +
-      `Vence en 5 minutos. Single-use.\n` +
-      `Solicitado por: ${user.email ?? userId}\n\n` +
-      `Si no fuiste vos, ignora este email y revisa accesos a la cuenta.`,
   });
   logger.info({ userId, ttl: CODE_TTL_MS }, 'DGA 2FA: código emitido y enviado por email');
 }
