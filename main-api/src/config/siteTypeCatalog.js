@@ -21,7 +21,7 @@ const COMMON_TRANSFORMS = [
   {
     id: 'uint32_registros',
     label: 'D1 * D2',
-    description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo.',
+    description: 'Combina dos registros Modbus: (registro alto * 65536) + registro bajo + offset.',
     enabled: true,
     requiresD2: true,
   },
