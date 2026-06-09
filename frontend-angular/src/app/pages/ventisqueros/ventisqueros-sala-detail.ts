@@ -2273,11 +2273,19 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     }
     this.coldRoom.setSensorDefective(sid, s.id, next, reason).subscribe({
       next: () => {
-        // Refrescar fetch para reflejar nuevo estado.
         this.fetchData();
       },
       error: (err) => {
         console.error('[setSensorDefective] failed:', err?.status, err?.error || err?.message);
+        const status = err?.status;
+        const serverMsg = err?.error?.error || err?.message || 'Error desconocido';
+        const userMsg =
+          status === 403
+            ? 'No tienes permisos para modificar sensores en este sitio.'
+            : status === 404
+              ? `Sensor ${s.id} no encontrado en el mapa de registros.`
+              : `No se pudo ${next ? 'marcar' : 'reactivar'} el sensor: ${serverMsg}`;
+        window.alert(userMsg);
       },
     });
   }

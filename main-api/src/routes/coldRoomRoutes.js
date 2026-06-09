@@ -1221,18 +1221,28 @@ router.put(
     try {
       const actor = actorFromReq(req);
 
-      // Aliases del sensor (ej. STH-02.T, STH-02.H).
+      // Sensor puede vivir en TAP sub-site (bundle), no en el primary. Buscamos
+      // dentro de todos los sitios de la misma empresa que el primary siteId.
+      const empRes = await pool.query(`SELECT empresa_id FROM sitio WHERE id = $1`, [siteId]);
+      if (empRes.rowCount === 0) {
+        return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
+      }
+      const empresaId = empRes.rows[0].empresa_id;
+
+      // Aliases del sensor (ej. STH-02.T, STH-02.H) en cualquier sitio de la empresa.
       const aliasFilter = `${sensorId}.%`;
       const prevRes = await pool.query(
-        `SELECT alias, parametros FROM reg_map
-       WHERE sitio_id = $1 AND alias LIKE $2`,
-        [siteId, aliasFilter],
+        `SELECT rm.alias, rm.sitio_id, rm.parametros
+           FROM reg_map rm
+           JOIN sitio s ON s.id = rm.sitio_id
+          WHERE s.empresa_id = $1 AND rm.alias LIKE $2`,
+        [empresaId, aliasFilter],
       );
       if (prevRes.rowCount === 0) {
         return res.status(404).json({ ok: false, error: 'Sensor no encontrado en reg_map' });
       }
 
-      // Aplicar patch a parametros JSONB de cada alias.
+      // Aplicar patch a parametros JSONB de cada alias (puede ser multi-sitio).
       for (const row of prevRes.rows) {
         const params = row.parametros || {};
         if (defective) {
@@ -1249,7 +1259,7 @@ router.put(
         await pool.query(
           `UPDATE reg_map SET parametros = $1, updated_at = NOW()
          WHERE sitio_id = $2 AND alias = $3`,
-          [JSON.stringify(params), siteId, row.alias],
+          [JSON.stringify(params), row.sitio_id, row.alias],
         );
       }
 
