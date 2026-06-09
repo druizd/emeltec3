@@ -51,8 +51,10 @@ function loadMailService(): MailService | null {
 }
 
 /**
- * Envía un email de alerta admin. Si no hay destinatario configurado
- * (MONITOR_PRIMARY_EMAIL vacío), loguea warn y sigue sin error.
+ * Envía un email de alerta admin a MONITOR_PRIMARY_EMAIL (reconciler,
+ * anomalías de pipeline). Si no hay destinatario configurado, loguea warn
+ * y sigue sin error — el reconciler corre periódicamente y no debe fallar
+ * por config incompleta.
  */
 export async function sendDgaAdminAlert(input: { subject: string; body: string }): Promise<void> {
   const to = config.monitor.primaryEmail;
@@ -74,4 +76,29 @@ export async function sendDgaAdminAlert(input: { subject: string; body: string }
       'DGA notifier: fallo al enviar email',
     );
   }
+}
+
+/**
+ * Envía un email DGA a un destinatario explícito (2FA al solicitante).
+ * A diferencia de `sendDgaAdminAlert`, lanza error si no se puede entregar —
+ * un código 2FA sin destinatario no tiene sentido y el handler debe
+ * propagar el fallo al cliente en vez de mentir con 200.
+ */
+export async function sendDgaUserEmail(input: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<void> {
+  if (!input.to) {
+    throw new Error('Destinatario vacío');
+  }
+  const mail = loadMailService();
+  if (!mail) {
+    throw new Error('emailService no disponible');
+  }
+  await mail.sendAdminPlainEmail({
+    to: input.to,
+    subject: input.subject,
+    text: input.body,
+  });
 }

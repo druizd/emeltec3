@@ -83,6 +83,8 @@ interface SalaAggregate {
   reportingCount: number;
   deviationsOpenCount: number;
   deviationsOngoing: number;
+  /** Todos los sensores físicos defective → sala sin lectura activa. */
+  maintenance: boolean;
 }
 
 type TapTechStatus = 'online' | 'degraded' | 'offline' | 'unknown';
@@ -534,7 +536,7 @@ interface MetricOption {
                   [routerLink]="salaRouterLink(sa.area)"
                   [queryParams]="salaQueryParams()"
                   class="sala-card group"
-                  [attr.data-status]="sa.status"
+                  [attr.data-status]="sa.maintenance ? 'maintenance' : sa.status"
                 >
                   <header class="sala-card-head">
                     <div
@@ -567,7 +569,18 @@ interface MetricOption {
                       >
                     </div>
                     <div class="min-w-0 flex-1">
-                      <h3 class="sala-card-title truncate">{{ sa.area }}</h3>
+                      <div class="flex items-center gap-1.5">
+                        <h3 class="sala-card-title truncate">{{ sa.area }}</h3>
+                        @if (sa.maintenance) {
+                          <span
+                            class="sala-maint-badge"
+                            [title]="sa.defectiveReasons.join(' · ')"
+                          >
+                            <span class="material-symbols-outlined text-[11px]">build</span>
+                            En mantención
+                          </span>
+                        }
+                      </div>
                       <p class="sala-card-sub truncate">
                         {{ sa.count }} {{ sa.count === 1 ? 'sensor' : 'sensores' }} ·
                         {{ sa.taps.join(' / ') || '—' }}
@@ -674,6 +687,12 @@ interface MetricOption {
                   </div>
 
                   <footer class="sala-card-foot">
+                    @if (sa.maintenance) {
+                      <span class="sala-status sala-status--maint">
+                        <span class="material-symbols-outlined text-[12px]">handyman</span>
+                        En mantención · {{ sa.defectiveCount }}/{{ sa.count }} fuera de servicio
+                      </span>
+                    } @else {
                     @switch (sa.level) {
                       @case ('severe') {
                         <span class="sala-status sala-status--severe">
@@ -731,6 +750,7 @@ interface MetricOption {
                           Esperando lectura
                         </span>
                       }
+                    }
                     }
                     <span class="sala-hr" title="Humedad Relativa (promedio sensores)">
                       <span class="material-symbols-outlined text-[12px]">water_drop</span>
@@ -4117,6 +4137,63 @@ interface MetricOption {
         border-color: rgba(245, 158, 11, 0.32);
         box-shadow: 0 6px 18px rgba(245, 158, 11, 0.1);
       }
+      .sala-card[data-status='maintenance'] {
+        border-color: #cbd5e1;
+        background: #f8fafc;
+        box-shadow: none;
+        opacity: 0.92;
+      }
+      .sala-card[data-status='maintenance']:hover {
+        opacity: 1;
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.05);
+      }
+      .sala-card[data-status='maintenance'] .sala-actual-val,
+      .sala-card[data-status='maintenance'] .sala-stat-val,
+      .sala-card[data-status='maintenance'] .sala-card-title {
+        color: #64748b !important;
+      }
+      .sala-card[data-status='maintenance']::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 16px;
+        bottom: 16px;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: repeating-linear-gradient(
+          135deg,
+          #94a3b8 0 4px,
+          #cbd5e1 4px 8px
+        );
+      }
+      .sala-maint-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        padding: 2px 7px 2px 5px;
+        border-radius: 9999px;
+        font-family: var(--font-josefin);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .sala-status--maint {
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        color: #475569;
+        padding: 3px 8px;
+        border-radius: 9999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: 500;
+      }
       .sala-card[data-status='ok']::before {
         content: '';
         position: absolute;
@@ -5189,6 +5266,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         reportingCount,
         deviationsOpenCount: open.length,
         deviationsOngoing: ongoing.length,
+        maintenance: active.length === 0 && defectiveSensors.length > 0,
       });
     }
     out.sort((a, b) => {

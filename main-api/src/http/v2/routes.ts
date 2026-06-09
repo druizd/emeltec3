@@ -216,7 +216,7 @@ router.get('/dga/dato', protect, queryDatoDgaHandler);
 router.get('/dga/dato/export.csv', protect, exportDatoDgaCsvHandler);
 router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
 
-// 2FA email-OTP — el código se manda al MONITOR_PRIMARY_EMAIL.
+// 2FA email-OTP — el código se manda al email del usuario solicitante.
 router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
 
 // Review queue (acceso para Admin/SuperAdmin solo).

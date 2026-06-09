@@ -223,13 +223,19 @@ const ZOOM_STEP = 1.25;
         >
           <div
             class="flex items-center justify-center gap-1"
-            style="font-size: 9px; font-weight: 700; color: #64748B; letter-spacing: 0.08em; text-transform: uppercase;"
+            style="font-family: var(--font-josefin); font-size: 10.5px; font-weight: 700; color: #1E293B; letter-spacing: 0.02em; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+            [title]="s.area"
           >
             @if (s.alerted) {
               <span
-                style="width: 6px; height: 6px; border-radius: 50%; background: #EF4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.25);"
+                style="width: 6px; height: 6px; border-radius: 50%; background: #EF4444; box-shadow: 0 0 0 2px rgba(239,68,68,0.25); flex-shrink: 0;"
               ></span>
             }
+            <span style="overflow: hidden; text-overflow: ellipsis;">{{ s.area || '—' }}</span>
+          </div>
+          <div
+            style="font-size: 8.5px; font-weight: 600; color: #94A3B8; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 1px;"
+          >
             {{ s.id }}
           </div>
           <div

@@ -63,7 +63,7 @@ Variables críticas en `~/emeltec3/.env`:
 | `DGA_RUT_EMPRESA`                                     | RUT del Centro de Control Emeltec ante DGA                                         |
 | `DGA_API_URL`                                         | Endpoint SNIA (default `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`) |
 | `ENABLE_DGA_SUBMISSION_WORKER`                        | **Default `false`**. Activar solo cuando gerencia autorice cutover real            |
-| `MONITOR_PRIMARY_EMAIL`                               | Destino de 2FA email-OTP + alertas reconciler                                      |
+| `MONITOR_PRIMARY_EMAIL`                               | Destino de alertas reconciler (2FA va al email del solicitante)                    |
 
 Prueba deploy manual:
 

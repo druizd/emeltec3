@@ -88,7 +88,7 @@ src/server.js          ← Entry point
 
 | Método | Ruta                       | Qué hace                            |
 | ------ | -------------------------- | ----------------------------------- |
-| POST   | `/dga/2fa/request`         | Pedir OTP (enviado a MONITOR_EMAIL) |
+| POST   | `/dga/2fa/request`         | Pedir OTP (enviado al email del usuario solicitante) |
 | GET    | `/dga/review-queue`        | Slots pendientes de revisión admin  |
 | POST   | `/dga/review-queue/action` | Aceptar/descartar slot              |
 
@@ -221,7 +221,7 @@ vacio  →  pendiente  →  aceptado
 | `DGA_ENCRYPTION_KEY`              | ✅ (DGA)   | —            | AES-256 para claves informantes |
 | `DGA_RUT_EMPRESA`                 | ✅ (envío) | —            | RUT Emeltec registrado en DGA   |
 | `RESEND_API_KEY`                  | ✅ (2FA)   | —            | Email OTP                       |
-| `MONITOR_PRIMARY_EMAIL`           | ✅ (2FA)   | —            | Destinatario OTPs               |
+| `MONITOR_PRIMARY_EMAIL`           | ❌         | —            | Destinatario alertas reconciler |
 | `REDIS_URL`                       | ❌         | noop         | Cache + rate limit              |
 | `AZURE_STORAGE_CONNECTION_STRING` | ❌         | 503 si falta | Documentos blob                 |
 | `ENABLE_DGA_SUBMISSION_WORKER`    | ❌         | `false`      | Activar envío real a SNIA       |
