@@ -93,7 +93,8 @@ function applyUInt32RegistersTransform({ rawData, mapping, params }) {
   const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
   const wordBaja = requireFiniteNumber(rawD2, mapping.d2 || 'd2');
   const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-  return registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor;
+  const offset = numberOrNull(params.offset) ?? 0;
+  return registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor + offset;
 }
 
 function applyIeeeTransform({ rawData, mapping, params }) {
