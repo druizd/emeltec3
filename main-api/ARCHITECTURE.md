@@ -86,11 +86,11 @@ src/server.js          ← Entry point
 
 #### DGA — Cola de revisión (JWT + 2FA obligatorio)
 
-| Método | Ruta                       | Qué hace                            |
-| ------ | -------------------------- | ----------------------------------- |
+| Método | Ruta                       | Qué hace                                             |
+| ------ | -------------------------- | ---------------------------------------------------- |
 | POST   | `/dga/2fa/request`         | Pedir OTP (enviado al email del usuario solicitante) |
-| GET    | `/dga/review-queue`        | Slots pendientes de revisión admin  |
-| POST   | `/dga/review-queue/action` | Aceptar/descartar slot              |
+| GET    | `/dga/review-queue`        | Slots pendientes de revisión admin                   |
+| POST   | `/dga/review-queue/action` | Aceptar/descartar slot                               |
 
 #### Bitácora Sitio (JWT)
 
