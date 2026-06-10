@@ -94,6 +94,7 @@ async fn insert_records(
                  FROM equipo
                  WHERE time = (($1 || ' ' || $2)::timestamptz AT TIME ZONE 'UTC')
                    AND id_serial = $3::varchar(50)
+                   AND data = $4
              )",
         )
         .await?;
