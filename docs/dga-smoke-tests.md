@@ -233,7 +233,8 @@ MONITOR_PRIMARY_EMAIL" ~/emeltec3/.env
   (`DGA_KEY_MISSING`).
 - `DGA_RUT_EMPRESA` — RUT del Centro de Control Emeltec; sin esto el
   submission worker omite ciclo.
-- `MONITOR_PRIMARY_EMAIL` — destino del 2FA email-OTP y de las alertas
-  del reconciler.
+- `MONITOR_PRIMARY_EMAIL` — destino de las alertas del reconciler
+  (slots huérfanos / doble envío). El 2FA email-OTP se envía al email
+  del usuario que solicitó el código, no a esta dirección.
 - `ENABLE_DGA_SUBMISSION_WORKER=false` (default) — mantener `false`
   hasta autorización de gerencia para enviar a SNIA real.

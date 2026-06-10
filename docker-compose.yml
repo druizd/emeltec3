@@ -191,6 +191,13 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  landing-emeltec:
+    build: ./landing-emeltec
+    container_name: emeltec-landing
+    ports:
+      - '127.0.0.1:${LANDING_HOST_PORT:-8082}:80'
+    restart: unless-stopped
+
   csvconsumer:
     build:
       context: ./grpc-pipeline

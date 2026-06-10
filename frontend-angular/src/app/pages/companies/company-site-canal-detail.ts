@@ -3750,7 +3750,11 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
   /** Called by <app-site-variable-settings-panel> after a save/delete so the well diagram + sidebar stay in sync. */
   onVariableMapChanged(): void {
     const siteId = this.currentSiteId();
-    if (siteId) this.refreshDashboardSnapshot(siteId);
+    if (siteId) {
+      this.companyService.invalidateSiteCache(siteId);
+      this.refreshDashboardSnapshot(siteId);
+      if (this.historyPanelOpen()) this.startHistoryPolling(siteId);
+    }
     this.refreshHierarchySnapshot();
   }
 

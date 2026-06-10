@@ -93,7 +93,8 @@ function applyUInt32RegistersTransform({ rawData, mapping, params }) {
   const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
   const wordBaja = requireFiniteNumber(rawD2, mapping.d2 || 'd2');
   const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-  return registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor;
+  const offset = numberOrNull(params.offset) ?? 0;
+  return registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor + offset;
 }
 
 function applyIeeeTransform({ rawData, mapping, params }) {
@@ -418,29 +419,21 @@ function findHistoricalVariable(variables, role) {
   };
   const tokens = roleTokens[role] || [normalizeSearchText(role)];
 
-  return (
-    variables.find((variable) => {
-      if (role === 'nivel_freatico') {
-        const text = normalizeSearchText(
-          variable.key,
-          variable.alias,
-          variable.rol_dashboard,
-          variable.transformacion,
-        );
-        return text.includes('nivel freatico');
-      }
+  let best = null;
+  let bestScore = 0;
 
-      if (variable.rol_dashboard === role || variable.key === role) {
-        return true;
-      }
+  for (const variable of variables) {
+    let score = 0;
 
-      if (
-        role === 'totalizador' &&
-        ['uint32_registros', 'uint32'].includes(variable.transformacion)
-      ) {
-        return true;
-      }
-
+    if (role === 'nivel_freatico') {
+      const text = normalizeSearchText(
+        variable.key,
+        variable.alias,
+        variable.rol_dashboard,
+        variable.transformacion,
+      );
+      score = text.includes('nivel freatico') ? 80 : 0;
+    } else {
       const text = normalizeSearchText(
         variable.key,
         variable.alias,
@@ -448,9 +441,31 @@ function findHistoricalVariable(variables, role) {
         variable.fuente?.d1,
         variable.fuente?.d2,
       );
-      return tokens.some((token) => text.includes(token));
-    }) || null
-  );
+      const matchesText = tokens.some((token) => text.includes(token));
+      const isUInt32Totalizer =
+        role === 'totalizador' && ['uint32_registros', 'uint32'].includes(variable.transformacion);
+
+      if (
+        isUInt32Totalizer &&
+        (variable.rol_dashboard === role || variable.key === role || matchesText)
+      ) {
+        score = 110;
+      } else if (variable.rol_dashboard === role) {
+        score = 90;
+      } else if (variable.key === role) {
+        score = 70;
+      } else if (matchesText) {
+        score = 30;
+      }
+    }
+
+    if (score > bestScore) {
+      best = variable;
+      bestScore = score;
+    }
+  }
+
+  return best;
 }
 
 function serializeHistoricalVariable(variable) {

@@ -42,3 +42,10 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Unlighthouse
+unlighthouse/
+.unlighthouse/
+unlighthouse.config.ts
+.env
+

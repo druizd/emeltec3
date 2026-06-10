@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
+import { Sensor, humColor, tempColor } from './ventisqueros-data';
 
 @Component({
   selector: 'app-ventisqueros-focus-card',
@@ -120,11 +120,11 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
         font-size: 10px;
         font-weight: 600;
         color: var(--color-primary-container);
-        background: rgba(13, 175, 189, 0.1);
+        background: var(--color-primary-tint-10);
         border-radius: 4px;
         padding: 2px 6px;
         letter-spacing: 0.06em;
-        border: 1px solid rgba(13, 175, 189, 0.25);
+        border: 1px solid var(--color-primary-tint-25);
       }
       .vs-alert-mini-chip {
         font-family: var(--font-josefin);
@@ -216,8 +216,6 @@ import { Sensor, fmtTemp, humColor, tempColor } from './ventisqueros-data';
 })
 export class VentisquerosFocusCardComponent {
   readonly focus = input.required<Sensor | undefined>();
-
-  readonly fmtTemp = fmtTemp;
 
   fmtHumValue(h: number): number {
     return Number(h.toFixed(2));

@@ -66,11 +66,11 @@ function slugify(area: string): string {
         <div
           class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg"
           [style.background]="
-            statusLevel() === 'critical' ? 'rgba(239,68,68,0.10)' : 'rgba(13,175,189,0.10)'
+            statusLevel() === 'critical' ? 'rgba(239,68,68,0.10)' : 'var(--color-primary-tint-10)'
           "
           [style.border]="
             '1px solid ' +
-            (statusLevel() === 'critical' ? 'rgba(239,68,68,0.30)' : 'rgba(13,175,189,0.30)')
+            (statusLevel() === 'critical' ? 'rgba(239,68,68,0.30)' : 'var(--color-primary-tint-30)')
           "
         >
           <span
@@ -719,7 +719,7 @@ function slugify(area: string): string {
         background: linear-gradient(180deg, #fbfcfd, #f8fafc);
         border-bottom-width: 2px;
         border-top-color: #e2e8f0;
-        border-bottom-color: #0d99a5;
+        border-bottom-color: var(--color-primary);
       }
       .sala-icon-btn {
         display: inline-flex;
@@ -737,7 +737,7 @@ function slugify(area: string): string {
           transform 0.18s ease;
       }
       .sala-icon-btn:hover {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       .sala-icon-btn:active {
         transform: translateY(1px);
@@ -755,7 +755,7 @@ function slugify(area: string): string {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #475569;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         font-weight: 500;
         transition:
@@ -764,8 +764,8 @@ function slugify(area: string): string {
           transform 0.18s ease;
       }
       .sala-btn:hover {
-        color: #0d99a5;
-        background: rgba(13, 175, 189, 0.05);
+        color: var(--color-primary);
+        background: var(--color-primary-tint-06);
       }
       .sala-btn:active {
         transform: translateY(1px);
@@ -775,7 +775,7 @@ function slugify(area: string): string {
       }
 
       .sala-title {
-        font-family: 'Josefin Sans', sans-serif;
+        font-family: var(--font-josefin), sans-serif;
         font-size: 16px;
         font-weight: 600;
         color: #1e293b;
@@ -785,7 +785,7 @@ function slugify(area: string): string {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 500;
         color: #475569;
@@ -804,7 +804,7 @@ function slugify(area: string): string {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #22c55e;
+        background: var(--color-success);
       }
       .sala-live-dot--err {
         background: #ef4444;
@@ -855,13 +855,13 @@ function slugify(area: string): string {
       }
       .status-icon {
         font-size: 22px;
-        color: #16a34a;
+        color: var(--color-success);
       }
       .status-banner[data-level='warning'] .status-icon {
-        color: #d97706;
+        color: var(--color-warning);
       }
       .status-banner[data-level='critical'] .status-icon {
-        color: #dc2626;
+        color: var(--color-danger);
       }
       .status-banner[data-level='unknown'] .status-banner-inner {
         background: #f8fafc;
@@ -871,13 +871,13 @@ function slugify(area: string): string {
         color: #94a3b8;
       }
       .status-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 13.5px;
         font-weight: 600;
         color: #1e293b;
       }
       .status-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         margin-top: 1px;
@@ -892,7 +892,7 @@ function slugify(area: string): string {
         display: flex;
         flex-direction: column;
         align-items: flex-end;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         color: #94a3b8;
       }
@@ -917,7 +917,7 @@ function slugify(area: string): string {
         letter-spacing: -0.02em;
       }
       .kpi-hero-label {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 500;
         text-transform: uppercase;
@@ -926,7 +926,7 @@ function slugify(area: string): string {
         margin-top: 6px;
       }
       .kpi-meta {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12.5px;
         color: #64748b;
         padding-bottom: 4px;
@@ -946,7 +946,7 @@ function slugify(area: string): string {
       }
 
       .section-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
@@ -1036,11 +1036,11 @@ function slugify(area: string): string {
         color: #b91c1c;
       }
       .sensor-defective-toggle--active {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       .sensor-defective-toggle--active:hover {
-        background: rgba(13, 175, 189, 0.1);
-        color: #0d99a5;
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
       }
       .sensor-id-chip {
         font-family: 'JetBrains Mono', monospace;
@@ -1075,7 +1075,7 @@ function slugify(area: string): string {
         font-variant-numeric: tabular-nums;
       }
       .sensor-metric-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10.5px;
         color: #94a3b8;
         margin-top: 3px;
@@ -1107,20 +1107,20 @@ function slugify(area: string): string {
       }
       .range-pill--active {
         background: #ffffff;
-        color: #0d99a5;
+        color: var(--color-primary);
         box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
       }
       .band-toggle {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         cursor: pointer;
       }
       .band-toggle input {
-        accent-color: #0d99a5;
+        accent-color: var(--color-primary);
       }
 
       .chart-shell {
@@ -1134,7 +1134,7 @@ function slugify(area: string): string {
         position: absolute;
         bottom: 6px;
         right: 14px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         color: #94a3b8;
       }
@@ -1164,22 +1164,22 @@ function slugify(area: string): string {
           background 0.15s;
       }
       .dev-filter-chip:hover {
-        color: #0d99a5;
-        border-color: rgba(13, 175, 189, 0.3);
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-30);
       }
       .dev-filter-chip strong {
-        font-family: var(--font-mono);
+        font-family: 'JetBrains Mono';
         font-weight: 700;
         font-size: 10.5px;
         color: #94a3b8;
       }
       .dev-filter-chip--active {
-        background: rgba(13, 175, 189, 0.1);
-        color: #0d99a5;
-        border-color: rgba(13, 175, 189, 0.35);
+        background: var(--color-primary-tint-10);
+        color: var(--color-primary);
+        border-color: var(--color-primary-tint-35);
       }
       .dev-filter-chip--active strong {
-        color: #0d99a5;
+        color: var(--color-primary);
       }
       .dev-filter-empty {
         display: flex;
@@ -1226,7 +1226,7 @@ function slugify(area: string): string {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
       }
       .deviation-level-pill {
         display: inline-flex;
@@ -1273,7 +1273,7 @@ function slugify(area: string): string {
       }
       .deviation-stat-sub {
         display: block;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         font-weight: 500;
         color: #0369a1;
@@ -1295,7 +1295,7 @@ function slugify(area: string): string {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.08em;
@@ -1329,7 +1329,7 @@ function slugify(area: string): string {
         gap: 2px;
       }
       .deviation-stat-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 9.5px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -1351,7 +1351,7 @@ function slugify(area: string): string {
         background: rgba(34, 197, 94, 0.08);
         border: 1px solid rgba(34, 197, 94, 0.2);
         color: #15803d;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
       }
       .deviation-foot {
@@ -1368,7 +1368,7 @@ function slugify(area: string): string {
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #475569;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         font-weight: 500;
         cursor: pointer;
@@ -1378,9 +1378,9 @@ function slugify(area: string): string {
         background: #f8fafc;
       }
       .deviation-btn--primary {
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #fff;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .deviation-btn--primary:hover {
         background: #0a7d87;
@@ -1399,7 +1399,7 @@ function slugify(area: string): string {
         gap: 4px;
         padding: 3px 8px;
         border-radius: 999px;
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 10.5px;
         font-weight: 600;
       }
@@ -1437,7 +1437,7 @@ function slugify(area: string): string {
       }
 
       .deviation-cause-select {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         padding: 5px 8px;
         border: 1px solid #e2e8f0;
@@ -1447,9 +1447,9 @@ function slugify(area: string): string {
         max-width: 220px;
       }
       .deviation-cause-select:focus {
-        outline: 2px solid #0d99a5;
+        outline: 2px solid var(--color-primary);
         outline-offset: 1px;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
 
       .deviation-foot-spacer {
@@ -1464,7 +1464,7 @@ function slugify(area: string): string {
         background: rgba(34, 197, 94, 0.1);
         color: #15803d;
         border: 1px solid rgba(34, 197, 94, 0.22);
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11px;
         font-weight: 600;
       }
@@ -1485,14 +1485,14 @@ function slugify(area: string): string {
         border-radius: 14px;
       }
       .empty-title {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 14px;
         font-weight: 600;
         color: #475569;
         margin-top: 8px;
       }
       .empty-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #94a3b8;
         margin-top: 4px;
@@ -1572,7 +1572,7 @@ function slugify(area: string): string {
         border-bottom: 1px solid #e2e8f0;
       }
       .note-modal-title {
-        font-family: 'Josefin Sans', sans-serif;
+        font-family: var(--font-josefin), sans-serif;
         font-size: 14px;
         font-weight: 600;
         color: #1e293b;
@@ -1608,7 +1608,7 @@ function slugify(area: string): string {
         color: #475569;
       }
       .note-modal-meta strong {
-        color: #0d99a5;
+        color: var(--color-primary);
         font-weight: 600;
       }
       .note-modal-label {
@@ -1632,7 +1632,7 @@ function slugify(area: string): string {
         transition: border-color 0.15s;
       }
       .note-modal-textarea:focus {
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .note-modal-hint {
         font-family: var(--font-dm);
@@ -1663,9 +1663,9 @@ function slugify(area: string): string {
         background: #f1f5f9;
       }
       .note-modal-btn--primary {
-        background: #0d99a5;
+        background: var(--color-primary);
         color: #ffffff;
-        border-color: #0d99a5;
+        border-color: var(--color-primary);
       }
       .note-modal-btn--primary:hover {
         background: #0c8b96;
@@ -1717,7 +1717,7 @@ function slugify(area: string): string {
         color: #1e293b;
       }
       .drawer-sub {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 11.5px;
         color: #64748b;
         margin-top: 1px;
@@ -1755,7 +1755,7 @@ function slugify(area: string): string {
         gap: 10px;
       }
       .drawer-kpi-lbl {
-        font-family: 'DM Sans', sans-serif;
+        font-family: var(--font-body), sans-serif;
         font-size: 9.5px;
         text-transform: uppercase;
         letter-spacing: 0.08em;
@@ -1918,10 +1918,12 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   fmtDeviationTime(iso: string): string {
     return new Date(iso).toLocaleString('es-CL', {
+      timeZone: 'America/Santiago',
       day: '2-digit',
       month: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     });
   }
 
@@ -2271,11 +2273,19 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     }
     this.coldRoom.setSensorDefective(sid, s.id, next, reason).subscribe({
       next: () => {
-        // Refrescar fetch para reflejar nuevo estado.
         this.fetchData();
       },
       error: (err) => {
         console.error('[setSensorDefective] failed:', err?.status, err?.error || err?.message);
+        const status = err?.status;
+        const serverMsg = err?.error?.error || err?.message || 'Error desconocido';
+        const userMsg =
+          status === 403
+            ? 'No tienes permisos para modificar sensores en este sitio.'
+            : status === 404
+              ? `Sensor ${s.id} no encontrado en el mapa de registros.`
+              : `No se pudo ${next ? 'marcar' : 'reactivar'} el sensor: ${serverMsg}`;
+        window.alert(userMsg);
       },
     });
   }
@@ -2461,7 +2471,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
         type: 'line',
         yMin: setAvg,
         yMax: setAvg,
-        borderColor: 'rgba(13, 175, 189, 0.7)',
+        borderColor: 'var(--color-primary-tint-55)',
         borderWidth: 1.2,
         borderDash: [6, 4],
         label: {

@@ -22,7 +22,11 @@ async function record({
     const payloadHash = payload
       ? crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
       : null;
-    const ip = (req && (req.ip || req.headers['x-forwarded-for'] || '')).toString().slice(0, 45);
+    // req.ip ya resuelve al cliente real porque `app.set('trust proxy', 1)`.
+    // Fallback al primer hop de X-Forwarded-For si por algún motivo req.ip falta.
+    const xff = req && req.headers && req.headers['x-forwarded-for'];
+    const xffFirst = xff ? xff.toString().split(',')[0].trim() : '';
+    const ip = ((req && req.ip) || xffFirst || '').toString().slice(0, 45);
     const userAgent = (
       req && req.headers && req.headers['user-agent'] ? req.headers['user-agent'] : ''
     )

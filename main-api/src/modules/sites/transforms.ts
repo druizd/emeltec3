@@ -136,7 +136,8 @@ export function applyMappingTransform({
       const high = requireFiniteNumber(rawD1, mapping.d1);
       const low = requireFiniteNumber(readRawValue(rawData, mapping.d2), mapping.d2 ?? 'd2');
       const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-      return registrosModbusAUInt32(high, low, wordSwap).valor;
+      const offset = numberOrNull(params.offset) ?? 0;
+      return registrosModbusAUInt32(high, low, wordSwap).valor + offset;
     }
 
     case 'nivel_freatico': {

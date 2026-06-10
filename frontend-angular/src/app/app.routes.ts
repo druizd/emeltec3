@@ -56,8 +56,8 @@ export const routes: Routes = [
         path: 'companies/:siteId/riles',
         data: { siteType: 'riles' },
         loadComponent: () =>
-          import('./pages/companies/company-site-coming-soon-detail').then(
-            (m) => m.CompanySiteComingSoonDetailComponent,
+          import('./pages/companies/company-site-riles-detail').then(
+            (m) => m.CompanySiteRilesDetailComponent,
           ),
       },
       {
@@ -65,13 +65,6 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/ventisqueros/ventisqueros-tap-detail').then(
             (m) => m.VentisquerosTapDetailComponent,
-          ),
-      },
-      {
-        path: 'companies/:siteId/tap/:tapId/diag',
-        loadComponent: () =>
-          import('./pages/ventisqueros/ventisqueros-tap-diag-detail').then(
-            (m) => m.VentisquerosTapDiagDetailComponent,
           ),
       },
       {

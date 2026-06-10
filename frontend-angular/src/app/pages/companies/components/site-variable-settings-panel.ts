@@ -102,7 +102,7 @@ const COMMON_TRANSFORMS: SiteTypeTransformOption[] = [
     id: 'uint32_registros',
     label: 'Entero combinado (2 registros · 32 bits)',
     description:
-      'Combina dos registros Modbus en un entero de 32 bits: (registro alto × 65 536) + registro bajo. Pensado para totalizadores que no caben en un solo registro.',
+      'Combina dos registros Modbus en un entero de 32 bits: (registro alto × 65 536) + registro bajo + offset. Pensado para totalizadores que no caben en un solo registro.',
     enabled: true,
     requiresD2: true,
   },
@@ -537,6 +537,31 @@ function emptyVariables(): SiteVariablesPayload {
                 </p>
               }
 
+              @if (isUint32TransformSelected()) {
+                <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
+                    <input
+                      type="number"
+                      step="any"
+                      name="settings-variable-uint32-offset"
+                      [ngModel]="variableForm().offset"
+                      (ngModelChange)="updateVariableForm('offset', $event)"
+                      class="field-control bg-white"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div
+                    class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-caption font-semibold text-primary-container"
+                  >
+                    Fórmula:
+                    <span class="font-mono">
+                      resultado = (registro alto × 65536) + registro bajo + offset
+                    </span>
+                  </div>
+                </div>
+              }
+
               <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
                 <div class="mb-3 flex items-center gap-2">
                   <span class="material-symbols-outlined text-[18px] text-primary-container"
@@ -951,7 +976,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       wordSwap: normalized === 'uint32_registros' ? 'true' : current.wordSwap,
       factor: this.isLinearTransformValue(normalized) ? current.factor || '1' : '1',
       divisor: this.isLinearTransformValue(normalized) ? current.divisor || '1' : '1',
-      offset: this.isLinearTransformValue(normalized) ? current.offset || '0' : '0',
+      offset: this.usesOffsetTransformValue(normalized) ? current.offset || '0' : '0',
     }));
   }
 
@@ -1153,7 +1178,8 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       }
       const high = form.wordSwap === 'true' ? rawB : rawA;
       const low = form.wordSwap === 'true' ? rawA : rawB;
-      return `${this.formatPreviewNumber(high * 65536 + low)}${unit}`;
+      const offset = this.toNumber(form.offset) ?? 0;
+      return `${this.formatPreviewNumber(high * 65536 + low + offset)}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -1192,6 +1218,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       return {
         word_swap: form.wordSwap === 'true',
         formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
+        ...(form.transformacion === 'uint32_registros'
+          ? { offset: this.toNumber(form.offset) ?? 0 }
+          : {}),
       };
     }
 
@@ -1233,6 +1262,10 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
   private isLinearTransformValue(transformId: string): boolean {
     return transformId === 'lineal' || transformId === 'escala_lineal';
+  }
+
+  private usesOffsetTransformValue(transformId: string): boolean {
+    return this.isLinearTransformValue(transformId) || transformId === 'uint32_registros';
   }
 
   private normalizeRole(roleId: string | null | undefined): string {
