@@ -39,7 +39,6 @@ export interface PozoDgaConfig {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
-  dga_auto_accept_fallback_hours: number | null;
   dga_last_run_at: string | null;
 }
 
@@ -53,7 +52,6 @@ export interface PatchPozoDgaConfigPayload {
   dga_hora_inicio?: string | null;
   dga_informante_rut?: string | null;
   dga_max_retry_attempts?: number;
-  dga_auto_accept_fallback_hours?: number | null;
 }
 
 // ============================================================================

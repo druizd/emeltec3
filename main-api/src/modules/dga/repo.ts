@@ -91,7 +91,6 @@ export interface PozoDgaConfigRow {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
-  dga_auto_accept_fallback_hours: number | null;
   dga_last_run_at: string | null;
 }
 
@@ -101,7 +100,7 @@ const POZO_DGA_COLS =
   "to_char(dga_fecha_inicio,'YYYY-MM-DD') AS dga_fecha_inicio, " +
   "to_char(dga_hora_inicio,'HH24:MI:SS') AS dga_hora_inicio, " +
   'dga_periodicidad, dga_informante_rut, dga_max_retry_attempts, ' +
-  'dga_auto_accept_fallback_hours, dga_last_run_at';
+  'dga_last_run_at';
 
 export async function getPozoDgaConfig(siteId: string): Promise<PozoDgaConfigRow | null> {
   const r = await query<PozoDgaConfigRow>(
@@ -152,7 +151,6 @@ export async function patchPozoDgaConfig(
     dga_hora_inicio?: string | null | undefined;
     dga_informante_rut?: string | null | undefined;
     dga_max_retry_attempts?: number | undefined;
-    dga_auto_accept_fallback_hours?: number | null | undefined;
   },
 ): Promise<PozoDgaConfigRow | null> {
   const sets: string[] = [];
@@ -177,8 +175,6 @@ export async function patchPozoDgaConfig(
     addSet('dga_informante_rut', input.dga_informante_rut);
   if (input.dga_max_retry_attempts !== undefined)
     addSet('dga_max_retry_attempts', input.dga_max_retry_attempts);
-  if (input.dga_auto_accept_fallback_hours !== undefined)
-    addSet('dga_auto_accept_fallback_hours', input.dga_auto_accept_fallback_hours);
 
   if (sets.length === 0) return getPozoDgaConfig(siteId);
 

@@ -123,7 +123,6 @@ export interface PozoDgaConfigPublic {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
-  dga_auto_accept_fallback_hours: number | null;
   dga_last_run_at: string | null;
 }
 
@@ -140,7 +139,6 @@ function toPozoDgaPublic(row: PozoDgaConfigRow): PozoDgaConfigPublic {
     dga_hora_inicio: row.dga_hora_inicio,
     dga_informante_rut: row.dga_informante_rut,
     dga_max_retry_attempts: row.dga_max_retry_attempts,
-    dga_auto_accept_fallback_hours: row.dga_auto_accept_fallback_hours,
     dga_last_run_at: row.dga_last_run_at,
   };
 }
@@ -157,7 +155,6 @@ export async function patchPozoDgaConfigService(
     dga_hora_inicio?: string | null | undefined;
     dga_informante_rut?: string | null | undefined;
     dga_max_retry_attempts?: number | undefined;
-    dga_auto_accept_fallback_hours?: number | null | undefined;
   },
 ): Promise<PozoDgaConfigPublic> {
   // hora_inicio normalizada a HH:MM:00. DGA slots deben caer en minuto exacto

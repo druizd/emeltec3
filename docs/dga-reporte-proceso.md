@@ -55,20 +55,19 @@ alta falla con `DGA_KEY_MISSING`.
 Desde el frontend (modal "Configurar reporte DGA",
 `dga-generar-reporte-modal.ts`) → `PATCH /api/v2/dga/sites/:siteId/pozo-config`.
 
-Columnas en `pozo_config` (11):
+Columnas en `pozo_config` (10):
 
-| Campo                                  | Significado                                                                             |
-| -------------------------------------- | --------------------------------------------------------------------------------------- |
-| `dga_activo`                           | Switch maestro: habilita preseed + fill                                                 |
-| `dga_transport`                        | `off` \| `shadow` \| `rest` — solo `rest` envía real (**2FA para activarlo**)           |
-| `dga_periodicidad`                     | `hora` \| `dia` \| `semana` \| `mes`                                                    |
-| `dga_fecha_inicio` / `dga_hora_inicio` | Anclaje del primer slot                                                                 |
-| `dga_informante_rut`                   | FK al pool de informantes                                                               |
-| `dga_caudal_max_lps`                   | Derecho de agua (límite de caudal)                                                      |
-| `dga_caudal_tolerance_pct`             | Tolerancia % sobre el derecho                                                           |
-| `dga_max_retry_attempts`               | Reintentos antes de estado terminal `fallido`                                           |
-| `dga_auto_accept_fallback_hours`       | ⚠️ Se guarda/expone pero **ningún worker lo usa aún** (auto-aceptación no implementada) |
-| `dga_last_run_at`                      | Timestamp último fill exitoso                                                           |
+| Campo                                  | Significado                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `dga_activo`                           | Switch maestro: habilita preseed + fill                                       |
+| `dga_transport`                        | `off` \| `shadow` \| `rest` — solo `rest` envía real (**2FA para activarlo**) |
+| `dga_periodicidad`                     | `hora` \| `dia` \| `semana` \| `mes`                                          |
+| `dga_fecha_inicio` / `dga_hora_inicio` | Anclaje del primer slot                                                       |
+| `dga_informante_rut`                   | FK al pool de informantes                                                     |
+| `dga_caudal_max_lps`                   | Derecho de agua (límite de caudal)                                            |
+| `dga_caudal_tolerance_pct`             | Tolerancia % sobre el derecho                                                 |
+| `dga_max_retry_attempts`               | Reintentos antes de estado terminal `fallido`                                 |
+| `dga_last_run_at`                      | Timestamp último fill exitoso                                                 |
 
 Además `pozo_config.obra_dga` = código de obra DGA (`OB-XXXX-XXX`), requisito
 para enviar.
@@ -262,9 +261,6 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 
 ## 10. Pendientes / deuda conocida
 
-- **`dga_auto_accept_fallback_hours`**: columna + schema + endpoints lo
-  aceptan, pero ningún worker implementa la auto-aceptación de slots en
-  `requires_review`. Implementar o retirar del modal.
 - **`dga-api` (servicio legacy)**: sigue en `docker-compose.yml` con
   ingestion worker activo por default, pero referencia la tabla `dga_user`
   ya droppeada. Decomisionar (el frontend y main-api ya no lo usan salvo
@@ -282,6 +278,7 @@ infra-db/migrations/2026-05-14-alert-dga-atrasado.sql
 infra-db/migrations/2026-05-14-dga-submission-tracking.sql
 infra-db/migrations/2026-05-16-dga-pipeline-refactor.sql
 infra-db/migrations/2026-05-17-dga-pozo-config-redesign.sql
+infra-db/migrations/2026-06-11-drop-dga-auto-accept-fallback.sql
 ```
 
 Tests: `dga-api/src/__tests__/` (legacy) + tests del módulo en main-api.
