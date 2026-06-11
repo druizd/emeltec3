@@ -137,10 +137,7 @@ async function reportVacioStale(): Promise<number> {
 
   const signature = stale.map((s) => `${s.site_id}:${s.ts}`).join('|');
   if (signature === lastStaleSignature) {
-    logger.debug(
-      { count: stale.length },
-      'reconciler (E): stale set sin cambios, skip alerta',
-    );
+    logger.debug({ count: stale.length }, 'reconciler (E): stale set sin cambios, skip alerta');
     return stale.length;
   }
   lastStaleSignature = signature;
@@ -163,10 +160,7 @@ async function reportVacioStale(): Promise<number> {
     if (slots.length > 10) sections.push(`  ... y ${slots.length - 10} más`);
   }
 
-  logger.warn(
-    { total: stale.length, sites: bySite.size },
-    'reconciler (E): slots vacios stale',
-  );
+  logger.warn({ total: stale.length, sites: bySite.size }, 'reconciler (E): slots vacios stale');
 
   await sendDgaAdminAlert({
     subject: `[DGA] ${stale.length} slot(s) sin dato hace >${STALE_VACIO_HOURS}h`,
