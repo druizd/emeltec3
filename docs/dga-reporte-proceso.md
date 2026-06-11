@@ -12,28 +12,28 @@ configuración del pozo hasta el comprobante de envío.
 
 ## 1. Arquitectura — quién hace qué
 
-| Pieza                          | Rol                                                                  |
-| ------------------------------ | -------------------------------------------------------------------- |
-| `main-api/src/modules/dga/`    | **Pipeline vigente**: workers, validación, envío SNIA, 2FA, cripto   |
-| `frontend-angular`             | Config del pozo (modal), tab DGA, cola de revisión (`/dga-review`)   |
-| `dga-api` (puerto 3002)        | **Servicio legacy** (modelo pre-redesign). Ingestion ON por default; submission OFF. Referenciaba `dga_user` (tabla ya droppeada). Pendiente decomisionar. `main-api` solo le hace health-check (`statusController.js`) |
-| TimescaleDB                    | `dato_dga`, `dga_informante`, `dga_send_audit`, `pozo_config.dga_*`  |
-| SNIA / MOP                     | Endpoint oficial `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas` |
+| Pieza                       | Rol                                                                                                                                                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main-api/src/modules/dga/` | **Pipeline vigente**: workers, validación, envío SNIA, 2FA, cripto                                                                                                                                                      |
+| `frontend-angular`          | Config del pozo (modal), tab DGA, cola de revisión (`/dga-review`)                                                                                                                                                      |
+| `dga-api` (puerto 3002)     | **Servicio legacy** (modelo pre-redesign). Ingestion ON por default; submission OFF. Referenciaba `dga_user` (tabla ya droppeada). Pendiente decomisionar. `main-api` solo le hace health-check (`statusController.js`) |
+| TimescaleDB                 | `dato_dga`, `dga_informante`, `dga_send_audit`, `pozo_config.dga_*`                                                                                                                                                     |
+| SNIA / MOP                  | Endpoint oficial `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`                                                                                                                                             |
 
 Archivos clave en `main-api/src/modules/dga/`:
 
-| Archivo         | Qué hace                                                        |
-| --------------- | --------------------------------------------------------------- |
-| `preseed.ts`    | Crea slots `vacio` del mes corriente                            |
-| `worker.ts`     | Llena slots con telemetría + valida (`vacio` → `pendiente`/`requires_review`) |
-| `validation.ts` | Reglas de validación (puras, sin IO)                            |
-| `submission.ts` | Envía slots `pendiente` a SNIA + audit                          |
-| `snia-client.ts`| Cliente HTTP REST SNIA (Manual Técnico DGA 1/2025, Res. 2.170)  |
-| `reconciler.ts` | Red de seguridad: corrige drift audit vs estado                 |
-| `controller.ts` / `service.ts` / `repo.ts` | Endpoints HTTP, lógica, SQL          |
-| `crypto.ts`     | AES-256 para `clave_informante` (`DGA_ENCRYPTION_KEY`)          |
-| `twofactor.ts`  | OTP email (Resend) para mutaciones sensibles                    |
-| `notifier.ts`   | Alertas email al admin (`MONITOR_PRIMARY_EMAIL`)                |
+| Archivo                                    | Qué hace                                                                      |
+| ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `preseed.ts`                               | Crea slots `vacio` del mes corriente                                          |
+| `worker.ts`                                | Llena slots con telemetría + valida (`vacio` → `pendiente`/`requires_review`) |
+| `validation.ts`                            | Reglas de validación (puras, sin IO)                                          |
+| `submission.ts`                            | Envía slots `pendiente` a SNIA + audit                                        |
+| `snia-client.ts`                           | Cliente HTTP REST SNIA (Manual Técnico DGA 1/2025, Res. 2.170)                |
+| `reconciler.ts`                            | Red de seguridad: corrige drift audit vs estado                               |
+| `controller.ts` / `service.ts` / `repo.ts` | Endpoints HTTP, lógica, SQL                                                   |
+| `crypto.ts`                                | AES-256 para `clave_informante` (`DGA_ENCRYPTION_KEY`)                        |
+| `twofactor.ts`                             | OTP email (Resend) para mutaciones sensibles                                  |
+| `notifier.ts`                              | Alertas email al admin (`MONITOR_PRIMARY_EMAIL`)                              |
 
 ---
 
@@ -57,18 +57,18 @@ Desde el frontend (modal "Configurar reporte DGA",
 
 Columnas en `pozo_config` (11):
 
-| Campo                            | Significado                                              |
-| -------------------------------- | -------------------------------------------------------- |
-| `dga_activo`                     | Switch maestro: habilita preseed + fill                  |
-| `dga_transport`                  | `off` \| `shadow` \| `rest` — solo `rest` envía real (**2FA para activarlo**) |
-| `dga_periodicidad`               | `hora` \| `dia` \| `semana` \| `mes`                     |
-| `dga_fecha_inicio` / `dga_hora_inicio` | Anclaje del primer slot                            |
-| `dga_informante_rut`             | FK al pool de informantes                                |
-| `dga_caudal_max_lps`             | Derecho de agua (límite de caudal)                       |
-| `dga_caudal_tolerance_pct`       | Tolerancia % sobre el derecho                            |
-| `dga_max_retry_attempts`         | Reintentos antes de estado terminal `fallido`            |
-| `dga_auto_accept_fallback_hours` | ⚠️ Se guarda/expone pero **ningún worker lo usa aún** (auto-aceptación no implementada) |
-| `dga_last_run_at`                | Timestamp último fill exitoso                            |
+| Campo                                  | Significado                                                                             |
+| -------------------------------------- | --------------------------------------------------------------------------------------- |
+| `dga_activo`                           | Switch maestro: habilita preseed + fill                                                 |
+| `dga_transport`                        | `off` \| `shadow` \| `rest` — solo `rest` envía real (**2FA para activarlo**)           |
+| `dga_periodicidad`                     | `hora` \| `dia` \| `semana` \| `mes`                                                    |
+| `dga_fecha_inicio` / `dga_hora_inicio` | Anclaje del primer slot                                                                 |
+| `dga_informante_rut`                   | FK al pool de informantes                                                               |
+| `dga_caudal_max_lps`                   | Derecho de agua (límite de caudal)                                                      |
+| `dga_caudal_tolerance_pct`             | Tolerancia % sobre el derecho                                                           |
+| `dga_max_retry_attempts`               | Reintentos antes de estado terminal `fallido`                                           |
+| `dga_auto_accept_fallback_hours`       | ⚠️ Se guarda/expone pero **ningún worker lo usa aún** (auto-aceptación no implementada) |
+| `dga_last_run_at`                      | Timestamp último fill exitoso                                                           |
 
 Además `pozo_config.obra_dga` = código de obra DGA (`OB-XXXX-XXX`), requisito
 para enviar.
@@ -94,12 +94,12 @@ para enviar.
 
 ## 4. Workers (todos en main-api)
 
-| Worker         | Cadencia default | Flag env                        | Default |
-| -------------- | ---------------- | ------------------------------- | ------- |
-| **Preseed**    | bootstrap + 6h (`DGA_PRESEED_POLL_MS`) | `ENABLE_DGA_PRESEED_WORKER` | `true` |
-| **Fill**       | 60s (`DGA_WORKER_POLL_MS`)             | `ENABLE_DGA_WORKER`          | `true` |
+| Worker         | Cadencia default                       | Flag env                       | Default                                      |
+| -------------- | -------------------------------------- | ------------------------------ | -------------------------------------------- |
+| **Preseed**    | bootstrap + 6h (`DGA_PRESEED_POLL_MS`) | `ENABLE_DGA_PRESEED_WORKER`    | `true`                                       |
+| **Fill**       | 60s (`DGA_WORKER_POLL_MS`)             | `ENABLE_DGA_WORKER`            | `true`                                       |
 | **Submission** | 5min (`DGA_SUBMISSION_POLL_MS`)        | `ENABLE_DGA_SUBMISSION_WORKER` | **`false`** (hasta autorización de gerencia) |
-| **Reconciler** | 1h (`DGA_RECONCILER_POLL_MS`)          | `ENABLE_DGA_RECONCILER`      | `true` |
+| **Reconciler** | 1h (`DGA_RECONCILER_POLL_MS`)          | `ENABLE_DGA_RECONCILER`        | `true`                                       |
 
 ### 4.1 Preseed (`preseed.ts`)
 
@@ -158,12 +158,12 @@ para enviar.
 
 Red de seguridad horaria, 5 chequeos:
 
-| Check | Condición                                                         | Acción                                  |
-| ----- | ------------------------------------------------------------------ | --------------------------------------- |
-| A     | Slot atascado en `enviando` > 15 min                               | Auto-revierte a `pendiente`             |
-| B     | Audit dice OK pero estatus ≠ `enviado`                             | Auto-fix a `enviado` con comprobante    |
-| C     | Slot `enviado` sin fila en audit                                   | **Solo alerta email** — no auto-corrige |
-| D     | Doble envío OK del mismo slot                                      | **Solo alerta email** — no auto-corrige |
+| Check | Condición                                                                      | Acción                                                                                                                                                   |
+| ----- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | Slot atascado en `enviando` > 15 min                                           | Auto-revierte a `pendiente`                                                                                                                              |
+| B     | Audit dice OK pero estatus ≠ `enviado`                                         | Auto-fix a `enviado` con comprobante                                                                                                                     |
+| C     | Slot `enviado` sin fila en audit                                               | **Solo alerta email** — no auto-corrige                                                                                                                  |
+| D     | Doble envío OK del mismo slot                                                  | **Solo alerta email** — no auto-corrige                                                                                                                  |
 | E     | Slot `vacio` con `ts < now() - 6h` (config `DGA_RECONCILER_STALE_VACIO_HOURS`) | **Alerta email digest** agrupada por sitio. Throttle in-memory: re-envía solo si el set cambió. **No se reportará a DGA** hasta que el dato real arribe. |
 
 Alertas van a `MONITOR_PRIMARY_EMAIL`.
@@ -174,13 +174,13 @@ Alertas van a `MONITOR_PRIMARY_EMAIL`.
 
 Cualquier warning → `requires_review` (el primero define `fail_reason`):
 
-| Código                        | Condición                                                       |
-| ----------------------------- | ---------------------------------------------------------------- |
-| `sensor_known_defective`      | `reg_map.parametros.sensor_known_defective=true` en totalizador. Sugiere último totalizador válido |
-| `totalizator_zero`            | Totalizador 0 o NULL (sensor desconectado / reset firmware). Sugiere último válido |
-| `flow_exceeds_water_right`    | `|caudal| > dga_caudal_max_lps × (1 + tolerancia%)`             |
-| `flow_absurd_no_water_right`  | Sin derecho cargado y `|caudal| > 1000 L/s` (fallback hardcode) |
-| `transform_failed_all_nulls`  | Caudal, totalizador y nivel freático todos NULL (¿mapeo roto?)  |
+| Código                       | Condición                                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------------------------- |
+| `sensor_known_defective`     | `reg_map.parametros.sensor_known_defective=true` en totalizador. Sugiere último totalizador válido |
+| `totalizator_zero`           | Totalizador 0 o NULL (sensor desconectado / reset firmware). Sugiere último válido                 |
+| `flow_exceeds_water_right`   | `\|caudal\| > dga_caudal_max_lps × (1 + tolerancia%)`                                              |
+| `flow_absurd_no_water_right` | Sin derecho cargado y `\|caudal\| > 1000 L/s` (fallback hardcode)                                  |
+| `transform_failed_all_nulls` | Caudal, totalizador y nivel freático todos NULL (¿mapeo roto?)                                     |
 
 ---
 
@@ -225,13 +225,13 @@ Slots `requires_review` requieren decisión manual de SuperAdmin/Admin:
 
 ## 8. Consulta y exportación
 
-| Endpoint                                   | Uso                                            |
-| ------------------------------------------ | ----------------------------------------------- |
-| `GET /dga/sites/:id/live-preview`          | Último dato validado listo para envío (preview en modal) |
-| `GET /dga/sites/:id/ultimo-envio`          | Último envío exitoso (comprobante)             |
-| `GET /dga/dato?site=&desde=&hasta=`        | Mediciones por sitio + rango                   |
-| `GET /dga/dato/export.csv`                 | CSV de `dato_dga`                              |
-| `GET /dga/export-directo.csv`              | CSV agregado directo del equipo                |
+| Endpoint                            | Uso                                                      |
+| ----------------------------------- | -------------------------------------------------------- |
+| `GET /dga/sites/:id/live-preview`   | Último dato validado listo para envío (preview en modal) |
+| `GET /dga/sites/:id/ultimo-envio`   | Último envío exitoso (comprobante)                       |
+| `GET /dga/dato?site=&desde=&hasta=` | Mediciones por sitio + rango                             |
+| `GET /dga/dato/export.csv`          | CSV de `dato_dga`                                        |
+| `GET /dga/export-directo.csv`       | CSV agregado directo del equipo                          |
 
 UI: tab DGA en detalle de sitio agua (`company-site-canal-detail.ts`) muestra
 tabla con badges Enviado/Pendiente/Rechazado + comprobantes.
@@ -243,19 +243,19 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 
 ## 9. Variables de entorno
 
-| Variable                         | Requerida   | Default | Notas                                  |
-| -------------------------------- | ----------- | ------- | --------------------------------------- |
-| `DGA_ENCRYPTION_KEY`             | ✅          | —       | AES-256 claves informantes              |
-| `DGA_RUT_EMPRESA`                | ✅ (envío)  | —       | RUT Centro de Control Emeltec; sin esto submission omite ciclo |
-| `ENABLE_DGA_SUBMISSION_WORKER`   | —           | `false` | **Mantener `false` hasta autorización de gerencia** |
-| `ENABLE_DGA_WORKER`              | —           | `true`  | Fill                                    |
-| `ENABLE_DGA_PRESEED_WORKER`      | —           | `true`  | Preseed                                 |
-| `ENABLE_DGA_RECONCILER`          | —           | `true`  | Reconciler                              |
-| `MONITOR_PRIMARY_EMAIL`          | —           | —       | Alertas reconciler (no el 2FA — ese va al email del solicitante) |
-| `RESEND_API_KEY`                 | ✅ (2FA)    | —       | OTP email                               |
-| `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | — | 5m/60s/6h/1h | Cadencias |
-| `DGA_RECONCILER_STALE_VACIO_HOURS` | —          | `6`     | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada |
-| `DGA_RECONCILER_STUCK_MIN`         | —          | `15`    | Minutos antes de revertir slot atascado en `enviando` (check A) |
+| Variable                                                                                           | Requerida  | Default      | Notas                                                                                      |
+| -------------------------------------------------------------------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------ |
+| `DGA_ENCRYPTION_KEY`                                                                               | ✅         | —            | AES-256 claves informantes                                                                 |
+| `DGA_RUT_EMPRESA`                                                                                  | ✅ (envío) | —            | RUT Centro de Control Emeltec; sin esto submission omite ciclo                             |
+| `ENABLE_DGA_SUBMISSION_WORKER`                                                                     | —          | `false`      | **Mantener `false` hasta autorización de gerencia**                                        |
+| `ENABLE_DGA_WORKER`                                                                                | —          | `true`       | Fill                                                                                       |
+| `ENABLE_DGA_PRESEED_WORKER`                                                                        | —          | `true`       | Preseed                                                                                    |
+| `ENABLE_DGA_RECONCILER`                                                                            | —          | `true`       | Reconciler                                                                                 |
+| `MONITOR_PRIMARY_EMAIL`                                                                            | —          | —            | Alertas reconciler (no el 2FA — ese va al email del solicitante)                           |
+| `RESEND_API_KEY`                                                                                   | ✅ (2FA)   | —            | OTP email                                                                                  |
+| `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —          | 5m/60s/6h/1h | Cadencias                                                                                  |
+| `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —          | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada |
+| `DGA_RECONCILER_STUCK_MIN`                                                                         | —          | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                            |
 
 ---
 
