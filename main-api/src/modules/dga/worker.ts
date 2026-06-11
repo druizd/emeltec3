@@ -18,34 +18,19 @@ import {
 } from './repo';
 import { validateSlot } from './validation';
 import {
-  getDashboardHistoryRange,
+  getDashboardBucketExact,
   getMappingsBySiteId,
   getPozoConfigBySiteId,
   getSiteById,
 } from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
-import type { HistoryEquipoRow, PozoConfig, RegMap, Site } from '../sites/types';
+import type { PozoConfig, RegMap, Site } from '../sites/types';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_WORKER_POLL_MS ?? 60_000);
 const MAX_SLOTS_PER_POZO = Number(process.env.DGA_WORKER_MAX_SLOTS ?? 24);
 const WORKER_ENABLED = String(process.env.ENABLE_DGA_WORKER ?? 'true').toLowerCase() !== 'false';
 
 let intervalHandle: NodeJS.Timeout | null = null;
-
-function periodicidadWindowMs(periodicidad: PozoDgaConfigRow['dga_periodicidad']): number {
-  switch (periodicidad) {
-    case 'hora':
-      return 60 * 60 * 1000;
-    case 'dia':
-      return 24 * 60 * 60 * 1000;
-    case 'semana':
-      return 7 * 24 * 60 * 60 * 1000;
-    case 'mes':
-      return 30 * 24 * 60 * 60 * 1000;
-    default:
-      return 60 * 60 * 1000;
-  }
-}
 
 function numericOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -80,16 +65,11 @@ async function fillSlot(
     return 'skipped';
   }
 
-  const slotTs = new Date(slot.ts);
-  const windowMs = periodicidadWindowMs(pozoDga.dga_periodicidad);
-  const windowStart = new Date(slotTs.getTime() - windowMs);
-
-  const rawRows: HistoryEquipoRow[] = await getDashboardHistoryRange(
-    idSerial,
-    windowStart.toISOString(),
-    slotTs.toISOString(),
-  );
-  const representative = rawRows[0];
+  // Match exacto: bucket equipo_1min con timestamp = slot.ts. Si no existe,
+  // dato aún no arribó (red intermitente, sensor offline) → slot queda vacio,
+  // reintenta próximo ciclo. NO se usa lectura aproximada para preservar
+  // consistencia dashboard ↔ DGA.
+  const representative = await getDashboardBucketExact(idSerial, slot.ts);
   if (!representative) return 'no_data';
 
   const processed = mapHistoricalDashboardRow({

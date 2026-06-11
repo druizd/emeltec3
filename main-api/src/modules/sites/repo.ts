@@ -138,3 +138,21 @@ export async function getDashboardHistoryRange(
   }
   return result.rows;
 }
+
+export async function getDashboardBucketExact(
+  serialId: string,
+  bucketUtc: string,
+): Promise<HistoryEquipoRow | null> {
+  const result = await query<HistoryEquipoRow>(
+    `
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM equipo_1min
+    WHERE id_serial = $1
+      AND bucket = $2::timestamptz
+    LIMIT 1
+    `,
+    [serialId, bucketUtc],
+    { label: 'sites__dashboard_bucket_exact' },
+  );
+  return result.rows[0] ?? null;
+}

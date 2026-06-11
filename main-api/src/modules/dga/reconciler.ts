@@ -10,6 +10,7 @@ import {
   listDriftAuditEnviadoVsEstado,
   listEnviadoSinAudit,
   listStuckEnviando,
+  listVacioSlotsStale,
   reconcileMarkEnviado,
   unlockStuckEnviando,
 } from './repo';
@@ -17,6 +18,7 @@ import { sendDgaAdminAlert } from './notifier';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_RECONCILER_POLL_MS ?? 60 * 60 * 1000);
 const STUCK_THRESHOLD_MINUTES = Number(process.env.DGA_RECONCILER_STUCK_MIN ?? 15);
+const STALE_VACIO_HOURS = Number(process.env.DGA_RECONCILER_STALE_VACIO_HOURS ?? 6);
 const WORKER_ENABLED =
   String(process.env.ENABLE_DGA_RECONCILER ?? 'true').toLowerCase() !== 'false';
 
@@ -121,20 +123,83 @@ async function reportDoubleSubmission(): Promise<number> {
   return doubles.length;
 }
 
+// Throttle in-memory: evita reenviar el mismo digest cada hora si los slots
+// stale no cambian. Si entra/sale un slot, firma cambia y se manda nuevo
+// digest. Resetea al reiniciar el proceso (aceptable: max 1 alerta post-deploy).
+let lastStaleSignature = '';
+
+async function reportVacioStale(): Promise<number> {
+  const stale = await listVacioSlotsStale(STALE_VACIO_HOURS);
+  if (stale.length === 0) {
+    lastStaleSignature = '';
+    return 0;
+  }
+
+  const signature = stale.map((s) => `${s.site_id}:${s.ts}`).join('|');
+  if (signature === lastStaleSignature) {
+    logger.debug(
+      { count: stale.length },
+      'reconciler (E): stale set sin cambios, skip alerta',
+    );
+    return stale.length;
+  }
+  lastStaleSignature = signature;
+
+  const bySite = new Map<string, { ts: string; hours_stale: number }[]>();
+  for (const s of stale) {
+    const arr = bySite.get(s.site_id) ?? [];
+    arr.push({ ts: s.ts, hours_stale: Number(s.hours_stale) });
+    bySite.set(s.site_id, arr);
+  }
+
+  const sections: string[] = [];
+  for (const [siteId, slots] of bySite.entries()) {
+    sections.push(`\nSitio ${siteId} (${slots.length} slot(s)):`);
+    sections.push(
+      ...slots
+        .slice(0, 10)
+        .map((sl) => `  - ts=${sl.ts} (vacio hace ${sl.hours_stale.toFixed(1)}h)`),
+    );
+    if (slots.length > 10) sections.push(`  ... y ${slots.length - 10} más`);
+  }
+
+  logger.warn(
+    { total: stale.length, sites: bySite.size },
+    'reconciler (E): slots vacios stale',
+  );
+
+  await sendDgaAdminAlert({
+    subject: `[DGA] ${stale.length} slot(s) sin dato hace >${STALE_VACIO_HOURS}h`,
+    body:
+      `Detectados ${stale.length} slot(s) en estado 'vacio' con antigüedad mayor a ` +
+      `${STALE_VACIO_HOURS} horas. El fill worker no logra encontrar el bucket exacto ` +
+      `de medición correspondiente.\n\n` +
+      `Causas posibles: equipo offline / sin señal, equipo no emite en boundary del slot, ` +
+      `pozo_config.dga_hora_inicio mal alineada.\n\n` +
+      `NO se reportará a DGA hasta que el dato real arribe.\n\n` +
+      `Desglose por sitio:` +
+      sections.join('\n'),
+  });
+
+  return stale.length;
+}
+
 export async function runReconcilerCycle(): Promise<void> {
   try {
     const stuck = await reconcileStuckEnviando();
     const driftEnviado = await reconcileDriftEnviado();
     const sinAudit = await reportEnviadoSinAudit();
     const doubles = await reportDoubleSubmission();
+    const stale = await reportVacioStale();
 
-    if (stuck > 0 || driftEnviado > 0 || sinAudit > 0 || doubles > 0) {
+    if (stuck > 0 || driftEnviado > 0 || sinAudit > 0 || doubles > 0 || stale > 0) {
       logger.info(
         {
           stuck_unlocked: stuck,
           drift_enviado_fixed: driftEnviado,
           enviado_sin_audit: sinAudit,
           double_submission: doubles,
+          vacio_stale: stale,
         },
         'DGA reconciler: ciclo con hallazgos',
       );

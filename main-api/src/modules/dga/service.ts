@@ -160,9 +160,11 @@ export async function patchPozoDgaConfigService(
     dga_auto_accept_fallback_hours?: number | null | undefined;
   },
 ): Promise<PozoDgaConfigPublic> {
-  // hora_inicio puede venir HH:MM (sin segundos); normalizo.
-  if (input.dga_hora_inicio && input.dga_hora_inicio.length === 5) {
-    input.dga_hora_inicio = `${input.dga_hora_inicio}:00`;
+  // hora_inicio normalizada a HH:MM:00. DGA slots deben caer en minuto exacto
+  // para coincidir con buckets de equipo_1min. Segundos se descartan.
+  if (input.dga_hora_inicio) {
+    const [hh, mm] = input.dga_hora_inicio.split(':');
+    input.dga_hora_inicio = `${hh}:${mm}:00`;
   }
   if (input.dga_informante_rut) {
     input.dga_informante_rut = formatRutForDga(input.dga_informante_rut);

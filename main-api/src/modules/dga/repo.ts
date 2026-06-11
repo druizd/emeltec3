@@ -264,6 +264,32 @@ export async function listVacioSlotsForSite(
   return r.rows;
 }
 
+export interface StaleSlotRow {
+  site_id: string;
+  ts: string;
+  hours_stale: number;
+}
+
+export async function listVacioSlotsStale(
+  thresholdHours: number,
+  limit = 200,
+): Promise<StaleSlotRow[]> {
+  const r = await query<StaleSlotRow>(
+    `SELECT
+       site_id,
+       ts,
+       EXTRACT(EPOCH FROM (now() - ts))/3600 AS hours_stale
+     FROM dato_dga
+     WHERE estatus = 'vacio'
+       AND ts < now() - ($1 || ' hours')::interval
+     ORDER BY ts ASC
+     LIMIT $2`,
+    [thresholdHours, limit],
+    { name: 'dga__list_vacio_stale' },
+  );
+  return r.rows;
+}
+
 export async function findLastValidTotalizador(
   siteId: string,
   beforeTs: string,
