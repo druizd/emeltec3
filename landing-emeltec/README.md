@@ -1,18 +1,46 @@
 # Landing Emeltec
 
-Landing estática para Emeltec Cloud, enfocada en monitoreo IIoT, operación industrial y
-cumplimiento DGA.
+Landing estática para Emeltec Cloud, enfocada en monitoreo IIoT, operación industrial,
+cumplimiento DGA, HACCP e ISO 22000.
 
 ## Archivos
 
 - `index.html`: página completa.
 - `styles.css`: estilos responsive.
-- `script.js`: envío de formulario vía `mailto:ventas@emeltec.cl`.
+- `script.js`: menú móvil, carrusel de testimonios y apertura de Gmail con correo prellenado.
+- `serve-local.js`: servidor estático local.
 - `assets/`: logo, imágenes y fuente Josefin Sans usada por la landing.
+
+## SEO / medición
+
+Google Analytics y Google Search Console no quedan conectados hasta tener credenciales reales.
+
+Para conectar:
+
+- Google Analytics: crear una propiedad GA4 y reemplazar `G-XXXXXXXXXX` en `index.html` por el
+  Measurement ID real.
+- Google Search Console: agregar la propiedad del dominio, elegir verificación por etiqueta HTML y
+  reemplazar `TOKEN_SEARCH_CONSOLE` en `index.html` por el token entregado.
+- Después de subir a la VM, verificar en Search Console y revisar eventos en Analytics en tiempo real.
 
 ## Probar local
 
-Abrir `index.html` en el navegador.
+Para ver solo la página, puedes abrir `index.html` en el navegador.
+
+Para probar el flujo de Gmail:
+
+```powershell
+# Desde la raíz del repo
+node landing-emeltec\serve-local.js
+```
+
+Abrir `http://localhost:8080/`. El formulario abre Gmail con los datos ingresados y destino `ventas@emeltec.cl`.
+
+## Formulario de contacto
+
+El formulario no expone credenciales ni usa backend. Al enviar, abre Gmail Compose con destino
+`ventas@emeltec.cl`, asunto y cuerpo prellenados con nombre, correo, empresa, teléfono, servicio y
+mensaje. El usuario debe presionar **Enviar** dentro de Gmail.
 
 ## Docker con dominio propio
 
