@@ -174,13 +174,14 @@ Alertas van a `MONITOR_PRIMARY_EMAIL`.
 
 Cualquier warning → `requires_review` (el primero define `fail_reason`):
 
-| Código                       | Condición                                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| `sensor_known_defective`     | `reg_map.parametros.sensor_known_defective=true` en totalizador. Sugiere último totalizador válido |
-| `totalizator_zero`           | Totalizador 0 o NULL (sensor desconectado / reset firmware). Sugiere último válido                 |
-| `flow_exceeds_water_right`   | `\|caudal\| > dga_caudal_max_lps × (1 + tolerancia%)`                                              |
-| `flow_absurd_no_water_right` | Sin derecho cargado y `\|caudal\| > 1000 L/s` (fallback hardcode)                                  |
-| `transform_failed_all_nulls` | Caudal, totalizador y nivel freático todos NULL (¿mapeo roto?)                                     |
+| Código                       | Condición                                                                                             |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `sensor_known_defective`     | `reg_map.parametros.sensor_known_defective=true` en totalizador. Sugiere último totalizador válido    |
+| `totalizator_zero`           | Totalizador 0 o NULL (sensor desconectado / reset firmware). Sugiere último válido                    |
+| `flow_negative`              | Caudal < 0 (no esperado en pozo de extracción — posible sensor invertido / glitch). NO se envía a DGA |
+| `flow_exceeds_water_right`   | `abs(caudal) > dga_caudal_max_lps × (1 + tolerancia%)` (puede coexistir con `flow_negative`)          |
+| `flow_absurd_no_water_right` | Sin derecho cargado y `abs(caudal) > 1000 L/s` (fallback hardcode)                                    |
+| `transform_failed_all_nulls` | Caudal, totalizador y nivel freático todos NULL (¿mapeo roto?)                                        |
 
 ---
 

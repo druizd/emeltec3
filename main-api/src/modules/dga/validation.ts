@@ -2,9 +2,12 @@
  * Validación de slot DGA antes de marcar como 'pendiente'. Reglas:
  *   1. Sensor declarado defectuoso → requires_review siempre.
  *   2. Totalizador 0/NULL → requires_review con sugerencia de último válido.
- *   3. Caudal > caudal_max_lps × tolerancia → requires_review.
+ *   3. Caudal < 0 → requires_review (sensor invertido / glitch).
+ *   4. Caudal > caudal_max_lps × tolerancia → requires_review.
  *      Fallback hardcode 1000 L/s si no hay caudal_max cargado.
- *   4. Telemetría con todos los valores null → requires_review.
+ *   5. Telemetría con todos los valores null → requires_review.
+ *
+ * Reglas 3 y 4 pueden coexistir (caudal -15 con derecho 10 dispara ambas).
  *
  * Funciones puras (sin IO).
  */
@@ -61,6 +64,16 @@ export function validateSlot(values: SlotValues, ctx: ValidationContext): Valida
   }
 
   if (caudal != null) {
+    if (caudal < 0) {
+      warnings.push({
+        code: 'flow_negative',
+        raw: caudal,
+        reason:
+          'caudal negativo no esperado en pozo de extracción ' +
+          '(posible sensor invertido, glitch o cableado mal hecho)',
+      });
+    }
+
     const caudalMax =
       pozoDga.dga_caudal_max_lps != null ? Number(pozoDga.dga_caudal_max_lps) : null;
     const tolerancePct = Number(pozoDga.dga_caudal_tolerance_pct);
