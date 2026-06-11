@@ -145,15 +145,18 @@ describe('validateSlot — regla 3: flow_exceeds_water_right', () => {
     expect(res.warnings[0]?.limit).toBeCloseTo(12, 5);
   });
 
-  it('caudal negativo con magnitud > límite → warning (usa Math.abs)', () => {
+  it('caudal negativo con magnitud > límite → flow_negative + flow_exceeds_water_right', () => {
     const res = validateSlot(
       { caudal: -15, totalizador: 100, nivelFreatico: 5 },
       makeCtx({
         pozoDga: makePozoDga({ dga_caudal_max_lps: '10', dga_caudal_tolerance_pct: '20' }),
       }),
     );
-    expect(res.warnings[0]?.code).toBe('flow_exceeds_water_right');
-    expect(res.warnings[0]?.raw).toBe(-15);
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('flow_negative');
+    expect(codes).toContain('flow_exceeds_water_right');
+    // flow_negative se evalúa primero, define failReason
+    expect(res.failReason).toBe('flow_negative');
   });
 
   it('tolerancia 0% → límite = derecho exacto', () => {
@@ -186,12 +189,14 @@ describe('validateSlot — regla 4: flow_absurd_no_water_right (fallback 1000 L/
     expect(res.ok).toBe(true);
   });
 
-  it('sin derecho + caudal negativo magnitud > 1000 → warning (Math.abs)', () => {
+  it('sin derecho + caudal negativo magnitud > 1000 → flow_negative + flow_absurd', () => {
     const res = validateSlot(
       { caudal: -1500, totalizador: 100, nivelFreatico: 5 },
       makeCtx({ pozoDga: makePozoDga({ dga_caudal_max_lps: null }) }),
     );
-    expect(res.warnings[0]?.code).toBe('flow_absurd_no_water_right');
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('flow_negative');
+    expect(codes).toContain('flow_absurd_no_water_right');
   });
 });
 
@@ -207,6 +212,45 @@ describe('validateSlot — regla 5: transform_failed_all_nulls', () => {
     const res = validateSlot({ caudal: null, totalizador: null, nivelFreatico: 5 }, makeCtx());
     const codes = res.warnings.map((w) => w.code);
     expect(codes).not.toContain('transform_failed_all_nulls');
+  });
+});
+
+describe('validateSlot — regla flow_negative', () => {
+  it('caudal negativo pequeño → warning flow_negative + bloquea envío', () => {
+    const res = validateSlot(
+      { caudal: -0.5, totalizador: 100, nivelFreatico: 5 },
+      makeCtx({ pozoDga: makePozoDga({ dga_caudal_max_lps: '50' }) }),
+    );
+    expect(res.ok).toBe(false);
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('flow_negative');
+    expect(res.warnings.find((w) => w.code === 'flow_negative')?.raw).toBe(-0.5);
+    expect(res.failReason).toBe('flow_negative');
+  });
+
+  it('caudal 0 → sin warning flow_negative', () => {
+    const res = validateSlot(
+      { caudal: 0, totalizador: 100, nivelFreatico: 5 },
+      makeCtx({ pozoDga: makePozoDga({ dga_caudal_max_lps: '50' }) }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('flow_negative');
+    expect(res.ok).toBe(true);
+  });
+
+  it('caudal positivo dentro derecho → sin warning flow_negative', () => {
+    const res = validateSlot(
+      { caudal: 10, totalizador: 100, nivelFreatico: 5 },
+      makeCtx({ pozoDga: makePozoDga({ dga_caudal_max_lps: '50' }) }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('flow_negative');
+  });
+
+  it('caudal NULL → sin warning flow_negative (no aplica)', () => {
+    const res = validateSlot({ caudal: null, totalizador: 100, nivelFreatico: 5 }, makeCtx());
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('flow_negative');
   });
 });
 
