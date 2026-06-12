@@ -99,7 +99,7 @@ describe('sendToSnia — integración HTTP stub', () => {
     stubBehavior.capturedRequest = null;
     stubBehavior.shouldHang = false;
 
-    const { sendToSnia } = await import('../snia-client');
+    const { sendToSnia } = await import('../snia-client.js');
     const result = await sendToSnia(baseInput);
 
     expect(result.ok).toBe(true);
@@ -116,7 +116,7 @@ describe('sendToSnia — integración HTTP stub', () => {
       data: { numeroComprobante: 'X' },
     };
 
-    const { sendToSnia } = await import('../snia-client');
+    const { sendToSnia } = await import('../snia-client.js');
     await sendToSnia(baseInput);
 
     expect(stubBehavior.capturedRequest).not.toBeNull();
@@ -149,7 +149,7 @@ describe('sendToSnia — integración HTTP stub', () => {
       data: null,
     };
 
-    const { sendToSnia } = await import('../snia-client');
+    const { sendToSnia } = await import('../snia-client.js');
     const result = await sendToSnia(baseInput);
 
     expect(result.ok).toBe(false);
@@ -163,7 +163,7 @@ describe('sendToSnia — integración HTTP stub', () => {
     stubBehavior.responseStatus = 500;
     stubBehavior.responseBody = { error: 'Internal Server Error' };
 
-    const { sendToSnia } = await import('../snia-client');
+    const { sendToSnia } = await import('../snia-client.js');
     const result = await sendToSnia(baseInput);
 
     expect(result.ok).toBe(false);
@@ -179,7 +179,7 @@ describe('sendToSnia — integración HTTP stub', () => {
       data: { numeroComprobante: 'COMP-AUDIT-TEST' },
     };
 
-    const { sendToSnia } = await import('../snia-client');
+    const { sendToSnia } = await import('../snia-client.js');
     const result = await sendToSnia(baseInput);
 
     expect(result.raw_response).toEqual({
@@ -193,7 +193,7 @@ describe('sendToSnia — integración HTTP stub', () => {
     stubBehavior.responseStatus = 200;
     stubBehavior.responseBody = { status: '00', data: { numeroComprobante: 'X' } };
 
-    const { sendToSnia } = await import('../snia-client');
+    const { sendToSnia } = await import('../snia-client.js');
     const result = await sendToSnia(baseInput);
 
     const redacted = result.request_payload_redacted as Record<string, unknown>;
