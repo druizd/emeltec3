@@ -23,7 +23,7 @@ docker compose -f ~/emeltec3/docker-compose.yml exec -T timescaledb \
 
 **Esperado**: columnas `rut PK, clave_informante, referencia, created_at, updated_at`.
 
-### 1.b. Columnas DGA en `pozo_config` (11 esperadas)
+### 1.b. Columnas DGA en `pozo_config` (10 esperadas)
 
 ```bash
 docker compose -f ~/emeltec3/docker-compose.yml exec -T timescaledb \
@@ -33,11 +33,10 @@ docker compose -f ~/emeltec3/docker-compose.yml exec -T timescaledb \
     ORDER BY column_name;"
 ```
 
-**Esperado** (11 filas):
+**Esperado** (10 filas):
 
 ```
 dga_activo
-dga_auto_accept_fallback_hours
 dga_caudal_max_lps
 dga_caudal_tolerance_pct
 dga_fecha_inicio

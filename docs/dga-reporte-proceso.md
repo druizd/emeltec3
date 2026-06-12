@@ -54,20 +54,19 @@ alta falla con `DGA_KEY_MISSING`.
 Desde el frontend (modal "Configurar reporte DGA",
 `dga-generar-reporte-modal.ts`) → `PATCH /api/v2/dga/sites/:siteId/pozo-config`.
 
-Columnas en `pozo_config` (11):
+Columnas en `pozo_config` (10):
 
-| Campo                                  | Significado                                                                             |
-| -------------------------------------- | --------------------------------------------------------------------------------------- |
-| `dga_activo`                           | Switch maestro: habilita preseed + fill                                                 |
-| `dga_transport`                        | `off` \| `shadow` \| `rest` — solo `rest` envía real (**2FA para activarlo**)           |
-| `dga_periodicidad`                     | `hora` \| `dia` \| `semana` \| `mes`                                                    |
-| `dga_fecha_inicio` / `dga_hora_inicio` | Anclaje del primer slot                                                                 |
-| `dga_informante_rut`                   | FK al pool de informantes                                                               |
-| `dga_caudal_max_lps`                   | Derecho de agua (límite de caudal)                                                      |
-| `dga_caudal_tolerance_pct`             | Tolerancia % sobre el derecho                                                           |
-| `dga_max_retry_attempts`               | Reintentos antes de estado terminal `fallido`                                           |
-| `dga_auto_accept_fallback_hours`       | ⚠️ Se guarda/expone pero **ningún worker lo usa aún** (auto-aceptación no implementada) |
-| `dga_last_run_at`                      | Timestamp último fill exitoso                                                           |
+| Campo                                  | Significado                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------------- |
+| `dga_activo`                           | Switch maestro: habilita preseed + fill                                       |
+| `dga_transport`                        | `off` \| `shadow` \| `rest` — solo `rest` envía real (**2FA para activarlo**) |
+| `dga_periodicidad`                     | `hora` \| `dia` \| `semana` \| `mes`                                          |
+| `dga_fecha_inicio` / `dga_hora_inicio` | Anclaje del primer slot                                                       |
+| `dga_informante_rut`                   | FK al pool de informantes                                                     |
+| `dga_caudal_max_lps`                   | Derecho de agua (límite de caudal)                                            |
+| `dga_caudal_tolerance_pct`             | Tolerancia % sobre el derecho                                                 |
+| `dga_max_retry_attempts`               | Reintentos antes de estado terminal `fallido`                                 |
+| `dga_last_run_at`                      | Timestamp último fill exitoso                                                 |
 
 Además `pozo_config.obra_dga` = código de obra DGA (`OB-XXXX-XXX`), requisito
 para enviar.
@@ -134,7 +133,10 @@ para enviar.
 ### 4.3 Submission (`submission.ts`)
 
 - Solo corre si `ENABLE_DGA_SUBMISSION_WORKER=true` **y** `DGA_RUT_EMPRESA`
-  configurado.
+  configurado. **Fail-fast**: si el flag está en `true` pero el RUT falta,
+  el worker **no arranca** — emite log `error` + email a
+  `MONITOR_PRIMARY_EMAIL` al bootstrap. Antes el worker arrancaba y omitía
+  cada ciclo en silencio (cola pendiente crecía invisible).
 - Toma hasta 50 slots `pendiente` por ciclo (`DGA_SUBMISSION_MAX_PER_CYCLE`)
   con `dga_transport='rest'` y `next_retry_at` vencido o NULL.
 - Por slot:
@@ -243,27 +245,28 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 
 ## 9. Variables de entorno
 
-| Variable                                                                                           | Requerida  | Default      | Notas                                                                                      |
-| -------------------------------------------------------------------------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------ |
-| `DGA_ENCRYPTION_KEY`                                                                               | ✅         | —            | AES-256 claves informantes                                                                 |
-| `DGA_RUT_EMPRESA`                                                                                  | ✅ (envío) | —            | RUT Centro de Control Emeltec; sin esto submission omite ciclo                             |
-| `ENABLE_DGA_SUBMISSION_WORKER`                                                                     | —          | `false`      | **Mantener `false` hasta autorización de gerencia**                                        |
-| `ENABLE_DGA_WORKER`                                                                                | —          | `true`       | Fill                                                                                       |
-| `ENABLE_DGA_PRESEED_WORKER`                                                                        | —          | `true`       | Preseed                                                                                    |
-| `ENABLE_DGA_RECONCILER`                                                                            | —          | `true`       | Reconciler                                                                                 |
-| `MONITOR_PRIMARY_EMAIL`                                                                            | —          | —            | Alertas reconciler (no el 2FA — ese va al email del solicitante)                           |
-| `RESEND_API_KEY`                                                                                   | ✅ (2FA)   | —            | OTP email                                                                                  |
-| `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —          | 5m/60s/6h/1h | Cadencias                                                                                  |
-| `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —          | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada |
-| `DGA_RECONCILER_STUCK_MIN`                                                                         | —          | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                            |
+| Variable                                                                                           | Requerida  | Default      | Notas                                                                                                            |
+| -------------------------------------------------------------------------------------------------- | ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `DGA_ENCRYPTION_KEY`                                                                               | ✅         | —            | AES-256 claves informantes                                                                                       |
+| `DGA_RUT_EMPRESA`                                                                                  | ✅ (envío) | —            | RUT Centro de Control Emeltec. Si `ENABLE_DGA_SUBMISSION_WORKER=true` y falta → worker NO arranca + alerta email |
+| `ENABLE_DGA_SUBMISSION_WORKER`                                                                     | —          | `false`      | **Mantener `false` hasta autorización de gerencia**                                                              |
+| `ENABLE_DGA_WORKER`                                                                                | —          | `true`       | Fill                                                                                                             |
+| `ENABLE_DGA_PRESEED_WORKER`                                                                        | —          | `true`       | Preseed                                                                                                          |
+| `ENABLE_DGA_RECONCILER`                                                                            | —          | `true`       | Reconciler                                                                                                       |
+| `MONITOR_PRIMARY_EMAIL`                                                                            | —          | —            | Alertas reconciler (no el 2FA — ese va al email del solicitante)                                                 |
+| `RESEND_API_KEY`                                                                                   | ✅ (2FA)   | —            | OTP email                                                                                                        |
+| `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —          | 5m/60s/6h/1h | Cadencias                                                                                                        |
+| `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —          | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada                       |
+| `DGA_RECONCILER_STUCK_MIN`                                                                         | —          | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                                                  |
 
 ---
 
 ## 10. Pendientes / deuda conocida
 
-- **`dga_auto_accept_fallback_hours`**: columna + schema + endpoints lo
-  aceptan, pero ningún worker implementa la auto-aceptación de slots en
-  `requires_review`. Implementar o retirar del modal.
+- **`dga-api` (servicio legacy)**: sigue en `docker-compose.yml` con
+  ingestion worker activo por default, pero referencia la tabla `dga_user`
+  ya droppeada. Decomisionar (el frontend y main-api ya no lo usan salvo
+  health-check en `statusController.js`).
 - **Submission real**: `ENABLE_DGA_SUBMISSION_WORKER=false` en prod hasta
   cutover autorizado.
 
@@ -277,6 +280,7 @@ infra-db/migrations/2026-05-14-alert-dga-atrasado.sql
 infra-db/migrations/2026-05-14-dga-submission-tracking.sql
 infra-db/migrations/2026-05-16-dga-pipeline-refactor.sql
 infra-db/migrations/2026-05-17-dga-pozo-config-redesign.sql
+infra-db/migrations/2026-06-11-drop-dga-auto-accept-fallback.sql
 ```
 
 Tests: `main-api/src/modules/dga/__tests__/` (vitest).
