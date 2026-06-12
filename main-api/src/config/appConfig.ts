@@ -5,10 +5,6 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const rutMod = require('../utils/rut.js') as { formatRutForDga: (value: unknown) => string };
-const { formatRutForDga } = rutMod;
-
 const NodeEnv = z.enum(['development', 'test', 'production']).default('development');
 
 const Schema = z.object({
@@ -71,10 +67,6 @@ const Schema = z.object({
   // Endpoint REST oficial SNIA aguas subterráneas (Res. Exenta 2.170/2025).
   // Default = endpoint productivo. Override en .env solo para piloto/staging.
   DGA_API_URL: z.string().url().default('https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas'),
-
-  // RUT del Centro de Control (Emeltec) registrado ante DGA. Requerido para
-  // que el submission worker pueda enviar. Sin esto, el worker no arranca.
-  DGA_RUT_EMPRESA: z.string().min(1).optional(),
 
   // Kill switch global del envío DGA. Default OFF — sin autorización de
   // gerencia para migrar legacy → nuevo pipeline. Activar solo cuando se
@@ -152,7 +144,11 @@ export const config = {
   dga: {
     encryptionKey: env.DGA_ENCRYPTION_KEY,
     apiUrl: env.DGA_API_URL,
-    rutEmpresa: env.DGA_RUT_EMPRESA ? formatRutForDga(env.DGA_RUT_EMPRESA) : undefined,
+    // RUT del Centro de Control Emeltec ante DGA, registrado en SNIA.
+    // Es info pública (SII). Hardcoded para eliminar paso operativo de
+    // setear env var en cada ambiente. Si en el futuro Emeltec cambia de
+    // RUT o hay segundo Centro de Control, mover a env var.
+    rutEmpresa: '76455593-7',
     submissionEnabled: env.ENABLE_DGA_SUBMISSION_WORKER,
   },
 } as const;

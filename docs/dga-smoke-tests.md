@@ -252,7 +252,7 @@ emails enviados a `MONITOR_PRIMARY_EMAIL` y actuar manualmente.
 ## 7. Variables de entorno críticas
 
 ```bash
-grep -E "POSTGRES_USER|POSTGRES_DB|DGA_API_URL|DGA_RUT_EMPRESA|\
+grep -E "POSTGRES_USER|POSTGRES_DB|DGA_API_URL|\
 ENABLE_DGA_SUBMISSION_WORKER|ENABLE_DGA_PRESEED_WORKER|\
 ENABLE_DGA_WORKER|ENABLE_DGA_RECONCILER|DGA_ENCRYPTION_KEY|\
 MONITOR_PRIMARY_EMAIL" ~/emeltec3/.env
@@ -262,8 +262,7 @@ MONITOR_PRIMARY_EMAIL" ~/emeltec3/.env
 
 - `DGA_ENCRYPTION_KEY` — sin esto, alta de informante con clave falla
   (`DGA_KEY_MISSING`).
-- `DGA_RUT_EMPRESA` — RUT del Centro de Control Emeltec; sin esto el
-  submission worker omite ciclo.
+- **RUT Centro de Control hardcoded** (`76455593-7` en `appConfig.ts`).
 - `MONITOR_PRIMARY_EMAIL` — destino de las alertas del reconciler
   (slots huérfanos / doble envío). El 2FA email-OTP se envía al email
   del usuario que solicitó el código, no a esta dirección.

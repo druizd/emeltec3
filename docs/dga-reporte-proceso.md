@@ -132,11 +132,9 @@ para enviar.
 
 ### 4.3 Submission (`submission.ts`)
 
-- Solo corre si `ENABLE_DGA_SUBMISSION_WORKER=true` **y** `DGA_RUT_EMPRESA`
-  configurado. **Fail-fast**: si el flag está en `true` pero el RUT falta,
-  el worker **no arranca** — emite log `error` + email a
-  `MONITOR_PRIMARY_EMAIL` al bootstrap. Antes el worker arrancaba y omitía
-  cada ciclo en silencio (cola pendiente crecía invisible).
+- Solo corre si `ENABLE_DGA_SUBMISSION_WORKER=true`. RUT del Centro de
+  Control Emeltec (`76455593-7`) hardcoded en `config/appConfig.ts` —
+  info pública SII, único Centro de Control de la empresa.
 - Toma hasta 50 slots `pendiente` por ciclo (`DGA_SUBMISSION_MAX_PER_CYCLE`)
   con `dga_transport='rest'` y `next_retry_at` vencido o NULL.
 - **Throttle entre slots**: delay default `1s` (`DGA_SUBMISSION_DELAY_MS`)
@@ -253,20 +251,19 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 
 ## 9. Variables de entorno
 
-| Variable                                                                                           | Requerida  | Default      | Notas                                                                                                            |
-| -------------------------------------------------------------------------------------------------- | ---------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| `DGA_ENCRYPTION_KEY`                                                                               | ✅         | —            | AES-256 claves informantes                                                                                       |
-| `DGA_RUT_EMPRESA`                                                                                  | ✅ (envío) | —            | RUT Centro de Control Emeltec. Si `ENABLE_DGA_SUBMISSION_WORKER=true` y falta → worker NO arranca + alerta email |
-| `ENABLE_DGA_SUBMISSION_WORKER`                                                                     | —          | `false`      | **Mantener `false` hasta autorización de gerencia**                                                              |
-| `ENABLE_DGA_WORKER`                                                                                | —          | `true`       | Fill                                                                                                             |
-| `ENABLE_DGA_PRESEED_WORKER`                                                                        | —          | `true`       | Preseed                                                                                                          |
-| `ENABLE_DGA_RECONCILER`                                                                            | —          | `true`       | Reconciler                                                                                                       |
-| `MONITOR_PRIMARY_EMAIL`                                                                            | —          | —            | Alertas reconciler (no el 2FA — ese va al email del solicitante)                                                 |
-| `RESEND_API_KEY`                                                                                   | ✅ (2FA)   | —            | OTP email                                                                                                        |
-| `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —          | 5m/60s/6h/1h | Cadencias                                                                                                        |
-| `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —          | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada                       |
-| `DGA_RECONCILER_STUCK_MIN`                                                                         | —          | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                                                  |
-| `DGA_SUBMISSION_DELAY_MS`                                                                          | —          | `1000`       | Delay entre cada slot en `runSubmissionCycle`. Evita ráfagas → bloqueo SNIA (Res 2170 §6.1 + §7)                 |
+| Variable                                                                                           | Requerida | Default      | Notas                                                                                            |
+| -------------------------------------------------------------------------------------------------- | --------- | ------------ | ------------------------------------------------------------------------------------------------ |
+| `DGA_ENCRYPTION_KEY`                                                                               | ✅        | —            | AES-256 claves informantes                                                                       |
+| `ENABLE_DGA_SUBMISSION_WORKER`                                                                     | —         | `false`      | **Mantener `false` hasta autorización de gerencia**                                              |
+| `ENABLE_DGA_WORKER`                                                                                | —         | `true`       | Fill                                                                                             |
+| `ENABLE_DGA_PRESEED_WORKER`                                                                        | —         | `true`       | Preseed                                                                                          |
+| `ENABLE_DGA_RECONCILER`                                                                            | —         | `true`       | Reconciler                                                                                       |
+| `MONITOR_PRIMARY_EMAIL`                                                                            | —         | —            | Alertas reconciler (no el 2FA — ese va al email del solicitante)                                 |
+| `RESEND_API_KEY`                                                                                   | ✅ (2FA)  | —            | OTP email                                                                                        |
+| `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —         | 5m/60s/6h/1h | Cadencias                                                                                        |
+| `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —         | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada       |
+| `DGA_RECONCILER_STUCK_MIN`                                                                         | —         | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                                  |
+| `DGA_SUBMISSION_DELAY_MS`                                                                          | —         | `1000`       | Delay entre cada slot en `runSubmissionCycle`. Evita ráfagas → bloqueo SNIA (Res 2170 §6.1 + §7) |
 
 ---
 

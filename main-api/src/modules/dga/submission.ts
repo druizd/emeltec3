@@ -17,7 +17,6 @@ import {
   type PendingSubmissionRow,
 } from './repo';
 import { sendToSnia, type SniaSendResult } from './snia-client';
-import { sendDgaAdminAlert } from './notifier';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_SUBMISSION_POLL_MS ?? 5 * 60 * 1000);
 const MAX_PER_CYCLE = Number(process.env.DGA_SUBMISSION_MAX_PER_CYCLE ?? 50);
@@ -245,10 +244,6 @@ async function processSlot(
 
 export async function runSubmissionCycle(): Promise<void> {
   if (!config.dga.submissionEnabled) return;
-  if (!config.dga.rutEmpresa) {
-    logger.warn('DGA submission: DGA_RUT_EMPRESA no configurado, ciclo omitido');
-    return;
-  }
 
   let pending: PendingSubmissionRow[];
   try {
@@ -297,30 +292,6 @@ export function startDgaSubmissionWorker(): void {
   if (intervalHandle) return;
   if (!config.dga.submissionEnabled) {
     logger.info('DGA submission worker deshabilitado (ENABLE_DGA_SUBMISSION_WORKER=false)');
-    return;
-  }
-  if (!config.dga.rutEmpresa) {
-    // Fail-fast: sin RUT del Centro de Control no se puede enviar a SNIA.
-    // Antes el worker arrancaba y cada ciclo omitía silenciosamente — la
-    // cola pendiente crecía invisible. Ahora bloquea arranque + alerta.
-    logger.error(
-      'DGA submission worker NO arrancado: ENABLE_DGA_SUBMISSION_WORKER=true ' +
-        'pero DGA_RUT_EMPRESA está vacío. Configurar y reiniciar.',
-    );
-    void sendDgaAdminAlert({
-      subject: '[DGA] Submission worker NO arrancó — DGA_RUT_EMPRESA falta',
-      body:
-        'El submission worker está habilitado (ENABLE_DGA_SUBMISSION_WORKER=true) ' +
-        'pero DGA_RUT_EMPRESA no está configurado. Sin RUT del Centro de Control ' +
-        'no se puede enviar a SNIA.\n\n' +
-        'Acción: setear DGA_RUT_EMPRESA en .env y reiniciar main-api.\n\n' +
-        'Mientras tanto, los slots pendiente NO se enviarán.',
-    }).catch((err) =>
-      logger.error(
-        { err: (err as Error).message },
-        'DGA submission: fallo enviando alerta de startup',
-      ),
-    );
     return;
   }
   logger.info({ intervalMs: POLL_INTERVAL_MS }, 'DGA submission worker iniciado');
