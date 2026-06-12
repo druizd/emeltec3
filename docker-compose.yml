@@ -67,7 +67,6 @@ services:
       CSVCONSUMER_HOST: csvconsumer
       CSVCONSUMER_PORT: 50051
       AUTH_API_URL: http://auth-api:3001
-      DGA_API_INTERNAL_URL: http://dga-api:3002
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -114,33 +113,6 @@ services:
       retries: 5
     restart: unless-stopped
 
-  dga-api:
-    build: ./dga-api
-    container_name: emeltec-dga-api
-    ports:
-      - '${DGA_API_HOST_PORT:-3002}:3002'
-    env_file:
-      - ./.env
-    environment:
-      <<: *db-env
-      NODE_ENV: production
-      PORT: 3002
-    depends_on:
-      timescaledb:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - >-
-          node -e "fetch('http://localhost:3002/api/dga/health/live')
-          .then(r => process.exit(r.ok ? 0 : 1))
-          .catch(() => process.exit(1))"
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-    restart: unless-stopped
-
   auth-api:
     build: ./auth-api
     container_name: emeltec-auth
@@ -173,8 +145,6 @@ services:
         condition: service_healthy
       auth-api:
         condition: service_healthy
-      dga-api:
-        condition: service_healthy
     restart: unless-stopped
 
   metrics-page:
@@ -186,8 +156,6 @@ services:
       main-api:
         condition: service_healthy
       auth-api:
-        condition: service_healthy
-      dga-api:
         condition: service_healthy
     restart: unless-stopped
 

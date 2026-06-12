@@ -12,13 +12,12 @@ configuración del pozo hasta el comprobante de envío.
 
 ## 1. Arquitectura — quién hace qué
 
-| Pieza                       | Rol                                                                                                                                                                                                                     |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `main-api/src/modules/dga/` | **Pipeline vigente**: workers, validación, envío SNIA, 2FA, cripto                                                                                                                                                      |
-| `frontend-angular`          | Config del pozo (modal), tab DGA, cola de revisión (`/dga-review`)                                                                                                                                                      |
-| `dga-api` (puerto 3002)     | **Servicio legacy** (modelo pre-redesign). Ingestion ON por default; submission OFF. Referenciaba `dga_user` (tabla ya droppeada). Pendiente decomisionar. `main-api` solo le hace health-check (`statusController.js`) |
-| TimescaleDB                 | `dato_dga`, `dga_informante`, `dga_send_audit`, `pozo_config.dga_*`                                                                                                                                                     |
-| SNIA / MOP                  | Endpoint oficial `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`                                                                                                                                             |
+| Pieza                       | Rol                                                                         |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `main-api/src/modules/dga/` | **Pipeline vigente**: workers, validación, envío SNIA, 2FA, cripto          |
+| `frontend-angular`          | Config del pozo (modal), tab DGA, cola de revisión (`/dga-review`)          |
+| TimescaleDB                 | `dato_dga`, `dga_informante`, `dga_send_audit`, `pozo_config.dga_*`         |
+| SNIA / MOP                  | Endpoint oficial `https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas` |
 
 Archivos clave en `main-api/src/modules/dga/`:
 
@@ -284,4 +283,4 @@ infra-db/migrations/2026-05-17-dga-pozo-config-redesign.sql
 infra-db/migrations/2026-06-11-drop-dga-auto-accept-fallback.sql
 ```
 
-Tests: `dga-api/src/__tests__/` (legacy) + tests del módulo en main-api.
+Tests: `main-api/src/modules/dga/__tests__/` (vitest).

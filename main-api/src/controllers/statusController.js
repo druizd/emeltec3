@@ -7,7 +7,6 @@ const PROTO_PATH = path.join(__dirname, '../grpc/pipeline.proto');
 const CSVCONSUMER_HOST = process.env.CSVCONSUMER_HOST || 'localhost';
 const CSVCONSUMER_PORT = process.env.CSVCONSUMER_PORT || '50051';
 const AUTH_API_URL = process.env.AUTH_API_URL || 'http://auth-api:3001';
-const DGA_API_INTERNAL_URL = process.env.DGA_API_INTERNAL_URL || 'http://dga-api:3002';
 
 function pingPipeline() {
   return new Promise((resolve) => {
@@ -73,32 +72,11 @@ async function pingAuth() {
   }
 }
 
-async function pingDga() {
-  const start = Date.now();
-  try {
-    const res = await fetch(`${DGA_API_INTERNAL_URL}/api/dga/health/ready`, {
-      signal: AbortSignal.timeout(3000),
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) {
-      return { status: 'degraded', http_status: res.status, response_time_ms: Date.now() - start };
-    }
-    const body = await res.json().catch(() => ({}));
-    return {
-      status: body.ok === false ? 'degraded' : 'online',
-      response_time_ms: Date.now() - start,
-    };
-  } catch (err) {
-    return { status: 'offline', error: err.message };
-  }
-}
-
 exports.getStatus = async (req, res) => {
-  const [database, pipeline, auth, dga] = await Promise.all([
+  const [database, pipeline, auth] = await Promise.all([
     pingDatabase(),
     pingPipeline(),
     pingAuth(),
-    pingDga(),
   ]);
 
   const services = {
@@ -110,7 +88,6 @@ exports.getStatus = async (req, res) => {
     auth,
     database,
     pipeline,
-    dga,
   };
 
   const allOk = Object.values(services).every((s) => s.status === 'online');
