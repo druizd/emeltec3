@@ -1272,11 +1272,11 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     const normalizedInput = String(roleId ?? '')
       .trim()
       .toLowerCase();
-    const normalized =
-      normalizedInput === 'nivel_freatico' ? 'nivel' : normalizedInput || 'generico';
-    return this.variableRoleOptions().some((option) => option.id === normalized)
-      ? normalized
-      : 'generico';
+    const normalized = normalizedInput || 'generico';
+    const availableRoles = new Set(this.variableRoleOptions().map((option) => option.id));
+    if (availableRoles.has(normalized)) return normalized;
+    if (normalized === 'nivel_freatico' && availableRoles.has('nivel')) return 'nivel';
+    return 'generico';
   }
 
   private normalizeTransform(transformId: string | null | undefined): string {
@@ -1300,7 +1300,10 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     const text = this.normalizeSearchText(...values);
     const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
 
-    if (text.includes('freatico') && availableRoles.has('nivel')) return 'nivel';
+    if (text.includes('freatico')) {
+      if (availableRoles.has('nivel_freatico')) return 'nivel_freatico';
+      if (availableRoles.has('nivel')) return 'nivel';
+    }
     if (
       (text.includes('nivel') || text.includes('level') || text.includes('sonda')) &&
       availableRoles.has('nivel')
