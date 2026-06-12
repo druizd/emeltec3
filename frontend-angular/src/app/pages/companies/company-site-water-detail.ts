@@ -140,9 +140,9 @@ interface DgaReportRow {
   fecha: string;
   dateIso: string;
   timestampMs: number;
-  nivelFreatico: number;
-  caudal: number;
-  totalizador: number;
+  nivelFreatico: number | null;
+  caudal: number | null;
+  totalizador: number | null;
   estado: string;
   enviadoDga: string;
   respuesta: string;
@@ -3638,9 +3638,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       fecha: `${r.fecha} ${r.hora}`,
       dateIso: r.ts,
       timestampMs: new Date(r.ts).getTime(),
-      nivelFreatico: r.nivel_freatico == null ? 0 : Number(r.nivel_freatico),
-      caudal: r.caudal_instantaneo == null ? 0 : Number(r.caudal_instantaneo),
-      totalizador: r.flujo_acumulado == null ? 0 : Number(r.flujo_acumulado),
+      nivelFreatico: r.nivel_freatico == null ? null : Number(r.nivel_freatico),
+      caudal: r.caudal_instantaneo == null ? null : Number(r.caudal_instantaneo),
+      totalizador: r.flujo_acumulado == null ? null : Number(r.flujo_acumulado),
       estado: estadoMap[r.estatus] ?? 'Pendiente',
       enviadoDga: r.estatus === 'enviado' ? `${r.fecha} ${r.hora}` : '',
       respuesta: respuestaMap[r.estatus] ?? 'Pendiente',
@@ -4380,14 +4380,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.selectedDgaReport.set(null);
   }
 
-  formatDgaNumber(value: number): string {
+  formatDgaNumber(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
     return new Intl.NumberFormat('es-CL', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
   }
 
-  formatDgaInteger(value: number): string {
+  formatDgaInteger(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
     return new Intl.NumberFormat('es-CL', {
       maximumFractionDigits: 0,
       useGrouping: false,
