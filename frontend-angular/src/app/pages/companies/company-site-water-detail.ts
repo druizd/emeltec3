@@ -4382,18 +4382,14 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   formatDgaNumber(value: number | null | undefined): string {
     if (value == null || !Number.isFinite(value)) return '—';
-    return new Intl.NumberFormat('es-CL', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
+    // Formato DGA Res 2170 §4: punto decimal, sin separador miles.
+    return value.toFixed(2);
   }
 
   formatDgaInteger(value: number | null | undefined): string {
     if (value == null || !Number.isFinite(value)) return '—';
-    return new Intl.NumberFormat('es-CL', {
-      maximumFractionDigits: 0,
-      useGrouping: false,
-    }).format(value);
+    // Formato DGA Res 2170 §4: entero sin decimales ni separador de miles.
+    return Math.trunc(value).toString();
   }
 
   previousHistoryPage(): void {
@@ -4861,16 +4857,13 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private formatRealtimeNumber(value: number | null, maximumFractionDigits: number): string {
     if (value === null) return '--';
-    return new Intl.NumberFormat('es-CL', {
-      minimumFractionDigits: maximumFractionDigits > 0 ? Math.min(1, maximumFractionDigits) : 0,
-      maximumFractionDigits,
-    }).format(value);
+    // Formato DGA Res 2170 §4: punto decimal, sin separador miles.
+    return value.toFixed(maximumFractionDigits);
   }
 
   formatChartNumber(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-      maximumFractionDigits: Math.abs(value) >= 100 ? 0 : 2,
-    }).format(value);
+    // Formato DGA: punto decimal, sin separador miles.
+    return value.toFixed(Math.abs(value) >= 100 ? 0 : 2);
   }
 
   private formatChileTimeShort(value: Date): string {
