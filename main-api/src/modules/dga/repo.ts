@@ -822,6 +822,30 @@ export async function listEnviadoSinAudit(): Promise<EnviadoSinAuditRow[]> {
   return r.rows;
 }
 
+/**
+ * Verifica si ya existe un audit OK (status='00' + comprobante) para
+ * (site_id, ts). Usado por submission como pre-check anti-doble-envío
+ * (Res 2170 §6.3 prohíbe retransmitir mediciones ya recibidas).
+ */
+export async function findExistingSuccessfulAudit(
+  siteId: string,
+  ts: string,
+): Promise<{ comprobante: string } | null> {
+  const r = await query<{ comprobante: string }>(
+    `SELECT api_n_comprobante AS comprobante
+       FROM dga_send_audit
+      WHERE site_id = $1
+        AND ts = $2
+        AND dga_status_code = '00'
+        AND api_n_comprobante IS NOT NULL
+      ORDER BY sent_at DESC
+      LIMIT 1`,
+    [siteId, ts],
+    { name: 'dga__find_existing_ok_audit' },
+  );
+  return r.rows[0] ?? null;
+}
+
 export interface DoubleSendRow {
   site_id: string;
   ts: string;

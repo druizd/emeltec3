@@ -168,6 +168,15 @@ describe('buildSniaPayload — bodyRedacted (audit)', () => {
     const out = buildSniaPayload(baseInput);
     expect((out.body.autenticacion as Record<string, unknown>).password).toBe('secret-pass');
   });
+
+  it('serialize completo de bodyRedacted nunca contiene plaintext password', () => {
+    // Aserción de seguridad: si en algún refactor se agrega un nuevo campo
+    // que filtre el password, este test falla.
+    const out = buildSniaPayload({ ...baseInput, password: 'super-secret-XYZ-123' });
+    const serialized = JSON.stringify(out.bodyRedacted);
+    expect(serialized).not.toContain('super-secret-XYZ-123');
+    expect(serialized).toContain('****');
+  });
 });
 
 describe('buildSniaPayload — validaciones de rut', () => {
