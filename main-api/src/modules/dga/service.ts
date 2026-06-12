@@ -389,10 +389,13 @@ export async function verifySniaSubmission(
   if (stored.horaMedicion && remote.horaMedicion !== stored.horaMedicion) {
     diffs.push(`horaMedicion: stored=${stored.horaMedicion} remote=${remote.horaMedicion}`);
   }
-  if (stored.caudal !== null && remote.caudal !== stored.caudal) {
+  // Comparación numérica: SNIA quita trailing zeros en la respuesta GET
+  // ("0.00" → "0.0", "25.70" → "25.7"). Comparar como Number evita falsos
+  // mismatches por formato string.
+  if (stored.caudal !== null && !numericStringsEqual(remote.caudal, stored.caudal)) {
     diffs.push(`caudal: stored=${stored.caudal} remote=${remote.caudal}`);
   }
-  if (stored.totalizador !== null && remote.totalizador !== stored.totalizador) {
+  if (stored.totalizador !== null && !numericStringsEqual(remote.totalizador, stored.totalizador)) {
     diffs.push(`totalizador: stored=${stored.totalizador} remote=${remote.totalizador}`);
   }
   // nivelFreaticoDelPozo puede venir vacío legítimamente (pozos muy
@@ -400,7 +403,7 @@ export async function verifySniaSubmission(
   if (
     stored.nivelFreaticoDelPozo &&
     remote.nivelFreaticoDelPozo &&
-    remote.nivelFreaticoDelPozo !== stored.nivelFreaticoDelPozo
+    !numericStringsEqual(remote.nivelFreaticoDelPozo, stored.nivelFreaticoDelPozo)
   ) {
     diffs.push(
       `nivelFreaticoDelPozo: stored=${stored.nivelFreaticoDelPozo} remote=${remote.nivelFreaticoDelPozo}`,
@@ -423,6 +426,21 @@ function remoteDateToIso(raw: string): string {
   const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(raw);
   if (!m) return raw;
   return `${m[3]}-${m[2]}-${m[1]}`;
+}
+
+/**
+ * Compara dos strings que representan números. SNIA quita trailing zeros
+ * en GET (`"0.00"` → `"0.0"`, `"25.70"` → `"25.7"`), por lo que comparar
+ * como string daría falso mismatch. Convierte a Number antes de comparar.
+ * Tolera null/empty: ambos null/empty → iguales.
+ */
+function numericStringsEqual(a: string | null, b: string | null): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  const na = Number(a);
+  const nb = Number(b);
+  if (!Number.isFinite(na) || !Number.isFinite(nb)) return a === b;
+  return na === nb;
 }
 
 // ============================================================================
