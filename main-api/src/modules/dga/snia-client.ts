@@ -86,7 +86,7 @@ function timestampOrigenChile(now: Date = new Date()): string {
  * Construye el body JSON y headers para el POST a SNIA.
  * Aplica todos los formatos requeridos por Res 2170 §4.
  *
- * @throws si rutEmpresa no está configurado (DGA_RUT_EMPRESA env).
+ * @throws si rutEmpresa no está configurado (hardcoded en appConfig.ts).
  */
 export function buildSniaPayload(input: SniaSendInput): {
   url: string;
