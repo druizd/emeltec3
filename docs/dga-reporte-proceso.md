@@ -139,17 +139,25 @@ para enviar.
   cada ciclo en silencio (cola pendiente crecía invisible).
 - Toma hasta 50 slots `pendiente` por ciclo (`DGA_SUBMISSION_MAX_PER_CYCLE`)
   con `dga_transport='rest'` y `next_retry_at` vencido o NULL.
+- **Throttle entre slots**: delay default `1s` (`DGA_SUBMISSION_DELAY_MS`)
+  para evitar tráfico anómalo y bloqueo por SNIA (Res 2170 §6.1 + §7).
 - Por slot:
-  1. Pre-checks: `obra_dga` presente, informante asociado, clave descifrable.
-     Falla → `rechazado` con `fail_reason` (`pozo_sin_codigo_obra`,
-     `pozo_sin_informante`, `clave_decrypt_error`).
-  2. Lock optimista: `pendiente` → `enviando` (evita doble envío entre
+  1. Pre-checks: `obra_dga` presente y con formato `^O[BR]-\d{4}-\d+$`
+     (Res 2170 §5.2), informante asociado, clave descifrable. Falla →
+     `rechazado` con `fail_reason` (`pozo_sin_codigo_obra`,
+     `codigo_obra_formato_invalido`, `pozo_sin_informante`,
+     `clave_decrypt_error`).
+  2. **Anti-doble-envío** (Res 2170 §6.3): consulta `dga_send_audit` por
+     audit OK existente para `(site_id, ts)`. Si existe → auto-fix a
+     `enviado` con el comprobante guardado, sin reenviar. Evita ser bloqueado
+     por DGA por retransmisión.
+  3. Lock optimista: `pendiente` → `enviando` (evita doble envío entre
      instancias).
-  3. POST a SNIA (§6).
-  4. **Audit primero, estado después**: inserta fila en `dga_send_audit`
+  4. POST a SNIA (§6).
+  5. **Audit primero, estado después**: inserta fila en `dga_send_audit`
      antes de mover el estatus — si el proceso muere entre medio, el
      reconciler corrige el drift.
-  5. Respuesta `status="00"` + `numeroComprobante` → `enviado` (guarda
+  6. Respuesta `status="00"` + `numeroComprobante` → `enviado` (guarda
      comprobante). Otro status → `rechazado` con
      `next_retry_at = now() + 24h` (Res 2170 §6.2: reintento al día
      siguiente). Intentos agotados (`dga_max_retry_attempts`) → `fallido`
@@ -258,6 +266,7 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 | `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —          | 5m/60s/6h/1h | Cadencias                                                                                                        |
 | `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —          | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada                       |
 | `DGA_RECONCILER_STUCK_MIN`                                                                         | —          | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                                                  |
+| `DGA_SUBMISSION_DELAY_MS`                                                                          | —          | `1000`       | Delay entre cada slot en `runSubmissionCycle`. Evita ráfagas → bloqueo SNIA (Res 2170 §6.1 + §7)                 |
 
 ---
 

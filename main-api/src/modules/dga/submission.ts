@@ -8,6 +8,7 @@ import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 import { decryptClave } from './crypto';
 import {
+  findExistingSuccessfulAudit,
   insertSendAudit,
   listPendingForSubmission,
   lockSlotForSending,
@@ -20,6 +21,19 @@ import { sendDgaAdminAlert } from './notifier';
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_SUBMISSION_POLL_MS ?? 5 * 60 * 1000);
 const MAX_PER_CYCLE = Number(process.env.DGA_SUBMISSION_MAX_PER_CYCLE ?? 50);
+const DELAY_BETWEEN_MS = Number(process.env.DGA_SUBMISSION_DELAY_MS ?? 1_000);
+
+/**
+ * Formato `codigoObra` exigido por Res Exenta 2.170 §5.2:
+ *   - Parte 1: "OB" (captación) o "OR" (restitución)
+ *   - Parte 2: 4 dígitos (región 2 + provincia 2, con padding 0)
+ *   - Parte 3: correlativo entero ≥1 (sin padding fijo)
+ * Ejemplo válido: `OB-0602-7` (Región 6, Provincia 2, séptima obra)
+ *
+ * Si el formato no calza, SNIA rechazará el envío y eventualmente puede
+ * bloquear el Centro de Control por tráfico anómalo (§7).
+ */
+export const CODIGO_OBRA_REGEX = /^O[BR]-\d{4}-\d+$/;
 
 let intervalHandle: NodeJS.Timeout | null = null;
 
@@ -61,6 +75,22 @@ async function processSlot(
     return 'skipped';
   }
 
+  if (!CODIGO_OBRA_REGEX.test(slot.codigo_obra)) {
+    // Pre-check Res 2170 §5.2: si formato es inválido, SNIA rechazará y
+    // podría bloquearnos por §7. Mejor bloquear localmente.
+    logger.warn(
+      { site_id: slot.site_id, ts: slot.ts, codigo_obra: slot.codigo_obra },
+      'submission: codigo_obra con formato inválido (esperado OB|OR-NNNN-N+) — slot no enviado',
+    );
+    await markSlotRechazado({
+      site_id: slot.site_id,
+      ts: slot.ts,
+      fail_reason: 'codigo_obra_formato_invalido',
+      max_retry_attempts: slot.max_retry_attempts,
+    });
+    return 'skipped';
+  }
+
   if (!slot.rut_informante || !slot.clave_informante) {
     logger.warn(
       { site_id: slot.site_id, ts: slot.ts },
@@ -73,6 +103,24 @@ async function processSlot(
       max_retry_attempts: slot.max_retry_attempts,
     });
     return 'skipped';
+  }
+
+  // Pre-check anti-doble-envío (Res 2170 §6.3): si ya hay audit OK con
+  // comprobante para este (site_id, ts), NO reenviar. Auto-corregimos al
+  // estado 'enviado' usando el comprobante existente (reconciler check B
+  // hace lo mismo pero solo en su ciclo horario; acá lo cubrimos en línea).
+  const existingOk = await findExistingSuccessfulAudit(slot.site_id, slot.ts);
+  if (existingOk) {
+    logger.warn(
+      { site_id: slot.site_id, ts: slot.ts, comprobante: existingOk.comprobante },
+      'submission: audit OK ya existe para slot — auto-fix a enviado sin reenviar',
+    );
+    await markSlotEnviado({
+      site_id: slot.site_id,
+      ts: slot.ts,
+      comprobante: existingOk.comprobante,
+    });
+    return 'enviado';
   }
 
   const locked = await lockSlotForSending(slot.site_id, slot.ts);
@@ -217,8 +265,15 @@ export async function runSubmissionCycle(): Promise<void> {
   let fallido = 0;
   let skipped = 0;
 
-  for (const slot of pending) {
+  for (let i = 0; i < pending.length; i++) {
+    const slot = pending[i]!;
     try {
+      // Throttle entre envíos: Res 2170 §6.1 + §7 piden no generar tráfico
+      // anómalo. Default 1s entre slots evita ráfagas que SNIA podría
+      // interpretar como abuso → bloqueo Centro de Control.
+      if (i > 0 && DELAY_BETWEEN_MS > 0) {
+        await new Promise<void>((resolve) => setTimeout(resolve, DELAY_BETWEEN_MS));
+      }
       const outcome = await processSlot(slot);
       if (outcome === 'enviado') enviado++;
       else if (outcome === 'rechazado') rechazado++;
