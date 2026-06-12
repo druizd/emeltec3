@@ -31,6 +31,7 @@ import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../site
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
 import { formatRutForDga } from '../../utils/rut';
+import { consultarSnia } from './snia-client';
 import type { HistoryEquipoRow } from '../sites/types';
 import type { Periodicidad } from './schema';
 
@@ -258,6 +259,170 @@ export async function getDatoDgaBySite(
  */
 export async function getUltimoEnvio(siteId: string): Promise<UltimoEnvioRow | null> {
   return getUltimoEnvioBySite(siteId);
+}
+
+// ============================================================================
+// Verificación post-envío contra SNIA (Res 2170 §1 GET endpoint)
+// ============================================================================
+
+export interface VerifyResult {
+  status: 'verified' | 'not_found' | 'mismatch' | 'error';
+  comprobante: string;
+  /** Mensaje SNIA o detalle del problema. */
+  message: string | null;
+  /** Valores guardados en BD al momento del envío. */
+  stored: {
+    fechaMedicion: string;
+    horaMedicion: string;
+    caudal: string | null;
+    totalizador: string | null;
+    nivelFreaticoDelPozo: string | null;
+  };
+  /** Valores devueltos por SNIA en el GET. Null si SNIA no devolvió data. */
+  remote: {
+    fechaMedicion: string | null;
+    horaMedicion: string | null;
+    caudal: string | null;
+    totalizador: string | null;
+    nivelFreaticoDelPozo: string | null;
+  } | null;
+  /** Diferencias campo a campo si hay mismatch. */
+  diffs: string[];
+  duration_ms: number;
+}
+
+/**
+ * Verifica que una medición enviada a SNIA realmente quedó registrada
+ * (Res 2170 §1: "es importante el uso de esta herramienta que le permitirá
+ * comprobar aquello").
+ *
+ * Flujo:
+ *   1. Busca el audit OK más reciente para (siteId, ts) en dga_send_audit.
+ *   2. Llama GET SNIA con codigoObra + comprobante.
+ *   3. Compara valores devueltos vs request_payload original.
+ *
+ * Devuelve `verified` si todo coincide, `mismatch` si SNIA tiene valores
+ * distintos, `not_found` si SNIA no encuentra el comprobante, `error` si
+ * hubo fallo de red u otro.
+ */
+export async function verifySniaSubmission(
+  siteId: string,
+  ts: string,
+): Promise<VerifyResult | null> {
+  const audit = await dbQuery<{
+    api_n_comprobante: string;
+    request_payload: Record<string, unknown> | null;
+    codigo_obra: string | null;
+  }>(
+    `SELECT a.api_n_comprobante, a.request_payload, pc.obra_dga AS codigo_obra
+       FROM dga_send_audit a
+       JOIN pozo_config pc ON pc.sitio_id = a.site_id
+      WHERE a.site_id = $1
+        AND a.ts = $2::timestamptz
+        AND a.dga_status_code = '00'
+        AND a.api_n_comprobante IS NOT NULL
+      ORDER BY a.sent_at DESC
+      LIMIT 1`,
+    [siteId, ts],
+    { name: 'dga__find_audit_for_verify' },
+  );
+
+  const row = audit.rows[0];
+  if (!row || !row.codigo_obra) return null;
+
+  const payload = row.request_payload as {
+    medicionSubterranea?: Record<string, string | null>;
+  } | null;
+  const med = payload?.medicionSubterranea ?? {};
+
+  const stored = {
+    fechaMedicion: (med['fechaMedicion'] as string) ?? '',
+    horaMedicion: (med['horaMedicion'] as string) ?? '',
+    caudal: (med['caudal'] as string) ?? null,
+    totalizador: (med['totalizador'] as string) ?? null,
+    nivelFreaticoDelPozo: (med['nivelFreaticoDelPozo'] as string) ?? null,
+  };
+
+  const result = await consultarSnia(row.codigo_obra, row.api_n_comprobante);
+
+  if (!result.ok) {
+    if (result.dga_status_code && result.dga_status_code !== '00') {
+      return {
+        status: 'not_found',
+        comprobante: row.api_n_comprobante,
+        message: result.dga_message ?? `SNIA respondió status=${result.dga_status_code}`,
+        stored,
+        remote: null,
+        diffs: [],
+        duration_ms: result.duration_ms,
+      };
+    }
+    return {
+      status: 'error',
+      comprobante: row.api_n_comprobante,
+      message: result.dga_message ?? 'fallo consulta SNIA',
+      stored,
+      remote: null,
+      diffs: [],
+      duration_ms: result.duration_ms,
+    };
+  }
+
+  // SNIA devuelve fechaMedicion como DD-MM-YYYY en GET (anomalía Res 2170).
+  // Convertimos a YYYY-MM-DD para comparar con stored.
+  const remoteFechaIso = result.data?.fechaMedicion
+    ? remoteDateToIso(result.data.fechaMedicion)
+    : null;
+
+  const remote = {
+    fechaMedicion: remoteFechaIso,
+    horaMedicion: result.data?.horaMedicion ?? null,
+    caudal: result.data?.caudal ?? null,
+    totalizador: result.data?.totalizador ?? null,
+    nivelFreaticoDelPozo: result.data?.nivelFreaticoDelPozo ?? null,
+  };
+
+  const diffs: string[] = [];
+  if (stored.fechaMedicion && remote.fechaMedicion !== stored.fechaMedicion) {
+    diffs.push(`fechaMedicion: stored=${stored.fechaMedicion} remote=${remote.fechaMedicion}`);
+  }
+  if (stored.horaMedicion && remote.horaMedicion !== stored.horaMedicion) {
+    diffs.push(`horaMedicion: stored=${stored.horaMedicion} remote=${remote.horaMedicion}`);
+  }
+  if (stored.caudal !== null && remote.caudal !== stored.caudal) {
+    diffs.push(`caudal: stored=${stored.caudal} remote=${remote.caudal}`);
+  }
+  if (stored.totalizador !== null && remote.totalizador !== stored.totalizador) {
+    diffs.push(`totalizador: stored=${stored.totalizador} remote=${remote.totalizador}`);
+  }
+  // nivelFreaticoDelPozo puede venir vacío legítimamente (pozos muy
+  // pequeños / minero — Res 2170 §4); solo flag si ambos no-vacío y difieren.
+  if (
+    stored.nivelFreaticoDelPozo &&
+    remote.nivelFreaticoDelPozo &&
+    remote.nivelFreaticoDelPozo !== stored.nivelFreaticoDelPozo
+  ) {
+    diffs.push(
+      `nivelFreaticoDelPozo: stored=${stored.nivelFreaticoDelPozo} remote=${remote.nivelFreaticoDelPozo}`,
+    );
+  }
+
+  return {
+    status: diffs.length === 0 ? 'verified' : 'mismatch',
+    comprobante: row.api_n_comprobante,
+    message: result.dga_message,
+    stored,
+    remote,
+    diffs,
+    duration_ms: result.duration_ms,
+  };
+}
+
+function remoteDateToIso(raw: string): string {
+  // SNIA GET devuelve DD-MM-YYYY. Convertir a YYYY-MM-DD.
+  const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(raw);
+  if (!m) return raw;
+  return `${m[3]}-${m[2]}-${m[1]}`;
 }
 
 // ============================================================================

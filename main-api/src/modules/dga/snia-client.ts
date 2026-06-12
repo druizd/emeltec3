@@ -229,3 +229,116 @@ export async function sendToSnia(input: SniaSendInput): Promise<SniaSendResult> 
     };
   }
 }
+
+// ============================================================================
+// Consulta GET — verificación post-envío (Res 2170 §1)
+// ============================================================================
+
+export interface SniaConsultaResult {
+  ok: boolean;
+  http_status: number | null;
+  dga_status_code: string | null;
+  dga_message: string | null;
+  /**
+   * Cuando ok=true, contiene los valores devueltos por SNIA para el
+   * comprobante consultado. `fechaMedicion` viene como `DD-MM-YYYY`
+   * (formato diferente al POST que es YYYY-MM-DD — anomalía de la spec).
+   */
+  data: {
+    fechaMedicion: string | null;
+    horaMedicion: string | null;
+    caudal: string | null;
+    totalizador: string | null;
+    nivelFreaticoDelPozo: string | null;
+  } | null;
+  raw_response: unknown;
+  duration_ms: number;
+}
+
+/**
+ * Consulta GET a SNIA para verificar que una medición enviada previamente
+ * realmente quedó registrada en el sistema MEE-DGA (Res 2170 §1).
+ *
+ * Endpoint:
+ *   GET /api/v1/mediciones/subterraneas?codigoObra=<X>&numeroComprobante=<Y>
+ *
+ * Caso de uso: tras un POST exitoso (status=00 + comprobante), llamar acá
+ * para auditar que SNIA efectivamente registró la medición. Si responde
+ * status="00" + datos coherentes → verificado. Si responde sin datos o con
+ * status distinto → posible pérdida; alertar al admin.
+ *
+ * NO lanza para errores HTTP/protocolo — devuelve `ok=false`. Solo lanza si
+ * `codigoObra` o `numeroComprobante` están vacíos.
+ *
+ * Timeout: 10s (consulta es read-only, debería ser rápido).
+ */
+export async function consultarSnia(
+  codigoObra: string,
+  numeroComprobante: string,
+): Promise<SniaConsultaResult> {
+  if (!codigoObra) throw new Error('codigoObra requerido');
+  if (!numeroComprobante) throw new Error('numeroComprobante requerido');
+
+  const url = `${config.dga.apiUrl}?codigoObra=${encodeURIComponent(codigoObra)}&numeroComprobante=${encodeURIComponent(numeroComprobante)}`;
+  const startedAt = Date.now();
+  let httpStatus: number | null = null;
+  let raw: unknown = null;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    httpStatus = response.status;
+    raw = await response.json().catch(() => null);
+
+    const parsed = raw as {
+      status?: string;
+      message?: string;
+      data?: {
+        fechaMedicion?: string;
+        horaMedicion?: string;
+        caudal?: string;
+        totalizador?: string;
+        nivelFreaticoDelPozo?: string;
+      };
+    } | null;
+
+    const dgaStatus = parsed?.status ?? null;
+    const ok = response.ok && dgaStatus === '00';
+
+    return {
+      ok,
+      http_status: httpStatus,
+      dga_status_code: dgaStatus,
+      dga_message: parsed?.message ?? null,
+      data: parsed?.data
+        ? {
+            fechaMedicion: parsed.data.fechaMedicion ?? null,
+            horaMedicion: parsed.data.horaMedicion ?? null,
+            caudal: parsed.data.caudal ?? null,
+            totalizador: parsed.data.totalizador ?? null,
+            nivelFreaticoDelPozo: parsed.data.nivelFreaticoDelPozo ?? null,
+          }
+        : null,
+      raw_response: raw,
+      duration_ms: Date.now() - startedAt,
+    };
+  } catch (err) {
+    const msg = (err as Error).message;
+    logger.error(
+      { codigoObra, numeroComprobante, err: msg },
+      'SNIA: fallo de red al consultar comprobante',
+    );
+    return {
+      ok: false,
+      http_status: httpStatus,
+      dga_status_code: null,
+      dga_message: `network_error: ${msg}`,
+      data: null,
+      raw_response: raw,
+      duration_ms: Date.now() - startedAt,
+    };
+  }
+}

@@ -55,6 +55,32 @@ export interface PatchPozoDgaConfigPayload {
 }
 
 // ============================================================================
+// Verificación post-envío SNIA (Res 2170 §1)
+// ============================================================================
+
+export interface DgaVerifyResult {
+  status: 'verified' | 'not_found' | 'mismatch' | 'error';
+  comprobante: string;
+  message: string | null;
+  stored: {
+    fechaMedicion: string;
+    horaMedicion: string;
+    caudal: string | null;
+    totalizador: string | null;
+    nivelFreaticoDelPozo: string | null;
+  };
+  remote: {
+    fechaMedicion: string | null;
+    horaMedicion: string | null;
+    caudal: string | null;
+    totalizador: string | null;
+    nivelFreaticoDelPozo: string | null;
+  } | null;
+  diffs: string[];
+  duration_ms: number;
+}
+
+// ============================================================================
 // Live preview
 // ============================================================================
 
@@ -224,6 +250,20 @@ export class DgaService {
       .get<
         ApiResponse<{ ts: string; comprobante: string | null } | null>
       >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/ultimo-envio`)
+      .pipe(map((r) => (r.ok ? r.data : null)));
+  }
+
+  /**
+   * Verifica vía GET SNIA que un envío previo (audit OK) quedó registrado
+   * en MEE-DGA (Res 2170 §1). Compara datos guardados vs los devueltos.
+   * Estado posible: 'verified' | 'not_found' | 'mismatch' | 'error'.
+   */
+  verifySnia(siteId: string, ts: string): Observable<DgaVerifyResult | null> {
+    const params = new HttpParams().set('ts', ts);
+    return this.http
+      .get<
+        ApiResponse<DgaVerifyResult>
+      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/verify`, { params })
       .pipe(map((r) => (r.ok ? r.data : null)));
   }
 

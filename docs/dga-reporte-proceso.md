@@ -233,13 +233,14 @@ Slots `requires_review` requieren decisión manual de SuperAdmin/Admin:
 
 ## 8. Consulta y exportación
 
-| Endpoint                            | Uso                                                      |
-| ----------------------------------- | -------------------------------------------------------- |
-| `GET /dga/sites/:id/live-preview`   | Último dato validado listo para envío (preview en modal) |
-| `GET /dga/sites/:id/ultimo-envio`   | Último envío exitoso (comprobante)                       |
-| `GET /dga/dato?site=&desde=&hasta=` | Mediciones por sitio + rango                             |
-| `GET /dga/dato/export.csv`          | CSV de `dato_dga`                                        |
-| `GET /dga/export-directo.csv`       | CSV agregado directo del equipo                          |
+| Endpoint                             | Uso                                                      |
+| ------------------------------------ | -------------------------------------------------------- |
+| `GET /dga/sites/:id/live-preview`    | Último dato validado listo para envío (preview en modal) |
+| `GET /dga/sites/:id/ultimo-envio`    | Último envío exitoso (comprobante)                       |
+| `GET /dga/sites/:id/verify?ts=<ISO>` | Verifica recepción SNIA (Res 2170 §1)                    |
+| `GET /dga/dato?site=&desde=&hasta=`  | Mediciones por sitio + rango                             |
+| `GET /dga/dato/export.csv`           | CSV de `dato_dga`                                        |
+| `GET /dga/export-directo.csv`        | CSV agregado directo del equipo                          |
 
 UI: tab DGA en detalle de sitio agua (`company-site-canal-detail.ts`) muestra
 tabla con badges Enviado/Pendiente/Rechazado + comprobantes.

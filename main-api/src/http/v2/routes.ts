@@ -25,6 +25,7 @@ import {
   getDgaLivePreviewHandler,
   getPozoDgaConfigHandler,
   getUltimoEnvioHandler,
+  verifySniaHandler,
   listInformantesHandler,
   listReviewQueueHandler,
   patchPozoDgaConfigHandler,
@@ -185,6 +186,7 @@ router.patch(
 );
 router.get('/dga/sites/:siteId/live-preview', protect, getDgaLivePreviewHandler);
 router.get('/dga/sites/:siteId/ultimo-envio', protect, getUltimoEnvioHandler);
+router.get('/dga/sites/:siteId/verify', protect, verifySniaHandler);
 
 // =====================================================================
 // Bitácora del sitio: ficha + equipamiento.
