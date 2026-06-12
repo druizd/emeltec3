@@ -40,6 +40,7 @@ import {
   patchPozoDgaConfigService,
   toCsv,
   upsertInformanteService,
+  verifySniaSubmission,
 } from './service';
 import { requestDgaCode } from './twofactor';
 import type { AuthUser } from '../../shared/permissions';
@@ -202,6 +203,38 @@ export async function getDgaLivePreviewHandler(
     if (!siteId) throw new ValidationError('siteId requerido');
     const preview = await getDgaLivePreview(siteId);
     res.json(ok(preview, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Verifica vía GET SNIA que un envío previo (audit OK) realmente quedó
+ * registrado en MEE-DGA (Res 2170 §1). Compara datos guardados vs los
+ * devueltos por SNIA.
+ *
+ * GET /api/v2/dga/sites/:siteId/verify?ts=<ISO>
+ */
+export async function verifySniaHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const ts = String(req.query['ts'] ?? '').trim();
+    if (!ts) throw new ValidationError('query param ts requerido (ISO timestamp)');
+    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(ts)) {
+      throw new ValidationError('ts debe ser ISO timestamp (YYYY-MM-DDTHH:mm:ss...)');
+    }
+    const result = await verifySniaSubmission(siteId, ts);
+    if (!result) {
+      res.status(404).json({ ok: false, error: 'no audit OK encontrado para (siteId, ts)' });
+      return;
+    }
+    res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
