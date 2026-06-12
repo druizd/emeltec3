@@ -325,6 +325,7 @@ function findHistoricalVariable(
         variable.fuente?.d1,
         variable.fuente?.d2,
       );
+      if (role === 'nivel' && text.includes('freatico')) continue;
       const matchesText = tokens.some((t) => text.includes(t));
       const isUInt32Totalizer =
         role === 'totalizador' && ['uint32_registros', 'uint32'].includes(variable.transformacion);

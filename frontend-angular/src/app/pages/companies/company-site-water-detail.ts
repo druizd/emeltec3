@@ -4670,6 +4670,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const variable = (this.dashboardData()?.variables || []).find((item) => {
       if (item.ok === false) return false;
       const text = this.normalizeSearchText(item.key, item.alias, item.rol_dashboard);
+      if (role === 'nivel' && text.includes('freatico')) return false;
       return item.key === role || item.rol_dashboard === role || text.includes(role);
     });
 

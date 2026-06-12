@@ -39,6 +39,12 @@ const SITE_TYPE_CATALOG = {
         description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.',
       },
       {
+        id: 'nivel_freatico',
+        label: 'Nivel Freático',
+        unitHint: 'm',
+        description: 'Nivel freático ya calculado por el equipo, medido desde superficie.',
+      },
+      {
         id: 'caudal',
         label: 'Caudal',
         unitHint: 'L/s',
