@@ -44,7 +44,6 @@
     { "pattern": "frontend-angular" },
     { "pattern": "main-api" },
     { "pattern": "auth-api" },
-    { "pattern": "dga-api" },
     { "pattern": "shared" }
   ],
 

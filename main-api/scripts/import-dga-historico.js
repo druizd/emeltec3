@@ -12,9 +12,9 @@
  *    - dga_send_audit   (transport='legacy-import', dga_status_code='00',
  *                        api_n_comprobante, sent_at del CSV)
  *
- *  Permite migrar el histórico antes de flipear `transport='rest'` en el
- *  nuevo dga-api: el shadow worker puede comparar valores nuevos vs los
- *  importados para validar paridad antes de cortar legacy.
+ *  Permite migrar el histórico antes de flipear `transport='rest'`: el
+ *  shadow worker puede comparar valores nuevos vs los importados para
+ *  validar paridad antes de cortar.
  *
  *
  *  FORMATO CSV ESPERADO
