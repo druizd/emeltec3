@@ -115,19 +115,51 @@ hasta cutover real.
 
 ## 3. Estado de datos
 
-### 3.a. Conteo pozos + informantes
+### 3.a. Conteo pozos + informantes + slots por estado
 
 ```bash
 docker compose -f ~/emeltec3/docker-compose.yml exec -T timescaledb \
   psql -U postgres -d telemetry_platform -c \
   "SELECT
-     (SELECT COUNT(*) FROM sitio WHERE tipo_sitio='pozo' AND activo=TRUE)   AS pozos_activos,
-     (SELECT COUNT(*) FROM pozo_config WHERE dga_activo=TRUE)               AS pozos_dga_activos,
-     (SELECT COUNT(*) FROM dga_informante)                                  AS informantes,
-     (SELECT COUNT(*) FROM dato_dga WHERE estatus='vacio')                  AS slots_vacios,
-     (SELECT COUNT(*) FROM dato_dga WHERE estatus='pendiente')              AS slots_pendientes,
-     (SELECT COUNT(*) FROM dato_dga WHERE estatus='requires_review')        AS slots_review,
-     (SELECT COUNT(*) FROM dato_dga WHERE estatus='enviado')                AS slots_enviados;"
+     (SELECT COUNT(*) FROM sitio WHERE tipo_sitio='pozo' AND activo=TRUE)         AS pozos_activos,
+     (SELECT COUNT(*) FROM pozo_config WHERE dga_activo=TRUE)                     AS pozos_dga_activos,
+     (SELECT COUNT(*) FROM dga_informante)                                        AS informantes,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='vacio')                        AS slots_vacios,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='vacio' AND ts < now() - interval '6 hours')
+                                                                                  AS slots_vacios_stale_6h,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='pendiente')                    AS slots_pendientes,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='requires_review')              AS slots_review,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='enviando')                     AS slots_enviando,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='enviado')                      AS slots_enviados,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='rechazado')                    AS slots_rechazados,
+     (SELECT COUNT(*) FROM dato_dga WHERE estatus='fallido')                      AS slots_fallidos;"
+```
+
+**Esperado** (operación normal):
+
+- `slots_enviando = 0` o muy bajo. Si >0 sostenido → posible lock atascado
+  (reconciler check A debería revertir tras 15 min). Si >0 persiste tras 1h,
+  revisar logs del reconciler.
+- `slots_vacios_stale_6h = 0`. Si >0 → fill worker no encuentra bucket exacto
+  en `equipo_1min` para el ts del slot (sensor offline / sin señal / hora
+  inicio mal alineada). Alerta E del reconciler ya debería haber notificado.
+- `slots_rechazados` se acumula con reintentos vivos (`next_retry_at` en
+  futuro). No debe crecer sin parar — si lo hace, revisar `fail_reason`
+  agrupado (query opcional abajo).
+- `slots_fallidos` (terminal, intentos agotados) debe ser 0 o muy bajo. Cada
+  uno requiere intervención manual.
+
+**Query opcional — desglose de fallos**:
+
+```bash
+docker compose -f ~/emeltec3/docker-compose.yml exec -T timescaledb \
+  psql -U postgres -d telemetry_platform -c \
+  "SELECT estatus, fail_reason, COUNT(*) AS n
+     FROM dato_dga
+    WHERE estatus IN ('rechazado','fallido','requires_review')
+    GROUP BY estatus, fail_reason
+    ORDER BY n DESC
+    LIMIT 20;"
 ```
 
 ### 3.b. Pozos con DGA activo pero config incompleta
