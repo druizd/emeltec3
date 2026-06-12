@@ -321,7 +321,7 @@ interface Periodo {
                         >
                         @if (s.monthlyLoaded) {
                           <span class="font-mono text-caption-xs font-bold text-slate-700"
-                            >{{ s.consumoMes.toLocaleString() }} m³</span
+                            >{{ formatM3(s.consumoMes) }} m³</span
                           >
                         } @else {
                           <span
@@ -335,7 +335,7 @@ interface Periodo {
                         >
                         @if (s.monthlyLoaded) {
                           <span class="font-mono text-caption-xs font-bold" style="color:#0dafbd"
-                            >{{ s.m3Proyectados.toLocaleString() }} m³</span
+                            >{{ formatM3(s.m3Proyectados) }} m³</span
                           >
                         } @else {
                           <span
@@ -764,6 +764,12 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly alertaService = inject(AlertaService);
   private readonly dgaService = inject(DgaService);
   private readonly incidenciaService = inject(IncidenciaService);
+
+  /** Formato DGA Res 2170 §4: entero sin decimales ni separador de miles. */
+  formatM3(value: number | null | undefined): string {
+    if (value == null || !Number.isFinite(value)) return '—';
+    return Math.trunc(value).toString();
+  }
   // Forzar CD después de mutaciones a arrays no-signal (sitiosResumen,
   // puntosMensuales, metricasOp). El default CD de Angular no detecta
   // mutaciones in-place de objetos plain class fields desde callbacks async.
@@ -1584,8 +1590,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         nivelA: s.nivel.toFixed(1),
         nivelB: nivelB.toFixed(1),
         nivelTend: pct(s.nivel, nivelB),
-        consumoA: s.consumoMes.toLocaleString(),
-        consumoB: consumoB.toLocaleString(),
+        consumoA: Math.trunc(s.consumoMes).toString(),
+        consumoB: Math.trunc(consumoB).toString(),
         consumoTend: pct(s.consumoMes, consumoB),
       };
     });
