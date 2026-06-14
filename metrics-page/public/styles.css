@@ -787,6 +787,93 @@ body {
   text-align: center;
 }
 
+/* --- paneles: ingesta / workers / proceso --- */
+.panel-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 16px;
+}
+@media (max-width: 720px) {
+  .panel-2col {
+    grid-template-columns: 1fr;
+  }
+}
+.panel {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.panel--accent {
+  border-color: var(--color-primary-border);
+  box-shadow: var(--shadow-teal-sm);
+}
+.panel__head {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.panel__head h3 {
+  font: var(--fw-semibold) var(--text-xs) var(--font-display);
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel__body {
+  padding: 16px;
+}
+.ingest {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: center;
+}
+.ingest__big {
+  font: var(--fw-semibold) var(--text-3xl) var(--font-mono);
+  color: var(--color-primary);
+  line-height: 1;
+  white-space: nowrap;
+}
+.ingest__big small {
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+}
+.ingest__sub {
+  font: var(--fw-regular) var(--text-sm) / var(--lh-normal) var(--font-body);
+  color: var(--text-secondary);
+}
+.worker-list {
+  display: flex;
+  flex-direction: column;
+}
+.worker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-muted);
+}
+.worker-row:last-child {
+  border-bottom: none;
+}
+.worker-row__name {
+  font: var(--fw-medium) var(--text-sm) var(--font-body);
+  color: var(--text-primary);
+}
+.worker-row__age {
+  margin-left: auto;
+  font: var(--fw-medium) 12px var(--font-mono);
+  color: var(--text-secondary);
+}
+
 /* --- login modal --- */
 .login {
   position: fixed;

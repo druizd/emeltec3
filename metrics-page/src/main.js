@@ -75,6 +75,24 @@ const SERVICE_META = {
     path: ':50061',
   },
   redis: { label: 'Redis', role: 'Caché de estado', icon: 'hard-drive', path: 'cache' },
+  linuxDbApi: {
+    label: 'linux-db-api',
+    role: 'Cola de comandos PLC · Rust',
+    icon: 'network',
+    path: ':3010',
+  },
+};
+
+// Etiquetas legibles para los workers in-process.
+const WORKER_LABELS = {
+  alertas: 'Alertas',
+  dgaWorker: 'DGA · fill',
+  dgaPreseed: 'DGA · pre-seed',
+  dgaSubmission: 'DGA · envío SNIA',
+  dgaReconciler: 'DGA · reconciliador',
+  healthDigest: 'Monitor de salud',
+  contadores: 'Contadores',
+  cacheWarmer: 'Cache warmer',
 };
 
 // Servicios de la arquitectura que main-api NO sondea directamente: se muestran
@@ -93,13 +111,6 @@ const CONTEXT_SERVICES = [
     icon: 'globe',
     zone: 'VM Linux',
     path: 'cloud.emeltec.cl',
-  },
-  {
-    label: 'linux-db-api',
-    role: 'Cola de comandos PLC · Rust',
-    icon: 'network',
-    zone: 'VM Linux',
-    path: ':3010',
   },
   {
     label: 'csvprocessor',
@@ -452,6 +463,87 @@ function contextSection() {
   `;
 }
 
+function fmtAgeShort(seconds) {
+  if (seconds == null) return '—';
+  if (seconds < 60) return `${seconds}s`;
+  const m = Math.floor(seconds / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
+// Telemetría: cuántos equipos transmiten y hace cuánto se recibió la última medición.
+function ingestionPanel() {
+  const ing = state.detail?.ingestion;
+  if (!ing) return '';
+  const age = ing.last_age_s == null ? '—' : fmtUptime(ing.last_age_s);
+  return `
+    <section class="panel panel--accent" style="margin-top:16px">
+      <div class="panel__head">
+        <h3>${icon('radio-tower', 14)} Telemetría · ingesta de datos</h3>
+        ${pill(ing.status)}
+      </div>
+      <div class="panel__body ingest">
+        <div class="ingest__big">${ing.transmitting}<small>/${ing.sites_total}</small></div>
+        <div class="ingest__sub">
+          equipos transmitiendo · <strong>${ing.stale}</strong> sin datos recientes<br />
+          última medición recibida hace ${age}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// Workers in-process: latido de cada job de fondo.
+function workersPanel() {
+  const workers = state.detail?.workers || [];
+  if (!workers.length) return '';
+  const rows = workers
+    .map(
+      (w) => `
+      <div class="worker-row">
+        ${dot(w.status, 8)}
+        <span class="worker-row__name">${esc(WORKER_LABELS[w.name] || w.name)}</span>
+        <span class="worker-row__age">${w.last_run_s == null ? 'sin reporte' : 'hace ' + fmtAgeShort(w.last_run_s)}</span>
+      </div>`,
+    )
+    .join('');
+  return `
+    <section class="panel">
+      <div class="panel__head"><h3>${icon('activity', 14)} Workers in-process</h3></div>
+      <div class="panel__body worker-list">${rows}</div>
+    </section>
+  `;
+}
+
+// Vitales del proceso main-api + pool de conexiones a la BD.
+function processPanel() {
+  const p = state.detail?.process;
+  if (!p) return '';
+  const pool = p.db_pool || {};
+  const cells = [
+    ['Heap', p.heap_mb != null ? `${p.heap_mb} MB` : '—'],
+    ['RSS', p.rss_mb != null ? `${p.rss_mb} MB` : '—'],
+    ['Uptime', p.uptime_s != null ? fmtUptime(p.uptime_s) : '—'],
+    ['Pool BD', `${pool.idle ?? '—'}/${pool.total ?? '—'} libres`],
+    ['En espera', String(pool.waiting ?? '—')],
+  ];
+  return `
+    <section class="panel">
+      <div class="panel__head"><h3>${icon('cpu', 14)} Proceso main-api</h3></div>
+      <div class="card__metrics" style="padding:16px">
+        ${cells
+          .map(
+            ([k, v]) =>
+              `<div class="metric"><div class="metric__label">${esc(k)}</div><div class="metric__value">${esc(v)}</div></div>`,
+          )
+          .join('')}
+      </div>
+    </section>
+  `;
+}
+
 function legendItem(status) {
   return `<span class="legend__item">${dot(status, 6)}${statusOf(status).label}</span>`;
 }
@@ -510,11 +602,13 @@ function render() {
       ${overview(summary, overall)}
       ${state.detailForbidden ? `<div class="banner banner--warn">Tu rol no tiene acceso al detalle operativo. Mostrando la vista pública.</div>` : ''}
       ${state.error ? `<div class="banner banner--error">${esc(state.error)}</div>` : ''}
+      ${isAuthed() ? ingestionPanel() : ''}
       <div class="section-head">
         <div class="section-head__title">${isAuthed() ? 'Servicios monitoreados · detalle en vivo' : 'Servicios monitoreados'}</div>
         <div class="legend">${legendItem('online')}${legendItem('degraded')}${legendItem('offline')}</div>
       </div>
       <section class="grid">${cards}</section>
+      ${isAuthed() ? `<div class="panel-2col">${workersPanel()}${processPanel()}</div>` : ''}
       ${isAuthed() ? contextSection() : ''}
       ${!state.token ? loginHint() : ''}
     </main>
