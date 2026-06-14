@@ -4,6 +4,15 @@ packages:
   - main-api
   - auth-api
 
+# Security overrides — fuerzan versiones parcheadas de deps transitivas (pnpm audit).
+# qs:          GHSA DoS en qs.stringify (express > body-parser)
+# shell-quote: GHSA command injection via newlines en .op
+# hono:        varios GHSA (Angular CLI > @modelcontextprotocol/sdk)
+overrides:
+  qs: '>=6.15.2'
+  shell-quote: '>=1.8.4'
+  hono: '>=4.12.21'
+
 # Native build scripts approved — required for runtime compilation.
 # bcrypt: auth-api password hashing
 # esbuild / @parcel/watcher / lmdb / msgpackr-extract: Angular dev server + build cache
