@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@azure/storage-blob": "^12.31.0",
-    "@grpc/grpc-js": "^1.14.3",
+    "@grpc/grpc-js": "^1.14.4",
     "@grpc/proto-loader": "^0.8.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
