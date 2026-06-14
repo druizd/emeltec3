@@ -1,5 +1,6 @@
 const pool = require('../config/db');
 const blob = require('../services/azureBlobService');
+const { userCanAccessSiteId } = require('../services/dataAccess');
 
 const TIPOS = ['ficha_tecnica', 'datasheet', 'certificado', 'manual', 'plano', 'otro'];
 
@@ -151,6 +152,10 @@ exports.subirDocumento = async (req, res) => {
 
   if (!esSuperAdmin(req) && empresa_id !== req.user.empresa_id) {
     return res.status(403).json({ ok: false, error: 'No puedes subir documentos a otra empresa' });
+  }
+
+  if (!(await userCanAccessSiteId(pool, req.user, sitio_id))) {
+    return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
   }
 
   const blobPath = blob.buildBlobPath(sitio_id, req.file.originalname);

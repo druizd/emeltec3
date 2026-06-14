@@ -143,16 +143,16 @@ async function recordFailedLogin(req, user, email) {
   const shouldLock = durationMs > 0;
   const lockedUntil = shouldLock ? new Date(Date.now() + durationMs) : null;
 
-  // EMT-H09 (defensa en profundidad): al bloquear, invalidamos el OTP vigente
-  // para que no quede adivinable durante el bloqueo.
+  // EMT-H11: el OTP es de UN SOLO USO → se invalida en CADA intento fallido
+  // (antes solo al bloquear), para que un código no quede reusable entre intentos.
   await db.query(
     `UPDATE usuario
      SET failed_logins = $1,
          locked_until = COALESCE($2, locked_until),
-         otp_hash = CASE WHEN $4 THEN NULL ELSE otp_hash END,
-         otp_expires_at = CASE WHEN $4 THEN NULL ELSE otp_expires_at END
+         otp_hash = NULL,
+         otp_expires_at = NULL
      WHERE email = $3`,
-    [newFailed, lockedUntil, email, shouldLock],
+    [newFailed, lockedUntil, email],
   );
 
   await audit.record({
@@ -447,7 +447,7 @@ exports.completeSetup = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(setup_token, jwtSecret);
+      decoded = jwt.verify(setup_token, jwtSecret, { algorithms: ['HS256'] });
       if (decoded.email !== email || decoded.purpose !== 'account_setup') throw new Error();
     } catch {
       return res
@@ -538,7 +538,7 @@ exports.login = async (req, res, next) => {
       }
     } else if (loginMode === 'mfa') {
       try {
-        const decoded = jwt.verify(challenge_token || '', jwtSecret);
+        const decoded = jwt.verify(challenge_token || '', jwtSecret, { algorithms: ['HS256'] });
         if (decoded.email !== user.email || decoded.purpose !== 'mfa') {
           throw new Error('invalid challenge');
         }

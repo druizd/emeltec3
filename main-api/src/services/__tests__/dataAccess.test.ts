@@ -10,6 +10,7 @@ import {
   getLatestSerialForUser,
   resolveAccessibleSerial,
   findUnauthorizedSites,
+  userCanAccessSiteId,
 } from '../dataAccess';
 
 const superAdmin = { tipo: 'SuperAdmin' };
@@ -169,6 +170,30 @@ describe('resolveAccessibleSerial', () => {
       { match: /FROM equipo/, respond: () => ({ rows: [{ id_serial: 'MINE' }] }) },
     ]);
     expect(await resolveAccessibleSerial(pool, cliente, null)).toEqual({ serial: 'MINE' });
+  });
+});
+
+describe('userCanAccessSiteId', () => {
+  const poolWith = (site: unknown) =>
+    fakePool([
+      { match: /FROM sitio WHERE id = \$1/, respond: () => ({ rows: site ? [site] : [] }) },
+    ]);
+
+  it('SuperAdmin: true sin consultar BD', async () => {
+    expect(await userCanAccessSiteId(fakePool([]), superAdmin, 'S1')).toBe(true);
+  });
+  it('Cliente: sitio de su sub-empresa → true', async () => {
+    expect(
+      await userCanAccessSiteId(poolWith({ empresa_id: 1, sub_empresa_id: 10 }), cliente, 'S1'),
+    ).toBe(true);
+  });
+  it('Cliente: sitio de otra sub-empresa → false', async () => {
+    expect(
+      await userCanAccessSiteId(poolWith({ empresa_id: 1, sub_empresa_id: 20 }), cliente, 'S1'),
+    ).toBe(false);
+  });
+  it('sitio inexistente → false', async () => {
+    expect(await userCanAccessSiteId(poolWith(null), cliente, 'X')).toBe(false);
   });
 });
 

@@ -47,9 +47,22 @@ const loginLimiter = rateLimit({
   message: { ok: false, message: 'Demasiados intentos de login. Espera 1 minuto.' },
 });
 
+// Rate-limit estricto en /start — encarece la enumeración de cuentas (el flow
+// revela estado/método) y el spray de OTP. Default 10/min/IP; configurable por
+// env para despliegues detrás de NAT compartido (oficinas con muchos usuarios
+// por IP) sin tener que tocar código.
+const startLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number.parseInt(process.env.START_RATE_LIMIT_MAX || '10', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: 'Demasiados intentos. Espera 1 minuto.' },
+});
+
 app.use('/api/health', healthRoutes);
 app.use('/api/auth/request-code', otpRequestLimiter);
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/start', startLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 
 app.use(errorMiddleware);

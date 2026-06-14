@@ -130,6 +130,26 @@ async function resolveAccessibleSerial(pool, user, requestedSerial) {
   return { serial };
 }
 
+/** Busca el alcance (empresa/sub) de un sitio por su id. null si no existe. */
+async function lookupSiteById(pool, siteId) {
+  const { rows } = await pool.query(`SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1`, [
+    siteId,
+  ]);
+  return rows[0] || null;
+}
+
+/**
+ * ¿El usuario puede acceder al sitio identificado por id? Útil para validar
+ * sitio_id provisto en el body al CREAR registros (alerta/incidencia/documento).
+ * SuperAdmin siempre; un sitio inexistente se deniega para no-Super.
+ */
+async function userCanAccessSiteId(pool, user, siteId) {
+  if (user && user.tipo === 'SuperAdmin') return true;
+  const site = await lookupSiteById(pool, siteId);
+  if (!site) return false;
+  return canAccessSite(user, site);
+}
+
 /**
  * Dado un array de siteIds, devuelve los que el usuario NO puede acceder
  * (EMT-C02). SuperAdmin nunca deniega. Un sitio inexistente se considera
@@ -154,4 +174,6 @@ module.exports = {
   getLatestSerialForUser,
   resolveAccessibleSerial,
   findUnauthorizedSites,
+  lookupSiteById,
+  userCanAccessSiteId,
 };

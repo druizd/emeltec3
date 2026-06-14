@@ -1,5 +1,9 @@
 const pool = require('../config/db');
-const { canAccessSite, buildUserSiteScope } = require('../services/dataAccess');
+const {
+  canAccessSite,
+  buildUserSiteScope,
+  userCanAccessSiteId,
+} = require('../services/dataAccess');
 
 const DIAS_VALIDOS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
@@ -76,6 +80,11 @@ exports.crearAlerta = async (req, res) => {
     return res
       .status(403)
       .json({ ok: false, error: 'No puedes crear alertas en una empresa que no es la tuya' });
+  }
+
+  // El sitio destino debe pertenecer al alcance del usuario (no solo la empresa).
+  if (!(await userCanAccessSiteId(pool, req.user, sitio_id))) {
+    return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
   }
 
   const sub_empresa_id = req.user.sub_empresa_id ?? null;

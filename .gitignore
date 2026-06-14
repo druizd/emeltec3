@@ -65,6 +65,11 @@ backup_*
 *.pfx
 *.keystore
 
+# Binarios compilados y backups de editor (no van en el repo)
+*.exe
+*.exe~
+*~
+
 # System files
 .DS_Store
 Thumbs.db

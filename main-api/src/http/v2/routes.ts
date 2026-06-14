@@ -155,11 +155,14 @@ router.post('/auth/request-code', requestCodeHandler);
 // DGA — modelo redesign 2026-05-17.
 // =====================================================================
 
-// Informantes (pool global). Rotación de clave exige 2FA.
-router.get('/dga/informantes', protect, listInformantesHandler);
+// Informantes = pool GLOBAL de credenciales SNIA (sin columna de tenant).
+// Solo SuperAdmin puede gestionarlas; antes cualquier usuario autenticado podía
+// listar/rotar/borrar credenciales DGA de otras empresas. Rotación exige 2FA.
+router.get('/dga/informantes', protect, authorizeRoles('SuperAdmin'), listInformantesHandler);
 router.post(
   '/dga/informantes',
   protect,
+  authorizeRoles('SuperAdmin'),
   require2faIfPasswordChange,
   auditDgaMutations,
   upsertInformanteHandler,
@@ -167,6 +170,7 @@ router.post(
 router.patch(
   '/dga/informantes/:rut',
   protect,
+  authorizeRoles('SuperAdmin'),
   require2faIfPasswordChange,
   auditDgaMutations,
   upsertInformanteHandler,
@@ -174,6 +178,7 @@ router.patch(
 router.delete(
   '/dga/informantes/:rut',
   protect,
+  authorizeRoles('SuperAdmin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   deleteInformanteHandler,
