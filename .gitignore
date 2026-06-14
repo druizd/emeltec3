@@ -70,6 +70,11 @@ backup_*
 *.exe~
 *~
 
+# Informes de seguridad exportados/firmados — no versionar (se distribuyen aparte)
+docs/security-audit/INFORME-PENDIENTES-*
+docs/security-audit/*.pdf
+*.pdf.sha256
+
 # System files
 .DS_Store
 Thumbs.db
