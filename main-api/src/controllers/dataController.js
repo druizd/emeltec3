@@ -4,7 +4,6 @@
  * con el ultimo valor conocido de cada variable por equipo.
  */
 const pool = require('../config/db');
-const { getLatestSerialId } = require('../utils/serial');
 const { CHILE_TIME_ZONE, formatChileTimestamp, parseChileTimestamp } = require('../utils/timezone');
 const {
   trackRequest,
@@ -155,14 +154,6 @@ function sendMissing(res, ...params) {
     ok: false,
     message: `Los parametros ${params.join(', ')} son obligatorios`,
   });
-}
-
-async function resolveSerialId(candidateSerialId) {
-  if (candidateSerialId) {
-    return candidateSerialId;
-  }
-
-  return getLatestSerialId(pool);
 }
 
 async function respondWithoutAvailableSerial(res, endpoint, startedAt, extras = {}) {
@@ -362,8 +353,8 @@ async function getData(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   try {
-    const { serial_id, id_serial, limit } = req.query;
-    const serialValue = await resolveSerialId(serial_id || id_serial);
+    const { limit } = req.query;
+    const serialValue = req.dataSerial;
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!serialValue) {
@@ -404,8 +395,7 @@ async function getLatest(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   try {
-    const { serial_id, id_serial } = req.query;
-    const serialValue = await resolveSerialId(serial_id || id_serial);
+    const serialValue = req.dataSerial;
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!serialValue) {
@@ -444,8 +434,8 @@ async function getByRange(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   try {
-    const { serial_id, id_serial, from, to, limit } = req.query;
-    const serialValue = await resolveSerialId(serial_id || id_serial);
+    const { from, to, limit } = req.query;
+    const serialValue = req.dataSerial;
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!from || !to) {
@@ -494,8 +484,8 @@ async function getByPreset(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   try {
-    const { serial_id, id_serial, preset, base_date, limit } = req.query;
-    const serialValue = await resolveSerialId(serial_id || id_serial);
+    const { preset, base_date, limit } = req.query;
+    const serialValue = req.dataSerial;
     const selectedKeys = parseSelectedKeys(req.query);
     const normalizedPreset = normalizePreset(preset);
 
@@ -593,8 +583,7 @@ async function getAvailableKeys(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   try {
-    const { serial_id, id_serial } = req.query;
-    const serialValue = await resolveSerialId(serial_id || id_serial);
+    const serialValue = req.dataSerial;
 
     if (!serialValue) {
       return respondWithoutAvailableSerial(res, 'GET /api/data/keys', startedAt);
@@ -660,8 +649,7 @@ async function getOnlineValues(req, res, next) {
   const startedAt = process.hrtime.bigint();
 
   try {
-    const { serial_id, id_serial } = req.query;
-    const serialValue = await resolveSerialId(serial_id || id_serial);
+    const serialValue = req.dataSerial;
     const selectedKeys = parseSelectedKeys(req.query);
 
     if (!serialValue) {

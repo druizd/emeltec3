@@ -277,7 +277,7 @@ async fn require_api_key(
             .get("x-internal-key")
             .and_then(|v| v.to_str().ok())
             .unwrap_or("");
-        if key != state.api_key {
+        if !constant_time_eq(key.as_bytes(), state.api_key.as_bytes()) {
             tracing::warn!(
                 method = %request.method(),
                 uri = %request.uri(),
@@ -294,6 +294,19 @@ async fn require_api_key(
 
 fn utc_now_sql() -> &'static str {
     "timezone('UTC', now())"
+}
+
+/// Comparación en tiempo constante para evitar timing side-channels al validar
+/// la API key (EMT-H02). La longitud no se considera secreta.
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let mut diff = 0u8;
+    for (x, y) in a.iter().zip(b.iter()) {
+        diff |= x ^ y;
+    }
+    diff == 0
 }
 
 async fn connect_db() -> Result<Arc<Client>, tokio_postgres::Error> {
@@ -800,8 +813,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let port = get_env("PORT", "3010");
     let api_key = get_env("INTERNAL_API_KEY", "");
+    // Fail-closed (EMT-H02): sin INTERNAL_API_KEY los endpoints /api/* quedarían
+    // abiertos (incluida la cola de comandos PLC). Abortamos el arranque salvo
+    // override explícito de desarrollo.
     if api_key.is_empty() {
-        tracing::warn!("INTERNAL_API_KEY no configurada — endpoints /api/* sin autenticación");
+        if get_env("ALLOW_INSECURE_NO_AUTH", "") == "true" {
+            tracing::warn!(
+                "INTERNAL_API_KEY vacía y ALLOW_INSECURE_NO_AUTH=true — endpoints /api/* SIN autenticación (SOLO desarrollo)"
+            );
+        } else {
+            tracing::error!(
+                "INTERNAL_API_KEY no configurada. Abortando (fail-closed). Define INTERNAL_API_KEY, o ALLOW_INSECURE_NO_AUTH=true solo para desarrollo."
+            );
+            return Err("INTERNAL_API_KEY requerida".into());
+        }
     }
 
     let addr: SocketAddr = format!("0.0.0.0:{}", port).parse()?;

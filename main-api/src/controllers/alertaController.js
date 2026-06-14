@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { canAccessSite, buildUserSiteScope } = require('../services/dataAccess');
 
 const DIAS_VALIDOS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
@@ -13,8 +14,11 @@ function esSuperAdmin(req) {
   return req.user?.tipo === 'SuperAdmin';
 }
 
+// Modelo unificado por empresa/sub-empresa (canAccessSite), no por creador.
+// Antes un usuario no podía gestionar alertas de un colega de su misma empresa,
+// y el control no respetaba el límite de sub-empresa.
 function tieneAccesoAAlerta(req, alerta) {
-  return esSuperAdmin(req) || alerta.creado_por === req.user.id;
+  return canAccessSite(req.user, alerta);
 }
 
 function deriveEstado(evento) {
@@ -119,8 +123,10 @@ exports.listarAlertas = async (req, res) => {
       conditions.push(`a.empresa_id = $${params.length}`);
     }
   } else {
-    params.push(req.user.id);
-    conditions.push(`a.creado_por = $${params.length}`);
+    // Alcance por empresa/sub-empresa del usuario (antes filtraba por creador).
+    const scope = buildUserSiteScope(req.user, 'a', params.length + 1);
+    conditions.push(scope.clause || 'FALSE');
+    params.push(...scope.params);
   }
 
   if (sitio_id) {

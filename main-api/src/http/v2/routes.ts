@@ -3,6 +3,7 @@
  */
 import { Router } from 'express';
 import { protect } from '../../middlewares/auth';
+import { requireSiteParamAccess } from '../../middlewares/siteAccess';
 import {
   getHistoryHandler,
   getKeysHandler,
@@ -10,6 +11,7 @@ import {
   getOnlineHandler,
   getPresetHandler,
 } from '../../modules/telemetry/controller';
+import { requireTelemetrySerialAccess } from '../../modules/telemetry/serialAccess';
 import {
   getDashboardDataHandler,
   getDashboardHistoryHandler,
@@ -134,11 +136,13 @@ router.get('/health/live', liveness);
 router.get('/health/ready', readiness);
 router.get('/metrics', prometheusMetrics);
 
-router.get('/telemetry', getHistoryHandler);
-router.get('/telemetry/latest', getLatestHandler);
-router.get('/telemetry/online', getOnlineHandler);
-router.get('/telemetry/preset', getPresetHandler);
-router.get('/telemetry/keys', getKeysHandler);
+// v2 telemetría: antes SIN `protect` → acceso anónimo cross-tenant (crítico).
+// Ahora exige autenticación + autorización por serial (mismo modelo que v1).
+router.get('/telemetry', protect, requireTelemetrySerialAccess, getHistoryHandler);
+router.get('/telemetry/latest', protect, requireTelemetrySerialAccess, getLatestHandler);
+router.get('/telemetry/online', protect, requireTelemetrySerialAccess, getOnlineHandler);
+router.get('/telemetry/preset', protect, requireTelemetrySerialAccess, getPresetHandler);
+router.get('/telemetry/keys', protect, requireTelemetrySerialAccess, getKeysHandler);
 
 router.get('/sites/:siteId/dashboard-data', protect, getDashboardDataHandler);
 router.get('/sites/:siteId/dashboard-history', protect, getDashboardHistoryHandler);
@@ -176,17 +180,33 @@ router.delete(
 );
 
 // Config DGA por pozo. Activar transport=rest exige 2FA.
-router.get('/dga/sites/:siteId/pozo-config', protect, getPozoDgaConfigHandler);
+router.get(
+  '/dga/sites/:siteId/pozo-config',
+  protect,
+  requireSiteParamAccess(),
+  getPozoDgaConfigHandler,
+);
 router.patch(
   '/dga/sites/:siteId/pozo-config',
   protect,
+  requireSiteParamAccess(),
   require2faIfTransportRest,
   auditDgaMutations,
   patchPozoDgaConfigHandler,
 );
-router.get('/dga/sites/:siteId/live-preview', protect, getDgaLivePreviewHandler);
-router.get('/dga/sites/:siteId/ultimo-envio', protect, getUltimoEnvioHandler);
-router.get('/dga/sites/:siteId/verify', protect, verifySniaHandler);
+router.get(
+  '/dga/sites/:siteId/live-preview',
+  protect,
+  requireSiteParamAccess(),
+  getDgaLivePreviewHandler,
+);
+router.get(
+  '/dga/sites/:siteId/ultimo-envio',
+  protect,
+  requireSiteParamAccess(),
+  getUltimoEnvioHandler,
+);
+router.get('/dga/sites/:siteId/verify', protect, requireSiteParamAccess(), verifySniaHandler);
 
 // =====================================================================
 // Bitácora del sitio: ficha + equipamiento.
@@ -203,13 +223,18 @@ import {
 // Análisis del sitio (salud, métricas).
 import { getMetricasHandler, getSaludHandler } from '../../modules/analisis/controller';
 
-router.get('/sites/:siteId/analisis/salud', protect, getSaludHandler);
-router.get('/sites/:siteId/analisis/metricas', protect, getMetricasHandler);
+router.get('/sites/:siteId/analisis/salud', protect, requireSiteParamAccess(), getSaludHandler);
+router.get('/sites/:siteId/analisis/metricas', protect, requireSiteParamAccess(), getMetricasHandler);
 
-router.get('/sites/:siteId/bitacora/ficha', protect, getFichaHandler);
-router.patch('/sites/:siteId/bitacora/ficha', protect, patchFichaHandler);
-router.get('/sites/:siteId/bitacora/equipos', protect, listEquiposHandler);
-router.post('/sites/:siteId/bitacora/equipos', protect, createEquipoHandler);
+router.get('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), getFichaHandler);
+router.patch('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), patchFichaHandler);
+router.get('/sites/:siteId/bitacora/equipos', protect, requireSiteParamAccess(), listEquiposHandler);
+router.post(
+  '/sites/:siteId/bitacora/equipos',
+  protect,
+  requireSiteParamAccess(),
+  createEquipoHandler,
+);
 router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
 router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
 

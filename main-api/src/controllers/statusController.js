@@ -72,6 +72,16 @@ async function pingAuth() {
   }
 }
 
+/**
+ * /api/status es PÚBLICO (lo consume metrics.emeltec.cl sin login), por lo que
+ * la respuesta NO debe filtrar detalle interno: mensajes de error de la BD,
+ * versiones, hostnames internos, entorno, uptime o códigos HTTP upstream
+ * (EMT-C03 / EMT-M08). Solo se expone el estado de salud por servicio.
+ */
+function publicView(service) {
+  return { status: service.status };
+}
+
 exports.getStatus = async (req, res) => {
   const [database, pipeline, auth] = await Promise.all([
     pingDatabase(),
@@ -80,14 +90,10 @@ exports.getStatus = async (req, res) => {
   ]);
 
   const services = {
-    api: {
-      status: 'online',
-      uptime_s: Math.floor(process.uptime()),
-      environment: process.env.NODE_ENV || 'development',
-    },
-    auth,
-    database,
-    pipeline,
+    api: { status: 'online' },
+    auth: publicView(auth),
+    database: publicView(database),
+    pipeline: publicView(pipeline),
   };
 
   const allOk = Object.values(services).every((s) => s.status === 'online');

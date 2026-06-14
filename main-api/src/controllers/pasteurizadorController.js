@@ -12,6 +12,7 @@ const {
   normalizePasteurizadorRoles,
 } = require('../services/pasteurizadorTelemetryService');
 const { formatChileTimestamp } = require('../utils/timezone');
+const { canAccessSite } = require('../services/dataAccess');
 
 function cleanString(value) {
   if (value === undefined || value === null) return '';
@@ -34,14 +35,9 @@ function notFound(res, message) {
   return res.status(404).json({ ok: false, error: message, message });
 }
 
+// Fuente única de verdad del modelo de acceso a sitios (ver services/dataAccess).
 function canReadSite(user, site) {
-  if (!user || !site) return false;
-  if (user.tipo === 'SuperAdmin') return true;
-  if (user.tipo === 'Admin') return user.empresa_id === site.empresa_id;
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
-    return user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id;
-  }
-  return false;
+  return canAccessSite(user, site);
 }
 
 function parseLimit(value, fallback = 500, max = 2500) {

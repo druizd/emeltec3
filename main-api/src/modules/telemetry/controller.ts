@@ -6,13 +6,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { ValidationError } from '../../shared/errors';
-import {
-  historyQuerySchema,
-  onlineQuerySchema,
-  presetQuerySchema,
-  mergeKeyAliases,
-  resolveSerial,
-} from './schema';
+import { historyQuerySchema, onlineQuerySchema, presetQuerySchema, mergeKeyAliases } from './schema';
+import { authorizedSerial } from './serialAccess';
 import {
   getAvailableKeysFor,
   getHistory,
@@ -41,10 +36,15 @@ export async function getHistoryHandler(
     return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases(parsed.data);
+    const serial = authorizedSerial(req);
+    if (serial === null) {
+      res.json(
+        ok([], { serial_id: null, selected_keys: selectedKeys, count: 0, durationMs: elapsedMs(startedAt) }),
+      );
+      return;
+    }
     const result = await getHistory({
-      ...(resolveSerial(parsed.data) !== undefined
-        ? { serialId: resolveSerial(parsed.data)! }
-        : {}),
+      serialId: serial,
       selectedKeys,
       ...(parsed.data.from !== undefined ? { from: parsed.data.from } : {}),
       ...(parsed.data.to !== undefined ? { to: parsed.data.to } : {}),
@@ -81,7 +81,14 @@ export async function getLatestHandler(
     return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases(parsed.data);
-    const result = await getLatest(resolveSerial(parsed.data), selectedKeys);
+    const serial = authorizedSerial(req);
+    if (serial === null) {
+      res.json(
+        ok([], { serial_id: null, selected_keys: selectedKeys, count: 0, durationMs: elapsedMs(startedAt) }),
+      );
+      return;
+    }
+    const result = await getLatest(serial, selectedKeys);
     const durationMs = elapsedMs(startedAt);
     const payload = ok(result.rows, {
       serial_id: result.serialId,
@@ -113,7 +120,21 @@ export async function getOnlineHandler(
     return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases(parsed.data);
-    const result = await getOnline(resolveSerial(parsed.data), selectedKeys);
+    const serial = authorizedSerial(req);
+    if (serial === null) {
+      res.json(
+        ok([], {
+          serial_id: null,
+          selected_keys: selectedKeys,
+          snapshot: {},
+          fromCache: false,
+          count: 0,
+          durationMs: elapsedMs(startedAt),
+        }),
+      );
+      return;
+    }
+    const result = await getOnline(serial, selectedKeys);
     const durationMs = elapsedMs(startedAt);
     const payload = ok(result.rows, {
       serial_id: result.serialId,
@@ -147,10 +168,24 @@ export async function getPresetHandler(
     return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
     const selectedKeys = mergeKeyAliases({ ...parsed.data, key: parsed.data.key });
+    const serial = authorizedSerial(req);
+    if (serial === null) {
+      res.json(
+        ok([], {
+          serial_id: null,
+          selected_keys: selectedKeys,
+          preset: parsed.data.preset,
+          from: null,
+          to: null,
+          base_date: null,
+          count: 0,
+          durationMs: elapsedMs(startedAt),
+        }),
+      );
+      return;
+    }
     const result = await getPreset({
-      ...(resolveSerial(parsed.data) !== undefined
-        ? { serialId: resolveSerial(parsed.data)! }
-        : {}),
+      serialId: serial,
       selectedKeys,
       preset: parsed.data.preset,
       ...(parsed.data.base_date !== undefined ? { baseDate: parsed.data.base_date } : {}),
@@ -190,7 +225,12 @@ export async function getKeysHandler(
   if (!parsed.success)
     return next(new ValidationError('Query inválida', { details: parsed.error.flatten() }));
   try {
-    const result = await getAvailableKeysFor(resolveSerial(parsed.data));
+    const serial = authorizedSerial(req);
+    if (serial === null) {
+      res.json(ok([], { serial_id: null, count: 0, durationMs: elapsedMs(startedAt) }));
+      return;
+    }
+    const result = await getAvailableKeysFor(serial);
     const durationMs = elapsedMs(startedAt);
     const payload = ok(result.keys, {
       serial_id: result.serialId,
