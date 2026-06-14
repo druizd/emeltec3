@@ -2,7 +2,9 @@
  * Router HTTP v2. Se monta bajo /api/v2 desde app.js (o app.ts cuando exista).
  */
 import { Router } from 'express';
-import { protect } from '../../middlewares/auth';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
+import { protect, authorizeRoles } from '../../middlewares/auth';
+import { requireSiteParamAccess } from '../../middlewares/siteAccess';
 import {
   getHistoryHandler,
   getKeysHandler,
@@ -10,6 +12,7 @@ import {
   getOnlineHandler,
   getPresetHandler,
 } from '../../modules/telemetry/controller';
+import { requireTelemetrySerialAccess } from '../../modules/telemetry/serialAccess';
 import {
   getDashboardDataHandler,
   getDashboardHistoryHandler,
@@ -40,12 +43,12 @@ import { requireDgaTwoFactor } from '../../modules/dga/twofactor';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { auditMutations } = require('../../services/auditLog') as {
   auditMutations: (
-    resolver: (req: import('express').Request) => {
+    resolver: (req: Request) => {
       action: string;
       targetType?: string;
       targetId?: string;
     },
-  ) => import('express').RequestHandler;
+  ) => RequestHandler;
 };
 
 const auditDgaMutations = auditMutations((req) => {
@@ -101,11 +104,7 @@ const auditDgaMutations = auditMutations((req) => {
  * dga_transport a 'rest'. Otros cambios (activo, caudal_max, etc.) no
  * requieren 2FA — pasan derecho al handler.
  */
-function require2faIfTransportRest(
-  req: import('express').Request,
-  res: import('express').Response,
-  next: import('express').NextFunction,
-): void {
+function require2faIfTransportRest(req: Request, res: Response, next: NextFunction): void {
   if (req.body?.dga_transport === 'rest') {
     return requireDgaTwoFactor(req, res, next);
   }
@@ -115,11 +114,7 @@ function require2faIfTransportRest(
 /**
  * Middleware: 2FA siempre para rotación de clave de informante.
  */
-function require2faIfPasswordChange(
-  req: import('express').Request,
-  res: import('express').Response,
-  next: import('express').NextFunction,
-): void {
+function require2faIfPasswordChange(req: Request, res: Response, next: NextFunction): void {
   if (typeof req.body?.clave_informante === 'string' && req.body.clave_informante.length > 0) {
     return requireDgaTwoFactor(req, res, next);
   }
@@ -134,11 +129,13 @@ router.get('/health/live', liveness);
 router.get('/health/ready', readiness);
 router.get('/metrics', prometheusMetrics);
 
-router.get('/telemetry', getHistoryHandler);
-router.get('/telemetry/latest', getLatestHandler);
-router.get('/telemetry/online', getOnlineHandler);
-router.get('/telemetry/preset', getPresetHandler);
-router.get('/telemetry/keys', getKeysHandler);
+// v2 telemetría: antes SIN `protect` → acceso anónimo cross-tenant (crítico).
+// Ahora exige autenticación + autorización por serial (mismo modelo que v1).
+router.get('/telemetry', protect, requireTelemetrySerialAccess, getHistoryHandler);
+router.get('/telemetry/latest', protect, requireTelemetrySerialAccess, getLatestHandler);
+router.get('/telemetry/online', protect, requireTelemetrySerialAccess, getOnlineHandler);
+router.get('/telemetry/preset', protect, requireTelemetrySerialAccess, getPresetHandler);
+router.get('/telemetry/keys', protect, requireTelemetrySerialAccess, getKeysHandler);
 
 router.get('/sites/:siteId/dashboard-data', protect, getDashboardDataHandler);
 router.get('/sites/:siteId/dashboard-history', protect, getDashboardHistoryHandler);
@@ -151,11 +148,14 @@ router.post('/auth/request-code', requestCodeHandler);
 // DGA — modelo redesign 2026-05-17.
 // =====================================================================
 
-// Informantes (pool global). Rotación de clave exige 2FA.
-router.get('/dga/informantes', protect, listInformantesHandler);
+// Informantes = pool GLOBAL de credenciales SNIA (sin columna de tenant).
+// Solo SuperAdmin puede gestionarlas; antes cualquier usuario autenticado podía
+// listar/rotar/borrar credenciales DGA de otras empresas. Rotación exige 2FA.
+router.get('/dga/informantes', protect, authorizeRoles('SuperAdmin'), listInformantesHandler);
 router.post(
   '/dga/informantes',
   protect,
+  authorizeRoles('SuperAdmin'),
   require2faIfPasswordChange,
   auditDgaMutations,
   upsertInformanteHandler,
@@ -163,6 +163,7 @@ router.post(
 router.patch(
   '/dga/informantes/:rut',
   protect,
+  authorizeRoles('SuperAdmin'),
   require2faIfPasswordChange,
   auditDgaMutations,
   upsertInformanteHandler,
@@ -170,23 +171,40 @@ router.patch(
 router.delete(
   '/dga/informantes/:rut',
   protect,
+  authorizeRoles('SuperAdmin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   deleteInformanteHandler,
 );
 
 // Config DGA por pozo. Activar transport=rest exige 2FA.
-router.get('/dga/sites/:siteId/pozo-config', protect, getPozoDgaConfigHandler);
+router.get(
+  '/dga/sites/:siteId/pozo-config',
+  protect,
+  requireSiteParamAccess(),
+  getPozoDgaConfigHandler,
+);
 router.patch(
   '/dga/sites/:siteId/pozo-config',
   protect,
+  requireSiteParamAccess(),
   require2faIfTransportRest,
   auditDgaMutations,
   patchPozoDgaConfigHandler,
 );
-router.get('/dga/sites/:siteId/live-preview', protect, getDgaLivePreviewHandler);
-router.get('/dga/sites/:siteId/ultimo-envio', protect, getUltimoEnvioHandler);
-router.get('/dga/sites/:siteId/verify', protect, verifySniaHandler);
+router.get(
+  '/dga/sites/:siteId/live-preview',
+  protect,
+  requireSiteParamAccess(),
+  getDgaLivePreviewHandler,
+);
+router.get(
+  '/dga/sites/:siteId/ultimo-envio',
+  protect,
+  requireSiteParamAccess(),
+  getUltimoEnvioHandler,
+);
+router.get('/dga/sites/:siteId/verify', protect, requireSiteParamAccess(), verifySniaHandler);
 
 // =====================================================================
 // Bitácora del sitio: ficha + equipamiento.
@@ -203,13 +221,28 @@ import {
 // Análisis del sitio (salud, métricas).
 import { getMetricasHandler, getSaludHandler } from '../../modules/analisis/controller';
 
-router.get('/sites/:siteId/analisis/salud', protect, getSaludHandler);
-router.get('/sites/:siteId/analisis/metricas', protect, getMetricasHandler);
+router.get('/sites/:siteId/analisis/salud', protect, requireSiteParamAccess(), getSaludHandler);
+router.get(
+  '/sites/:siteId/analisis/metricas',
+  protect,
+  requireSiteParamAccess(),
+  getMetricasHandler,
+);
 
-router.get('/sites/:siteId/bitacora/ficha', protect, getFichaHandler);
-router.patch('/sites/:siteId/bitacora/ficha', protect, patchFichaHandler);
-router.get('/sites/:siteId/bitacora/equipos', protect, listEquiposHandler);
-router.post('/sites/:siteId/bitacora/equipos', protect, createEquipoHandler);
+router.get('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), getFichaHandler);
+router.patch('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), patchFichaHandler);
+router.get(
+  '/sites/:siteId/bitacora/equipos',
+  protect,
+  requireSiteParamAccess(),
+  listEquiposHandler,
+);
+router.post(
+  '/sites/:siteId/bitacora/equipos',
+  protect,
+  requireSiteParamAccess(),
+  createEquipoHandler,
+);
 router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
 router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
 
@@ -221,11 +254,17 @@ router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
 // 2FA email-OTP — el código se manda al email del usuario solicitante.
 router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
 
-// Review queue (acceso para Admin/SuperAdmin solo).
-router.get('/dga/review-queue', protect, listReviewQueueHandler);
+// Review queue: solo Admin/SuperAdmin + scope por sitio en el handler.
+router.get(
+  '/dga/review-queue',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  listReviewQueueHandler,
+);
 router.post(
   '/dga/review-queue/action',
   protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   reviewSlotActionHandler,

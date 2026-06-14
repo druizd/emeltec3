@@ -1,9 +1,14 @@
 name: Deploy self-hosted
 
-# Auto-deploy en push a main usando el runner self-hosted en la VM Azure.
+# Deploy a producción en push a main usando el runner self-hosted en la VM Azure.
 # El runner ejecuta scripts/deploy-production.sh directamente sobre el dir
 # productivo (sin SSH). El script preserva los .env del VM, aplica migraciones
 # SQL y rebuilda los servicios docker compose.
+#
+# EMT-H12: el job declara `environment: production`, que tiene "required
+# reviewers" configurado en GitHub → cada deploy PAUSA hasta aprobación manual.
+# La concurrencia comparte grupo con el deploy SSH manual para que NUNCA dos
+# deploys corran a la vez sobre la misma VM/BD.
 
 on:
   push:
@@ -12,7 +17,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: production-selfhosted
+  group: production-deploy
   cancel-in-progress: false
 
 jobs:
@@ -27,7 +32,7 @@ jobs:
 
     steps:
       - name: Checkout workflow code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Run deploy script
         run: bash scripts/deploy-production.sh

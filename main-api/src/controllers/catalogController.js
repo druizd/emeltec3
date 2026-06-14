@@ -4,6 +4,7 @@
  */
 const pool = require('../config/db');
 const { listDomains, getDomain } = require('../utils/domains');
+const { buildUserSiteScope } = require('../services/dataAccess');
 
 let devicesTableChecked = false;
 let devicesTableExists = false;
@@ -68,6 +69,18 @@ async function getDevices(req, res, next) {
     if (name) {
       where += ` AND d.name ILIKE $${params.length + 1}`;
       params.push(`%${name}%`);
+    }
+
+    // EMT-C03 (revisión): el catálogo de equipos NO tiene columna de empresa,
+    // por lo que sin filtro un usuario logueado podría enumerar los seriales de
+    // todos los clientes. Acotamos a los seriales de sus propios sitios. El
+    // serial mapea a empresa/sub_empresa vía sitio.id_serial. SuperAdmin: todo.
+    if (req.user && req.user.tipo !== 'SuperAdmin') {
+      const scope = buildUserSiteScope(req.user, 's', params.length + 1);
+      where += ` AND d.serial_id IN (
+        SELECT s.id_serial FROM sitio s WHERE ${scope.clause || 'FALSE'}
+      )`;
+      params.push(...scope.params);
     }
 
     const { rows } = await pool.query(

@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middlewares/authMiddleware');
-const { requireSiteAccess, requireRole } = require('../middlewares/coldRoomAccess');
+const {
+  requireSiteAccess,
+  requireRole,
+  findUnauthorizedSiteIds,
+} = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
 const { sendAlertEmail } = require('../services/emailService');
 
@@ -1154,6 +1158,13 @@ router.get('/:siteId/sensors', async (req, res) => {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  // EMT-C02: validar CADA siteId de la query contra el alcance del usuario.
+  // requireSiteAccess('siteId') solo validó el :siteId de la ruta.
+  const deniedSensors = await findUnauthorizedSiteIds(req.user, siteIds);
+  if (deniedSensors.length > 0) {
+    return res.status(403).json({ ok: false, error: 'Sin permisos sobre uno o más sitios' });
+  }
+
   // Intentar datos reales primero (reg_map + equipo_1min cagg).
   try {
     const real = await loadRealColdRoomSensors(siteIds, range, tap);
@@ -1316,6 +1327,12 @@ router.get('/:siteId/history-export', async (req, res) => {
       .filter(Boolean);
     if (siteIds.length === 0) {
       return res.status(400).json({ ok: false, error: 'siteIds requerido' });
+    }
+
+    // EMT-C02: validar CADA siteId de la query contra el alcance del usuario.
+    const deniedExport = await findUnauthorizedSiteIds(req.user, siteIds);
+    if (deniedExport.length > 0) {
+      return res.status(403).json({ ok: false, error: 'Sin permisos sobre uno o más sitios' });
     }
 
     const sensorIdsRaw = String(req.query.sensorIds || '');

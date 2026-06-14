@@ -29,6 +29,11 @@ export function requireSuperAdmin(user: AuthUser | undefined): void {
   }
 }
 
+/** "Sin sub-empresa asignada": null, undefined o ''. */
+function noSubEmpresa(v: string | null | undefined): boolean {
+  return v === null || v === undefined || v === '';
+}
+
 export function canReadSite(
   user: AuthUser | undefined,
   site: SiteScope | null | undefined,
@@ -37,7 +42,11 @@ export function canReadSite(
   if (user.tipo === 'SuperAdmin') return true;
   if (user.tipo === 'Admin' || user.tipo === 'Empresa') return user.empresa_id === site.empresa_id;
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa') {
-    return user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id;
+    if (user.empresa_id !== site.empresa_id) return false;
+    // Sin sub-empresa asignada → acceso a toda la empresa (decisión jun-2026,
+    // alineado con services/dataAccess.canAccessSite).
+    if (noSubEmpresa(user.sub_empresa_id)) return true;
+    return user.sub_empresa_id === site.sub_empresa_id;
   }
   return false;
 }

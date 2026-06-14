@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const zlib = require('zlib');
 const { once } = require('events');
 const db = require('../config/db');
+const { canAccessSite } = require('../services/dataAccess');
 const {
   buildSiteDashboardData,
   mapHistoricalDashboardRow,
@@ -280,24 +281,18 @@ function requireSuperAdmin(req, res) {
   return forbidden(res, 'Solo un SuperAdmin puede administrar empresas, sitios y variables.');
 }
 
+// Fuente única de verdad del modelo de acceso a sitios (canAccessSite se importa
+// arriba desde services/dataAccess). Se delega para que un cambio de política no
+// diverja entre controladores.
 function canReadSite(user, site) {
-  if (!user || !site) return false;
-  if (user.tipo === 'SuperAdmin') return true;
-  if (user.tipo === 'Admin') return user.empresa_id === site.empresa_id;
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
-    return user.empresa_id === site.empresa_id && user.sub_empresa_id === site.sub_empresa_id;
-  }
-  return false;
+  return canAccessSite(user, site);
 }
 
+// Mismo modelo que el acceso a sitios (empresa/sub-empresa, con fallback
+// empresa-wide cuando el usuario no tiene sub-empresa asignada).
 function canReadTenantScope(user, scope) {
-  if (!user || !scope) return false;
-  if (user.tipo === 'SuperAdmin') return true;
-  if (user.tipo === 'Admin') return user.empresa_id === scope.empresa_id;
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
-    return user.empresa_id === scope.empresa_id && user.sub_empresa_id === scope.sub_empresa_id;
-  }
-  return false;
+  if (!scope) return false;
+  return canAccessSite(user, scope);
 }
 
 function canMutateOperationalContacts(user, scope) {

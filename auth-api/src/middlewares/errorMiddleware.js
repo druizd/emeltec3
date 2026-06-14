@@ -1,8 +1,10 @@
 function errorMiddleware(error, req, res, next) {
   const status = error.status || 500;
   const isProd = process.env.NODE_ENV === 'production';
+  // En producción enmascaramos TODO error de servidor (>=500), no solo el 500
+  // exacto, para no filtrar detalle interno (p. ej. el 502 del envío de correo).
   const message =
-    isProd && status === 500
+    isProd && status >= 500
       ? 'Error interno del servidor'
       : error.message || 'Error interno del servidor';
 

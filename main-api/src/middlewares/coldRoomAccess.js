@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { canAccessSite, findUnauthorizedSites } = require('../services/dataAccess');
 
 /**
  * Cache simple en memoria para sitios → empresa_id/sub_empresa_id.
@@ -22,10 +23,10 @@ async function lookupSite(siteId) {
 
 /**
  * Verifica que el req.user tenga acceso al sitio identificado por req.params[paramName].
+ * Modelo ESTRICTO (decisión jun-2026, ver dataAccess.canAccessSite):
  * - SuperAdmin: bypass total.
  * - Admin: empresa_id del user debe coincidir con empresa_id del sitio.
- * - Gerente: sub_empresa_id del user debe coincidir con sub_empresa_id del sitio.
- * - Cliente: empresa_id debe coincidir (Cliente puede ver datos de toda su empresa).
+ * - Gerente/Cliente: empresa_id Y sub_empresa_id deben coincidir.
  */
 function requireSiteAccess(paramName = 'siteId') {
   return async (req, res, next) => {
@@ -39,21 +40,23 @@ function requireSiteAccess(paramName = 'siteId') {
       const site = await lookupSite(siteId);
       if (!site) return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
 
-      if (u.tipo === 'Gerente') {
-        if (!u.sub_empresa_id || u.sub_empresa_id !== site.sub_empresa_id) {
-          return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
-        }
-        return next();
-      }
-
-      // Admin y Cliente: deben pertenecer a la empresa del sitio.
-      if (u.empresa_id && u.empresa_id === site.empresa_id) return next();
+      if (canAccessSite(u, site)) return next();
       return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
     } catch (err) {
       console.error('[coldRoomAccess] error:', err.message);
       return res.status(500).json({ ok: false, error: 'Error interno' });
     }
   };
+}
+
+/**
+ * Valida que TODOS los siteIds de una query (p. ej. ?siteIds=S1,S2) pertenezcan
+ * al alcance del usuario. Devuelve la lista de denegados (vacía = todo OK).
+ * Cierra el bypass EMT-C02 donde requireSiteAccess solo validaba el :siteId
+ * de la ruta y los handlers consultaban la lista de query sin validar.
+ */
+async function findUnauthorizedSiteIds(user, siteIds) {
+  return findUnauthorizedSites(siteIds, user, lookupSite);
 }
 
 /**
@@ -71,4 +74,4 @@ function requireRole(...allowedRoles) {
   };
 }
 
-module.exports = { requireSiteAccess, requireRole };
+module.exports = { requireSiteAccess, requireRole, findUnauthorizedSiteIds };

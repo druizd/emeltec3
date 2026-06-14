@@ -14,7 +14,22 @@ const app = express();
 app.set('trust proxy', 1);
 
 app.use(helmet());
-app.use(cors());
+
+// CORS: solo subdominios de emeltec.cl (https) y desarrollo local (localhost /
+// 127.0.0.1). Sin Origin (server-to-server / curl) se permite. Antes era abierto.
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  let host;
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    return false;
+  }
+  if (host === 'emeltec.cl' || host.endsWith('.emeltec.cl')) return true;
+  if (host === 'localhost' || host === '127.0.0.1') return true;
+  return false;
+}
+app.use(cors({ origin: (origin, cb) => cb(null, isAllowedOrigin(origin)) }));
 app.use(express.json({ limit: '10kb' }));
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
@@ -47,9 +62,22 @@ const loginLimiter = rateLimit({
   message: { ok: false, message: 'Demasiados intentos de login. Espera 1 minuto.' },
 });
 
+// Rate-limit estricto en /start — encarece la enumeración de cuentas (el flow
+// revela estado/método) y el spray de OTP. Default 10/min/IP; configurable por
+// env para despliegues detrás de NAT compartido (oficinas con muchos usuarios
+// por IP) sin tener que tocar código.
+const startLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: Number.parseInt(process.env.START_RATE_LIMIT_MAX || '10', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { ok: false, message: 'Demasiados intentos. Espera 1 minuto.' },
+});
+
 app.use('/api/health', healthRoutes);
 app.use('/api/auth/request-code', otpRequestLimiter);
 app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/start', startLimiter);
 app.use('/api/auth', authLimiter, authRoutes);
 
 app.use(errorMiddleware);

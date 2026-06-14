@@ -10,18 +10,19 @@ services:
     container_name: timescaledb-infra
     restart: unless-stopped
     ports:
-      - '5433:5432'
+      # Atado a loopback: la BD no debe quedar expuesta a 0.0.0.0 (Internet).
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432'
     environment:
-      POSTGRES_USER: admin_infra
-      POSTGRES_PASSWORD: Infra2026Secure!
-      POSTGRES_DB: db_infra
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER es obligatorio (ver infra-db/.env.example)}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD es obligatorio (ver infra-db/.env.example)}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB es obligatorio (ver infra-db/.env.example)}
     volumes:
       # Datos persistentes (no se pierden si el contenedor se elimina)
       - timescaledb_data:/var/lib/postgresql/data
       # Script SQL de inicialización (se ejecuta SOLO la primera vez)
       - ./init-db:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U admin_infra -d db_infra']
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,10 +33,11 @@ services:
     container_name: pgadmin4
     restart: unless-stopped
     ports:
-      - '5050:80'
+      # Consola de administración: solo accesible vía loopback / túnel SSH.
+      - '127.0.0.1:${PGADMIN_HOST_PORT:-5050}:80'
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@infraproject.com
-      PGADMIN_DEFAULT_PASSWORD: Admin2026!
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?PGADMIN_DEFAULT_EMAIL es obligatorio (ver infra-db/.env.example)}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD es obligatorio (ver infra-db/.env.example)}
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       # Auto-registro del servidor TimescaleDB

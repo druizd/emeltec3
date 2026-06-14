@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { userCanAccessSiteId } = require('../services/dataAccess');
 
 const ORIGENES = ['terreno', 'remota'];
 const CATEGORIAS = ['sensor', 'comunicacion', 'mecanico', 'electrico', 'otro'];
@@ -183,6 +184,10 @@ exports.crearIncidencia = async (req, res) => {
     return res
       .status(403)
       .json({ ok: false, error: 'No puedes crear incidencias en otra empresa' });
+  }
+
+  if (!(await userCanAccessSiteId(pool, req.user, sitio_id))) {
+    return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
   }
 
   const sub_empresa_id = req.user.sub_empresa_id ?? null;

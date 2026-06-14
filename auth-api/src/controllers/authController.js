@@ -5,14 +5,18 @@ const jwt = require('jsonwebtoken');
 const { jwtSecret, mainApiUrl, internalApiKey } = require('../config/env');
 const audit = require('../services/auditLog');
 
+const {
+  DEFAULT_OTP_MINS,
+  lockoutDurationMs,
+  evaluateLock,
+  remainingLockMinutes,
+  clampOtpMinutes,
+} = require('../services/securityPolicy');
+
 // Política de seguridad: la sesión dura 1 hora, sin refresh ni extensión silenciosa.
 const AUTH_TOKEN_TTL = '1h';
 
-const DEFAULT_OTP_MINS = 30;
-const MAX_OTP_MINS = 1440;
 const BCRYPT_COST = 12;
-const LOCKOUT_THRESHOLD = 5;
-const LOCKOUT_DURATION_MS = 60 * 1000;
 const OTP_RATE_LIMIT_MAX = 5;
 const OTP_RATE_LIMIT_WINDOW_MS = 60 * 1000;
 
@@ -62,7 +66,9 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
 }
 
 function clientIp(req) {
-  return (req.ip || req.headers['x-forwarded-for'] || '').toString().slice(0, 45) || null;
+  // Solo req.ip (Express lo resuelve vía trust proxy). No el X-Forwarded-For
+  // crudo, que el cliente puede falsificar.
+  return (req.ip || '').toString().slice(0, 45) || null;
 }
 
 function makeOtpCode() {
@@ -134,13 +140,19 @@ async function finishLogin(req, res, user, authMethod) {
 
 async function recordFailedLogin(req, user, email) {
   const newFailed = (user.failed_logins || 0) + 1;
-  const shouldLock = newFailed >= LOCKOUT_THRESHOLD;
-  const lockedUntil = shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null;
+  // EMT-H08: backoff exponencial según fallos acumulados (sin recorte).
+  const durationMs = lockoutDurationMs(newFailed);
+  const shouldLock = durationMs > 0;
+  const lockedUntil = shouldLock ? new Date(Date.now() + durationMs) : null;
 
+  // EMT-H11: el OTP es de UN SOLO USO → se invalida en CADA intento fallido
+  // (antes solo al bloquear), para que un código no quede reusable entre intentos.
   await db.query(
     `UPDATE usuario
      SET failed_logins = $1,
-         locked_until = COALESCE($2, locked_until)
+         locked_until = COALESCE($2, locked_until),
+         otp_hash = NULL,
+         otp_expires_at = NULL
      WHERE email = $3`,
     [newFailed, lockedUntil, email],
   );
@@ -190,25 +202,19 @@ async function rejectUnknownEmail(req, email, res) {
 }
 
 async function ensureNotLocked(req, user, res) {
-  if (!user.locked_until) return false;
+  const state = evaluateLock(user.locked_until);
 
-  const now = new Date();
-  const lockedUntil = new Date(user.locked_until);
-  if (lockedUntil <= now) {
-    await db.query('UPDATE usuario SET failed_logins = 0, locked_until = NULL WHERE email = $1', [
-      user.email,
-    ]);
+  if (!state.locked) {
+    // EMT-H08: al expirar el bloqueo liberamos SOLO locked_until y conservamos
+    // failed_logins, para que un nuevo fallo escale el siguiente bloqueo en vez
+    // de regalar otra tanda de intentos desde cero.
+    if (state.expired) {
+      await db.query('UPDATE usuario SET locked_until = NULL WHERE email = $1', [user.email]);
+    }
     return false;
   }
 
-  const maxLockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
-  const effectiveLockedUntil = lockedUntil > maxLockedUntil ? maxLockedUntil : lockedUntil;
-  if (effectiveLockedUntil.getTime() !== lockedUntil.getTime()) {
-    await db.query('UPDATE usuario SET locked_until = $1 WHERE email = $2', [
-      effectiveLockedUntil,
-      user.email,
-    ]);
-  }
+  const minutes = remainingLockMinutes(state.remainingMs);
 
   await audit.record({
     req,
@@ -217,12 +223,14 @@ async function ensureNotLocked(req, user, res) {
     actorEmail: user.email,
     actorTipo: user.tipo,
     statusCode: 423,
-    metadata: { reason: 'account_locked', until: effectiveLockedUntil },
+    metadata: { reason: 'account_locked', remaining_minutes: minutes },
   });
 
   res.status(423).json({
     ok: false,
-    error: 'Cuenta bloqueada por multiples intentos fallidos. Intenta nuevamente en 1 minuto.',
+    error: `Cuenta bloqueada por multiples intentos fallidos. Intenta nuevamente en ${minutes} ${
+      minutes === 1 ? 'minuto' : 'minutos'
+    }.`,
   });
   return true;
 }
@@ -336,7 +344,18 @@ exports.startLogin = async (req, res, next) => {
     if (!email) return res.status(400).json({ ok: false, error: 'El correo es requerido.' });
 
     const user = await findAuthUserByEmail(email);
-    if (!user) return rejectUnknownEmail(req, email, res);
+    if (!user) {
+      // EMT-H10 (anti-enumeración): no revelar si el correo existe. Respondemos
+      // como una cuenta con contraseña; un intento posterior dará el 401 genérico.
+      await audit.record({
+        req,
+        action: 'login.start.unknown_email',
+        actorEmail: email,
+        statusCode: 200,
+        metadata: { reason: 'user_not_found' },
+      });
+      return res.json({ ok: true, flow: 'password', message: 'Ingresa tu contrasena.' });
+    }
     if (await ensureNotLocked(req, user, res)) return;
 
     if (!user.activated_at) {
@@ -430,7 +449,7 @@ exports.completeSetup = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(setup_token, jwtSecret);
+      decoded = jwt.verify(setup_token, jwtSecret, { algorithms: ['HS256'] });
       if (decoded.email !== email || decoded.purpose !== 'account_setup') throw new Error();
     } catch {
       return res
@@ -498,12 +517,10 @@ exports.login = async (req, res, next) => {
     const user = await findAuthUserByEmail(email);
     if (!user) return rejectUnknownEmail(req, email, res);
     if (await ensureNotLocked(req, user, res)) return;
+    // EMT-H10/M-1: no revelar estado de la cuenta vía /login. Una cuenta no
+    // activada se enruta por /start (flow:'setup'); aquí respondemos genérico.
     if (!user.activated_at) {
-      return res.status(409).json({
-        ok: false,
-        code: 'ACCOUNT_SETUP_REQUIRED',
-        error: 'Cuenta nueva. Debes crear tu contrasena antes de iniciar sesion.',
-      });
+      return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
     }
 
     let authenticated = false;
@@ -511,7 +528,8 @@ exports.login = async (req, res, next) => {
 
     if (loginMode === 'password') {
       if (!allowsPasswordLogin(user) || !user.password_hash) {
-        return res.status(403).json({ ok: false, error: 'Ingreso con contrasena desactivado.' });
+        // No revelar qué método de ingreso tiene la cuenta (anti-enumeración).
+        return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
       }
 
       authenticated = await bcrypt.compare(credential, user.password_hash);
@@ -522,7 +540,7 @@ exports.login = async (req, res, next) => {
       }
     } else if (loginMode === 'mfa') {
       try {
-        const decoded = jwt.verify(challenge_token || '', jwtSecret);
+        const decoded = jwt.verify(challenge_token || '', jwtSecret, { algorithms: ['HS256'] });
         if (decoded.email !== user.email || decoded.purpose !== 'mfa') {
           throw new Error('invalid challenge');
         }
@@ -534,7 +552,7 @@ exports.login = async (req, res, next) => {
       authMethod = 'password_otp';
     } else if (loginMode === 'otp') {
       if (!allowsOtpLogin(user)) {
-        return res.status(403).json({ ok: false, error: 'Ingreso con codigo OTP desactivado.' });
+        return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
       }
 
       authenticated = await verifyOtpCredential(user, credential);
@@ -579,9 +597,16 @@ exports.requestCode = async (req, res, next) => {
       return res.status(400).json({ ok: false, error: 'El correo es requerido' });
     }
 
-    let minutes = parseInt(expires_minutes) || DEFAULT_OTP_MINS;
-    if (minutes < 1) minutes = DEFAULT_OTP_MINS;
-    if (minutes > MAX_OTP_MINS) minutes = MAX_OTP_MINS;
+    const minutes = clampOtpMinutes(expires_minutes); // EMT-H09: ventana acotada
+    const expiresAt = new Date(Date.now() + minutes * 60 * 1000);
+
+    // EMT-H10 (anti-enumeración): respuesta uniforme. No revela si el correo
+    // existe, está activado, bloqueado o qué método de ingreso usa.
+    const generic = {
+      ok: true,
+      message: 'Si el correo esta registrado y habilitado, recibiras un codigo.',
+      expires_at: expiresAt.toISOString(),
+    };
 
     const usr = await findAuthUserByEmail(email);
     if (!usr) {
@@ -589,29 +614,19 @@ exports.requestCode = async (req, res, next) => {
         req,
         action: 'otp.request.unknown_email',
         actorEmail: email,
-        statusCode: 403,
+        statusCode: 200,
       });
-      return res.status(403).json({
-        ok: false,
-        error: 'Este correo no ha sido autorizado en el sistema. Contacte a su administrador.',
-      });
-    }
-    if (await ensureNotLocked(req, usr, res)) return;
-    if (!usr.activated_at) {
-      return res.status(409).json({
-        ok: false,
-        code: 'ACCOUNT_SETUP_REQUIRED',
-        error: 'Cuenta nueva. Debes crear tu contrasena antes de solicitar codigos.',
-      });
+      return res.json(generic);
     }
 
-    const { expiresAt } = await issueOtp(req, usr, minutes);
+    // Solo emitimos para cuentas activas, no bloqueadas y con OTP habilitado.
+    // En cualquier otro caso devolvemos la misma respuesta genérica.
+    if (evaluateLock(usr.locked_until).locked || !usr.activated_at || !allowsOtpLogin(usr)) {
+      return res.json(generic);
+    }
 
-    res.json({
-      ok: true,
-      message: `Codigo enviado exitosamente. Valido por ${minutes} minutos.`,
-      expires_at: expiresAt.toISOString(),
-    });
+    await issueOtp(req, usr, minutes);
+    return res.json(generic);
   } catch (err) {
     next(err);
   }

@@ -1,4 +1,9 @@
 const pool = require('../config/db');
+const {
+  canAccessSite,
+  buildUserSiteScope,
+  userCanAccessSiteId,
+} = require('../services/dataAccess');
 
 const DIAS_VALIDOS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
@@ -13,8 +18,11 @@ function esSuperAdmin(req) {
   return req.user?.tipo === 'SuperAdmin';
 }
 
+// Modelo unificado por empresa/sub-empresa (canAccessSite), no por creador.
+// Antes un usuario no podía gestionar alertas de un colega de su misma empresa,
+// y el control no respetaba el límite de sub-empresa.
 function tieneAccesoAAlerta(req, alerta) {
-  return esSuperAdmin(req) || alerta.creado_por === req.user.id;
+  return canAccessSite(req.user, alerta);
 }
 
 function deriveEstado(evento) {
@@ -74,6 +82,11 @@ exports.crearAlerta = async (req, res) => {
       .json({ ok: false, error: 'No puedes crear alertas en una empresa que no es la tuya' });
   }
 
+  // El sitio destino debe pertenecer al alcance del usuario (no solo la empresa).
+  if (!(await userCanAccessSiteId(pool, req.user, sitio_id))) {
+    return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
+  }
+
   const sub_empresa_id = req.user.sub_empresa_id ?? null;
   const diasActivos = normalizarDiasActivos(dias_activos);
   if (!diasActivos.length) {
@@ -119,8 +132,10 @@ exports.listarAlertas = async (req, res) => {
       conditions.push(`a.empresa_id = $${params.length}`);
     }
   } else {
-    params.push(req.user.id);
-    conditions.push(`a.creado_por = $${params.length}`);
+    // Alcance por empresa/sub-empresa del usuario (antes filtraba por creador).
+    const scope = buildUserSiteScope(req.user, 'a', params.length + 1);
+    conditions.push(scope.clause || 'FALSE');
+    params.push(...scope.params);
   }
 
   if (sitio_id) {
@@ -452,9 +467,19 @@ exports.vincularIncidencia = async (req, res) => {
   if (!incidencia_id || !String(incidencia_id).trim()) {
     return res.status(400).json({ ok: false, error: 'Falta incidencia_id' });
   }
+  const incId = String(incidencia_id).trim();
+  // La incidencia a vincular debe pertenecer al alcance del usuario (antes se
+  // aceptaba cualquier incidencia_id del body sin verificar propiedad).
+  const { rows: incRows } = await pool.query(
+    'SELECT empresa_id, sub_empresa_id FROM incidencias WHERE id = $1',
+    [incId],
+  );
+  if (!incRows.length || !canAccessSite(req.user, incRows[0])) {
+    return res.status(403).json({ ok: false, error: 'Sin acceso a esa incidencia' });
+  }
   const { rows } = await pool.query(
     `UPDATE alertas_eventos SET incidencia_id = $2 WHERE id = $1 RETURNING *`,
-    [req.params.id, String(incidencia_id).trim()],
+    [req.params.id, incId],
   );
   res.json({ ok: true, data: { ...rows[0], estado: deriveEstado(rows[0]) } });
 };

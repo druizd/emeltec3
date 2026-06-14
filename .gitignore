@@ -45,6 +45,36 @@ Basura/
 .env
 **/.env
 
+# Datos y volcados sensibles (EMT-C05 / EMT-L08)
+# Volcados de datos DGA / históricos: NO deben versionarse.
+historico_*.csv
+*.dga_*.txt
+.dga_*.txt
+*.dump
+*.sql.dump
+*.bak
+backup_*
+# Si necesitas versionar un CSV legítimo (p. ej. fixture de test),
+# agrégalo explícitamente con:  git add -f ruta/al/fixture.csv
+
+# Material criptográfico — nunca versionar llaves ni certificados
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.keystore
+
+# Binarios compilados y backups de editor (no van en el repo)
+*.exe
+*.exe~
+*~
+
+# Informes de seguridad exportados/firmados — no versionar (se distribuyen aparte)
+docs/security-audit/INFORME-PENDIENTES-*
+docs/security-audit/*.pdf
+*.pdf.sha256
+
 # System files
 .DS_Store
 Thumbs.db

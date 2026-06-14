@@ -3,8 +3,8 @@
  * Expone metricas generales por endpoint y metricas agregadas por variable.
  */
 const pool = require('../config/db');
-const { getLatestSerialId } = require('../utils/serial');
 const { getVariableMetrics } = require('../services/metricsService');
+const { buildUserSiteScope, resolveAccessibleSerial } = require('../services/dataAccess');
 
 function parseRequestedKeys(query) {
   const rawValues = [
@@ -45,6 +45,16 @@ async function getMetrics(req, res, next) {
       params.push(serial_id);
     }
 
+    // Scope por tenant: limitar a los seriales de los sitios del usuario.
+    // Sin esto, un usuario veía métricas de uso de TODOS los clientes.
+    if (req.user && req.user.tipo !== 'SuperAdmin') {
+      const scope = buildUserSiteScope(req.user, 's', params.length + 1);
+      where += ` AND serial_id IN (
+        SELECT s.id_serial FROM sitio s WHERE ${scope.clause || 'FALSE'}
+      )`;
+      params.push(...scope.params);
+    }
+
     const { rows } = await pool.query(
       `SELECT endpoint, domain_slug, serial_id, request_count, bytes_sent, updated_at
        FROM api_metrics
@@ -68,7 +78,13 @@ async function getMetricsByVariable(req, res, next) {
   try {
     const { serial_id } = req.query;
     const keys = parseRequestedKeys(req.query);
-    const resolvedSerialId = serial_id || (await getLatestSerialId(pool));
+    // Autoriza el serial (o resuelve el último del propio usuario si no se pide).
+    // Antes caía al último serial GLOBAL (fuga entre clientes).
+    const resolution = await resolveAccessibleSerial(pool, req.user, serial_id || null);
+    if (resolution.forbidden) {
+      return res.status(403).json({ ok: false, error: 'Sin permisos sobre este equipo' });
+    }
+    const resolvedSerialId = resolution.serial;
     const rows = await getVariableMetrics({
       serialId: resolvedSerialId || null,
       keys,

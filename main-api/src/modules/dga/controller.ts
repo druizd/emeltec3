@@ -18,8 +18,9 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
-import { UnauthorizedError, ValidationError } from '../../shared/errors';
+import { ForbiddenError, UnauthorizedError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
+import { assertSiteAccessById } from '../../middlewares/siteAccess';
 import { z } from 'zod';
 import {
   ListReviewQueueParams,
@@ -46,6 +47,10 @@ import { requestDgaCode } from './twofactor';
 import type { AuthUser } from '../../shared/permissions';
 import { getPozoDgaConfig } from './repo';
 import { formatRutForDga } from '../../utils/rut';
+
+function getUser(req: Request): AuthUser | undefined {
+  return (req as Request & { user?: AuthUser }).user;
+}
 
 const ExportDirectoParams = z.object({
   site_id: z.string().trim().min(1).max(10),
@@ -255,6 +260,14 @@ export async function listReviewQueueHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    // Con site_id: validar propiedad. Sin site_id: solo SuperAdmin puede listar
+    // la cola global (un Admin debe acotar a un sitio suyo).
+    const user = getUser(req);
+    if (parsed.data.site_id) {
+      await assertSiteAccessById(user, parsed.data.site_id);
+    } else if (user?.tipo !== 'SuperAdmin') {
+      throw new ForbiddenError('site_id requerido para este rol');
+    }
     const rows = await listReviewQueue(parsed.data);
     res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -273,6 +286,7 @@ export async function reviewSlotActionHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
+    await assertSiteAccessById(getUser(req), parsed.data.site_id);
     const result = await applyReviewDecision(parsed.data);
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -295,6 +309,7 @@ export async function queryDatoDgaHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    await assertSiteAccessById(getUser(req), parsed.data.site_id);
     const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
     res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
@@ -312,6 +327,7 @@ export async function exportDgaDirectoCsvHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    await assertSiteAccessById(getUser(req), parsed.data.site_id);
     const rows = await getDatoDgaDirectoFromEquipo(
       parsed.data.site_id,
       parsed.data.desde,
@@ -338,6 +354,7 @@ export async function exportDatoDgaCsvHandler(
     if (!parsed.success) {
       throw new ValidationError('Parámetros inválidos', { details: parsed.error.issues });
     }
+    await assertSiteAccessById(getUser(req), parsed.data.site_id);
     const rows = await getDatoDgaBySite(parsed.data.site_id, parsed.data.desde, parsed.data.hasta);
     const csv = toCsv(rows);
     const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;

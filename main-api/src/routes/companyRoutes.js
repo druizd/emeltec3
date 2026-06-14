@@ -4,6 +4,7 @@ const router = express.Router();
 const companyController = require('../controllers/companyController');
 const pasteurizadorController = require('../controllers/pasteurizadorController');
 const { protect } = require('../middlewares/authMiddleware');
+const { requireSiteAccess } = require('../middlewares/coldRoomAccess');
 
 // Lazy require del controller TS compilado de contadores (puede no estar
 // disponible en dev sin build). Se monta solo si carga.
@@ -51,18 +52,34 @@ router.patch('/sites/:siteId', companyController.updateSite);
 router.delete('/sites/:siteId', companyController.deleteSite);
 router.get('/sites/:siteId/pozo-config', companyController.getSitePozoConfig);
 router.get('/sites/:siteId/dashboard-data', companyController.getSiteDashboardData);
+// requireSiteAccess('siteId') cierra el IDOR: estos handlers TS leían/escribían
+// por siteId sin verificar que el sitio pertenezca al usuario.
 if (contadoresController) {
-  router.get('/sites/:siteId/contadores-mensuales', contadoresController.getMonthlySeriesHandler);
-  router.get('/sites/:siteId/contadores-diarios', contadoresController.getDailySeriesHandler);
-  router.get('/sites/:siteId/contadores-jornadas', contadoresController.getJornadaSeriesHandler);
+  router.get(
+    '/sites/:siteId/contadores-mensuales',
+    requireSiteAccess('siteId'),
+    contadoresController.getMonthlySeriesHandler,
+  );
+  router.get(
+    '/sites/:siteId/contadores-diarios',
+    requireSiteAccess('siteId'),
+    contadoresController.getDailySeriesHandler,
+  );
+  router.get(
+    '/sites/:siteId/contadores-jornadas',
+    requireSiteAccess('siteId'),
+    contadoresController.getJornadaSeriesHandler,
+  );
 }
 if (siteOperacionConfigController) {
   router.get(
     '/sites/:siteId/operacion-config',
+    requireSiteAccess('siteId'),
     siteOperacionConfigController.getSiteOperacionConfigHandler,
   );
   router.put(
     '/sites/:siteId/operacion-config',
+    requireSiteAccess('siteId'),
     siteOperacionConfigController.updateSiteOperacionConfigHandler,
   );
 }
