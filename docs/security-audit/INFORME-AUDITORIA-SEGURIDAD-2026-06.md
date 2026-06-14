@@ -5,7 +5,7 @@
 | **Objeto auditado**             | Plataforma Emeltec (monorepo `emeltec3`) — plataforma IIoT y cumplimiento DGA                                                                  |
 | **Commit auditado**             | `c44767d` (rama `main`)                                                                                                                        |
 | **Fecha de auditoría**          | 13 de junio de 2026                                                                                                                            |
-| **Última actualización**        | 14 de junio de 2026 — Rev. 3: re-auditoría + remediación capa v2 (ver §1bis)                                                                   |
+| **Última actualización**        | 14 de junio de 2026 — Rev. 4: remediación de hallazgos del re-audit completo (ver §1bis)                                                       |
 | **Tipo de auditoría**           | Revisión de seguridad de aplicación (SAST manual), dependencias / supply-chain, infraestructura y configuración, y mapeo de cumplimiento OWASP |
 | **Alcance**                     | Plataforma completa: 11 servicios + infraestructura                                                                                            |
 | **Metodología**                 | Revisión manual de código fuente, análisis de configuración, inspección de historia de Git, verificación adversaria de hallazgos críticos      |
@@ -99,6 +99,43 @@ Verificación: typecheck 0 errores, 87 tests (vitest) verdes, lint 0 errores.
 - **auth-api (alto/medio)** — invalidar OTP en cada intento fallido (hoy solo al bloquear); aplicar el limiter estricto a `/start`; reducir la enumeración residual de `/start`; pinear `algorithms` en `jwt.verify` de tokens de challenge.
 - **Higiene de repo/infra** — desversionar `auth-api/node_modules`; correr contenedores Node/nginx como no-root; fijar imágenes por digest (no `:latest`); pinear GitHub Actions por SHA.
 - **Resto** del informe: medios/bajos no priorizados (CORS fail-closed, rol de mínimo privilegio en BD, ledger de migraciones, headers en metrics-page/landing, etc.).
+
+---
+
+## 1ter. Estado de remediación — Rev. 4 (re-audit completo, 14/06)
+
+Una **re-auditoría completa** (toda la plataforma, mostrando solo vulnerabilidades abiertas) detectó hallazgos nuevos que la remediación previa no cubría. Se revisaron y cerraron 1-a-1. Todo lo cerrado está en la rama `druizd/security/audit-remediation` (PR #77).
+
+**Leyenda:** ✅ Cerrado en código (verificado) · 📄 Documentado / acción manual pendiente · ⏸️ Requiere ventana coordinada (Rust+Go) o infra.
+
+| ID                                                                            | Severidad  | Estado        | Detalle                                                                                                                                                                             |
+| ----------------------------------------------------------------------------- | ---------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DGA Informantes (CRUD global)                                                 | 🔴 Crítica | ✅            | `/dga/informantes` GET/POST/PATCH/DELETE → `authorizeRoles('SuperAdmin')`. Antes cualquier usuario podía rotar/borrar las credenciales SNIA (`clave_informante`) de otras empresas. |
+| gRPC sin auth/TLS (server.js + csvconsumer + ftpconsumer)                     | 🔴 Crítica | ⏸️📄          | Mitigación inmediata: firewall/NSG allowlist (`RUNBOOK-FASE-1`). Fix real: interceptor/mTLS + TLS, cross-service Rust+Go.                                                           |
+| Secretos en historia de Git                                                   | 🔴 Crítica | 📄            | Fase 0: rotar + purgar. Sin cambios de código posibles.                                                                                                                             |
+| CSV regulatorio en historia                                                   | 🔴 Crítica | 📄            | Sacado de HEAD + ignorado; falta purga de historia (Fase 0).                                                                                                                        |
+| `jwt.verify` sin `algorithms` (setup + MFA)                                   | 🟠 Alta    | ✅            | Ambos `jwt.verify` ahora fijan `algorithms:['HS256']`.                                                                                                                              |
+| Enumeración en `/start` (flow disclosure)                                     | 🟠 Alta    | ✅ (mitigada) | Rate-limit estricto en `/start` (`START_RATE_LIMIT_MAX`, default 10/min/IP). El flow se mantiene por necesidad de UX; abuso a escala encarecido.                                    |
+| OTP no invalidado en intento fallido                                          | 🟠 Alta    | ✅            | Ahora single-use real: se invalida en CADA fallo, no solo al bloquear.                                                                                                              |
+| `auth-api/node_modules`, `csvprocessor.exe~`, `.dga_res_2170.txt` versionados | 🟠 Alta    | ✅            | Desversionados (`git rm --cached`) + `.gitignore` reforzado (`*.exe`, `*~`).                                                                                                        |
+| TLS a PostgreSQL (NoTls) en servicios Rust                                    | 🟠 Alta    | ⏸️            | Mismo host → riesgo bajo; queda para ventana Rust + cert de servidor.                                                                                                               |
+| DoS ingesta (cola sin tope, transacción manual, mutex)                        | 🟠 Alta    | ⏸️            | Ventana Rust. Mitigado mientras tanto por el firewall del gRPC.                                                                                                                     |
+| CORS abierto (auth-api / main-api)                                            | 🟡 Media   | ✅            | Allowlist `*.emeltec.cl` + localhost; main-api sin `*` por defecto. linux-db-api (Rust) → ventana Rust.                                                                             |
+| Inyección de `sitio_id` al crear (ex EMT-H05)                                 | 🟡 Media   | ✅            | `userCanAccessSiteId` valida el sitio en alerta/incidencia/documento.                                                                                                               |
+| Contenedores Node como root                                                   | 🟡 Media   | ✅            | `USER node` en main-api y auth-api (verificar con `docker build`). nginx no-root → infra.                                                                                           |
+| Imágenes `:latest` sin digest                                                 | 🟡 Media   | ⏸️            | Infra: fijar por digest (requiere confirmar versión actual).                                                                                                                        |
+| GitHub Actions por tag                                                        | 🟡 Media   | ✅            | `checkout`/`setup-node`/`pnpm/action-setup` fijadas por commit SHA.                                                                                                                 |
+| IP falsificable en audit log                                                  | 🔵 Baja    | ✅            | `clientIp`/`auditLog` usan solo `req.ip` (no el `X-Forwarded-For` crudo).                                                                                                           |
+| `errorMiddleware` filtra mensajes ≠500                                        | 🔵 Baja    | ✅            | Enmascara todo error ≥500 en producción.                                                                                                                                            |
+| `vincularIncidencia` sin chequeo de propiedad                                 | 🔵 Baja    | ✅            | Valida que la incidencia pertenezca al alcance del usuario.                                                                                                                         |
+
+**Pendientes tras Rev. 4 (en orden de urgencia):**
+
+1. **Fase 0 (manual, lo más urgente):** rotar secretos filtrados + purgar historia. El código no protege los valores ya presentes en la historia de Git.
+2. **Firewall/NSG** allowlist a los puertos gRPC/`linux-db-api` (mitigación inmediata del gRPC sin auth).
+3. **Ventana Rust+Go:** auth+TLS gRPC, TLS a BD, topes anti-DoS, errores genéricos, CORS de linux-db-api.
+4. **Infra:** imágenes por digest, contenedores nginx no-root, ledger de migraciones, host-key SSH pinneado.
+5. **Verificar `docker build`** de las imágenes Node con `USER node` antes de desplegar.
 
 ---
 
