@@ -38,7 +38,9 @@ services:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-db
     ports:
-      - '${POSTGRES_HOST_PORT:-5433}:5432'
+      # EMT-H03: la BD NO debe quedar expuesta a 0.0.0.0. Solo loopback
+      # (acceso local / túnel SSH). Los servicios la alcanzan por red interna.
+      - '127.0.0.1:${POSTGRES_HOST_PORT:-5433}:5432'
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -57,7 +59,8 @@ services:
     build: ./main-api
     container_name: emeltec-api
     ports:
-      - '${MAIN_API_HOST_PORT:-3000}:3000'
+      # EMT-H03: detrás del nginx de borde (proxy a 127.0.0.1:3000). Loopback.
+      - '127.0.0.1:${MAIN_API_HOST_PORT:-3000}:3000'
     env_file:
       - ./.env
     environment:
@@ -79,6 +82,10 @@ services:
     build: ./linux-db-api
     container_name: emeltec-linux-db-api
     ports:
+      # EMT-H03/H02: consumido cross-host (procesadores en otra máquina), por eso
+      # NO se oculta. Mitigar con: firewall/NSG allowlist al/los host(s) emisor(es)
+      # + INTERNAL_API_KEY obligatoria (fail-closed, ya aplicado) + TLS.
+      # Ver docs/security-audit/RUNBOOK-FASE-1-puertos-cross-host.md
       - '${LINUX_DB_API_HOST_PORT:-3010}:3010'
     env_file:
       - ./.env
@@ -117,7 +124,8 @@ services:
     build: ./auth-api
     container_name: emeltec-auth
     ports:
-      - '${AUTH_API_HOST_PORT:-3001}:3001'
+      # EMT-H03: detrás del nginx de borde (proxy a 127.0.0.1:3001). Loopback.
+      - '127.0.0.1:${AUTH_API_HOST_PORT:-3001}:3001'
     env_file:
       - ./.env
     environment:
@@ -139,7 +147,8 @@ services:
       dockerfile: frontend-angular/Dockerfile
     container_name: emeltec-frontend
     ports:
-      - '${FRONTEND_HOST_PORT:-5173}:80'
+      # EMT-H03: detrás del nginx de borde (proxy a 127.0.0.1:5173). Loopback.
+      - '127.0.0.1:${FRONTEND_HOST_PORT:-5173}:80'
     depends_on:
       main-api:
         condition: service_healthy
@@ -172,6 +181,9 @@ services:
       dockerfile: csvconsumer-rust.Dockerfile
     container_name: emeltec-csvconsumer
     ports:
+      # EMT-H03/H01: ingesta gRPC consumida cross-host (procesador CSV en otra
+      # máquina). Mitigar con firewall/NSG allowlist + auth (interceptor/mTLS) + TLS.
+      # Ver docs/security-audit/RUNBOOK-FASE-1-puertos-cross-host.md
       - '${CSVCONSUMER_HOST_PORT:-50051}:50051'
     environment:
       <<: *db-env
@@ -187,6 +199,9 @@ services:
       dockerfile: ftpconsumer-rust.Dockerfile
     container_name: emeltec-ftpconsumer
     ports:
+      # EMT-H03/H01: ingesta gRPC consumida cross-host (procesador FTP en otra
+      # máquina). Mitigar con firewall/NSG allowlist + auth (interceptor/mTLS) + TLS.
+      # Ver docs/security-audit/RUNBOOK-FASE-1-puertos-cross-host.md
       - '${FTPCONSUMER_HOST_PORT:-50061}:50061'
     environment:
       <<: *db-env
