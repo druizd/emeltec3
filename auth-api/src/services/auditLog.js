@@ -36,7 +36,9 @@ async function record({
     const payloadHash = payload
       ? crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex')
       : null;
-    const ip = (req && (req.ip || req.headers['x-forwarded-for'] || '')).toString().slice(0, 45);
+    // Solo req.ip (resuelto por Express vía trust proxy). NO usar el header
+    // X-Forwarded-For crudo: el cliente puede falsificarlo (integridad del log).
+    const ip = (req && (req.ip || '')).toString().slice(0, 45);
     const userAgent = (
       req && req.headers && req.headers['user-agent'] ? req.headers['user-agent'] : ''
     )

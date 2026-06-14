@@ -66,7 +66,9 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
 }
 
 function clientIp(req) {
-  return (req.ip || req.headers['x-forwarded-for'] || '').toString().slice(0, 45) || null;
+  // Solo req.ip (Express lo resuelve vía trust proxy). No el X-Forwarded-For
+  // crudo, que el cliente puede falsificar.
+  return (req.ip || '').toString().slice(0, 45) || null;
 }
 
 function makeOtpCode() {

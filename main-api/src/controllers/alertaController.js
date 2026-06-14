@@ -467,9 +467,19 @@ exports.vincularIncidencia = async (req, res) => {
   if (!incidencia_id || !String(incidencia_id).trim()) {
     return res.status(400).json({ ok: false, error: 'Falta incidencia_id' });
   }
+  const incId = String(incidencia_id).trim();
+  // La incidencia a vincular debe pertenecer al alcance del usuario (antes se
+  // aceptaba cualquier incidencia_id del body sin verificar propiedad).
+  const { rows: incRows } = await pool.query(
+    'SELECT empresa_id, sub_empresa_id FROM incidencias WHERE id = $1',
+    [incId],
+  );
+  if (!incRows.length || !canAccessSite(req.user, incRows[0])) {
+    return res.status(403).json({ ok: false, error: 'Sin acceso a esa incidencia' });
+  }
   const { rows } = await pool.query(
     `UPDATE alertas_eventos SET incidencia_id = $2 WHERE id = $1 RETURNING *`,
-    [req.params.id, String(incidencia_id).trim()],
+    [req.params.id, incId],
   );
   res.json({ ok: true, data: { ...rows[0], estado: deriveEstado(rows[0]) } });
 };
