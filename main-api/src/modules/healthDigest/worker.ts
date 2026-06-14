@@ -13,6 +13,7 @@
  * Activación: env `ENABLE_HEALTH_DIGEST_WORKER=true`.
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import { getDataTransmissionLag, getDgaUsersForMonitoring, type DgaUserRaw } from './repo';
 
 export type IssueKind = 'data' | 'dga';
@@ -208,6 +209,7 @@ async function maybeSendDigest(snap: { data: IssueRow[]; dga: IssueRow[] }): Pro
 }
 
 async function runCycle(): Promise<void> {
+  beat('healthDigest');
   try {
     const snap = await fetchSnapshot();
     await detectAndEmitEvents(snap);
