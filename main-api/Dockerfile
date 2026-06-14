@@ -34,5 +34,8 @@ COPY assets ./assets
 # Se ejecutan via `docker compose exec main-api node /app/scripts/<X>.js`.
 COPY scripts ./scripts
 COPY migrations ./migrations
+# Correr como usuario no-root (incluido en la imagen node). La app solo lee
+# sus archivos (logs a stdout, datos a BD/Redis/Azure), así que no necesita root.
+USER node
 EXPOSE 3000
 CMD ["node", "dist/server.js"]
