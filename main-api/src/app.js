@@ -33,17 +33,32 @@ app.set('trust proxy', 1);
 // Capa basica de seguridad HTTP.
 app.use(helmet());
 
-const allowedOrigins = (process.env.CORS_ORIGIN || '*').split(',').map((o) => o.trim());
+// Orígenes extra opcionales (staging, etc.) por variable de entorno. Ya NO
+// hay '*' por defecto (fail-closed).
+const extraOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 
-// CORS queda abierto por defecto en desarrollo, pero acepta lista blanca por variable de entorno.
+// CORS: subdominios de emeltec.cl (https) + localhost (dev) + extras por env.
+// Sin Origin (server-to-server / curl) se permite.
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (extraOrigins.includes(origin)) return true;
+  let host;
+  try {
+    host = new URL(origin).hostname;
+  } catch {
+    return false;
+  }
+  if (host === 'emeltec.cl' || host.endsWith('.emeltec.cl')) return true;
+  if (host === 'localhost' || host === '127.0.0.1') return true;
+  return false;
+}
+
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      callback(new Error(`Origen no permitido por CORS: ${origin}`));
-    },
+    origin: (origin, callback) => callback(null, isAllowedOrigin(origin)),
     // Server-Timing necesita estar en la lista expuesta para que DevTools del
     // browser lo lea en peticiones cross-origin.
     exposedHeaders: ['Server-Timing'],
