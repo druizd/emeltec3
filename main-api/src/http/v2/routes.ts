@@ -2,6 +2,7 @@
  * Router HTTP v2. Se monta bajo /api/v2 desde app.js (o app.ts cuando exista).
  */
 import { Router } from 'express';
+import type { Request, Response, NextFunction, RequestHandler } from 'express';
 import { protect, authorizeRoles } from '../../middlewares/auth';
 import { requireSiteParamAccess } from '../../middlewares/siteAccess';
 import {
@@ -42,12 +43,12 @@ import { requireDgaTwoFactor } from '../../modules/dga/twofactor';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { auditMutations } = require('../../services/auditLog') as {
   auditMutations: (
-    resolver: (req: import('express').Request) => {
+    resolver: (req: Request) => {
       action: string;
       targetType?: string;
       targetId?: string;
     },
-  ) => import('express').RequestHandler;
+  ) => RequestHandler;
 };
 
 const auditDgaMutations = auditMutations((req) => {
@@ -103,11 +104,7 @@ const auditDgaMutations = auditMutations((req) => {
  * dga_transport a 'rest'. Otros cambios (activo, caudal_max, etc.) no
  * requieren 2FA — pasan derecho al handler.
  */
-function require2faIfTransportRest(
-  req: import('express').Request,
-  res: import('express').Response,
-  next: import('express').NextFunction,
-): void {
+function require2faIfTransportRest(req: Request, res: Response, next: NextFunction): void {
   if (req.body?.dga_transport === 'rest') {
     return requireDgaTwoFactor(req, res, next);
   }
@@ -117,11 +114,7 @@ function require2faIfTransportRest(
 /**
  * Middleware: 2FA siempre para rotación de clave de informante.
  */
-function require2faIfPasswordChange(
-  req: import('express').Request,
-  res: import('express').Response,
-  next: import('express').NextFunction,
-): void {
+function require2faIfPasswordChange(req: Request, res: Response, next: NextFunction): void {
   if (typeof req.body?.clave_informante === 'string' && req.body.clave_informante.length > 0) {
     return requireDgaTwoFactor(req, res, next);
   }
