@@ -85,6 +85,73 @@
           transform: rotate(360deg);
         }
       }
+      .spin {
+        display: inline-flex;
+        animation: spin 0.8s linear infinite;
+      }
+
+      .btn {
+        height: 40px;
+        padding: 0 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 8px;
+        font: 600 13px var(--font-body);
+        cursor: pointer;
+        border: 1px solid var(--border-default);
+        transition:
+          background 0.15s ease,
+          border-color 0.15s ease;
+      }
+      .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .btn.ghost {
+        background: var(--bg-subtle);
+        color: var(--text-primary);
+      }
+      .btn.ghost:hover {
+        border-color: var(--border-strong);
+      }
+      .btn.primary {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: var(--text-inverse);
+      }
+      .btn.primary:hover:not(:disabled) {
+        background: var(--color-primary-hover);
+        border-color: var(--color-primary-hover);
+      }
+
+      .fld {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 44px;
+        padding: 0 12px;
+        margin-bottom: 10px;
+        border: 1px solid var(--input-border);
+        border-radius: var(--input-radius);
+        background: var(--input-bg);
+        color: var(--text-muted);
+      }
+      .fld:focus-within {
+        border-color: var(--border-focus);
+      }
+      .fld input {
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--input-text);
+        font: 400 14px var(--font-body);
+      }
+      .fld input::placeholder {
+        color: var(--input-placeholder);
+      }
 
       .sparkline {
         display: flex;

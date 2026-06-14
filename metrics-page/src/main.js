@@ -1,8 +1,16 @@
 import {
+  Activity,
   Clock,
   Cpu,
   Database,
   GitBranch,
+  Globe,
+  HardDrive,
+  KeyRound,
+  LogIn,
+  LogOut,
+  Mail,
+  Network,
   Radio,
   RadioTower,
   RefreshCw,
@@ -12,10 +20,18 @@ import {
 } from 'lucide';
 
 const icons = {
+  Activity,
   Clock,
   Cpu,
   Database,
   GitBranch,
+  Globe,
+  HardDrive,
+  KeyRound,
+  LogIn,
+  LogOut,
+  Mail,
+  Network,
   Radio,
   RadioTower,
   RefreshCw,
@@ -23,33 +39,82 @@ const icons = {
   ShieldCheck,
 };
 
+const TOKEN_KEY = 'emeltec_metrics_token';
+const USER_KEY = 'emeltec_metrics_user';
+const HISTORY_KEY = 'emeltec_metrics_history';
+const HISTORY_LEN = 30;
+
+// Catálogo de servicios sondeados por /api/status (público) y /api/status/detail
+// (autenticado). `pipeline` es el alias público de csvconsumer.
 const SERVICE_META = {
-  api: { label: 'Main API', role: 'Capa publica REST', icon: 'server', path: '/api/v1' },
-  auth: {
-    label: 'Auth Service',
-    role: 'JWT · OAuth2 · Sesiones',
-    icon: 'shield-check',
-    path: '/auth',
-  },
+  api: { label: 'main-api', role: 'REST público · Node', icon: 'server', path: ':3000' },
+  auth: { label: 'auth-api', role: 'JWT · OTP · lockout', icon: 'shield-check', path: ':3001' },
   database: {
-    label: 'Database',
-    role: 'PostgreSQL primaria',
+    label: 'Base de datos',
+    role: 'Persistencia operativa',
     icon: 'database',
-    path: 'pg-primary',
+    path: ':5433',
   },
   pipeline: {
-    label: 'Pipeline gRPC',
-    role: 'Ingesta de telemetria',
+    label: 'Ingesta gRPC',
+    role: 'csvconsumer · Rust',
     icon: 'git-branch',
     path: ':50051',
   },
-  dga: {
-    label: 'DGA Reporter',
-    role: 'Envios a DGA · Ministerio',
-    icon: 'radio-tower',
-    path: 'dga.ready',
+  csvconsumer: {
+    label: 'csvconsumer',
+    role: 'Ingesta CSV · Rust',
+    icon: 'git-branch',
+    path: ':50051',
   },
+  ftpconsumer: {
+    label: 'ftpconsumer',
+    role: 'Ingesta FTP · Rust',
+    icon: 'git-branch',
+    path: ':50061',
+  },
+  redis: { label: 'Redis', role: 'Caché de estado', icon: 'hard-drive', path: 'cache' },
 };
+
+// Servicios de la arquitectura que main-api NO puede sondear directamente.
+// Se muestran como contexto (sin estado en vivo) para dar el panorama completo.
+const CONTEXT_SERVICES = [
+  {
+    label: 'Nginx',
+    role: 'TLS · proxy *.emeltec.cl',
+    icon: 'globe',
+    zone: 'VM Linux',
+    path: ':443',
+  },
+  {
+    label: 'Frontend Angular',
+    role: 'UI de la plataforma',
+    icon: 'globe',
+    zone: 'VM Linux',
+    path: 'cloud.emeltec.cl',
+  },
+  {
+    label: 'linux-db-api',
+    role: 'Cola de comandos PLC · Rust',
+    icon: 'network',
+    zone: 'VM Linux',
+    path: ':3010',
+  },
+  {
+    label: 'csvprocessor',
+    role: 'Extrae id_serial · Go',
+    icon: 'cpu',
+    zone: 'Windows Server',
+    path: 'SQLite',
+  },
+  {
+    label: 'MT / PLC',
+    role: 'Telemetría en terreno',
+    icon: 'radio-tower',
+    zone: 'Campo / OT',
+    path: 'id_serial',
+  },
+];
 
 const STATUS_TONE = {
   online: {
@@ -70,16 +135,43 @@ const STATUS_TONE = {
     bg: 'var(--color-danger-bg)',
     border: 'var(--color-danger-border)',
   },
+  unknown: {
+    label: 'No sondeado',
+    color: 'var(--text-muted)',
+    bg: 'rgba(74,90,114,0.12)',
+    border: 'var(--border-default)',
+  },
 };
 
 const root = document.getElementById('root');
+
 const state = {
-  payload: null,
+  token: localStorage.getItem(TOKEN_KEY) || '',
+  user: readJson(USER_KEY) || null,
+  history: readJson(HISTORY_KEY) || {},
+  payload: null, // /api/status (público)
+  detail: null, // /api/status/detail (autenticado)
+  detailForbidden: false,
   lastUpdate: Date.now(),
   loading: false,
   error: '',
   now: Date.now(),
+  // login UI
+  loginOpen: false,
+  loginStep: 'password', // 'password' | 'otp'
+  challengeToken: '',
+  loginEmail: '',
+  loginError: '',
+  loginBusy: false,
 };
+
+function readJson(key) {
+  try {
+    return JSON.parse(localStorage.getItem(key) || 'null');
+  } catch {
+    return null;
+  }
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -92,12 +184,12 @@ function escapeHtml(value) {
 
 function fmtUptime(seconds) {
   if (seconds == null) return '-';
-  const h = Math.floor(seconds / 3600);
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  const s = seconds % 60;
+  if (d > 0) return `${d}d ${h}h`;
   if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
-  if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
-  return `${s}s`;
+  return `${m}m ${String(seconds % 60).padStart(2, '0')}s`;
 }
 
 function fmtAge(ms) {
@@ -134,22 +226,70 @@ function statusPill(status) {
   `;
 }
 
-function sparkline(status, seed) {
-  let x = seed;
-  const bars = Array.from({ length: 14 }, (_, i) => {
-    x = (x * 9301 + 49297) % 233280;
-    const v = status === 'offline' ? 0.15 + (x / 233280) * 0.2 : 0.35 + (x / 233280) * 0.65;
-    return `<span style="height:${Math.round(v * 22)}px;opacity:${i === 13 ? 1 : 0.45 + v * 0.4}"></span>`;
-  }).join('');
-  return `<div class="sparkline" aria-hidden="true">${bars}</div>`;
+// ---------- gráficos ----------
+
+// Mini línea SVG de latencia a partir del historial real del servicio.
+function latencyChart(values, color, height = 36, width = 120) {
+  const series = values.filter((v) => v != null);
+  if (series.length < 2) {
+    return `<div style="height:${height}px;display:flex;align-items:center;font:500 11px var(--font-body);color:var(--text-muted);">Recolectando…</div>`;
+  }
+  const max = Math.max(...series, 1);
+  const min = Math.min(...series, 0);
+  const span = max - min || 1;
+  const step = width / (series.length - 1);
+  const points = series
+    .map((v, i) => {
+      const x = i * step;
+      const y = height - 4 - ((v - min) / span) * (height - 8);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+  const last = series[series.length - 1];
+  return `
+    <svg viewBox="0 0 ${width} ${height}" width="100%" height="${height}" preserveAspectRatio="none" aria-hidden="true">
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+      <polyline points="0,${height} ${points} ${width},${height}" fill="${color}" opacity="0.08" stroke="none" />
+    </svg>
+    <div style="font:600 11px var(--font-mono);color:${color};margin-top:2px;">${last} ms</div>
+  `;
 }
 
-function getServices() {
+// Anillo de disponibilidad (online / total).
+function availabilityRing(online, total) {
+  const pct = total ? Math.round((online / total) * 100) : 0;
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const dash = (pct / 100) * c;
+  const color =
+    pct === 100
+      ? 'var(--color-success)'
+      : pct >= 60
+        ? 'var(--color-warning)'
+        : 'var(--color-danger)';
+  return `
+    <svg width="72" height="72" viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="${r}" fill="none" stroke="var(--border-default)" stroke-width="7" />
+      <circle cx="36" cy="36" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round"
+        stroke-dasharray="${dash.toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 36 36)" />
+      <text x="36" y="40" text-anchor="middle" font-family="var(--font-mono)" font-size="16" font-weight="600" fill="var(--text-primary)">${pct}%</text>
+    </svg>
+  `;
+}
+
+// ---------- selección de datos según sesión ----------
+
+function isAuthed() {
+  return !!state.token && !!state.detail && !state.detailForbidden;
+}
+
+function activeServices() {
+  if (isAuthed()) return state.detail.services || {};
   return state.payload?.services || {};
 }
 
-function getSummary() {
-  const values = Object.values(getServices());
+function getSummary(services) {
+  const values = Object.values(services);
   return {
     total: values.length,
     online: values.filter((s) => s.status === 'online').length,
@@ -159,33 +299,39 @@ function getSummary() {
 }
 
 function getOverall(summary) {
-  if (!state.payload) return 'degraded';
+  if (isAuthed() && state.detail?.overall) return state.detail.overall;
+  if (!state.payload && !state.detail) return 'degraded';
   if (summary.offline > 0) return 'offline';
   if (summary.degraded > 0) return 'degraded';
   return 'online';
 }
 
-function avgLatency() {
-  const values = Object.values(getServices())
-    .map((service) => service.response_time_ms)
-    .filter((value) => value != null);
-  if (!values.length) return '-';
-  return Math.round(values.reduce((acc, value) => acc + value, 0) / values.length);
+function avgLatency(services) {
+  const values = Object.values(services)
+    .map((s) => s.response_time_ms)
+    .filter((v) => v != null);
+  if (!values.length) return null;
+  return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
 }
 
-function topBar(summary) {
-  const env = getServices().api?.environment || '-';
+// ---------- componentes de UI ----------
+
+function topBar(summary, services) {
+  const lat = avgLatency(services);
+  const sessionBtn = state.token
+    ? `<button id="logoutBtn" type="button" class="btn ghost">${icon('log-out', 15)} Salir</button>`
+    : `<button id="loginToggle" type="button" class="btn primary">${icon('log-in', 15)} Iniciar sesión</button>`;
   return `
     <header style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
       <div>
         <div class="label">EMELTEC CLOUD</div>
-        <h1 style="margin-top:6px;font:600 30px/1.1 var(--font-display);letter-spacing:0;color:var(--text-primary);">Panel de salud operativa</h1>
+        <h1 style="margin-top:6px;font:600 30px/1.1 var(--font-display);color:var(--text-primary);">Panel de salud operativa</h1>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         ${metricChip('Servicios', summary.total)}
         ${metricChip('Online', summary.online, 'var(--color-success)')}
-        ${metricChip('Latencia prom.', `${avgLatency()} ms`, 'var(--color-primary)')}
-        ${metricChip('Entorno', env)}
+        ${lat != null ? metricChip('Latencia prom.', `${lat} ms`, 'var(--color-primary)') : ''}
+        ${sessionBtn}
       </div>
     </header>
   `;
@@ -193,7 +339,7 @@ function topBar(summary) {
 
 function metricChip(label, value, color = 'var(--text-primary)') {
   return `
-    <div style="min-width:118px;padding:10px 12px;border:1px solid var(--border-default);border-radius:10px;background:var(--bg-surface);box-shadow:var(--shadow-xs);">
+    <div style="min-width:104px;padding:10px 12px;border:1px solid var(--border-default);border-radius:10px;background:var(--bg-surface);box-shadow:var(--shadow-xs);">
       <div class="label" style="font-size:10px;">${escapeHtml(label)}</div>
       <div style="margin-top:4px;font:600 18px var(--font-mono);color:${color};">${escapeHtml(value)}</div>
     </div>
@@ -218,20 +364,21 @@ function hero(summary, overall) {
   return `
     <section style="position:relative;overflow:hidden;border:1px solid ${tone.border};border-radius:16px;background:linear-gradient(135deg,var(--bg-surface),var(--bg-elevated));box-shadow:var(--shadow-md);">
       <div class="live-bar" style="height:2px;color:${tone.color};opacity:.8"></div>
-      <div style="padding:24px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;">
+      <div style="padding:24px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center;">
+        <div>${availabilityRing(summary.online, summary.total)}</div>
         <div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">${statusDot(overall, 10)}${statusPill(overall)}</div>
-          <h2 style="font:600 28px/1.15 var(--font-display);letter-spacing:0;color:var(--text-primary);">${title}</h2>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">${statusPill(overall)}</div>
+          <h2 style="font:600 26px/1.15 var(--font-display);color:var(--text-primary);">${title}</h2>
           <p style="margin-top:8px;font:400 14px/1.6 var(--font-body);color:var(--text-secondary);">${detail}</p>
         </div>
-        <button id="refreshBtn" type="button" style="height:40px;padding:0 14px;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border-default);border-radius:8px;background:var(--bg-subtle);color:var(--text-primary);font:600 13px var(--font-body);cursor:pointer;">
-          <span class="${state.loading ? 'spin' : ''}">${icon('refresh-cw', 15)}</span>
-          Actualizar
+        <button id="refreshBtn" type="button" class="btn ghost" style="align-self:flex-start;">
+          <span class="${state.loading ? 'spin' : ''}">${icon('refresh-cw', 15)}</span> Actualizar
         </button>
       </div>
       <div style="padding:0 24px 18px;display:flex;gap:16px;flex-wrap:wrap;color:var(--text-secondary);font:400 12px var(--font-body);">
         <span>${icon('clock', 13)} Ultima verificacion ${fmtTime(state.lastUpdate)} · ${fmtAge(state.now - state.lastUpdate)}</span>
         <span>${icon('radio', 13)} Sondeo automatico cada 10 s</span>
+        ${isAuthed() ? `<span>${icon('shield-check', 13)} Sesión: ${escapeHtml(state.user?.email || '')} (${escapeHtml(state.user?.tipo || '')})</span>` : ''}
       </div>
     </section>
   `;
@@ -240,33 +387,44 @@ function hero(summary, overall) {
 function serviceCard(id, data) {
   const meta = SERVICE_META[id] || { label: id, role: id, icon: 'cpu', path: id };
   const tone = STATUS_TONE[data.status] || STATUS_TONE.offline;
+  const color = tone.color;
+  const authed = isAuthed();
+
   const metrics = [
     data.response_time_ms != null ? ['Latencia', `${data.response_time_ms} ms`] : null,
     data.uptime_s != null ? ['Uptime', fmtUptime(data.uptime_s)] : null,
     data.environment ? ['Entorno', data.environment] : null,
+    data.version ? ['Versión', data.version] : null,
+    data.node_version ? ['Node', data.node_version] : null,
     data.http_status != null ? ['HTTP', data.http_status] : null,
   ].filter(Boolean);
+
+  const chart = authed
+    ? `<div style="padding:0 16px 14px;">${latencyChart(state.history[id] || [], color)}</div>`
+    : '';
 
   return `
     <article style="border:1px solid ${data.status === 'online' ? 'var(--border-default)' : tone.border};border-radius:12px;background:var(--bg-surface);box-shadow:${data.status === 'online' ? 'var(--shadow-xs)' : 'var(--shadow-teal-sm)'};overflow:hidden;">
       <div style="padding:16px;display:flex;justify-content:space-between;gap:14px;">
         <div style="display:flex;gap:12px;min-width:0;">
-          <div style="width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:${tone.color};background:${tone.bg};border:1px solid ${tone.border};">${icon(meta.icon, 18)}</div>
+          <div style="width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:${color};background:${tone.bg};border:1px solid ${tone.border};">${icon(meta.icon, 18)}</div>
           <div style="min-width:0;">
-            <h3 style="font:600 16px/1.2 var(--font-display);letter-spacing:0;color:var(--text-primary);">${escapeHtml(meta.label)}</h3>
+            <h3 style="font:600 16px/1.2 var(--font-display);color:var(--text-primary);">${escapeHtml(meta.label)}</h3>
             <p style="margin-top:3px;font:400 12px/1.4 var(--font-body);color:var(--text-secondary);">${escapeHtml(meta.role)}</p>
           </div>
         </div>
         ${statusPill(data.status)}
       </div>
-      <div style="padding:0 16px 14px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">
-        ${metrics.length ? metrics.map(([k, v]) => metricCell(k, v)).join('') : metricCell('Estado', 'Sin metricas')}
-      </div>
-      <div style="padding:12px 16px;border-top:1px solid var(--border-muted);display:flex;align-items:center;justify-content:space-between;gap:12px;color:${tone.color};">
+      ${
+        authed && metrics.length
+          ? `<div style="padding:0 16px 12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;">${metrics.map(([k, v]) => metricCell(k, v)).join('')}</div>`
+          : ''
+      }
+      ${chart}
+      <div style="padding:12px 16px;border-top:1px solid var(--border-muted);display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <span style="font:500 12px var(--font-mono);color:var(--text-secondary);">${escapeHtml(meta.path)}</span>
-        ${sparkline(data.status, id.length * 17)}
+        ${data.error && authed ? `<span style="font:500 11px var(--font-body);color:var(--color-danger);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;" title="${escapeHtml(data.error)}">${escapeHtml(data.error)}</span>` : ''}
       </div>
-      ${data.error ? `<div style="padding:0 16px 14px;color:var(--color-danger);font:400 12px/1.5 var(--font-body);">${escapeHtml(data.error)}</div>` : ''}
     </article>
   `;
 }
@@ -275,33 +433,91 @@ function metricCell(label, value) {
   return `
     <div style="padding:10px;border:1px solid var(--border-muted);border-radius:8px;background:var(--bg-base);">
       <div class="label" style="font-size:9px;">${escapeHtml(label)}</div>
-      <div style="margin-top:4px;font:600 15px var(--font-mono);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(value)}</div>
+      <div style="margin-top:4px;font:600 14px var(--font-mono);color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(value)}</div>
     </div>
   `;
 }
 
-function rawPayload() {
+function contextSection() {
+  const cards = CONTEXT_SERVICES.map(
+    (s) => `
+      <article style="border:1px dashed var(--border-default);border-radius:12px;background:var(--bg-surface);padding:14px 16px;opacity:.85;">
+        <div style="display:flex;gap:12px;align-items:center;">
+          <div style="width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--text-muted);background:rgba(74,90,114,0.12);border:1px solid var(--border-default);">${icon(s.icon, 16)}</div>
+          <div style="min-width:0;">
+            <h3 style="font:600 14px/1.2 var(--font-display);color:var(--text-primary);">${escapeHtml(s.label)}</h3>
+            <p style="margin-top:2px;font:400 11px/1.4 var(--font-body);color:var(--text-secondary);">${escapeHtml(s.role)}</p>
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span style="font:500 11px var(--font-mono);color:var(--text-muted);">${escapeHtml(s.zone)} · ${escapeHtml(s.path)}</span>
+          ${statusPill('unknown')}
+        </div>
+      </article>
+    `,
+  ).join('');
   return `
-    <details style="margin-top:28px;border:1px solid var(--border-default);border-radius:12px;background:var(--bg-surface);overflow:hidden;">
-      <summary style="cursor:pointer;padding:14px 16px;font:600 12px var(--font-display);text-transform:uppercase;color:var(--text-secondary);">Payload /api/status</summary>
-      <pre style="margin:0;padding:14px 16px;border-top:1px solid var(--border-muted);background:var(--bg-base);overflow:auto;font:400 12px/1.55 var(--font-mono);color:var(--text-secondary);">${escapeHtml(JSON.stringify(state.payload || {}, null, 2))}</pre>
-    </details>
+    <div style="height:28px"></div>
+    <div class="label" style="font-size:11px;margin-bottom:6px;">Contexto de arquitectura</div>
+    <p style="font:400 12px var(--font-body);color:var(--text-secondary);margin-bottom:14px;max-width:70ch;">
+      Servicios que main-api no sondea directamente (estáticos o del lado Windows). Se listan para dar el panorama completo del flujo de datos.
+    </p>
+    <section style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;">${cards}</section>
+  `;
+}
+
+function loginPanel() {
+  if (!state.loginOpen || state.token) return '';
+  const isOtp = state.loginStep === 'otp';
+  return `
+    <div id="loginOverlay" style="position:fixed;inset:0;background:var(--bg-overlay);backdrop-filter:blur(3px);display:grid;place-items:center;z-index:50;padding:20px;">
+      <form id="loginForm" style="width:100%;max-width:380px;border:1px solid var(--border-default);border-radius:16px;background:var(--bg-surface);box-shadow:var(--shadow-xl);padding:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+          <div style="width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--color-primary);background:var(--color-primary-bg);border:1px solid var(--color-primary-border);">${icon(isOtp ? 'key-round' : 'shield-check', 18)}</div>
+          <h2 style="font:600 18px var(--font-display);color:var(--text-primary);">${isOtp ? 'Verificación 2FA' : 'Acceso operativo'}</h2>
+        </div>
+        <p style="font:400 12px/1.5 var(--font-body);color:var(--text-secondary);margin-bottom:16px;">
+          ${isOtp ? 'Ingresa el código enviado a tu correo para completar el ingreso.' : 'Inicia sesión para ver el detalle operativo (latencia, uptime, entorno).'}
+        </p>
+        ${
+          isOtp
+            ? `<label class="fld">${icon('key-round', 14)}<input name="otp" inputmode="numeric" autocomplete="one-time-code" placeholder="Código OTP" required /></label>`
+            : `
+          <label class="fld">${icon('mail', 14)}<input name="email" type="email" autocomplete="username" placeholder="Correo" value="${escapeHtml(state.loginEmail)}" required /></label>
+          <label class="fld">${icon('key-round', 14)}<input name="password" type="password" autocomplete="current-password" placeholder="Contraseña" required /></label>
+        `
+        }
+        ${state.loginError ? `<div style="margin:4px 0 12px;padding:9px 11px;border:1px solid var(--color-danger-border);border-radius:8px;background:var(--color-danger-bg);color:var(--color-danger);font:500 12px var(--font-body);">${escapeHtml(state.loginError)}</div>` : ''}
+        <div style="display:flex;gap:10px;margin-top:14px;">
+          <button type="submit" class="btn primary" style="flex:1;justify-content:center;" ${state.loginBusy ? 'disabled' : ''}>
+            ${state.loginBusy ? `<span class="spin">${icon('refresh-cw', 15)}</span>` : icon('log-in', 15)} ${isOtp ? 'Verificar' : 'Entrar'}
+          </button>
+          <button type="button" id="loginCancel" class="btn ghost">Cancelar</button>
+        </div>
+      </form>
+    </div>
   `;
 }
 
 function render() {
-  const services = getServices();
-  const summary = getSummary();
+  const services = activeServices();
+  const summary = getSummary(services);
   const overall = getOverall(summary);
+
+  const forbiddenBanner = state.detailForbidden
+    ? `<div style="margin-top:16px;padding:12px 14px;border:1px solid var(--color-warning-border);border-radius:10px;background:var(--color-warning-bg);color:var(--color-warning);font:500 13px var(--font-body);">Tu rol no tiene acceso al detalle operativo. Mostrando la vista pública.</div>`
+    : '';
+
   root.innerHTML = `
     <main style="min-height:100vh;padding:32px 36px 60px;max-width:1280px;margin:0 auto;">
-      ${topBar(summary)}
+      ${topBar(summary, services)}
       <div style="height:24px"></div>
       ${hero(summary, overall)}
+      ${forbiddenBanner}
       ${state.error ? `<div style="margin-top:16px;padding:12px 14px;border:1px solid var(--color-danger-border);border-radius:10px;background:var(--color-danger-bg);color:var(--color-danger);font:500 13px var(--font-body);">${escapeHtml(state.error)}</div>` : ''}
       <div style="height:28px"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px;">
-        <div class="label" style="font-size:11px;">Servicios monitoreados</div>
+        <div class="label" style="font-size:11px;">${isAuthed() ? 'Servicios monitoreados (detalle en vivo)' : 'Servicios monitoreados'}</div>
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           ${legend('online')} ${legend('degraded')} ${legend('offline')}
         </div>
@@ -313,11 +529,25 @@ function render() {
             .join('') || emptyState()
         }
       </section>
-      ${rawPayload()}
+      ${isAuthed() ? contextSection() : ''}
+      ${!state.token ? loginHint() : ''}
     </main>
+    ${loginPanel()}
   `;
   createIcons({ icons });
-  document.getElementById('refreshBtn')?.addEventListener('click', () => fetchStatus(true));
+  wireEvents();
+}
+
+function loginHint() {
+  return `
+    <div style="margin-top:28px;padding:16px 18px;border:1px dashed var(--border-default);border-radius:12px;background:var(--bg-surface);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="color:var(--color-primary);">${icon('activity', 18)}</span>
+      <span style="font:400 13px var(--font-body);color:var(--text-secondary);flex:1;min-width:200px;">
+        Estás viendo el estado público. Inicia sesión como operador para ver latencia, uptime, entorno y el inventario completo con gráficos.
+      </span>
+      <button id="loginToggle2" type="button" class="btn primary">${icon('log-in', 15)} Iniciar sesión</button>
+    </div>
+  `;
 }
 
 function legend(status) {
@@ -333,32 +563,171 @@ function emptyState() {
   `;
 }
 
-async function fetchStatus(manual = false) {
-  state.loading = manual;
-  state.error = '';
+// ---------- eventos ----------
+
+function wireEvents() {
+  document.getElementById('refreshBtn')?.addEventListener('click', () => poll(true));
+  document.getElementById('logoutBtn')?.addEventListener('click', logout);
+  const openLogin = () => {
+    state.loginOpen = true;
+    state.loginStep = 'password';
+    state.loginError = '';
+    render();
+  };
+  document.getElementById('loginToggle')?.addEventListener('click', openLogin);
+  document.getElementById('loginToggle2')?.addEventListener('click', openLogin);
+  document.getElementById('loginCancel')?.addEventListener('click', () => {
+    state.loginOpen = false;
+    state.loginError = '';
+    render();
+  });
+  document.getElementById('loginForm')?.addEventListener('submit', onLoginSubmit);
+}
+
+async function onLoginSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  state.loginBusy = true;
+  state.loginError = '';
   render();
+
   try {
-    const response = await fetch('/api/status', {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
+    let body;
+    if (state.loginStep === 'otp') {
+      const otp = form.otp.value.trim();
+      body = {
+        email: state.loginEmail,
+        otp_code: otp,
+        mode: 'mfa',
+        challenge_token: state.challengeToken,
+      };
+    } else {
+      state.loginEmail = form.email.value.trim();
+      body = { email: state.loginEmail, password: form.password.value, mode: 'password' };
+    }
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const payload = await response.json();
-    state.payload = payload;
-    state.lastUpdate = new Date(payload.timestamp || Date.now()).getTime();
-  } catch (error) {
-    state.error = `No se pudo consultar /api/status: ${error.message}`;
-  } finally {
-    state.loading = false;
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.requires_otp) {
+      state.loginStep = 'otp';
+      state.challengeToken = data.challenge_token;
+      state.loginBusy = false;
+      render();
+      return;
+    }
+
+    if (!res.ok || !data.token) {
+      state.loginError = data.error || 'No se pudo iniciar sesión.';
+      state.loginBusy = false;
+      render();
+      return;
+    }
+
+    // éxito
+    state.token = data.token;
+    state.user = data.user || null;
+    localStorage.setItem(TOKEN_KEY, state.token);
+    if (state.user) localStorage.setItem(USER_KEY, JSON.stringify(state.user));
+    state.loginOpen = false;
+    state.loginBusy = false;
+    state.loginStep = 'password';
+    state.challengeToken = '';
+    state.detailForbidden = false;
+    render();
+    poll(true);
+  } catch (err) {
+    state.loginError = `Error de red: ${err.message}`;
+    state.loginBusy = false;
     render();
   }
 }
 
+function logout(message) {
+  state.token = '';
+  state.user = null;
+  state.detail = null;
+  state.detailForbidden = false;
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  if (typeof message === 'string') state.error = message;
+  render();
+  poll(true);
+}
+
+// ---------- sondeo ----------
+
+function recordHistory(services) {
+  for (const [id, data] of Object.entries(services)) {
+    const arr = state.history[id] || [];
+    arr.push(data.response_time_ms ?? null);
+    while (arr.length > HISTORY_LEN) arr.shift();
+    state.history[id] = arr;
+  }
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(state.history));
+  } catch {
+    /* almacenamiento lleno — el historial es best-effort */
+  }
+}
+
+async function poll(manual = false) {
+  state.loading = manual;
+  state.error = '';
+  if (manual) render();
+
+  // Vista pública siempre disponible.
+  try {
+    const res = await fetch('/api/status', {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok && res.status !== 207) throw new Error(`HTTP ${res.status}`);
+    state.payload = await res.json();
+    state.lastUpdate = new Date(state.payload.timestamp || Date.now()).getTime();
+  } catch (err) {
+    state.error = `No se pudo consultar /api/status: ${err.message}`;
+  }
+
+  // Detalle autenticado si hay token.
+  if (state.token) {
+    try {
+      const res = await fetch('/api/status/detail', {
+        cache: 'no-store',
+        headers: { Accept: 'application/json', Authorization: `Bearer ${state.token}` },
+      });
+      if (res.status === 401) {
+        logout('Tu sesión expiró. Inicia sesión nuevamente.');
+        return;
+      }
+      if (res.status === 403) {
+        state.detailForbidden = true;
+        state.detail = null;
+      } else if (res.ok || res.status === 207) {
+        state.detail = await res.json();
+        state.detailForbidden = false;
+        state.lastUpdate = new Date(state.detail.timestamp || Date.now()).getTime();
+        recordHistory(state.detail.services || {});
+      }
+    } catch (err) {
+      state.error = `No se pudo consultar /api/status/detail: ${err.message}`;
+    }
+  }
+
+  state.loading = false;
+  render();
+}
+
 setInterval(() => {
   state.now = Date.now();
-  render();
+  // Solo refresca el "hace Xs" sin recalcular todo si hay un modal abierto.
+  if (!state.loginOpen) render();
 }, 1000);
 
-setInterval(() => fetchStatus(false), 10000);
+setInterval(() => poll(false), 10000);
 render();
-fetchStatus(false);
+poll(false);
