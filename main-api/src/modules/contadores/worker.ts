@@ -14,6 +14,7 @@
  * ENABLE_CONTADORES_WORKER=true.
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import { getMappingsBySiteId, getSiteById, listCounterVariables } from './repo';
 import { lastNMonths, recomputeMonthsForVariable } from './service';
 import { getPozoConfigBySiteId } from '../sites/repo';
@@ -27,6 +28,7 @@ let intervalHandle: NodeJS.Timeout | null = null;
 let running = false;
 
 async function runCycle(): Promise<void> {
+  beat('contadores');
   if (running) return;
   running = true;
   const startedAt = Date.now();

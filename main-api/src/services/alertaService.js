@@ -13,6 +13,7 @@
 
 const pool = require('../config/db');
 const { sendAlertEmail } = require('./emailService');
+const { beat } = require('./heartbeat');
 
 const POLL_INTERVAL_MS = parseInt(process.env.ALERT_POLL_MS || '60000', 10);
 const DIAS_VALIDOS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -174,6 +175,7 @@ async function notificarUsuarios(alerta, eventoId, mensaje) {
 }
 
 async function runCycle() {
+  beat('alertas');
   let client;
   try {
     client = await pool.connect();

@@ -13,6 +13,7 @@
  * Cadencia: bootstrap + cada DGA_PRESEED_POLL_MS (default 6h).
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import { query } from '../../config/dbHelpers';
 import { getPozoConfigBySiteId } from '../sites/repo';
 import { listPozosDgaActivos, type PozoDgaConfigRow } from './repo';
@@ -98,6 +99,7 @@ async function runPreseedForPozo(pozo: PozoDgaConfigRow): Promise<PreseedResult 
 }
 
 export async function runPreseedCycle(): Promise<void> {
+  beat('dgaPreseed');
   try {
     const pozos = await listPozosDgaActivos();
     if (pozos.length === 0) {

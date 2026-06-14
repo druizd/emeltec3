@@ -61,4 +61,76 @@ function detailView(service) {
   return view;
 }
 
-module.exports = { summarize, overallStatus, publicView, detailView, DETAIL_FIELDS };
+/**
+ * Frescura de ingesta: clasifica cada sitio activo según hace cuánto recibió su
+ * última medición. `rows` viene del query (cada uno con `last_received_at`).
+ * - online: todos transmitiendo dentro del umbral.
+ * - degraded: algunos al día, otros stale.
+ * - offline: ninguno transmitiendo.
+ * - unknown: no hay sitios activos que evaluar.
+ */
+function ingestionSummary(rows, nowMs, freshMs) {
+  const sites = rows || [];
+  let transmitting = 0;
+  let stale = 0;
+  let newest = null;
+  for (const r of sites) {
+    const t = r && r.last_received_at ? new Date(r.last_received_at).getTime() : null;
+    if (t == null || Number.isNaN(t)) {
+      stale += 1;
+      continue;
+    }
+    if (newest == null || t > newest) newest = t;
+    if (nowMs - t <= freshMs) transmitting += 1;
+    else stale += 1;
+  }
+  const status =
+    sites.length === 0
+      ? 'unknown'
+      : stale === 0
+        ? 'online'
+        : transmitting === 0
+          ? 'offline'
+          : 'degraded';
+  return {
+    status,
+    sites_total: sites.length,
+    transmitting,
+    stale,
+    last_age_s: newest == null ? null : Math.max(0, Math.round((nowMs - newest) / 1000)),
+  };
+}
+
+/**
+ * Estado de los workers in-process a partir de sus latidos (`beats[name] = ms`).
+ * Un worker sin latido es `unknown`; con latido más viejo que `staleMs`,
+ * `degraded` (posiblemente colgado); si no, `online`.
+ */
+function workerSnapshot(beats, names, nowMs, staleMs) {
+  return (names || []).map((name) => {
+    const last = beats ? beats[name] : undefined;
+    if (last == null) return { name, status: 'unknown', last_run_s: null };
+    const age = Math.max(0, Math.round((nowMs - last) / 1000));
+    return { name, status: nowMs - last <= staleMs ? 'online' : 'degraded', last_run_s: age };
+  });
+}
+
+/** Da forma a process.memoryUsage() en MB redondeados para el panel. */
+function processVitals(mem) {
+  const mb = (n) => (n == null ? null : Math.round(n / 1048576));
+  return {
+    heap_mb: mb(mem && mem.heapUsed),
+    rss_mb: mb(mem && mem.rss),
+  };
+}
+
+module.exports = {
+  summarize,
+  overallStatus,
+  publicView,
+  detailView,
+  ingestionSummary,
+  workerSnapshot,
+  processVitals,
+  DETAIL_FIELDS,
+};

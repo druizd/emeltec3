@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest';
 // El módulo es CommonJS (.js) consumido por el controlador v1; vitest lo resuelve vía allowJs.
-import { summarize, overallStatus, publicView, detailView } from '../statusReport';
+import {
+  summarize,
+  overallStatus,
+  publicView,
+  detailView,
+  ingestionSummary,
+  workerSnapshot,
+  processVitals,
+} from '../statusReport';
+
+const NOW = 1_700_000_000_000;
+const MIN = 60_000;
 
 describe('summarize', () => {
   it('cuenta servicios por estado', () => {
@@ -105,5 +116,95 @@ describe('detailView', () => {
       status: 'offline',
       error: 'timeout',
     });
+  });
+});
+
+describe('ingestionSummary', () => {
+  const fresh = 15 * MIN;
+
+  it('online cuando todos transmiten dentro del umbral', () => {
+    const rows = [
+      { last_received_at: new Date(NOW - 2 * MIN).toISOString() },
+      { last_received_at: new Date(NOW - 5 * MIN).toISOString() },
+    ];
+    expect(ingestionSummary(rows, NOW, fresh)).toEqual({
+      status: 'online',
+      sites_total: 2,
+      transmitting: 2,
+      stale: 0,
+      last_age_s: 120,
+    });
+  });
+
+  it('degraded cuando algunos están stale', () => {
+    const rows = [
+      { last_received_at: new Date(NOW - 2 * MIN).toISOString() },
+      { last_received_at: new Date(NOW - 40 * MIN).toISOString() },
+      { last_received_at: null },
+    ];
+    const r = ingestionSummary(rows, NOW, fresh);
+    expect(r.status).toBe('degraded');
+    expect(r.sites_total).toBe(3);
+    expect(r.transmitting).toBe(1);
+    expect(r.stale).toBe(2);
+    expect(r.last_age_s).toBe(120);
+  });
+
+  it('offline cuando ninguno transmite', () => {
+    const rows = [{ last_received_at: new Date(NOW - 60 * MIN).toISOString() }];
+    expect(ingestionSummary(rows, NOW, fresh).status).toBe('offline');
+  });
+
+  it('un last_received_at nulo cuenta como stale', () => {
+    expect(ingestionSummary([{ last_received_at: null }], NOW, fresh)).toMatchObject({
+      transmitting: 0,
+      stale: 1,
+      last_age_s: null,
+    });
+  });
+
+  it('unknown cuando no hay sitios activos', () => {
+    expect(ingestionSummary([], NOW, fresh)).toEqual({
+      status: 'unknown',
+      sites_total: 0,
+      transmitting: 0,
+      stale: 0,
+      last_age_s: null,
+    });
+  });
+});
+
+describe('workerSnapshot', () => {
+  const names = ['alertas', 'dgaWorker', 'contadores'];
+  const stale = 30 * MIN;
+
+  it('clasifica online / degraded / unknown según el último latido', () => {
+    const beats = { alertas: NOW - 10_000, dgaWorker: NOW - 60 * MIN };
+    expect(workerSnapshot(beats, names, NOW, stale)).toEqual([
+      { name: 'alertas', status: 'online', last_run_s: 10 },
+      { name: 'dgaWorker', status: 'degraded', last_run_s: 3600 },
+      { name: 'contadores', status: 'unknown', last_run_s: null },
+    ]);
+  });
+
+  it('sin latidos, todos quedan unknown', () => {
+    expect(
+      workerSnapshot({}, names, NOW, stale).every(
+        (w: { status: string }) => w.status === 'unknown',
+      ),
+    ).toBe(true);
+  });
+});
+
+describe('processVitals', () => {
+  it('convierte memoria a MB redondeados', () => {
+    expect(processVitals({ heapUsed: 88 * 1048576, rss: 142 * 1048576 })).toEqual({
+      heap_mb: 88,
+      rss_mb: 142,
+    });
+  });
+
+  it('tolera entrada vacía', () => {
+    expect(processVitals(null)).toEqual({ heap_mb: null, rss_mb: null });
   });
 });

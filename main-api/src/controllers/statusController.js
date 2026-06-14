@@ -2,7 +2,16 @@ const path = require('path');
 const grpc = require('@grpc/grpc-js');
 const protoLoader = require('@grpc/proto-loader');
 const db = require('../config/db');
-const { summarize, overallStatus, publicView, detailView } = require('../services/statusReport');
+const {
+  summarize,
+  overallStatus,
+  publicView,
+  detailView,
+  ingestionSummary,
+  workerSnapshot,
+  processVitals,
+} = require('../services/statusReport');
+const { snapshot: heartbeatSnapshot } = require('../services/heartbeat');
 
 const PROTO_PATH = path.join(__dirname, '../grpc/pipeline.proto');
 const CSVCONSUMER_HOST = process.env.CSVCONSUMER_HOST || 'localhost';
@@ -10,6 +19,28 @@ const CSVCONSUMER_PORT = process.env.CSVCONSUMER_PORT || '50051';
 const FTPCONSUMER_HOST = process.env.FTPCONSUMER_HOST || CSVCONSUMER_HOST;
 const FTPCONSUMER_PORT = process.env.FTPCONSUMER_PORT || '50061';
 const AUTH_API_URL = process.env.AUTH_API_URL || 'http://auth-api:3001';
+const LINUX_DB_API_URL = process.env.LINUX_DB_API_URL || 'http://linux-db-api:3010';
+
+// Un equipo se considera transmitiendo si recibió datos dentro de esta ventana.
+const INGESTION_FRESH_MS = Number(process.env.INGESTION_FRESH_MS) || 15 * 60 * 1000;
+// Un worker se considera colgado si no late dentro de esta ventana.
+const WORKER_STALE_MS = Number(process.env.WORKER_STALE_MS) || 30 * 60 * 1000;
+// Workers in-process que reportan latido (ver services/heartbeat.js).
+const WORKER_NAMES = [
+  'alertas',
+  'dgaWorker',
+  'dgaPreseed',
+  'dgaSubmission',
+  'dgaReconciler',
+  'healthDigest',
+  'contadores',
+  'cacheWarmer',
+];
+
+// La frescura de ingesta se memoiza: el panel sondea cada 10 s pero el query
+// por-sitio no necesita correr tan seguido (evita carga innecesaria a la BD).
+const INGESTION_CACHE_MS = 60 * 1000;
+let ingestionCache = { at: 0, value: null };
 
 function loadPipelinePkg() {
   const def = protoLoader.loadSync(PROTO_PATH, {
@@ -113,6 +144,73 @@ function apiSelf() {
 }
 
 /**
+ * linux-db-api (cola de comandos PLC). Su `/health` es público (no requiere
+ * INTERNAL_API_KEY) y devuelve { ok, status, uptime_s }.
+ * Nota: la PROFUNDIDAD de la cola PLC (comandos `pending`) no la expone hoy;
+ * requeriría un endpoint nuevo en linux-db-api (Rust).
+ */
+async function pingLinuxDbApi() {
+  if (!LINUX_DB_API_URL) return { status: 'unknown' };
+  const start = Date.now();
+  try {
+    const res = await fetch(`${LINUX_DB_API_URL}/health`, {
+      signal: AbortSignal.timeout(3000),
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) {
+      return { status: 'degraded', http_status: res.status, response_time_ms: Date.now() - start };
+    }
+    const body = await res.json().catch(() => ({}));
+    return {
+      status: body.ok === false ? 'degraded' : 'online',
+      response_time_ms: Date.now() - start,
+      uptime_s: typeof body.uptime_s === 'number' ? body.uptime_s : undefined,
+    };
+  } catch (err) {
+    return { status: 'offline', error: err.message };
+  }
+}
+
+/**
+ * Frescura de ingesta: por cada sitio activo (excluyendo maletas), el último
+ * `received_at` de su equipo. Reusa el patrón del worker healthDigest. El
+ * resultado se memoiza ~60 s para no recargar la BD en cada sondeo del panel.
+ */
+async function getIngestion() {
+  const now = Date.now();
+  if (ingestionCache.value && now - ingestionCache.at < INGESTION_CACHE_MS) {
+    return ingestionCache.value;
+  }
+  try {
+    const { rows } = await db.query(
+      `SELECT (SELECT MAX(received_at) FROM equipo WHERE id_serial = s.id_serial) AS last_received_at
+         FROM sitio s
+        WHERE s.activo = TRUE
+          AND s.tipo_sitio <> 'maleta'
+          AND s.id_serial IS NOT NULL`,
+    );
+    const value = ingestionSummary(rows, Date.now(), INGESTION_FRESH_MS);
+    ingestionCache = { at: now, value };
+    return value;
+  } catch {
+    return { status: 'unknown', sites_total: 0, transmitting: 0, stale: 0, last_age_s: null };
+  }
+}
+
+/** Vitales del proceso main-api + estado del pool de conexiones a la BD. */
+function processBlock() {
+  return {
+    ...processVitals(process.memoryUsage()),
+    uptime_s: Math.floor(process.uptime()),
+    db_pool: {
+      total: db.totalCount ?? null,
+      idle: db.idleCount ?? null,
+      waiting: db.waitingCount ?? null,
+    },
+  };
+}
+
+/**
  * /api/status — PÚBLICO (lo consume metrics.emeltec.cl sin login). La respuesta
  * NO debe filtrar detalle interno (errores de BD, versiones, hostnames, entorno,
  * uptime ni códigos HTTP upstream) — EMT-C03 / EMT-M08. Solo el estado por
@@ -147,13 +245,16 @@ exports.getStatus = async (req, res) => {
  * estáticos y los del lado Windows no se sondean desde aquí.
  */
 exports.getStatusDetail = async (req, res) => {
-  const [database, csvconsumer, ftpconsumer, auth, redis] = await Promise.all([
-    pingDatabase(),
-    pingGrpc(CSVCONSUMER_HOST, CSVCONSUMER_PORT),
-    pingGrpc(FTPCONSUMER_HOST, FTPCONSUMER_PORT),
-    pingAuth(),
-    pingRedis(),
-  ]);
+  const [database, csvconsumer, ftpconsumer, auth, redis, linuxDbApi, ingestion] =
+    await Promise.all([
+      pingDatabase(),
+      pingGrpc(CSVCONSUMER_HOST, CSVCONSUMER_PORT),
+      pingGrpc(FTPCONSUMER_HOST, FTPCONSUMER_PORT),
+      pingAuth(),
+      pingRedis(),
+      pingLinuxDbApi(),
+      getIngestion(),
+    ]);
 
   const services = {
     api: detailView(apiSelf()),
@@ -162,8 +263,10 @@ exports.getStatusDetail = async (req, res) => {
     csvconsumer: detailView(csvconsumer),
     ftpconsumer: detailView(ftpconsumer),
     redis: detailView(redis),
+    linuxDbApi: detailView(linuxDbApi),
   };
 
+  const workers = workerSnapshot(heartbeatSnapshot(), WORKER_NAMES, Date.now(), WORKER_STALE_MS);
   const summary = summarize(services);
   const overall = overallStatus(services);
 
@@ -173,5 +276,8 @@ exports.getStatusDetail = async (req, res) => {
     overall,
     summary,
     services,
+    ingestion,
+    workers,
+    process: processBlock(),
   });
 };

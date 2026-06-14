@@ -5,6 +5,7 @@
  * Filtra por pozo_config.dga_transport='rest' (única forma de enviar real).
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import { config } from '../../config/appConfig';
 import { decryptClave } from './crypto';
 import {
@@ -243,6 +244,7 @@ async function processSlot(
 }
 
 export async function runSubmissionCycle(): Promise<void> {
+  beat('dgaSubmission');
   if (!config.dga.submissionEnabled) return;
 
   let pending: PendingSubmissionRow[];

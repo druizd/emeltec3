@@ -7,6 +7,7 @@
  * Activación: env ENABLE_CACHE_WARMER_WORKER=true
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import { query } from '../../config/dbHelpers';
 import { getDashboardHistory } from './repo';
 
@@ -25,6 +26,7 @@ async function getActiveSiteSerials(): Promise<string[]> {
 }
 
 async function warmAll(): Promise<void> {
+  beat('cacheWarmer');
   const serials = await getActiveSiteSerials();
   for (const serial of serials) {
     for (const limit of HISTORY_LIMITS) {

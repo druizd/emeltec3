@@ -6,6 +6,7 @@
  * 'shadow' — el envío es responsabilidad del submission worker).
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import {
   findLastValidTotalizador,
   listPozosDgaActivos,
@@ -168,6 +169,7 @@ async function processPozo(pozoDga: PozoDgaConfigRow): Promise<void> {
 }
 
 async function runCycle(): Promise<void> {
+  beat('dgaWorker');
   try {
     const pozos = await listPozosDgaActivos();
     for (const pozo of pozos) {

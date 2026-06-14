@@ -5,6 +5,7 @@
  * corrige drift; alerta admin en anomalías terminales (sin audit, doble OK).
  */
 import { logger } from '../../config/logger';
+import { beat } from '../../config/heartbeat';
 import {
   listDoubleSubmission,
   listDriftAuditEnviadoVsEstado,
@@ -179,6 +180,7 @@ async function reportVacioStale(): Promise<number> {
 }
 
 export async function runReconcilerCycle(): Promise<void> {
+  beat('dgaReconciler');
   try {
     const stuck = await reconcileStuckEnviando();
     const driftEnviado = await reconcileDriftEnviado();
