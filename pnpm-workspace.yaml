@@ -13,6 +13,17 @@ overrides:
   shell-quote: '>=1.8.4'
   hono: '>=4.12.21'
 
+# Riesgo aceptado — advisories de esbuild dev-only, sin fix sin migrar Angular 21->22.
+# Las trae @angular/build@21 (clava esbuild <0.28.1); forzar override rompe `ng build`.
+# Ambas son dev-only (no van al bundle de produccion) y estan bajo el gate del proyecto.
+#   GHSA-gv7w-rqvm-qjhr (high): RCE solo en contexto Deno (no usamos Deno).
+#   GHSA-g7r4-m6w7-qqqr (low):  file-read en dev-server (Windows).
+# Revisar al migrar a Angular 22 (@angular/build trae esbuild >=0.28.1).
+auditConfig:
+  ignoreGhsas:
+    - GHSA-gv7w-rqvm-qjhr
+    - GHSA-g7r4-m6w7-qqqr
+
 # Native build scripts approved — required for runtime compilation.
 # bcrypt: auth-api password hashing
 # esbuild / @parcel/watcher / lmdb / msgpackr-extract: Angular dev server + build cache
