@@ -8,14 +8,14 @@
 
 Los siguientes secretos fueron empujados a `origin/main` y deben considerarse **comprometidos**:
 
-| Secreto | Acción |
-|---------|--------|
-| `JWT_SECRET` (auth-api + main-api) | Rotar — invalida todas las sesiones |
-| `DGA_ENCRYPTION_KEY` | Rotar + re-cifrar datos sellados con la clave antigua |
-| `RESEND_API_KEY` | Revocar y regenerar en el panel de Resend |
-| `INTERNAL_API_KEY` | Rotar (mismo valor en ambas APIs) |
-| `POSTGRES_PASSWORD` / `DB_PASSWORD` | Rotar |
-| `Infra2026Secure!` / `Admin2026!` (infra-db) | Rotar (ya parametrizados en HEAD) |
+| Secreto                                      | Acción                                                |
+| -------------------------------------------- | ----------------------------------------------------- |
+| `JWT_SECRET` (auth-api + main-api)           | Rotar — invalida todas las sesiones                   |
+| `DGA_ENCRYPTION_KEY`                         | Rotar + re-cifrar datos sellados con la clave antigua |
+| `RESEND_API_KEY`                             | Revocar y regenerar en el panel de Resend             |
+| `INTERNAL_API_KEY`                           | Rotar (mismo valor en ambas APIs)                     |
+| `POSTGRES_PASSWORD` / `DB_PASSWORD`          | Rotar                                                 |
+| `Infra2026Secure!` / `Admin2026!` (infra-db) | Rotar (ya parametrizados en HEAD)                     |
 
 Y estos archivos con datos deben salir de la historia:
 

@@ -1,15 +1,15 @@
 # Informe de Auditoría de Ciberseguridad — Plataforma Emeltec
 
-| | |
-|---|---|
-| **Objeto auditado** | Plataforma Emeltec (monorepo `emeltec3`) — plataforma IIoT y cumplimiento DGA |
-| **Commit auditado** | `c44767d` (rama `main`) |
-| **Fecha de auditoría** | 13 de junio de 2026 |
-| **Última actualización** | 14 de junio de 2026 — Rev. 3: re-auditoría + remediación capa v2 (ver §1bis) |
-| **Tipo de auditoría** | Revisión de seguridad de aplicación (SAST manual), dependencias / supply-chain, infraestructura y configuración, y mapeo de cumplimiento OWASP |
-| **Alcance** | Plataforma completa: 11 servicios + infraestructura |
-| **Metodología** | Revisión manual de código fuente, análisis de configuración, inspección de historia de Git, verificación adversaria de hallazgos críticos |
-| **Clasificación del documento** | Confidencial — uso interno y para la parte que solicita la auditoría |
+|                                 |                                                                                                                                                |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Objeto auditado**             | Plataforma Emeltec (monorepo `emeltec3`) — plataforma IIoT y cumplimiento DGA                                                                  |
+| **Commit auditado**             | `c44767d` (rama `main`)                                                                                                                        |
+| **Fecha de auditoría**          | 13 de junio de 2026                                                                                                                            |
+| **Última actualización**        | 14 de junio de 2026 — Rev. 3: re-auditoría + remediación capa v2 (ver §1bis)                                                                   |
+| **Tipo de auditoría**           | Revisión de seguridad de aplicación (SAST manual), dependencias / supply-chain, infraestructura y configuración, y mapeo de cumplimiento OWASP |
+| **Alcance**                     | Plataforma completa: 11 servicios + infraestructura                                                                                            |
+| **Metodología**                 | Revisión manual de código fuente, análisis de configuración, inspección de historia de Git, verificación adversaria de hallazgos críticos      |
+| **Clasificación del documento** | Confidencial — uso interno y para la parte que solicita la auditoría                                                                           |
 
 ---
 
@@ -21,21 +21,21 @@ El estado general de seguridad presenta **fundamentos sólidos en varias áreas*
 
 ### Hallazgos por severidad
 
-| Severidad | Cantidad |
-|-----------|----------|
-| 🔴 Crítica | 5 |
-| 🟠 Alta | 12 |
-| 🟡 Media | 13 |
-| 🔵 Baja / Informativa | 10 |
-| **Total** | **40** |
+| Severidad             | Cantidad |
+| --------------------- | -------- |
+| 🔴 Crítica            | 5        |
+| 🟠 Alta               | 12       |
+| 🟡 Media              | 13       |
+| 🔵 Baja / Informativa | 10       |
+| **Total**             | **40**   |
 
 ### Los cinco riesgos críticos (acción inmediata)
 
-1. **EMT-C01 — Acceso a datos entre clientes (IDOR) en `/api/data/*`**: cualquier usuario autenticado, incluso del rol más bajo, puede leer la telemetría de **cualquier** dispositivo de **cualquier** empresa pasando un `serial_id` arbitrario. No existe ningún control de propiedad. *Verificado contra el código.*
-2. **EMT-C02 — Bypass de autorización en cold-room vía `?siteIds`**: el middleware valida solo el `:siteId` de la ruta, pero los handlers consultan la lista `?siteIds` provista por el atacante. *Verificado.*
-3. **EMT-C03 — Endpoints sin autenticación con escritura anónima**: `POST /api/devices` permite crear/sobrescribir el catálogo de dispositivos sin token; `/api/status`, `/api/metrics`, `/api/domains` exponen información interna. *Verificado.*
-4. **EMT-C04 — Secretos productivos en la historia de Git**: la clave de firma JWT, la clave de cifrado DGA (`DGA_ENCRYPTION_KEY`), la API key de Resend y la `INTERNAL_API_KEY` están en commits accesibles desde `origin/main`. Cualquiera con acceso al repositorio puede forjar tokens de sesión y suplantar a cualquier usuario. *Verificado contra la historia de Git.*
-5. **EMT-C05 — Datos regulatorios reales de la DGA versionados**: el archivo `historico_dga_OB-0601-292.csv` (18.588 filas reales + 13.702 tokens de comprobante DGA) está commiteado y persiste en la historia. *Verificado.*
+1. **EMT-C01 — Acceso a datos entre clientes (IDOR) en `/api/data/*`**: cualquier usuario autenticado, incluso del rol más bajo, puede leer la telemetría de **cualquier** dispositivo de **cualquier** empresa pasando un `serial_id` arbitrario. No existe ningún control de propiedad. _Verificado contra el código._
+2. **EMT-C02 — Bypass de autorización en cold-room vía `?siteIds`**: el middleware valida solo el `:siteId` de la ruta, pero los handlers consultan la lista `?siteIds` provista por el atacante. _Verificado._
+3. **EMT-C03 — Endpoints sin autenticación con escritura anónima**: `POST /api/devices` permite crear/sobrescribir el catálogo de dispositivos sin token; `/api/status`, `/api/metrics`, `/api/domains` exponen información interna. _Verificado._
+4. **EMT-C04 — Secretos productivos en la historia de Git**: la clave de firma JWT, la clave de cifrado DGA (`DGA_ENCRYPTION_KEY`), la API key de Resend y la `INTERNAL_API_KEY` están en commits accesibles desde `origin/main`. Cualquiera con acceso al repositorio puede forjar tokens de sesión y suplantar a cualquier usuario. _Verificado contra la historia de Git._
+5. **EMT-C05 — Datos regulatorios reales de la DGA versionados**: el archivo `historico_dga_OB-0601-292.csv` (18.588 filas reales + 13.702 tokens de comprobante DGA) está commiteado y persiste en la historia. _Verificado._
 
 > **Nota de severidad contextual:** las severidades EMT-C04 y EMT-C05 dependen de la visibilidad del repositorio. Si el repositorio es **privado y de acceso restringido**, el riesgo inmediato es Alto; si es público o de acceso amplio (colaboradores externos, forks), es **Crítico** con potencial de incidente de divulgación regulatoria. En ambos casos, los secretos deben rotarse porque ya fueron empujados a un remoto compartido.
 
@@ -47,21 +47,21 @@ Tras la entrega del informe se ejecutó una **primera ronda de remediación** so
 
 **Leyenda:** ✅ Cerrado (corregido en código/configuración y verificado) · 📄 Mitigación documentada (runbook listo, ejecución manual pendiente) · 🔴 Abierto (sin corregir aún).
 
-| ID | Severidad | Estado | Qué se hizo / qué falta |
-|----|-----------|--------|--------------------------|
-| EMT-C01 | 🔴→✅ | **Cerrado** | Control de acceso por serial (`dataAccess.js` + middleware `dataSerialAccess.js`); se eliminó el fallback al último serial global. Modelo estricto por sub-empresa. Cubierto por tests. |
-| EMT-C02 | 🔴→✅ | **Cerrado** | `sensors` e `history-export` validan cada `siteId` de la query (`findUnauthorizedSiteIds`) y devuelven 403. |
-| EMT-C03 | 🔴→✅ | **Cerrado** | `protect` en `/api/metrics`, `/api/domains`, `/api/devices`; `POST /api/devices` solo Admin/SuperAdmin; `getDevices` acotado por empresa; `/api/status` saneado (sin error/entorno/uptime). |
-| EMT-C04 | 🔴 | **📄 Documentado** | `RUNBOOK-FASE-0-secretos.md`. **Pendiente (ejecución manual):** rotar JWT/DGA/Resend/interna + purgar historia de Git. |
-| EMT-C05 | 🔴 | **🔴 Abierto** | `historico_dga_OB-0601-292.csv` sigue versionado. Pendiente `git rm --cached` + `.gitignore` + purga de historia (RUNBOOK-FASE-0). |
-| EMT-H01 | 🟠 | **📄 Documentado** | `RUNBOOK-FASE-1-puertos-cross-host.md`. **Pendiente:** auth (interceptor/mTLS) + TLS en gRPC csvconsumer/ftpconsumer y gRPC interno de main-api. |
-| EMT-H02 | 🟠→✅ | **Cerrado** | `linux-db-api` ahora **fail-closed** (aborta sin `INTERNAL_API_KEY`, salvo override de dev) + comparación de clave en tiempo constante. |
-| EMT-H03 | 🟠→✅ | **Cerrado (con firewall pendiente)** | DB/main-api/auth-api/frontend atados a `127.0.0.1`. Los 3 puertos cross-host (3010/50051/50061) quedan expuestos a propósito (consumidos entre máquinas) con firewall/auth/TLS documentados en RUNBOOK-FASE-1. |
-| EMT-H04 | 🟠→✅ | **Cerrado** | `infra-db/docker-compose.yml` parametrizado (fail-if-missing); puertos de BD y pgAdmin a `127.0.0.1`. (Los valores viejos siguen en historia → entran en la purga de C04.) |
-| EMT-H08 | 🟠→✅ | **Cerrado** | Lockout con backoff exponencial (15 min → 4 h), sin el recorte a 60 s; no se resetea el contador al expirar. |
-| EMT-H09 | 🟠→✅ | **Cerrado** | Ventana de OTP 30 min/24 h → 10/15 min; OTP invalidado al bloquear la cuenta. |
-| EMT-H10 | 🟠→✅ | **Cerrado** | Respuesta uniforme en `request-code`; `start` con correo desconocido devuelve flujo genérico (sin delatar existencia). Residual: `start` aún revela modo setup/otp de correos existentes (limitación de UX). |
-| EMT-H12 | 🟠→✅ | **Cerrado** | Gate de aprobación activo en el environment `production` (required reviewers); un único deploy automático (self-hosted), ruta SSH manual, sin carrera (grupo de concurrencia compartido). Pendiente (infra): runner no-root/efímero. |
+| ID      | Severidad | Estado                               | Qué se hizo / qué falta                                                                                                                                                                                                              |
+| ------- | --------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| EMT-C01 | 🔴→✅     | **Cerrado**                          | Control de acceso por serial (`dataAccess.js` + middleware `dataSerialAccess.js`); se eliminó el fallback al último serial global. Modelo estricto por sub-empresa. Cubierto por tests.                                              |
+| EMT-C02 | 🔴→✅     | **Cerrado**                          | `sensors` e `history-export` validan cada `siteId` de la query (`findUnauthorizedSiteIds`) y devuelven 403.                                                                                                                          |
+| EMT-C03 | 🔴→✅     | **Cerrado**                          | `protect` en `/api/metrics`, `/api/domains`, `/api/devices`; `POST /api/devices` solo Admin/SuperAdmin; `getDevices` acotado por empresa; `/api/status` saneado (sin error/entorno/uptime).                                          |
+| EMT-C04 | 🔴        | **📄 Documentado**                   | `RUNBOOK-FASE-0-secretos.md`. **Pendiente (ejecución manual):** rotar JWT/DGA/Resend/interna + purgar historia de Git.                                                                                                               |
+| EMT-C05 | 🔴        | **🔴 Abierto**                       | `historico_dga_OB-0601-292.csv` sigue versionado. Pendiente `git rm --cached` + `.gitignore` + purga de historia (RUNBOOK-FASE-0).                                                                                                   |
+| EMT-H01 | 🟠        | **📄 Documentado**                   | `RUNBOOK-FASE-1-puertos-cross-host.md`. **Pendiente:** auth (interceptor/mTLS) + TLS en gRPC csvconsumer/ftpconsumer y gRPC interno de main-api.                                                                                     |
+| EMT-H02 | 🟠→✅     | **Cerrado**                          | `linux-db-api` ahora **fail-closed** (aborta sin `INTERNAL_API_KEY`, salvo override de dev) + comparación de clave en tiempo constante.                                                                                              |
+| EMT-H03 | 🟠→✅     | **Cerrado (con firewall pendiente)** | DB/main-api/auth-api/frontend atados a `127.0.0.1`. Los 3 puertos cross-host (3010/50051/50061) quedan expuestos a propósito (consumidos entre máquinas) con firewall/auth/TLS documentados en RUNBOOK-FASE-1.                       |
+| EMT-H04 | 🟠→✅     | **Cerrado**                          | `infra-db/docker-compose.yml` parametrizado (fail-if-missing); puertos de BD y pgAdmin a `127.0.0.1`. (Los valores viejos siguen en historia → entran en la purga de C04.)                                                           |
+| EMT-H08 | 🟠→✅     | **Cerrado**                          | Lockout con backoff exponencial (15 min → 4 h), sin el recorte a 60 s; no se resetea el contador al expirar.                                                                                                                         |
+| EMT-H09 | 🟠→✅     | **Cerrado**                          | Ventana de OTP 30 min/24 h → 10/15 min; OTP invalidado al bloquear la cuenta.                                                                                                                                                        |
+| EMT-H10 | 🟠→✅     | **Cerrado**                          | Respuesta uniforme en `request-code`; `start` con correo desconocido devuelve flujo genérico (sin delatar existencia). Residual: `start` aún revela modo setup/otp de correos existentes (limitación de UX).                         |
+| EMT-H12 | 🟠→✅     | **Cerrado**                          | Gate de aprobación activo en el environment `production` (required reviewers); un único deploy automático (self-hosted), ruta SSH manual, sin carrera (grupo de concurrencia compartido). Pendiente (infra): runner no-root/efímero. |
 
 **Resumen:** de los 5 críticos, **3 cerrados en código** (C01–C03) y **2 dependen de acción manual** (C04 documentado, C05 abierto). De los altos abordados, **6 cerrados** (H02, H03, H04, H08, H09, H10) + **H12 cerrado**; **H01 documentado**. El resto de altos/medios/bajos del informe sigue pendiente de priorización.
 
@@ -71,15 +71,15 @@ Tras la entrega del informe se ejecutó una **primera ronda de remediación** so
 
 Una **re-auditoría fresca** reveló que la primera remediación solo cubrió la capa **v1** (`/api/data/*`, JavaScript). La plataforma tiene una **segunda capa v2 en TypeScript** (la que corre en producción vía `dist/`) que exponía los mismos datos. Se corrigió:
 
-| Hallazgo (capa v2 / TS) | Severidad | Estado | Detalle |
-|----|-----------|--------|---------|
-| `/api/v2/telemetry/*` **sin autenticación** | 🔴 Crítica | **Cerrado** | `protect` + middleware `requireTelemetrySerialAccess` (reutiliza la lógica v1 `dataAccess`). Sin serial → último del propio usuario, nunca global. |
-| IDOR `/api/v2/dga/sites/:siteId/*` (lectura + **escritura** config DGA) | 🟠 Alta | **Cerrado** | Middleware `requireSiteParamAccess` carga el sitio y valida propiedad. |
-| IDOR `/api/v2/sites/:siteId/analisis/*` y `/bitacora/*` | 🟠 Alta | **Cerrado** | Idem `requireSiteParamAccess`. |
-| IDOR contadores y operación-config (`/sites/:siteId/*`) | 🟠 Alta | **Cerrado** | `requireSiteAccess('siteId')` en `companyRoutes.js`. |
-| `/api/metrics` sin scope por tenant | 🟡 Media | **Cerrado** | Filtra por los seriales de la empresa del usuario; sin serial usa el del usuario, no el global. |
-| `alertaController` modelo de acceso divergente (por creador) | 🟡 Media | **Cerrado** | Unificado a `canAccessSite` (empresa/sub-empresa). |
-| `permissions.canReadSite` (v2) divergía de `canAccessSite` (v1) | 🔵 Baja | **Cerrado** | Alineado, incluido el fallback "sin sub-empresa = toda la empresa". |
+| Hallazgo (capa v2 / TS)                                                 | Severidad  | Estado      | Detalle                                                                                                                                            |
+| ----------------------------------------------------------------------- | ---------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/v2/telemetry/*` **sin autenticación**                             | 🔴 Crítica | **Cerrado** | `protect` + middleware `requireTelemetrySerialAccess` (reutiliza la lógica v1 `dataAccess`). Sin serial → último del propio usuario, nunca global. |
+| IDOR `/api/v2/dga/sites/:siteId/*` (lectura + **escritura** config DGA) | 🟠 Alta    | **Cerrado** | Middleware `requireSiteParamAccess` carga el sitio y valida propiedad.                                                                             |
+| IDOR `/api/v2/sites/:siteId/analisis/*` y `/bitacora/*`                 | 🟠 Alta    | **Cerrado** | Idem `requireSiteParamAccess`.                                                                                                                     |
+| IDOR contadores y operación-config (`/sites/:siteId/*`)                 | 🟠 Alta    | **Cerrado** | `requireSiteAccess('siteId')` en `companyRoutes.js`.                                                                                               |
+| `/api/metrics` sin scope por tenant                                     | 🟡 Media   | **Cerrado** | Filtra por los seriales de la empresa del usuario; sin serial usa el del usuario, no el global.                                                    |
+| `alertaController` modelo de acceso divergente (por creador)            | 🟡 Media   | **Cerrado** | Unificado a `canAccessSite` (empresa/sub-empresa).                                                                                                 |
+| `permissions.canReadSite` (v2) divergía de `canAccessSite` (v1)         | 🔵 Baja    | **Cerrado** | Alineado, incluido el fallback "sin sub-empresa = toda la empresa".                                                                                |
 
 Verificación: typecheck 0 errores, 87 tests (vitest) verdes, lint 0 errores.
 
@@ -88,11 +88,13 @@ Verificación: typecheck 0 errores, 87 tests (vitest) verdes, lint 0 errores.
 ### Pendientes (al 14/06, Rev. 3)
 
 **Acción manual del equipo (lo más urgente):**
+
 - **EMT-C04 / Fase 0** — rotar secretos filtrados (JWT, DGA, Resend, interna, DB) y purgar la historia de Git. Mientras no se haga, los secretos siguen comprometidos.
 - **EMT-C05** — el CSV ya se sacó del HEAD e ignoró, pero **falta purgarlo de la historia** (va junto con la Fase 0).
 - **Commit + redeploy** — todos los arreglos están sin commitear; producción sigue con el código viejo hasta que se desplieguen.
 
 **Pendiente de implementar (requiere coordinación):**
+
 - **EMT-H01** — auth + TLS en gRPC (csvconsumer/ftpconsumer + gRPC interno de main-api). Cross-service Rust+Go (`RUNBOOK-FASE-1`).
 - **auth-api (alto/medio)** — invalidar OTP en cada intento fallido (hoy solo al bloquear); aplicar el limiter estricto a `/start`; reducir la enumeración residual de `/start`; pinear `algorithms` en `jwt.verify` de tokens de challenge.
 - **Higiene de repo/infra** — desversionar `auth-api/node_modules`; correr contenedores Node/nginx como no-root; fijar imágenes por digest (no `:latest`); pinear GitHub Actions por SHA.
@@ -104,19 +106,19 @@ Verificación: typecheck 0 errores, 87 tests (vitest) verdes, lint 0 errores.
 
 ### 2.1 Servicios auditados
 
-| Servicio | Tecnología | Superficie de riesgo principal |
-|----------|-----------|-------------------------------|
-| `auth-api` | Node.js + Express | Autenticación, JWT, OTP, códigos de acceso |
-| `main-api` | Node.js + Express | Lógica de negocio, datos multi-tenant, gRPC |
-| `linux-db-api` | Rust (axum) | Acceso directo a BD, comandos PLC (OT) |
-| `grpc-pipeline` (csvconsumer) | Rust (tonic) | Ingesta de telemetría vía gRPC |
-| `ftp-pipeline` (ftpconsumer) | Rust (tonic) | Ingesta de telemetría vía gRPC |
-| `frontend-angular` | Angular 21 | XSS, manejo de token en cliente |
-| `metrics-page` | JS estático + Vite | Renderizado de métricas |
-| `landing-emeltec` | HTML/CSS/JS estático | Sitio público |
-| `infra-db` | TimescaleDB/PostgreSQL | Credenciales, persistencia, init |
-| `infra-nginx` | Nginx | TLS de borde, headers, proxy |
-| CI/CD | GitHub Actions + scripts | Deploy, migraciones, secretos |
+| Servicio                      | Tecnología               | Superficie de riesgo principal              |
+| ----------------------------- | ------------------------ | ------------------------------------------- |
+| `auth-api`                    | Node.js + Express        | Autenticación, JWT, OTP, códigos de acceso  |
+| `main-api`                    | Node.js + Express        | Lógica de negocio, datos multi-tenant, gRPC |
+| `linux-db-api`                | Rust (axum)              | Acceso directo a BD, comandos PLC (OT)      |
+| `grpc-pipeline` (csvconsumer) | Rust (tonic)             | Ingesta de telemetría vía gRPC              |
+| `ftp-pipeline` (ftpconsumer)  | Rust (tonic)             | Ingesta de telemetría vía gRPC              |
+| `frontend-angular`            | Angular 21               | XSS, manejo de token en cliente             |
+| `metrics-page`                | JS estático + Vite       | Renderizado de métricas                     |
+| `landing-emeltec`             | HTML/CSS/JS estático     | Sitio público                               |
+| `infra-db`                    | TimescaleDB/PostgreSQL   | Credenciales, persistencia, init            |
+| `infra-nginx`                 | Nginx                    | TLS de borde, headers, proxy                |
+| CI/CD                         | GitHub Actions + scripts | Deploy, migraciones, secretos               |
 
 ### 2.2 Dimensiones cubiertas
 
@@ -127,12 +129,12 @@ Verificación: typecheck 0 errores, 87 tests (vitest) verdes, lint 0 errores.
 
 ### 2.3 Escala de severidad
 
-| Severidad | Criterio |
-|-----------|----------|
-| 🔴 **Crítica** | Compromiso directo de confidencialidad/integridad de datos de múltiples clientes, bypass de autenticación, o exposición de secretos productivos. Explotable con esfuerzo bajo. |
-| 🟠 **Alta** | Compromiso significativo (un cliente, un servicio) o que requiere una precondición razonable. |
-| 🟡 **Media** | Debilidad explotable bajo condiciones específicas o que reduce la defensa en profundidad. |
-| 🔵 **Baja / Info** | Endurecimiento, higiene, o riesgo residual aceptable. |
+| Severidad          | Criterio                                                                                                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🔴 **Crítica**     | Compromiso directo de confidencialidad/integridad de datos de múltiples clientes, bypass de autenticación, o exposición de secretos productivos. Explotable con esfuerzo bajo. |
+| 🟠 **Alta**        | Compromiso significativo (un cliente, un servicio) o que requiere una precondición razonable.                                                                                  |
+| 🟡 **Media**       | Debilidad explotable bajo condiciones específicas o que reduce la defensa en profundidad.                                                                                      |
+| 🔵 **Baja / Info** | Endurecimiento, higiene, o riesgo residual aceptable.                                                                                                                          |
 
 Los valores **CVSS 3.1** son estimaciones de referencia. Donde CVSS sub-representa el impacto de negocio (típico en IDOR sobre datos multi-tenant regulados), prevalece la severidad contextual indicada.
 
@@ -140,48 +142,48 @@ Los valores **CVSS 3.1** son estimaciones de referencia. Donde CVSS sub-represen
 
 ## 3. Resumen de hallazgos
 
-| ID | Severidad | Título | Servicio | OWASP | Estado |
-|----|-----------|--------|----------|-------|--------|
-| EMT-C01 | 🔴 Crítica | IDOR en `/api/data/*` — lectura de telemetría entre clientes | main-api | A01 | Verificado |
-| EMT-C02 | 🔴 Crítica | Bypass de autorización cold-room vía `?siteIds` | main-api | A01 | Verificado |
-| EMT-C03 | 🔴 Crítica | Endpoints sin autenticación + escritura anónima (`POST /api/devices`) | main-api | A01/A07 | Verificado |
-| EMT-C04 | 🔴 Crítica | Secretos productivos en historia de Git (JWT, DGA, Resend, interna) | repo | A02/A07 | Verificado |
-| EMT-C05 | 🔴 Crítica | Datos regulatorios reales DGA versionados (CSV + comprobantes) | repo | A01/A04 | Verificado |
-| EMT-H01 | 🟠 Alta | Ingesta gRPC sin autenticación ni TLS (50051/50061) | grpc/ftp | A01/A07 | — |
-| EMT-H02 | 🟠 Alta | `linux-db-api` autenticación fail-open + comandos PLC sin authz | linux-db-api | A07/A01 | — |
-| EMT-H03 | 🟠 Alta | Puertos de BD e ingesta expuestos a `0.0.0.0` (Internet) | infra | A05 | — |
-| EMT-H04 | 🟠 Alta | Credenciales débiles hardcodeadas en `infra-db/docker-compose.yml` | infra-db | A05/A07 | Verificado |
-| EMT-H05 | 🟠 Alta | Inyección de `sitio_id` entre clientes en alerta/incidencia/documento | main-api | A01 | — |
-| EMT-H06 | 🟠 Alta | Escalada de privilegios: Admin crea Admin / sub_empresa arbitraria | main-api | A01 | — |
-| EMT-H07 | 🟠 Alta | `tieneAcceso` sobre-otorga cuando el token no trae `sub_empresa_id` | main-api | A01 | — |
-| EMT-H08 | 🟠 Alta | Lockout de cuenta trivialmente evadible (clamp a 60 s) | auth-api | A07 | — |
-| EMT-H09 | 🟠 Alta | Ventana de fuerza bruta de OTP demasiado amplia | auth-api | A07 | — |
-| EMT-H10 | 🟠 Alta | Enumeración de usuarios/cuentas | auth-api/main-api | A07 | — |
-| EMT-H11 | 🟠 Alta | JWT en `localStorage` exfiltrable por XSS (tradeoff de diseño) | frontend | A07 | — |
-| EMT-H12 | 🟠 Alta | Deploy en cada push a `main` sin gate de aprobación | CI/CD | A08 | — |
-| EMT-M01 | 🟡 Media | CORS permisivo / wildcard por defecto | auth/main/linux | A05 | — |
-| EMT-M02 | 🟡 Media | Fuerza del `JWT_SECRET` no validada; guía inconsistente (16 vs 32) | auth-api/infra | A02 | — |
-| EMT-M03 | 🟡 Media | Nginx de borde sin headers de seguridad, HSTS ni TLS endurecido | infra-nginx | A05/A02 | — |
-| EMT-M04 | 🟡 Media | Contenedores Node y Nginx corren como root | infra | A05 | — |
-| EMT-M05 | 🟡 Media | La app conecta como superusuario Postgres (sin mínimo privilegio) | infra-db | A01/A05 | — |
-| EMT-M06 | 🟡 Media | gRPC y conexión a BD en texto plano (NoTls) | grpc/ftp/linux | A02 | — |
-| EMT-M07 | 🟡 Media | Cola en memoria sin límite en csvconsumer (DoS) | grpc-pipeline | A04 | — |
-| EMT-M08 | 🟡 Media | Fuga de detalle de errores de BD al cliente | varios | A05/A09 | — |
-| EMT-M09 | 🟡 Media | `auth-api` con `COPY . .` sin `.dockerignore` propio | auth-api | A05/A08 | — |
-| EMT-M10 | 🟡 Media | Imágenes base sin fijar (tags flotantes, sin digest) | infra | A08 | — |
-| EMT-M11 | 🟡 Media | Migraciones sin ledger/versionado en cada deploy | CI/CD | A08 | — |
-| EMT-M12 | 🟡 Media | CSP del frontend con `script-src 'unsafe-inline'` | frontend | A05 | — |
-| EMT-M13 | 🟡 Media | esbuild dev-only (GHSA-gv7w-rqvm-qjhr / -g7r4) | frontend/main | A06 | Riesgo aceptado |
-| EMT-L01 | 🔵 Baja | `metrics-page` / `landing` sin headers de seguridad | infra | A05 | — |
-| EMT-L02 | 🔵 Baja | Password de Redis por línea de comando (visible en `ps`) | infra | A05 | — |
-| EMT-L03 | 🔵 Baja | Acciones de terceros fijadas por tag, no SHA | CI/CD | A08 | — |
-| EMT-L04 | 🔵 Baja | Seed/demo data en init de producción | infra-db | A05 | — |
-| EMT-L05 | 🔵 Info | `view_as` confiado en cliente (requiere confirmar authz server-side) | frontend | A01 | — |
-| EMT-L06 | 🔵 Baja | Falta `Cargo.lock` en csvconsumer; orden de validación de `mode` | grpc/auth | A08/A04 | — |
-| EMT-L07 | 🔵 Baja | `.dga_res_2170.txt` (documento público) versionado | repo | — | — |
-| EMT-L08 | 🔵 Baja | `.gitignore` sin cobertura para `*.csv`/`*.pem`/`*.key`/dumps | repo | A05 | — |
-| EMT-L09 | 🔵 Baja | Inyección de fórmulas CSV sin guard en exportaciones | main-api | A03 | — |
-| EMT-L10 | 🔵 Info | IP interna hardcodeada en `.env.example` (`145.190.8.19`) | infra | — | — |
+| ID      | Severidad  | Título                                                                | Servicio          | OWASP   | Estado          |
+| ------- | ---------- | --------------------------------------------------------------------- | ----------------- | ------- | --------------- |
+| EMT-C01 | 🔴 Crítica | IDOR en `/api/data/*` — lectura de telemetría entre clientes          | main-api          | A01     | Verificado      |
+| EMT-C02 | 🔴 Crítica | Bypass de autorización cold-room vía `?siteIds`                       | main-api          | A01     | Verificado      |
+| EMT-C03 | 🔴 Crítica | Endpoints sin autenticación + escritura anónima (`POST /api/devices`) | main-api          | A01/A07 | Verificado      |
+| EMT-C04 | 🔴 Crítica | Secretos productivos en historia de Git (JWT, DGA, Resend, interna)   | repo              | A02/A07 | Verificado      |
+| EMT-C05 | 🔴 Crítica | Datos regulatorios reales DGA versionados (CSV + comprobantes)        | repo              | A01/A04 | Verificado      |
+| EMT-H01 | 🟠 Alta    | Ingesta gRPC sin autenticación ni TLS (50051/50061)                   | grpc/ftp          | A01/A07 | —               |
+| EMT-H02 | 🟠 Alta    | `linux-db-api` autenticación fail-open + comandos PLC sin authz       | linux-db-api      | A07/A01 | —               |
+| EMT-H03 | 🟠 Alta    | Puertos de BD e ingesta expuestos a `0.0.0.0` (Internet)              | infra             | A05     | —               |
+| EMT-H04 | 🟠 Alta    | Credenciales débiles hardcodeadas en `infra-db/docker-compose.yml`    | infra-db          | A05/A07 | Verificado      |
+| EMT-H05 | 🟠 Alta    | Inyección de `sitio_id` entre clientes en alerta/incidencia/documento | main-api          | A01     | —               |
+| EMT-H06 | 🟠 Alta    | Escalada de privilegios: Admin crea Admin / sub_empresa arbitraria    | main-api          | A01     | —               |
+| EMT-H07 | 🟠 Alta    | `tieneAcceso` sobre-otorga cuando el token no trae `sub_empresa_id`   | main-api          | A01     | —               |
+| EMT-H08 | 🟠 Alta    | Lockout de cuenta trivialmente evadible (clamp a 60 s)                | auth-api          | A07     | —               |
+| EMT-H09 | 🟠 Alta    | Ventana de fuerza bruta de OTP demasiado amplia                       | auth-api          | A07     | —               |
+| EMT-H10 | 🟠 Alta    | Enumeración de usuarios/cuentas                                       | auth-api/main-api | A07     | —               |
+| EMT-H11 | 🟠 Alta    | JWT en `localStorage` exfiltrable por XSS (tradeoff de diseño)        | frontend          | A07     | —               |
+| EMT-H12 | 🟠 Alta    | Deploy en cada push a `main` sin gate de aprobación                   | CI/CD             | A08     | —               |
+| EMT-M01 | 🟡 Media   | CORS permisivo / wildcard por defecto                                 | auth/main/linux   | A05     | —               |
+| EMT-M02 | 🟡 Media   | Fuerza del `JWT_SECRET` no validada; guía inconsistente (16 vs 32)    | auth-api/infra    | A02     | —               |
+| EMT-M03 | 🟡 Media   | Nginx de borde sin headers de seguridad, HSTS ni TLS endurecido       | infra-nginx       | A05/A02 | —               |
+| EMT-M04 | 🟡 Media   | Contenedores Node y Nginx corren como root                            | infra             | A05     | —               |
+| EMT-M05 | 🟡 Media   | La app conecta como superusuario Postgres (sin mínimo privilegio)     | infra-db          | A01/A05 | —               |
+| EMT-M06 | 🟡 Media   | gRPC y conexión a BD en texto plano (NoTls)                           | grpc/ftp/linux    | A02     | —               |
+| EMT-M07 | 🟡 Media   | Cola en memoria sin límite en csvconsumer (DoS)                       | grpc-pipeline     | A04     | —               |
+| EMT-M08 | 🟡 Media   | Fuga de detalle de errores de BD al cliente                           | varios            | A05/A09 | —               |
+| EMT-M09 | 🟡 Media   | `auth-api` con `COPY . .` sin `.dockerignore` propio                  | auth-api          | A05/A08 | —               |
+| EMT-M10 | 🟡 Media   | Imágenes base sin fijar (tags flotantes, sin digest)                  | infra             | A08     | —               |
+| EMT-M11 | 🟡 Media   | Migraciones sin ledger/versionado en cada deploy                      | CI/CD             | A08     | —               |
+| EMT-M12 | 🟡 Media   | CSP del frontend con `script-src 'unsafe-inline'`                     | frontend          | A05     | —               |
+| EMT-M13 | 🟡 Media   | esbuild dev-only (GHSA-gv7w-rqvm-qjhr / -g7r4)                        | frontend/main     | A06     | Riesgo aceptado |
+| EMT-L01 | 🔵 Baja    | `metrics-page` / `landing` sin headers de seguridad                   | infra             | A05     | —               |
+| EMT-L02 | 🔵 Baja    | Password de Redis por línea de comando (visible en `ps`)              | infra             | A05     | —               |
+| EMT-L03 | 🔵 Baja    | Acciones de terceros fijadas por tag, no SHA                          | CI/CD             | A08     | —               |
+| EMT-L04 | 🔵 Baja    | Seed/demo data en init de producción                                  | infra-db          | A05     | —               |
+| EMT-L05 | 🔵 Info    | `view_as` confiado en cliente (requiere confirmar authz server-side)  | frontend          | A01     | —               |
+| EMT-L06 | 🔵 Baja    | Falta `Cargo.lock` en csvconsumer; orden de validación de `mode`      | grpc/auth         | A08/A04 | —               |
+| EMT-L07 | 🔵 Baja    | `.dga_res_2170.txt` (documento público) versionado                    | repo              | —       | —               |
+| EMT-L08 | 🔵 Baja    | `.gitignore` sin cobertura para `*.csv`/`*.pem`/`*.key`/dumps         | repo              | A05     | —               |
+| EMT-L09 | 🔵 Baja    | Inyección de fórmulas CSV sin guard en exportaciones                  | main-api          | A03     | —               |
+| EMT-L10 | 🔵 Info    | IP interna hardcodeada en `.env.example` (`145.190.8.19`)             | infra             | —       | —               |
 
 ---
 
@@ -268,7 +270,7 @@ Los valores **CVSS 3.1** son estimaciones de referencia. Donde CVSS sub-represen
 
 ### 🟠 EMT-H04 — Credenciales débiles hardcodeadas en `infra-db/docker-compose.yml`
 
-- **OWASP:** A05 / A07 · **CWE-798** · **Ubicación:** `infra-db/docker-compose.yml:16, 38` (HEAD) · *Verificado*
+- **OWASP:** A05 / A07 · **CWE-798** · **Ubicación:** `infra-db/docker-compose.yml:16, 38` (HEAD) · _Verificado_
 - **Descripción:** `POSTGRES_PASSWORD: Infra2026Secure!` y `PGADMIN_DEFAULT_PASSWORD: Admin2026!` están como literales (no `${VAR}`), y pgAdmin se publica en `5050:80` a `0.0.0.0`. Estas credenciales están en el **HEAD actual**, no solo en la historia.
 - **Impacto:** Cualquiera con acceso de lectura al repo obtiene credenciales funcionales de BD + pgAdmin; si esta composición se ejecuta en/cerca de producción, toma total del UI de administración de la BD.
 - **Remediación:** Reemplazar por `${POSTGRES_PASSWORD}`/`${PGADMIN_DEFAULT_PASSWORD}` desde `.env`, rotar las contraseñas, y enlazar pgAdmin a `127.0.0.1`.
@@ -333,51 +335,51 @@ Los valores **CVSS 3.1** son estimaciones de referencia. Donde CVSS sub-represen
 
 ## 6. Hallazgos medios (resumen)
 
-| ID | Hallazgo | Ubicación | Remediación |
-|----|----------|-----------|-------------|
-| EMT-M01 | CORS permisivo/wildcard por defecto | `auth-api/src/app.js:14-17`; `main-api/src/app.js:36-51` (default `*`); `linux-db-api/src/main.rs:788` (`permissive`) | Allow-list explícita de orígenes; fail-closed en producción |
-| EMT-M02 | Fuerza de `JWT_SECRET` no validada; guía 16 vs 32 chars | `auth-api/src/config/requireEnv.js:5-12`; `main-api/.env.example` (16) vs `.env.example` (32) | Exigir ≥32 bytes al arrancar (fail-fast); estandarizar `openssl rand -hex 32` |
-| EMT-M03 | Nginx de borde sin headers, HSTS, `server_tokens off` ni TLS endurecido; sin rate-limit en `/api/auth` | `infra-nginx/emeltec-sites.conf` | `server_tokens off`, `ssl_protocols TLSv1.2/1.3`, HSTS, `limit_req` en auth/api |
-| EMT-M04 | Contenedores Node/Nginx como root | `main-api/Dockerfile`, `auth-api/Dockerfile`, frontends | `USER` no-root, `cap_drop:[ALL]`, `no-new-privileges`, `read_only`, límites |
-| EMT-M05 | App conecta como superusuario Postgres | `docker-compose.yml:9`; `infra-db/init-db/01-init-schema.sql` | Rol de app con `SELECT/INSERT/UPDATE/DELETE` mínimos; superuser solo para migraciones |
-| EMT-M06 | gRPC y conexión a BD en texto plano | `*-rust/src/main.rs` (`NoTls`, `sslmode=disable`) | TLS en gRPC y `sslmode=require/verify-full` a Postgres |
-| EMT-M07 | Cola en memoria sin límite (DoS) | `grpc-pipeline/csvconsumer-rust/src/main.rs:246, 215-221` | Acotar la cola (backpressure `resource_exhausted`); `max_decoding_message_size` |
-| EMT-M08 | Fuga de detalle de errores de BD al cliente | `auth-api/.../healthRoutes.js:14-20`; `main-api/.../coldRoomRoutes.js`; `linux-db-api/src/main.rs:449+` | Mensaje genérico al cliente; detalle solo en logs server-side |
-| EMT-M09 | `auth-api` con `COPY . .` sin `.dockerignore` propio | `auth-api/Dockerfile:5` | Añadir `auth-api/.dockerignore` (`.env`, `node_modules`); multi-stage |
-| EMT-M10 | Imágenes base sin fijar (`latest`/tags flotantes) | `docker-compose.yml` (timescaledb, redis, pgadmin), Dockerfiles | Fijar versión + digest; Renovate/Dependabot |
-| EMT-M11 | Migraciones sin ledger/versionado | `scripts/deploy-production.sh:73-81` | Herramienta de migraciones con tabla `schema_migrations` transaccional |
-| EMT-M12 | CSP del frontend con `script-src 'unsafe-inline'` | `frontend-angular/nginx.conf:18` | Quitar `'unsafe-inline'` de `script-src`; usar nonce/hash si hace falta |
-| EMT-M13 | esbuild dev-only (GHSA-gv7w-rqvm-qjhr / -g7r4) | `pnpm-workspace.yaml` (ignoreGhsas) | Riesgo aceptado y documentado; resolver en migración Angular 21→22 |
+| ID      | Hallazgo                                                                                               | Ubicación                                                                                                             | Remediación                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| EMT-M01 | CORS permisivo/wildcard por defecto                                                                    | `auth-api/src/app.js:14-17`; `main-api/src/app.js:36-51` (default `*`); `linux-db-api/src/main.rs:788` (`permissive`) | Allow-list explícita de orígenes; fail-closed en producción                           |
+| EMT-M02 | Fuerza de `JWT_SECRET` no validada; guía 16 vs 32 chars                                                | `auth-api/src/config/requireEnv.js:5-12`; `main-api/.env.example` (16) vs `.env.example` (32)                         | Exigir ≥32 bytes al arrancar (fail-fast); estandarizar `openssl rand -hex 32`         |
+| EMT-M03 | Nginx de borde sin headers, HSTS, `server_tokens off` ni TLS endurecido; sin rate-limit en `/api/auth` | `infra-nginx/emeltec-sites.conf`                                                                                      | `server_tokens off`, `ssl_protocols TLSv1.2/1.3`, HSTS, `limit_req` en auth/api       |
+| EMT-M04 | Contenedores Node/Nginx como root                                                                      | `main-api/Dockerfile`, `auth-api/Dockerfile`, frontends                                                               | `USER` no-root, `cap_drop:[ALL]`, `no-new-privileges`, `read_only`, límites           |
+| EMT-M05 | App conecta como superusuario Postgres                                                                 | `docker-compose.yml:9`; `infra-db/init-db/01-init-schema.sql`                                                         | Rol de app con `SELECT/INSERT/UPDATE/DELETE` mínimos; superuser solo para migraciones |
+| EMT-M06 | gRPC y conexión a BD en texto plano                                                                    | `*-rust/src/main.rs` (`NoTls`, `sslmode=disable`)                                                                     | TLS en gRPC y `sslmode=require/verify-full` a Postgres                                |
+| EMT-M07 | Cola en memoria sin límite (DoS)                                                                       | `grpc-pipeline/csvconsumer-rust/src/main.rs:246, 215-221`                                                             | Acotar la cola (backpressure `resource_exhausted`); `max_decoding_message_size`       |
+| EMT-M08 | Fuga de detalle de errores de BD al cliente                                                            | `auth-api/.../healthRoutes.js:14-20`; `main-api/.../coldRoomRoutes.js`; `linux-db-api/src/main.rs:449+`               | Mensaje genérico al cliente; detalle solo en logs server-side                         |
+| EMT-M09 | `auth-api` con `COPY . .` sin `.dockerignore` propio                                                   | `auth-api/Dockerfile:5`                                                                                               | Añadir `auth-api/.dockerignore` (`.env`, `node_modules`); multi-stage                 |
+| EMT-M10 | Imágenes base sin fijar (`latest`/tags flotantes)                                                      | `docker-compose.yml` (timescaledb, redis, pgadmin), Dockerfiles                                                       | Fijar versión + digest; Renovate/Dependabot                                           |
+| EMT-M11 | Migraciones sin ledger/versionado                                                                      | `scripts/deploy-production.sh:73-81`                                                                                  | Herramienta de migraciones con tabla `schema_migrations` transaccional                |
+| EMT-M12 | CSP del frontend con `script-src 'unsafe-inline'`                                                      | `frontend-angular/nginx.conf:18`                                                                                      | Quitar `'unsafe-inline'` de `script-src`; usar nonce/hash si hace falta               |
+| EMT-M13 | esbuild dev-only (GHSA-gv7w-rqvm-qjhr / -g7r4)                                                         | `pnpm-workspace.yaml` (ignoreGhsas)                                                                                   | Riesgo aceptado y documentado; resolver en migración Angular 21→22                    |
 
 ---
 
 ## 7. Hallazgos bajos / informativos (resumen)
 
-| ID | Hallazgo | Remediación |
-|----|----------|-------------|
-| EMT-L01 | `metrics-page`/`landing` sin headers de seguridad ni CSP | Portar el bloque de headers de `frontend-angular/nginx.conf` |
-| EMT-L02 | Password de Redis por línea de comando (`--requirepass`, `-a`) | Config file montado como secret; `REDISCLI_AUTH` en healthcheck |
-| EMT-L03 | Acciones de terceros fijadas por tag, no SHA | Fijar por commit SHA; Dependabot |
-| EMT-L04 | Seed/demo data (Empresa Demo SpA) en init de producción | Gatear seed tras script dev-only |
-| EMT-L05 | `view_as` confiado en cliente (UX gating) | Sin cambio frontend; **confirmar** que el backend re-autoriza la impersonación SuperAdmin en cada endpoint |
-| EMT-L06 | Falta `Cargo.lock` en csvconsumer; orden de validación de `mode` en auth-api | Commitear `Cargo.lock`; validar whitelist de `mode` antes de derivar credential |
-| EMT-L07 | `.dga_res_2170.txt` (regulación pública) versionado | Mover a `docs/` o eliminar (higiene) |
-| EMT-L08 | `.gitignore` sin cobertura de datos/llaves | Añadir `*.csv`, `historico_*`, `*.pem`, `*.key`, `*.crt`, `*.dump`, `*.bak` |
-| EMT-L09 | Inyección de fórmulas CSV en exportaciones | Prefijar `= + - @` con `'` en celdas de texto |
-| EMT-L10 | IP interna hardcodeada en `.env.example` (`145.190.8.19`) | Parametrizar |
+| ID      | Hallazgo                                                                     | Remediación                                                                                                |
+| ------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| EMT-L01 | `metrics-page`/`landing` sin headers de seguridad ni CSP                     | Portar el bloque de headers de `frontend-angular/nginx.conf`                                               |
+| EMT-L02 | Password de Redis por línea de comando (`--requirepass`, `-a`)               | Config file montado como secret; `REDISCLI_AUTH` en healthcheck                                            |
+| EMT-L03 | Acciones de terceros fijadas por tag, no SHA                                 | Fijar por commit SHA; Dependabot                                                                           |
+| EMT-L04 | Seed/demo data (Empresa Demo SpA) en init de producción                      | Gatear seed tras script dev-only                                                                           |
+| EMT-L05 | `view_as` confiado en cliente (UX gating)                                    | Sin cambio frontend; **confirmar** que el backend re-autoriza la impersonación SuperAdmin en cada endpoint |
+| EMT-L06 | Falta `Cargo.lock` en csvconsumer; orden de validación de `mode` en auth-api | Commitear `Cargo.lock`; validar whitelist de `mode` antes de derivar credential                            |
+| EMT-L07 | `.dga_res_2170.txt` (regulación pública) versionado                          | Mover a `docs/` o eliminar (higiene)                                                                       |
+| EMT-L08 | `.gitignore` sin cobertura de datos/llaves                                   | Añadir `*.csv`, `historico_*`, `*.pem`, `*.key`, `*.crt`, `*.dump`, `*.bak`                                |
+| EMT-L09 | Inyección de fórmulas CSV en exportaciones                                   | Prefijar `= + - @` con `'` en celdas de texto                                                              |
+| EMT-L10 | IP interna hardcodeada en `.env.example` (`145.190.8.19`)                    | Parametrizar                                                                                               |
 
 ---
 
 ## 8. Dependencias / supply-chain
 
-| Workspace | Herramienta | Resultado |
-|-----------|-------------|-----------|
-| `auth-api` | npm/pnpm audit | **0 vulnerabilidades** en el árbol resuelto. Versiones runtime actuales y parcheadas (`jsonwebtoken 9.0.3`, `bcrypt 6.0.0`, `express 5.2.1`, `pg 8.21.0`). |
-| `main-api` | npm audit | **1 advisory alta dev-only** (esbuild GHSA-gv7w-rqvm-qjhr / -g7r4, vía vitest/vite/tsx). No está en el runtime productivo. Runtime sin CVEs (`multer 2.1.1`, `@azure/storage-blob 12.31.0`, `@grpc/grpc-js 1.14.4`, `zod 3.25.76`). |
-| `frontend-angular` | pnpm audit | **2 advisories (1 alta, 1 baja), ambas dev-only y formalmente aceptadas** en `pnpm-workspace.yaml` (`ignoreGhsas`). esbuild no está en el bundle productivo. `xlsx` se sirve desde el tarball de SheetJS (recomendado por el proveedor) — **confirmar hash de integridad en `pnpm-lock.yaml`**. |
-| `linux-db-api`, `csvconsumer`, `ftpconsumer` | inspección de `Cargo.lock` | Sin versiones con advisory crítico conocido (tokio 1.52.3, hyper 1.10.1, axum 0.7.9, tonic 0.12.3, tokio-postgres 0.7.17). `cargo-audit` no está instalado — **recomendado añadirlo a CI**. csvconsumer no tiene `Cargo.lock` commiteado (EMT-L06). |
-| `metrics-page` | — | Vite (build-only), versiones actuales. |
-| `landing-emeltec` | — | Sin `package.json`; estático puro, sin superficie de dependencias. |
+| Workspace                                    | Herramienta                | Resultado                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth-api`                                   | npm/pnpm audit             | **0 vulnerabilidades** en el árbol resuelto. Versiones runtime actuales y parcheadas (`jsonwebtoken 9.0.3`, `bcrypt 6.0.0`, `express 5.2.1`, `pg 8.21.0`).                                                                                                                                      |
+| `main-api`                                   | npm audit                  | **1 advisory alta dev-only** (esbuild GHSA-gv7w-rqvm-qjhr / -g7r4, vía vitest/vite/tsx). No está en el runtime productivo. Runtime sin CVEs (`multer 2.1.1`, `@azure/storage-blob 12.31.0`, `@grpc/grpc-js 1.14.4`, `zod 3.25.76`).                                                             |
+| `frontend-angular`                           | pnpm audit                 | **2 advisories (1 alta, 1 baja), ambas dev-only y formalmente aceptadas** en `pnpm-workspace.yaml` (`ignoreGhsas`). esbuild no está en el bundle productivo. `xlsx` se sirve desde el tarball de SheetJS (recomendado por el proveedor) — **confirmar hash de integridad en `pnpm-lock.yaml`**. |
+| `linux-db-api`, `csvconsumer`, `ftpconsumer` | inspección de `Cargo.lock` | Sin versiones con advisory crítico conocido (tokio 1.52.3, hyper 1.10.1, axum 0.7.9, tonic 0.12.3, tokio-postgres 0.7.17). `cargo-audit` no está instalado — **recomendado añadirlo a CI**. csvconsumer no tiene `Cargo.lock` commiteado (EMT-L06).                                             |
+| `metrics-page`                               | —                          | Vite (build-only), versiones actuales.                                                                                                                                                                                                                                                          |
+| `landing-emeltec`                            | —                          | Sin `package.json`; estático puro, sin superficie de dependencias.                                                                                                                                                                                                                              |
 
 **Recomendaciones supply-chain:** (1) commitear lockfiles donde falten (csvconsumer); (2) usar `npm ci`/instalación con lockfile en los Dockerfiles en lugar de resolver rangos `^` en build (EMT-M10); (3) añadir `cargo audit`, `pnpm audit` y escaneo de imágenes (Trivy/Grype) al pipeline de CI; (4) habilitar Dependabot/Renovate.
 
@@ -406,11 +408,13 @@ La plataforma presenta una base de seguridad madura en múltiples áreas:
 > **Estado al 14/06/2026:** buena parte de la Fase 1 (control de acceso, endpoints, lockout/OTP, puertos, gate de deploy) ya está **cerrada en código** — ver **§1bis** para el detalle por hallazgo. La **Fase 0 sigue pendiente** porque requiere acción manual (rotación de secretos + purga de historia).
 
 ### Fase 0 — Inmediata (contención, < 48 h)
+
 1. **Rotar TODOS los secretos filtrados** (EMT-C04): `JWT_SECRET`, `DGA_ENCRYPTION_KEY`, `RESEND_API_KEY`, `INTERNAL_API_KEY`, contraseñas de BD.
 2. **Corregir el binding de puertos** (EMT-H03): quitar la exposición a `0.0.0.0` de BD, gRPC y `linux-db-api`; mover APIs a `127.0.0.1`. Verificar firewall/NSG de la VM.
 3. **Quitar credenciales hardcodeadas** de `infra-db/docker-compose.yml` (EMT-H04) y rotarlas.
 
 ### Fase 1 — Crítica (esta semana)
+
 4. **Control de acceso multi-tenant** en `/api/data/*` y handlers gRPC (EMT-C01, EMT-H01).
 5. **Validar `?siteIds`** por elemento en cold-room (EMT-C02).
 6. **Añadir `protect`/roles** a `statusRoutes`, `catalogRoutes` (esp. `POST /api/devices`), `metricsRoutes` (EMT-C03).
@@ -418,12 +422,14 @@ La plataforma presenta una base de seguridad madura en múltiples áreas:
 8. **Purgar `.env` y el CSV de la historia** de Git (EMT-C04, EMT-C05) + `git rm --cached` + `.gitignore`.
 
 ### Fase 2 — Alta (próximas 2 semanas)
+
 9. Validar `sitio_id` y hacer explícito el scoping por sub-empresa (EMT-H05, EMT-H07).
 10. Corregir constraints de rol/sub-empresa en `createUser` (EMT-H06).
 11. Endurecer lockout y ventana de OTP; respuesta uniforme anti-enumeración (EMT-H08, EMT-H09, EMT-H10).
 12. Gatear el deploy a producción con aprobación; consolidar workflows (EMT-H12).
 
 ### Fase 3 — Endurecimiento (próximo mes)
+
 13. Headers + TLS en el Nginx de borde, rol de mínimo privilegio en BD, contenedores no-root, TLS interno, imágenes fijadas, ledger de migraciones, CSP sin `unsafe-inline`, evaluación de cookies httpOnly (EMT-M01..M12).
 14. Integrar `pnpm audit` / `cargo audit` / escaneo de imágenes en CI; Dependabot/Renovate.
 15. Resolver los hallazgos bajos/informativos.
@@ -433,31 +439,33 @@ La plataforma presenta una base de seguridad madura en múltiples áreas:
 ## 11. Anexos
 
 ### 11.1 Herramientas y técnicas
+
 - Revisión manual de código fuente (SAST) servicio por servicio.
 - `pnpm audit` / `npm audit` (Node), inspección de `Cargo.lock`/`Cargo.toml` (Rust).
 - Inspección de historia de Git (`git show`, `git log --all -S`, `git ls-files`).
 - Verificación adversaria independiente de los 5 hallazgos críticos (intento activo de refutación).
 
 ### 11.2 Limitaciones
+
 - `cargo-audit` no estaba instalado en el entorno de auditoría; el análisis de dependencias Rust fue por inspección manual de lockfiles. Se recomienda ejecutar `cargo audit` en CI para cobertura continua.
 - Auditoría de código estático y de configuración; **no** incluyó pruebas de penetración dinámicas (DAST) sobre un entorno desplegado, ni revisión de la VM/red en ejecución. Se recomienda un pentest dinámico tras remediar los críticos.
 - Los valores de secretos se mantuvieron redactados; las severidades EMT-C04/EMT-C05 dependen de la visibilidad real del repositorio, que debe confirmarse.
 
 ### 11.3 Mapeo OWASP Top 10 2021 (cobertura)
 
-| Categoría | Hallazgos asociados |
-|-----------|---------------------|
-| A01 Broken Access Control | C01, C02, C03, C05, H02, H05, H06, H07, L05 |
-| A02 Cryptographic Failures | C04, M02, M03, M06 |
-| A03 Injection | L09 (sin SQLi — ver §9) |
-| A04 Insecure Design | C05, M07, L06 |
-| A05 Security Misconfiguration | H03, H04, M01, M03, M04, M05, M08, M09, L01, L02, L04, L08 |
-| A06 Vulnerable Components | M13 |
-| A07 Identification & Auth Failures | C03, C04, H02, H04, H08, H09, H10, H11 |
-| A08 Software & Data Integrity | H12, M09, M10, M11, L03, L06 |
-| A09 Logging & Monitoring | M08 |
-| A10 SSRF | No se identificaron vectores (llamadas a hosts fijos de entorno) |
+| Categoría                          | Hallazgos asociados                                              |
+| ---------------------------------- | ---------------------------------------------------------------- |
+| A01 Broken Access Control          | C01, C02, C03, C05, H02, H05, H06, H07, L05                      |
+| A02 Cryptographic Failures         | C04, M02, M03, M06                                               |
+| A03 Injection                      | L09 (sin SQLi — ver §9)                                          |
+| A04 Insecure Design                | C05, M07, L06                                                    |
+| A05 Security Misconfiguration      | H03, H04, M01, M03, M04, M05, M08, M09, L01, L02, L04, L08       |
+| A06 Vulnerable Components          | M13                                                              |
+| A07 Identification & Auth Failures | C03, C04, H02, H04, H08, H09, H10, H11                           |
+| A08 Software & Data Integrity      | H12, M09, M10, M11, L03, L06                                     |
+| A09 Logging & Monitoring           | M08                                                              |
+| A10 SSRF                           | No se identificaron vectores (llamadas a hosts fijos de entorno) |
 
 ---
 
-*Fin del informe.*
+_Fin del informe._

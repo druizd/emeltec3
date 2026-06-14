@@ -49,7 +49,11 @@ describe('canAccessSite', () => {
   });
   it('Gerente/Cliente SIN sub-empresa: ve toda su empresa', () => {
     // null, undefined y '' cuentan como "sin sub-empresa".
-    for (const u of [clienteSinSub, gerenteSinSub, { tipo: 'Cliente', empresa_id: 1, sub_empresa_id: '' }]) {
+    for (const u of [
+      clienteSinSub,
+      gerenteSinSub,
+      { tipo: 'Cliente', empresa_id: 1, sub_empresa_id: '' },
+    ]) {
       expect(canAccessSite(u, { empresa_id: 1, sub_empresa_id: 10 })).toBe(true);
       expect(canAccessSite(u, { empresa_id: 1, sub_empresa_id: 20 })).toBe(true);
       expect(canAccessSite(u, { empresa_id: 1, sub_empresa_id: null })).toBe(true);
@@ -58,9 +62,9 @@ describe('canAccessSite', () => {
     }
   });
   it('rol desconocido o sin usuario: false', () => {
-    expect(canAccessSite({ tipo: 'Otro', empresa_id: 1 }, { empresa_id: 1, sub_empresa_id: 1 })).toBe(
-      false,
-    );
+    expect(
+      canAccessSite({ tipo: 'Otro', empresa_id: 1 }, { empresa_id: 1, sub_empresa_id: 1 }),
+    ).toBe(false);
     expect(canAccessSite(null, { empresa_id: 1, sub_empresa_id: 1 })).toBe(false);
   });
 });
@@ -117,9 +121,7 @@ describe('userCanAccessSerial', () => {
     expect(await userCanAccessSerial(pool, cliente, 'S1')).toBe(false);
   });
   it('serial no mapeado a ningún sitio: false', async () => {
-    const pool = fakePool([
-      { match: /FROM sitio WHERE id_serial/, respond: () => ({ rows: [] }) },
-    ]);
+    const pool = fakePool([{ match: /FROM sitio WHERE id_serial/, respond: () => ({ rows: [] }) }]);
     expect(await userCanAccessSerial(pool, cliente, 'X')).toBe(false);
   });
 });
@@ -163,7 +165,9 @@ describe('resolveAccessibleSerial', () => {
     expect(await resolveAccessibleSerial(pool, cliente, 'S1')).toEqual({ forbidden: true });
   });
   it('sin serial → último del usuario', async () => {
-    const pool = fakePool([{ match: /FROM equipo/, respond: () => ({ rows: [{ id_serial: 'MINE' }] }) }]);
+    const pool = fakePool([
+      { match: /FROM equipo/, respond: () => ({ rows: [{ id_serial: 'MINE' }] }) },
+    ]);
     expect(await resolveAccessibleSerial(pool, cliente, null)).toEqual({ serial: 'MINE' });
   });
 });

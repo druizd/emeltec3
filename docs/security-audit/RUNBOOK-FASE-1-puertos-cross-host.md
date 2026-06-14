@@ -4,11 +4,11 @@
 > consumen desde **otra máquina** (procesadores en Windows), por lo que NO se
 > ocultan sus puertos sino que se protegen.
 
-| Servicio | Puerto | Lo consume |
-|----------|--------|-----------|
-| `linux-db-api` | 3010 | main-api (vía `LINUX_DB_API_URL`) y/o procesos cross-host |
-| `csvconsumer` (gRPC) | 50051 | procesador CSV (Windows) |
-| `ftpconsumer` (gRPC) | 50061 | procesador FTP (Windows) |
+| Servicio             | Puerto | Lo consume                                                |
+| -------------------- | ------ | --------------------------------------------------------- |
+| `linux-db-api`       | 3010   | main-api (vía `LINUX_DB_API_URL`) y/o procesos cross-host |
+| `csvconsumer` (gRPC) | 50051  | procesador CSV (Windows)                                  |
+| `ftpconsumer` (gRPC) | 50061  | procesador FTP (Windows)                                  |
 
 Defensa en 3 capas: **(1) firewall**, **(2) autenticación**, **(3) TLS**.
 
@@ -25,6 +25,7 @@ Permitir esos puertos SOLO desde la(s) IP(s) de los procesadores, denegar el res
 ### Opción A — Azure NSG (recomendado en la VM Azure)
 
 Regla entrante por cada puerto:
+
 - Origen: IP pública del host de procesadores (Service Tag o IP específica).
 - Destino: IP de la VM, puertos 3010 / 50051 / 50061.
 - Acción: Allow. Prioridad alta.

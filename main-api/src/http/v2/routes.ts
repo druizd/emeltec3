@@ -224,11 +224,21 @@ import {
 import { getMetricasHandler, getSaludHandler } from '../../modules/analisis/controller';
 
 router.get('/sites/:siteId/analisis/salud', protect, requireSiteParamAccess(), getSaludHandler);
-router.get('/sites/:siteId/analisis/metricas', protect, requireSiteParamAccess(), getMetricasHandler);
+router.get(
+  '/sites/:siteId/analisis/metricas',
+  protect,
+  requireSiteParamAccess(),
+  getMetricasHandler,
+);
 
 router.get('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), getFichaHandler);
 router.patch('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), patchFichaHandler);
-router.get('/sites/:siteId/bitacora/equipos', protect, requireSiteParamAccess(), listEquiposHandler);
+router.get(
+  '/sites/:siteId/bitacora/equipos',
+  protect,
+  requireSiteParamAccess(),
+  listEquiposHandler,
+);
 router.post(
   '/sites/:siteId/bitacora/equipos',
   protect,

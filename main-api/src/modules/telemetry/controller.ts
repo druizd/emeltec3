@@ -6,7 +6,12 @@ import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { ValidationError } from '../../shared/errors';
-import { historyQuerySchema, onlineQuerySchema, presetQuerySchema, mergeKeyAliases } from './schema';
+import {
+  historyQuerySchema,
+  onlineQuerySchema,
+  presetQuerySchema,
+  mergeKeyAliases,
+} from './schema';
 import { authorizedSerial } from './serialAccess';
 import {
   getAvailableKeysFor,
@@ -39,7 +44,12 @@ export async function getHistoryHandler(
     const serial = authorizedSerial(req);
     if (serial === null) {
       res.json(
-        ok([], { serial_id: null, selected_keys: selectedKeys, count: 0, durationMs: elapsedMs(startedAt) }),
+        ok([], {
+          serial_id: null,
+          selected_keys: selectedKeys,
+          count: 0,
+          durationMs: elapsedMs(startedAt),
+        }),
       );
       return;
     }
@@ -84,7 +94,12 @@ export async function getLatestHandler(
     const serial = authorizedSerial(req);
     if (serial === null) {
       res.json(
-        ok([], { serial_id: null, selected_keys: selectedKeys, count: 0, durationMs: elapsedMs(startedAt) }),
+        ok([], {
+          serial_id: null,
+          selected_keys: selectedKeys,
+          count: 0,
+          durationMs: elapsedMs(startedAt),
+        }),
       );
       return;
     }
