@@ -515,12 +515,10 @@ exports.login = async (req, res, next) => {
     const user = await findAuthUserByEmail(email);
     if (!user) return rejectUnknownEmail(req, email, res);
     if (await ensureNotLocked(req, user, res)) return;
+    // EMT-H10/M-1: no revelar estado de la cuenta vía /login. Una cuenta no
+    // activada se enruta por /start (flow:'setup'); aquí respondemos genérico.
     if (!user.activated_at) {
-      return res.status(409).json({
-        ok: false,
-        code: 'ACCOUNT_SETUP_REQUIRED',
-        error: 'Cuenta nueva. Debes crear tu contrasena antes de iniciar sesion.',
-      });
+      return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
     }
 
     let authenticated = false;
@@ -528,7 +526,8 @@ exports.login = async (req, res, next) => {
 
     if (loginMode === 'password') {
       if (!allowsPasswordLogin(user) || !user.password_hash) {
-        return res.status(403).json({ ok: false, error: 'Ingreso con contrasena desactivado.' });
+        // No revelar qué método de ingreso tiene la cuenta (anti-enumeración).
+        return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
       }
 
       authenticated = await bcrypt.compare(credential, user.password_hash);
@@ -551,7 +550,7 @@ exports.login = async (req, res, next) => {
       authMethod = 'password_otp';
     } else if (loginMode === 'otp') {
       if (!allowsOtpLogin(user)) {
-        return res.status(403).json({ ok: false, error: 'Ingreso con codigo OTP desactivado.' });
+        return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
       }
 
       authenticated = await verifyOtpCredential(user, credential);

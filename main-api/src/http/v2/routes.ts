@@ -2,7 +2,7 @@
  * Router HTTP v2. Se monta bajo /api/v2 desde app.js (o app.ts cuando exista).
  */
 import { Router } from 'express';
-import { protect } from '../../middlewares/auth';
+import { protect, authorizeRoles } from '../../middlewares/auth';
 import { requireSiteParamAccess } from '../../middlewares/siteAccess';
 import {
   getHistoryHandler,
@@ -256,11 +256,17 @@ router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
 // 2FA email-OTP — el código se manda al email del usuario solicitante.
 router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
 
-// Review queue (acceso para Admin/SuperAdmin solo).
-router.get('/dga/review-queue', protect, listReviewQueueHandler);
+// Review queue: solo Admin/SuperAdmin + scope por sitio en el handler.
+router.get(
+  '/dga/review-queue',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  listReviewQueueHandler,
+);
 router.post(
   '/dga/review-queue/action',
   protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
   requireDgaTwoFactor,
   auditDgaMutations,
   reviewSlotActionHandler,

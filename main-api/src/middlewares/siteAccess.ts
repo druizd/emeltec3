@@ -12,6 +12,25 @@ import { query } from '../config/dbHelpers';
 import { NotFoundError, ValidationError } from '../shared/errors';
 import { requireSiteAccess, type AuthUser, type SiteScope } from '../shared/permissions';
 
+/**
+ * Variante para handlers que reciben el site_id por query/body (no por `:siteId`
+ * en la ruta). Carga el alcance y lanza ForbiddenError si el usuario no accede.
+ */
+export async function assertSiteAccessById(
+  user: AuthUser | undefined,
+  siteId: string | null | undefined,
+): Promise<void> {
+  const id = String(siteId ?? '').trim();
+  if (!id) throw new ValidationError('site_id requerido');
+  const result = await query<SiteScope>(
+    `SELECT empresa_id, sub_empresa_id FROM sitio WHERE UPPER(id) = UPPER($1)`,
+    [id],
+  );
+  const site = result.rows[0];
+  if (!site) throw new NotFoundError('Sitio no encontrado.');
+  requireSiteAccess(user, site);
+}
+
 export function requireSiteParamAccess(paramName = 'siteId') {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {

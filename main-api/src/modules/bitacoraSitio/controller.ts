@@ -5,8 +5,22 @@ import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
-import { deleteEquipo, getFicha, insertEquipo, listEquipos, patchEquipo, patchFicha } from './repo';
+import {
+  deleteEquipo,
+  findEquipoSitioId,
+  getFicha,
+  insertEquipo,
+  listEquipos,
+  patchEquipo,
+  patchFicha,
+} from './repo';
 import { CreateEquipoPayload, FichaPayload, PatchEquipoPayload } from './schema';
+import { assertSiteAccessById } from '../../middlewares/siteAccess';
+import type { AuthUser } from '../../shared/permissions';
+
+function getUser(req: Request): AuthUser | undefined {
+  return (req as Request & { user?: AuthUser }).user;
+}
 
 // ============================================================================
 // Ficha
@@ -102,6 +116,11 @@ export async function patchEquipoHandler(
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) throw new ValidationError('id inválido');
+    // IDOR: el equipo se direcciona por id numérico; verificar que su sitio
+    // pertenezca al usuario antes de modificarlo.
+    const sitioId = await findEquipoSitioId(id);
+    if (!sitioId) throw new NotFoundError('Equipo no encontrado');
+    await assertSiteAccessById(getUser(req), sitioId);
     const parsed = PatchEquipoPayload.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
@@ -123,6 +142,9 @@ export async function deleteEquipoHandler(
   try {
     const id = Number(req.params.id);
     if (!Number.isFinite(id) || id <= 0) throw new ValidationError('id inválido');
+    const sitioId = await findEquipoSitioId(id);
+    if (!sitioId) throw new NotFoundError('Equipo no encontrado');
+    await assertSiteAccessById(getUser(req), sitioId);
     const okDelete = await deleteEquipo(id);
     if (!okDelete) throw new NotFoundError('Equipo no encontrado');
     res.json(ok({ deleted: true }, { durationMs: elapsedMs(startedAt) }));

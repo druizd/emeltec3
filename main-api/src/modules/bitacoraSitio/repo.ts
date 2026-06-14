@@ -193,6 +193,16 @@ export async function patchEquipo(
   return r.rows[0] ?? null;
 }
 
+/** Devuelve el sitio_id de un equipo (para autorización por :id). */
+export async function findEquipoSitioId(id: number): Promise<string | null> {
+  const r = await query<{ sitio_id: string }>(
+    `SELECT sitio_id FROM sitio_equipo WHERE id = $1`,
+    [id],
+    { name: 'bitacora__equipo_sitio_id' },
+  );
+  return r.rows[0]?.sitio_id ?? null;
+}
+
 export async function deleteEquipo(id: number): Promise<boolean> {
   const r = await query(`DELETE FROM sitio_equipo WHERE id = $1`, [id], {
     name: 'bitacora__delete_equipo',

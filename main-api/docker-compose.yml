@@ -3,11 +3,12 @@ services:
     image: timescale/timescaledb:latest-pg16
     container_name: emeltec-timescaledb
     ports:
-      - '5432:5432'
+      # EMT-H03/H04: BD solo en loopback y sin password por defecto.
+      - '127.0.0.1:${DB_HOST_PORT:-5432}:5432'
     environment:
       POSTGRES_DB: ${DB_NAME:-telemetry_platform}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD es obligatorio (ver .env.example)}
     volumes:
       - tsdb_data:/var/lib/postgresql/data
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -22,7 +23,8 @@ services:
     build: .
     container_name: emeltec-main-api
     ports:
-      - '${PORT:-3000}:${PORT:-3000}'
+      # Detrás del proxy: loopback.
+      - '127.0.0.1:${PORT:-3000}:${PORT:-3000}'
     env_file:
       - .env
     environment:
