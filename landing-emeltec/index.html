@@ -1,17 +1,49 @@
 <!doctype html>
-<html lang="es">
+<html lang="es-CL">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Emeltec Cloud | Monitoreo Industrial Chile y Reportes DGA</title>
+    <title>Monitoreo Industrial IIoT, DGA y Ambiental en Chile | Emeltec Cloud</title>
     <meta
       name="description"
-      content="Monitoreo industrial en Chile para temperatura, plantas productivas, mantenimiento predictivo, HACCP, ISO 22000, IoT industrial y reportes DGA."
+      content="Plataforma IIoT para monitoreo industrial y ambiental en Chile: agua, temperatura, energía y procesos con reportes DGA, HACCP e ISO 22000 listos para auditoría."
+    />
+    <link rel="canonical" href="https://landing.emeltec.cl/" />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#005f7f" />
+    <meta name="author" content="Emeltec" />
+    <meta name="geo.region" content="CL-RM" />
+    <meta name="geo.placename" content="Huechuraba, Santiago, Chile" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="es_CL" />
+    <meta property="og:site_name" content="Emeltec Cloud" />
+    <meta property="og:url" content="https://landing.emeltec.cl/" />
+    <meta
+      property="og:title"
+      content="Monitoreo Industrial IIoT, DGA y Ambiental en Chile | Emeltec Cloud"
     />
     <meta
-      name="keywords"
-      content="monitoreo industrial chile, monitoreo temperatura industrial, mantenimiento predictivo chile, monitoreo HACCP, monitoreo plantas productivas, cumplimiento ISO 22000, monitoreo IoT industrial, reportes DGA"
+      property="og:description"
+      content="Plataforma IIoT para monitoreo industrial y ambiental en Chile con reportes DGA, HACCP e ISO 22000 listos para auditoría."
     />
+    <meta property="og:image" content="https://landing.emeltec.cl/assets/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Monitoreo industrial en planta con Emeltec Cloud" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Monitoreo Industrial IIoT, DGA y Ambiental | Emeltec Cloud"
+    />
+    <meta
+      name="twitter:description"
+      content="Plataforma IIoT para monitoreo industrial y ambiental en Chile con reportes DGA listos para auditoría."
+    />
+    <meta name="twitter:image" content="https://landing.emeltec.cl/assets/og-image.jpg" />
     <!-- Google Search Console: reemplazar TOKEN_SEARCH_CONSOLE por el token real antes de producción. -->
     <!-- <meta name="google-site-verification" content="TOKEN_SEARCH_CONSOLE" /> -->
     <!-- Google Analytics GA4: reemplazar G-XXXXXXXXXX por el Measurement ID real antes de producción.
@@ -24,7 +56,7 @@
     </script>
     -->
     <link rel="icon" href="./assets/Logo%20Emeltec%20Cloud.png" />
-    <link rel="preload" href="./assets/hero-industrial.png" as="image" />
+    <link rel="preload" href="./assets/hero-industrial.webp" as="image" type="image/webp" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -32,14 +64,101 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://landing.emeltec.cl/#organization",
+            "name": "Emeltec",
+            "url": "https://landing.emeltec.cl/",
+            "logo": "https://landing.emeltec.cl/assets/Logo%20Emeltec%20Cloud.png",
+            "email": "ventas@emeltec.cl",
+            "telephone": "+56223070060",
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "Av. Del Valle Sur N°576, Oficina 505",
+              "addressLocality": "Huechuraba",
+              "addressRegion": "Región Metropolitana",
+              "addressCountry": "CL"
+            },
+            "areaServed": { "@type": "Country", "name": "Chile" }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://landing.emeltec.cl/#website",
+            "url": "https://landing.emeltec.cl/",
+            "name": "Emeltec Cloud",
+            "inLanguage": "es-CL",
+            "publisher": { "@id": "https://landing.emeltec.cl/#organization" }
+          },
+          {
+            "@type": "Service",
+            "name": "Monitoreo industrial y ambiental IIoT",
+            "serviceType": "Monitoreo IIoT, Monitoreo de Extracciones Efectivas (MEE), reportes DGA, reporte SNIA, monitoreo ambiental, mantenimiento predictivo, ciberseguridad ISO 27001, protección de datos personales",
+            "provider": { "@id": "https://landing.emeltec.cl/#organization" },
+            "areaServed": { "@type": "Country", "name": "Chile" },
+            "description": "Centro de control registrado en la DGA para el Monitoreo de Extracciones Efectivas (MEE). Monitoreo continuo de agua, temperatura, energía y procesos con reportes DGA y SNIA, HACCP e ISO 22000 listos para auditoría."
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://landing.emeltec.cl/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "¿Qué es el Monitoreo de Extracciones Efectivas (MEE) de la DGA?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Es la obligación de medir y transmitir a la Dirección General de Aguas las extracciones reales de agua —caudal y nivel— mediante telemetría, a través de un centro de control registrado."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Emeltec es centro de control registrado en la DGA?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sí. Emeltec opera como centro de control registrado ante la DGA y transmite la telemetría de extracciones de forma continua, validada y respaldada."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Qué es el reporte SNIA?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "El SNIA (Sistema Nacional de Información del Agua) es la plataforma de la DGA que centraliza la información hídrica del país. La telemetría de extracciones se reporta para alimentar este sistema."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Qué variables exige el monitoreo de extracciones?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Principalmente el caudal extraído y el nivel freático del pozo, con la frecuencia de medición y transmisión definida por la normativa vigente de la DGA."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "¿Cómo protege Emeltec los datos y la ciberseguridad?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "La plataforma está alineada a ISO 27001 y a la Ley 19.628 de protección de datos personales, con preparación para la nueva Ley 21.719, mediante control de acceso multi-tenant por sitio, respaldo en cloud y trazabilidad de accesos."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="#inicio" aria-label="Ir al inicio">
-        <img src="./assets/emeltec-logo.png" alt="Emeltec" />
+        <img src="./assets/Logo%20Emeltec%20Cloud.png" alt="Emeltec Cloud" />
       </a>
       <nav class="desktop-nav" id="site-nav" aria-label="Navegación principal">
         <a href="#soluciones">Soluciones</a>
+        <a href="#dga">DGA</a>
         <a href="#empresa">Empresa</a>
         <a href="#clientes">Clientes</a>
         <a href="#contacto">Contacto</a>
@@ -152,7 +271,7 @@
             accionables
           </h2>
           <p>
-            Seis módulos claros, conectados a terreno, para operación industrial, cumplimiento
+            Seis módulos claros, conectados a terreno, para operación industrial, monitoreo
             ambiental y mantenimiento predictivo en plantas productivas.
           </p>
         </div>
@@ -213,8 +332,8 @@
                 <path d="M4 10c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2" />
               </svg>
             </span>
-            <h3>Riles y cumplimiento</h3>
-            <p>Evidencia ambiental ordenada para descargas, eventos y auditorías internas.</p>
+            <h3>Riles y monitoreo ambiental</h3>
+            <p>Monitoreo ambiental y evidencia ordenada para descargas, eventos y auditorías internas.</p>
             <ul>
               <li>Bitácora de eventos</li>
               <li>Validación de señales</li>
@@ -257,6 +376,76 @@
               <li>Acompañamiento operativo</li>
             </ul>
           </article>
+
+          <article class="solution-card tone-secure">
+            <span class="solution-icon">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+                <path d="M9 12l2 2 4-5" />
+              </svg>
+            </span>
+            <h3>Ciberseguridad y protección de datos</h3>
+            <p>
+              Plataforma alineada a ISO 27001 y a la Ley 19.628 de protección de datos personales,
+              con preparación para la nueva Ley 21.719.
+            </p>
+            <ul>
+              <li>Control de acceso multi-tenant por sitio</li>
+              <li>Respaldo de datos en cloud</li>
+              <li>Trazabilidad y auditoría de accesos</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="compliance" id="dga">
+        <div class="section-heading">
+          <span class="section-kicker">Cumplimiento DGA</span>
+          <h2>
+            Centro de control registrado en la
+            <span class="headline-accent">Dirección General de Aguas</span>
+          </h2>
+          <p>
+            Emeltec opera como centro de control registrado ante la DGA para el Monitoreo de
+            Extracciones Efectivas (MEE): telemetría de caudal y nivel transmitida, validada y
+            respaldada, lista para el reporte de extracciones al SNIA.
+          </p>
+        </div>
+
+        <p class="dga-seal">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <path d="M9 12l2 2 4-5" stroke="currentColor" stroke-width="2" />
+          </svg>
+          Centro de control registrado ante la Dirección General de Aguas
+        </p>
+
+        <div class="compliance-grid">
+          <article class="compliance-card">
+            <h3>Telemetría para MEE</h3>
+            <p>
+              Medición continua de caudal y nivel freático para el Monitoreo de Extracciones
+              Efectivas, con transmisión hacia la Dirección General de Aguas.
+            </p>
+          </article>
+          <article class="compliance-card">
+            <h3>Reporte SNIA sin planillas</h3>
+            <p>
+              Los datos viajan validados y respaldados para alimentar el Sistema Nacional de
+              Información del Agua, sin cargas manuales ni lecturas dispersas.
+            </p>
+          </article>
+          <article class="compliance-card">
+            <h3>Evidencia para fiscalización</h3>
+            <p>
+              Histórico trazable y exportable por periodo para responder auditorías y
+              requerimientos de la DGA con respaldo verificable.
+            </p>
+          </article>
         </div>
       </section>
 
@@ -272,9 +461,10 @@
             viaja y quién lo necesita.
           </p>
           <ul class="about-list">
-            <li>Monitoreo IoT industrial</li>
+            <li>Monitoreo IIoT (IoT industrial)</li>
             <li>Cumplimiento ISO 22000 y HACCP</li>
             <li>Reportes DGA y trazabilidad</li>
+            <li>Ciberseguridad ISO 27001 y protección de datos personales</li>
             <li>Soporte técnico para continuidad operacional</li>
           </ul>
         </div>
@@ -299,22 +489,22 @@
 
         <div class="client-carousel" aria-label="Carrusel de logos de clientes">
           <div class="client-track">
-            <span class="client-logo">Vital</span>
-            <span class="client-logo">Matthei</span>
-            <span class="client-logo">Cachantún</span>
-            <span class="client-logo">Surlat</span>
-            <span class="client-logo">Generadora Metropolitana</span>
-            <span class="client-logo">Cotaco</span>
-            <span class="client-logo">CCU</span>
-            <span class="client-logo">ECCUSA</span>
-            <span class="client-logo">Vital</span>
-            <span class="client-logo">Matthei</span>
-            <span class="client-logo">Cachantún</span>
-            <span class="client-logo">Surlat</span>
-            <span class="client-logo">Generadora Metropolitana</span>
-            <span class="client-logo">Cotaco</span>
-            <span class="client-logo">CCU</span>
-            <span class="client-logo">ECCUSA</span>
+            <span class="client-logo"><img src="./assets/clients/vital.jpeg" alt="Vital" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/matthei.jpeg" alt="Matthei" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/cachantun.avif" alt="Cachantún" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/surlat.svg" alt="Surlat" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/generadora-metropolitana.webp" alt="Generadora Metropolitana" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/cotaco.png" alt="Cotaco" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/ccu.png" alt="CCU" loading="lazy" /></span>
+            <span class="client-logo"><img src="./assets/clients/eccusa.jpg" alt="ECCUSA" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/vital.jpeg" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/matthei.jpeg" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/cachantun.avif" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/surlat.svg" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/generadora-metropolitana.webp" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/cotaco.png" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/ccu.png" alt="" loading="lazy" /></span>
+            <span class="client-logo" aria-hidden="true"><img src="./assets/clients/eccusa.jpg" alt="" loading="lazy" /></span>
           </div>
         </div>
 
@@ -343,7 +533,8 @@
                   <img
                     class="avatar"
                     src="./assets/testimonials/daniel-avatar.png"
-                    alt="Foto de perfil DF"
+                    alt="Daniel Fernandez, Jefe de Suministros y Servicios en ECCUSA"
+                    loading="lazy"
                   />
                   <div>
                     <strong>Daniel Fernandez</strong>
@@ -364,7 +555,8 @@
                   <img
                     class="avatar"
                     src="./assets/testimonials/patricio-avatar.png"
-                    alt="Foto de perfil PA"
+                    alt="Patricio Araya, Supervisor de Operación TG en Generadora Metropolitana"
+                    loading="lazy"
                   />
                   <div>
                     <strong>Patricio Araya</strong>
@@ -385,7 +577,8 @@
                   <img
                     class="avatar"
                     src="./assets/testimonials/susana-avatar.png"
-                    alt="Foto de perfil SG"
+                    alt="Susana Gaete, Jefe de Medio Ambiente en Koandina"
+                    loading="lazy"
                   />
                   <div>
                     <strong>Susana Gaete</strong>
@@ -407,6 +600,60 @@
             </svg>
           </button>
           <div class="slider-dots" data-testimonial-dots aria-label="Selector de testimonios"></div>
+        </div>
+      </section>
+
+      <section class="faq" id="faq">
+        <div class="section-heading">
+          <span class="section-kicker">Preguntas frecuentes</span>
+          <h2>
+            Monitoreo de extracciones, <span class="headline-accent">DGA y SNIA</span>
+          </h2>
+          <p>
+            Lo esencial sobre el Monitoreo de Extracciones Efectivas, el reporte al SNIA y el rol
+            de un centro de control registrado.
+          </p>
+        </div>
+
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary>¿Qué es el Monitoreo de Extracciones Efectivas (MEE) de la DGA?</summary>
+            <p>
+              Es la obligación de medir y transmitir a la Dirección General de Aguas las
+              extracciones reales de agua —caudal y nivel— mediante telemetría, a través de un
+              centro de control registrado.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>¿Emeltec es centro de control registrado en la DGA?</summary>
+            <p>
+              Sí. Emeltec opera como centro de control registrado ante la DGA y transmite la
+              telemetría de extracciones de forma continua, validada y respaldada.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>¿Qué es el reporte SNIA?</summary>
+            <p>
+              El SNIA (Sistema Nacional de Información del Agua) es la plataforma de la DGA que
+              centraliza la información hídrica del país. La telemetría de extracciones se reporta
+              para alimentar este sistema.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>¿Qué variables exige el monitoreo de extracciones?</summary>
+            <p>
+              Principalmente el caudal extraído y el nivel freático del pozo, con la frecuencia de
+              medición y transmisión definida por la normativa vigente de la DGA.
+            </p>
+          </details>
+          <details class="faq-item">
+            <summary>¿Cómo protege Emeltec los datos y la ciberseguridad?</summary>
+            <p>
+              La plataforma está alineada a ISO 27001 y a la Ley 19.628 de protección de datos
+              personales, con preparación para la nueva Ley 21.719, mediante control de acceso
+              multi-tenant por sitio, respaldo en cloud y trazabilidad de accesos.
+            </p>
+          </details>
         </div>
       </section>
 
@@ -474,7 +721,11 @@
               </span>
               <div>
                 <strong>Casa Matriz</strong>
-                <a href="https://maps.google.com/?q=Av.+Del+Valle+Sur+576+Oficina+505+Huechuraba">
+                <a
+                  href="https://maps.google.com/?q=Av.+Del+Valle+Sur+576+Oficina+505+Huechuraba"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Av. Del Valle Sur N°576, Oficina 505, Huechuraba, RM.
                 </a>
                 <small>Bodega: Av. Zapadores 0654, Recoleta, RM.</small>
@@ -487,7 +738,20 @@
             </div>
           </div>
 
-          <form class="contact-form" id="contact-form" data-email="ventas@emeltec.cl">
+          <form
+            class="contact-form"
+            id="contact-form"
+            data-email="ventas@emeltec.cl"
+            data-web3forms-key="20727531-3940-4a7e-9ad4-94586513c26e"
+          >
+            <input
+              type="checkbox"
+              name="botcheck"
+              tabindex="-1"
+              autocomplete="off"
+              aria-hidden="true"
+              style="display: none"
+            />
             <label>
               Nombre completo *
               <input name="nombre" type="text" placeholder="Tu nombre completo" required />
@@ -508,12 +772,13 @@
               Servicio de interés *
               <select name="servicio" required>
                 <option value="">Selecciona un servicio</option>
-                <option>Monitoreo industrial Chile</option>
-                <option>Monitoreo temperatura industrial</option>
-                <option>Mantenimiento predictivo Chile</option>
-                <option>Monitoreo HACCP / ISO 22000</option>
-                <option>Reportes DGA</option>
-                <option>Monitoreo IoT industrial</option>
+                <option>Monitoreo de extracciones (MEE) y reporte DGA / SNIA</option>
+                <option>Monitoreo industrial IIoT</option>
+                <option>Monitoreo de temperatura (HACCP / ISO 22000)</option>
+                <option>Monitoreo ambiental y Riles</option>
+                <option>Consumo eléctrico</option>
+                <option>Mantenimiento predictivo</option>
+                <option>Otro</option>
               </select>
             </label>
             <label class="full">
@@ -544,7 +809,7 @@
 
     <footer class="footer">
       <div class="footer-brand">
-        <img src="./assets/Logo%20Emeltec%20Cloud.png" alt="Emeltec Cloud" />
+        <img src="./assets/emeltec-logo.png" alt="Emeltec" />
         <p>
           Monitoreo industrial, trazabilidad operacional y reportes DGA para plantas productivas.
         </p>
