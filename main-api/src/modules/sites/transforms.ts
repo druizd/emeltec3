@@ -136,8 +136,11 @@ export function applyMappingTransform({
       const high = requireFiniteNumber(rawD1, mapping.d1);
       const low = requireFiniteNumber(readRawValue(rawData, mapping.d2), mapping.d2 ?? 'd2');
       const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-      const offset = numberOrNull(params.offset) ?? 0;
-      return registrosModbusAUInt32(high, low, wordSwap).valor + offset;
+      const combinado = registrosModbusAUInt32(high, low, wordSwap).valor;
+      // Aplica factor + offset al uint32 combinado para permitir decimales
+      // (ej. factor=0.01 corre 2 decimales). factor defaultea a 1 →
+      // retrocompatible con configs que solo guardaban offset.
+      return applyLinearTransform(combinado, params);
     }
 
     case 'nivel_freatico': {
