@@ -275,6 +275,12 @@ const SITE_TYPE_CATALOG = {
         unitHint: 'm3',
         description: 'Volumen acumulado.',
       },
+      {
+        id: 'nivel',
+        label: 'Nivel camara',
+        unitHint: 'm',
+        description: 'Nivel del agua en camara RILES.',
+      },
       { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
       { id: 'ph', label: 'pH', unitHint: 'pH', description: 'Nivel de acidez o alcalinidad.' },
       {

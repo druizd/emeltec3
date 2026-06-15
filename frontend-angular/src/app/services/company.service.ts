@@ -45,6 +45,18 @@ export interface ContadorJornadaPoint {
   resets_detectados: number;
 }
 
+export type TelemetryPreset = '24h' | '7d' | '30d' | '365d';
+
+export interface TelemetryHistoryRow {
+  id_serial: string;
+  fecha: string;
+  hora: string;
+  timestamp_completo: string;
+  data: Record<string, unknown>;
+  selected_keys?: string[];
+  keys_present?: string[];
+}
+
 export interface SiteOperacionTurno {
   nombre: string;
   inicio: string;
@@ -370,6 +382,21 @@ export class CompanyService {
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
       `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,
+    );
+  }
+
+  getTelemetryPreset(
+    serialId: string,
+    options: { preset?: TelemetryPreset; keys?: string[]; limit?: number } = {},
+  ): Observable<ApiResponse<TelemetryHistoryRow[]>> {
+    const params = new URLSearchParams();
+    params.set('serial_id', serialId);
+    params.set('preset', options.preset ?? '30d');
+    if (options.keys?.length) params.set('keys', options.keys.join(','));
+    if (options.limit) params.set('limit', String(options.limit));
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<TelemetryHistoryRow[]>>(
+      `/api/data/preset?${params.toString()}`,
     );
   }
 

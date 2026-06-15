@@ -24,5 +24,12 @@
     "removeComments": false
   },
   "include": ["src/**/*.ts", "src/**/*.js"],
-  "exclude": ["node_modules", "dist", "migrations"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "migrations",
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
+  ]
 }

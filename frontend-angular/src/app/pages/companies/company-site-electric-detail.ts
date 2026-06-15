@@ -1,9 +1,9 @@
 ﻿import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from '@emeltec/shared';
-import { CompanyService } from '../../services/company.service';
+import { CompanyService, type TelemetryHistoryRow } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
@@ -31,6 +31,7 @@ interface ElectricChart {
   legend: { label: string; color: string; points: string }[];
   note?: string;
   half?: boolean;
+  labels?: string[];
 }
 
 type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
@@ -206,7 +207,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                 </div>
 
                 <div class="grid gap-5 xl:grid-cols-2">
-                  @for (chart of charts; track chart.title) {
+                  @for (chart of charts(); track chart.title) {
                     <article
                       class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
                       [ngClass]="chart.half ? '' : 'xl:col-span-2'"
@@ -247,14 +248,9 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
                         <div
                           class="pointer-events-none absolute bottom-1 left-14 right-8 flex justify-between text-[11px] font-semibold text-slate-400"
                         >
-                          <span>17</span>
-                          <span>21</span>
-                          <span>25</span>
-                          <span>29</span>
-                          <span>May</span>
-                          <span>5</span>
-                          <span>9</span>
-                          <span>13</span>
+                          @for (label of chart.labels || defaultChartLabels; track $index) {
+                            <span>{{ label }}</span>
+                          }
                         </div>
                       </div>
 
@@ -310,10 +306,29 @@ export class CompanySiteElectricDetailComponent implements OnInit {
 
   siteContext = signal<SiteContext | null>(null);
   dashboardData = signal<SiteDashboardData | null>(null);
+  historyRows = signal<TelemetryHistoryRow[]>([]);
   loading = signal(false);
   activeTab = signal<ElectricTab>('dashboard');
   dateFrom = signal(this.toDateInputValue(this.addDays(new Date(), -1)));
   dateTo = signal(this.toDateInputValue(new Date()));
+  readonly defaultChartLabels = ['17', '21', '25', '29', 'May', '5', '9', '13'];
+  readonly telemetryKeys = [
+    'energia_activa_kwh',
+    'energia_reactiva_kvarh',
+    'factor_potencia_l1',
+    'factor_potencia_l2',
+    'factor_potencia_l3',
+    'factor_potencia_total',
+    'voltaje_l1',
+    'voltaje_l2',
+    'voltaje_l3',
+    'corriente_l1',
+    'corriente_l2',
+    'corriente_l3',
+    'thd_corriente_l1',
+    'thd_corriente_l2',
+    'thd_corriente_l3',
+  ];
 
   readonly tabs: { id: ElectricTab; label: string; icon: string; badge?: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'layers' },
@@ -365,7 +380,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     { label: 'Aumento Factura', role: 'aumento_factura', fallback: '19.1%', color: '#f97316' },
   ];
 
-  readonly charts: ElectricChart[] = [
+  readonly fallbackCharts: ElectricChart[] = [
     {
       title: 'Consumo de Energia (kWh)',
       subtitle: 'Kilovatios hora',
@@ -480,6 +495,179 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     },
   ];
 
+  readonly charts = computed<ElectricChart[]>(() => {
+    const rows = this.orderedHistoryRows();
+    if (rows.length < 2) return this.fallbackCharts;
+
+    const labels = this.axisLabels(rows);
+    return [
+      {
+        title: 'Consumo de Energia (kWh)',
+        subtitle: 'Kilovatios hora',
+        labels,
+        legend: [
+          {
+            label: 'Energia Activa',
+            color: '#3b63d9',
+            points: this.linePoints(rows, 'energia_activa_kwh', {
+              fallback: this.fallbackPoint(0, 0),
+            }),
+          },
+          {
+            label: 'Energia Reactiva',
+            color: '#77c66e',
+            points: this.linePoints(rows, 'energia_reactiva_kvarh', {
+              fallback: this.fallbackPoint(0, 1),
+            }),
+          },
+        ],
+      },
+      {
+        title: 'Factor de Potencia',
+        subtitle: 'Relacion potencia activa / aparente (cos phi)',
+        note: 'Linea roja: meta 0.93',
+        labels,
+        legend: [
+          {
+            label: 'Factor Potencia A',
+            color: '#4f7cf3',
+            points: this.linePoints(rows, 'factor_potencia_l1', {
+              min: 0.65,
+              max: 1,
+              fallback: this.fallbackPoint(1, 0),
+            }),
+          },
+          {
+            label: 'Factor Potencia B',
+            color: '#86c76f',
+            points: this.linePoints(rows, 'factor_potencia_l2', {
+              min: 0.65,
+              max: 1,
+              fallback: this.fallbackPoint(1, 1),
+            }),
+          },
+          {
+            label: 'Factor Potencia C',
+            color: '#f5bd32',
+            points: this.linePoints(rows, 'factor_potencia_l3', {
+              min: 0.65,
+              max: 1,
+              fallback: this.fallbackPoint(1, 2),
+            }),
+          },
+          {
+            label: 'Factor Potencia Total',
+            color: '#ff5a57',
+            points: this.linePoints(rows, 'factor_potencia_total', {
+              min: 0.65,
+              max: 1,
+              fallback: this.fallbackPoint(1, 3),
+            }),
+          },
+        ],
+      },
+      {
+        title: 'THD Corriente (%)',
+        subtitle: 'Total Harmonic Distortion',
+        note: 'Recomendado: <8%',
+        labels,
+        legend: [
+          {
+            label: 'THD Corriente L1',
+            color: '#4f7cf3',
+            points: this.linePoints(rows, 'thd_corriente_l1', {
+              min: 0,
+              max: 8,
+              fallback: this.fallbackPoint(2, 0),
+            }),
+          },
+          {
+            label: 'THD Corriente L2',
+            color: '#86c76f',
+            points: this.linePoints(rows, 'thd_corriente_l2', {
+              min: 0,
+              max: 8,
+              fallback: this.fallbackPoint(2, 1),
+            }),
+          },
+          {
+            label: 'THD Corriente L3',
+            color: '#f5bd32',
+            points: this.linePoints(rows, 'thd_corriente_l3', {
+              min: 0,
+              max: 8,
+              fallback: this.fallbackPoint(2, 2),
+            }),
+          },
+        ],
+      },
+      {
+        title: 'Voltajes (V)',
+        subtitle: 'Tension electrica entre fases',
+        half: true,
+        labels,
+        legend: [
+          {
+            label: 'Voltaje A',
+            color: '#4f7cf3',
+            points: this.linePoints(rows, 'voltaje_l1', {
+              min: 360,
+              max: 420,
+              fallback: this.fallbackPoint(3, 0),
+            }),
+          },
+          {
+            label: 'Voltaje B',
+            color: '#86c76f',
+            points: this.linePoints(rows, 'voltaje_l2', {
+              min: 360,
+              max: 420,
+              fallback: this.fallbackPoint(3, 1),
+            }),
+          },
+          {
+            label: 'Voltaje C',
+            color: '#f5bd32',
+            points: this.linePoints(rows, 'voltaje_l3', {
+              min: 360,
+              max: 420,
+              fallback: this.fallbackPoint(3, 2),
+            }),
+          },
+        ],
+      },
+      {
+        title: 'Corriente (A)',
+        subtitle: 'Amperios - Flujo de carga por fase',
+        half: true,
+        labels,
+        legend: [
+          {
+            label: 'Corriente L1',
+            color: '#4f7cf3',
+            points: this.linePoints(rows, 'corriente_l1', {
+              fallback: this.fallbackPoint(4, 0),
+            }),
+          },
+          {
+            label: 'Corriente L2',
+            color: '#86c76f',
+            points: this.linePoints(rows, 'corriente_l2', {
+              fallback: this.fallbackPoint(4, 1),
+            }),
+          },
+          {
+            label: 'Corriente L3',
+            color: '#f5bd32',
+            points: this.linePoints(rows, 'corriente_l3', {
+              fallback: this.fallbackPoint(4, 2),
+            }),
+          },
+        ],
+      },
+    ];
+  });
+
   ngOnInit(): void {
     const siteId = this.route.snapshot.paramMap.get('siteId');
     if (!siteId) {
@@ -547,6 +735,21 @@ export class CompanySiteElectricDetailComponent implements OnInit {
       },
       error: () => undefined,
     });
+
+    const serialId = this.siteContext()?.site.id_serial;
+    if (!serialId) return;
+    this.companyService
+      .getTelemetryPreset(serialId, {
+        preset: '30d',
+        keys: this.telemetryKeys,
+        limit: 1200,
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.historyRows.set(res.data || []);
+        },
+        error: () => undefined,
+      });
   }
 
   siteName(context: SiteContext): string {
@@ -579,7 +782,10 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     }
 
     if (typeof entry.valor === 'number') {
-      return new Intl.NumberFormat('es-CL', { maximumFractionDigits: 3 }).format(entry.valor);
+      const value = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 3 }).format(
+        entry.valor,
+      );
+      return ['cumplimiento_fp', 'aumento_factura'].includes(role) ? `${value}%` : value;
     }
 
     return String(entry.valor);
@@ -616,5 +822,76 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     const next = new Date(value);
     next.setDate(next.getDate() + days);
     return next;
+  }
+
+  private orderedHistoryRows(): TelemetryHistoryRow[] {
+    return this.historyRows()
+      .filter((row) => row?.data && Object.keys(row.data).length > 0)
+      .slice()
+      .reverse();
+  }
+
+  private numericValue(row: TelemetryHistoryRow, key: string): number | null {
+    const value = row.data?.[key];
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private fallbackPoint(chartIndex: number, legendIndex: number): string {
+    return this.fallbackCharts[chartIndex]?.legend[legendIndex]?.points || '';
+  }
+
+  private linePoints(
+    rows: TelemetryHistoryRow[],
+    key: string,
+    options: { min?: number; max?: number; fallback: string },
+  ): string {
+    const series = rows
+      .map((row, index) => ({ index, value: this.numericValue(row, key) }))
+      .filter((point): point is { index: number; value: number } => point.value !== null);
+    if (series.length < 2) return options.fallback;
+
+    const values = series.map((point) => point.value);
+    let min = options.min ?? Math.min(...values);
+    let max = options.max ?? Math.max(...values);
+    if (max === min) {
+      max += 1;
+      min -= 1;
+    }
+
+    const xMin = 50;
+    const xMax = 860;
+    const yMin = 25;
+    const yMax = 210;
+    const lastIndex = Math.max(1, rows.length - 1);
+
+    return series
+      .map((point) => {
+        const x = xMin + (point.index / lastIndex) * (xMax - xMin);
+        const normalized = Math.min(1, Math.max(0, (point.value - min) / (max - min)));
+        const y = yMax - normalized * (yMax - yMin);
+        return `${Math.round(x)},${Math.round(y)}`;
+      })
+      .join(' ');
+  }
+
+  private axisLabels(rows: TelemetryHistoryRow[]): string[] {
+    if (rows.length === 0) return this.defaultChartLabels;
+    const labels: string[] = [];
+    const count = Math.min(8, rows.length);
+    for (let i = 0; i < count; i++) {
+      const index = Math.round((i / Math.max(1, count - 1)) * (rows.length - 1));
+      const row = rows[index];
+      labels.push(this.shortDateLabel(row?.timestamp_completo || row?.fecha || ''));
+    }
+    return labels;
+  }
+
+  private shortDateLabel(value: string): string {
+    const date = value.includes(' ') ? value.split(' ')[0] : value;
+    const parts = date.split('-');
+    if (parts.length !== 3) return '';
+    return `${Number(parts[2])}/${Number(parts[1])}`;
   }
 }

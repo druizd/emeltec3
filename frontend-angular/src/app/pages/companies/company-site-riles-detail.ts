@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
-import { CompanyService } from '../../services/company.service';
+import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import { CompanyService, type TelemetryHistoryRow } from '../../services/company.service';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 
@@ -16,6 +16,7 @@ interface RilesMonth {
   id: string;
   label: string;
   volume: string;
+  unit: string;
   shortVolume: string;
   tag: string;
   status: 'active' | 'idle';
@@ -38,9 +39,17 @@ interface RilesChart {
   subtitle: string;
   heightClass: string;
   series: { label: string; color: string; points: string }[];
+  labels?: string[];
 }
 
 type RilesTab = 'dashboard' | 'configurar';
+
+interface DailyBar {
+  day: string;
+  main: number;
+  min: number;
+  max: number;
+}
 
 @Component({
   selector: 'app-company-site-riles-detail',
@@ -145,7 +154,7 @@ type RilesTab = 'dashboard' | 'configurar';
                     Mes en vista
                   </p>
                   <div class="flex flex-wrap gap-2">
-                    @for (item of months; track item.id) {
+                    @for (item of months(); track item.id) {
                       <button
                         type="button"
                         (click)="activeMonthId.set(item.id)"
@@ -178,7 +187,9 @@ type RilesTab = 'dashboard' | 'configurar';
                         >
                           {{ month.volume }}
                         </strong>
-                        <span class="pb-1 text-body font-semibold text-cyan-100">m3</span>
+                        <span class="pb-1 text-body font-semibold text-cyan-100">{{
+                          month.unit
+                        }}</span>
                       </div>
                       <p class="mt-2 text-body-sm font-semibold text-cyan-50">
                         Banda incertidumbre: {{ month.band }}
@@ -258,7 +269,7 @@ type RilesTab = 'dashboard' | 'configurar';
                     </p>
                   </div>
                   <div class="grid gap-3 xl:grid-cols-3">
-                    @for (item of months; track item.id) {
+                    @for (item of months(); track item.id) {
                       <button
                         type="button"
                         (click)="activeMonthId.set(item.id)"
@@ -283,7 +294,9 @@ type RilesTab = 'dashboard' | 'configurar';
                           style="font-family: var(--font-mono);"
                         >
                           {{ item.volume }}
-                          <small class="text-caption font-semibold text-slate-500">m3</small>
+                          <small class="text-caption font-semibold text-slate-500">{{
+                            item.unit
+                          }}</small>
                         </span>
                         <span
                           class="mt-3 block text-left text-caption font-semibold text-slate-500"
@@ -312,7 +325,7 @@ type RilesTab = 'dashboard' | 'configurar';
                 </section>
 
                 <section class="grid gap-5 xl:grid-cols-2">
-                  @for (chart of charts; track chart.title) {
+                  @for (chart of charts(); track chart.title) {
                     <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                       <div class="mb-4">
                         <h2 class="text-h6 font-semibold text-slate-900">{{ chart.title }}</h2>
@@ -344,14 +357,9 @@ type RilesTab = 'dashboard' | 'configurar';
                         <div
                           class="pointer-events-none absolute bottom-2 left-14 right-8 flex justify-between text-[11px] font-semibold text-slate-400"
                         >
-                          <span>Abr</span>
-                          <span>5</span>
-                          <span>9</span>
-                          <span>13</span>
-                          <span>17</span>
-                          <span>21</span>
-                          <span>25</span>
-                          <span>May</span>
+                          @for (label of chart.labels || defaultChartLabels; track $index) {
+                            <span>{{ label }}</span>
+                          }
                         </div>
                       </div>
                       <div
@@ -383,7 +391,7 @@ type RilesTab = 'dashboard' | 'configurar';
                       <div
                         class="absolute inset-x-10 bottom-10 top-6 grid grid-cols-12 items-end gap-2"
                       >
-                        @for (bar of dailyBars; track bar.day) {
+                        @for (bar of dailyBars(); track bar.day) {
                           <div class="flex h-full flex-col justify-end gap-1">
                             <div
                               class="rounded-t bg-blue-500"
@@ -459,19 +467,32 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   readonly companyService = inject(CompanyService);
 
   siteContext = signal<SiteContext | null>(null);
+  dashboardData = signal<SiteDashboardData | null>(null);
+  historyRows = signal<TelemetryHistoryRow[]>([]);
   activeTab = signal<RilesTab>('dashboard');
   activeMonthId = signal('abril');
+  readonly defaultChartLabels = ['Abr', '5', '9', '13', '17', '21', '25', 'May'];
+  readonly telemetryKeys = [
+    'caudal',
+    'totalizador',
+    'nivel',
+    'ph',
+    'conductividad',
+    'temperatura',
+    'calidad_sensor_pct',
+  ];
 
   readonly tabs: { id: RilesTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: 'layers' },
     { id: 'configurar', label: 'Configurar', icon: 'build' },
   ];
 
-  readonly months: RilesMonth[] = [
+  readonly fallbackMonths: RilesMonth[] = [
     {
       id: 'abril',
       label: 'Abril 2026',
       volume: '1.420,13',
+      unit: 'm3',
       shortVolume: '1.420 m3',
       tag: 'Con flujo',
       status: 'active',
@@ -483,6 +504,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       id: 'mayo',
       label: 'Mayo 2026',
       volume: '0',
+      unit: 'm3',
       shortVolume: 'sin flujo',
       tag: 'Sin flujo',
       status: 'idle',
@@ -494,6 +516,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       id: 'junio',
       label: 'Junio 2026',
       volume: '0',
+      unit: 'm3',
       shortVolume: 'sin flujo',
       tag: 'Sin flujo',
       status: 'idle',
@@ -503,49 +526,62 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     },
   ];
 
-  selectedMonth = computed(
-    () => this.months.find((month) => month.id === this.activeMonthId()) || this.months[0],
+  readonly months = computed<RilesMonth[]>(() => this.buildMonths());
+
+  selectedMonth = computed<RilesMonth>(
+    () =>
+      this.months().find((month) => month.id === this.activeMonthId()) ||
+      this.months()[0] ||
+      this.fallbackMonths[0]!,
   );
 
   readonly kpis = computed<RilesKpi[]>(() => {
     const month = this.selectedMonth();
+    const nivel = this.metricNumber('nivel');
+    const caudal = this.metricNumber('caudal');
+    const totalizador = this.metricNumber('totalizador');
+    const calidad = this.metricNumber('calidad_sensor_pct');
+    const volume = this.volumeParts(totalizador);
     return [
       {
         label: 'Nivel camara',
-        value: month.status === 'active' ? '0,01' : '0',
+        value:
+          nivel === null ? (month.status === 'active' ? '0,01' : '0') : this.formatNumber(nivel, 3),
         unit: 'm',
-        helper: month.status === 'active' ? 'prom. mes: 0,06 m' : 'sin flujo en mes',
+        helper: month.status === 'active' ? 'con flujo en mes activo' : 'sin flujo en mes',
         icon: 'south',
         tone: 'neutral',
       },
       {
         label: 'Caudal actual',
-        value: '0',
+        value: caudal === null ? '0' : this.formatNumber(caudal, 3),
         unit: 'L/s',
-        helper: month.status === 'active' ? 'prom. mes: 0,96 L/s' : 'prom. mes: 0 L/s',
+        helper: month.status === 'active' ? 'descarga detectada' : 'sin flujo actual',
         icon: 'water_drop',
         tone: 'primary',
       },
       {
         label: 'Vol. mes activo',
-        value: month.volume,
-        unit: 'm3',
+        value: totalizador === null ? month.volume : volume.value,
+        unit: totalizador === null ? month.unit : volume.unit,
         helper: `banda: ${month.band}`,
         icon: 'inventory_2',
         tone: 'success',
       },
       {
         label: 'Calidad sensor',
-        value: month.quality,
+        value: calidad === null ? month.quality : `${this.formatNumber(calidad, 1)}%`,
         unit: '',
-        helper: 'ultima lectura: Operativo',
+        helper: this.dashboardData()?.ultima_lectura
+          ? 'ultima lectura: Operativo'
+          : 'sin lectura real',
         icon: 'badge',
         tone: 'warning',
       },
     ];
   });
 
-  readonly charts: RilesChart[] = [
+  readonly fallbackCharts: RilesChart[] = [
     {
       title: 'Nivel camara',
       subtitle: 'Nivel del agua en camara RILES (m), mes activo.',
@@ -586,7 +622,66 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     },
   ];
 
-  readonly dailyBars = [
+  readonly charts = computed<RilesChart[]>(() => {
+    const rows = this.orderedHistoryRows();
+    if (rows.length < 2) return this.fallbackCharts;
+    const labels = this.axisLabels(rows);
+    return [
+      {
+        title: 'Nivel camara',
+        subtitle: 'Nivel del agua en camara RILES (m), mes activo.',
+        heightClass: 'relative h-[320px] overflow-hidden rounded-lg bg-white',
+        labels,
+        series: [
+          {
+            label: 'Nivel (m)',
+            color: '#4f73d9',
+            points: this.linePoints(rows, 'nivel', {
+              min: 0,
+              max: 0.25,
+              fallback: this.fallbackPoint(0, 0),
+            }),
+          },
+        ],
+      },
+      {
+        title: 'Caudal descarga',
+        subtitle: 'Central + banda incertidumbre Manning, L/s.',
+        heightClass: 'relative h-[320px] overflow-hidden rounded-lg bg-white',
+        labels,
+        series: [
+          {
+            label: 'Caudal (L/s)',
+            color: '#4f73d9',
+            points: this.linePoints(rows, 'caudal', {
+              min: 0,
+              fallback: this.fallbackPoint(1, 0),
+            }),
+          },
+          {
+            label: 'Caudal min (L/s)',
+            color: '#77c66e',
+            points: this.linePoints(rows, 'caudal', {
+              min: 0,
+              scale: 0.78,
+              fallback: this.fallbackPoint(1, 1),
+            }),
+          },
+          {
+            label: 'Caudal max (L/s)',
+            color: '#f4b847',
+            points: this.linePoints(rows, 'caudal', {
+              min: 0,
+              scale: 1.22,
+              fallback: this.fallbackPoint(1, 2),
+            }),
+          },
+        ],
+      },
+    ];
+  });
+
+  readonly fallbackDailyBars: DailyBar[] = [
     { day: '29', main: 0, min: 15, max: 25 },
     { day: '30', main: 62, min: 45, max: 75 },
     { day: '1', main: 95, min: 65, max: 92 },
@@ -600,6 +695,8 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     { day: '9', main: 0, min: 15, max: 18 },
     { day: '10', main: 0, min: 15, max: 18 },
   ];
+
+  readonly dailyBars = computed<DailyBar[]>(() => this.buildDailyBars());
 
   ngOnInit(): void {
     const siteId = this.route.snapshot.paramMap.get('siteId');
@@ -625,9 +722,36 @@ export class CompanySiteRilesDetailComponent implements OnInit {
         this.companyService.selectedSiteModuleKey.set('Riles');
         this.companyService.selectedSiteTypeFilter.set(['riles']);
         this.siteContext.set(match);
+        this.refreshDashboard();
       },
       error: () => this.router.navigate(['/companies']),
     });
+  }
+
+  refreshDashboard(): void {
+    const context = this.siteContext();
+    if (!context) return;
+
+    this.companyService.getSiteDashboardData(context.site.id).subscribe({
+      next: (res) => {
+        if (res.ok) this.dashboardData.set(res.data);
+      },
+      error: () => undefined,
+    });
+
+    if (!context.site.id_serial) return;
+    this.companyService
+      .getTelemetryPreset(context.site.id_serial, {
+        preset: '30d',
+        keys: this.telemetryKeys,
+        limit: 1200,
+      })
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.historyRows.set(res.data || []);
+        },
+        error: () => undefined,
+      });
   }
 
   setTab(tab: RilesTab): void {
@@ -649,7 +773,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   monthButtonClass(monthId: string): string {
     const base =
       'inline-flex h-10 items-center gap-2 rounded-lg px-3 text-body-sm font-semibold transition-colors';
-    return this.activeMonthId() === monthId
+    return this.activeMonthId() === monthId || this.selectedMonth().id === monthId
       ? `${base} bg-cyan-700 text-white shadow-sm`
       : `${base} bg-slate-100 text-slate-600 hover:bg-slate-200`;
   }
@@ -657,7 +781,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   monthCardClass(monthId: string): string {
     const base =
       'rounded-xl border bg-white p-4 text-left shadow-sm transition-colors hover:border-cyan-300';
-    return this.activeMonthId() === monthId
+    return this.activeMonthId() === monthId || this.selectedMonth().id === monthId
       ? `${base} border-cyan-500 bg-cyan-50/40`
       : `${base} border-slate-200`;
   }
@@ -677,6 +801,231 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     if (tone === 'success') return `${base} border-emerald-200 bg-emerald-50 text-emerald-700`;
     if (tone === 'warning') return `${base} border-amber-200 bg-amber-50 text-amber-600`;
     return `${base} border-slate-200 bg-slate-50 text-slate-500`;
+  }
+
+  private metricNumber(role: string): number | null {
+    const value = this.dashboardData()?.resumen?.[role]?.valor;
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private formatNumber(value: number, maximumFractionDigits = 2): string {
+    return new Intl.NumberFormat('es-CL', { maximumFractionDigits }).format(value);
+  }
+
+  private volumeParts(valueM3: number | null): { value: string; unit: string } {
+    if (valueM3 === null) return { value: '0', unit: 'm3' };
+    if (Math.abs(valueM3) < 1) {
+      return { value: this.formatNumber(valueM3 * 1000, 2), unit: 'L' };
+    }
+    return { value: this.formatNumber(valueM3, 3), unit: 'm3' };
+  }
+
+  private orderedHistoryRows(): TelemetryHistoryRow[] {
+    return this.historyRows()
+      .filter((row) => row?.data && Object.keys(row.data).length > 0)
+      .slice()
+      .reverse();
+  }
+
+  private numericValue(row: TelemetryHistoryRow, key: string): number | null {
+    const value = row.data?.[key];
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private fallbackPoint(chartIndex: number, serieIndex: number): string {
+    return this.fallbackCharts[chartIndex]?.series[serieIndex]?.points || '';
+  }
+
+  private linePoints(
+    rows: TelemetryHistoryRow[],
+    key: string,
+    options: { min?: number; max?: number; scale?: number; fallback: string },
+  ): string {
+    const scale = options.scale ?? 1;
+    const series = rows
+      .map((row, index) => {
+        const value = this.numericValue(row, key);
+        return { index, value: value === null ? null : value * scale };
+      })
+      .filter((point): point is { index: number; value: number } => point.value !== null);
+    if (series.length < 2) return options.fallback;
+
+    const values = series.map((point) => point.value);
+    let min = options.min ?? Math.min(...values);
+    let max = options.max ?? Math.max(...values);
+    if (max === min) {
+      max += 1;
+      min -= 1;
+    }
+
+    const xMin = 55;
+    const xMax = 850;
+    const yMin = 28;
+    const yMax = 232;
+    const lastIndex = Math.max(1, rows.length - 1);
+
+    return series
+      .map((point) => {
+        const x = xMin + (point.index / lastIndex) * (xMax - xMin);
+        const normalized = Math.min(1, Math.max(0, (point.value - min) / (max - min)));
+        const y = yMax - normalized * (yMax - yMin);
+        return `${Math.round(x)},${Math.round(y)}`;
+      })
+      .join(' ');
+  }
+
+  private axisLabels(rows: TelemetryHistoryRow[]): string[] {
+    if (!rows.length) return this.defaultChartLabels;
+    const labels: string[] = [];
+    const count = Math.min(8, rows.length);
+    for (let i = 0; i < count; i++) {
+      const index = Math.round((i / Math.max(1, count - 1)) * (rows.length - 1));
+      const row = rows[index];
+      labels.push(this.shortDateLabel(row?.timestamp_completo || row?.fecha || ''));
+    }
+    return labels;
+  }
+
+  private shortDateLabel(value: string): string {
+    const date = value.includes(' ') ? value.split(' ')[0] : value;
+    const parts = date.split('-');
+    if (parts.length !== 3) return '';
+    return `${Number(parts[2])}/${Number(parts[1])}`;
+  }
+
+  private buildDailyBars(): DailyBar[] {
+    const rows = this.orderedHistoryRows();
+    if (rows.length < 2) return this.fallbackDailyBars;
+
+    const byDay = new Map<string, number[]>();
+    for (const row of rows) {
+      const day = this.dateKey(row);
+      const totalizer = this.numericValue(row, 'totalizador');
+      if (!day || totalizer === null) continue;
+      const bucket = byDay.get(day) || [];
+      bucket.push(totalizer);
+      byDay.set(day, bucket);
+    }
+
+    const deltas = Array.from(byDay.entries())
+      .map(([day, values]) => {
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+        return { day, delta: Math.max(0, max - min) };
+      })
+      .slice(-12);
+    const maxDelta = Math.max(...deltas.map((item) => item.delta), 0);
+    if (maxDelta <= 0) return this.fallbackDailyBars;
+
+    return deltas.map((item) => ({
+      day: String(Number(item.day.slice(-2))),
+      main: Math.max(4, Math.round((item.delta / maxDelta) * 100)),
+      min: 45,
+      max: 82,
+    }));
+  }
+
+  private buildMonths(): RilesMonth[] {
+    const rows = this.orderedHistoryRows();
+    if (rows.length < 2) return this.fallbackMonths;
+
+    const byMonth = new Map<string, TelemetryHistoryRow[]>();
+    for (const row of rows) {
+      const key = this.monthKey(row);
+      if (!key) continue;
+      const bucket = byMonth.get(key) || [];
+      bucket.push(row);
+      byMonth.set(key, bucket);
+    }
+
+    const months = Array.from(byMonth.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-3)
+      .map(([month, monthRows]) => this.monthSummary(month, monthRows));
+    return months.length ? months : this.fallbackMonths;
+  }
+
+  private monthSummary(month: string, rows: TelemetryHistoryRow[]): RilesMonth {
+    const totalizers = rows
+      .map((row) => this.numericValue(row, 'totalizador'))
+      .filter((value): value is number => value !== null);
+    const caudales = rows
+      .map((row) => this.numericValue(row, 'caudal'))
+      .filter((value): value is number => value !== null);
+    const qualityValues = rows
+      .map((row) => this.numericValue(row, 'calidad_sensor_pct'))
+      .filter((value): value is number => value !== null);
+    const minTotal = totalizers.length ? Math.min(...totalizers) : 0;
+    const maxTotal = totalizers.length ? Math.max(...totalizers) : 0;
+    const volumeM3 = Math.max(0, maxTotal - minTotal);
+    const volume = this.volumeParts(volumeM3);
+    const quality = qualityValues.length
+      ? qualityValues.reduce((sum, value) => sum + value, 0) / qualityValues.length
+      : 99;
+    const active = volumeM3 > 0 || caudales.some((value) => value > 0);
+
+    return {
+      id: month,
+      label: this.monthLabel(month),
+      volume: volume.value,
+      unit: volume.unit,
+      shortVolume: active ? `${volume.value} ${volume.unit}` : 'sin flujo',
+      tag: active ? 'Con flujo' : 'Sin flujo',
+      status: active ? 'active' : 'idle',
+      quality: `${this.formatNumber(quality, 1)}%`,
+      range: this.rangeLabel(rows),
+      band: this.bandLabel(volumeM3),
+    };
+  }
+
+  private dateKey(row: TelemetryHistoryRow): string {
+    const value = row.timestamp_completo || row.fecha || '';
+    return value.includes(' ') ? value.split(' ')[0] : value.slice(0, 10);
+  }
+
+  private monthKey(row: TelemetryHistoryRow): string {
+    const date = this.dateKey(row);
+    return date.length >= 7 ? date.slice(0, 7) : '';
+  }
+
+  private monthLabel(month: string): string {
+    const [year, rawMonth] = month.split('-');
+    const names = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+    const index = Number(rawMonth) - 1;
+    return `${names[index] || month} ${year || ''}`.trim();
+  }
+
+  private rangeLabel(rows: TelemetryHistoryRow[]): string {
+    const first = this.dateKey(rows[0] || ({} as TelemetryHistoryRow));
+    const last = this.dateKey(rows[rows.length - 1] || ({} as TelemetryHistoryRow));
+    return first && last ? `${first} -> ${last}` : 'sin rango';
+  }
+
+  private bandLabel(volumeM3: number): string {
+    const low = volumeM3 * 0.85;
+    const high = volumeM3 * 1.15;
+    const base = this.volumeParts(volumeM3);
+    if (base.unit === 'L') {
+      return `${this.formatNumber(low * 1000, 2)} - ${this.formatNumber(high * 1000, 2)} L`;
+    }
+    return `${this.formatNumber(low, 3)} - ${this.formatNumber(high, 3)} m3`;
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
