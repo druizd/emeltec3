@@ -146,7 +146,10 @@ form?.addEventListener('submit', async (event) => {
       setStatus('success', '¡Gracias! Recibimos tu solicitud. Te contactaremos a la brevedad.');
       form.reset();
     } else {
-      setStatus('error', 'No pudimos enviar el formulario. Intenta de nuevo o escríbenos a ventas@emeltec.cl.');
+      setStatus(
+        'error',
+        'No pudimos enviar el formulario. Intenta de nuevo o escríbenos a ventas@emeltec.cl.',
+      );
     }
   } catch (error) {
     setStatus('error', 'Error de conexión. Intenta de nuevo o escríbenos a ventas@emeltec.cl.');

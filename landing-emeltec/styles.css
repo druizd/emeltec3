@@ -1054,10 +1054,12 @@ p {
 /* Assets recortados (sin márgenes) → tamaño uniforme por altura.
    Surlat es SVG con viewBox ajustado; el resto fue trim con sharp. */
 /* 1 Vital · 2 Matthei · 3 Cachantún · 4 Surlat · 5 Generadora · 6 Cotaco · 7 CCU · 8 ECCUSA */
-.client-logo:nth-child(8n + 5) { /* Generadora: wordmark muy ancho, reducir */
+.client-logo:nth-child(8n + 5) {
+  /* Generadora: wordmark muy ancho, reducir */
   --logo-h: clamp(28px, 3.4vw, 40px);
 }
-.client-logo:nth-child(8n + 4) img { /* Surlat: subir ópticamente */
+.client-logo:nth-child(8n + 4) img {
+  /* Surlat: subir ópticamente */
   margin-bottom: 9px;
 }
 
