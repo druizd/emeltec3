@@ -680,18 +680,27 @@ function buildElectricPayload(
   const mode = inferMode(point);
   const seed = point.seed;
   const temp = point.pasteurTempC ?? 25;
+  const inputTemp = point.inputTempC ?? 25;
   const pressure = point.steamPressureBar ?? 0;
+  const product = point.productLiters ?? 0;
   const tempFactor = clamp((temp - 35) / 45, 0, 1);
   const pressureFactor = clamp(pressure / 4, 0, 1);
+  const productFactor = clamp(product / PASTEUR_BATCH_MIN_L, 0, 1.25);
+  const thermalLiftFactor = clamp((temp - inputTemp) / 45, 0, 1);
+  const pasteurizationFactor = clamp(
+    tempFactor * 0.45 + thermalLiftFactor * 0.35 + productFactor * 0.2,
+    0,
+    1.25,
+  );
 
   let kw: number;
   if (mode === 'produccion')
-    kw = 5.6 + tempFactor * 3.6 + pressureFactor * 2.2 + range(seed, 'kwp', -0.3, 0.6);
+    kw = 10.8 + pasteurizationFactor * 8.5 + pressureFactor * 2.6 + range(seed, 'kwp', -0.8, 1.8);
   else if (mode === 'precalentamiento')
-    kw = 8.2 + tempFactor * 4.8 + pressureFactor * 2.6 + jitter(seed, 'kwh', 0.5);
-  else if (mode === 'lavado') kw = 2.4 + range(seed, 'kwl', 0.1, 1.4);
-  else kw = 0.45 + range(seed, 'kws', 0, 0.8);
-  kw = round(clamp(kw, 0.2, 16), 3);
+    kw = 5.2 + tempFactor * 4.2 + pressureFactor * 2.3 + jitter(seed, 'kwh', 0.6);
+  else if (mode === 'lavado') kw = 2.2 + productFactor * 1.5 + range(seed, 'kwl', 0.1, 1.2);
+  else kw = 0.45 + range(seed, 'kws', 0, 0.65);
+  kw = round(clamp(kw, 0.2, 28), 3);
 
   const fpBase =
     mode === 'standby' ? 0.72 : mode === 'lavado' ? 0.84 : mode === 'precalentamiento' ? 0.88 : 0.9;

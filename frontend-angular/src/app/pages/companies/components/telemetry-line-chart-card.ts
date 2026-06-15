@@ -670,7 +670,20 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   private xTicks(bounds: { min: number; max: number }): number[] {
     const hour = 60 * 60 * 1000;
     const twelveHours = 12 * hour;
+    const span = bounds.max - bounds.min;
     const ticks: number[] = [];
+
+    if (span <= 3 * hour + 60_000) {
+      const halfHour = 30 * 60 * 1000;
+      const firstTick = Math.ceil(bounds.min / halfHour) * halfHour;
+      ticks.push(bounds.min);
+      for (let value = firstTick; value < bounds.max; value += halfHour) {
+        if (value > bounds.min) ticks.push(value);
+      }
+      ticks.push(bounds.max);
+      return Array.from(new Set(ticks)).sort((a, b) => a - b);
+    }
+
     const firstHour = Math.floor(bounds.min / hour) * hour;
 
     for (let value = firstHour; value <= bounds.max; value += hour) {
