@@ -193,11 +193,53 @@ const ELECTRIC_MAPPINGS: SimMapping[] = [
     role: 'p_activa_kw',
   },
   {
+    id: 'MSIM_E_KW1',
+    alias: 'Potencia activa L1',
+    d1: 'p_activa_l1',
+    unit: 'kW',
+    role: 'p_activa_l1',
+  },
+  {
+    id: 'MSIM_E_KW2',
+    alias: 'Potencia activa L2',
+    d1: 'p_activa_l2',
+    unit: 'kW',
+    role: 'p_activa_l2',
+  },
+  {
+    id: 'MSIM_E_KW3',
+    alias: 'Potencia activa L3',
+    d1: 'p_activa_l3',
+    unit: 'kW',
+    role: 'p_activa_l3',
+  },
+  {
     id: 'MSIM_E_KVAR',
     alias: 'Potencia reactiva total',
     d1: 'p_reactiva_kvar',
     unit: 'kVAr',
     role: 'p_reactiva_kvar',
+  },
+  {
+    id: 'MSIM_E_KVAR1',
+    alias: 'Potencia reactiva L1',
+    d1: 'p_reactiva_l1',
+    unit: 'kVAr',
+    role: 'p_reactiva_l1',
+  },
+  {
+    id: 'MSIM_E_KVAR2',
+    alias: 'Potencia reactiva L2',
+    d1: 'p_reactiva_l2',
+    unit: 'kVAr',
+    role: 'p_reactiva_l2',
+  },
+  {
+    id: 'MSIM_E_KVAR3',
+    alias: 'Potencia reactiva L3',
+    d1: 'p_reactiva_l3',
+    unit: 'kVAr',
+    role: 'p_reactiva_l3',
   },
   {
     id: 'MSIM_E_THD1',
@@ -219,6 +261,27 @@ const ELECTRIC_MAPPINGS: SimMapping[] = [
     d1: 'thd_corriente_l3',
     unit: '%',
     role: 'thd_corriente_l3',
+  },
+  {
+    id: 'MSIM_E_THDU1',
+    alias: 'THD tension L1',
+    d1: 'thd_tension_l1',
+    unit: '%',
+    role: 'thd_tension_l1',
+  },
+  {
+    id: 'MSIM_E_THDU2',
+    alias: 'THD tension L2',
+    d1: 'thd_tension_l2',
+    unit: '%',
+    role: 'thd_tension_l2',
+  },
+  {
+    id: 'MSIM_E_THDU3',
+    alias: 'THD tension L3',
+    d1: 'thd_tension_l3',
+    unit: '%',
+    role: 'thd_tension_l3',
   },
   { id: 'MSIM_E_EST', alias: 'Estado', d1: 'estado', unit: null, role: 'estado' },
   {
@@ -428,9 +491,14 @@ async function loadSourceRows(config: ReturnType<typeof workerConfig>): Promise<
   const result = await query<EquipoRow>(
     `
     SELECT time, received_at, id_serial, data
-    FROM equipo
-    WHERE id_serial = $1
-      AND time >= NOW() - ($2::int || ' minutes')::interval
+    FROM (
+      SELECT time, received_at, id_serial, data
+      FROM equipo
+      WHERE id_serial = $1
+        AND time >= NOW() - ($2::int || ' minutes')::interval
+      ORDER BY time DESC
+      LIMIT $3
+    ) recent_source_rows
     ORDER BY time ASC
     LIMIT $3
     `,
@@ -541,6 +609,7 @@ async function prepareTargetSite(opts: {
     );
     return null;
   }
+  await upsertMappings(siteId, mappings);
   return { site, serial, mappings };
 }
 
@@ -624,21 +693,37 @@ function buildElectricPayload(
 
   const fpBase =
     mode === 'standby' ? 0.72 : mode === 'lavado' ? 0.84 : mode === 'precalentamiento' ? 0.88 : 0.9;
-  const fp = round(clamp(fpBase + range(seed, 'fp', -0.03, 0.055), 0.68, 0.97), 3);
+  const fpSeed = clamp(fpBase + range(seed, 'fp', -0.03, 0.055), 0.68, 0.97);
+  const fpPhases: [number, number, number] = [
+    round(clamp(fpSeed + 0.018 + jitter(seed, 'fpl1', 0.014), 0.65, 0.99), 3),
+    round(clamp(fpSeed - 0.045 + jitter(seed, 'fpl2', 0.016), 0.65, 0.98), 3),
+    round(clamp(fpSeed - 0.012 + jitter(seed, 'fpl3', 0.014), 0.65, 0.98), 3),
+  ];
+  const fp = round(clamp((fpPhases[0] + fpPhases[1] + fpPhases[2]) / 3, 0.68, 0.97), 3);
   const kvar = round(kw * Math.tan(Math.acos(clamp(fp, 0.01, 0.99))), 3);
   const voltageBase = 392 + jitter(seed, 'vbase', 3.5);
-  const voltages = [
-    round(voltageBase + jitter(seed, 'v1', 1.8), 1),
-    round(voltageBase + jitter(seed, 'v2', 2.1), 1),
-    round(voltageBase + jitter(seed, 'v3', 2.0), 1),
+  const voltages: [number, number, number] = [
+    round(voltageBase + 2.8 + jitter(seed, 'v1', 1.8), 1),
+    round(voltageBase - 2.2 + jitter(seed, 'v2', 2.1), 1),
+    round(voltageBase + 0.4 + jitter(seed, 'v3', 2.0), 1),
   ];
   const avgVoltage = voltages.reduce((sum, value) => sum + value, 0) / voltages.length;
   const currentBase = (kw * 1000) / (Math.sqrt(3) * avgVoltage * Math.max(fp, 0.68));
-  const currents = [
-    round(currentBase * (1 + jitter(seed, 'i1', 0.055)), 2),
-    round(currentBase * (1 + jitter(seed, 'i2', 0.055)), 2),
-    round(currentBase * (1 + jitter(seed, 'i3', 0.055)), 2),
+  const currents: [number, number, number] = [
+    round(currentBase * (1.08 + jitter(seed, 'i1', 0.055)), 2),
+    round(currentBase * (0.94 + jitter(seed, 'i2', 0.055)), 2),
+    round(currentBase * (1.01 + jitter(seed, 'i3', 0.055)), 2),
   ];
+  const activePhases: [number, number, number] = (() => {
+    const l1 = clamp(0.37 + jitter(seed, 'pal1', 0.028), 0.3, 0.44);
+    const l2 = clamp(0.3 + jitter(seed, 'pal2', 0.026), 0.24, 0.37);
+    const l3 = clamp(1 - l1 - l2, 0.24, 0.4);
+    const sum = l1 + l2 + l3;
+    return [round((kw * l1) / sum, 3), round((kw * l2) / sum, 3), round((kw * l3) / sum, 3)];
+  })();
+  const reactivePhases = activePhases.map((active, index) =>
+    round(active * Math.tan(Math.acos(clamp(fpPhases[index]!, 0.01, 0.99))), 3),
+  ) as [number, number, number];
 
   const elapsedHours =
     acc.lastTime === null
@@ -653,15 +738,26 @@ function buildElectricPayload(
   const aumentoFactura = cargoTotal > 0 ? round((cargoFactorPotencia / cargoTotal) * 100, 1) : 0;
   const cumplimiento = round(clamp((fp / 0.93) * 100, 0, 100), 1);
   const thdBase = mode === 'standby' ? 1.4 : mode === 'lavado' ? 2.6 : 3.4;
+  const thdCurrent: [number, number, number] = [
+    round(clamp(thdBase + 0.35 + jitter(seed, 'thd1', 0.7), 0.4, 7.8), 2),
+    round(clamp(thdBase - 0.25 + jitter(seed, 'thd2', 0.65), 0.4, 7.8), 2),
+    round(clamp(thdBase + 0.75 + jitter(seed, 'thd3', 0.75), 0.4, 7.8), 2),
+  ];
+  const thdVoltageBase = mode === 'standby' ? 0.8 : mode === 'lavado' ? 1.15 : 1.45;
+  const thdVoltage: [number, number, number] = [
+    round(clamp(thdVoltageBase + 0.18 + jitter(seed, 'thdu1', 0.28), 0.2, 4.5), 2),
+    round(clamp(thdVoltageBase - 0.12 + jitter(seed, 'thdu2', 0.25), 0.2, 4.5), 2),
+    round(clamp(thdVoltageBase + 0.34 + jitter(seed, 'thdu3', 0.3), 0.2, 4.5), 2),
+  ];
 
   return {
     energia: acc.activeKwh,
     energia_activa_kwh: acc.activeKwh,
     e_reactiva_kvarh: acc.reactiveKvarh,
     fp_total: fp,
-    factor_potencia_l1: round(clamp(fp + jitter(seed, 'fpl1', 0.018), 0.65, 0.98), 3),
-    factor_potencia_l2: round(clamp(fp + jitter(seed, 'fpl2', 0.018), 0.65, 0.98), 3),
-    factor_potencia_l3: round(clamp(fp + jitter(seed, 'fpl3', 0.018), 0.65, 0.98), 3),
+    factor_potencia_l1: fpPhases[0],
+    factor_potencia_l2: fpPhases[1],
+    factor_potencia_l3: fpPhases[2],
     voltaje_l1: voltages[0],
     voltaje_l2: voltages[1],
     voltaje_l3: voltages[2],
@@ -670,9 +766,18 @@ function buildElectricPayload(
     corriente_l3: currents[2],
     p_activa_kw: kw,
     p_reactiva_kvar: kvar,
-    thd_corriente_l1: round(clamp(thdBase + jitter(seed, 'thd1', 0.7), 0.4, 7.8), 2),
-    thd_corriente_l2: round(clamp(thdBase + jitter(seed, 'thd2', 0.7), 0.4, 7.8), 2),
-    thd_corriente_l3: round(clamp(thdBase + jitter(seed, 'thd3', 0.7), 0.4, 7.8), 2),
+    p_activa_l1: activePhases[0],
+    p_activa_l2: activePhases[1],
+    p_activa_l3: activePhases[2],
+    p_reactiva_l1: reactivePhases[0],
+    p_reactiva_l2: reactivePhases[1],
+    p_reactiva_l3: reactivePhases[2],
+    thd_corriente_l1: thdCurrent[0],
+    thd_corriente_l2: thdCurrent[1],
+    thd_corriente_l3: thdCurrent[2],
+    thd_tension_l1: thdVoltage[0],
+    thd_tension_l2: thdVoltage[1],
+    thd_tension_l3: thdVoltage[2],
     estado: mode,
     temperatura: round(28 + kw * 0.85 + jitter(seed, 'boardt', 1.8), 1),
     cargo_fp: cargoFactorPotencia,
@@ -819,6 +924,20 @@ async function insertVirtualRow(opts: {
   const { time, receivedAt, serial, data, dryRun } = opts;
   if (dryRun) return false;
   const received = toDate(receivedAt) ?? new Date();
+  const existing = await query(
+    `
+    UPDATE equipo
+    SET data = equipo.data || $3::jsonb,
+        received_at = COALESCE(equipo.received_at, $4::timestamptz)
+    WHERE time = $1::timestamptz
+      AND id_serial = $2::varchar(50)
+      AND data->>'_profile' = $5
+    `,
+    [time.toISOString(), serial, data, received.toISOString(), PROFILE],
+    { label: 'mathei_sim__update_virtual' },
+  );
+  if ((existing.rowCount ?? 0) > 0) return false;
+
   const result = await query(
     `
     INSERT INTO equipo (time, id_serial, data, received_at)

@@ -24,6 +24,7 @@ Chart.register(...registerables);
 type TimePoint = { x: number; y: number };
 type ChartPointValue = TimePoint | null;
 type ReferenceTone = 'min' | 'target' | 'max' | 'neutral';
+type SeriesAggregation = 'avg' | 'last' | 'min' | 'max';
 
 export interface TelemetryReferenceLine {
   label: string;
@@ -38,6 +39,7 @@ export interface TelemetryChartSeries {
   unit?: string;
   precision?: number;
   fill?: boolean;
+  aggregation?: SeriesAggregation;
 }
 
 export interface TelemetryLineChart {
@@ -52,6 +54,12 @@ export interface TelemetryLineChart {
   emptyText?: string;
   note?: string;
   showLatestBadge?: boolean;
+  compact?: boolean;
+  maxVisiblePoints?: number;
+  bucketMinutes?: number;
+  extendToNow?: boolean;
+  xMin?: number;
+  xMax?: number;
 }
 
 @Component({
@@ -59,7 +67,11 @@ export interface TelemetryLineChart {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <article class="chart-card" [ngClass]="'tone-' + (chart.tone || 'blue')">
+    <article
+      class="chart-card"
+      [class.chart-card--compact]="chart.compact"
+      [ngClass]="'tone-' + (chart.tone || 'blue')"
+    >
       <div class="chart-head">
         <div class="min-w-0">
           <p>{{ chart.subtitle || 'Historico' }}</p>
@@ -92,8 +104,7 @@ export interface TelemetryLineChart {
       .chart-card {
         position: relative;
         display: flex;
-        min-height: 340px;
-        height: 100%;
+        min-height: 0;
         flex-direction: column;
         overflow: hidden;
         border: 1px solid #e2e8f0;
@@ -167,14 +178,20 @@ export interface TelemetryLineChart {
 
       .chart-box {
         position: relative;
-        flex: 1;
-        min-height: 260px;
+        flex: none;
+        height: 250px;
+        min-height: 0;
         padding: 4px 22px 16px;
+      }
+
+      .chart-card--compact .chart-box {
+        height: 205px;
       }
 
       canvas {
         display: block;
         height: 100% !important;
+        max-height: 100%;
         width: 100% !important;
       }
 
@@ -185,7 +202,6 @@ export interface TelemetryLineChart {
       .empty-state {
         display: grid;
         height: 100%;
-        min-height: 250px;
         place-items: center;
         align-content: center;
         gap: 6px;
@@ -273,6 +289,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     canvas: HTMLCanvasElement,
   ): ChartDataset<'line', ChartPointValue[]>[] {
     return this.chart.series.map((series, index) => {
+      const style = this.seriesStyle(series.label, index);
       const gradient = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 360);
       gradient.addColorStop(0, this.withAlpha(series.color, series.fill ? 0.13 : 0));
       gradient.addColorStop(0.58, this.withAlpha(series.color, series.fill ? 0.055 : 0));
@@ -280,30 +297,53 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
 
       return {
         label: series.label,
-        data: this.seriesData(series.values),
+        data: this.seriesData(series),
         borderColor: series.color,
         backgroundColor: gradient,
-        borderWidth: index === 0 ? 2.4 : 2,
+        borderWidth: style.borderWidth,
+        borderDash: style.borderDash,
+        borderCapStyle: 'round',
+        borderJoinStyle: 'round',
         fill: Boolean(series.fill),
-        tension: 0.16,
+        tension: style.tension,
+        cubicInterpolationMode: 'monotone',
+        normalized: true,
         pointRadius: 0,
-        pointHoverRadius: 4,
+        pointHoverRadius: style.pointHoverRadius,
         pointHitRadius: 14,
         pointBackgroundColor: '#ffffff',
         pointBorderColor: series.color,
-        pointBorderWidth: 2,
-        pointStyle: 'circle',
+        pointBorderWidth: style.pointBorderWidth,
+        pointStyle: style.pointStyle,
         spanGaps: true,
-        order: 1,
+        order: style.order,
       };
     });
   }
 
-  private seriesData(values: (number | null)[]): ChartPointValue[] {
-    return values.map((value, index) => {
+  private seriesData(series: TelemetryChartSeries): ChartPointValue[] {
+    const values = series.values;
+    if (this.chart.bucketMinutes) return this.bucketedSeriesData(series);
+
+    const points = this.displayIndexes().map((index) => {
+      const value = values[index];
       const timestamp = this.chart.timestamps[index];
       if (!Number.isFinite(value) || !Number.isFinite(timestamp)) return null;
       return { x: Number(timestamp), y: Number(value) };
+    });
+
+    return this.extendPointsToNow(points);
+  }
+
+  private bucketedSeriesData(series: TelemetryChartSeries): ChartPointValue[] {
+    const values = series.values;
+    let lastValue: number | null = null;
+    return this.bucketTimeline().map((bucket) => {
+      const value = bucket.extension
+        ? lastValue
+        : this.aggregateBucketValues(values, bucket.indexes, series.aggregation ?? 'avg');
+      if (typeof value === 'number') lastValue = value;
+      return typeof value === 'number' ? { x: bucket.x, y: value } : null;
     });
   }
 
@@ -351,6 +391,9 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
           type: 'linear',
           min: xBounds.min,
           max: xBounds.max,
+          afterBuildTicks: (scale) => {
+            scale.ticks = this.xTicks(xBounds).map((value) => ({ value }));
+          },
           grid: {
             color: '#e7ecf3',
             drawTicks: false,
@@ -411,6 +454,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
             },
             filter: (item) => (item.datasetIndex ?? 0) < this.chart.series.length,
             usePointStyle: true,
+            padding: 18,
           },
         },
         tooltip: {
@@ -436,6 +480,8 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
           padding: 12,
           caretPadding: 8,
           boxPadding: 4,
+          itemSort: (a, b) =>
+            this.tooltipOrder(a.dataset.label) - this.tooltipOrder(b.dataset.label),
           callbacks: {
             title: (items) => this.formatTooltipTimestamp(Number(items[0]?.parsed?.x)),
             label: (item) => this.tooltipLabel(item),
@@ -510,7 +556,13 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   }
 
   private xBounds(): { min: number; max: number } {
-    const timestamps = this.chart.timestamps.filter(Number.isFinite);
+    if (Number.isFinite(this.chart.xMin) && Number.isFinite(this.chart.xMax)) {
+      const min = Number(this.chart.xMin);
+      const max = Number(this.chart.xMax);
+      if (max > min) return { min, max };
+    }
+
+    const timestamps = this.plotTimestamps();
     const min = Math.min(...timestamps);
     const max = Math.max(...timestamps);
     if (!Number.isFinite(min) || !Number.isFinite(max)) {
@@ -519,6 +571,173 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     }
     if (min === max) return { min: min - 30 * 60 * 1000, max: max + 30 * 60 * 1000 };
     return { min, max };
+  }
+
+  private plotTimestamps(): number[] {
+    if (this.chart.bucketMinutes) return this.bucketTimeline().map((bucket) => bucket.x);
+    const timestamps = this.displayIndexes()
+      .map((index) => this.chart.timestamps[index])
+      .filter(Number.isFinite);
+    const now = Date.now();
+    const latest = this.latestRawTimestamp();
+    if (latest !== null && this.shouldExtendToNow(latest, now)) timestamps.push(now);
+    return timestamps;
+  }
+
+  private bucketTimeline(): { x: number; indexes: number[]; extension?: boolean }[] {
+    const bucketMs = Math.max(1, this.chart.bucketMinutes ?? 60) * 60_000;
+    const buckets = new Map<number, number[]>();
+
+    for (let index = 0; index < this.chart.timestamps.length; index += 1) {
+      const timestamp = this.chart.timestamps[index];
+      if (!Number.isFinite(timestamp)) continue;
+      const bucket = Math.floor(Number(timestamp) / bucketMs) * bucketMs;
+      const indexes = buckets.get(bucket) || [];
+      indexes.push(index);
+      buckets.set(bucket, indexes);
+    }
+
+    let timeline: { x: number; indexes: number[]; extension?: boolean }[] = Array.from(
+      buckets.entries(),
+    )
+      .sort(([a], [b]) => a - b)
+      .map(([x, indexes]) => ({ x, indexes }));
+
+    const latest = this.latestRawTimestamp();
+    const now = Date.now();
+    if (latest !== null && this.shouldExtendToNow(latest, now)) {
+      const last = timeline[timeline.length - 1];
+      if (!last || now - last.x > 60_000) timeline.push({ x: now, indexes: [], extension: true });
+    }
+
+    const maxPoints = this.chart.maxVisiblePoints ?? (this.chart.compact ? 180 : 280);
+    if (timeline.length <= maxPoints) return timeline;
+
+    const selected = new Set<number>();
+    const last = timeline.length - 1;
+    for (let index = 0; index < maxPoints; index += 1) {
+      selected.add(Math.round((index * last) / (maxPoints - 1)));
+    }
+    if (timeline.length) selected.add(timeline.length - 1);
+    timeline = Array.from(selected)
+      .sort((a, b) => a - b)
+      .map((index) => timeline[index]!);
+
+    return timeline;
+  }
+
+  private aggregateBucketValues(
+    values: (number | null)[],
+    indexes: number[],
+    aggregation: SeriesAggregation,
+  ): number | null {
+    const finite = indexes
+      .map((index) => values[index])
+      .filter((value): value is number => Number.isFinite(value));
+    if (!finite.length) return null;
+    if (aggregation === 'last') return finite[finite.length - 1]!;
+    if (aggregation === 'min') return Math.min(...finite);
+    if (aggregation === 'max') return Math.max(...finite);
+    return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+  }
+
+  private extendPointsToNow(points: ChartPointValue[]): ChartPointValue[] {
+    const latest = this.latestRawTimestamp();
+    const now = Date.now();
+    if (latest === null || !this.shouldExtendToNow(latest, now)) return points;
+    const last = [...points]
+      .reverse()
+      .find((point): point is TimePoint => this.pointY(point) !== null);
+    if (!last || now - last.x <= 60_000) return points;
+    return [...points, { x: now, y: last.y }];
+  }
+
+  private latestRawTimestamp(): number | null {
+    const timestamps = this.chart.timestamps.filter(Number.isFinite);
+    if (!timestamps.length) return null;
+    return Math.max(...timestamps);
+  }
+
+  private shouldExtendToNow(latestTimestamp: number, now: number): boolean {
+    if (!this.chart.extendToNow || now <= latestTimestamp) return false;
+    const bucketMs = Math.max(30 * 60_000, (this.chart.bucketMinutes ?? 60) * 60_000 * 1.5);
+    return (
+      now - latestTimestamp <= bucketMs &&
+      this.localDateKey(latestTimestamp) === this.localDateKey(now)
+    );
+  }
+
+  private xTicks(bounds: { min: number; max: number }): number[] {
+    const hour = 60 * 60 * 1000;
+    const twelveHours = 12 * hour;
+    const ticks: number[] = [];
+    const firstHour = Math.floor(bounds.min / hour) * hour;
+
+    for (let value = firstHour; value <= bounds.max; value += hour) {
+      const time = this.localTimeParts(value);
+      if (time.minute === '00' && (time.hour === '00' || time.hour === '12')) ticks.push(value);
+    }
+
+    if (!ticks.length) ticks.push(bounds.min);
+    if (ticks[0]! - bounds.min > twelveHours * 0.6) ticks.unshift(bounds.min);
+    if (Math.abs(ticks[ticks.length - 1]! - bounds.max) > hour) {
+      ticks.push(bounds.max);
+    }
+    return Array.from(new Set(ticks)).sort((a, b) => a - b);
+  }
+
+  private displayIndexes(): number[] {
+    const timestamps = this.chart.timestamps;
+    const maxPoints = this.chart.maxVisiblePoints ?? (this.chart.compact ? 180 : 280);
+    const validIndexes = timestamps
+      .map((timestamp, index) => (Number.isFinite(timestamp) ? index : -1))
+      .filter((index) => index >= 0);
+
+    if (validIndexes.length <= maxPoints) return validIndexes;
+
+    const selected = new Set<number>();
+    const last = validIndexes.length - 1;
+    for (let index = 0; index < maxPoints; index += 1) {
+      selected.add(validIndexes[Math.round((index * last) / (maxPoints - 1))]!);
+    }
+    return Array.from(selected).sort((a, b) => a - b);
+  }
+
+  private seriesStyle(
+    label: string,
+    index: number,
+  ): {
+    borderWidth: number;
+    borderDash: number[];
+    pointHoverRadius: number;
+    pointBorderWidth: number;
+    pointStyle: 'circle' | 'triangle' | 'rectRot' | 'rectRounded';
+    tension: number;
+    order: number;
+  } {
+    const normalized = label.toLocaleLowerCase('es-CL');
+    const isTotal = normalized.includes('total') || normalized.includes('principal');
+    const isMin = normalized.includes('min');
+    const isMax = normalized.includes('max');
+    const dashPatterns = [[], [8, 5], [2, 5], [10, 4, 2, 4]];
+    const pointStyles = ['circle', 'triangle', 'rectRot', 'rectRounded'] as const;
+
+    return {
+      borderWidth: isTotal ? 3.1 : index === 0 ? 2.45 : 2.15,
+      borderDash: isMin ? [7, 5] : isMax ? [2, 5] : dashPatterns[index % dashPatterns.length],
+      pointHoverRadius: isTotal ? 5.5 : 4.6,
+      pointBorderWidth: isTotal ? 2.4 : 2,
+      pointStyle: pointStyles[index % pointStyles.length],
+      tension: isTotal ? 0.2 : 0.28,
+      order: isTotal ? 3 : 2,
+    };
+  }
+
+  private tooltipOrder(label?: string): number {
+    const normalized = (label || '').toLocaleLowerCase('es-CL');
+    if (normalized.includes('total')) return -1;
+    if (normalized.includes('principal')) return -1;
+    return 0;
   }
 
   private visibleYBounds(): { min: number; max: number } {
@@ -593,7 +812,8 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     const day = parts.find((part) => part.type === 'day')?.value || '';
     const hour = parts.find((part) => part.type === 'hour')?.value || '';
     const minute = parts.find((part) => part.type === 'minute')?.value || '';
-    return hour === '00' && minute === '00' ? String(Number(day)) : `${hour}:${minute}`;
+    if (hour === '00' && minute === '00' && day) return `${Number(day)} 00:00`;
+    return `${hour}:${minute}`;
   }
 
   private formatTooltipTimestamp(timestampMs: number): string {
@@ -611,6 +831,33 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     })
       .format(new Date(timestampMs))
       .replace(/\./g, '');
+  }
+
+  private localDateKey(timestampMs: number): string {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date(timestampMs));
+    const year = parts.find((part) => part.type === 'year')?.value || '';
+    const month = parts.find((part) => part.type === 'month')?.value || '';
+    const day = parts.find((part) => part.type === 'day')?.value || '';
+    return `${year}-${month}-${day}`;
+  }
+
+  private localTimeParts(timestampMs: number): { hour: string; minute: string } {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      hour12: false,
+    }).formatToParts(new Date(timestampMs));
+    return {
+      hour: parts.find((part) => part.type === 'hour')?.value || '',
+      minute: parts.find((part) => part.type === 'minute')?.value || '',
+    };
   }
 
   private formatValue(value: number, series?: TelemetryChartSeries): string {
