@@ -69,6 +69,8 @@ services:
       PORT: 3000
       CSVCONSUMER_HOST: csvconsumer
       CSVCONSUMER_PORT: 50051
+      FTPCONSUMER_HOST: ftpconsumer
+      FTPCONSUMER_PORT: 50061
       AUTH_API_URL: http://auth-api:3001
     depends_on:
       timescaledb:
