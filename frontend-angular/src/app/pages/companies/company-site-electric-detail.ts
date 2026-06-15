@@ -35,6 +35,9 @@ interface ElectricChart extends TelemetryLineChart {
 
 type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
 
+const ELECTRIC_REALTIME_WINDOW_MS = 3 * 60 * 60 * 1000;
+const ELECTRIC_BUCKET_MINUTES = 1;
+
 @Component({
   selector: 'app-company-site-electric-detail',
   standalone: true,
@@ -335,9 +338,14 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   ];
 
   readonly charts = computed<ElectricChart[]>(() => {
-    const rows = this.orderedHistoryRows();
+    const allRows = this.orderedHistoryRows();
+    const allTimestamps = allRows.map((row) => this.rowTimestampMs(row));
+    const xRange = this.selectedChartRange(allTimestamps);
+    const rows = allRows.filter((row) => {
+      const timestamp = this.rowTimestampMs(row);
+      return Number.isFinite(timestamp) && timestamp >= xRange.xMin && timestamp <= xRange.xMax;
+    });
     const timestamps = rows.map((row) => this.rowTimestampMs(row));
-    const xRange = this.selectedChartRange(timestamps);
     return [
       {
         title: 'Consumo de Energia (kWh)',
@@ -345,7 +353,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         tone: 'orange',
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         emptyText: 'Sin lecturas de energia para el rango seleccionado.',
         maxVisiblePoints: 260,
@@ -373,12 +381,36 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         ],
       },
       {
+        title: 'Potencia instantanea (kW)',
+        subtitle: 'Demanda electrica en tiempo real',
+        tone: 'orange',
+        timestamps,
+        ...xRange,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
+        extendToNow: true,
+        min: 0,
+        showLatestBadge: true,
+        emptyText: 'Sin lecturas de potencia instantanea para el rango seleccionado.',
+        maxVisiblePoints: 260,
+        series: [
+          this.chartSeries(rows, 'p_activa_kw', 'Potencia Activa Total', '#f97316', 'kW', 2, true),
+          this.chartSeries(
+            rows,
+            'p_reactiva_kvar',
+            'Potencia Reactiva Total',
+            '#7c3aed',
+            'kVAr',
+            2,
+          ),
+        ],
+      },
+      {
         title: 'Factor de Potencia',
         subtitle: 'Relacion potencia activa / aparente (cos phi)',
         tone: 'purple',
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         min: 0.65,
         max: 1,
@@ -398,7 +430,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         tone: 'blue',
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas THD para el rango seleccionado.',
@@ -418,7 +450,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         compact: true,
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas THD de tension para el rango seleccionado.',
@@ -437,7 +469,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         compact: true,
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         emptyText: 'Sin lecturas de voltaje para el rango seleccionado.',
         series: [
@@ -454,7 +486,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         compact: true,
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas de corriente para el rango seleccionado.',
@@ -472,7 +504,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         compact: true,
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas de potencia activa para el rango seleccionado.',
@@ -490,7 +522,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         compact: true,
         timestamps,
         ...xRange,
-        bucketMinutes: 60,
+        bucketMinutes: ELECTRIC_BUCKET_MINUTES,
         extendToNow: true,
         emptyText: 'Sin lecturas de potencia reactiva para el rango seleccionado.',
         series: [
@@ -662,25 +694,24 @@ export class CompanySiteElectricDetailComponent implements OnInit {
 
   private selectedChartRange(timestamps: number[]): { xMin: number; xMax: number } {
     const selected = this.selectedDateRangeMs();
-    const selectedSpanMs = selected.xMax - selected.xMin;
-    if (selectedSpanMs <= 48 * 60 * 60 * 1000) return selected;
+    const now = Date.now();
+    const selectedIncludesNow = selected.xMin <= now && now <= selected.xMax;
+    const finite = timestamps
+      .filter(
+        (timestamp) =>
+          Number.isFinite(timestamp) && timestamp >= selected.xMin && timestamp <= selected.xMax,
+      )
+      .sort((a, b) => a - b);
 
-    const finite = timestamps.filter(Number.isFinite).sort((a, b) => a - b);
-    if (finite.length) {
-      const now = Date.now();
-      const minData = finite[0]!;
-      const maxData = finite[finite.length - 1]!;
-      const shouldEndNow = this.dateTo() === this.toDateInputValue(new Date()) && now > maxData;
-      const maxPoint = shouldEndNow ? now : maxData;
-      const xMin = this.floorLocalHalfDay(minData);
-      const xMax = shouldEndNow ? maxPoint : this.ceilLocalHalfDay(maxPoint);
-      return {
-        xMin,
-        xMax: xMax > xMin ? xMax : xMin + 12 * 60 * 60 * 1000,
-      };
-    }
-
-    return selected;
+    const latestData = finite.at(-1) ?? null;
+    const rawEnd =
+      latestData !== null && !selectedIncludesNow ? latestData : Math.max(latestData ?? 0, now);
+    const xMax = Math.min(Math.max(rawEnd, selected.xMin), selected.xMax);
+    const xMin = Math.max(selected.xMin, xMax - ELECTRIC_REALTIME_WINDOW_MS);
+    return {
+      xMin,
+      xMax: xMax > xMin ? xMax : xMin + 30 * 60 * 1000,
+    };
   }
 
   private selectedDateRangeMs(): { xMin: number; xMax: number } {
@@ -699,19 +730,6 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 2500;
     const spanHours = (end - start) / 3_600_000;
     return spanHours <= 48 ? undefined : 5000;
-  }
-
-  private floorLocalHalfDay(timestampMs: number): number {
-    const date = new Date(timestampMs);
-    const hour = date.getHours();
-    date.setHours(hour < 12 ? 0 : 12, 0, 0, 0);
-    return date.getTime();
-  }
-
-  private ceilLocalHalfDay(timestampMs: number): number {
-    const floor = this.floorLocalHalfDay(timestampMs);
-    if (floor === timestampMs) return floor;
-    return floor + 12 * 60 * 60 * 1000;
   }
 
   private orderedHistoryRows(): TelemetryHistoryRow[] {
