@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arquitectura y flujo de datos — Emeltec Cloud</title>
+    <style>
+      :root {
+        --teal-400: #0dafbd;
+        --teal-500: #0899a5;
+        --teal-700: #04606a;
+        --bg-body: #f0f2f5;
+        --bg-surface: #ffffff;
+        --bg-subtle: #f8fafc;
+        --border-default: #e2e8f0;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --ok: #22c55e;
+        --warn: #f59e0b;
+        --proc: #6366f1;
+        --field: #f97316;
+        --font-body: 'DM Sans', system-ui, -apple-system, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg-body);
+        color: var(--text-primary);
+        font-family: var(--font-body);
+        line-height: 1.5;
+        padding: 40px 24px 72px;
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      header.page {
+        margin-bottom: 32px;
+      }
+      .eyebrow {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      h1 {
+        font-size: 28px;
+        font-weight: 700;
+        margin-top: 6px;
+        color: var(--text-primary);
+      }
+      header.page p {
+        margin-top: 8px;
+        color: var(--text-secondary);
+        max-width: 70ch;
+        font-size: 14px;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin: 24px 0 8px;
+        padding: 14px 16px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-default);
+        border-radius: 10px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+      .legend .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+      }
+      .legend .ln {
+        width: 28px;
+        height: 0;
+        border-top: 2px solid var(--teal-400);
+      }
+      .legend .ln.dash {
+        border-top-style: dashed;
+        border-color: var(--text-muted);
+      }
+
+      .flow {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+      .zone {
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        background: var(--bg-surface);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+      }
+      .zone > .zone-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--bg-subtle);
+        border-bottom: 1px solid var(--border-default);
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.02em;
+      }
+      .zone .zone-head .tag {
+        margin-left: auto;
+        font: 500 11px var(--font-mono);
+        color: var(--text-muted);
+      }
+      .zone-body {
+        padding: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+        gap: 12px;
+      }
+
+      .node {
+        border: 1px solid var(--border-default);
+        border-left: 3px solid var(--teal-400);
+        border-radius: 8px;
+        padding: 12px 14px;
+        background: var(--bg-surface);
+      }
+      .node.core {
+        border-left-color: var(--teal-700);
+      }
+      .node.store {
+        border-left-color: var(--teal-500);
+        background: var(--bg-subtle);
+      }
+      .node.ext {
+        border-left-color: var(--field);
+      }
+      .node.win {
+        border-left-color: var(--proc);
+      }
+      .node h3 {
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .node .port {
+        font: 500 11px var(--font-mono);
+        color: var(--teal-500);
+      }
+      .node p {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .hop {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: var(--text-muted);
+        font: 600 11px var(--font-mono);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 2px 0;
+      }
+      .hop::before,
+      .hop::after {
+        content: '';
+        height: 0;
+        flex: 0 0 40px;
+        border-top: 2px solid var(--teal-400);
+      }
+      .hop.verify {
+        color: var(--warn);
+      }
+      .hop.verify::before,
+      .hop.verify::after {
+        border-top-style: dashed;
+        border-color: var(--warn);
+      }
+
+      section.notes {
+        margin-top: 36px;
+      }
+      section.notes h2 {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 14px;
+      }
+      .card {
+        border: 1px solid var(--border-default);
+        border-radius: 10px;
+        background: var(--bg-surface);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        padding: 16px;
+      }
+      .card h3 {
+        font-size: 13px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .card ol,
+      .card ul {
+        margin-top: 8px;
+        padding-left: 18px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .card li {
+        margin-bottom: 6px;
+      }
+      .card code {
+        font: 500 12px var(--font-mono);
+        color: var(--teal-700);
+        background: var(--bg-subtle);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .badge {
+        display: inline-block;
+        font: 600 10px var(--font-mono);
+        padding: 2px 7px;
+        border-radius: 9999px;
+        background: rgba(245, 158, 11, 0.1);
+        border: 1px solid rgba(245, 158, 11, 0.25);
+        color: #b45309;
+      }
+      footer.page {
+        margin-top: 40px;
+        font-size: 12px;
+        color: var(--text-muted);
+        border-top: 1px solid var(--border-default);
+        padding-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="page">
+        <div class="eyebrow">Emeltec Cloud</div>
+        <h1>Arquitectura y flujo de datos</h1>
+        <p>
+          Recorrido del dato desde el equipo de telemetría (MT) en terreno hasta la plataforma, y la
+          cadena de actuación (comandos PLC) de vuelta al equipo. Los tramos marcados con
+          <span class="badge">verificar</span> son supuestos a confirmar con operaciones.
+        </p>
+      </header>
+
+      <div class="legend">
+        <span><i class="dot" style="background: var(--field)"></i> Campo / OT</span>
+        <span><i class="dot" style="background: var(--proc)"></i> Windows Server (Emeltec)</span>
+        <span
+          ><i class="dot" style="background: var(--teal-700)"></i> Servicio core (VM Linux)</span
+        >
+        <span><i class="dot" style="background: var(--teal-500)"></i> Almacén de datos</span>
+        <span><i class="ln"></i> Flujo confirmado</span>
+        <span><i class="ln dash"></i> Por verificar</span>
+      </div>
+
+      <div class="flow">
+        <!-- ZONA: Campo / OT -->
+        <div class="zone">
+          <div class="zone-head">
+            🏭 Campo / OT
+            <span class="tag">terreno</span>
+          </div>
+          <div class="zone-body">
+            <div class="node ext">
+              <h3>MT — Equipo de telemetría / PLC</h3>
+              <p>
+                Genera archivos CSV/log. El <code>id_serial</code> viaja embebido en el
+                <em>tagname</em> (<code>151.20.35.10--1.AI23</code>).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hop">VPN Emeltec · SFTP</div>
+
+        <!-- ZONA: Windows Server -->
+        <div class="zone">
+          <div class="zone-head">
+            🪟 Windows Server — lado Emeltec
+            <span class="tag">Go · SQLite</span>
+          </div>
+          <div class="zone-body">
+            <div class="node win">
+              <h3>data/incoming_logs/</h3>
+              <p>Archivos CSV/log entrantes (SFTP / proceso externo).</p>
+            </div>
+            <div class="node win">
+              <h3>csvprocessor <span class="port">(Go)</span></h3>
+              <p>
+                Extrae <code>id_serial</code>, respalda el raw por equipo y transforma a
+                <code>TelemetryRecord</code>.
+              </p>
+            </div>
+            <div class="node win">
+              <h3>ftpprocessor <span class="port">(Go)</span></h3>
+              <p>Pipeline análogo para la ruta FTP.</p>
+            </div>
+            <div class="node store">
+              <h3>SQLite local</h3>
+              <p>Cola <code>pending</code> / <code>synced</code> con reintentos.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hop">gRPC :50051 / :50061</div>
+
+        <!-- ZONA: VM Linux -->
+        <div class="zone">
+          <div class="zone-head">
+            🐧 VM Linux — Docker Compose
+            <span class="tag">Nginx · Node · Rust</span>
+          </div>
+          <div class="zone-body">
+            <div class="node core">
+              <h3>Nginx</h3>
+              <p>Termina TLS, publica solo <code>*.emeltec.cl</code>.</p>
+            </div>
+            <div class="node core">
+              <h3>Frontend Angular</h3>
+              <p>Interfaz web de la plataforma.</p>
+            </div>
+            <div class="node core">
+              <h3>main-api <span class="port">:3000</span></h3>
+              <p>REST público. Lee datos, valida sesión y encola comandos.</p>
+            </div>
+            <div class="node core">
+              <h3>auth-api <span class="port">:3001</span></h3>
+              <p>JWT · OTP · lockout.</p>
+            </div>
+            <div class="node core">
+              <h3>csvconsumer <span class="port">:50051</span> (Rust)</h3>
+              <p>Recibe lotes gRPC e inserta en la base de datos.</p>
+            </div>
+            <div class="node core">
+              <h3>ftpconsumer <span class="port">:50061</span> (Rust)</h3>
+              <p>Consumidor de la ruta FTP.</p>
+            </div>
+            <div class="node core">
+              <h3>linux-db-api <span class="port">:3010</span> (Rust)</h3>
+              <p>Cola de comandos PLC (fail-closed).</p>
+            </div>
+            <div class="node store">
+              <h3>Base de datos <span class="port">:5433</span></h3>
+              <p>Persistencia de telemetría e información operativa.</p>
+            </div>
+            <div class="node store">
+              <h3>Redis</h3>
+              <p>Caché de estado "online".</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="hop verify">comando PLC · de vuelta al MT (verificar)</div>
+      </div>
+
+      <section class="notes">
+        <h2>Recorrido del dato</h2>
+        <div class="cards">
+          <div class="card">
+            <h3>📥 Ingesta</h3>
+            <ol>
+              <li>
+                El <strong>MT</strong> genera CSV/log con el <code>id_serial</code> en el tagname.
+              </li>
+              <li>
+                Llegan al <strong>Windows Server</strong> por la <strong>VPN de Emeltec</strong> a
+                <code>data/incoming_logs/</code>.
+              </li>
+              <li>
+                <strong>csvprocessor</strong> extrae el serial, respalda el raw, transforma a
+                <code>TelemetryRecord</code> y lo deja <code>pending</code> en SQLite.
+              </li>
+              <li>
+                Lo envía por <strong>gRPC</strong> a
+                <strong>csvconsumer</strong> (<code>:50051</code>), que inserta en la base de datos.
+              </li>
+              <li>
+                Si el envío falla, queda <code>pending</code> y se reintenta; a las 3 fallas pasa a
+                <code>failed_logs</code>.
+              </li>
+            </ol>
+          </div>
+          <div class="card">
+            <h3>🌐 Consulta / web</h3>
+            <ul>
+              <li>
+                El usuario entra por <strong>Nginx</strong> (TLS, <code>*.emeltec.cl</code>), que
+                sirve el frontend y enruta <code>/api/</code> → main-api y <code>/api/auth/</code> →
+                auth-api.
+              </li>
+              <li>
+                <strong>main-api</strong> lee la base de datos, usa <strong>Redis</strong> como
+                caché de "online", valida sesión con <strong>auth-api</strong> (JWT) y consulta
+                valores en vivo por gRPC a csvconsumer.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>⚙️ Actuación (comando PLC)</h3>
+            <ul>
+              <li>
+                <strong>main-api</strong> encola un comando en
+                <strong>linux-db-api</strong> (<code>:3010</code>).
+              </li>
+              <li>
+                El consumidor que lo escribe en el PLC y el recorrido de vuelta al
+                <strong>MT</strong> deben confirmarse con operaciones
+                <span class="badge">verificar</span>.
+              </li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>🔒 Límites de seguridad</h3>
+            <ul>
+              <li>
+                <strong>Borde:</strong> Nginx termina TLS y publica solo <code>*.emeltec.cl</code>;
+                el resto queda en <code>127.0.0.1</code> detrás del proxy.
+              </li>
+              <li>
+                <strong>Ingesta cross-host:</strong> los consumidores y linux-db-api reciben tráfico
+                del Windows Server → firewall/NSG + (pendiente) auth/TLS gRPC.
+              </li>
+              <li>
+                <strong>Autorización:</strong> todo acceso por <code>id_serial</code>/sitio pasa por
+                el control multi-tenant (<code>canAccessSite</code>).
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page">
+        Construido a partir del código y de los <code>ARCHITECTURE.md</code> de
+        <code>grpc-pipeline/csvprocessor</code>, <code>csvconsumer-rust</code>,
+        <code>main-api</code> y <code>auth-api</code>. Versión navegable de
+        <code>docs/ARQUITECTURA-FLUJO-DATOS.md</code>.
+      </footer>
+    </div>
+  </body>
+</html>
