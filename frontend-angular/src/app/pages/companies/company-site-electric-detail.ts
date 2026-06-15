@@ -572,13 +572,16 @@ export class CompanySiteElectricDetailComponent implements OnInit {
 
     const serialId = this.siteContext()?.site.id_serial;
     if (!serialId) return;
+    const historyOptions: { from: string; to: string; keys: string[]; limit?: number } = {
+      from: `${this.dateFrom()} 00:00:00`,
+      to: `${this.dateTo()} 23:59:59`,
+      keys: this.telemetryKeys,
+    };
+    const historyLimit = this.telemetryRangeLimit();
+    if (historyLimit) historyOptions.limit = historyLimit;
+
     this.companyService
-      .getTelemetryRange(serialId, {
-        from: `${this.dateFrom()} 00:00:00`,
-        to: `${this.dateTo()} 23:59:59`,
-        keys: this.telemetryKeys,
-        limit: 2500,
-      })
+      .getTelemetryRange(serialId, historyOptions)
       .subscribe({
         next: (res) => {
           if (res.ok) this.historyRows.set(res.data || []);
@@ -660,6 +663,10 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   }
 
   private selectedChartRange(timestamps: number[]): { xMin: number; xMax: number } {
+    const selected = this.selectedDateRangeMs();
+    const selectedSpanMs = selected.xMax - selected.xMin;
+    if (selectedSpanMs <= 48 * 60 * 60 * 1000) return selected;
+
     const finite = timestamps.filter(Number.isFinite).sort((a, b) => a - b);
     if (finite.length) {
       const now = Date.now();
@@ -675,6 +682,10 @@ export class CompanySiteElectricDetailComponent implements OnInit {
       };
     }
 
+    return selected;
+  }
+
+  private selectedDateRangeMs(): { xMin: number; xMax: number } {
     const start = new Date(`${this.dateFrom()}T00:00:00`).getTime();
     const selectedEnd = new Date(`${this.dateTo()}T23:59:59`).getTime();
     const now = Date.now();
@@ -682,6 +693,14 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     const safeStart = Number.isFinite(start) ? start : now - 24 * 60 * 60 * 1000;
     const safeEnd = Number.isFinite(end) && end > safeStart ? end : safeStart + 12 * 60 * 60 * 1000;
     return { xMin: safeStart, xMax: safeEnd };
+  }
+
+  private telemetryRangeLimit(): number | undefined {
+    const start = new Date(`${this.dateFrom()}T00:00:00`).getTime();
+    const end = new Date(`${this.dateTo()}T23:59:59`).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 2500;
+    const spanHours = (end - start) / 3_600_000;
+    return spanHours <= 48 ? undefined : 5000;
   }
 
   private floorLocalHalfDay(timestampMs: number): number {
