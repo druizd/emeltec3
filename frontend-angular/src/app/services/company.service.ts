@@ -400,6 +400,22 @@ export class CompanyService {
     );
   }
 
+  getTelemetryRange(
+    serialId: string,
+    options: { from: string; to: string; keys?: string[]; limit?: number },
+  ): Observable<ApiResponse<TelemetryHistoryRow[]>> {
+    const params = new URLSearchParams();
+    params.set('serial_id', serialId);
+    params.set('from', options.from);
+    params.set('to', options.to);
+    if (options.keys?.length) params.set('keys', options.keys.join(','));
+    if (options.limit) params.set('limit', String(options.limit));
+    params.set('t', String(Date.now()));
+    return this.http.get<ApiResponse<TelemetryHistoryRow[]>>(
+      `/api/data/range?${params.toString()}`,
+    );
+  }
+
   /**
    * Endpoint bundle para el primer paint de Operación: dashboard + history
    * en 1 round-trip + dedupe de queries pozo_config / reg_map del backend.
