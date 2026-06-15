@@ -337,7 +337,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   readonly charts = computed<ElectricChart[]>(() => {
     const rows = this.orderedHistoryRows();
     const timestamps = rows.map((row) => this.rowTimestampMs(row));
-    const xRange = this.selectedChartRange();
+    const xRange = this.selectedChartRange(timestamps);
     return [
       {
         title: 'Consumo de Energia (kWh)',
@@ -659,7 +659,22 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     return next;
   }
 
-  private selectedChartRange(): { xMin: number; xMax: number } {
+  private selectedChartRange(timestamps: number[]): { xMin: number; xMax: number } {
+    const finite = timestamps.filter(Number.isFinite).sort((a, b) => a - b);
+    if (finite.length) {
+      const now = Date.now();
+      const minData = finite[0]!;
+      const maxData = finite[finite.length - 1]!;
+      const shouldEndNow = this.dateTo() === this.toDateInputValue(new Date()) && now > maxData;
+      const maxPoint = shouldEndNow ? now : maxData;
+      const xMin = this.floorLocalHalfDay(minData);
+      const xMax = shouldEndNow ? maxPoint : this.ceilLocalHalfDay(maxPoint);
+      return {
+        xMin,
+        xMax: xMax > xMin ? xMax : xMin + 12 * 60 * 60 * 1000,
+      };
+    }
+
     const start = new Date(`${this.dateFrom()}T00:00:00`).getTime();
     const selectedEnd = new Date(`${this.dateTo()}T23:59:59`).getTime();
     const now = Date.now();
@@ -667,6 +682,19 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     const safeStart = Number.isFinite(start) ? start : now - 24 * 60 * 60 * 1000;
     const safeEnd = Number.isFinite(end) && end > safeStart ? end : safeStart + 12 * 60 * 60 * 1000;
     return { xMin: safeStart, xMax: safeEnd };
+  }
+
+  private floorLocalHalfDay(timestampMs: number): number {
+    const date = new Date(timestampMs);
+    const hour = date.getHours();
+    date.setHours(hour < 12 ? 0 : 12, 0, 0, 0);
+    return date.getTime();
+  }
+
+  private ceilLocalHalfDay(timestampMs: number): number {
+    const floor = this.floorLocalHalfDay(timestampMs);
+    if (floor === timestampMs) return floor;
+    return floor + 12 * 60 * 60 * 1000;
   }
 
   private orderedHistoryRows(): TelemetryHistoryRow[] {
@@ -693,7 +721,12 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   }
 
   private isMatheiSimulationRow(row: TelemetryHistoryRow): boolean {
-    return row.data?.['_simulated'] === true && row.data?.['_profile'] === 'mathei_v1';
+    const serial = this.siteContext()?.site.id_serial || '';
+    const isVirtualMathei = serial.includes('MATHEI') && serial.includes('ELECTRIC');
+    return (
+      isVirtualMathei ||
+      (row.data?.['_simulated'] === true && row.data?.['_profile'] === 'mathei_v1')
+    );
   }
 
   private derivedSimulationValue(row: TelemetryHistoryRow, key: string): number | null {

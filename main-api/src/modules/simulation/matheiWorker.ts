@@ -32,6 +32,8 @@ const PASTEUR_BATCH_MIN_L = 7000;
 const PRODUCT_ACTIVE_EPSILON_L = 1;
 const PRODUCT_RESET_DROP_L = 500;
 const RESET_CONFIRM_POINTS = 2;
+const MAX_LOOKBACK_MINUTES = 60 * 24 * 45;
+const MAX_ROW_LIMIT = 100_000;
 
 interface SiteRow extends QueryResultRow {
   id: string;
@@ -384,8 +386,8 @@ function workerConfig() {
     electricSerial: cleanEnv('MATHEI_SIM_ELECTRIC_SERIAL', DEFAULT_ELECTRIC_SERIAL),
     rilesSerial: cleanEnv('MATHEI_SIM_RILES_SERIAL', DEFAULT_RILES_SERIAL),
     pollMs: numberEnv('MATHEI_SIM_POLL_MS', 30_000, 5_000, 3_600_000),
-    lookbackMinutes: numberEnv('MATHEI_SIM_LOOKBACK_MINUTES', 180, 5, 10_080),
-    rowLimit: numberEnv('MATHEI_SIM_ROW_LIMIT', 1000, 10, 10_000),
+    lookbackMinutes: numberEnv('MATHEI_SIM_LOOKBACK_MINUTES', 180, 5, MAX_LOOKBACK_MINUTES),
+    rowLimit: numberEnv('MATHEI_SIM_ROW_LIMIT', 1000, 10, MAX_ROW_LIMIT),
     rilesMinLiters: numberEnv('MATHEI_SIM_RILES_MIN_L', 1, 0.1, 1000),
   };
 }
