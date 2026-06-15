@@ -580,14 +580,12 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     const historyLimit = this.telemetryRangeLimit();
     if (historyLimit) historyOptions.limit = historyLimit;
 
-    this.companyService
-      .getTelemetryRange(serialId, historyOptions)
-      .subscribe({
-        next: (res) => {
-          if (res.ok) this.historyRows.set(res.data || []);
-        },
-        error: () => undefined,
-      });
+    this.companyService.getTelemetryRange(serialId, historyOptions).subscribe({
+      next: (res) => {
+        if (res.ok) this.historyRows.set(res.data || []);
+      },
+      error: () => undefined,
+    });
   }
 
   siteName(context: SiteContext): string {
