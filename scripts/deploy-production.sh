@@ -48,40 +48,6 @@ read_env_value() {
   { grep -E "^${key}=" .env || true; } | tail -n 1 | cut -d= -f2- | tr -d '\r'
 }
 
-remove_app_container() {
-  local name="$1"
-  local existing_id project
-
-  existing_id="$(docker ps -aq --filter "name=^/${name}$" | head -n 1 || true)"
-  if [ -z "$existing_id" ]; then
-    return 0
-  fi
-
-  project="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$existing_id" 2>/dev/null || true)"
-
-  case "$name" in
-    emeltec-db|emeltec-redis)
-      echo "ERROR: stateful container $name belongs to compose project '$project', expected '$COMPOSE_PROJECT_NAME'."
-      echo "Refusing to remove database/cache container automatically."
-      exit 1
-      ;;
-  esac
-
-  echo "Removing app container $name from compose project '${project:-unknown}'..."
-  docker rm -f "$existing_id" >/dev/null
-}
-
-remove_app_containers() {
-  remove_app_container emeltec-api
-  remove_app_container emeltec-auth
-  remove_app_container emeltec-frontend
-  remove_app_container emeltec-metrics-page
-  remove_app_container emeltec-landing
-  remove_app_container emeltec-linux-db-api
-  remove_app_container emeltec-csvconsumer
-  remove_app_container emeltec-ftpconsumer
-}
-
 MIGRATION_DB_USER="${MIGRATION_DB_USER:-$(read_env_value POSTGRES_USER)}"
 MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-$(read_env_value POSTGRES_DB)}"
 MIGRATION_DB_USER="${MIGRATION_DB_USER:-postgres}"
@@ -115,7 +81,6 @@ if [ -d infra-db/migrations ]; then
 fi
 
 echo "Building and restarting services..."
-remove_app_containers
 docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
 
 echo "Current containers:"
