@@ -313,9 +313,10 @@ function avgLatency(services) {
 
 // ---------- componentes ----------
 
-function chip(label, value, variant = '') {
+function chip(label, value, variant = '', id = '') {
   const cls = variant ? `chip__value chip__value--${variant}` : 'chip__value';
-  return `<div class="chip"><div class="chip__label">${esc(label)}</div><div class="${cls}">${esc(value)}</div></div>`;
+  const idAttr = id ? ` id="${id}"` : '';
+  return `<div class="chip"><div class="chip__label">${esc(label)}</div><div class="${cls}"${idAttr}>${esc(value)}</div></div>`;
 }
 
 function topbar(summary, services) {
@@ -330,43 +331,47 @@ function topbar(summary, services) {
         <h1 class="brand__title">Panel de salud operativa</h1>
       </div>
       <div class="topbar__actions">
-        ${chip('Servicios', summary.total)}
-        ${chip('Online', `${summary.online}/${summary.total}`, 'success')}
-        ${lat != null ? chip('Latencia prom.', `${lat} ms`, 'primary') : ''}
+        ${chip('Servicios', summary.total, '', 'mTotal')}
+        ${chip('Online', `${summary.online}/${summary.total}`, 'success', 'mOnline')}
+        ${lat != null ? chip('Latencia prom.', `${lat} ms`, 'primary', 'mLat') : ''}
         ${session}
       </div>
     </header>
   `;
 }
 
+function overviewTitle(overall) {
+  return overall === 'online'
+    ? 'Todos los sistemas operativos'
+    : overall === 'degraded'
+      ? 'Operación con alertas activas'
+      : 'Interrupción detectada';
+}
+
+function overviewDetail(summary, overall) {
+  return overall === 'online'
+    ? 'Todos los servicios responden dentro de los umbrales esperados.'
+    : overall === 'degraded'
+      ? `${summary.degraded} servicio${summary.degraded === 1 ? '' : 's'} en estado degradado.`
+      : `${summary.offline} servicio${summary.offline === 1 ? '' : 's'} sin respuesta.`;
+}
+
 function overview(summary, overall) {
-  const title =
-    overall === 'online'
-      ? 'Todos los sistemas operativos'
-      : overall === 'degraded'
-        ? 'Operación con alertas activas'
-        : 'Interrupción detectada';
-  const detail =
-    overall === 'online'
-      ? 'Todos los servicios responden dentro de los umbrales esperados.'
-      : overall === 'degraded'
-        ? `${summary.degraded} servicio${summary.degraded === 1 ? '' : 's'} en estado degradado.`
-        : `${summary.offline} servicio${summary.offline === 1 ? '' : 's'} sin respuesta.`;
   const sessionMeta = isAuthed()
     ? `<span>${icon('shield-check', 13)} Sesión: ${esc(state.user?.email || '')} · ${esc(state.user?.tipo || '')}</span>`
     : '';
   return `
-    <section class="overview overview--${overall}">
-      <div class="live-bar live-bar--${overall}"></div>
+    <section class="overview overview--${overall}" id="ovSection">
+      <div class="live-bar live-bar--${overall}" id="ovBar"></div>
       <div class="overview__body">
-        <div>${availabilityRing(summary.online, summary.total)}</div>
+        <div id="ovRing">${availabilityRing(summary.online, summary.total)}</div>
         <div>
-          ${pill(overall)}
-          <h2 class="overview__title">${title}</h2>
-          <p class="overview__detail">${detail}</p>
+          <span id="ovPill">${pill(overall)}</span>
+          <h2 class="overview__title" id="ovTitle">${overviewTitle(overall)}</h2>
+          <p class="overview__detail" id="ovDetail">${overviewDetail(summary, overall)}</p>
         </div>
         <button id="refreshBtn" class="btn btn--ghost" type="button">
-          <span class="${state.loading ? 'spin' : ''}">${icon('refresh-cw', 15)}</span> Actualizar
+          <span id="refreshSpin" class="${state.loading ? 'spin' : ''}">${icon('refresh-cw', 15)}</span> Actualizar
         </button>
       </div>
       <div class="overview__meta">
@@ -378,13 +383,17 @@ function overview(summary, overall) {
   `;
 }
 
-function serviceCard(id, data) {
-  const meta = SERVICE_META[id] || { label: id, role: id, icon: 'cpu', path: id };
-  const { color } = statusOf(data.status);
-  const authed = isAuthed();
-  const cardMod =
-    data.status === 'offline' ? 'card--down' : data.status === 'degraded' ? 'card--alert' : '';
+function cardMod(status) {
+  return status === 'offline' ? 'card--down' : status === 'degraded' ? 'card--alert' : '';
+}
 
+function cardIconStyle(color) {
+  return `color:${color};background:color-mix(in srgb, ${color} 14%, transparent);border:1px solid color-mix(in srgb, ${color} 30%, transparent)`;
+}
+
+// Contenido dinámico de una card (parcheable sin tocar el icono lucide del head).
+function metricsBlock(data) {
+  if (!isAuthed()) return '';
   const metrics = [
     data.response_time_ms != null ? ['Latencia', `${data.response_time_ms} ms`] : null,
     data.uptime_s != null ? ['Uptime', fmtUptime(data.uptime_s)] : null,
@@ -393,46 +402,55 @@ function serviceCard(id, data) {
     data.node_version ? ['Node', data.node_version] : null,
     data.http_status != null ? ['HTTP', String(data.http_status)] : null,
   ].filter(Boolean);
+  if (!metrics.length) return '';
+  return `<div class="card__metrics">${metrics
+    .map(
+      ([k, v]) =>
+        `<div class="metric"><div class="metric__label">${esc(k)}</div><div class="metric__value">${esc(v)}</div></div>`,
+    )
+    .join('')}</div>`;
+}
 
-  const metricsBlock =
-    authed && metrics.length
-      ? `<div class="card__metrics">${metrics
-          .map(
-            ([k, v]) =>
-              `<div class="metric"><div class="metric__label">${esc(k)}</div><div class="metric__value">${esc(v)}</div></div>`,
-          )
-          .join('')}</div>`
-      : '';
-
+function chartBlock(id, data) {
+  if (!isAuthed()) return '';
+  const { color } = statusOf(data.status);
   const series = (state.history[id] || []).filter((v) => v != null);
   const last = series.length ? `${series[series.length - 1]} ms` : '—';
-  const chartBlock = authed
-    ? `<div class="card__chart">
-        <div class="card__chart-head">
-          <span class="card__chart-label">Latencia (últimas ${HISTORY_LEN})</span>
-          <span class="card__chart-value" style="color:${color}">${last}</span>
-        </div>
-        ${latencyChart(state.history[id] || [], color)}
-      </div>`
-    : '';
+  return `<div class="card__chart">
+      <div class="card__chart-head">
+        <span class="card__chart-label">Latencia (últimas ${HISTORY_LEN})</span>
+        <span class="card__chart-value" style="color:${color}">${last}</span>
+      </div>
+      ${latencyChart(state.history[id] || [], color)}
+    </div>`;
+}
 
+function errBlock(data) {
+  return data.error && isAuthed()
+    ? `<span class="card__error" title="${esc(data.error)}">${esc(data.error)}</span>`
+    : '';
+}
+
+function serviceCard(id, data) {
+  const meta = SERVICE_META[id] || { label: id, role: id, icon: 'cpu', path: id };
+  const { color } = statusOf(data.status);
   return `
-    <article class="card ${cardMod}">
+    <article class="card ${cardMod(data.status)}" data-svc="${id}">
       <div class="card__head">
         <div class="card__id">
-          <div class="card__icon" style="color:${color};background:color-mix(in srgb, ${color} 14%, transparent);border:1px solid color-mix(in srgb, ${color} 30%, transparent)">${icon(meta.icon, 18)}</div>
+          <div class="card__icon" data-svc-ic style="${cardIconStyle(color)}">${icon(meta.icon, 18)}</div>
           <div>
             <h3 class="card__title">${esc(meta.label)}</h3>
             <p class="card__role">${esc(meta.role)}</p>
           </div>
         </div>
-        ${pill(data.status)}
+        <span data-svc-pill>${pill(data.status)}</span>
       </div>
-      ${metricsBlock}
-      ${chartBlock}
+      <div data-svc-metrics>${metricsBlock(data)}</div>
+      <div data-svc-chart>${chartBlock(id, data)}</div>
       <div class="card__foot">
         <span class="card__path">${esc(meta.path)}</span>
-        ${data.error && authed ? `<span class="card__error" title="${esc(data.error)}">${esc(data.error)}</span>` : ''}
+        <span data-svc-err>${errBlock(data)}</span>
       </div>
     </article>
   `;
@@ -474,32 +492,31 @@ function fmtAgeShort(seconds) {
 }
 
 // Telemetría: cuántos equipos transmiten y hace cuánto se recibió la última medición.
+function ingestSubInner(ing) {
+  const age = ing.last_age_s == null ? '—' : fmtUptime(ing.last_age_s);
+  return `equipos transmitiendo · <strong>${ing.stale}</strong> sin datos recientes<br />última medición recibida hace ${age}`;
+}
+
 function ingestionPanel() {
   const ing = state.detail?.ingestion;
   if (!ing) return '';
-  const age = ing.last_age_s == null ? '—' : fmtUptime(ing.last_age_s);
   return `
     <section class="panel panel--accent" style="margin-top:16px">
       <div class="panel__head">
         <h3>${icon('radio-tower', 14)} Telemetría · ingesta de datos</h3>
-        ${pill(ing.status)}
+        <span id="ingPill">${pill(ing.status)}</span>
       </div>
       <div class="panel__body ingest">
-        <div class="ingest__big">${ing.transmitting}<small>/${ing.sites_total}</small></div>
-        <div class="ingest__sub">
-          equipos transmitiendo · <strong>${ing.stale}</strong> sin datos recientes<br />
-          última medición recibida hace ${age}
-        </div>
+        <div class="ingest__big" id="ingBig">${ing.transmitting}<small>/${ing.sites_total}</small></div>
+        <div class="ingest__sub" id="ingSub">${ingestSubInner(ing)}</div>
       </div>
     </section>
   `;
 }
 
 // Workers in-process: latido de cada job de fondo.
-function workersPanel() {
-  const workers = state.detail?.workers || [];
-  if (!workers.length) return '';
-  const rows = workers
+function workersRows() {
+  return (state.detail?.workers || [])
     .map(
       (w) => `
       <div class="worker-row">
@@ -509,16 +526,20 @@ function workersPanel() {
       </div>`,
     )
     .join('');
+}
+
+function workersPanel() {
+  if (!(state.detail?.workers || []).length) return '';
   return `
     <section class="panel">
       <div class="panel__head"><h3>${icon('activity', 14)} Workers in-process</h3></div>
-      <div class="panel__body worker-list">${rows}</div>
+      <div class="panel__body worker-list" id="wkList">${workersRows()}</div>
     </section>
   `;
 }
 
 // Vitales del proceso main-api + pool de conexiones a la BD.
-function processPanel() {
+function processCells() {
   const p = state.detail?.process;
   if (!p) return '';
   const pool = p.db_pool || {};
@@ -529,17 +550,20 @@ function processPanel() {
     ['Pool BD', `${pool.idle ?? '—'}/${pool.total ?? '—'} libres`],
     ['En espera', String(pool.waiting ?? '—')],
   ];
+  return cells
+    .map(
+      ([k, v]) =>
+        `<div class="metric"><div class="metric__label">${esc(k)}</div><div class="metric__value">${esc(v)}</div></div>`,
+    )
+    .join('');
+}
+
+function processPanel() {
+  if (!state.detail?.process) return '';
   return `
     <section class="panel">
       <div class="panel__head"><h3>${icon('cpu', 14)} Proceso main-api</h3></div>
-      <div class="card__metrics" style="padding:16px">
-        ${cells
-          .map(
-            ([k, v]) =>
-              `<div class="metric"><div class="metric__label">${esc(k)}</div><div class="metric__value">${esc(v)}</div></div>`,
-          )
-          .join('')}
-      </div>
+      <div class="card__metrics" style="padding:16px" id="procBody">${processCells()}</div>
     </section>
   `;
 }
@@ -586,6 +610,94 @@ function loginModal() {
   `;
 }
 
+// Firma de la ESTRUCTURA (no de los valores). Si cambia → render completo;
+// si no → applyLive() parchea valores en sitio (sin flicker).
+let lastSig = null;
+
+function structuralSig() {
+  return [
+    !!state.token,
+    isAuthed(),
+    state.detailForbidden,
+    state.loginOpen,
+    !!state.error,
+    Object.keys(activeServices()).join(','),
+    !!state.detail?.ingestion,
+    (state.detail?.workers || []).length,
+    !!state.detail?.process,
+  ].join('|');
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = String(val);
+}
+
+function setEl(el, html) {
+  if (el && el.innerHTML !== html) el.innerHTML = html;
+}
+
+function setHTML(id, html) {
+  setEl(document.getElementById(id), html);
+}
+
+function setSpin(on) {
+  const s = document.getElementById('refreshSpin');
+  if (s) s.className = on ? 'spin' : '';
+}
+
+// Parchea SOLO valores/charts en sitio. No reconstruye DOM ni re-crea iconos →
+// sin parpadeo. Se usa cuando la estructura no cambió entre polls.
+function applyLive() {
+  const services = activeServices();
+  const summary = summarize(services);
+  const overall = overallStatus(summary);
+
+  setText('mTotal', summary.total);
+  setText('mOnline', `${summary.online}/${summary.total}`);
+  const lat = avgLatency(services);
+  if (lat != null) setText('mLat', `${lat} ms`);
+
+  const ovSection = document.getElementById('ovSection');
+  if (ovSection) ovSection.className = `overview overview--${overall}`;
+  const ovBar = document.getElementById('ovBar');
+  if (ovBar) ovBar.className = `live-bar live-bar--${overall}`;
+  setHTML('ovRing', availabilityRing(summary.online, summary.total));
+  setHTML('ovPill', pill(overall));
+  setText('ovTitle', overviewTitle(overall));
+  setText('ovDetail', overviewDetail(summary, overall));
+  setText('lastAge', fmtAge(Date.now() - state.lastUpdate));
+
+  for (const [id, data] of Object.entries(services)) {
+    const card = document.querySelector(`[data-svc="${id}"]`);
+    if (!card) continue;
+    const mod = `card ${cardMod(data.status)}`.trim();
+    if (card.className !== mod) card.className = mod;
+    const ic = card.querySelector('[data-svc-ic]');
+    const icStyle = cardIconStyle(statusOf(data.status).color);
+    if (ic && ic.getAttribute('style') !== icStyle) ic.setAttribute('style', icStyle);
+    setEl(card.querySelector('[data-svc-pill]'), pill(data.status));
+    setEl(card.querySelector('[data-svc-metrics]'), metricsBlock(data));
+    setEl(card.querySelector('[data-svc-chart]'), chartBlock(id, data));
+    setEl(card.querySelector('[data-svc-err]'), errBlock(data));
+  }
+
+  const ing = state.detail?.ingestion;
+  if (ing) {
+    setHTML('ingPill', pill(ing.status));
+    setHTML('ingBig', `${ing.transmitting}<small>/${ing.sites_total}</small>`);
+    setHTML('ingSub', ingestSubInner(ing));
+  }
+  setHTML('wkList', workersRows());
+  setHTML('procBody', processCells());
+}
+
+// Decide: render completo (estructura cambió) o parche en sitio (solo valores).
+function renderOrPatch() {
+  if (structuralSig() !== lastSig) render();
+  else applyLive();
+}
+
 function render() {
   const services = activeServices();
   const summary = summarize(services);
@@ -616,6 +728,7 @@ function render() {
   `;
   createIcons({ icons });
   wireEvents();
+  lastSig = structuralSig();
 }
 
 // ---------- eventos ----------
@@ -733,7 +846,7 @@ function recordHistory(services) {
 async function poll(manual = false) {
   state.loading = manual;
   state.error = '';
-  if (manual) render();
+  if (manual) setSpin(true);
 
   try {
     const res = await fetch('/api/status', {
@@ -772,7 +885,8 @@ async function poll(manual = false) {
   }
 
   state.loading = false;
-  render();
+  setSpin(false);
+  renderOrPatch();
 }
 
 // Tick de 1s: actualiza SOLO el texto "hace Xs", sin re-render (evita flicker).
