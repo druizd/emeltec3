@@ -136,6 +136,25 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // Mathei simulation worker TS (real pasteurizador -> virtual electrico/riles).
+  // Default OFF + dry-run ON. Requiere ENABLE_MATHEI_SIMULATION_WORKER=true.
+  try {
+    const matheiSimWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'simulation',
+      'matheiWorker',
+    );
+    const { startMatheiSimulationWorker } = require(matheiSimWorkerPath);
+    startMatheiSimulationWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar mathei simulation worker:', err.message);
+    }
+  }
+
   // Cache warmer TS (precalienta dashboard-history en Redis cada 50s).
   try {
     const cacheWarmerPath = require('path').join(
@@ -250,6 +269,21 @@ function shutdown(signal) {
     );
     const { stopContadoresWorker } = require(contadoresWorkerPath);
     stopContadoresWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const matheiSimWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'simulation',
+      'matheiWorker',
+    );
+    const { stopMatheiSimulationWorker } = require(matheiSimWorkerPath);
+    stopMatheiSimulationWorker();
   } catch (_err) {
     // worker no estaba activo
   }
