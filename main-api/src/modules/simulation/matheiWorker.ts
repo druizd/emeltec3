@@ -129,16 +129,16 @@ const ELECTRIC_MAPPINGS: SimMapping[] = [
   {
     id: 'MSIM_E_KVARH',
     alias: 'Energia reactiva',
-    d1: 'energia_reactiva_kvarh',
+    d1: 'e_reactiva_kvarh',
     unit: 'kVArh',
-    role: 'energia_reactiva_kvarh',
+    role: 'e_reactiva_kvarh',
   },
   {
     id: 'MSIM_E_FP_T',
     alias: 'Factor potencia total',
-    d1: 'factor_potencia_total',
+    d1: 'fp_total',
     unit: null,
-    role: 'factor_potencia_total',
+    role: 'fp_total',
   },
   {
     id: 'MSIM_E_FP1',
@@ -188,16 +188,16 @@ const ELECTRIC_MAPPINGS: SimMapping[] = [
   {
     id: 'MSIM_E_KW',
     alias: 'Potencia activa total',
-    d1: 'potencia_activa_total_kw',
+    d1: 'p_activa_kw',
     unit: 'kW',
-    role: 'potencia_activa_total_kw',
+    role: 'p_activa_kw',
   },
   {
     id: 'MSIM_E_KVAR',
     alias: 'Potencia reactiva total',
-    d1: 'potencia_reactiva_total_kvar',
+    d1: 'p_reactiva_kvar',
     unit: 'kVAr',
-    role: 'potencia_reactiva_total_kvar',
+    role: 'p_reactiva_kvar',
   },
   {
     id: 'MSIM_E_THD1',
@@ -231,9 +231,9 @@ const ELECTRIC_MAPPINGS: SimMapping[] = [
   {
     id: 'MSIM_E_CFP',
     alias: 'Cargo factor potencia',
-    d1: 'cargo_factor_potencia',
+    d1: 'cargo_fp',
     unit: 'CLP',
-    role: 'cargo_factor_potencia',
+    role: 'cargo_fp',
   },
   { id: 'MSIM_E_CTOT', alias: 'Cargo total', d1: 'cargo_total', unit: 'CLP', role: 'cargo_total' },
   {
@@ -246,9 +246,9 @@ const ELECTRIC_MAPPINGS: SimMapping[] = [
   {
     id: 'MSIM_E_FPP',
     alias: 'Promedio FP',
-    d1: 'factor_potencia_promedio',
+    d1: 'fp_promedio',
     unit: null,
-    role: 'factor_potencia_promedio',
+    role: 'fp_promedio',
   },
   {
     id: 'MSIM_E_AUM',
@@ -657,8 +657,8 @@ function buildElectricPayload(
   return {
     energia: acc.activeKwh,
     energia_activa_kwh: acc.activeKwh,
-    energia_reactiva_kvarh: acc.reactiveKvarh,
-    factor_potencia_total: fp,
+    e_reactiva_kvarh: acc.reactiveKvarh,
+    fp_total: fp,
     factor_potencia_l1: round(clamp(fp + jitter(seed, 'fpl1', 0.018), 0.65, 0.98), 3),
     factor_potencia_l2: round(clamp(fp + jitter(seed, 'fpl2', 0.018), 0.65, 0.98), 3),
     factor_potencia_l3: round(clamp(fp + jitter(seed, 'fpl3', 0.018), 0.65, 0.98), 3),
@@ -668,17 +668,17 @@ function buildElectricPayload(
     corriente_l1: currents[0],
     corriente_l2: currents[1],
     corriente_l3: currents[2],
-    potencia_activa_total_kw: kw,
-    potencia_reactiva_total_kvar: kvar,
+    p_activa_kw: kw,
+    p_reactiva_kvar: kvar,
     thd_corriente_l1: round(clamp(thdBase + jitter(seed, 'thd1', 0.7), 0.4, 7.8), 2),
     thd_corriente_l2: round(clamp(thdBase + jitter(seed, 'thd2', 0.7), 0.4, 7.8), 2),
     thd_corriente_l3: round(clamp(thdBase + jitter(seed, 'thd3', 0.7), 0.4, 7.8), 2),
     estado: mode,
     temperatura: round(28 + kw * 0.85 + jitter(seed, 'boardt', 1.8), 1),
-    cargo_factor_potencia: cargoFactorPotencia,
+    cargo_fp: cargoFactorPotencia,
     cargo_total: cargoTotal,
     cumplimiento_fp: cumplimiento,
-    factor_potencia_promedio: fp,
+    fp_promedio: fp,
     aumento_factura: aumentoFactura,
     _simulated: true,
     _source_serial: DEFAULT_SOURCE_SERIAL,
@@ -841,7 +841,8 @@ function previousElectricAccumulator(row: EquipoRow | null): ElectricAccumulator
   return {
     lastTime: time,
     activeKwh: numberOrNull(data.energia_activa_kwh) ?? 0,
-    reactiveKvarh: numberOrNull(data.energia_reactiva_kvarh) ?? 0,
+    reactiveKvarh:
+      numberOrNull(data.e_reactiva_kvarh) ?? numberOrNull(data.energia_reactiva_kvarh) ?? 0,
   };
 }
 

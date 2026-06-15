@@ -314,11 +314,11 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   readonly defaultChartLabels = ['17', '21', '25', '29', 'May', '5', '9', '13'];
   readonly telemetryKeys = [
     'energia_activa_kwh',
-    'energia_reactiva_kvarh',
+    'e_reactiva_kvarh',
     'factor_potencia_l1',
     'factor_potencia_l2',
     'factor_potencia_l3',
-    'factor_potencia_total',
+    'fp_total',
     'voltaje_l1',
     'voltaje_l2',
     'voltaje_l3',
@@ -348,7 +348,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     },
     {
       label: 'Cargo FP',
-      role: 'cargo_factor_potencia',
+      role: 'cargo_fp',
       fallback: '1,974,382',
       unit: 'penalizacion',
       tone: 'danger',
@@ -365,7 +365,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     },
     {
       label: 'Factor Potencia',
-      role: 'factor_potencia_total',
+      role: 'fp_total',
       fallback: '0.74',
       unit: 'promedio meta >=0.93',
       tone: 'danger',
@@ -374,9 +374,9 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   ];
 
   readonly secondaryMetrics = [
-    { label: 'FP Actual', role: 'factor_potencia_total', fallback: '0.393', color: '#10b981' },
+    { label: 'FP Actual', role: 'fp_total', fallback: '0.393', color: '#10b981' },
     { label: 'Cumplimiento FP', role: 'cumplimiento_fp', fallback: '58.1%', color: '#3b82f6' },
-    { label: 'Promedio FP', role: 'factor_potencia_promedio', fallback: '0.739', color: '#8b5cf6' },
+    { label: 'Promedio FP', role: 'fp_promedio', fallback: '0.739', color: '#8b5cf6' },
     { label: 'Aumento Factura', role: 'aumento_factura', fallback: '19.1%', color: '#f97316' },
   ];
 
@@ -516,7 +516,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
           {
             label: 'Energia Reactiva',
             color: '#77c66e',
-            points: this.linePoints(rows, 'energia_reactiva_kvarh', {
+            points: this.linePoints(rows, 'e_reactiva_kvarh', {
               fallback: this.fallbackPoint(0, 1),
             }),
           },
@@ -558,7 +558,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
           {
             label: 'Factor Potencia Total',
             color: '#ff5a57',
-            points: this.linePoints(rows, 'factor_potencia_total', {
+            points: this.linePoints(rows, 'fp_total', {
               min: 0.65,
               max: 1,
               fallback: this.fallbackPoint(1, 3),

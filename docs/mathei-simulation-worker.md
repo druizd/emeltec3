@@ -67,13 +67,13 @@ MATHEI_SIM_AUTO_CONFIGURE=false
 
 Electrico:
 
-- `energia`, `energia_activa_kwh`, `energia_reactiva_kvarh`
-- `factor_potencia_total`, `factor_potencia_l1`, `factor_potencia_l2`, `factor_potencia_l3`
+- `energia`, `energia_activa_kwh`, `e_reactiva_kvarh`
+- `fp_total`, `factor_potencia_l1`, `factor_potencia_l2`, `factor_potencia_l3`
 - `voltaje_l1`, `voltaje_l2`, `voltaje_l3`
 - `corriente_l1`, `corriente_l2`, `corriente_l3`
-- `potencia_activa_total_kw`, `potencia_reactiva_total_kvar`
+- `p_activa_kw`, `p_reactiva_kvar`
 - `thd_corriente_l1`, `thd_corriente_l2`, `thd_corriente_l3`
-- `cargo_factor_potencia`, `cargo_total`, `cumplimiento_fp`, `factor_potencia_promedio`, `aumento_factura`
+- `cargo_fp`, `cargo_total`, `cumplimiento_fp`, `fp_promedio`, `aumento_factura`
 - `estado`, `temperatura`
 
 RILES:
