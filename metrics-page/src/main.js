@@ -370,7 +370,7 @@ function overview(summary, overall) {
         </button>
       </div>
       <div class="overview__meta">
-        <span>${icon('clock', 13)} Última verificación ${fmtTime(state.lastUpdate)} · ${fmtAge(state.now - state.lastUpdate)}</span>
+        <span>${icon('clock', 13)} Última verificación ${fmtTime(state.lastUpdate)} · <span id="lastAge">${fmtAge(state.now - state.lastUpdate)}</span></span>
         <span>${icon('radio', 13)} Sondeo automático cada ${POLL_MS / 1000} s</span>
         ${sessionMeta}
       </div>
@@ -775,9 +775,11 @@ async function poll(manual = false) {
   render();
 }
 
+// Tick de 1s: actualiza SOLO el texto "hace Xs", sin re-render (evita flicker).
 setInterval(() => {
   state.now = Date.now();
-  if (!state.loginOpen) render();
+  const el = document.getElementById('lastAge');
+  if (el) el.textContent = fmtAge(state.now - state.lastUpdate);
 }, 1000);
 setInterval(() => poll(false), POLL_MS);
 render();
