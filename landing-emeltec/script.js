@@ -82,11 +82,13 @@ testimonialNext?.addEventListener('click', () => {
 renderTestimonial(0);
 startTestimonialAutoplay();
 
-form?.addEventListener('submit', (event) => {
+const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
+
+form?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const data = new FormData(form);
-  const recipientEmail = form.dataset.email || 'ventas@emeltec.cl';
+  const accessKey = form.dataset.web3formsKey || '';
   const submitButton = form.querySelector('.submit-button');
   const submitLabel = submitButton?.querySelector('span');
   const status = form.querySelector('.form-status');
@@ -96,7 +98,7 @@ form?.addEventListener('submit', (event) => {
       return;
     }
 
-    status?.classList.remove('is-success', 'is-error', 'is-visible');
+    status.classList.remove('is-success', 'is-error', 'is-visible');
     if (!message) {
       status.textContent = '';
       return;
@@ -105,45 +107,56 @@ form?.addEventListener('submit', (event) => {
     status.classList.add('is-visible', type === 'success' ? 'is-success' : 'is-error');
   };
 
+  // Honeypot: si viene marcado, es bot → ignorar en silencio.
+  if (data.get('botcheck')) {
+    return;
+  }
+
+  if (!accessKey || accessKey === 'TU_ACCESS_KEY_WEB3FORMS') {
+    setStatus('error', 'El formulario aún no está configurado. Escríbenos a ventas@emeltec.cl.');
+    return;
+  }
+
   const payload = {
+    access_key: accessKey,
+    subject: `Solicitud de contacto Emeltec Cloud - ${data.get('empresa') || data.get('nombre')}`,
+    from_name: 'Landing Emeltec Cloud',
     nombre: data.get('nombre') || '',
     email: data.get('email') || '',
     empresa: data.get('empresa') || '',
     telefono: data.get('telefono') || '',
     servicio: data.get('servicio') || '',
     mensaje: data.get('mensaje') || '',
+    replyto: data.get('email') || '',
   };
 
-  const subject = `Solicitud de contacto Emeltec Cloud - ${payload.empresa || payload.nombre}`;
-  const message = [
-    'Hola Emeltec, necesito información sobre monitoreo industrial.',
-    '',
-    `Nombre: ${payload.nombre}`,
-    `Email: ${payload.email}`,
-    `Empresa: ${payload.empresa}`,
-    `Teléfono: ${payload.telefono}`,
-    `Servicio: ${payload.servicio}`,
-    '',
-    `Mensaje: ${payload.mensaje}`,
-  ].join('\n');
-
-  const gmailUrl = new URL('https://mail.google.com/mail/');
-  gmailUrl.searchParams.set('view', 'cm');
-  gmailUrl.searchParams.set('fs', '1');
-  gmailUrl.searchParams.set('to', recipientEmail);
-  gmailUrl.searchParams.set('su', subject);
-  gmailUrl.searchParams.set('body', message);
-
   submitButton?.setAttribute('disabled', 'true');
-  if (submitLabel) submitLabel.textContent = 'Abriendo Gmail...';
-  setStatus('success', 'Se abrirá Gmail con el correo listo para enviar a ventas@emeltec.cl.');
+  if (submitLabel) submitLabel.textContent = 'Enviando...';
+  setStatus('', '');
 
-  window.open(gmailUrl.toString(), '_blank', 'noopener,noreferrer');
+  try {
+    const response = await fetch(WEB3FORMS_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
 
-  window.setTimeout(() => {
+    if (response.ok && result.success) {
+      setStatus('success', '¡Gracias! Recibimos tu solicitud. Te contactaremos a la brevedad.');
+      form.reset();
+    } else {
+      setStatus(
+        'error',
+        'No pudimos enviar el formulario. Intenta de nuevo o escríbenos a ventas@emeltec.cl.',
+      );
+    }
+  } catch (error) {
+    setStatus('error', 'Error de conexión. Intenta de nuevo o escríbenos a ventas@emeltec.cl.');
+  } finally {
     submitButton?.removeAttribute('disabled');
     if (submitLabel) submitLabel.textContent = 'Enviar formulario';
-  }, 900);
+  }
 });
 
 if (!prefersReducedMotion && window.gsap) {

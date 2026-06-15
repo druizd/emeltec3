@@ -538,7 +538,34 @@ function emptyVariables(): SiteVariablesPayload {
               }
 
               @if (isUint32TransformSelected()) {
-                <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                      >Factor multiplicador</label
+                    >
+                    <input
+                      type="number"
+                      step="any"
+                      name="settings-variable-uint32-factor"
+                      [ngModel]="variableForm().factor"
+                      (ngModelChange)="updateVariableForm('factor', $event)"
+                      class="field-control bg-white"
+                      placeholder="1"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Divisor</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      name="settings-variable-uint32-divisor"
+                      [ngModel]="variableForm().divisor"
+                      (ngModelChange)="updateVariableForm('divisor', $event)"
+                      class="field-control bg-white"
+                      placeholder="1"
+                    />
+                  </div>
                   <div>
                     <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
                     <input
@@ -551,15 +578,14 @@ function emptyVariables(): SiteVariablesPayload {
                       placeholder="0"
                     />
                   </div>
-                  <div
-                    class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-caption font-semibold text-primary-container"
-                  >
-                    Fórmula:
-                    <span class="font-mono">
-                      resultado = (registro alto × 65536) + registro bajo + offset
-                    </span>
-                  </div>
                 </div>
+                <p class="text-caption-xs text-slate-400">
+                  Fórmula:
+                  <span class="font-mono"
+                    >resultado = ((registro alto × 65536) + registro bajo) × factor / divisor +
+                    offset</span
+                  >. Usá divisor=100 para correr 2 decimales.
+                </p>
               }
 
               <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
@@ -974,9 +1000,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       transformacion: normalized,
       d2: this.transformRequiresD2(normalized) ? current.d2 : '',
       wordSwap: normalized === 'uint32_registros' ? 'true' : current.wordSwap,
-      factor: this.isLinearTransformValue(normalized) ? current.factor || '1' : '1',
-      divisor: this.isLinearTransformValue(normalized) ? current.divisor || '1' : '1',
-      offset: this.usesOffsetTransformValue(normalized) ? current.offset || '0' : '0',
+      factor: this.usesScaleTransformValue(normalized) ? current.factor || '1' : '1',
+      divisor: this.usesScaleTransformValue(normalized) ? current.divisor || '1' : '1',
+      offset: this.usesScaleTransformValue(normalized) ? current.offset || '0' : '0',
     }));
   }
 
@@ -1153,11 +1179,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     if (this.isLinearTransformValue(form.transformacion)) {
       const raw = this.toNumber(rawText);
       const factor = this.toNumber(form.factor) ?? 1;
-      const divisorRaw = this.toNumber(form.divisor) ?? 1;
-      const divisor = divisorRaw > 0 ? divisorRaw : 1;
       const offset = this.toNumber(form.offset) ?? 0;
       if (raw === null) return 'Valor crudo no numérico';
-      return `${this.formatPreviewNumber((raw * factor) / divisor + offset)}${unit}`;
+      return `${this.formatPreviewNumber((raw * factor) / this.safeDivisor(form.divisor) + offset)}${unit}`;
     }
 
     if (form.transformacion === 'ieee754_32') {
@@ -1178,8 +1202,10 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       }
       const high = form.wordSwap === 'true' ? rawB : rawA;
       const low = form.wordSwap === 'true' ? rawA : rawB;
+      const factor = this.toNumber(form.factor) ?? 1;
       const offset = this.toNumber(form.offset) ?? 0;
-      return `${this.formatPreviewNumber(high * 65536 + low + offset)}${unit}`;
+      const combinado = high * 65536 + low;
+      return `${this.formatPreviewNumber((combinado * factor) / this.safeDivisor(form.divisor) + offset)}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -1219,7 +1245,12 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
         word_swap: form.wordSwap === 'true',
         formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
         ...(form.transformacion === 'uint32_registros'
-          ? { offset: this.toNumber(form.offset) ?? 0 }
+          ? {
+              // Mismo split UI factor/divisor que lineal: el backend solo
+              // conoce factor, divisor es ayuda de UI para tipear decimales.
+              factor: (this.toNumber(form.factor) ?? 1) / this.safeDivisor(form.divisor),
+              offset: this.toNumber(form.offset) ?? 0,
+            }
           : {}),
       };
     }
@@ -1229,15 +1260,19 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       // "divisor" — the UI split only makes it easier to type decimals
       // (ex. divisor=100 instead of factor=0.01).
       const factor = this.toNumber(form.factor) ?? 1;
-      const divisorRaw = this.toNumber(form.divisor) ?? 1;
-      const divisor = divisorRaw > 0 ? divisorRaw : 1;
       return {
-        factor: factor / divisor,
+        factor: factor / this.safeDivisor(form.divisor),
         offset: this.toNumber(form.offset) ?? 0,
       };
     }
 
     return {};
+  }
+
+  /** Divisor seguro: ignora 0/negativos/no-numéricos → 1 (no-op). */
+  private safeDivisor(value: string): number {
+    const divisor = this.toNumber(value) ?? 1;
+    return divisor > 0 ? divisor : 1;
   }
 
   private buildPozoConfigPayload(): PozoConfig {
@@ -1264,7 +1299,8 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     return transformId === 'lineal' || transformId === 'escala_lineal';
   }
 
-  private usesOffsetTransformValue(transformId: string): boolean {
+  /** Transforms que aceptan factor/divisor/offset: lineal y uint32_registros. */
+  private usesScaleTransformValue(transformId: string): boolean {
     return this.isLinearTransformValue(transformId) || transformId === 'uint32_registros';
   }
 

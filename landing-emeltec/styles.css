@@ -10,10 +10,10 @@
   --brand: #005f7f;
   --brand-dark: #03485f;
   --brand-soft: #e6f3f7;
-  --corp-gray: #98989a;
+  --corp-gray: #6b727a;
   --ink: #17212b;
   --text: #435160;
-  --muted: #737c86;
+  --muted: #646b74;
   --line: #dce4ea;
   --surface: #ffffff;
   --subtle: #f5f8fa;
@@ -96,7 +96,7 @@ svg {
 }
 
 :focus-visible {
-  outline: 3px solid rgba(0, 95, 127, 0.35);
+  outline: 2px solid var(--brand);
   outline-offset: 3px;
 }
 
@@ -124,8 +124,8 @@ p {
 }
 
 .brand img {
-  width: 172px;
-  height: auto;
+  width: auto;
+  height: 80px;
 }
 
 .desktop-nav {
@@ -273,7 +273,7 @@ p {
       rgba(240, 243, 245, 0.86) 45%,
       rgba(240, 243, 245, 0.18)
     ),
-    url('./assets/hero-industrial.png') center / cover no-repeat;
+    url('./assets/hero-industrial.webp') center / cover no-repeat;
   filter: saturate(0.78) contrast(1.04);
   transform-origin: center;
 }
@@ -477,7 +477,9 @@ p {
 .problem,
 .solutions,
 .clients,
-.contact {
+.contact,
+.compliance,
+.faq {
   padding: 76px 64px;
 }
 
@@ -485,7 +487,9 @@ p {
 .solution-grid,
 .contact-grid,
 .testimonial-shell,
-.client-carousel {
+.client-carousel,
+.compliance-grid,
+.faq-list {
   max-width: 1180px;
   margin: 0 auto;
 }
@@ -577,10 +581,191 @@ p {
   background: white;
 }
 
+/* --- Cumplimiento DGA --- */
+.compliance {
+  background: var(--brand-soft);
+}
+
+.compliance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+}
+
+.compliance-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  padding: 28px;
+  box-shadow: var(--shadow-soft);
+}
+
+.compliance-card h3 {
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.compliance-card p {
+  margin-top: 12px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* --- FAQ --- */
+.faq {
+  background: var(--subtle);
+}
+
+.faq-list {
+  max-width: 860px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  cursor: pointer;
+  list-style: none;
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq-item summary::after {
+  content: '+';
+  flex: 0 0 auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--brand);
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.faq-item[open] summary::after {
+  transform: rotate(45deg);
+}
+
+.faq-item summary:hover {
+  color: var(--brand);
+}
+
+.faq-item summary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
+
+.faq-item > p {
+  margin: 0;
+  padding: 0 24px 22px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.64;
+}
+
+/* --- Hover unificado (cards) --- */
+.compliance-card,
+.faq-item {
+  transition:
+    border-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.compliance-card:hover {
+  border-color: rgba(0, 95, 127, 0.34);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card);
+}
+
+.faq-item:hover {
+  border-color: rgba(0, 95, 127, 0.34);
+  box-shadow: var(--shadow-card);
+}
+
+/* --- Sello centro de control DGA --- */
+.dga-seal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  max-width: 560px;
+  margin: 0 auto 30px;
+  padding: 12px 20px;
+  border: 1px solid rgba(0, 95, 127, 0.28);
+  border-radius: 9999px;
+  background: var(--surface);
+  color: var(--brand-dark);
+  font-family: 'Josefin Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: var(--shadow-soft);
+}
+
+.dga-seal svg {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--brand);
+}
+
+/* --- Métrica primaria del hero (design system) --- */
+.metric-row.active {
+  border-color: rgba(0, 95, 127, 0.35);
+  background: var(--brand-soft);
+  box-shadow:
+    0 0 0 1px rgba(0, 95, 127, 0.25),
+    0 2px 8px rgba(0, 95, 127, 0.15);
+}
+
+.metric-row.active strong {
+  font-size: 28px;
+}
+
 .solution-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+
+/* Ciberseguridad: card full-width al cierre del grid (sin huérfana) */
+.solution-card.tone-secure {
+  grid-column: 1 / -1;
+  color: var(--brand-dark);
+}
+
+/* DGA destacado: borde teal + glow + heading */
+.solution-card.tone-primary {
+  border-color: rgba(0, 95, 127, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(0, 95, 127, 0.25),
+    0 12px 28px rgba(0, 95, 127, 0.12);
+}
+
+.solution-card.tone-primary h3 {
+  font-size: 26px;
 }
 
 .solution-card {
@@ -802,7 +987,12 @@ p {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.72);
-  padding: 14px 0;
+  padding: clamp(18px, 3vw, 28px) 0;
+}
+
+.client-carousel:hover .client-track,
+.client-carousel:focus-within .client-track {
+  animation-play-state: paused;
 }
 
 .client-carousel::before,
@@ -812,7 +1002,7 @@ p {
   top: 0;
   bottom: 0;
   z-index: 2;
-  width: 90px;
+  width: clamp(48px, 8vw, 120px);
   pointer-events: none;
 }
 
@@ -830,26 +1020,47 @@ p {
   display: flex;
   width: max-content;
   align-items: center;
-  gap: 12px;
   animation: client-marquee 48s linear infinite;
 }
 
 .client-logo {
+  --logo-h: clamp(42px, 5vw, 58px);
+  --logo-w: clamp(200px, 32vw, 360px);
   display: inline-flex;
-  min-width: 154px;
-  min-height: 56px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: white;
-  color: var(--brand-dark);
-  font-family: 'Josefin Sans', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  text-align: center;
-  text-transform: uppercase;
-  box-shadow: var(--shadow-soft);
+  padding-inline: clamp(22px, 4vw, 48px);
+}
+
+.client-logo img {
+  max-height: var(--logo-h);
+  max-width: var(--logo-w);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.92;
+  transition:
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.client-logo:hover img,
+.client-logo:focus-visible img {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+/* Assets recortados (sin márgenes) → tamaño uniforme por altura.
+   Surlat es SVG con viewBox ajustado; el resto fue trim con sharp. */
+/* 1 Vital · 2 Matthei · 3 Cachantún · 4 Surlat · 5 Generadora · 6 Cotaco · 7 CCU · 8 ECCUSA */
+.client-logo:nth-child(8n + 5) {
+  /* Generadora: wordmark muy ancho, reducir */
+  --logo-h: clamp(28px, 3.4vw, 40px);
+}
+.client-logo:nth-child(8n + 4) img {
+  /* Surlat: subir ópticamente */
+  margin-bottom: 9px;
 }
 
 .testimonial-shell {
@@ -1214,7 +1425,7 @@ textarea:focus {
 }
 
 .footer-brand img {
-  width: 128px;
+  width: 184px;
   margin-bottom: 14px;
 }
 
@@ -1353,7 +1564,6 @@ textarea:focus {
   }
 
   .problem-grid,
-  .solution-grid,
   .footer {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1366,7 +1576,7 @@ textarea:focus {
   }
 
   .brand img {
-    width: 138px;
+    height: 64px;
   }
 
   .login-button {
@@ -1387,7 +1597,7 @@ textarea:focus {
   .hero-bg {
     background:
       linear-gradient(180deg, rgba(240, 243, 245, 0.99), rgba(240, 243, 245, 0.88)),
-      url('./assets/hero-industrial.png') center / cover no-repeat;
+      url('./assets/hero-industrial.webp') center / cover no-repeat;
   }
 
   .hero-inner {
@@ -1434,7 +1644,9 @@ textarea:focus {
   .solutions,
   .clients,
   .contact,
-  .about {
+  .about,
+  .compliance,
+  .faq {
     padding: 58px 20px;
   }
 
@@ -1490,9 +1702,7 @@ textarea:focus {
   }
 
   .client-logo {
-    min-width: 146px;
-    min-height: 58px;
-    font-size: 14px;
+    padding-inline: clamp(18px, 6vw, 30px);
   }
 
   .footer {
@@ -1536,6 +1746,7 @@ textarea:focus {
   .monitor-card,
   .problem-grid article,
   .solution-card,
+  .compliance-card,
   .about-media,
   .testimonial-card {
     animation: fade-rise 620ms ease both;
@@ -1543,12 +1754,14 @@ textarea:focus {
 
   .monitor-card,
   .problem-grid article:nth-child(2),
-  .solution-card:nth-child(2) {
+  .solution-card:nth-child(2),
+  .compliance-card:nth-child(2) {
     animation-delay: 80ms;
   }
 
   .problem-grid article:nth-child(3),
-  .solution-card:nth-child(3) {
+  .solution-card:nth-child(3),
+  .compliance-card:nth-child(3) {
     animation-delay: 140ms;
   }
 
