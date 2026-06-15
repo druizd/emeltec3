@@ -271,8 +271,17 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     'thd_corriente_l1',
     'thd_corriente_l2',
     'thd_corriente_l3',
+    'thd_tension_l1',
+    'thd_tension_l2',
+    'thd_tension_l3',
     'p_activa_kw',
+    'p_activa_l1',
+    'p_activa_l2',
+    'p_activa_l3',
     'p_reactiva_kvar',
+    'p_reactiva_l1',
+    'p_reactiva_l2',
+    'p_reactiva_l3',
   ];
 
   readonly tabs: { id: ElectricTab; label: string; icon: string; badge?: string }[] = [
@@ -328,16 +337,39 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   readonly charts = computed<ElectricChart[]>(() => {
     const rows = this.orderedHistoryRows();
     const timestamps = rows.map((row) => this.rowTimestampMs(row));
+    const xRange = this.selectedChartRange();
     return [
       {
         title: 'Consumo de Energia (kWh)',
         subtitle: 'Kilovatios hora acumulados',
         tone: 'orange',
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         emptyText: 'Sin lecturas de energia para el rango seleccionado.',
+        maxVisiblePoints: 260,
         series: [
-          this.chartSeries(rows, 'energia_activa_kwh', 'Energia Activa', '#3b63d9', 'kWh', 3),
-          this.chartSeries(rows, 'e_reactiva_kvarh', 'Energia Reactiva', '#77c66e', 'kVArh', 3),
+          this.chartSeries(
+            rows,
+            'energia_activa_kwh',
+            'Energia Activa',
+            '#2563eb',
+            'kWh',
+            3,
+            false,
+            'last',
+          ),
+          this.chartSeries(
+            rows,
+            'e_reactiva_kvarh',
+            'Energia Reactiva',
+            '#16a34a',
+            'kVArh',
+            3,
+            false,
+            'last',
+          ),
         ],
       },
       {
@@ -345,15 +377,19 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         subtitle: 'Relacion potencia activa / aparente (cos phi)',
         tone: 'purple',
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         min: 0.65,
         max: 1,
         emptyText: 'Sin lecturas de factor de potencia para el rango seleccionado.',
+        maxVisiblePoints: 260,
         referenceLines: [{ label: 'Meta 0,93', value: 0.93, tone: 'target' }],
         series: [
-          this.chartSeries(rows, 'factor_potencia_l1', 'FP L1', '#4f7cf3', '', 3),
-          this.chartSeries(rows, 'factor_potencia_l2', 'FP L2', '#86c76f', '', 3),
-          this.chartSeries(rows, 'factor_potencia_l3', 'FP L3', '#f5bd32', '', 3),
-          this.chartSeries(rows, 'fp_total', 'FP Total', '#ff5a57', '', 3),
+          this.chartSeries(rows, 'factor_potencia_l1', 'Factor Potencia A', '#2563eb', '', 3),
+          this.chartSeries(rows, 'factor_potencia_l2', 'Factor Potencia B', '#16a34a', '', 3),
+          this.chartSeries(rows, 'factor_potencia_l3', 'Factor Potencia C', '#d97706', '', 3),
+          this.chartSeries(rows, 'fp_total', 'Factor Potencia Total', '#dc2626', '', 3),
         ],
       },
       {
@@ -361,13 +397,36 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         subtitle: 'Distorsion armonica total',
         tone: 'blue',
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas THD para el rango seleccionado.',
+        maxVisiblePoints: 260,
         referenceLines: [{ label: 'Recomendado <8%', value: 8, tone: 'max' }],
         series: [
-          this.chartSeries(rows, 'thd_corriente_l1', 'THD L1', '#4f7cf3', '%', 2),
-          this.chartSeries(rows, 'thd_corriente_l2', 'THD L2', '#86c76f', '%', 2),
-          this.chartSeries(rows, 'thd_corriente_l3', 'THD L3', '#f5bd32', '%', 2),
+          this.chartSeries(rows, 'thd_corriente_l1', 'THD Corriente L1', '#2563eb', '%', 2),
+          this.chartSeries(rows, 'thd_corriente_l2', 'THD Corriente L2', '#16a34a', '%', 2),
+          this.chartSeries(rows, 'thd_corriente_l3', 'THD Corriente L3', '#d97706', '%', 2),
+        ],
+      },
+      {
+        title: 'THD Tension (%)',
+        subtitle: 'Distorsion armonica de tension por fase',
+        tone: 'cyan',
+        half: true,
+        compact: true,
+        timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
+        min: 0,
+        emptyText: 'Sin lecturas THD de tension para el rango seleccionado.',
+        referenceLines: [{ label: 'Recomendado <5%', value: 5, tone: 'max' }],
+        series: [
+          this.chartSeries(rows, 'thd_tension_l1', 'THD Tension L1', '#2563eb', '%', 2),
+          this.chartSeries(rows, 'thd_tension_l2', 'THD Tension L2', '#16a34a', '%', 2),
+          this.chartSeries(rows, 'thd_tension_l3', 'THD Tension L3', '#d97706', '%', 2),
         ],
       },
       {
@@ -375,12 +434,16 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         subtitle: 'Tension electrica entre fases',
         tone: 'cyan',
         half: true,
+        compact: true,
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         emptyText: 'Sin lecturas de voltaje para el rango seleccionado.',
         series: [
-          this.chartSeries(rows, 'voltaje_l1', 'Voltaje L1', '#4f7cf3', 'V', 1),
-          this.chartSeries(rows, 'voltaje_l2', 'Voltaje L2', '#86c76f', 'V', 1),
-          this.chartSeries(rows, 'voltaje_l3', 'Voltaje L3', '#f5bd32', 'V', 1),
+          this.chartSeries(rows, 'voltaje_l1', 'Voltaje A', '#2563eb', 'V', 1),
+          this.chartSeries(rows, 'voltaje_l2', 'Voltaje B', '#16a34a', 'V', 1),
+          this.chartSeries(rows, 'voltaje_l3', 'Voltaje C', '#d97706', 'V', 1),
         ],
       },
       {
@@ -388,43 +451,52 @@ export class CompanySiteElectricDetailComponent implements OnInit {
         subtitle: 'Amperios - Flujo de carga por fase',
         tone: 'orange',
         half: true,
+        compact: true,
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas de corriente para el rango seleccionado.',
         series: [
-          this.chartSeries(rows, 'corriente_l1', 'Corriente L1', '#4f7cf3', 'A', 2),
-          this.chartSeries(rows, 'corriente_l2', 'Corriente L2', '#86c76f', 'A', 2),
-          this.chartSeries(rows, 'corriente_l3', 'Corriente L3', '#f5bd32', 'A', 2),
+          this.chartSeries(rows, 'corriente_l1', 'Corriente L1', '#2563eb', 'A', 2),
+          this.chartSeries(rows, 'corriente_l2', 'Corriente L2', '#16a34a', 'A', 2),
+          this.chartSeries(rows, 'corriente_l3', 'Corriente L3', '#d97706', 'A', 2),
         ],
       },
       {
-        title: 'Potencia Activa (kW)',
-        subtitle: 'Kilovatios, trabajo real efectuado',
+        title: 'Potencias Activas (kW)',
+        subtitle: 'Kilovatios por fase',
         tone: 'blue',
         half: true,
+        compact: true,
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         min: 0,
         emptyText: 'Sin lecturas de potencia activa para el rango seleccionado.',
         series: [
-          this.chartSeries(rows, 'p_activa_kw', 'Potencia Activa Total', '#4f7cf3', 'kW', 2),
+          this.chartSeries(rows, 'p_activa_l1', 'Potencia Activa A', '#2563eb', 'kW', 2),
+          this.chartSeries(rows, 'p_activa_l2', 'Potencia Activa B', '#16a34a', 'kW', 2),
+          this.chartSeries(rows, 'p_activa_l3', 'Potencia Activa C', '#d97706', 'kW', 2),
         ],
       },
       {
-        title: 'Potencia Reactiva (kVAr)',
-        subtitle: 'Kilovoltio-amperios reactivos',
+        title: 'Potencias Reactivas (kVAr)',
+        subtitle: 'Kilovoltio-amperios reactivos por fase',
         tone: 'purple',
         half: true,
+        compact: true,
         timestamps,
+        ...xRange,
+        bucketMinutes: 60,
+        extendToNow: true,
         emptyText: 'Sin lecturas de potencia reactiva para el rango seleccionado.',
         series: [
-          this.chartSeries(
-            rows,
-            'p_reactiva_kvar',
-            'Potencia Reactiva Total',
-            '#8b5cf6',
-            'kVAr',
-            2,
-          ),
+          this.chartSeries(rows, 'p_reactiva_l1', 'Potencia Reactiva A', '#2563eb', 'kVAr', 2),
+          this.chartSeries(rows, 'p_reactiva_l2', 'Potencia Reactiva B', '#16a34a', 'kVAr', 2),
+          this.chartSeries(rows, 'p_reactiva_l3', 'Potencia Reactiva C', '#d97706', 'kVAr', 2),
         ],
       },
     ];
@@ -587,6 +659,16 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     return next;
   }
 
+  private selectedChartRange(): { xMin: number; xMax: number } {
+    const start = new Date(`${this.dateFrom()}T00:00:00`).getTime();
+    const selectedEnd = new Date(`${this.dateTo()}T23:59:59`).getTime();
+    const now = Date.now();
+    const end = selectedEnd >= now ? now : selectedEnd;
+    const safeStart = Number.isFinite(start) ? start : now - 24 * 60 * 60 * 1000;
+    const safeEnd = Number.isFinite(end) && end > safeStart ? end : safeStart + 12 * 60 * 60 * 1000;
+    return { xMin: safeStart, xMax: safeEnd };
+  }
+
   private orderedHistoryRows(): TelemetryHistoryRow[] {
     return this.historyRows()
       .filter((row) => row?.data && Object.keys(row.data).length > 0)
@@ -595,10 +677,151 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   }
 
   private numericValue(row: TelemetryHistoryRow, key: string): number | null {
+    if (this.isMatheiSimulationRow(row)) {
+      const derived = this.derivedSimulationValue(row, key);
+      if (derived !== null) return derived;
+    }
+
+    return this.rawNumericValue(row, key);
+  }
+
+  private rawNumericValue(row: TelemetryHistoryRow, key: string): number | null {
     const value = row.data?.[key];
     if (value === null || value === undefined || value === '') return null;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private isMatheiSimulationRow(row: TelemetryHistoryRow): boolean {
+    return row.data?.['_simulated'] === true && row.data?.['_profile'] === 'mathei_v1';
+  }
+
+  private derivedSimulationValue(row: TelemetryHistoryRow, key: string): number | null {
+    const fpMap: Record<string, [number, number]> = {
+      factor_potencia_l1: [0.024, 0.006],
+      factor_potencia_l2: [-0.048, 0.007],
+      factor_potencia_l3: [-0.014, 0.006],
+    };
+    if (key in fpMap) {
+      const base = this.rawNumericValue(row, 'fp_total');
+      if (base === null) return null;
+      const [offset, wave] = fpMap[key];
+      return this.round(this.clamp(base + offset + this.rowWave(row, key, wave), 0.65, 0.99), 3);
+    }
+
+    const voltageMap: Record<string, [number, number]> = {
+      voltaje_l1: [2.8, 0.55],
+      voltaje_l2: [-2.2, 0.5],
+      voltaje_l3: [0.4, 0.45],
+    };
+    if (key in voltageMap) {
+      const base = this.averageRaw(row, ['voltaje_l1', 'voltaje_l2', 'voltaje_l3']);
+      if (base === null) return null;
+      const [offset, wave] = voltageMap[key];
+      return this.round(base + offset + this.rowWave(row, key, wave), 1);
+    }
+
+    const currentMap: Record<string, [number, number]> = {
+      corriente_l1: [1.09, 0.018],
+      corriente_l2: [0.93, 0.016],
+      corriente_l3: [1.01, 0.015],
+    };
+    if (key in currentMap) {
+      const base = this.averageRaw(row, ['corriente_l1', 'corriente_l2', 'corriente_l3']);
+      if (base === null) return null;
+      const [factor, wave] = currentMap[key];
+      return this.round(Math.max(0, base * (factor + this.rowWave(row, key, wave))), 2);
+    }
+
+    const thdCurrentMap: Record<string, [number, number]> = {
+      thd_corriente_l1: [0.35, 0.18],
+      thd_corriente_l2: [-0.25, 0.15],
+      thd_corriente_l3: [0.75, 0.2],
+    };
+    if (key in thdCurrentMap) {
+      const base = this.averageRaw(row, [
+        'thd_corriente_l1',
+        'thd_corriente_l2',
+        'thd_corriente_l3',
+      ]);
+      if (base === null) return null;
+      const [offset, wave] = thdCurrentMap[key];
+      return this.round(this.clamp(base + offset + this.rowWave(row, key, wave), 0.4, 7.8), 2);
+    }
+
+    const thdVoltageMap: Record<string, [number, number]> = {
+      thd_tension_l1: [0.18, 0.08],
+      thd_tension_l2: [-0.1, 0.07],
+      thd_tension_l3: [0.34, 0.09],
+    };
+    if (key in thdVoltageMap) {
+      const raw = this.rawNumericValue(row, key);
+      if (raw !== null) return raw;
+      const baseCurrent = this.averageRaw(row, [
+        'thd_corriente_l1',
+        'thd_corriente_l2',
+        'thd_corriente_l3',
+      ]);
+      if (baseCurrent === null) return null;
+      const [offset, wave] = thdVoltageMap[key];
+      return this.round(
+        this.clamp(baseCurrent * 0.38 + offset + this.rowWave(row, key, wave), 0.2, 4.5),
+        2,
+      );
+    }
+
+    const activePhaseMap: Record<string, [number, number]> = {
+      p_activa_l1: [0.38, 0.018],
+      p_activa_l2: [0.29, 0.015],
+      p_activa_l3: [0.33, 0.016],
+    };
+    if (key in activePhaseMap) {
+      const raw = this.rawNumericValue(row, key);
+      if (raw !== null) return raw;
+      const total = this.rawNumericValue(row, 'p_activa_kw');
+      if (total === null) return null;
+      const [share, wave] = activePhaseMap[key];
+      return this.round(Math.max(0, total * (share + this.rowWave(row, key, wave))), 3);
+    }
+
+    const reactivePhaseMap: Record<string, [number, number]> = {
+      p_reactiva_l1: [0.39, 0.018],
+      p_reactiva_l2: [0.27, 0.015],
+      p_reactiva_l3: [0.34, 0.016],
+    };
+    if (key in reactivePhaseMap) {
+      const raw = this.rawNumericValue(row, key);
+      if (raw !== null) return raw;
+      const total = this.rawNumericValue(row, 'p_reactiva_kvar');
+      if (total === null) return null;
+      const [share, wave] = reactivePhaseMap[key];
+      return this.round(Math.max(0, total * (share + this.rowWave(row, key, wave))), 3);
+    }
+
+    return null;
+  }
+
+  private averageRaw(row: TelemetryHistoryRow, keys: string[]): number | null {
+    const values = keys
+      .map((key) => this.rawNumericValue(row, key))
+      .filter((value): value is number => value !== null);
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  private rowWave(row: TelemetryHistoryRow, key: string, amplitude: number): number {
+    const timestamp = this.rowTimestampMs(row);
+    const seed = key.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return Math.sin(timestamp / 3_600_000 + seed) * amplitude;
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  private round(value: number, digits: number): number {
+    const factor = 10 ** digits;
+    return Math.round(value * factor) / factor;
   }
 
   private chartSeries(
@@ -609,6 +832,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     unit = '',
     precision = 2,
     fill = false,
+    aggregation: 'avg' | 'last' | 'min' | 'max' = 'avg',
   ) {
     return {
       label,
@@ -616,6 +840,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
       unit,
       precision,
       fill,
+      aggregation,
       values: rows.map((row) => this.numericValue(row, key)),
     };
   }

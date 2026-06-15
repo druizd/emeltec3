@@ -483,7 +483,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
         timestamps,
         min: 0,
         emptyText: 'Sin lecturas de nivel para el periodo seleccionado.',
-        series: [this.chartSeries(rows, 'nivel', 'Nivel camara', '#4f73d9', 'm', 3)],
+        series: [this.chartSeries(rows, 'nivel', 'Nivel camara', '#2563eb', 'm', 3)],
       },
       {
         title: 'Caudal descarga',
@@ -493,9 +493,9 @@ export class CompanySiteRilesDetailComponent implements OnInit {
         min: 0,
         emptyText: 'Sin lecturas de caudal para el periodo seleccionado.',
         series: [
-          this.chartSeries(rows, 'caudal', 'Caudal', '#4f73d9', 'L/s', 3),
-          this.chartSeries(rows, 'caudal', 'Caudal min', '#77c66e', 'L/s', 3, false, 0.78),
-          this.chartSeries(rows, 'caudal', 'Caudal max', '#f4b847', 'L/s', 3, false, 1.22),
+          this.chartSeries(rows, 'caudal', 'Caudal principal', '#2563eb', 'L/s', 3),
+          this.chartSeries(rows, 'caudal', 'Caudal min', '#16a34a', 'L/s', 3, false, 0.78),
+          this.chartSeries(rows, 'caudal', 'Caudal max', '#d97706', 'L/s', 3, false, 1.22),
         ],
       },
       {
@@ -506,7 +506,19 @@ export class CompanySiteRilesDetailComponent implements OnInit {
         min: 0,
         wide: true,
         emptyText: 'Sin lecturas de totalizador para el periodo seleccionado.',
-        series: [this.chartSeries(rows, 'totalizador', 'Totalizador', '#0dafbd', 'm3', 3)],
+        series: [
+          this.chartSeries(
+            rows,
+            'totalizador',
+            'Totalizador',
+            '#0dafbd',
+            'm3',
+            3,
+            false,
+            1,
+            'last',
+          ),
+        ],
       },
     ];
   });
@@ -670,6 +682,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     precision = 2,
     fill = false,
     scale = 1,
+    aggregation: 'avg' | 'last' | 'min' | 'max' = 'avg',
   ) {
     return {
       label,
@@ -677,6 +690,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       unit,
       precision,
       fill,
+      aggregation,
       values: rows.map((row) => {
         const value = this.numericValue(row, key);
         return value === null ? null : value * scale;
