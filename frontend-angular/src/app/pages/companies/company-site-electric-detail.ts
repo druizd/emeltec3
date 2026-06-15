@@ -8,6 +8,10 @@ import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
 import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
+import {
+  TelemetryLineChartCardComponent,
+  type TelemetryLineChart,
+} from './components/telemetry-line-chart-card';
 
 interface SiteContext {
   company: CompanyNode;
@@ -25,13 +29,8 @@ interface ElectricKpi {
   helper?: string;
 }
 
-interface ElectricChart {
-  title: string;
-  subtitle: string;
-  legend: { label: string; color: string; points: string }[];
-  note?: string;
+interface ElectricChart extends TelemetryLineChart {
   half?: boolean;
-  labels?: string[];
 }
 
 type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
@@ -47,6 +46,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
     SiteVariableSettingsPanelComponent,
     KpiStripSkeletonComponent,
     ChartSkeletonComponent,
+    TelemetryLineChartCardComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f4f7fa] pb-8 text-slate-700">
@@ -208,66 +208,10 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
 
                 <div class="grid gap-5 xl:grid-cols-2">
                   @for (chart of charts(); track chart.title) {
-                    <article
-                      class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+                    <app-telemetry-line-chart-card
+                      [chart]="chart"
                       [ngClass]="chart.half ? '' : 'xl:col-span-2'"
-                    >
-                      <div class="mb-5 flex items-start justify-between gap-3">
-                        <div>
-                          <h2 class="text-body font-semibold text-slate-800">{{ chart.title }}</h2>
-                          <p class="mt-1 text-caption font-bold text-slate-400">
-                            {{ chart.subtitle }}
-                          </p>
-                        </div>
-                        @if (chart.note) {
-                          <p class="text-caption font-bold text-slate-400">{{ chart.note }}</p>
-                        }
-                      </div>
-
-                      <div class="relative h-[230px] overflow-hidden rounded-md bg-white">
-                        <svg viewBox="0 0 900 230" class="h-full w-full" preserveAspectRatio="none">
-                          <g stroke="#e5e7eb" stroke-width="1">
-                            <line x1="48" y1="25" x2="870" y2="25" />
-                            <line x1="48" y1="75" x2="870" y2="75" />
-                            <line x1="48" y1="125" x2="870" y2="125" />
-                            <line x1="48" y1="175" x2="870" y2="175" />
-                            <line x1="48" y1="210" x2="870" y2="210" />
-                            <line x1="48" y1="25" x2="48" y2="210" />
-                          </g>
-                          @for (serie of chart.legend; track serie.label) {
-                            <polyline
-                              [attr.points]="serie.points"
-                              fill="none"
-                              [attr.stroke]="serie.color"
-                              stroke-width="3"
-                              stroke-linejoin="round"
-                              stroke-linecap="round"
-                            />
-                          }
-                        </svg>
-                        <div
-                          class="pointer-events-none absolute bottom-1 left-14 right-8 flex justify-between text-[11px] font-semibold text-slate-400"
-                        >
-                          @for (label of chart.labels || defaultChartLabels; track $index) {
-                            <span>{{ label }}</span>
-                          }
-                        </div>
-                      </div>
-
-                      <div
-                        class="mt-4 flex flex-wrap justify-center gap-5 text-caption font-semibold text-slate-500"
-                      >
-                        @for (serie of chart.legend; track serie.label) {
-                          <span class="inline-flex items-center gap-1.5">
-                            <span
-                              class="h-2 w-2 rounded-full"
-                              [style.background]="serie.color"
-                            ></span>
-                            {{ serie.label }}
-                          </span>
-                        }
-                      </div>
-                    </article>
+                    />
                   }
                 </div>
               </div>
@@ -311,7 +255,6 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   activeTab = signal<ElectricTab>('dashboard');
   dateFrom = signal(this.toDateInputValue(this.addDays(new Date(), -1)));
   dateTo = signal(this.toDateInputValue(new Date()));
-  readonly defaultChartLabels = ['17', '21', '25', '29', 'May', '5', '9', '13'];
   readonly telemetryKeys = [
     'energia_activa_kwh',
     'e_reactiva_kvarh',
@@ -328,6 +271,8 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     'thd_corriente_l1',
     'thd_corriente_l2',
     'thd_corriente_l3',
+    'p_activa_kw',
+    'p_reactiva_kvar',
   ];
 
   readonly tabs: { id: ElectricTab; label: string; icon: string; badge?: string }[] = [
@@ -341,7 +286,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     {
       label: 'Consumo Total',
       role: 'energia_activa_kwh',
-      fallback: '171,935',
+      fallback: '0',
       unit: 'kWh este periodo',
       tone: 'primary',
       icon: 'bolt',
@@ -349,7 +294,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     {
       label: 'Cargo FP',
       role: 'cargo_fp',
-      fallback: '1,974,382',
+      fallback: '0',
       unit: 'penalizacion',
       tone: 'danger',
       icon: 'paid',
@@ -358,7 +303,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     {
       label: 'Cargo Total',
       role: 'cargo_total',
-      fallback: '12,288,768',
+      fallback: '0',
       unit: 'estimado del periodo',
       tone: 'success',
       icon: 'payments',
@@ -366,7 +311,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     {
       label: 'Factor Potencia',
       role: 'fp_total',
-      fallback: '0.74',
+      fallback: '0',
       unit: 'promedio meta >=0.93',
       tone: 'danger',
       icon: 'query_stats',
@@ -374,295 +319,112 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   ];
 
   readonly secondaryMetrics = [
-    { label: 'FP Actual', role: 'fp_total', fallback: '0.393', color: '#10b981' },
-    { label: 'Cumplimiento FP', role: 'cumplimiento_fp', fallback: '58.1%', color: '#3b82f6' },
-    { label: 'Promedio FP', role: 'fp_promedio', fallback: '0.739', color: '#8b5cf6' },
-    { label: 'Aumento Factura', role: 'aumento_factura', fallback: '19.1%', color: '#f97316' },
-  ];
-
-  readonly fallbackCharts: ElectricChart[] = [
-    {
-      title: 'Consumo de Energia (kWh)',
-      subtitle: 'Kilovatios hora',
-      legend: [
-        {
-          label: 'Energia Activa',
-          color: '#3b63d9',
-          points: '50,82 130,82 210,81 290,82 370,81 450,80 530,81 610,80 690,79 770,78 860,77',
-        },
-        {
-          label: 'Energia Reactiva',
-          color: '#77c66e',
-          points:
-            '50,208 130,207 210,208 290,208 370,207 450,207 530,208 610,207 690,207 770,207 860,206',
-        },
-      ],
-    },
-    {
-      title: 'Factor de Potencia',
-      subtitle: 'Relación potencia activa / aparente (cos phi)',
-      note: 'Linea roja: meta 0.93',
-      legend: [
-        {
-          label: 'Factor Potencia A',
-          color: '#4f7cf3',
-          points: '50,75 130,76 210,76 290,75 370,150 450,152 530,68 610,82 690,120 770,78 860,92',
-        },
-        {
-          label: 'Factor Potencia B',
-          color: '#86c76f',
-          points: '50,72 130,72 210,73 290,72 370,142 450,146 530,70 610,86 690,116 770,76 860,88',
-        },
-        {
-          label: 'Factor Potencia C',
-          color: '#f5bd32',
-          points: '50,70 130,71 210,72 290,70 370,132 450,136 530,66 610,92 690,104 770,75 860,84',
-        },
-        {
-          label: 'Factor Potencia Total',
-          color: '#ff5a57',
-          points:
-            '50,68 130,70 210,125 290,72 370,165 450,168 530,72 610,155 690,160 770,73 860,155',
-        },
-      ],
-    },
-    {
-      title: 'THD Corriente (%)',
-      subtitle: 'Total Harmonic Distortion',
-      note: 'Recomendado: <8%',
-      legend: [
-        {
-          label: 'THD Corriente L1',
-          color: '#4f7cf3',
-          points: '50,207 130,207 210,207 290,207 370,207 450,207 530,207 610,207 690,207 860,207',
-        },
-        {
-          label: 'THD Corriente L2',
-          color: '#86c76f',
-          points: '50,209 130,209 210,209 290,209 370,209 450,209 530,209 610,209 690,209 860,209',
-        },
-        {
-          label: 'THD Corriente L3',
-          color: '#f5bd32',
-          points: '50,208 130,208 210,208 290,208 370,208 450,208 530,208 610,208 690,208 860,208',
-        },
-      ],
-    },
-    {
-      title: 'Voltajes (V)',
-      subtitle: 'Tension electrica entre fases',
-      half: true,
-      legend: [
-        {
-          label: 'Voltaje A',
-          color: '#4f7cf3',
-          points: '50,100 130,96 210,104 290,91 370,98 450,92 530,100 610,95 690,102 770,97 860,94',
-        },
-        {
-          label: 'Voltaje B',
-          color: '#86c76f',
-          points:
-            '50,104 130,98 210,101 290,95 370,102 450,96 530,105 610,99 690,96 770,101 860,98',
-        },
-        {
-          label: 'Voltaje C',
-          color: '#f5bd32',
-          points: '50,95 130,101 210,99 290,88 370,96 450,90 530,101 610,92 690,103 770,96 860,92',
-        },
-      ],
-    },
-    {
-      title: 'Corriente (A)',
-      subtitle: 'Amperios - Flujo de carga por fase',
-      half: true,
-      legend: [
-        {
-          label: 'Corriente L1',
-          color: '#4f7cf3',
-          points: '50,80 130,150 210,92 290,84 370,180 450,182 530,86 610,78 690,185 770,80 860,86',
-        },
-        {
-          label: 'Corriente L2',
-          color: '#86c76f',
-          points: '50,88 130,152 210,96 290,90 370,176 450,178 530,88 610,84 690,182 770,84 860,90',
-        },
-        {
-          label: 'Corriente L3',
-          color: '#f5bd32',
-          points: '50,75 130,160 210,89 290,82 370,185 450,184 530,82 610,76 690,188 770,78 860,84',
-        },
-      ],
-    },
+    { label: 'FP Actual', role: 'fp_total', fallback: '0', color: '#10b981' },
+    { label: 'Cumplimiento FP', role: 'cumplimiento_fp', fallback: '0%', color: '#3b82f6' },
+    { label: 'Promedio FP', role: 'fp_promedio', fallback: '0', color: '#8b5cf6' },
+    { label: 'Aumento Factura', role: 'aumento_factura', fallback: '0%', color: '#f97316' },
   ];
 
   readonly charts = computed<ElectricChart[]>(() => {
     const rows = this.orderedHistoryRows();
-    if (rows.length < 2) return this.fallbackCharts;
-
-    const labels = this.axisLabels(rows);
+    const timestamps = rows.map((row) => this.rowTimestampMs(row));
     return [
       {
         title: 'Consumo de Energia (kWh)',
-        subtitle: 'Kilovatios hora',
-        labels,
-        legend: [
-          {
-            label: 'Energia Activa',
-            color: '#3b63d9',
-            points: this.linePoints(rows, 'energia_activa_kwh', {
-              fallback: this.fallbackPoint(0, 0),
-            }),
-          },
-          {
-            label: 'Energia Reactiva',
-            color: '#77c66e',
-            points: this.linePoints(rows, 'e_reactiva_kvarh', {
-              fallback: this.fallbackPoint(0, 1),
-            }),
-          },
+        subtitle: 'Kilovatios hora acumulados',
+        tone: 'orange',
+        timestamps,
+        emptyText: 'Sin lecturas de energia para el rango seleccionado.',
+        series: [
+          this.chartSeries(rows, 'energia_activa_kwh', 'Energia Activa', '#3b63d9', 'kWh', 3),
+          this.chartSeries(rows, 'e_reactiva_kvarh', 'Energia Reactiva', '#77c66e', 'kVArh', 3),
         ],
       },
       {
         title: 'Factor de Potencia',
         subtitle: 'Relacion potencia activa / aparente (cos phi)',
-        note: 'Linea roja: meta 0.93',
-        labels,
-        legend: [
-          {
-            label: 'Factor Potencia A',
-            color: '#4f7cf3',
-            points: this.linePoints(rows, 'factor_potencia_l1', {
-              min: 0.65,
-              max: 1,
-              fallback: this.fallbackPoint(1, 0),
-            }),
-          },
-          {
-            label: 'Factor Potencia B',
-            color: '#86c76f',
-            points: this.linePoints(rows, 'factor_potencia_l2', {
-              min: 0.65,
-              max: 1,
-              fallback: this.fallbackPoint(1, 1),
-            }),
-          },
-          {
-            label: 'Factor Potencia C',
-            color: '#f5bd32',
-            points: this.linePoints(rows, 'factor_potencia_l3', {
-              min: 0.65,
-              max: 1,
-              fallback: this.fallbackPoint(1, 2),
-            }),
-          },
-          {
-            label: 'Factor Potencia Total',
-            color: '#ff5a57',
-            points: this.linePoints(rows, 'fp_total', {
-              min: 0.65,
-              max: 1,
-              fallback: this.fallbackPoint(1, 3),
-            }),
-          },
+        tone: 'purple',
+        timestamps,
+        min: 0.65,
+        max: 1,
+        emptyText: 'Sin lecturas de factor de potencia para el rango seleccionado.',
+        referenceLines: [{ label: 'Meta 0,93', value: 0.93, tone: 'target' }],
+        series: [
+          this.chartSeries(rows, 'factor_potencia_l1', 'FP L1', '#4f7cf3', '', 3),
+          this.chartSeries(rows, 'factor_potencia_l2', 'FP L2', '#86c76f', '', 3),
+          this.chartSeries(rows, 'factor_potencia_l3', 'FP L3', '#f5bd32', '', 3),
+          this.chartSeries(rows, 'fp_total', 'FP Total', '#ff5a57', '', 3),
         ],
       },
       {
         title: 'THD Corriente (%)',
-        subtitle: 'Total Harmonic Distortion',
-        note: 'Recomendado: <8%',
-        labels,
-        legend: [
-          {
-            label: 'THD Corriente L1',
-            color: '#4f7cf3',
-            points: this.linePoints(rows, 'thd_corriente_l1', {
-              min: 0,
-              max: 8,
-              fallback: this.fallbackPoint(2, 0),
-            }),
-          },
-          {
-            label: 'THD Corriente L2',
-            color: '#86c76f',
-            points: this.linePoints(rows, 'thd_corriente_l2', {
-              min: 0,
-              max: 8,
-              fallback: this.fallbackPoint(2, 1),
-            }),
-          },
-          {
-            label: 'THD Corriente L3',
-            color: '#f5bd32',
-            points: this.linePoints(rows, 'thd_corriente_l3', {
-              min: 0,
-              max: 8,
-              fallback: this.fallbackPoint(2, 2),
-            }),
-          },
+        subtitle: 'Distorsion armonica total',
+        tone: 'blue',
+        timestamps,
+        min: 0,
+        emptyText: 'Sin lecturas THD para el rango seleccionado.',
+        referenceLines: [{ label: 'Recomendado <8%', value: 8, tone: 'max' }],
+        series: [
+          this.chartSeries(rows, 'thd_corriente_l1', 'THD L1', '#4f7cf3', '%', 2),
+          this.chartSeries(rows, 'thd_corriente_l2', 'THD L2', '#86c76f', '%', 2),
+          this.chartSeries(rows, 'thd_corriente_l3', 'THD L3', '#f5bd32', '%', 2),
         ],
       },
       {
         title: 'Voltajes (V)',
         subtitle: 'Tension electrica entre fases',
+        tone: 'cyan',
         half: true,
-        labels,
-        legend: [
-          {
-            label: 'Voltaje A',
-            color: '#4f7cf3',
-            points: this.linePoints(rows, 'voltaje_l1', {
-              min: 360,
-              max: 420,
-              fallback: this.fallbackPoint(3, 0),
-            }),
-          },
-          {
-            label: 'Voltaje B',
-            color: '#86c76f',
-            points: this.linePoints(rows, 'voltaje_l2', {
-              min: 360,
-              max: 420,
-              fallback: this.fallbackPoint(3, 1),
-            }),
-          },
-          {
-            label: 'Voltaje C',
-            color: '#f5bd32',
-            points: this.linePoints(rows, 'voltaje_l3', {
-              min: 360,
-              max: 420,
-              fallback: this.fallbackPoint(3, 2),
-            }),
-          },
+        timestamps,
+        emptyText: 'Sin lecturas de voltaje para el rango seleccionado.',
+        series: [
+          this.chartSeries(rows, 'voltaje_l1', 'Voltaje L1', '#4f7cf3', 'V', 1),
+          this.chartSeries(rows, 'voltaje_l2', 'Voltaje L2', '#86c76f', 'V', 1),
+          this.chartSeries(rows, 'voltaje_l3', 'Voltaje L3', '#f5bd32', 'V', 1),
         ],
       },
       {
         title: 'Corriente (A)',
         subtitle: 'Amperios - Flujo de carga por fase',
+        tone: 'orange',
         half: true,
-        labels,
-        legend: [
-          {
-            label: 'Corriente L1',
-            color: '#4f7cf3',
-            points: this.linePoints(rows, 'corriente_l1', {
-              fallback: this.fallbackPoint(4, 0),
-            }),
-          },
-          {
-            label: 'Corriente L2',
-            color: '#86c76f',
-            points: this.linePoints(rows, 'corriente_l2', {
-              fallback: this.fallbackPoint(4, 1),
-            }),
-          },
-          {
-            label: 'Corriente L3',
-            color: '#f5bd32',
-            points: this.linePoints(rows, 'corriente_l3', {
-              fallback: this.fallbackPoint(4, 2),
-            }),
-          },
+        timestamps,
+        min: 0,
+        emptyText: 'Sin lecturas de corriente para el rango seleccionado.',
+        series: [
+          this.chartSeries(rows, 'corriente_l1', 'Corriente L1', '#4f7cf3', 'A', 2),
+          this.chartSeries(rows, 'corriente_l2', 'Corriente L2', '#86c76f', 'A', 2),
+          this.chartSeries(rows, 'corriente_l3', 'Corriente L3', '#f5bd32', 'A', 2),
+        ],
+      },
+      {
+        title: 'Potencia Activa (kW)',
+        subtitle: 'Kilovatios, trabajo real efectuado',
+        tone: 'blue',
+        half: true,
+        timestamps,
+        min: 0,
+        emptyText: 'Sin lecturas de potencia activa para el rango seleccionado.',
+        series: [
+          this.chartSeries(rows, 'p_activa_kw', 'Potencia Activa Total', '#4f7cf3', 'kW', 2),
+        ],
+      },
+      {
+        title: 'Potencia Reactiva (kVAr)',
+        subtitle: 'Kilovoltio-amperios reactivos',
+        tone: 'purple',
+        half: true,
+        timestamps,
+        emptyText: 'Sin lecturas de potencia reactiva para el rango seleccionado.',
+        series: [
+          this.chartSeries(
+            rows,
+            'p_reactiva_kvar',
+            'Potencia Reactiva Total',
+            '#8b5cf6',
+            'kVAr',
+            2,
+          ),
         ],
       },
     ];
@@ -739,10 +501,11 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     const serialId = this.siteContext()?.site.id_serial;
     if (!serialId) return;
     this.companyService
-      .getTelemetryPreset(serialId, {
-        preset: '30d',
+      .getTelemetryRange(serialId, {
+        from: `${this.dateFrom()} 00:00:00`,
+        to: `${this.dateTo()} 23:59:59`,
         keys: this.telemetryKeys,
-        limit: 1200,
+        limit: 2500,
       })
       .subscribe({
         next: (res) => {
@@ -838,60 +601,29 @@ export class CompanySiteElectricDetailComponent implements OnInit {
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  private fallbackPoint(chartIndex: number, legendIndex: number): string {
-    return this.fallbackCharts[chartIndex]?.legend[legendIndex]?.points || '';
-  }
-
-  private linePoints(
+  private chartSeries(
     rows: TelemetryHistoryRow[],
     key: string,
-    options: { min?: number; max?: number; fallback: string },
-  ): string {
-    const series = rows
-      .map((row, index) => ({ index, value: this.numericValue(row, key) }))
-      .filter((point): point is { index: number; value: number } => point.value !== null);
-    if (series.length < 2) return options.fallback;
-
-    const values = series.map((point) => point.value);
-    let min = options.min ?? Math.min(...values);
-    let max = options.max ?? Math.max(...values);
-    if (max === min) {
-      max += 1;
-      min -= 1;
-    }
-
-    const xMin = 50;
-    const xMax = 860;
-    const yMin = 25;
-    const yMax = 210;
-    const lastIndex = Math.max(1, rows.length - 1);
-
-    return series
-      .map((point) => {
-        const x = xMin + (point.index / lastIndex) * (xMax - xMin);
-        const normalized = Math.min(1, Math.max(0, (point.value - min) / (max - min)));
-        const y = yMax - normalized * (yMax - yMin);
-        return `${Math.round(x)},${Math.round(y)}`;
-      })
-      .join(' ');
+    label: string,
+    color: string,
+    unit = '',
+    precision = 2,
+    fill = false,
+  ) {
+    return {
+      label,
+      color,
+      unit,
+      precision,
+      fill,
+      values: rows.map((row) => this.numericValue(row, key)),
+    };
   }
 
-  private axisLabels(rows: TelemetryHistoryRow[]): string[] {
-    if (rows.length === 0) return this.defaultChartLabels;
-    const labels: string[] = [];
-    const count = Math.min(8, rows.length);
-    for (let i = 0; i < count; i++) {
-      const index = Math.round((i / Math.max(1, count - 1)) * (rows.length - 1));
-      const row = rows[index];
-      labels.push(this.shortDateLabel(row?.timestamp_completo || row?.fecha || ''));
-    }
-    return labels;
-  }
-
-  private shortDateLabel(value: string): string {
-    const date = value.includes(' ') ? value.split(' ')[0] : value;
-    const parts = date.split('-');
-    if (parts.length !== 3) return '';
-    return `${Number(parts[2])}/${Number(parts[1])}`;
+  private rowTimestampMs(row: TelemetryHistoryRow): number {
+    const raw = row.timestamp_completo || `${row.fecha || ''} ${row.hora || ''}`.trim();
+    const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+    const parsed = new Date(normalized).getTime();
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
   }
 }

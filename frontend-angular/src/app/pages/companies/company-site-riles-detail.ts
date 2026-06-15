@@ -5,6 +5,10 @@ import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from 
 import { CompanyService, type TelemetryHistoryRow } from '../../services/company.service';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
+import {
+  TelemetryLineChartCardComponent,
+  type TelemetryLineChart,
+} from './components/telemetry-line-chart-card';
 
 interface SiteContext {
   company: CompanyNode;
@@ -34,27 +38,22 @@ interface RilesKpi {
   tone: 'primary' | 'success' | 'warning' | 'neutral';
 }
 
-interface RilesChart {
-  title: string;
-  subtitle: string;
-  heightClass: string;
-  series: { label: string; color: string; points: string }[];
-  labels?: string[];
+interface RilesChart extends TelemetryLineChart {
+  wide?: boolean;
 }
 
 type RilesTab = 'dashboard' | 'configurar';
 
-interface DailyBar {
-  day: string;
-  main: number;
-  min: number;
-  max: number;
-}
-
 @Component({
   selector: 'app-company-site-riles-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, SkeletonComponent, SiteVariableSettingsPanelComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    SkeletonComponent,
+    SiteVariableSettingsPanelComponent,
+    TelemetryLineChartCardComponent,
+  ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-4 pb-8 pt-4 text-slate-700 md:px-6">
       @if (siteContext(); as context) {
@@ -326,109 +325,11 @@ interface DailyBar {
 
                 <section class="grid gap-5 xl:grid-cols-2">
                   @for (chart of charts(); track chart.title) {
-                    <article class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                      <div class="mb-4">
-                        <h2 class="text-h6 font-semibold text-slate-900">{{ chart.title }}</h2>
-                        <p class="text-body-sm font-semibold text-slate-500">
-                          {{ chart.subtitle }}
-                        </p>
-                      </div>
-                      <div [class]="chart.heightClass">
-                        <svg viewBox="0 0 900 260" class="h-full w-full" preserveAspectRatio="none">
-                          <g stroke="#e2e8f0" stroke-width="1">
-                            <line x1="46" y1="28" x2="872" y2="28" />
-                            <line x1="46" y1="82" x2="872" y2="82" />
-                            <line x1="46" y1="136" x2="872" y2="136" />
-                            <line x1="46" y1="190" x2="872" y2="190" />
-                            <line x1="46" y1="232" x2="872" y2="232" />
-                            <line x1="46" y1="28" x2="46" y2="232" />
-                          </g>
-                          @for (serie of chart.series; track serie.label) {
-                            <polyline
-                              [attr.points]="serie.points"
-                              fill="none"
-                              [attr.stroke]="serie.color"
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="3"
-                            />
-                          }
-                        </svg>
-                        <div
-                          class="pointer-events-none absolute bottom-2 left-14 right-8 flex justify-between text-[11px] font-semibold text-slate-400"
-                        >
-                          @for (label of chart.labels || defaultChartLabels; track $index) {
-                            <span>{{ label }}</span>
-                          }
-                        </div>
-                      </div>
-                      <div
-                        class="mt-4 flex flex-wrap justify-center gap-5 text-caption font-semibold text-slate-500"
-                      >
-                        @for (serie of chart.series; track serie.label) {
-                          <span class="inline-flex items-center gap-1.5">
-                            <span
-                              class="h-2 w-2 rounded-full"
-                              [style.background]="serie.color"
-                            ></span>
-                            {{ serie.label }}
-                          </span>
-                        }
-                      </div>
-                    </article>
+                    <app-telemetry-line-chart-card
+                      [chart]="chart"
+                      [ngClass]="chart.wide ? 'xl:col-span-2' : ''"
+                    />
                   }
-
-                  <article
-                    class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-2"
-                  >
-                    <div class="mb-5">
-                      <h2 class="text-h6 font-semibold text-slate-900">Consumo diario</h2>
-                      <p class="text-body-sm font-semibold text-slate-500">
-                        Volumen diario simulado, central y banda de incertidumbre.
-                      </p>
-                    </div>
-                    <div class="relative h-[280px] overflow-hidden rounded-lg bg-white">
-                      <div
-                        class="absolute inset-x-10 bottom-10 top-6 grid grid-cols-12 items-end gap-2"
-                      >
-                        @for (bar of dailyBars(); track bar.day) {
-                          <div class="flex h-full flex-col justify-end gap-1">
-                            <div
-                              class="rounded-t bg-blue-500"
-                              [style.height.%]="bar.main"
-                              [attr.aria-label]="bar.day"
-                            ></div>
-                            <div
-                              class="h-1 rounded bg-emerald-400"
-                              [style.opacity]="bar.min / 100"
-                            ></div>
-                            <div
-                              class="h-1 rounded bg-amber-400"
-                              [style.opacity]="bar.max / 100"
-                            ></div>
-                          </div>
-                        }
-                      </div>
-                      <div class="absolute inset-x-10 bottom-9 border-t border-slate-200"></div>
-                      <div class="absolute left-10 top-6 h-[210px] border-l border-slate-200"></div>
-                    </div>
-                    <div
-                      class="mt-4 flex flex-wrap justify-center gap-5 text-caption font-semibold text-slate-500"
-                    >
-                      <span class="inline-flex items-center gap-1.5">
-                        <span class="h-2 w-2 rounded-full bg-blue-500"></span>
-                        Vol. diario (m3)
-                      </span>
-                      <span class="inline-flex items-center gap-1.5">
-                        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-                        Vol. diario min (m3)
-                      </span>
-                      <span class="inline-flex items-center gap-1.5">
-                        <span class="h-2 w-2 rounded-full bg-amber-400"></span>
-                        Vol. diario max (m3)
-                      </span>
-                    </div>
-                  </article>
                 </section>
 
                 <p
@@ -439,6 +340,36 @@ interface DailyBar {
                   tuberia. Para eliminarla, se requiere aforo manual de calibracion en planta.
                 </p>
               </main>
+            } @else {
+              @if (historyLoading()) {
+                <div class="space-y-5">
+                  <app-skeleton class="h-14 w-full rounded-xl" />
+                  <app-skeleton class="h-28 w-full rounded-xl" />
+                  <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <app-skeleton class="h-28 rounded-xl" />
+                    <app-skeleton class="h-28 rounded-xl" />
+                    <app-skeleton class="h-28 rounded-xl" />
+                    <app-skeleton class="h-28 rounded-xl" />
+                  </div>
+                  <div class="grid gap-5 xl:grid-cols-2">
+                    <app-skeleton class="h-[340px] rounded-xl" />
+                    <app-skeleton class="h-[340px] rounded-xl" />
+                  </div>
+                </div>
+              } @else {
+                <section
+                  class="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm"
+                >
+                  <span class="material-symbols-outlined text-[28px] text-slate-300">waves</span>
+                  <h2 class="mt-3 text-h6 font-semibold text-slate-800">
+                    Sin datos RILES para mostrar
+                  </h2>
+                  <p class="mt-1 text-body-sm font-semibold text-slate-500">
+                    Cuando lleguen mediciones del serial configurado, el dashboard se llenara con
+                    datos reales de la API.
+                  </p>
+                </section>
+              }
             }
           }
         </div>
@@ -469,9 +400,9 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   siteContext = signal<SiteContext | null>(null);
   dashboardData = signal<SiteDashboardData | null>(null);
   historyRows = signal<TelemetryHistoryRow[]>([]);
+  historyLoading = signal(false);
   activeTab = signal<RilesTab>('dashboard');
-  activeMonthId = signal('abril');
-  readonly defaultChartLabels = ['Abr', '5', '9', '13', '17', '21', '25', 'May'];
+  activeMonthId = signal('');
   readonly telemetryKeys = [
     'caudal',
     'totalizador',
@@ -487,56 +418,16 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     { id: 'configurar', label: 'Configurar', icon: 'build' },
   ];
 
-  readonly fallbackMonths: RilesMonth[] = [
-    {
-      id: 'abril',
-      label: 'Abril 2026',
-      volume: '1.420,13',
-      unit: 'm3',
-      shortVolume: '1.420 m3',
-      tag: 'Con flujo',
-      status: 'active',
-      quality: '55,7%',
-      range: '2026-04-01 -> 2026-04-30',
-      band: '1.183,44 - 1.936,54 m3',
-    },
-    {
-      id: 'mayo',
-      label: 'Mayo 2026',
-      volume: '0',
-      unit: 'm3',
-      shortVolume: 'sin flujo',
-      tag: 'Sin flujo',
-      status: 'idle',
-      quality: '87,5%',
-      range: '2026-05-01 -> 2026-05-30',
-      band: '0 - 0 m3',
-    },
-    {
-      id: 'junio',
-      label: 'Junio 2026',
-      volume: '0',
-      unit: 'm3',
-      shortVolume: 'sin flujo',
-      tag: 'Sin flujo',
-      status: 'idle',
-      quality: '99,9%',
-      range: '2026-06-01 -> 2026-06-05',
-      band: '0 - 0 m3',
-    },
-  ];
-
   readonly months = computed<RilesMonth[]>(() => this.buildMonths());
 
-  selectedMonth = computed<RilesMonth>(
-    () =>
-      this.months().find((month) => month.id === this.activeMonthId()) ||
-      this.months()[0] ||
-      this.fallbackMonths[0]!,
-  );
+  selectedMonth = computed<RilesMonth | null>(() => {
+    const months = this.months();
+    return months.find((month) => month.id === this.activeMonthId()) || months.at(-1) || null;
+  });
 
   readonly kpis = computed<RilesKpi[]>(() => {
     const month = this.selectedMonth();
+    if (!month) return [];
     const nivel = this.metricNumber('nivel');
     const caudal = this.metricNumber('caudal');
     const totalizador = this.metricNumber('totalizador');
@@ -581,122 +472,44 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     ];
   });
 
-  readonly fallbackCharts: RilesChart[] = [
-    {
-      title: 'Nivel camara',
-      subtitle: 'Nivel del agua en camara RILES (m), mes activo.',
-      heightClass: 'relative h-[320px] overflow-hidden rounded-lg bg-white',
-      series: [
-        {
-          label: 'Nivel (m)',
-          color: '#4f73d9',
-          points:
-            '55,230 86,80 112,202 141,70 170,214 198,74 229,78 258,226 288,90 318,88 348,230 430,230 512,230 595,230 650,92 680,206 713,228 742,205 775,230 806,214 840,229',
-        },
-      ],
-    },
-    {
-      title: 'Caudal descarga',
-      subtitle: 'Central + banda incertidumbre Manning, L/s.',
-      heightClass: 'relative h-[320px] overflow-hidden rounded-lg bg-white',
-      series: [
-        {
-          label: 'Caudal (L/s)',
-          color: '#4f73d9',
-          points:
-            '55,232 92,232 120,78 145,214 173,62 204,225 232,80 262,232 295,66 325,230 355,70 385,232 435,218 468,223 530,232 650,232 710,232 758,126 805,232 850,232',
-        },
-        {
-          label: 'Caudal min (L/s)',
-          color: '#77c66e',
-          points:
-            '55,232 92,232 120,116 145,223 173,110 204,230 232,118 262,232 295,115 325,232 355,120 385,232 435,224 468,228 530,232 650,232 710,232 758,170 805,232 850,232',
-        },
-        {
-          label: 'Caudal max (L/s)',
-          color: '#f4b847',
-          points:
-            '55,232 92,232 120,40 145,198 173,34 204,218 232,43 262,232 295,37 325,220 355,42 385,232 435,214 468,218 530,232 650,232 710,232 758,90 805,232 850,232',
-        },
-      ],
-    },
-  ];
-
   readonly charts = computed<RilesChart[]>(() => {
     const rows = this.orderedHistoryRows();
-    if (rows.length < 2) return this.fallbackCharts;
-    const labels = this.axisLabels(rows);
+    const timestamps = rows.map((row) => this.rowTimestampMs(row));
     return [
       {
         title: 'Nivel camara',
         subtitle: 'Nivel del agua en camara RILES (m), mes activo.',
-        heightClass: 'relative h-[320px] overflow-hidden rounded-lg bg-white',
-        labels,
-        series: [
-          {
-            label: 'Nivel (m)',
-            color: '#4f73d9',
-            points: this.linePoints(rows, 'nivel', {
-              min: 0,
-              max: 0.25,
-              fallback: this.fallbackPoint(0, 0),
-            }),
-          },
-        ],
+        tone: 'green',
+        timestamps,
+        min: 0,
+        emptyText: 'Sin lecturas de nivel para el periodo seleccionado.',
+        series: [this.chartSeries(rows, 'nivel', 'Nivel camara', '#4f73d9', 'm', 3)],
       },
       {
         title: 'Caudal descarga',
         subtitle: 'Central + banda incertidumbre Manning, L/s.',
-        heightClass: 'relative h-[320px] overflow-hidden rounded-lg bg-white',
-        labels,
+        tone: 'cyan',
+        timestamps,
+        min: 0,
+        emptyText: 'Sin lecturas de caudal para el periodo seleccionado.',
         series: [
-          {
-            label: 'Caudal (L/s)',
-            color: '#4f73d9',
-            points: this.linePoints(rows, 'caudal', {
-              min: 0,
-              fallback: this.fallbackPoint(1, 0),
-            }),
-          },
-          {
-            label: 'Caudal min (L/s)',
-            color: '#77c66e',
-            points: this.linePoints(rows, 'caudal', {
-              min: 0,
-              scale: 0.78,
-              fallback: this.fallbackPoint(1, 1),
-            }),
-          },
-          {
-            label: 'Caudal max (L/s)',
-            color: '#f4b847',
-            points: this.linePoints(rows, 'caudal', {
-              min: 0,
-              scale: 1.22,
-              fallback: this.fallbackPoint(1, 2),
-            }),
-          },
+          this.chartSeries(rows, 'caudal', 'Caudal', '#4f73d9', 'L/s', 3),
+          this.chartSeries(rows, 'caudal', 'Caudal min', '#77c66e', 'L/s', 3, false, 0.78),
+          this.chartSeries(rows, 'caudal', 'Caudal max', '#f4b847', 'L/s', 3, false, 1.22),
         ],
+      },
+      {
+        title: 'Volumen acumulado',
+        subtitle: 'Totalizador historico del equipo RILES, m3.',
+        tone: 'blue',
+        timestamps,
+        min: 0,
+        wide: true,
+        emptyText: 'Sin lecturas de totalizador para el periodo seleccionado.',
+        series: [this.chartSeries(rows, 'totalizador', 'Totalizador', '#0dafbd', 'm3', 3)],
       },
     ];
   });
-
-  readonly fallbackDailyBars: DailyBar[] = [
-    { day: '29', main: 0, min: 15, max: 25 },
-    { day: '30', main: 62, min: 45, max: 75 },
-    { day: '1', main: 95, min: 65, max: 92 },
-    { day: '2', main: 88, min: 60, max: 90 },
-    { day: '3', main: 48, min: 35, max: 58 },
-    { day: '4', main: 0, min: 15, max: 20 },
-    { day: '5', main: 73, min: 52, max: 84 },
-    { day: '6', main: 98, min: 68, max: 95 },
-    { day: '7', main: 82, min: 59, max: 88 },
-    { day: '8', main: 17, min: 21, max: 31 },
-    { day: '9', main: 0, min: 15, max: 18 },
-    { day: '10', main: 0, min: 15, max: 18 },
-  ];
-
-  readonly dailyBars = computed<DailyBar[]>(() => this.buildDailyBars());
 
   ngOnInit(): void {
     const siteId = this.route.snapshot.paramMap.get('siteId');
@@ -739,7 +552,13 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       error: () => undefined,
     });
 
-    if (!context.site.id_serial) return;
+    if (!context.site.id_serial) {
+      this.historyRows.set([]);
+      this.historyLoading.set(false);
+      return;
+    }
+
+    this.historyLoading.set(true);
     this.companyService
       .getTelemetryPreset(context.site.id_serial, {
         preset: '30d',
@@ -749,8 +568,12 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       .subscribe({
         next: (res) => {
           if (res.ok) this.historyRows.set(res.data || []);
+          this.historyLoading.set(false);
         },
-        error: () => undefined,
+        error: () => {
+          this.historyRows.set([]);
+          this.historyLoading.set(false);
+        },
       });
   }
 
@@ -773,7 +596,8 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   monthButtonClass(monthId: string): string {
     const base =
       'inline-flex h-10 items-center gap-2 rounded-lg px-3 text-body-sm font-semibold transition-colors';
-    return this.activeMonthId() === monthId || this.selectedMonth().id === monthId
+    const selectedId = this.selectedMonth()?.id;
+    return this.activeMonthId() === monthId || selectedId === monthId
       ? `${base} bg-cyan-700 text-white shadow-sm`
       : `${base} bg-slate-100 text-slate-600 hover:bg-slate-200`;
   }
@@ -781,7 +605,8 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   monthCardClass(monthId: string): string {
     const base =
       'rounded-xl border bg-white p-4 text-left shadow-sm transition-colors hover:border-cyan-300';
-    return this.activeMonthId() === monthId || this.selectedMonth().id === monthId
+    const selectedId = this.selectedMonth()?.id;
+    return this.activeMonthId() === monthId || selectedId === monthId
       ? `${base} border-cyan-500 bg-cyan-50/40`
       : `${base} border-slate-200`;
   }
@@ -836,102 +661,39 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     return Number.isFinite(parsed) ? parsed : null;
   }
 
-  private fallbackPoint(chartIndex: number, serieIndex: number): string {
-    return this.fallbackCharts[chartIndex]?.series[serieIndex]?.points || '';
-  }
-
-  private linePoints(
+  private chartSeries(
     rows: TelemetryHistoryRow[],
     key: string,
-    options: { min?: number; max?: number; scale?: number; fallback: string },
-  ): string {
-    const scale = options.scale ?? 1;
-    const series = rows
-      .map((row, index) => {
+    label: string,
+    color: string,
+    unit = '',
+    precision = 2,
+    fill = false,
+    scale = 1,
+  ) {
+    return {
+      label,
+      color,
+      unit,
+      precision,
+      fill,
+      values: rows.map((row) => {
         const value = this.numericValue(row, key);
-        return { index, value: value === null ? null : value * scale };
-      })
-      .filter((point): point is { index: number; value: number } => point.value !== null);
-    if (series.length < 2) return options.fallback;
-
-    const values = series.map((point) => point.value);
-    let min = options.min ?? Math.min(...values);
-    let max = options.max ?? Math.max(...values);
-    if (max === min) {
-      max += 1;
-      min -= 1;
-    }
-
-    const xMin = 55;
-    const xMax = 850;
-    const yMin = 28;
-    const yMax = 232;
-    const lastIndex = Math.max(1, rows.length - 1);
-
-    return series
-      .map((point) => {
-        const x = xMin + (point.index / lastIndex) * (xMax - xMin);
-        const normalized = Math.min(1, Math.max(0, (point.value - min) / (max - min)));
-        const y = yMax - normalized * (yMax - yMin);
-        return `${Math.round(x)},${Math.round(y)}`;
-      })
-      .join(' ');
+        return value === null ? null : value * scale;
+      }),
+    };
   }
 
-  private axisLabels(rows: TelemetryHistoryRow[]): string[] {
-    if (!rows.length) return this.defaultChartLabels;
-    const labels: string[] = [];
-    const count = Math.min(8, rows.length);
-    for (let i = 0; i < count; i++) {
-      const index = Math.round((i / Math.max(1, count - 1)) * (rows.length - 1));
-      const row = rows[index];
-      labels.push(this.shortDateLabel(row?.timestamp_completo || row?.fecha || ''));
-    }
-    return labels;
-  }
-
-  private shortDateLabel(value: string): string {
-    const date = value.includes(' ') ? value.split(' ')[0] : value;
-    const parts = date.split('-');
-    if (parts.length !== 3) return '';
-    return `${Number(parts[2])}/${Number(parts[1])}`;
-  }
-
-  private buildDailyBars(): DailyBar[] {
-    const rows = this.orderedHistoryRows();
-    if (rows.length < 2) return this.fallbackDailyBars;
-
-    const byDay = new Map<string, number[]>();
-    for (const row of rows) {
-      const day = this.dateKey(row);
-      const totalizer = this.numericValue(row, 'totalizador');
-      if (!day || totalizer === null) continue;
-      const bucket = byDay.get(day) || [];
-      bucket.push(totalizer);
-      byDay.set(day, bucket);
-    }
-
-    const deltas = Array.from(byDay.entries())
-      .map(([day, values]) => {
-        const min = Math.min(...values);
-        const max = Math.max(...values);
-        return { day, delta: Math.max(0, max - min) };
-      })
-      .slice(-12);
-    const maxDelta = Math.max(...deltas.map((item) => item.delta), 0);
-    if (maxDelta <= 0) return this.fallbackDailyBars;
-
-    return deltas.map((item) => ({
-      day: String(Number(item.day.slice(-2))),
-      main: Math.max(4, Math.round((item.delta / maxDelta) * 100)),
-      min: 45,
-      max: 82,
-    }));
+  private rowTimestampMs(row: TelemetryHistoryRow): number {
+    const raw = row.timestamp_completo || `${row.fecha || ''} ${row.hora || ''}`.trim();
+    const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+    const parsed = new Date(normalized).getTime();
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
   }
 
   private buildMonths(): RilesMonth[] {
     const rows = this.orderedHistoryRows();
-    if (rows.length < 2) return this.fallbackMonths;
+    if (!rows.length) return [];
 
     const byMonth = new Map<string, TelemetryHistoryRow[]>();
     for (const row of rows) {
@@ -946,7 +708,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       .sort(([a], [b]) => a.localeCompare(b))
       .slice(-3)
       .map(([month, monthRows]) => this.monthSummary(month, monthRows));
-    return months.length ? months : this.fallbackMonths;
+    return months;
   }
 
   private monthSummary(month: string, rows: TelemetryHistoryRow[]): RilesMonth {
