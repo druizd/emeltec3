@@ -1,6 +1,5 @@
 ﻿import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 import { CompanyService, type TelemetryHistoryRow } from '../../services/company.service';
@@ -44,7 +43,6 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     RouterLink,
     KpiCardComponent,
     SiteVariableSettingsPanelComponent,
@@ -71,70 +69,9 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
                     {{ siteName(context) }}
                   </h1>
                   <p class="truncate text-body-sm font-semibold text-slate-500">
-                    Panel de monitoreo electrico
+                    Panel de monitoreo eléctrico
                   </p>
                 </div>
-              </div>
-
-              <div class="flex flex-wrap items-center gap-2 text-caption font-bold">
-                <span
-                  class="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-emerald-700"
-                >
-                  <span class="material-symbols-outlined text-[17px]">schedule</span>
-                  <span class="grid leading-tight">
-                    <span class="text-[10px] font-semibold">Ultimo dato en dashboard</span>
-                    <span>{{ latestDashboardAge() }}</span>
-                  </span>
-                </span>
-                <span
-                  class="inline-flex h-10 items-center gap-2 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3 text-on-surface-variant"
-                >
-                  <span class="material-symbols-outlined text-[17px]">sensors</span>
-                  <span class="grid leading-tight">
-                    <span class="text-[10px] font-semibold">Ultimo dato desde el equipo</span>
-                    <span>{{ latestDeviceLabel() }}</span>
-                  </span>
-                </span>
-
-                <label
-                  class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"
-                >
-                  <span class="text-slate-500">Desde</span>
-                  <input
-                    type="date"
-                    min="2020-01-01"
-                    [ngModel]="dateFrom()"
-                    (ngModelChange)="dateFrom.set($event)"
-                    class="bg-transparent font-semibold text-slate-700 outline-none"
-                  />
-                </label>
-                <label
-                  class="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"
-                >
-                  <span class="text-slate-500">Hasta</span>
-                  <input
-                    type="date"
-                    min="2020-01-01"
-                    [ngModel]="dateTo()"
-                    (ngModelChange)="dateTo.set($event)"
-                    class="bg-transparent font-semibold text-slate-700 outline-none"
-                  />
-                </label>
-                <button
-                  type="button"
-                  (click)="refreshDashboard()"
-                  class="inline-flex h-10 items-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 text-body-sm font-semibold text-cyan-700 transition-colors hover:bg-cyan-100"
-                >
-                  Aplicar
-                </button>
-                <button
-                  type="button"
-                  (click)="setTab('configurar')"
-                  class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600"
-                  aria-label="Configurar variables electricas"
-                >
-                  <span class="material-symbols-outlined text-[20px]">settings</span>
-                </button>
               </div>
             </div>
           </div>

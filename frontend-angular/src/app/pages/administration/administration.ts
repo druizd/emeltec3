@@ -1043,7 +1043,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         class="field-control"
                       >
                         <option value="false">No</option>
-                        <option value="true">Sí — mostrar en Maletas Piloto</option>
+                        <option value="true">Sí — mostrar en Maletas Pilotos</option>
                       </select>
                     </div>
                     <div>

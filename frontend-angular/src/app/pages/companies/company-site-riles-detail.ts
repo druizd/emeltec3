@@ -43,6 +43,11 @@ interface RilesChart extends TelemetryLineChart {
 }
 
 type RilesTab = 'dashboard' | 'configurar';
+type RilesMissingMode = 'gap' | 'zero' | 'carry';
+
+const RILES_REALTIME_WINDOW_MS = 3 * 60 * 60 * 1000;
+const RILES_BUCKET_MINUTES = 1;
+const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
 
 @Component({
   selector: 'app-company-site-riles-detail',
@@ -473,42 +478,115 @@ export class CompanySiteRilesDetailComponent implements OnInit {
   });
 
   readonly charts = computed<RilesChart[]>(() => {
-    const rows = this.orderedHistoryRows();
+    const allRows = this.orderedHistoryRows();
+    const allTimestamps = allRows.map((row) => this.rowTimestampMs(row));
+    const xRange = this.selectedChartRange(allTimestamps);
+    const rows = allRows.filter((row) => {
+      const timestamp = this.rowTimestampMs(row);
+      return Number.isFinite(timestamp) && timestamp >= xRange.xMin && timestamp <= xRange.xMax;
+    });
+    const totalizerSeed =
+      allRows
+        .filter((row) => {
+          const timestamp = this.rowTimestampMs(row);
+          return Number.isFinite(timestamp) && timestamp < xRange.xMin;
+        })
+        .at(-1) ?? null;
+    const totalizerRows = totalizerSeed ? [totalizerSeed, ...rows] : rows;
     const timestamps = rows.map((row) => this.rowTimestampMs(row));
+    const totalizerTimestamps = totalizerRows.map((row) => this.rowTimestampMs(row));
     return [
       {
         title: 'Nivel camara',
-        subtitle: 'Nivel del agua en camara RILES (m), mes activo.',
+        subtitle: 'Nivel minuto a minuto en camara RILES',
         tone: 'green',
         timestamps,
+        ...xRange,
+        bucketMinutes: RILES_BUCKET_MINUTES,
+        extendToNow: true,
+        maxVisiblePoints: 220,
         min: 0,
-        emptyText: 'Sin lecturas de nivel para el periodo seleccionado.',
-        series: [this.chartSeries(rows, 'nivel', 'Nivel camara', '#2563eb', 'm', 3)],
+        emptyText: 'Sin lecturas de nivel para el rango actual.',
+        series: [
+          this.chartSeries(
+            rows,
+            'nivel',
+            'Nivel camara',
+            '#2563eb',
+            'm',
+            3,
+            false,
+            1,
+            'avg',
+            'zero',
+          ),
+        ],
       },
       {
         title: 'Caudal descarga',
-        subtitle: 'Central + banda incertidumbre Manning, L/s.',
+        subtitle: 'Descarga por minuto con banda Manning, L/s',
         tone: 'cyan',
         timestamps,
+        ...xRange,
+        bucketMinutes: RILES_BUCKET_MINUTES,
+        extendToNow: true,
+        maxVisiblePoints: 220,
         min: 0,
-        emptyText: 'Sin lecturas de caudal para el periodo seleccionado.',
+        emptyText: 'Sin lecturas de caudal para el rango actual.',
         series: [
-          this.chartSeries(rows, 'caudal', 'Caudal principal', '#2563eb', 'L/s', 3),
-          this.chartSeries(rows, 'caudal', 'Caudal min', '#16a34a', 'L/s', 3, false, 0.78),
-          this.chartSeries(rows, 'caudal', 'Caudal max', '#d97706', 'L/s', 3, false, 1.22),
+          this.chartSeries(
+            rows,
+            'caudal',
+            'Caudal principal',
+            '#2563eb',
+            'L/s',
+            3,
+            false,
+            1,
+            'avg',
+            'zero',
+          ),
+          this.chartSeries(
+            rows,
+            'caudal',
+            'Caudal min',
+            '#16a34a',
+            'L/s',
+            3,
+            false,
+            0.78,
+            'avg',
+            'zero',
+          ),
+          this.chartSeries(
+            rows,
+            'caudal',
+            'Caudal max',
+            '#d97706',
+            'L/s',
+            3,
+            false,
+            1.22,
+            'avg',
+            'zero',
+          ),
         ],
       },
       {
         title: 'Volumen acumulado',
-        subtitle: 'Totalizador historico del equipo RILES, m3.',
+        subtitle: 'Totalizador historico del equipo RILES, m3',
         tone: 'blue',
-        timestamps,
+        timestamps: totalizerTimestamps,
+        ...xRange,
+        bucketMinutes: RILES_BUCKET_MINUTES,
+        extendToNow: true,
+        maxVisiblePoints: 220,
         min: 0,
         wide: true,
-        emptyText: 'Sin lecturas de totalizador para el periodo seleccionado.',
+        emptyText: 'Sin lecturas de totalizador para el rango actual.',
         series: [
           this.chartSeries(
-            rows,
+            totalizerRows,
             'totalizador',
             'Totalizador',
             '#0dafbd',
@@ -517,6 +595,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
             false,
             1,
             'last',
+            'carry',
           ),
         ],
       },
@@ -666,6 +745,22 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       .reverse();
   }
 
+  private selectedChartRange(timestamps: number[]): { xMin: number; xMax: number } {
+    const now = Date.now();
+    const latestData =
+      timestamps
+        .filter(Number.isFinite)
+        .sort((a, b) => a - b)
+        .at(-1) ?? null;
+    const hasRecentData = latestData !== null && now - latestData <= RILES_RECENT_DATA_MS;
+    const xMax = hasRecentData ? now : (latestData ?? now);
+    const xMin = xMax - RILES_REALTIME_WINDOW_MS;
+    return {
+      xMin,
+      xMax: xMax > xMin ? xMax : xMin + 30 * 60 * 1000,
+    };
+  }
+
   private numericValue(row: TelemetryHistoryRow, key: string): number | null {
     const value = row.data?.[key];
     if (value === null || value === undefined || value === '') return null;
@@ -683,6 +778,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
     fill = false,
     scale = 1,
     aggregation: 'avg' | 'last' | 'min' | 'max' = 'avg',
+    missingValue: RilesMissingMode = 'gap',
   ) {
     return {
       label,
@@ -691,6 +787,7 @@ export class CompanySiteRilesDetailComponent implements OnInit {
       precision,
       fill,
       aggregation,
+      missingValue,
       values: rows.map((row) => {
         const value = this.numericValue(row, key);
         return value === null ? null : value * scale;

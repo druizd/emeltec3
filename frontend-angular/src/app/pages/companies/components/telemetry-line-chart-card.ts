@@ -25,6 +25,7 @@ type TimePoint = { x: number; y: number };
 type ChartPointValue = TimePoint | null;
 type ReferenceTone = 'min' | 'target' | 'max' | 'neutral';
 type SeriesAggregation = 'avg' | 'last' | 'min' | 'max';
+type MissingValueMode = 'gap' | 'zero' | 'carry';
 
 export interface TelemetryReferenceLine {
   label: string;
@@ -40,6 +41,7 @@ export interface TelemetryChartSeries {
   precision?: number;
   fill?: boolean;
   aggregation?: SeriesAggregation;
+  missingValue?: MissingValueMode;
 }
 
 export interface TelemetryLineChart {
@@ -107,10 +109,10 @@ export interface TelemetryLineChart {
         min-height: 0;
         flex-direction: column;
         overflow: hidden;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        background: #ffffff;
-        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+        border: 1px solid #dce5ef;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
       }
 
       .chart-head {
@@ -118,7 +120,7 @@ export interface TelemetryLineChart {
         align-items: flex-start;
         justify-content: space-between;
         gap: 16px;
-        padding: 20px 22px 8px;
+        padding: 20px 22px 6px;
       }
 
       p {
@@ -179,13 +181,13 @@ export interface TelemetryLineChart {
       .chart-box {
         position: relative;
         flex: none;
-        height: 250px;
+        height: 242px;
         min-height: 0;
-        padding: 4px 22px 16px;
+        padding: 6px 22px 18px;
       }
 
       .chart-card--compact .chart-box {
-        height: 205px;
+        height: 202px;
       }
 
       canvas {
@@ -259,6 +261,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   }
 
   hasRenderableData(): boolean {
+    if (this.canRenderFilledTimeline()) return true;
     return this.chart.series.some((series) => this.finiteValues(series.values).length >= 2);
   }
 
@@ -339,9 +342,21 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
     const values = series.values;
     let lastValue: number | null = null;
     return this.bucketTimeline().map((bucket) => {
-      const value = bucket.extension
-        ? lastValue
+      const aggregate = bucket.extension
+        ? null
         : this.aggregateBucketValues(values, bucket.indexes, series.aggregation ?? 'avg');
+      let value = aggregate;
+
+      if (typeof aggregate === 'number') {
+        lastValue = aggregate;
+      } else if (series.missingValue === 'zero') {
+        value = 0;
+      } else if (series.missingValue === 'carry') {
+        value = lastValue;
+      } else if (bucket.extension) {
+        value = lastValue;
+      }
+
       if (typeof value === 'number') lastValue = value;
       return typeof value === 'number' ? { x: bucket.x, y: value } : null;
     });
@@ -395,11 +410,11 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
             scale.ticks = this.xTicks(xBounds).map((value) => ({ value }));
           },
           grid: {
-            color: '#e7ecf3',
+            color: '#dfe7f0',
             drawTicks: false,
           },
           border: {
-            color: '#dbe3ee',
+            color: '#d3dde9',
           },
           ticks: {
             color: '#94a3b8',
@@ -420,11 +435,11 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
           min: yBounds.min,
           max: yBounds.max,
           grid: {
-            color: '#e7ecf3',
+            color: '#dfe7f0',
             drawTicks: false,
           },
           border: {
-            color: '#dbe3ee',
+            color: '#d3dde9',
           },
           ticks: {
             color: '#94a3b8',
@@ -587,6 +602,15 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   private bucketTimeline(): { x: number; indexes: number[]; extension?: boolean }[] {
     const bucketMs = Math.max(1, this.chart.bucketMinutes ?? 60) * 60_000;
     const buckets = new Map<number, number[]>();
+    const xMin = Number(this.chart.xMin);
+    const xMax = Number(this.chart.xMax);
+    const shouldFillMissingTimeline =
+      this.chart.series.some(
+        (series) => series.missingValue === 'zero' || series.missingValue === 'carry',
+      ) &&
+      Number.isFinite(xMin) &&
+      Number.isFinite(xMax) &&
+      xMax > xMin;
 
     for (let index = 0; index < this.chart.timestamps.length; index += 1) {
       const timestamp = this.chart.timestamps[index];
@@ -597,6 +621,14 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
       buckets.set(bucket, indexes);
     }
 
+    if (shouldFillMissingTimeline) {
+      const start = Math.floor(xMin / bucketMs) * bucketMs;
+      const end = Math.ceil(xMax / bucketMs) * bucketMs;
+      for (let bucket = start; bucket <= end; bucket += bucketMs) {
+        if (!buckets.has(bucket)) buckets.set(bucket, []);
+      }
+    }
+
     let timeline: { x: number; indexes: number[]; extension?: boolean }[] = Array.from(
       buckets.entries(),
     )
@@ -605,7 +637,7 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
 
     const latest = this.latestRawTimestamp();
     const now = Date.now();
-    if (latest !== null && this.shouldExtendToNow(latest, now)) {
+    if (!shouldFillMissingTimeline && latest !== null && this.shouldExtendToNow(latest, now)) {
       const last = timeline[timeline.length - 1];
       if (!last || now - last.x > 60_000) timeline.push({ x: now, indexes: [], extension: true });
     }
@@ -730,18 +762,15 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
   } {
     const normalized = label.toLocaleLowerCase('es-CL');
     const isTotal = normalized.includes('total') || normalized.includes('principal');
-    const isMin = normalized.includes('min');
-    const isMax = normalized.includes('max');
-    const dashPatterns = [[], [8, 5], [2, 5], [10, 4, 2, 4]];
     const pointStyles = ['circle', 'triangle', 'rectRot', 'rectRounded'] as const;
 
     return {
-      borderWidth: isTotal ? 3.1 : index === 0 ? 2.45 : 2.15,
-      borderDash: isMin ? [7, 5] : isMax ? [2, 5] : dashPatterns[index % dashPatterns.length],
-      pointHoverRadius: isTotal ? 5.5 : 4.6,
-      pointBorderWidth: isTotal ? 2.4 : 2,
+      borderWidth: isTotal ? 2.6 : index === 0 ? 2.25 : 2.05,
+      borderDash: [],
+      pointHoverRadius: isTotal ? 5.2 : 4.8,
+      pointBorderWidth: isTotal ? 2.4 : 2.1,
       pointStyle: pointStyles[index % pointStyles.length],
-      tension: isTotal ? 0.2 : 0.28,
+      tension: 0.18,
       order: isTotal ? 3 : 2,
     };
   }
@@ -775,6 +804,22 @@ export class TelemetryLineChartCardComponent implements AfterViewInit, OnChanges
       min: Math.floor(min / roundTo) * roundTo,
       max: Math.ceil(max / roundTo) * roundTo,
     };
+  }
+
+  private canRenderFilledTimeline(): boolean {
+    const xMin = Number(this.chart.xMin);
+    const xMax = Number(this.chart.xMax);
+    const hasZeroFill = this.chart.series.some((series) => series.missingValue === 'zero');
+    const hasCarrySeed = this.chart.series.some(
+      (series) => series.missingValue === 'carry' && this.finiteValues(series.values).length >= 1,
+    );
+    return (
+      Boolean(this.chart.bucketMinutes) &&
+      (hasZeroFill || hasCarrySeed) &&
+      Number.isFinite(xMin) &&
+      Number.isFinite(xMax) &&
+      xMax > xMin
+    );
   }
 
   private yStep(bounds: { min: number; max: number }): number {
