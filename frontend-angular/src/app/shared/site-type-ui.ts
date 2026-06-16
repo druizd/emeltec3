@@ -31,7 +31,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
   },
   {
     key: 'Electrico',
-    label: 'Consumo Electrico',
+    label: 'Consumo Eléctrico',
     icon: 'bolt',
     color: '#f59e0b',
     bg: 'rgba(245,158,11,0.08)',
@@ -49,7 +49,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
   },
   {
     key: 'Frio',
-    label: 'Camaras de Frio',
+    label: 'Cámaras de Frío',
     icon: 'ac_unit',
     color: '#0284c7',
     bg: 'rgba(2,132,199,0.08)',
@@ -67,7 +67,7 @@ export const SITE_MODULES: SiteModuleUi[] = [
   },
   {
     key: '_other',
-    label: 'Maletas Piloto',
+    label: 'Maletas Pilotos',
     icon: 'rocket_launch',
     color: '#f97316',
     bg: 'rgba(249,115,22,0.08)',
@@ -218,7 +218,7 @@ export function siteTypeMatchesModule(
 /**
  * Agrupación visual de un sitio en un módulo del sidebar/dashboard.
  *
- * Si el sitio tiene `es_maleta_piloto`, se fuerza al módulo "Maletas Piloto"
+ * Si el sitio tiene `es_maleta_piloto`, se fuerza al módulo "Maletas Pilotos"
  * (`_other`) y NO aparece en su módulo operativo normal. Si no, se agrupa por
  * `tipo_sitio` como siempre. La lógica de detalle (qué vista abre) sigue
  * dependiendo de `tipo_sitio`, no de este override.
