@@ -499,7 +499,32 @@ async function loadMappings(siteId: string): Promise<RegMapRow[]> {
   return result.rows;
 }
 
-async function loadSourceRows(config: ReturnType<typeof workerConfig>): Promise<EquipoRow[]> {
+async function loadSourceRowsFromAggregate(
+  config: ReturnType<typeof workerConfig>,
+): Promise<EquipoRow[]> {
+  const result = await query<EquipoRow>(
+    `
+    SELECT bucket AS time, received_at, id_serial, data
+    FROM (
+      SELECT bucket, received_at, id_serial, data
+      FROM equipo_1min
+      WHERE id_serial = $1
+        AND bucket >= NOW() - ($2::int || ' minutes')::interval
+      ORDER BY bucket DESC
+      LIMIT $3
+    ) recent_source_rows
+    ORDER BY bucket ASC
+    LIMIT $3
+    `,
+    [config.sourceSerial, config.lookbackMinutes, config.rowLimit],
+    { label: 'mathei_sim__source_rows_1min' },
+  );
+  return result.rows;
+}
+
+async function loadSourceRowsFromRaw(
+  config: ReturnType<typeof workerConfig>,
+): Promise<EquipoRow[]> {
   const result = await query<EquipoRow>(
     `
     SELECT time, received_at, id_serial, data
@@ -515,9 +540,21 @@ async function loadSourceRows(config: ReturnType<typeof workerConfig>): Promise<
     LIMIT $3
     `,
     [config.sourceSerial, config.lookbackMinutes, config.rowLimit],
-    { label: 'mathei_sim__source_rows' },
+    { label: 'mathei_sim__source_rows_raw' },
   );
   return result.rows;
+}
+
+async function loadSourceRows(config: ReturnType<typeof workerConfig>): Promise<EquipoRow[]> {
+  try {
+    return await loadSourceRowsFromAggregate(config);
+  } catch (err) {
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err) },
+      'mathei simulation: equipo_1min no disponible, usando equipo raw',
+    );
+    return loadSourceRowsFromRaw(config);
+  }
 }
 
 async function loadPreviousVirtualRow(serial: string, before: Date): Promise<EquipoRow | null> {

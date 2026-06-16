@@ -2574,27 +2574,21 @@ exports.getSiteVariables = async (req, res, next) => {
       [siteId],
     );
 
-    const detectedRes = await db.query(
-      `
-      SELECT
-        kv.key  AS nombre_dato,
-        kv.value AS valor_dato,
-        ${utcTimestampSql('lr.time')} AS timestamp_completo
-      FROM (
-        SELECT time, data
-        FROM equipo
-        WHERE id_serial = $1
-        ORDER BY time DESC
-        LIMIT 1
-      ) lr
-      CROSS JOIN LATERAL jsonb_each(lr.data) AS kv(key, value)
-      ORDER BY kv.key ASC
-      `,
-      [site.id_serial],
-    );
+    const latest = await loadLatestEquipoSample(site.id_serial);
+    const latestData = latest?.data;
+    const detectedRows =
+      latestData && typeof latestData === 'object' && !Array.isArray(latestData)
+        ? Object.entries(latestData)
+            .sort(([a], [b]) => a.localeCompare(b, 'es-CL'))
+            .map(([nombre_dato, valor_dato]) => ({
+              nombre_dato,
+              valor_dato,
+              timestamp_completo: latest.timestamp_completo,
+            }))
+        : [];
 
     const mappingsByKey = new Map(mappingsRes.rows.map((mapping) => [mapping.d1, mapping]));
-    const variables = detectedRes.rows.map((variable) => ({
+    const variables = detectedRows.map((variable) => ({
       ...variable,
       mapping: mappingsByKey.get(variable.nombre_dato) || null,
     }));
