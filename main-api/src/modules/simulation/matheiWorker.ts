@@ -113,6 +113,16 @@ interface ElectricAccumulator {
   lastTime: Date | null;
   activeKwh: number;
   reactiveKvarh: number;
+  sourceProductLiters: number | null;
+  sourceTime: Date | null;
+}
+
+interface ElectricActivity {
+  mode: ProcessMode;
+  productDeltaLiters: number | null;
+  flowLpm: number;
+  batchProgress: number;
+  loadEnvelope: number;
 }
 
 interface RilesAccumulator {
@@ -662,22 +672,66 @@ function buildSourcePoint(
   };
 }
 
-function inferMode(point: SourcePoint): ProcessMode {
+function buildElectricActivity(point: SourcePoint, acc: ElectricAccumulator): ElectricActivity {
   const product = point.productLiters ?? 0;
   const temp = point.pasteurTempC ?? 0;
   const pressure = point.steamPressureBar ?? 0;
+  const previousProduct = acc.sourceProductLiters;
+  const previousTime = acc.sourceTime;
+  const elapsedMinutes =
+    previousTime === null
+      ? null
+      : clamp((point.time.getTime() - previousTime.getTime()) / 60_000, 0.25, 120);
 
-  if (product > PRODUCT_ACTIVE_EPSILON_L && temp >= 50) return 'produccion';
-  if (product > PRODUCT_ACTIVE_EPSILON_L) return 'lavado';
-  if (pressure > 0.2 || temp >= 50) return 'precalentamiento';
-  return 'standby';
+  let productDeltaLiters: number | null = null;
+  if (point.productLiters !== null && previousProduct !== null) {
+    const rawDelta = point.productLiters - previousProduct;
+    productDeltaLiters =
+      rawDelta < -PRODUCT_RESET_DROP_L ? Math.max(point.productLiters, 0) : Math.max(rawDelta, 0);
+  } else if (point.productLiters !== null && product > PRODUCT_ACTIVE_EPSILON_L) {
+    productDeltaLiters = null;
+  }
+
+  const flowLpm =
+    elapsedMinutes !== null && productDeltaLiters !== null
+      ? productDeltaLiters / elapsedMinutes
+      : 0;
+  const productIsMoving =
+    productDeltaLiters === null
+      ? product > PRODUCT_ACTIVE_EPSILON_L
+      : productDeltaLiters > 0.35 || flowLpm > 0.35;
+  const productIsPresent = product > PRODUCT_ACTIVE_EPSILON_L;
+
+  let mode: ProcessMode;
+  if (productIsMoving && temp >= 50) mode = 'produccion';
+  else if (pressure > 0.2 || temp >= 50) mode = 'precalentamiento';
+  else if (productIsPresent) mode = 'lavado';
+  else mode = 'standby';
+
+  const batchProgress = clamp(product / PASTEUR_BATCH_MIN_L, 0, 1);
+  const productionShape = 0.62 + Math.sin(Math.PI * batchProgress) * 0.34;
+  const flowBoost = clamp(flowLpm / 120, 0, 0.22);
+  const loadEnvelope =
+    mode === 'produccion'
+      ? clamp(productionShape + flowBoost + jitter(point.seed, 'load_env', 0.055), 0.55, 1.2)
+      : mode === 'precalentamiento'
+        ? clamp(0.42 + temp / 160 + jitter(point.seed, 'pre_env', 0.04), 0.38, 0.78)
+        : mode === 'lavado'
+          ? clamp(0.22 + jitter(point.seed, 'wash_env', 0.05), 0.14, 0.36)
+          : clamp(0.05 + jitter(point.seed, 'idle_env', 0.025), 0.02, 0.12);
+
+  acc.sourceProductLiters = point.productLiters;
+  acc.sourceTime = point.time;
+
+  return { mode, productDeltaLiters, flowLpm, batchProgress, loadEnvelope };
 }
 
 function buildElectricPayload(
   point: SourcePoint,
   acc: ElectricAccumulator,
 ): Record<string, unknown> {
-  const mode = inferMode(point);
+  const activity = buildElectricActivity(point, acc);
+  const mode = activity.mode;
   const seed = point.seed;
   const temp = point.pasteurTempC ?? 25;
   const inputTemp = point.inputTempC ?? 25;
@@ -695,12 +749,17 @@ function buildElectricPayload(
 
   let kw: number;
   if (mode === 'produccion')
-    kw = 10.8 + pasteurizationFactor * 8.5 + pressureFactor * 2.6 + range(seed, 'kwp', -0.8, 1.8);
+    kw =
+      7.5 +
+      activity.loadEnvelope * 13.5 +
+      pasteurizationFactor * 5.2 +
+      pressureFactor * 2.4 +
+      range(seed, 'kwp', -1.2, 2.2);
   else if (mode === 'precalentamiento')
-    kw = 5.2 + tempFactor * 4.2 + pressureFactor * 2.3 + jitter(seed, 'kwh', 0.6);
-  else if (mode === 'lavado') kw = 2.2 + productFactor * 1.5 + range(seed, 'kwl', 0.1, 1.2);
-  else kw = 0.45 + range(seed, 'kws', 0, 0.65);
-  kw = round(clamp(kw, 0.2, 28), 3);
+    kw = 3.8 + activity.loadEnvelope * 6.5 + tempFactor * 2.6 + pressureFactor * 2.0;
+  else if (mode === 'lavado') kw = 1.5 + activity.loadEnvelope * 6 + productFactor * 1.1;
+  else kw = 0.35 + activity.loadEnvelope * 5 + range(seed, 'kws', 0, 0.45);
+  kw = round(clamp(kw, 0.2, 32), 3);
 
   const fpBase =
     mode === 'standby' ? 0.72 : mode === 'lavado' ? 0.84 : mode === 'precalentamiento' ? 0.88 : 0.9;
@@ -798,6 +857,12 @@ function buildElectricPayload(
     aumento_factura: aumentoFactura,
     _simulated: true,
     _source_serial: DEFAULT_SOURCE_SERIAL,
+    _source_product_l: point.productLiters,
+    _source_product_delta_l:
+      activity.productDeltaLiters === null ? null : round(activity.productDeltaLiters, 3),
+    _source_flow_lpm: round(activity.flowLpm, 3),
+    _batch_progress: round(activity.batchProgress, 3),
+    _load_envelope: round(activity.loadEnvelope, 3),
     _profile: PROFILE,
   };
 }
@@ -835,7 +900,7 @@ function detectRilesCycles(points: SourcePoint[], minLiters: number): ProductCyc
   const maybeClose = () => {
     if (!cycle) return;
     const volume = cycle.maxLiters;
-    if (volume >= minLiters && volume < PASTEUR_BATCH_MIN_L) cycles.push(cycle);
+    if (volume >= minLiters) cycles.push(cycle);
     cycle = null;
   };
 
@@ -875,33 +940,53 @@ function buildRilesEventPayloads(
 ): Array<{ time: Date; data: Record<string, unknown> }> {
   const end = cycle.reset ?? cycle.end;
   const seed = `${cycle.start.seed}:${end.seed}:riles`;
-  const inferredLiters = round(cycle.maxLiters * range(seed, 'yield', 0.72, 0.92), 3);
+  const isProductionBatch = cycle.maxLiters >= PASTEUR_BATCH_MIN_L;
+  const inferredLiters = isProductionBatch
+    ? round(
+        clamp(
+          55 + (cycle.maxLiters / 1000) * range(seed, 'clean', 6, 13) + range(seed, 'extra', 0, 45),
+          45,
+          180,
+        ),
+        3,
+      )
+    : round(clamp(cycle.maxLiters * range(seed, 'yield', 0.72, 0.92), 0.2, 6500), 3);
   const inferredM3 = inferredLiters / 1000;
-  const durationMinutes = clamp(
-    Math.round((end.time.getTime() - cycle.start.time.getTime()) / 60000) + 1,
-    1,
-    10,
-  );
   const avgTemp = cycle.tempCount ? cycle.tempSum / cycle.tempCount : null;
   const temp = round(clamp((avgTemp ?? 28) - 33 + range(seed, 'rtmp', 26, 38), 20, 45), 1);
   const ph = round(clamp(7.15 + jitter(seed, 'ph', 0.55), 6.2, 8.4), 2);
   const conductivity = Math.round(clamp(950 + range(seed, 'cond', -250, 650), 500, 1800));
   const quality = round(clamp(96 - range(seed, 'qdrop', 0.5, 5.5), 88, 99.8), 1);
+  const shapeBase = isProductionBatch
+    ? [0, 0.18, 0.52, 1, 0.78, 0.64, 0.45, 0.28, 0.13, 0]
+    : [0, 0.42, 1, 0.58, 0.24, 0];
+  const shape = shapeBase.map((ratio, index) =>
+    ratio <= 0 ? 0 : clamp(ratio + jitter(seed, `shape_${index}`, 0.08), 0.05, 1.12),
+  );
+  const shapeSum = shape.reduce((sum, ratio) => sum + ratio, 0) || 1;
+  const durationMinutes = Math.max(1, shape.length - 1);
   const peakFlow = round(
-    clamp((inferredLiters / (durationMinutes * 60)) * range(seed, 'flow', 1.8, 3.4), 0.01, 1.8),
+    clamp(
+      (inferredLiters / (durationMinutes * 60)) * range(seed, 'flow', 2.4, 4.4),
+      0.01,
+      isProductionBatch ? 1.2 : 2.4,
+    ),
     3,
   );
   const levelPeak = round(
-    clamp(0.015 + inferredLiters * 0.018 + range(seed, 'level', 0.005, 0.025), 0.005, 0.22),
+    clamp(
+      0.015 + Math.sqrt(inferredLiters) * 0.015 + range(seed, 'level', 0.005, 0.03),
+      0.005,
+      0.28,
+    ),
     3,
   );
-  const shape = [0.25, 1, 0.45, 0];
   const out: Array<{ time: Date; data: Record<string, unknown> }> = [];
 
   for (let i = 0; i < shape.length; i++) {
     const ratio = shape[i] ?? 0;
     const time = new Date(end.time.getTime() - (shape.length - 1 - i) * 60_000);
-    const stepM3 = i === shape.length - 1 ? inferredM3 : (inferredM3 * ratio) / 2.2;
+    const stepM3 = ratio > 0 ? inferredM3 * (ratio / shapeSum) : 0;
     acc.totalizerM3 = round(acc.totalizerM3 + stepM3, 6);
     out.push({
       time,
@@ -909,12 +994,17 @@ function buildRilesEventPayloads(
         caudal: round(peakFlow * ratio, 3),
         totalizador: acc.totalizerM3,
         nivel: round(levelPeak * ratio, 3),
-        ph,
-        conductividad: conductivity,
-        temperatura: temp,
-        estado: ratio > 0 ? 'Con flujo' : 'Sin flujo',
-        calidad_sensor_pct: quality,
+        ph: round(clamp(ph + jitter(seed, `ph_${i}`, 0.08), 6.1, 8.5), 2),
+        conductividad: Math.round(clamp(conductivity + jitter(seed, `cond_${i}`, 55), 450, 1900)),
+        temperatura: round(clamp(temp + jitter(seed, `temp_${i}`, 0.7), 18, 48), 1),
+        estado:
+          ratio > 0.05 ? (isProductionBatch ? 'Limpieza post-batch' : 'Descarga') : 'Sin flujo',
+        calidad_sensor_pct: round(
+          clamp(quality - ratio * range(seed, 'qratio', 0.1, 1.4), 86, 99.8),
+          1,
+        ),
         volumen_evento_l: inferredLiters,
+        tipo_evento: isProductionBatch ? 'limpieza_post_batch' : 'descarga_corta',
         _simulated: true,
         _source_serial: DEFAULT_SOURCE_SERIAL,
         _profile: PROFILE,
@@ -973,6 +1063,8 @@ function previousElectricAccumulator(row: EquipoRow | null): ElectricAccumulator
     activeKwh: numberOrNull(data.energia_activa_kwh) ?? 0,
     reactiveKvarh:
       numberOrNull(data.e_reactiva_kvarh) ?? numberOrNull(data.energia_reactiva_kvarh) ?? 0,
+    sourceProductLiters: numberOrNull(data._source_product_l),
+    sourceTime: time,
   };
 }
 

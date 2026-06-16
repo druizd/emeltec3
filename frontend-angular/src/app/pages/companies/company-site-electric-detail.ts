@@ -37,6 +37,7 @@ type ElectricTab = 'dashboard' | 'reportes' | 'bne' | 'configurar';
 
 const ELECTRIC_REALTIME_WINDOW_MS = 3 * 60 * 60 * 1000;
 const ELECTRIC_BUCKET_MINUTES = 1;
+const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
 
 @Component({
   selector: 'app-company-site-electric-detail',
@@ -704,8 +705,9 @@ export class CompanySiteElectricDetailComponent implements OnInit {
       .sort((a, b) => a - b);
 
     const latestData = finite.at(-1) ?? null;
-    const rawEnd =
-      latestData !== null && !selectedIncludesNow ? latestData : Math.max(latestData ?? 0, now);
+    const latestIsLive =
+      latestData !== null && selectedIncludesNow && now - latestData <= ELECTRIC_LIVE_STALE_MS;
+    const rawEnd = latestData === null ? selected.xMax : latestIsLive ? now : latestData;
     const xMax = Math.min(Math.max(rawEnd, selected.xMin), selected.xMax);
     const xMin = Math.max(selected.xMin, xMax - ELECTRIC_REALTIME_WINDOW_MS);
     return {
