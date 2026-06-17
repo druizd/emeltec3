@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS plc_commands (
     response JSONB
 );
 
+ALTER TABLE plc_commands ADD COLUMN IF NOT EXISTS lease_until TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_plc_commands_status
 ON plc_commands(status, requested_at);
 
