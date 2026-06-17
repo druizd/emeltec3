@@ -178,29 +178,29 @@ STATS_INTERVAL_SEC=10
 
 Defaults del codigo:
 
-| Variable                        | Default                         | Descripcion                                 |
-| ------------------------------- | ------------------------------- | ------------------------------------------- |
-| `GRPC_ADDRESS`                  | `localhost:50051`               | Direccion del csvconsumer                   |
-| `TIMEOUT_SECONDS`               | `10`                            | Timeout por llamada gRPC                    |
-| `INPUT_DIR`                     | `data/incoming_logs`            | Carpeta de entrada                          |
-| `RAW_BACKUP_DIR`                | `data/raw_backup`               | Respaldo raw por `id_serial`                |
-| `FAILED_DIR`                    | `data/failed_logs`              | Archivos con 3 intentos fallidos            |
-| `SQLITE_PATH`                   | `data/local/telemetry_local.db` | Respaldo/cola local SQLite                  |
-| `LOCAL_SYNC_INTERVAL_SEC`       | `30`                            | Reintento de telemetria pendiente           |
-| `LINUX_DB_API_URL`              | ``                              | API Linux para comandos PLC                 |
-| `PLC_COMMAND_POLL_INTERVAL_SEC` | `5`                             | Polling de comandos PLC                     |
-| `PLC_DRY_RUN`                   | `true`                          | Simula ejecucion PLC sin escribir al equipo |
+| Variable                        | Default                         | Descripcion                                    |
+| ------------------------------- | ------------------------------- | ---------------------------------------------- |
+| `GRPC_ADDRESS`                  | `localhost:50051`               | Direccion del csvconsumer                      |
+| `TIMEOUT_SECONDS`               | `10`                            | Timeout por llamada gRPC                       |
+| `INPUT_DIR`                     | `data/incoming_logs`            | Carpeta de entrada                             |
+| `RAW_BACKUP_DIR`                | `data/raw_backup`               | Respaldo raw por `id_serial`                   |
+| `FAILED_DIR`                    | `data/failed_logs`              | Archivos con 3 intentos fallidos               |
+| `SQLITE_PATH`                   | `data/local/telemetry_local.db` | Respaldo/cola local SQLite                     |
+| `LOCAL_SYNC_INTERVAL_SEC`       | `30`                            | Reintento de telemetria pendiente              |
+| `LINUX_DB_API_URL`              | ``                              | API Linux para comandos PLC                    |
+| `PLC_COMMAND_POLL_INTERVAL_SEC` | `5`                             | Polling de comandos PLC                        |
+| `PLC_DRY_RUN`                   | `true`                          | Simula ejecucion PLC sin escribir al equipo    |
 | `PLC_DEVICE_ID_SERIAL`          | ``                              | Equipo que este agente Windows puede controlar |
-| `PLC_DEVICE_IP`                 | ``                              | IP local del MT-151 accesible desde Windows |
-| `PLC_DEVICE_PORT`               | `502`                           | Puerto Modbus TCP del MT-151 |
-| `PLC_DEVICE_UNIT_ID`            | `1`                             | ID Modbus TCP configurado en el MT-151 |
-| `PLC_DEVICE_TIMEOUT_SEC`        | `5`                             | Timeout de conexion/escritura Modbus TCP |
-| `NUM_WORKERS`                   | `4`                             | Workers paralelos                           |
-| `WATCH_INTERVAL_MS`             | `200`                           | Frecuencia de escaneo                       |
-| `RETRY_INTERVAL_SEC`            | `60`                            | Frecuencia de retry                         |
-| `STATS_INTERVAL_SEC`            | `10`                            | Frecuencia de stats                         |
-| `MAIN_API_URL`                  | `http://localhost:3000`         | URL de main-api para alertas                |
-| `INTERNAL_API_KEY`              | ``                              | API key interna para alertas                |
+| `PLC_DEVICE_IP`                 | ``                              | IP local del MT-151 accesible desde Windows    |
+| `PLC_DEVICE_PORT`               | `502`                           | Puerto Modbus TCP del MT-151                   |
+| `PLC_DEVICE_UNIT_ID`            | `1`                             | ID Modbus TCP configurado en el MT-151         |
+| `PLC_DEVICE_TIMEOUT_SEC`        | `5`                             | Timeout de conexion/escritura Modbus TCP       |
+| `NUM_WORKERS`                   | `4`                             | Workers paralelos                              |
+| `WATCH_INTERVAL_MS`             | `200`                           | Frecuencia de escaneo                          |
+| `RETRY_INTERVAL_SEC`            | `60`                            | Frecuencia de retry                            |
+| `STATS_INTERVAL_SEC`            | `10`                            | Frecuencia de stats                            |
+| `MAIN_API_URL`                  | `http://localhost:3000`         | URL de main-api para alertas                   |
+| `INTERNAL_API_KEY`              | ``                              | API key interna para alertas                   |
 
 ---
 
