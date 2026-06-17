@@ -21,6 +21,7 @@ import (
 	"grpc-pipeline/csvprocessor/internal/localdb"
 	"grpc-pipeline/csvprocessor/internal/parser"
 	"grpc-pipeline/csvprocessor/internal/plcagent"
+	"grpc-pipeline/csvprocessor/internal/plcdriver"
 	"grpc-pipeline/csvprocessor/internal/sender"
 	pb "grpc-pipeline/proto"
 )
@@ -271,7 +272,24 @@ func pollPLCCommands(cfg config.Config, store *localdb.Store) {
 		return
 	}
 
-	agent := plcagent.New(cfg.LinuxDBAPIURL, store, cfg.PLCDryRun)
+	unitID := cfg.PLCDeviceUnitID
+	if unitID < 1 || unitID > 247 {
+		log.Printf("plc agent: PLC_DEVICE_UNIT_ID invalido (%d), usando 1", unitID)
+		unitID = 1
+	}
+	agent := plcagent.New(
+		cfg.LinuxDBAPIURL,
+		cfg.InternalAPIKey,
+		store,
+		cfg.PLCDryRun,
+		cfg.PLCDeviceIDSerial,
+		plcdriver.Config{
+			IP:      cfg.PLCDeviceIP,
+			Port:    cfg.PLCDevicePort,
+			UnitID:  byte(unitID),
+			Timeout: time.Duration(cfg.PLCDeviceTimeoutSec) * time.Second,
+		},
+	)
 	for {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		if err := agent.PollAndExecute(ctx); err != nil {
@@ -309,6 +327,9 @@ func processFile(
 	maxTries := 3
 
 	for attempt := 1; attempt <= maxTries; attempt++ {
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			return
+		}
 		ok, inserted, dur, errMsg := runPipeline(filePath, cfg, client, store)
 
 		if ok {
@@ -343,6 +364,9 @@ func processFile(
 		}
 
 		if attempt < maxTries {
+			if _, err := os.Stat(filePath); os.IsNotExist(err) {
+				return
+			}
 			fmt.Printf(
 				"⚠️ warn %s | attempt %d/%d | "+
 					"%s | reintentando...\n",
@@ -353,6 +377,10 @@ func processFile(
 			)
 			time.Sleep(200 * time.Millisecond)
 			continue
+		}
+
+		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+			return
 		}
 
 		totalFailed.Add(1)

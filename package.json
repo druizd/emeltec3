@@ -15,10 +15,12 @@
     "test": "pnpm -r --if-present run test",
     "build": "pnpm -r --if-present run build",
     "audit": "pnpm audit --prod --audit-level=high",
-    "sbom": "pnpm list --recursive --depth=Infinity --json > sbom.json && echo SBOM escrito en sbom.json"
+    "sbom": "pnpm list --recursive --depth=Infinity --json > sbom.json && echo SBOM escrito en sbom.json",
+    "security:audit": "bash scripts/security-audit.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
+    "exceljs": "^4.4.0",
     "prettier": "^3.8.1"
   },
   "engines": {

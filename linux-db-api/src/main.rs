@@ -25,6 +25,7 @@ struct AppState {
     db: Arc<Client>,
     started_at: Instant,
     api_key: String,
+    plc_command_lease_seconds: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -227,6 +228,14 @@ fn get_env(key: &str, default: &str) -> String {
         Ok(value) if !value.trim().is_empty() => value,
         _ => default.to_string(),
     }
+}
+
+fn get_env_i64(key: &str, default: i64) -> i64 {
+    env::var(key)
+        .ok()
+        .and_then(|value| value.parse::<i64>().ok())
+        .filter(|value| *value > 0)
+        .unwrap_or(default)
 }
 
 fn bytes_to_mb(bytes: i64) -> f64 {
@@ -517,25 +526,32 @@ async fn pending_plc_commands(
         .db
         .query(
             "
-            UPDATE plc_commands
-            SET status = 'sent', sent_at = now()
-            WHERE command_id IN (
+            WITH next_commands AS (
               SELECT command_id
               FROM plc_commands
               WHERE status = 'pending'
+                 OR (status = 'sent' AND (lease_until IS NULL OR lease_until <= now()))
               ORDER BY requested_at ASC
+              FOR UPDATE SKIP LOCKED
               LIMIT $1
             )
+            UPDATE plc_commands AS commands
+            SET status = 'sent',
+                sent_at = now(),
+                lease_until = now() + make_interval(secs => $2::double precision),
+                delivery_attempts = delivery_attempts + 1
+            FROM next_commands
+            WHERE commands.command_id = next_commands.command_id
             RETURNING
-              command_id, id_serial, tag, value, data, command_type, status,
-              requested_by,
+              commands.command_id, commands.id_serial, commands.tag, commands.value,
+              commands.data, commands.command_type, commands.status, commands.requested_by,
               to_char(timezone('UTC', requested_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS requested_at,
               to_char(timezone('UTC', sent_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS sent_at,
               to_char(timezone('UTC', completed_at), 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS completed_at,
-              error,
-              response
+              commands.error,
+              commands.response
             ",
-            &[&limit],
+            &[&limit, &state.plc_command_lease_seconds],
         )
         .await
         .map_err(|err| ApiError::internal(format!("no se pudieron tomar comandos PLC: {}", err)))?;
@@ -566,6 +582,7 @@ async fn report_plc_command_result(
             UPDATE plc_commands
             SET status = $2,
                 completed_at = now(),
+                lease_until = NULL,
                 error = $3,
                 response = $4
             WHERE command_id = $1
@@ -813,6 +830,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let port = get_env("PORT", "3010");
     let api_key = get_env("INTERNAL_API_KEY", "");
+    let plc_command_lease_seconds = get_env_i64("PLC_COMMAND_LEASE_SEC", 60);
     // Fail-closed (EMT-H02): sin INTERNAL_API_KEY los endpoints /api/* quedarían
     // abiertos (incluida la cola de comandos PLC). Abortamos el arranque salvo
     // override explícito de desarrollo.
@@ -836,6 +854,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         db,
         started_at: Instant::now(),
         api_key,
+        plc_command_lease_seconds,
     };
     let listener = TcpListener::bind(addr).await?;
 
