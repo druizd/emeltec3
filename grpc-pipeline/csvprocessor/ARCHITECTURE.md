@@ -161,6 +161,11 @@ LOCAL_SYNC_INTERVAL_SEC=30
 LINUX_DB_API_URL=http://145.190.8.19:3010
 PLC_COMMAND_POLL_INTERVAL_SEC=5
 PLC_DRY_RUN=true
+PLC_DEVICE_ID_SERIAL=151.24.7.13
+PLC_DEVICE_IP=192.168.1.100
+PLC_DEVICE_PORT=502
+PLC_DEVICE_UNIT_ID=1
+PLC_DEVICE_TIMEOUT_SEC=5
 
 MAIN_API_URL=
 INTERNAL_API_KEY=
@@ -185,6 +190,11 @@ Defaults del codigo:
 | `LINUX_DB_API_URL`              | ``                              | API Linux para comandos PLC                 |
 | `PLC_COMMAND_POLL_INTERVAL_SEC` | `5`                             | Polling de comandos PLC                     |
 | `PLC_DRY_RUN`                   | `true`                          | Simula ejecucion PLC sin escribir al equipo |
+| `PLC_DEVICE_ID_SERIAL`          | ``                              | Equipo que este agente Windows puede controlar |
+| `PLC_DEVICE_IP`                 | ``                              | IP local del MT-151 accesible desde Windows |
+| `PLC_DEVICE_PORT`               | `502`                           | Puerto Modbus TCP del MT-151 |
+| `PLC_DEVICE_UNIT_ID`            | `1`                             | ID Modbus TCP configurado en el MT-151 |
+| `PLC_DEVICE_TIMEOUT_SEC`        | `5`                             | Timeout de conexion/escritura Modbus TCP |
 | `NUM_WORKERS`                   | `4`                             | Workers paralelos                           |
 | `WATCH_INTERVAL_MS`             | `200`                           | Frecuencia de escaneo                       |
 | `RETRY_INTERVAL_SEC`            | `60`                            | Frecuencia de retry                         |
@@ -221,8 +231,10 @@ Linux linux-db-api -> Windows csvprocessor -> PLC -> Windows -> Linux
 ```
 
 Por defecto `PLC_DRY_RUN=true`; eso valida el circuito completo sin escribir al
-PLC real. Para escritura real falta implementar el driver/protocolo del PLC en
-`internal/plcagent`. La SQLite local vive en `internal/localdb`.
+PLC real. En modo real el driver admite `Q1` a `Q12` como coils 48 a 59 y
+`HR0` a `HR8191` como holding registers, de acuerdo con el mapa de memoria del
+MT-151 LED V3. SQLite evita repetir una maniobra cuando Linux reentrega un
+comando cuyo resultado aun no fue confirmado.
 
 Estructura del backup:
 

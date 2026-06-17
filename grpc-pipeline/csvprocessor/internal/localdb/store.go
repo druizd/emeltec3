@@ -2,6 +2,7 @@ package localdb
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -24,13 +25,21 @@ type LocalTelemetryRecord struct {
 }
 
 type PLCCommand struct {
-	CommandID   string `json:"command_id"`
-	IDSerial    string `json:"id_serial"`
-	Tag         string `json:"tag"`
-	Value       string `json:"value"`
-	CommandType string `json:"command_type"`
-	RequestedBy string `json:"requested_by,omitempty"`
-	RequestedAt string `json:"requested_at,omitempty"`
+	CommandID   string          `json:"command_id"`
+	IDSerial    string          `json:"id_serial"`
+	Tag         string          `json:"tag"`
+	Value       string          `json:"value"`
+	Data        json.RawMessage `json:"data,omitempty"`
+	CommandType string          `json:"command_type"`
+	RequestedBy string          `json:"requested_by,omitempty"`
+	RequestedAt string          `json:"requested_at,omitempty"`
+}
+
+type PLCReport struct {
+	CommandID string
+	Status    string
+	Error     string
+	Response  string
 }
 
 func Open(path string) (*Store, error) {
@@ -88,12 +97,13 @@ func (s *Store) SaveTelemetryBatch(sourceFile string, records []*pb.TelemetryRec
 		var id int64
 		err = tx.QueryRow(
 			`SELECT local_id FROM telemetry_records
-			 WHERE source_file = ? AND id_serial = ? AND fecha = ? AND hora = ?
-			 ORDER BY local_id DESC LIMIT 1`,
-			sourceFile,
+			 WHERE id_serial = ? AND fecha = ? AND hora = ?
+			 ORDER BY CASE WHEN source_file = ? THEN 0 ELSE 1 END, local_id DESC
+			 LIMIT 1`,
 			rec.IdSerial,
 			rec.Fecha,
 			rec.Hora,
+			sourceFile,
 		).Scan(&id)
 		if err != nil {
 			return nil, err
@@ -161,49 +171,93 @@ func (s *Store) PendingTelemetry(limit int) ([]LocalTelemetryRecord, error) {
 	return records, rows.Err()
 }
 
-func (s *Store) SavePLCCommand(cmd PLCCommand) error {
-	_, err := s.db.Exec(
+func (s *Store) SavePLCCommand(cmd PLCCommand) (bool, error) {
+	result, err := s.db.Exec(
 		`INSERT OR IGNORE INTO plc_commands (
-		 command_id, id_serial, tag, value, command_type, requested_by, requested_at
-		 ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		 command_id, id_serial, tag, value, data, command_type, requested_by, requested_at
+		 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		cmd.CommandID,
 		cmd.IDSerial,
 		cmd.Tag,
 		cmd.Value,
+		string(cmd.Data),
 		cmd.CommandType,
 		cmd.RequestedBy,
 		cmd.RequestedAt,
 	)
-	return err
+	if err != nil {
+		return false, err
+	}
+	inserted, err := result.RowsAffected()
+	return inserted == 1, err
 }
 
-func (s *Store) MarkPLCCommandDone(commandID, response string) {
-	_, _ = s.db.Exec(
+func (s *Store) MarkPLCCommandDone(commandID, response string) error {
+	_, err := s.db.Exec(
 		`UPDATE plc_commands
 		 SET status = 'done', executed_at = CURRENT_TIMESTAMP, response = ?
 		 WHERE command_id = ?`,
 		response,
 		commandID,
 	)
+	return err
 }
 
-func (s *Store) MarkPLCCommandFailed(commandID, errText string) {
-	_, _ = s.db.Exec(
+func (s *Store) MarkPLCCommandExecuting(commandID string) error {
+	_, err := s.db.Exec(
 		`UPDATE plc_commands
-		 SET status = 'failed', executed_at = CURRENT_TIMESTAMP, error = ?
-		 WHERE command_id = ?`,
-		errText,
+		 SET status = 'executing', executed_at = CURRENT_TIMESTAMP, error = NULL
+		 WHERE command_id = ? AND status = 'pending'`,
 		commandID,
 	)
+	return err
 }
 
-func (s *Store) MarkPLCCommandReported(commandID string) {
-	_, _ = s.db.Exec(
+func (s *Store) MarkPLCCommandFailed(commandID, errText, response string) error {
+	_, err := s.db.Exec(
+		`UPDATE plc_commands
+		 SET status = 'failed', executed_at = CURRENT_TIMESTAMP, error = ?, response = ?
+		 WHERE command_id = ?`,
+		errText,
+		response,
+		commandID,
+	)
+	return err
+}
+
+func (s *Store) MarkPLCCommandReported(commandID string) error {
+	_, err := s.db.Exec(
 		`UPDATE plc_commands
 		 SET reported_at = CURRENT_TIMESTAMP
 		 WHERE command_id = ?`,
 		commandID,
 	)
+	return err
+}
+
+func (s *Store) PendingPLCReports(limit int) ([]PLCReport, error) {
+	rows, err := s.db.Query(
+		`SELECT command_id, status, COALESCE(error, ''), COALESCE(response, '{}')
+		 FROM plc_commands
+		 WHERE status IN ('done', 'failed') AND reported_at IS NULL
+		 ORDER BY executed_at ASC
+		 LIMIT ?`,
+		limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reports := []PLCReport{}
+	for rows.Next() {
+		var report PLCReport
+		if err := rows.Scan(&report.CommandID, &report.Status, &report.Error, &report.Response); err != nil {
+			return nil, err
+		}
+		reports = append(reports, report)
+	}
+	return reports, rows.Err()
 }
 
 func (s *Store) Stats() (pendingTelemetry int, pendingCommands int) {
@@ -268,6 +322,16 @@ ON plc_commands(id_serial, received_at);
 	if err != nil {
 		return fmt.Errorf("migrar SQLite local: %w", err)
 	}
+
+	// Migración incremental: agrega columna data si no existe (SQLite ignora el error si ya existe)
+	_, _ = s.db.Exec(`ALTER TABLE plc_commands ADD COLUMN data TEXT`)
+
+	_, _ = s.db.Exec(
+		`UPDATE plc_commands
+		 SET status = 'failed', error = ?
+		 WHERE status = 'executing'`,
+		"ejecucion interrumpida; estado fisico del PLC desconocido",
+	)
 
 	_, _ = s.db.Exec(
 		`UPDATE plc_commands

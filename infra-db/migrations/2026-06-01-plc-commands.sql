@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS plc_commands (
     requested_by TEXT,
     requested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     sent_at TIMESTAMPTZ,
+    lease_until TIMESTAMPTZ,
+    delivery_attempts INTEGER NOT NULL DEFAULT 0,
     completed_at TIMESTAMPTZ,
     error TEXT,
     response JSONB
@@ -16,6 +18,9 @@ CREATE TABLE IF NOT EXISTS plc_commands (
 
 CREATE INDEX IF NOT EXISTS idx_plc_commands_status
 ON plc_commands(status, requested_at);
+
+CREATE INDEX IF NOT EXISTS idx_plc_commands_delivery
+ON plc_commands(status, lease_until, requested_at);
 
 CREATE INDEX IF NOT EXISTS idx_plc_commands_device
 ON plc_commands(id_serial, requested_at);

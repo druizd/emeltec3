@@ -26,6 +26,11 @@ type Config struct {
 	LinuxDBAPIURL          string
 	PLCCommandPollInterval int
 	PLCDryRun              bool
+	PLCDeviceIP            string
+	PLCDeviceIDSerial      string
+	PLCDevicePort          int
+	PLCDeviceUnitID        int
+	PLCDeviceTimeoutSec    int
 }
 
 func Load() Config {
@@ -50,6 +55,11 @@ func Load() Config {
 		LinuxDBAPIURL:          getEnv("LINUX_DB_API_URL", ""),
 		PLCCommandPollInterval: getEnvInt("PLC_COMMAND_POLL_INTERVAL_SEC", 5),
 		PLCDryRun:              getEnvBool("PLC_DRY_RUN", true),
+		PLCDeviceIP:            getEnv("PLC_DEVICE_IP", ""),
+		PLCDeviceIDSerial:      getEnv("PLC_DEVICE_ID_SERIAL", ""),
+		PLCDevicePort:          getEnvInt("PLC_DEVICE_PORT", 502),
+		PLCDeviceUnitID:        getEnvInt("PLC_DEVICE_UNIT_ID", 1),
+		PLCDeviceTimeoutSec:    getEnvInt("PLC_DEVICE_TIMEOUT_SEC", 5),
 	}
 }
 
