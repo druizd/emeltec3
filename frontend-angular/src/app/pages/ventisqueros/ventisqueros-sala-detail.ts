@@ -110,13 +110,11 @@ function slugify(area: string): string {
         <button
           type="button"
           class="sala-btn"
-          [disabled]="sensors().length === 0 || exporting()"
-          (click)="exportExcel()"
-          title="Descargar Excel"
+          [disabled]="sensors().length === 0"
+          (click)="openExportModal()"
+          title="Descargar historial (Excel)"
         >
-          <span class="material-symbols-outlined text-[16px]">{{
-            exporting() ? 'hourglass_top' : 'download'
-          }}</span>
+          <span class="material-symbols-outlined text-[16px]">download</span>
           Excel
         </button>
         <button
@@ -591,6 +589,113 @@ function slugify(area: string): string {
           </section>
         }
       </div>
+
+      <!-- Modal descargar historial (Excel) — scoped a esta sala -->
+      @if (exportOpen()) {
+        <div class="vs-hx-backdrop" (click)="closeExportModal()" aria-hidden="true"></div>
+        <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
+          <header class="vs-hx-head">
+            <div class="vs-hx-title">Descargar historial</div>
+            <button
+              type="button"
+              class="vs-hx-close"
+              (click)="closeExportModal()"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </header>
+
+          <div class="vs-hx-body">
+            <!-- Rango fechas -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">1. Rango de fechas</div>
+              <div class="vs-hx-range">
+                <label class="vs-hx-field">
+                  <span>Desde</span>
+                  <input
+                    type="datetime-local"
+                    [value]="exportFrom()"
+                    (input)="setExportFrom($event)"
+                  />
+                </label>
+                <label class="vs-hx-field">
+                  <span>Hasta</span>
+                  <input type="datetime-local" [value]="exportTo()" (input)="setExportTo($event)" />
+                </label>
+              </div>
+              <div class="vs-hx-hint">
+                Cagg se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h (≤30d), 1d (resto).
+              </div>
+            </div>
+
+            <!-- Sensores de la sala -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-head">
+                <div class="vs-hx-section-title">
+                  2. Sensores
+                  <span class="vs-hx-count">
+                    {{ exportSelectedSensors().size }} / {{ sensors().length }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="vs-hx-toggle-all"
+                  (click)="toggleExportSelectAllSensors()"
+                >
+                  {{
+                    exportSelectedSensors().size === sensors().length
+                      ? 'Quitar todos'
+                      : 'Seleccionar todos'
+                  }}
+                </button>
+              </div>
+              <div class="vs-hx-grid">
+                @for (s of sensors(); track s.id) {
+                  <label class="vs-hx-checkbox">
+                    <input
+                      type="checkbox"
+                      [checked]="exportSelectedSensors().has(s.id)"
+                      (change)="toggleExportSensor(s.id)"
+                    />
+                    <span class="vs-hx-checkbox-lbl">
+                      {{ s.id }}
+                      <span class="vs-hx-checkbox-meta">{{ s.area }} · {{ s.tap }}</span>
+                    </span>
+                  </label>
+                }
+              </div>
+            </div>
+
+            @if (exportError(); as err) {
+              <div class="vs-hx-error">
+                <span class="material-symbols-outlined text-[14px]">error</span>
+                {{ err }}
+              </div>
+            }
+          </div>
+
+          <footer class="vs-hx-foot">
+            <button type="button" class="vs-hx-btn" (click)="closeExportModal()">Cancelar</button>
+            <button
+              type="button"
+              class="vs-hx-btn vs-hx-btn--primary"
+              [disabled]="exportLoading() || exportSelectedSensors().size === 0"
+              (click)="confirmExport()"
+            >
+              @if (exportLoading()) {
+                <span class="material-symbols-outlined text-[14px] animate-spin"
+                  >progress_activity</span
+                >
+                Generando…
+              } @else {
+                <span class="material-symbols-outlined text-[14px]">download</span>
+                Descargar Excel
+              }
+            </button>
+          </footer>
+        </aside>
+      }
 
       <!-- Modal nota HACCP (reconocer / clasificar / resolver) -->
       @if (noteModal(); as nm) {
@@ -1214,6 +1319,258 @@ function slugify(area: string): string {
         color: var(--color-primary);
         background: rgba(13, 175, 189, 0.1);
         border: 1px solid rgba(13, 175, 189, 0.25);
+      }
+
+      /* History export modal (mismo diseño que el general de Ventisqueros) */
+      .vs-hx-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        z-index: 50;
+        animation: hxFadeIn 0.15s ease-out;
+      }
+      @keyframes hxFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .vs-hx-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(640px, 94vw);
+        max-height: 88vh;
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+        z-index: 51;
+        display: flex;
+        flex-direction: column;
+        animation: hxScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes hxScaleIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+      .vs-hx-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .vs-hx-title {
+        font-family: var(--font-josefin), sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .vs-hx-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: transparent;
+        color: #64748b;
+        border: 1px solid transparent;
+      }
+      .vs-hx-close:hover {
+        background: rgba(15, 23, 42, 0.06);
+        color: #1e293b;
+      }
+      .vs-hx-body {
+        padding: 16px 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .vs-hx-section {
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+      }
+      .vs-hx-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .vs-hx-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .vs-hx-section-title {
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+      }
+      .vs-hx-count {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 500;
+        color: #94a3b8;
+        margin-left: 6px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .vs-hx-toggle-all {
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: var(--color-primary);
+        background: transparent;
+        border: none;
+        font-weight: 500;
+      }
+      .vs-hx-toggle-all:hover {
+        text-decoration: underline;
+      }
+      .vs-hx-range {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .vs-hx-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-family: var(--font-dm);
+        font-size: 11px;
+        color: #64748b;
+      }
+      .vs-hx-field input {
+        padding: 7px 9px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #1e293b;
+        outline: none;
+      }
+      .vs-hx-field input:focus {
+        border-color: var(--color-primary);
+      }
+      .vs-hx-hint {
+        margin-top: 6px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .vs-hx-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 6px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 4px 2px;
+      }
+      .vs-hx-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 9px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .vs-hx-checkbox:hover {
+        border-color: var(--color-primary-tint-30);
+        background: var(--color-primary-tint-04);
+      }
+      .vs-hx-checkbox input {
+        margin-top: 2px;
+        accent-color: var(--color-primary);
+      }
+      .vs-hx-checkbox-lbl {
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        color: #1e293b;
+        line-height: 1.3;
+      }
+      .vs-hx-checkbox-meta {
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-weight: 400;
+      }
+      .vs-hx-error {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 10px;
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 7px;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+      }
+      .vs-hx-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 18px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 0 0 14px 14px;
+      }
+      .vs-hx-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 14px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .vs-hx-btn:hover:not(:disabled) {
+        background: #f1f5f9;
+      }
+      .vs-hx-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .vs-hx-btn--primary {
+        background: var(--color-primary);
+        color: #ffffff;
+        border-color: var(--color-primary);
+      }
+      .vs-hx-btn--primary:hover:not(:disabled) {
+        background: #0c8b96;
+      }
+      .animate-spin {
+        animation: hxSpin 0.9s linear infinite;
+      }
+      @keyframes hxSpin {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       .chart-shell {
@@ -2124,7 +2481,6 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly serviceError = signal<string | null>(null);
   readonly lastUpdate = signal<Date | null>(null);
   readonly range = signal<ColdRoomRange>('24h');
-  readonly exporting = signal<boolean>(false);
   readonly showBand = signal<boolean>(true);
 
   // Fecha específica seleccionada (YYYY-MM-DD día Chile). null = modo "en vivo"
@@ -2460,47 +2816,208 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     return this.xlsxLoader;
   }
 
-  // Exporta a Excel los datos REALES ya cargados en sensors(). Como sensors()
-  // refleja la fecha del picker (o el rango en vivo), el archivo baja siempre el
-  // día/rango de la consulta actual. Formato largo: una fila por punto y sensor.
-  async exportExcel(): Promise<void> {
+  // === Descargar historial (modal "menú lindo", igual que el general) ===
+  // Scoped a ESTA sala: rango de fechas + multi-select de sus sensores. Usa el
+  // endpoint real exportHistory (rango arbitrario, cagg automático) → Excel con
+  // hojas "Lecturas" + "Resumen". No depende del ?date del gráfico.
+  readonly exportOpen = signal<boolean>(false);
+  readonly exportFrom = signal<string>('');
+  readonly exportTo = signal<string>('');
+  readonly exportSelectedSensors = signal<Set<string>>(new Set<string>());
+  readonly exportLoading = signal<boolean>(false);
+  readonly exportError = signal<string | null>(null);
+
+  private toDatetimeLocal(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  openExportModal(): void {
     const list = this.sensors();
     if (list.length === 0) return;
-    this.exporting.set(true);
-    try {
-      const fmt = (iso: string) =>
-        new Date(iso).toLocaleString('es-CL', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        });
-      const rows = list.flatMap((s) =>
-        (s.histPoints || []).map((p) => ({
-          Sensor: s.id,
-          Área: s.area,
-          TAP: s.tap,
-          'Fecha y hora': fmt(p.t),
-          'Temperatura (°C)': Math.round(p.v * 100) / 100,
-        })),
-      );
-      if (rows.length === 0) {
-        this.serviceError.set('No hay datos para exportar en este rango');
-        return;
-      }
-      const XLSX = await this.loadXlsx();
-      const sheet = XLSX.utils.json_to_sheet(rows);
-      sheet['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 12 }, { wch: 18 }, { wch: 16 }];
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, sheet, 'Temperatura');
-      const tag = this.selectedDate() ?? this.range();
-      XLSX.writeFile(wb, `sala-${this.salaSlug()}-${tag}.xlsx`);
-    } catch {
-      this.serviceError.set('No se pudo generar el Excel');
-    } finally {
-      this.exporting.set(false);
+    // Default: si hay fecha elegida en el gráfico, ese día completo; si no, hoy 00:00 → ahora.
+    const sel = this.selectedDate();
+    if (sel) {
+      const start = new Date(`${sel}T00:00:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 60 * 1000);
+      this.exportFrom.set(this.toDatetimeLocal(start));
+      this.exportTo.set(this.toDatetimeLocal(end));
+    } else {
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      this.exportFrom.set(this.toDatetimeLocal(startToday));
+      this.exportTo.set(this.toDatetimeLocal(now));
     }
+    this.exportSelectedSensors.set(new Set(list.map((s) => s.id)));
+    this.exportError.set(null);
+    this.exportOpen.set(true);
+  }
+
+  closeExportModal(): void {
+    this.exportOpen.set(false);
+  }
+
+  setExportFrom(ev: Event): void {
+    this.exportFrom.set((ev.target as HTMLInputElement).value);
+  }
+  setExportTo(ev: Event): void {
+    this.exportTo.set((ev.target as HTMLInputElement).value);
+  }
+
+  toggleExportSensor(id: string): void {
+    const cur = new Set(this.exportSelectedSensors());
+    if (cur.has(id)) cur.delete(id);
+    else cur.add(id);
+    this.exportSelectedSensors.set(cur);
+  }
+
+  toggleExportSelectAllSensors(): void {
+    const all = this.sensors().map((s) => s.id);
+    if (this.exportSelectedSensors().size === all.length) this.exportSelectedSensors.set(new Set());
+    else this.exportSelectedSensors.set(new Set(all));
+  }
+
+  async confirmExport(): Promise<void> {
+    this.exportError.set(null);
+    const sensors = [...this.exportSelectedSensors()];
+    if (sensors.length === 0) {
+      this.exportError.set('Selecciona al menos un sensor.');
+      return;
+    }
+    const fromStr = this.exportFrom();
+    const toStr = this.exportTo();
+    if (!fromStr || !toStr) {
+      this.exportError.set('Rango de fechas inválido.');
+      return;
+    }
+    const from = new Date(fromStr);
+    const to = new Date(toStr);
+    if (to <= from) {
+      this.exportError.set('La fecha "Hasta" debe ser mayor que "Desde".');
+      return;
+    }
+    const sid = this.siteId();
+    if (!sid) return;
+    this.exportLoading.set(true);
+    this.coldRoom
+      .exportHistory(sid, from.toISOString(), to.toISOString(), this.bundleSiteIds(), sensors)
+      .subscribe({
+        next: async (res) => {
+          this.exportLoading.set(false);
+          if (!res.ok) {
+            this.exportError.set(res.error || 'Error al obtener datos.');
+            return;
+          }
+          if (res.data.points.length === 0) {
+            this.exportError.set('Sin datos en el rango seleccionado.');
+            return;
+          }
+          try {
+            await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
+            this.closeExportModal();
+          } catch (err) {
+            this.exportError.set(
+              'Error al generar Excel: ' + (err instanceof Error ? err.message : String(err)),
+            );
+          }
+        },
+        error: (err) => {
+          this.exportLoading.set(false);
+          this.exportError.set(
+            'Error HTTP: ' + (err?.error?.error || err?.message || 'desconocido'),
+          );
+        },
+      });
+  }
+
+  private formatChileParts(ts: string): { date: string; time: string } {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date(ts));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return {
+      date: `${get('year')}-${get('month')}-${get('day')}`,
+      time: `${get('hour')}:${get('minute')}`,
+    };
+  }
+  private formatChileShort(ts: string): string {
+    const { date, time } = this.formatChileParts(ts);
+    return `${date} ${time}`;
+  }
+
+  private async downloadHistoryXlsx(
+    points: {
+      ts: string;
+      sensorId: string;
+      area: string;
+      tap: string;
+      t: number | null;
+      h: number | null;
+    }[],
+    from: Date,
+    to: Date,
+    view: string,
+    sensorIds: string[],
+  ): Promise<void> {
+    const XLSX = await this.loadXlsx();
+    const wb = XLSX.utils.book_new();
+
+    // Hoja 1: Lecturas (datos crudos).
+    const rows = points.map((p) => {
+      const dt = this.formatChileParts(p.ts);
+      return {
+        Fecha: dt.date,
+        Hora: dt.time,
+        Sensor: p.sensorId,
+        Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
+        TAP: p.tap,
+        'Temperatura (°C)': p.t !== null ? Math.round(p.t * 100) / 100 : null,
+        'Humedad (%)': p.h !== null ? Math.round(p.h * 100) / 100 : null,
+      };
+    });
+    const sheet1 = XLSX.utils.json_to_sheet(rows);
+    sheet1['!cols'] = [
+      { wch: 12 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 28 },
+      { wch: 8 },
+      { wch: 16 },
+      { wch: 14 },
+    ];
+    XLSX.utils.book_append_sheet(wb, sheet1, 'Lecturas');
+
+    // Hoja 2: Resumen.
+    const fmtRange = (d: Date) => this.formatChileShort(d.toISOString());
+    const cagg: Record<string, string> = {
+      equipo_1min: '1 minuto',
+      equipo_5min: '5 minutos',
+      equipo_hourly: '1 hora',
+      equipo_daily: '1 día',
+    };
+    const summary = [
+      { Campo: 'Sitio', Valor: this.siteName() },
+      { Campo: 'Sala', Valor: this.sensors()[0]?.area ?? this.salaSlug() },
+      { Campo: 'Generado', Valor: this.formatChileShort(new Date().toISOString()) },
+      { Campo: 'Rango desde', Valor: fmtRange(from) },
+      { Campo: 'Rango hasta', Valor: fmtRange(to) },
+      { Campo: 'Granularidad', Valor: cagg[view] || view },
+      { Campo: 'Sensores', Valor: sensorIds.join(', ') },
+      { Campo: 'Total lecturas', Valor: points.length },
+    ];
+    const sheet2 = XLSX.utils.json_to_sheet(summary);
+    sheet2['!cols'] = [{ wch: 18 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, sheet2, 'Resumen');
+
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    XLSX.writeFile(wb, `sala-${this.salaSlug()}-historial-${fmt(from)}-${fmt(to)}.xlsx`);
   }
 
   exportPng(): void {
