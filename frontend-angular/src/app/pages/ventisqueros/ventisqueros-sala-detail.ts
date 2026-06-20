@@ -526,9 +526,9 @@ function slugify(area: string): string {
         <!-- Histórico -->
         @if (sensors().length > 0) {
           <section class="mt-2">
-            <div class="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-3">
               <h3 class="section-title">Histórico de temperatura</h3>
-              <div class="flex items-center gap-3">
+              <div class="flex flex-wrap items-center gap-3">
                 <label class="band-toggle">
                   <input
                     type="checkbox"
@@ -537,13 +537,33 @@ function slugify(area: string): string {
                   />
                   <span>Banda tolerancia</span>
                 </label>
+                <div class="date-picker">
+                  <input
+                    type="date"
+                    class="date-input"
+                    aria-label="Ver fecha específica"
+                    [max]="todayChile()"
+                    [value]="selectedDate() ?? ''"
+                    (change)="onDateChange($any($event.target).value)"
+                  />
+                  @if (selectedDate()) {
+                    <button
+                      type="button"
+                      class="date-clear"
+                      title="Volver a tiempo real"
+                      (click)="clearDate()"
+                    >
+                      En vivo
+                    </button>
+                  }
+                </div>
                 <div class="range-pills" role="tablist" aria-label="Rango">
                   @for (r of ranges; track r) {
                     <button
                       type="button"
                       role="tab"
                       class="range-pill"
-                      [class.range-pill--active]="range() === r"
+                      [class.range-pill--active]="range() === r && !selectedDate()"
                       (click)="setRange(r)"
                     >
                       {{ r }}
@@ -551,6 +571,16 @@ function slugify(area: string): string {
                   }
                 </div>
               </div>
+            </div>
+            <!-- Leyenda: qué fecha/rango cubre el gráfico -->
+            <div class="chart-window-legend">
+              @if (selectedDate()) {
+                <span class="chart-window-badge chart-window-badge--date">Fecha</span>
+                <span>{{ chartWindowLabel() }}</span>
+              } @else {
+                <span class="chart-window-badge chart-window-badge--live">En vivo</span>
+                <span>{{ chartWindowLabel() }}</span>
+              }
             </div>
             <div class="chart-shell">
               <div class="h-[320px]">
@@ -1121,6 +1151,69 @@ function slugify(area: string): string {
       }
       .band-toggle input {
         accent-color: var(--color-primary);
+      }
+
+      .date-picker {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .date-input {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #1e293b;
+        padding: 4px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #ffffff;
+        cursor: pointer;
+      }
+      .date-input:hover {
+        border-color: var(--color-primary);
+      }
+      .date-clear {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        border-radius: 9999px;
+        color: var(--color-primary);
+        background: rgba(13, 175, 189, 0.1);
+        border: 1px solid rgba(13, 175, 189, 0.25);
+        transition: background 0.15s ease;
+      }
+      .date-clear:hover {
+        background: rgba(13, 175, 189, 0.18);
+      }
+      .chart-window-legend {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #64748b;
+      }
+      .chart-window-badge {
+        font-family: var(--font-body), sans-serif;
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 9999px;
+      }
+      .chart-window-badge--live {
+        color: #16a34a;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+      }
+      .chart-window-badge--date {
+        color: var(--color-primary);
+        background: rgba(13, 175, 189, 0.1);
+        border: 1px solid rgba(13, 175, 189, 0.25);
       }
 
       .chart-shell {
@@ -2034,6 +2127,42 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly exporting = signal<boolean>(false);
   readonly showBand = signal<boolean>(true);
 
+  // Fecha específica seleccionada (YYYY-MM-DD día Chile). null = modo "en vivo"
+  // (últimas N horas relativas a ahora). Al fijar fecha, backend ancla 24h al día.
+  readonly selectedDate = signal<string | null>(null);
+
+  // Tope del date picker: hoy en zona Chile (no permitir futuro).
+  readonly todayChile = computed(() => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    return parts; // 'YYYY-MM-DD'
+  });
+
+  // Leyenda del rango temporal que cubre el gráfico.
+  //   - modo fecha: "DD/MM/YYYY · 00:00–23:59"
+  //   - modo vivo:  "DD/MM HH:MM – DD/MM HH:MM" (primer/último punto real)
+  readonly chartWindowLabel = computed(() => {
+    const d = this.selectedDate();
+    if (d) {
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}/${y} · 00:00–23:59`;
+    }
+    const pts = this.sensors()[0]?.histPoints || [];
+    if (pts.length === 0) return '';
+    const fmt = (iso: string) =>
+      new Date(iso).toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    return `${fmt(pts[0].t)} – ${fmt(pts[pts.length - 1].t)}`;
+  });
+
   readonly drilldownSensorId = signal<string | null>(null);
   readonly drilldownRange = signal<ColdRoomRange>('24h');
   readonly drilldownData = signal<ColdRoomSensorHistory | null>(null);
@@ -2245,8 +2374,32 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   setRange(r: ColdRoomRange): void {
-    if (this.range() === r) return;
+    const wasDateMode = this.selectedDate() !== null;
+    if (this.range() === r && !wasDateMode) return;
+    // Click en pill siempre vuelve a modo "en vivo" (relativo a ahora).
+    this.selectedDate.set(null);
     this.range.set(r);
+    this.fetchData();
+  }
+
+  // Cambio en el date picker. Vacío = volver a vivo. Con fecha = 24h de ese día.
+  onDateChange(value: string): void {
+    const v = (value || '').trim();
+    if (!v) {
+      if (this.selectedDate() === null) return;
+      this.selectedDate.set(null);
+      this.fetchData();
+      return;
+    }
+    if (this.selectedDate() === v) return;
+    this.selectedDate.set(v);
+    this.range.set('24h'); // fecha específica = siempre 24h del día
+    this.fetchData();
+  }
+
+  clearDate(): void {
+    if (this.selectedDate() === null) return;
+    this.selectedDate.set(null);
     this.fetchData();
   }
 
@@ -2392,28 +2545,32 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     this.isLoading.set(true);
     // Pasa bundle de siteIds para que backend cubra concentrador + TAPs reales.
     // Sin esto, si siteId es el maestro (sin STH-*), backend devuelve [].
-    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds()).subscribe({
-      next: (res) => {
-        if (res.ok) {
-          this.allSensors.set(res.data || []);
-          this.lastUpdate.set(new Date());
-          this.serviceError.set(null);
-        } else {
-          this.serviceError.set(res.error || 'Sin datos');
-        }
-        this.isLoading.set(false);
-        this.scheduleNextPoll();
-      },
-      error: () => {
-        this.serviceError.set('Error de conexión');
-        this.isLoading.set(false);
-        this.scheduleNextPoll();
-      },
-    });
+    this.coldRoom
+      .getSensors(id, null, this.range(), this.bundleSiteIds(), this.selectedDate())
+      .subscribe({
+        next: (res) => {
+          if (res.ok) {
+            this.allSensors.set(res.data || []);
+            this.lastUpdate.set(new Date());
+            this.serviceError.set(null);
+          } else {
+            this.serviceError.set(res.error || 'Sin datos');
+          }
+          this.isLoading.set(false);
+          this.scheduleNextPoll();
+        },
+        error: () => {
+          this.serviceError.set('Error de conexión');
+          this.isLoading.set(false);
+          this.scheduleNextPoll();
+        },
+      });
   }
 
   private scheduleNextPoll(): void {
     if (this.pollTimer !== null) clearTimeout(this.pollTimer);
+    // Modo fecha histórica: dato estático, no tiene sentido refrescar.
+    if (this.selectedDate() !== null) return;
     this.pollTimer = setTimeout(() => this.fetchData(), POLL_MS);
   }
 
