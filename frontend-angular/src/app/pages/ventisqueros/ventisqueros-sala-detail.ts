@@ -111,13 +111,13 @@ function slugify(area: string): string {
           type="button"
           class="sala-btn"
           [disabled]="sensors().length === 0 || exporting()"
-          (click)="exportCsv()"
-          title="Descargar CSV"
+          (click)="exportExcel()"
+          title="Descargar Excel"
         >
           <span class="material-symbols-outlined text-[16px]">{{
             exporting() ? 'hourglass_top' : 'download'
           }}</span>
-          CSV
+          Excel
         </button>
         <button
           type="button"
@@ -2453,29 +2453,54 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     this.drilldownData.set(null);
   }
 
-  exportCsv(): void {
-    const sid = this.siteId();
-    if (!sid) return;
+  // Lazy load xlsx — primer click paga la descarga (~150 kB), siguientes cacheado.
+  private xlsxLoader?: Promise<typeof import('xlsx')>;
+  private loadXlsx(): Promise<typeof import('xlsx')> {
+    if (!this.xlsxLoader) this.xlsxLoader = import('xlsx');
+    return this.xlsxLoader;
+  }
+
+  // Exporta a Excel los datos REALES ya cargados en sensors(). Como sensors()
+  // refleja la fecha del picker (o el rango en vivo), el archivo baja siempre el
+  // día/rango de la consulta actual. Formato largo: una fila por punto y sensor.
+  async exportExcel(): Promise<void> {
+    const list = this.sensors();
+    if (list.length === 0) return;
     this.exporting.set(true);
-    // Exporta todos los datos (sin filtro tap) y deja al usuario filtrar; sala-level
-    // export requeriría endpoint dedicado.
-    this.coldRoom.downloadCsv(sid, null, this.range()).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `sala-${this.salaSlug()}-${this.range()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        this.exporting.set(false);
-      },
-      error: () => {
-        this.exporting.set(false);
-        this.serviceError.set('No se pudo descargar el CSV');
-      },
-    });
+    try {
+      const fmt = (iso: string) =>
+        new Date(iso).toLocaleString('es-CL', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      const rows = list.flatMap((s) =>
+        (s.histPoints || []).map((p) => ({
+          Sensor: s.id,
+          Área: s.area,
+          TAP: s.tap,
+          'Fecha y hora': fmt(p.t),
+          'Temperatura (°C)': Math.round(p.v * 100) / 100,
+        })),
+      );
+      if (rows.length === 0) {
+        this.serviceError.set('No hay datos para exportar en este rango');
+        return;
+      }
+      const XLSX = await this.loadXlsx();
+      const sheet = XLSX.utils.json_to_sheet(rows);
+      sheet['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 12 }, { wch: 18 }, { wch: 16 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, sheet, 'Temperatura');
+      const tag = this.selectedDate() ?? this.range();
+      XLSX.writeFile(wb, `sala-${this.salaSlug()}-${tag}.xlsx`);
+    } catch {
+      this.serviceError.set('No se pudo generar el Excel');
+    } finally {
+      this.exporting.set(false);
+    }
   }
 
   exportPng(): void {
