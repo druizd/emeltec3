@@ -2545,24 +2545,26 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     this.isLoading.set(true);
     // Pasa bundle de siteIds para que backend cubra concentrador + TAPs reales.
     // Sin esto, si siteId es el maestro (sin STH-*), backend devuelve [].
-    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds(), this.selectedDate()).subscribe({
-      next: (res) => {
-        if (res.ok) {
-          this.allSensors.set(res.data || []);
-          this.lastUpdate.set(new Date());
-          this.serviceError.set(null);
-        } else {
-          this.serviceError.set(res.error || 'Sin datos');
-        }
-        this.isLoading.set(false);
-        this.scheduleNextPoll();
-      },
-      error: () => {
-        this.serviceError.set('Error de conexión');
-        this.isLoading.set(false);
-        this.scheduleNextPoll();
-      },
-    });
+    this.coldRoom
+      .getSensors(id, null, this.range(), this.bundleSiteIds(), this.selectedDate())
+      .subscribe({
+        next: (res) => {
+          if (res.ok) {
+            this.allSensors.set(res.data || []);
+            this.lastUpdate.set(new Date());
+            this.serviceError.set(null);
+          } else {
+            this.serviceError.set(res.error || 'Sin datos');
+          }
+          this.isLoading.set(false);
+          this.scheduleNextPoll();
+        },
+        error: () => {
+          this.serviceError.set('Error de conexión');
+          this.isLoading.set(false);
+          this.scheduleNextPoll();
+        },
+      });
   }
 
   private scheduleNextPoll(): void {
