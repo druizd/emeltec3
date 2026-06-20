@@ -34,7 +34,18 @@ export interface ColdRoomSensor {
 export interface ColdRoomSensorsResponse {
   ok: boolean;
   data: ColdRoomSensor[];
-  meta?: { range: ColdRoomRange; count: number; serverTime: string };
+  meta?: {
+    range: ColdRoomRange;
+    count: number;
+    serverTime: string;
+    source?: string;
+    /** Presente solo en modo fecha específica (?date). 'YYYY-MM-DD' día Chile. */
+    date?: string;
+    /** Inicio de la ventana del día (ISO UTC). */
+    from?: string;
+    /** Fin de la ventana del día (ISO UTC, exclusivo). */
+    to?: string;
+  };
   error?: string;
 }
 
@@ -93,6 +104,7 @@ export class ColdRoomService {
     tap: string | null,
     range: ColdRoomRange = '24h',
     siteIds?: string[],
+    date?: string | null,
   ): Observable<ColdRoomSensorsResponse> {
     const params = new URLSearchParams();
     if (tap) params.set('tap', tap);
@@ -100,6 +112,10 @@ export class ColdRoomService {
     params.set('t', String(Date.now()));
     if (siteIds && siteIds.length > 0) {
       params.set('siteIds', siteIds.join(','));
+    }
+    // Modo fecha específica: backend ancla ventana 24h al día Chile, ignora range.
+    if (date) {
+      params.set('date', date);
     }
     return this.http.get<ColdRoomSensorsResponse>(
       `/api/cold-room/${encodeURIComponent(siteId)}/sensors?${params.toString()}`,

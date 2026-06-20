@@ -994,9 +994,10 @@ const RANGE_CAGG_MAP = {
  * @param {string|null} tapFilter - Filtra por TAP label si se pasa (ej. 'TAP 2').
  * @returns {Promise<Array>} Array de sensores con histPoints + snapshot.
  */
-async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
+async function loadRealColdRoomSensors(siteIds, range, tapFilter, dateWindow = null) {
   if (!siteIds || siteIds.length === 0) return null;
-  const cfg = RANGE_CAGG_MAP[range] || RANGE_CAGG_MAP['24h'];
+  // Modo fecha específica: ignora `range`, fija ventana 24h del día (1-min cagg).
+  const cfg = dateWindow ? RANGE_CAGG_MAP['24h'] : RANGE_CAGG_MAP[range] || RANGE_CAGG_MAP['24h'];
 
   // 1. Sitios → id_serial + descripcion (= TAP label).
   const sitesRes = await pool.query(
@@ -1057,17 +1058,31 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
   if (tapFilter) sensorList = sensorList.filter((s) => s.tap === tapFilter);
   if (sensorList.length === 0) return [];
 
-  // 4. Query cagg para last N points.
-  const cutoffMs = Date.now() - cfg.points * (cfg.view === 'equipo_1min' ? 60_000 : 3_600_000);
-  const cutoff = new Date(cutoffMs);
-  const histRes = await pool.query(
-    `SELECT id_serial, bucket, data
-     FROM ${cfg.view}
-     WHERE id_serial = ANY($1) AND bucket >= $2
-     ORDER BY id_serial, bucket ASC
-     LIMIT $3`,
-    [idSerials, cutoff, cfg.points * idSerials.length + 100],
-  );
+  // 4. Query cagg. Dos modos:
+  //   - dateWindow: ventana [start, end) del día Chile → acota ambos extremos.
+  //   - live: últimos N points relativos a ahora (bucket >= cutoff).
+  let histRes;
+  if (dateWindow) {
+    histRes = await pool.query(
+      `SELECT id_serial, bucket, data
+       FROM ${cfg.view}
+       WHERE id_serial = ANY($1) AND bucket >= $2 AND bucket < $3
+       ORDER BY id_serial, bucket ASC
+       LIMIT $4`,
+      [idSerials, dateWindow.start, dateWindow.end, cfg.points * idSerials.length + 100],
+    );
+  } else {
+    const cutoffMs = Date.now() - cfg.points * (cfg.view === 'equipo_1min' ? 60_000 : 3_600_000);
+    const cutoff = new Date(cutoffMs);
+    histRes = await pool.query(
+      `SELECT id_serial, bucket, data
+       FROM ${cfg.view}
+       WHERE id_serial = ANY($1) AND bucket >= $2
+       ORDER BY id_serial, bucket ASC
+       LIMIT $3`,
+      [idSerials, cutoff, cfg.points * idSerials.length + 100],
+    );
+  }
 
   // 5. Agrupar buckets por id_serial.
   const bySerial = new Map();
@@ -1150,6 +1165,23 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
 router.get('/:siteId/sensors', async (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
+
+  // Modo fecha específica: ?date=YYYY-MM-DD → ventana 24h de ese día calendario
+  // CHILENO. Offset fijo -04:00 (mismo criterio que utils/timezone.js y
+  // contadores/service.ts) para evitar DST y mantener coherencia con la BD.
+  let dateWindow = null;
+  const dateRaw = req.query.date ? String(req.query.date).trim() : '';
+  if (dateRaw) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+      return res.status(400).json({ ok: false, error: 'date inválida (formato YYYY-MM-DD)' });
+    }
+    const start = new Date(`${dateRaw}T00:00:00-04:00`);
+    if (isNaN(start.getTime())) {
+      return res.status(400).json({ ok: false, error: 'date inválida' });
+    }
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    dateWindow = { start, end, date: dateRaw };
+  }
   // Support combo siteIds query for aggregation across multiple cold-room sites.
   // Frontend pasa ?siteIds=S110,S111,S113 cuando Ventisqueros tiene 4 TAPs.
   const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
@@ -1167,16 +1199,21 @@ router.get('/:siteId/sensors', async (req, res) => {
 
   // Intentar datos reales primero (reg_map + equipo_1min cagg).
   try {
-    const real = await loadRealColdRoomSensors(siteIds, range, tap);
+    const real = await loadRealColdRoomSensors(siteIds, range, tap, dateWindow);
     if (real !== null && real.length > 0) {
       return res.json({
         ok: true,
         data: real,
         meta: {
-          range,
+          range: dateWindow ? '24h' : range,
           count: real.length,
           serverTime: new Date().toISOString(),
           source: 'cagg',
+          ...(dateWindow && {
+            date: dateWindow.date,
+            from: dateWindow.start.toISOString(),
+            to: dateWindow.end.toISOString(),
+          }),
         },
       });
     }
@@ -1205,11 +1242,16 @@ router.get('/:siteId/sensors', async (req, res) => {
     ok: true,
     data: [],
     meta: {
-      range,
+      range: dateWindow ? '24h' : range,
       count: 0,
       serverTime: new Date().toISOString(),
       source: 'no-data',
       hint: 'reg_map sin sensores STH-* o siteIds no incluye los TAPs cold-room',
+      ...(dateWindow && {
+        date: dateWindow.date,
+        from: dateWindow.start.toISOString(),
+        to: dateWindow.end.toISOString(),
+      }),
     },
   });
 });
