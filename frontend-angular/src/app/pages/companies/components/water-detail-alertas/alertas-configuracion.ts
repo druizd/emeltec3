@@ -157,7 +157,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaRegla)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear regla
@@ -268,7 +268,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   type="button"
                   [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
                   (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span class="material-symbols-outlined text-[16px]">check</span>
                   Guardar
@@ -527,7 +527,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="button"
                 (click)="simularRegla(draft)"
                 [disabled]="simulating() || !puedeSimular(draft)"
-                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
               >
                 <span
                   class="material-symbols-outlined text-[14px]"

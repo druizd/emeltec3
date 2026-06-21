@@ -214,7 +214,7 @@ interface RealtimeChartPoint {
                 <button
                   type="button"
                   (click)="turnosSettingsOpen.update((v) => !v)"
-                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   [class]="
                     turnosSettingsOpen()
                       ? 'bg-primary-tint-14 text-primary-container'
@@ -231,7 +231,7 @@ interface RealtimeChartPoint {
                 <button
                   type="button"
                   (click)="diaOffset.update((v) => v - 1)"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   aria-label="Día anterior"
                 >
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
@@ -253,7 +253,7 @@ interface RealtimeChartPoint {
                   [disabled]="esHoy()"
                   [attr.aria-disabled]="esHoy()"
                   aria-label="Día siguiente"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
                     >chevron_right</span
@@ -290,7 +290,7 @@ interface RealtimeChartPoint {
                     <button
                       type="button"
                       (click)="numTurnos.set(2)"
-                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       [class]="
                         numTurnos() === 2
                           ? 'bg-primary text-white'
@@ -303,7 +303,7 @@ interface RealtimeChartPoint {
                     <button
                       type="button"
                       (click)="numTurnos.set(3)"
-                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       [class]="
                         numTurnos() === 3
                           ? 'bg-primary text-white'
@@ -357,7 +357,7 @@ interface RealtimeChartPoint {
                 <button
                   type="button"
                   (click)="turnosSettingsOpen.set(false)"
-                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
                 >
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   Listo
@@ -564,7 +564,7 @@ interface RealtimeChartPoint {
               >
                 <p class="text-body-sm font-semibold text-slate-600">{{ point.dateLabel }}</p>
                 <div class="mt-2 flex items-center gap-2 text-slate-600">
-                  <span class="h-2.5 w-2.5 rounded-full bg-[#0DAFBD]"></span>
+                  <span class="h-2.5 w-2.5 rounded-full bg-primary"></span>
                   <span class="font-semibold">Caudal (L/s)</span>
                   <span class="ml-auto font-semibold text-slate-800">{{ point.caudalLabel }}</span>
                 </div>
@@ -768,7 +768,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return latest ? this.formatChileDateTime(latest) : 'Sin registros';
   });
 
-  private readonly barClasses = ['bg-primary', 'bg-[#0899a5]', 'bg-slate-400'];
+  private readonly barClasses = ['bg-primary', 'bg-primary-container', 'bg-slate-400'];
 
   // Cards de turno + Total del Día. Cada card calcula su consumo desde
   // `rowsForShift`, que ya maneja cruce de medianoche (ej. 23:00→06:59 atraviesa

@@ -158,7 +158,7 @@ interface PeriodicidadOption {
                       type="button"
                       (click)="saveObraDga()"
                       [disabled]="obraDgaSaving() || obraDga().trim() === obraDgaInitial()"
-                      class="rounded bg-primary px-2 py-1 text-[10px] font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
+                      class="rounded bg-primary px-2 py-1 text-[10px] font-bold text-white hover:bg-primary-container disabled:opacity-40"
                     >
                       OK
                     </button>

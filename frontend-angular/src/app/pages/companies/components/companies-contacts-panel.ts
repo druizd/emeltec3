@@ -118,7 +118,7 @@ const CONTACT_TYPES = [
 
               <div class="mb-4 flex min-w-0 items-center gap-3 pr-8">
                 <div
-                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0dafbd] to-[#0899a5] text-[11px] font-semibold text-white shadow-sm"
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary-container text-[11px] font-semibold text-white shadow-sm"
                 >
                   {{ getContactInitials(contact) }}
                 </div>
@@ -248,7 +248,7 @@ const CONTACT_TYPES = [
                   [(ngModel)]="form.usuario_id"
                   name="usuario_id"
                   (ngModelChange)="onUserSelected($event)"
-                  class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-surface-container bg-surface-subtle px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                 >
                   <option value="">Contacto externo / sin cuenta</option>
                   @for (user of availableUsers(); track user.id) {
@@ -267,7 +267,7 @@ const CONTACT_TYPES = [
                   required
                   [(ngModel)]="form.tipo_contacto"
                   name="tipo_contacto"
-                  class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-surface-container bg-surface-subtle px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                 >
                   @for (type of contactTypes; track type) {
                     <option [value]="type">{{ type }}</option>
@@ -282,10 +282,10 @@ const CONTACT_TYPES = [
                   Telefono
                 </span>
                 <div
-                  class="flex h-10 overflow-hidden rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] focus-within:border-primary-tint-40 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-tint-20"
+                  class="flex h-10 overflow-hidden rounded-lg border border-surface-container bg-surface-subtle focus-within:border-primary-tint-40 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary-tint-20"
                 >
                   <span
-                    class="flex w-16 items-center justify-center border-r border-[#E2E8F0] bg-white text-body-sm font-bold text-primary-container"
+                    class="flex w-16 items-center justify-center border-r border-surface-container bg-white text-body-sm font-bold text-primary-container"
                   >
                     +56
                   </span>
@@ -297,7 +297,7 @@ const CONTACT_TYPES = [
                     inputmode="numeric"
                     maxlength="9"
                     pattern="[0-9]{9}"
-                    class="h-full min-w-0 flex-1 bg-transparent px-3 text-body-sm font-semibold text-[#1E293B] outline-none"
+                    class="h-full min-w-0 flex-1 bg-transparent px-3 text-body-sm font-semibold text-on-surface outline-none"
                     placeholder="9 digitos"
                   />
                 </div>
@@ -314,7 +314,7 @@ const CONTACT_TYPES = [
                   [(ngModel)]="form.nombre"
                   name="nombre"
                   maxlength="12"
-                  class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-surface-container bg-surface-subtle px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   placeholder="Nombre"
                 />
               </label>
@@ -330,7 +330,7 @@ const CONTACT_TYPES = [
                   [(ngModel)]="form.apellido"
                   name="apellido"
                   maxlength="12"
-                  class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-surface-container bg-surface-subtle px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   placeholder="Apellido"
                 />
               </label>
@@ -346,7 +346,7 @@ const CONTACT_TYPES = [
                   name="email"
                   type="email"
                   maxlength="35"
-                  class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-surface-container bg-surface-subtle px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   placeholder="contacto@empresa.cl"
                 />
               </label>
@@ -362,7 +362,7 @@ const CONTACT_TYPES = [
                   [(ngModel)]="form.cargo"
                   name="cargo"
                   maxlength="35"
-                  class="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-surface-container bg-surface-subtle px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   placeholder="Ej. Responsable de reportes DGA"
                 />
               </label>

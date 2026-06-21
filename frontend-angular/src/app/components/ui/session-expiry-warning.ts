@@ -56,7 +56,7 @@ import { AuthService } from '../../services/auth.service';
             <button
               type="button"
               (click)="auth.dismissExpiryWarning()"
-              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-[#0899a5]"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Entendido

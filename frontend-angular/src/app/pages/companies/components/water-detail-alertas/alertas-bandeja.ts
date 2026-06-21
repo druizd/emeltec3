@@ -157,7 +157,7 @@ type FiltroEstado = EventoEstado | 'todos';
                         type="button"
                         (click)="confirmarAsignar(ev)"
                         [disabled]="!asignadoSeleccionado || actuando()"
-                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
                       >
                         Confirmar
                       </button>

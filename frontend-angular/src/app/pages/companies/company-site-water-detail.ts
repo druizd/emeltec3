@@ -4413,7 +4413,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   getDetailTabClass(tab: DetailTab): string {
     const active = this.activeDetailTab() === tab;
     const base =
-      'relative inline-flex h-9 items-center gap-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] focus-visible:rounded';
+      'relative inline-flex h-9 items-center gap-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded';
     return active
       ? `${base} font-semibold text-primary-container`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;

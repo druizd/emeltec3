@@ -253,7 +253,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   [ngModel]="userSearch()"
                   (ngModelChange)="setUserSearch($event)"
                   placeholder="Buscar nombre, correo o empresa..."
-                  class="h-9 w-full rounded-lg border border-[#E2E8F0] bg-white pl-9 pr-3 text-caption font-semibold text-[#1E293B] outline-none transition-colors placeholder:text-slate-400 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-9 w-full rounded-lg border border-surface-container bg-white pl-9 pr-3 text-caption font-semibold text-on-surface outline-none transition-colors placeholder:text-slate-400 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
                 />
               </span>
             </label>

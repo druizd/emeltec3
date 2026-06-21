@@ -144,7 +144,7 @@ interface IncidenciaPeriodo {
                 type="button"
                 (click)="aplicarFechas()"
                 [disabled]="!fechasPendientes()"
-                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
                 Aplicar
@@ -218,7 +218,7 @@ interface IncidenciaPeriodo {
           <button
             type="button"
             (click)="resumenSettingsOpen.update((v) => !v)"
-            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             [class]="
               resumenSettingsOpen()
                 ? 'bg-primary-tint-14 text-primary-container'
@@ -245,7 +245,7 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(2)"
-                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 2 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -256,7 +256,7 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(3)"
-                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 3 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -307,7 +307,7 @@ interface IncidenciaPeriodo {
             <button
               type="button"
               (click)="resumenSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
             >
               <span class="material-symbols-outlined text-[14px]">check</span>
               Listo
@@ -484,7 +484,7 @@ interface IncidenciaPeriodo {
           <button
             type="button"
             aria-label="Descargar resumen diario en CSV"
-            class="inline-flex items-center gap-1 text-caption-xs font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex items-center gap-1 text-caption-xs font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[13px]" aria-hidden="true">download</span
             >.CSV
@@ -825,7 +825,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     { key: '90d', label: '90 días' },
   ];
 
-  private readonly dotClasses = ['bg-primary', 'bg-[#0899a5]', 'bg-slate-400'];
+  private readonly dotClasses = ['bg-primary', 'bg-primary-container', 'bg-slate-400'];
 
   /**
    * Cards por turno con datos REALES desde `contadores-jornadas`.
