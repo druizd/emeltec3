@@ -20,6 +20,10 @@ import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
 import { AuthService } from '../../services/auth.service';
 import {
+  ColdRoomAlarmRulesService,
+  type AlarmEvent,
+} from '../../services/cold-room-alarm-rules.service';
+import {
   ColdRoomService,
   type ColdRoomExportInterval,
   type ColdRoomExportPoint,
@@ -1290,118 +1294,205 @@ interface MetricOption {
         @if (effectiveTab() === 'alarmas') {
           <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 class="vs-h1 text-slate-800">Alarmas activas</h2>
+              <h2 class="vs-h1 text-slate-800">Alarmas</h2>
               <p class="mt-1 text-[12px] text-slate-500">
-                Eventos operacionales activos · {{ alarmsCounts().total }} total
+                {{
+                  alarmsView() === 'activas'
+                    ? 'Eventos operacionales activos · ' + alarmsCounts().total + ' total'
+                    : 'Historial de alarmas disparadas'
+                }}
               </p>
+              <div class="vs-alarms-filter mt-2">
+                <button
+                  type="button"
+                  class="vs-alarms-chip"
+                  [class.vs-alarms-chip--active]="alarmsView() === 'activas'"
+                  (click)="alarmsView.set('activas')"
+                >
+                  Activas
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip"
+                  [class.vs-alarms-chip--active]="alarmsView() === 'historial'"
+                  (click)="alarmsView.set('historial')"
+                >
+                  Historial
+                </button>
+              </div>
             </div>
-            <div class="vs-alarms-filter">
-              <button
-                type="button"
-                class="vs-alarms-chip"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'all'"
-                (click)="alarmsFilter.set('all')"
-              >
-                Todas <strong>{{ alarmsCounts().total }}</strong>
-              </button>
-              <button
-                type="button"
-                class="vs-alarms-chip vs-alarms-chip--crit"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'crit'"
-                (click)="alarmsFilter.set('crit')"
-              >
-                Críticas <strong>{{ alarmsCounts().crit }}</strong>
-              </button>
-              <button
-                type="button"
-                class="vs-alarms-chip vs-alarms-chip--warn"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'warn'"
-                (click)="alarmsFilter.set('warn')"
-              >
-                Advertencias <strong>{{ alarmsCounts().warn }}</strong>
-              </button>
-              <button
-                type="button"
-                class="vs-alarms-chip vs-alarms-chip--info"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'info'"
-                (click)="alarmsFilter.set('info')"
-              >
-                Info <strong>{{ alarmsCounts().info }}</strong>
-              </button>
-            </div>
+            @if (alarmsView() === 'activas') {
+              <div class="vs-alarms-filter">
+                <button
+                  type="button"
+                  class="vs-alarms-chip"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'all'"
+                  (click)="alarmsFilter.set('all')"
+                >
+                  Todas <strong>{{ alarmsCounts().total }}</strong>
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip vs-alarms-chip--crit"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'crit'"
+                  (click)="alarmsFilter.set('crit')"
+                >
+                  Críticas <strong>{{ alarmsCounts().crit }}</strong>
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip vs-alarms-chip--warn"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'warn'"
+                  (click)="alarmsFilter.set('warn')"
+                >
+                  Advertencias <strong>{{ alarmsCounts().warn }}</strong>
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip vs-alarms-chip--info"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'info'"
+                  (click)="alarmsFilter.set('info')"
+                >
+                  Info <strong>{{ alarmsCounts().info }}</strong>
+                </button>
+              </div>
+            }
           </div>
 
-          @if (alarmsFiltered().length === 0) {
-            <div class="vs-alarms-empty">
-              <span class="material-symbols-outlined text-[32px] text-emerald-300"
-                >check_circle</span
-              >
-              <div class="vs-alarms-empty-title">
-                {{
-                  alarmsCounts().total === 0 ? 'Sin alarmas activas' : 'Sin alarmas en este filtro'
-                }}
-              </div>
-              @if (alarmsCounts().total === 0) {
-                <div class="vs-alarms-empty-sub">
-                  Todos los sensores dentro de banda y reportando.
+          @if (alarmsView() === 'activas') {
+            @if (alarmsFiltered().length === 0) {
+              <div class="vs-alarms-empty">
+                <span class="material-symbols-outlined text-[32px] text-emerald-300"
+                  >check_circle</span
+                >
+                <div class="vs-alarms-empty-title">
+                  {{
+                    alarmsCounts().total === 0
+                      ? 'Sin alarmas activas'
+                      : 'Sin alarmas en este filtro'
+                  }}
                 </div>
-              }
-            </div>
-          } @else {
-            <div class="vs-alarms-list">
-              @for (al of alarmsFiltered(); track al.id) {
-                <article class="vs-alarm-card" [attr.data-severity]="al.severity">
-                  <div class="vs-alarm-icon" [attr.data-severity]="al.severity">
-                    <span class="material-symbols-outlined">{{ al.icon }}</span>
+                @if (alarmsCounts().total === 0) {
+                  <div class="vs-alarms-empty-sub">
+                    Todos los sensores dentro de banda y reportando.
                   </div>
-                  <div class="vs-alarm-body">
-                    <div class="vs-alarm-head">
-                      <span class="vs-alarm-title">{{ al.title }}</span>
-                      <span class="vs-alarm-sev" [attr.data-severity]="al.severity">
-                        {{
-                          al.severity === 'crit'
-                            ? 'Crítica'
-                            : al.severity === 'warn'
-                              ? 'Advertencia'
-                              : 'Info'
-                        }}
-                      </span>
+                }
+              </div>
+            } @else {
+              <div class="vs-alarms-list">
+                @for (al of alarmsFiltered(); track al.id) {
+                  <article class="vs-alarm-card" [attr.data-severity]="al.severity">
+                    <div class="vs-alarm-icon" [attr.data-severity]="al.severity">
+                      <span class="material-symbols-outlined">{{ al.icon }}</span>
                     </div>
-                    <div class="vs-alarm-detail">{{ al.detail }}</div>
-                    <div class="vs-alarm-meta">
-                      @if (al.area) {
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">meeting_room</span>
-                          {{ al.area }}
+                    <div class="vs-alarm-body">
+                      <div class="vs-alarm-head">
+                        <span class="vs-alarm-title">{{ al.title }}</span>
+                        <span class="vs-alarm-sev" [attr.data-severity]="al.severity">
+                          {{
+                            al.severity === 'crit'
+                              ? 'Crítica'
+                              : al.severity === 'warn'
+                                ? 'Advertencia'
+                                : 'Info'
+                          }}
                         </span>
-                      }
-                      @if (al.tap) {
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">memory</span>
-                          {{ al.tap }}
+                      </div>
+                      <div class="vs-alarm-detail">{{ al.detail }}</div>
+                      <div class="vs-alarm-meta">
+                        @if (al.area) {
+                          <span class="vs-alarm-tag">
+                            <span class="material-symbols-outlined text-[11px]">meeting_room</span>
+                            {{ al.area }}
+                          </span>
+                        }
+                        @if (al.tap) {
+                          <span class="vs-alarm-tag">
+                            <span class="material-symbols-outlined text-[11px]">memory</span>
+                            {{ al.tap }}
+                          </span>
+                        }
+                        @if (al.sinceMs !== null) {
+                          <span class="vs-alarm-tag">
+                            <span class="material-symbols-outlined text-[11px]">schedule</span>
+                            desde hace {{ relativeMs(al.sinceMs) }}
+                          </span>
+                        }
+                      </div>
+                    </div>
+                    @if (al.areaSlug; as slug) {
+                      <a
+                        [routerLink]="alarmAreaLink(slug)"
+                        [queryParams]="salaQueryParams()"
+                        class="vs-alarm-action"
+                        title="Ir a detalle de sala"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      </a>
+                    }
+                  </article>
+                }
+              </div>
+            }
+          } @else {
+            <!-- Historial de alarmas disparadas -->
+            @if (!alarmEventsLoaded()) {
+              <div class="vs-alarms-empty">
+                <div class="vs-alarms-empty-title">Cargando historial…</div>
+              </div>
+            } @else if (alarmEvents().length === 0) {
+              <div class="vs-alarms-empty">
+                <span class="material-symbols-outlined text-[32px] text-slate-300">history</span>
+                <div class="vs-alarms-empty-title">Sin alarmas registradas</div>
+                <div class="vs-alarms-empty-sub">
+                  Las alarmas disparadas aparecerán aquí con su fecha y duración.
+                </div>
+              </div>
+            } @else {
+              <div class="vs-alarms-list">
+                @for (ev of alarmEvents(); track ev.id) {
+                  <article class="vs-alarm-card" [attr.data-severity]="ev.rule_severity || 'info'">
+                    <div class="vs-alarm-icon" [attr.data-severity]="ev.rule_severity || 'info'">
+                      <span class="material-symbols-outlined">{{
+                        alarmEventStatus(ev) === 'resuelta' ? 'history' : 'notifications_active'
+                      }}</span>
+                    </div>
+                    <div class="vs-alarm-body">
+                      <div class="vs-alarm-head">
+                        <span class="vs-alarm-title">{{ ev.rule_name || 'Alarma' }}</span>
+                        <span
+                          class="vs-alarm-sev"
+                          [attr.data-severity]="
+                            alarmEventStatus(ev) === 'resuelta'
+                              ? 'info'
+                              : ev.rule_severity || 'warn'
+                          "
+                        >
+                          {{ alarmEventStatus(ev) === 'resuelta' ? 'Resuelta' : 'Activa' }}
                         </span>
-                      }
-                      @if (al.sinceMs !== null) {
+                      </div>
+                      <div class="vs-alarm-detail">{{ alarmEventSummary(ev) }}</div>
+                      <div class="vs-alarm-meta">
                         <span class="vs-alarm-tag">
                           <span class="material-symbols-outlined text-[11px]">schedule</span>
-                          desde hace {{ relativeMs(al.sinceMs) }}
+                          {{ alarmEventWhen(ev.triggered_at) }}
                         </span>
-                      }
+                        <span class="vs-alarm-tag">
+                          <span class="material-symbols-outlined text-[11px]">timelapse</span>
+                          {{ alarmEventDuration(ev) }}
+                        </span>
+                        @if (ev.email_sent) {
+                          <span class="vs-alarm-tag">
+                            <span class="material-symbols-outlined text-[11px]">mail</span>
+                            Notificada
+                          </span>
+                        }
+                      </div>
                     </div>
-                  </div>
-                  @if (al.areaSlug; as slug) {
-                    <a
-                      [routerLink]="alarmAreaLink(slug)"
-                      [queryParams]="salaQueryParams()"
-                      class="vs-alarm-action"
-                      title="Ir a detalle de sala"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-                    </a>
-                  }
-                </article>
-              }
-            </div>
+                  </article>
+                }
+              </div>
+            }
           }
         }
 
@@ -4981,6 +5072,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   private readonly deviationsSvc = inject(ColdRoomDeviationsService);
   private readonly defrostSvc = inject(ColdRoomDefrostService);
   private readonly auditSvc = inject(ColdRoomAuditService);
+  private readonly alarmRulesSvc = inject(ColdRoomAlarmRulesService);
   private readonly auth = inject(AuthService);
 
   // TAP (técnico) solo para tier administrador (SuperAdmin/Admin).
@@ -5913,6 +6005,44 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly alarmsFilter = signal<'all' | 'crit' | 'warn' | 'info'>('all');
 
+  // Vista de la pestaña Alarmas: activas (operacionales) vs historial (disparadas).
+  readonly alarmsView = signal<'activas' | 'historial'>('activas');
+  readonly alarmEvents = computed<AlarmEvent[]>(() => this.alarmRulesSvc.events());
+  readonly alarmEventsLoaded = computed(() => this.alarmRulesSvc.eventsLoaded());
+
+  alarmEventStatus(e: AlarmEvent): 'activa' | 'resuelta' {
+    return e.resolved_at ? 'resuelta' : 'activa';
+  }
+
+  alarmEventDuration(e: AlarmEvent): string {
+    const start = new Date(e.triggered_at).getTime();
+    const end = e.resolved_at ? new Date(e.resolved_at).getTime() : this.now();
+    const min = Math.max(0, Math.round((end - start) / 60000));
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return m > 0 ? `${h}h ${m}min` : `${h}h`;
+  }
+
+  alarmEventWhen(iso: string): string {
+    return new Date(iso).toLocaleString('es-CL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
+
+  alarmEventSummary(e: AlarmEvent): string {
+    if (!e.rule_metric) return e.target_label || '';
+    const unit = e.rule_metric === 'temperatura' ? '°C' : e.rule_metric === 'humedad' ? '%' : 'min';
+    const val = e.current_value !== null ? `${e.current_value}${unit}` : '—';
+    const cond =
+      e.rule_op && e.rule_threshold !== null ? `${e.rule_op} ${e.rule_threshold}${unit}` : '';
+    return `${val} (umbral ${cond}) · ${e.target_label || ''}`.trim();
+  }
+
   readonly alarmsFiltered = computed(() => {
     const f = this.alarmsFilter();
     if (f === 'all') return this.alarmsList();
@@ -6566,6 +6696,12 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       }
       const id = this.siteId();
       if (id) this.service.startPolling(id);
+    });
+
+    // Carga reglas + historial de alarmas del sitio para la pestaña Alarmas.
+    effect(() => {
+      const id = this.siteId();
+      if (id) this.alarmRulesSvc.setSiteId(id);
     });
 
     effect(() => {

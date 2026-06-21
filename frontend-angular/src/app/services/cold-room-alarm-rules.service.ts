@@ -36,25 +36,64 @@ export interface EligibleUser {
   tipo: string;
 }
 
+/** Evento de alarma disparada (historial). */
+export interface AlarmEvent {
+  id: number;
+  site_id: string;
+  rule_id: string;
+  triggered_at: string;
+  resolved_at: string | null;
+  current_value: number | null;
+  target_label: string | null;
+  email_sent: boolean;
+  rule_name: string | null;
+  rule_metric: AlarmMetric | null;
+  rule_op: AlarmOp | null;
+  rule_threshold: number | null;
+  rule_severity: AlarmSeverity | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ColdRoomAlarmRulesService {
   private readonly http = inject(HttpClient);
   private readonly rulesSignal = signal<AlarmRule[]>([]);
   private readonly usersSignal = signal<EligibleUser[]>([]);
+  private readonly eventsSignal = signal<AlarmEvent[]>([]);
   private readonly rulesLoadedSignal = signal<boolean>(false);
   private readonly usersLoadedSignal = signal<boolean>(false);
+  private readonly eventsLoadedSignal = signal<boolean>(false);
   private currentSiteId: string | null = null;
 
   readonly rules = computed(() => this.rulesSignal());
   readonly eligibleUsers = computed(() => this.usersSignal());
+  readonly events = computed(() => this.eventsSignal());
   readonly rulesLoaded = computed(() => this.rulesLoadedSignal());
   readonly usersLoaded = computed(() => this.usersLoadedSignal());
+  readonly eventsLoaded = computed(() => this.eventsLoadedSignal());
 
   setSiteId(siteId: string): void {
     this.currentSiteId = siteId;
     if (!siteId) return;
     this.refresh();
     this.refreshEligibleUsers();
+    this.refreshEvents();
+  }
+
+  refreshEvents(): void {
+    const sid = this.currentSiteId;
+    if (!sid) return;
+    this.http
+      .get<{
+        ok: boolean;
+        data: AlarmEvent[];
+      }>(`/api/cold-room/${encodeURIComponent(sid)}/alarm-events`)
+      .subscribe({
+        next: (res) => {
+          if (res.ok) this.eventsSignal.set(res.data || []);
+          this.eventsLoadedSignal.set(true);
+        },
+        error: () => this.eventsLoadedSignal.set(true),
+      });
   }
 
   refresh(): void {

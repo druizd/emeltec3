@@ -1916,8 +1916,15 @@ router.post('/:siteId/alarm-test-email', async (req, res) => {
 // --- Events log (read-only) ---
 router.get('/:siteId/alarm-events', async (req, res) => {
   try {
+    // JOIN a la regla para mostrar nombre/métrica/severidad en el historial.
     const { rows } = await pool.query(
-      `SELECT * FROM cold_room_alarm_event WHERE site_id=$1 ORDER BY triggered_at DESC LIMIT 100`,
+      `SELECT e.*, r.name AS rule_name, r.metric AS rule_metric, r.op AS rule_op,
+              r.threshold AS rule_threshold, r.severity AS rule_severity
+         FROM cold_room_alarm_event e
+         LEFT JOIN cold_room_alarm_rule r ON r.id = e.rule_id
+        WHERE e.site_id = $1
+        ORDER BY e.triggered_at DESC
+        LIMIT 200`,
       [req.params.siteId],
     );
     res.json({ ok: true, data: rows });
