@@ -1155,6 +1155,7 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter, dateWindow = n
       lastSeen: lastBucket ? new Date(lastBucket).toISOString() : new Date(0).toISOString(),
       hist: histPoints.map((p) => p.v),
       histPoints,
+      histHumPoints,
       defective: s.defective || undefined,
       defectiveReason: s.defectiveReason || undefined,
     });

@@ -57,6 +57,8 @@ export interface ColdRoomSensor {
   lastSeen: string;
   hist: number[];
   histPoints: ColdRoomHistPoint[];
+  /** Serie histórica de humedad (mismo eje temporal que histPoints). */
+  histHumPoints?: ColdRoomHistPoint[];
   /** True si reg_map.parametros.defective === true. */
   defective?: boolean;
   defectiveReason?: string;

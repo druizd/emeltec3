@@ -589,6 +589,25 @@ function slugify(area: string): string {
               <div class="chart-tip">scroll zoom · drag pan · click reset</div>
             </div>
           </section>
+
+          <!-- Combinado: temperatura + humedad -->
+          <section class="mt-4">
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-3">
+              <h3 class="section-title">Temperatura y humedad</h3>
+            </div>
+            <div class="chart-window-legend">
+              <span class="chart-window-badge chart-window-badge--live">T °C</span>
+              <span>eje izquierdo · línea sólida</span>
+              <span class="chart-window-badge chart-window-badge--date">HR %</span>
+              <span>eje derecho · línea punteada</span>
+            </div>
+            <div class="chart-shell">
+              <div class="h-[320px]">
+                <canvas #comboCanvas></canvas>
+              </div>
+              <div class="chart-tip">scroll zoom · drag pan · click reset</div>
+            </div>
+          </section>
         }
       </div>
 
@@ -2513,6 +2532,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   @ViewChild('chartCanvas') chartCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('comboCanvas') comboCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('drilldownCanvas') drilldownCanvas?: ElementRef<HTMLCanvasElement>;
 
   readonly ranges = RANGES;
@@ -2704,6 +2724,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   });
 
   chart: Chart | null = null;
+  private comboChart: Chart | null = null;
   private drilldownChart: Chart | null = null;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private clockId: ReturnType<typeof setInterval> | null = null;
@@ -2718,10 +2739,14 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
       const list = this.sensors();
       if (list.length === 0) {
         this.destroyChart();
+        this.destroyComboChart();
         return;
       }
       const band = this.showBand();
-      queueMicrotask(() => this.renderMainChart(list, band));
+      queueMicrotask(() => {
+        this.renderMainChart(list, band);
+        this.renderComboChart(list);
+      });
     });
 
     effect(() => {
@@ -2762,12 +2787,16 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   ngAfterViewInit(): void {
-    queueMicrotask(() => this.renderMainChart(this.sensors(), this.showBand()));
+    queueMicrotask(() => {
+      this.renderMainChart(this.sensors(), this.showBand());
+      this.renderComboChart(this.sensors());
+    });
   }
 
   ngOnDestroy(): void {
     this.stopPolling();
     this.destroyChart();
+    this.destroyComboChart();
     this.destroyDrilldownChart();
     if (this.clockId !== null) clearInterval(this.clockId);
   }
@@ -3360,6 +3389,98 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     });
   }
 
+  // Gráfico combinado: temperatura (°C, eje izq, sólido) + humedad (%, eje der,
+  // punteado), un par de líneas por sensor con el mismo color.
+  private renderComboChart(sensors: ColdRoomSensor[]): void {
+    if (!this.comboCanvas?.nativeElement || sensors.length === 0) return;
+    this.destroyComboChart();
+    const ctx = this.comboCanvas.nativeElement.getContext('2d');
+    if (!ctx) return;
+    const base = sensors[0]?.histPoints?.length ? sensors[0].histPoints : sensors[0]?.histHumPoints;
+    const labels =
+      base?.map((p) =>
+        new Date(p.t).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      ) || [];
+    const palette = ['#0EA5E9', '#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+    const tempSets = sensors.map((s, i) => ({
+      label: `${s.id} · T`,
+      data: s.histPoints?.map((p) => p.v) || s.hist,
+      borderColor: palette[i % palette.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.6,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+      yAxisID: 'yT',
+    }));
+    const humSets = sensors
+      .filter((s) => s.histHumPoints && s.histHumPoints.length > 0)
+      .map((s, i) => ({
+        label: `${s.id} · HR`,
+        data: (s.histHumPoints || []).map((p) => p.v),
+        borderColor: palette[i % palette.length],
+        backgroundColor: 'transparent',
+        borderWidth: 1.2,
+        borderDash: [4, 3],
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.3,
+        yAxisID: 'yH',
+      }));
+
+    this.comboChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [...tempSets, ...humSets] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const unit = c.dataset.yAxisID === 'yH' ? '%' : '°C';
+                return `${c.dataset.label}: ${(c.parsed.y as number).toFixed(1)}${unit}`;
+              },
+            },
+          },
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
+            zoom: {
+              wheel: { enabled: true, speed: 0.05 },
+              pinch: { enabled: true },
+              mode: 'x',
+            },
+            limits: { x: { min: 'original', max: 'original' } },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 10 }, color: '#94A3B8', maxTicksLimit: 8, autoSkip: true },
+          },
+          yT: {
+            position: 'left',
+            grid: { color: 'rgba(148,163,184,0.15)' },
+            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}°C` },
+          },
+          yH: {
+            position: 'right',
+            min: 0,
+            max: 100,
+            grid: { drawOnChartArea: false },
+            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}%` },
+          },
+        },
+        onClick: () => {
+          if (this.comboChart) this.comboChart.resetZoom?.();
+        },
+      },
+    });
+  }
+
   private renderDrilldownChart(data: ColdRoomSensorHistory): void {
     if (!this.drilldownCanvas?.nativeElement) return;
     this.destroyDrilldownChart();
@@ -3441,6 +3562,13 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
+    }
+  }
+
+  private destroyComboChart(): void {
+    if (this.comboChart) {
+      this.comboChart.destroy();
+      this.comboChart = null;
     }
   }
 
