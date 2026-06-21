@@ -3036,8 +3036,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   ): Promise<void> {
     const XLSX = await this.loadXlsx();
     const wb = XLSX.utils.book_new();
-    const r2 = (n: number | null | undefined) =>
-      n == null ? null : Math.round(n * 100) / 100;
+    const r2 = (n: number | null | undefined) => (n == null ? null : Math.round(n * 100) / 100);
 
     // Hoja 1: Lecturas (promedio/mín/máx por intervalo).
     const rows = points.map((p) => {
