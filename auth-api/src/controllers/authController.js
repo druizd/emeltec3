@@ -181,7 +181,7 @@ async function findAuthUserByEmail(email) {
   const { rows } = await db.query(
     `SELECT id, nombre, apellido, email, tipo, empresa_id, sub_empresa_id,
             password_hash, otp_hash, otp_expires_at, failed_logins, locked_until,
-            auth_mode,
+            auth_mode, COALESCE(activo, true) AS activo,
             activated_at, otp_requests_count, otp_requests_window_start
      FROM usuario WHERE email = $1`,
     [email],
@@ -520,6 +520,11 @@ exports.login = async (req, res, next) => {
     // EMT-H10/M-1: no revelar estado de la cuenta vía /login. Una cuenta no
     // activada se enruta por /start (flow:'setup'); aquí respondemos genérico.
     if (!user.activated_at) {
+      return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
+    }
+    // Usuario desactivado (soft-delete): no puede ingresar. Genérico para no
+    // revelar el estado de la cuenta (anti-enumeración).
+    if (!user.activo) {
       return res.status(401).json({ ok: false, error: 'Credenciales invalidas' });
     }
 

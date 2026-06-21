@@ -19,6 +19,7 @@ export interface User {
   has_password?: boolean;
   auth_mode?: AuthMode | null;
   password_set_at?: string | null;
+  activo?: boolean;
 }
 
 export interface CreateUserPayload {
@@ -39,6 +40,19 @@ export interface UpdateUserProfilePayload {
   rut_usuario?: string | null;
   telefono?: string | null;
   cargo?: string | null;
+}
+
+/** Edición de un usuario por un administrador (no incluye email). */
+export interface UpdateUserAdminPayload {
+  nombre?: string;
+  apellido?: string;
+  rut_usuario?: string | null;
+  tipo?: UserRole;
+  telefono?: string | null;
+  cargo?: string | null;
+  empresa_id?: string | null;
+  sub_empresa_id?: string | null;
+  activo?: boolean;
 }
 
 export interface UpdateUserSecurityPayload {
