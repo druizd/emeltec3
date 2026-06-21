@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { SkeletonComponent } from './skeleton';
 
 /** Tag extra (chip) de una alarma en el historial. */
@@ -30,8 +31,14 @@ export interface AlarmHistoryItem {
   /** Fin (ISO) o null si sigue activa. */
   endedAt?: string | null;
   status: 'activa' | 'resuelta';
+  /** Ícono custom (Material Symbols). Si no, se usa uno según el estado. */
+  icon?: string;
   /** Tags extra específicos del módulo (resolvió, incidencia…). */
   tags?: AlarmHistoryTag[];
+  /** Acción opcional (routerLink) — ej. ir al detalle de sala. */
+  link?: string[] | null;
+  linkQuery?: Record<string, string>;
+  linkTitle?: string;
 }
 
 /**
@@ -42,7 +49,7 @@ export interface AlarmHistoryItem {
   selector: 'app-alarm-history-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, SkeletonComponent],
+  imports: [CommonModule, RouterLink, SkeletonComponent],
   template: `
     @if (loading()) {
       <div class="space-y-2">
@@ -62,7 +69,7 @@ export interface AlarmHistoryItem {
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
             >
               <span class="material-symbols-outlined text-[20px]">{{
-                it.status === 'resuelta' ? 'history' : 'notifications_active'
+                it.icon || (it.status === 'resuelta' ? 'history' : 'notifications_active')
               }}</span>
             </div>
             <div class="min-w-0 flex-1">
@@ -121,6 +128,16 @@ export interface AlarmHistoryItem {
                 }
               </div>
             </div>
+            @if (it.link) {
+              <a
+                [routerLink]="it.link"
+                [queryParams]="it.linkQuery || {}"
+                [title]="it.linkTitle || 'Ver detalle'"
+                class="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-tint-35 hover:text-primary-container"
+              >
+                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </a>
+            }
           </article>
         } @empty {
           <div
