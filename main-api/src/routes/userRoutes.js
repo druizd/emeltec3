@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require('../controllers/userController');
 const authMiddleware = require('../middlewares/authMiddleware');
+const { require2fa } = require('../shared/stepUp2fa');
 
 // Todas las rutas de usuarios requieren autenticación
 router.use(authMiddleware.protect);
@@ -18,17 +19,19 @@ router.patch('/me/security', userController.updateCurrentSecurity);
 // Listar usuarios (filtrado por rol en el controller)
 router.get('/', userController.getAllUsers);
 
-// Crear usuarios (Solo Admin, SuperAdmin y Gerente)
+// Crear usuarios (Solo Admin, SuperAdmin y Gerente) — exige 2FA.
 router.post(
   '/',
   authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  require2fa,
   userController.createUser,
 );
 
-// Eliminar usuarios (Solo Admin, SuperAdmin y Gerente)
+// Eliminar usuarios (Solo Admin, SuperAdmin y Gerente) — exige 2FA.
 router.delete(
   '/:id',
   authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  require2fa,
   userController.deleteUser,
 );
 
