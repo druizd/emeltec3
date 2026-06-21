@@ -527,7 +527,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
 
               <div class="overflow-x-auto">
-                <table class="w-full min-w-[1040px] text-left text-caption">
+                <table class="responsive-table w-full text-left text-caption md:min-w-[1040px]">
                   <thead class="bg-slate-50">
                     <tr
                       class="text-caption-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
@@ -544,22 +544,24 @@ type OperationMode = 'realtime' | 'turnos';
                       <tr
                         class="border-t border-slate-100 text-body-sm font-semibold text-slate-600 odd:bg-white even:bg-slate-50/60"
                       >
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Fecha">
                           <span class="inline-flex items-center gap-2">
                             <span class="h-1.5 w-1.5 rounded-full bg-primary/10"></span>
                             {{ row.fecha }}
                           </span>
                         </td>
-                        <td class="px-4 py-3">{{ row.caudal }}</td>
-                        <td class="px-4 py-3">{{ row.nivel || '--' }}</td>
-                        <td class="px-4 py-3">{{ row.totalizador }}</td>
-                        <td class="px-4 py-3">{{ row.nivelFreatico }}</td>
+                        <td class="px-4 py-3" data-label="Caudal">{{ row.caudal }}</td>
+                        <td class="px-4 py-3" data-label="Nivel">{{ row.nivel || '--' }}</td>
+                        <td class="px-4 py-3" data-label="Totalizador">{{ row.totalizador }}</td>
+                        <td class="px-4 py-3" data-label="Nivel freático">
+                          {{ row.nivelFreatico }}
+                        </td>
                       </tr>
                     } @empty {
                       <tr
                         class="border-t border-slate-100 text-caption font-semibold text-slate-400"
                       >
-                        <td class="px-4 py-8 text-center" colspan="5">
+                        <td class="px-4 py-8 text-center" colspan="5" data-label="">
                           Sin registros disponibles para este filtro.
                         </td>
                       </tr>
