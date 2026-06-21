@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { AuthService } from '../../../../services/auth.service';
 import { FormsModule } from '@angular/forms';
 import {
   AlertaCondicion,
@@ -44,6 +53,7 @@ interface DraftAlerta {
   severidad: AlertaSeveridad;
   cooldown_minutos: number;
   dias_activos: AlertaDia[];
+  visible_to_all: boolean;
 }
 
 const CONDICIONES_DISPONIBLES: AlertaCondicion[] = [
@@ -68,6 +78,7 @@ function emptyDraft(): DraftAlerta {
     severidad: 'media',
     cooldown_minutos: 5,
     dias_activos: [...DIAS_ORDEN],
+    visible_to_all: true,
   };
 }
 
@@ -82,6 +93,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
     severidad: r.severidad,
     cooldown_minutos: r.cooldown_minutos,
     dias_activos: [...r.dias_activos],
+    visible_to_all: r.visible_to_all !== false,
   };
 }
 
@@ -98,16 +110,18 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           {{ reglas().length }}
           {{ reglas().length === 1 ? 'regla configurada' : 'reglas configuradas' }}
         </p>
-        <button
-          type="button"
-          (click)="toggleNuevo()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
-        >
-          <span class="material-symbols-outlined text-[16px]">{{
-            mostrandoNuevo() ? 'close' : 'add'
-          }}</span>
-          {{ mostrandoNuevo() ? 'Cancelar' : 'Nueva regla' }}
-        </button>
+        @if (canEdit()) {
+          <button
+            type="button"
+            (click)="toggleNuevo()"
+            class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
+          >
+            <span class="material-symbols-outlined text-[16px]">{{
+              mostrandoNuevo() ? 'close' : 'add'
+            }}</span>
+            {{ mostrandoNuevo() ? 'Cancelar' : 'Nueva regla' }}
+          </button>
+        }
       </div>
 
       <!-- Loading / error -->
@@ -160,18 +174,20 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         >
           <div class="flex items-start justify-between gap-3 px-5 py-4">
             <div class="flex items-start gap-3">
-              <button
-                type="button"
-                (click)="toggleActiva(regla)"
-                [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
-                class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
-                [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
-              >
-                <span
-                  [class]="regla.activa ? 'translate-x-4' : 'translate-x-0.5'"
-                  class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
-                ></span>
-              </button>
+              @if (canEdit()) {
+                <button
+                  type="button"
+                  (click)="toggleActiva(regla)"
+                  [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
+                  class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
+                  [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
+                >
+                  <span
+                    [class]="regla.activa ? 'translate-x-4' : 'translate-x-0.5'"
+                    class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                  ></span>
+                </button>
+              }
               <div class="min-w-0">
                 <p class="font-semibold text-slate-800">{{ regla.nombre }}</p>
                 <p class="mt-0.5 text-caption text-slate-500">
@@ -187,26 +203,28 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 </p>
               </div>
             </div>
-            <div class="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                (click)="expandirRegla(regla.id)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
-              >
-                <span class="material-symbols-outlined text-[18px]">{{
-                  reglaExpandida() === regla.id ? 'expand_less' : 'edit'
-                }}</span>
-              </button>
-              <button
-                type="button"
-                (click)="eliminar(regla)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                aria-label="Eliminar regla"
-              >
-                <span class="material-symbols-outlined text-[18px]">delete</span>
-              </button>
-            </div>
+            @if (canEdit()) {
+              <div class="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  (click)="expandirRegla(regla.id)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                  [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
+                >
+                  <span class="material-symbols-outlined text-[18px]">{{
+                    reglaExpandida() === regla.id ? 'expand_less' : 'edit'
+                  }}</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="eliminar(regla)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                  aria-label="Eliminar regla"
+                >
+                  <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+              </div>
+            }
           </div>
 
           @if (reglaExpandida() !== regla.id) {
@@ -489,6 +507,12 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           </div>
         </div>
 
+        <!-- Visibilidad -->
+        <label class="flex items-center gap-2 text-caption font-semibold text-slate-600">
+          <input type="checkbox" [(ngModel)]="draft.visible_to_all" />
+          <span>{{ draft.visible_to_all ? 'Visible para todo el sitio' : 'Restringida' }}</span>
+        </label>
+
         <!-- Vista previa con datos reales (rule-tester) -->
         @if (esCondicionSimulable(draft.condicion)) {
           <section
@@ -619,6 +643,12 @@ export class AlertasConfiguracionComponent {
   private readonly alertaService = inject(AlertaService);
   private readonly adminService = inject(AdministrationService);
   private readonly companyService = inject(CompanyService);
+  private readonly auth = inject(AuthService);
+
+  // Solo Admin/Gerente (+ SuperAdmin) crean/editan/borran alarmas.
+  readonly canEdit = computed(
+    () => this.auth.isSuperAdmin() || this.auth.isAdmin() || this.auth.isGerente(),
+  );
 
   /** Rule-tester state. Una sola simulación activa a la vez — el draft
    * que está siendo testeado se identifica por su `variable_key` + `condicion`.
@@ -782,6 +812,7 @@ export class AlertasConfiguracionComponent {
       severidad: draft.condicion === 'dga_atrasado' ? 'media' : draft.severidad,
       cooldown_minutos: Number(draft.cooldown_minutos),
       dias_activos: draft.dias_activos,
+      visible_to_all: draft.visible_to_all,
     };
     this.saving.set(true);
     this.errorMsg.set(null);
@@ -828,6 +859,7 @@ export class AlertasConfiguracionComponent {
       severidad: d.condicion === 'dga_atrasado' ? 'media' : d.severidad,
       cooldown_minutos: Number(d.cooldown_minutos) || 5,
       dias_activos: d.dias_activos,
+      visible_to_all: d.visible_to_all,
     };
   }
 

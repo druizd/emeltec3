@@ -36,6 +36,8 @@ export interface AlertaRow {
   activa: boolean;
   cooldown_minutos: number;
   dias_activos: AlertaDia[];
+  visible_to_all: boolean;
+  viewer_user_ids: string[];
   creado_por: string | null;
   created_at: string;
   updated_at: string;
@@ -56,6 +58,8 @@ export interface CreateAlertaPayload {
   severidad?: AlertaSeveridad;
   cooldown_minutos?: number;
   dias_activos?: AlertaDia[];
+  visible_to_all?: boolean;
+  viewer_user_ids?: string[];
 }
 
 export type UpdateAlertaPayload = Partial<
@@ -71,6 +75,8 @@ export type UpdateAlertaPayload = Partial<
     | 'cooldown_minutos'
     | 'dias_activos'
     | 'activa'
+    | 'visible_to_all'
+    | 'viewer_user_ids'
   >
 >;
 

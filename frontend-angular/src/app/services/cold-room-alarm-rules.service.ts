@@ -20,6 +20,9 @@ export interface AlarmRule {
   notifyEmail: boolean;
   notifyUi: boolean;
   recipientUserIds: string[];
+  /** Visibilidad: si true, la ve todo el sitio; si false, solo viewerUserIds. */
+  visibleToAll: boolean;
+  viewerUserIds: string[];
   createdAt: string;
   updatedAt: string;
 }
