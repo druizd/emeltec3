@@ -40,23 +40,15 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
         >
       </header>
 
-      <!-- Lista compartida (mismo diseño que el historial de Ventisqueros) -->
+      <!-- Lista compartida (mismo diseño + export Excel que el historial de Ventisqueros) -->
       <app-alarm-history-list
         [items]="items()"
         [loading]="loading()"
         emptyText="Sin registros con estos filtros"
+        [exportable]="true"
+        exportTitle="Historial de alertas"
       />
-      <div class="flex items-center justify-between px-1 pt-1">
-        <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
-        <button
-          type="button"
-          (click)="exportarCsv()"
-          class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
-        >
-          <span class="material-symbols-outlined text-[14px]">download</span>
-          Exportar CSV
-        </button>
-      </div>
+      <p class="px-1 pt-1 text-caption-xs text-slate-400">Últimos 90 días</p>
     </div>
   `,
 })
@@ -124,6 +116,7 @@ export class AlertasHistoricoComponent {
         title: ev.alerta_nombre || ev.variable_key,
         code: this.codigoEvento(ev),
         detail: ev.variable_key,
+        observation: ev.mensaje || undefined,
         severity: sev,
         severityLabel: this.severidadLabel(ev.severidad),
         startedAt: ev.triggered_at,
@@ -138,24 +131,6 @@ export class AlertasHistoricoComponent {
     return `ALT-${String(ev.id).padStart(4, '0')}`;
   }
 
-  formatFecha(iso: string): string {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  }
-
-  duracion(triggered: string, resuelta: string | null): string {
-    if (!resuelta) return '—';
-    const ms = new Date(resuelta).getTime() - new Date(triggered).getTime();
-    if (!Number.isFinite(ms) || ms <= 0) return '—';
-    const totalMin = Math.floor(ms / 60000);
-    const horas = Math.floor(totalMin / 60);
-    const min = totalMin % 60;
-    if (horas === 0) return `${min} min`;
-    return `${horas} h ${String(min).padStart(2, '0')} min`;
-  }
-
   severidadLabel(s: AlertaSeveridad): string {
     return { baja: 'Baja', media: 'Media', alta: 'Alta', critica: 'Crítica' }[s];
   }
@@ -168,42 +143,5 @@ export class AlertasHistoricoComponent {
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
     ].join(' ');
-  }
-
-  exportarCsv(): void {
-    const rows = this.historialFiltrado();
-    if (!rows.length) return;
-    const header = [
-      'Codigo',
-      'Variable',
-      'Severidad',
-      'Inicio',
-      'Cierre',
-      'Duración',
-      'Resolvio',
-      'Incidencia',
-    ];
-    const lines = rows.map((ev) =>
-      [
-        this.codigoEvento(ev),
-        ev.alerta_nombre || ev.variable_key,
-        ev.severidad,
-        this.formatFecha(ev.triggered_at),
-        ev.resuelta_at ? this.formatFecha(ev.resuelta_at) : '',
-        this.duracion(ev.triggered_at, ev.resuelta_at),
-        ev.asignado_nombre_completo || '',
-        ev.incidencia_id || '',
-      ]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(','),
-    );
-    const csv = [header.join(','), ...lines].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `alertas-historico-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 }

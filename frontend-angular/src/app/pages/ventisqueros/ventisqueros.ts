@@ -37,7 +37,10 @@ import {
   ColdRoomThresholdsService,
   type SalaThreshold,
 } from '../../services/cold-room-thresholds.service';
-import { ColdRoomDeviationsService } from '../../services/cold-room-deviations.service';
+import {
+  ColdRoomDeviationsService,
+  DEVIATION_CAUSES,
+} from '../../services/cold-room-deviations.service';
 import {
   ColdRoomDefrostService,
   type DefrostWindow,
@@ -1375,6 +1378,8 @@ interface MetricOption {
               [items]="alarmHistoryItems()"
               [loading]="!alarmEventsLoaded()"
               emptyText="Sin alarmas registradas"
+              [exportable]="true"
+              exportTitle="Historial de alarmas Ventisqueros"
             />
           }
         }
@@ -5740,8 +5745,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly alarmEventsLoaded = computed(() => this.alarmRulesSvc.eventsLoaded());
 
   // Mapea los eventos al modelo compartido AlarmHistoryItem.
-  readonly alarmHistoryItems = computed<AlarmHistoryItem[]>(() =>
-    this.alarmEvents().map((e) => {
+  readonly alarmHistoryItems = computed<AlarmHistoryItem[]>(() => {
+    const events = this.alarmEvents().map((e) => {
       const sev: 'info' | 'warn' | 'crit' = e.rule_severity || 'warn';
       const sevLabel = sev === 'crit' ? 'Crítica' : sev === 'warn' ? 'Advertencia' : 'Info';
       return {
@@ -5755,8 +5760,50 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         status: e.resolved_at ? 'resuelta' : 'activa',
         tags: e.email_sent ? [{ icon: 'mail', label: 'Notificada' }] : [],
       } satisfies AlarmHistoryItem;
-    }),
-  );
+    });
+    return [...events, ...this.deviationObservationItems()].sort(
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+    );
+  });
+
+  /**
+   * Desviaciones HACCP que tienen una observación del operador (nota o causa
+   * marcada manualmente) → entran al historial como items propios. La nota va
+   * siempre con SU desviación (nunca mal atribuida a otro evento).
+   */
+  private deviationObservationItems(): AlarmHistoryItem[] {
+    const out: AlarmHistoryItem[] = [];
+    for (const d of this.deviationsSvc.detect(this.coldRoomSensors())) {
+      const ack = this.deviationsSvc.getAck(d.id);
+      const manualCause =
+        ack?.cause && ack.causeSource === 'manual' ? DEVIATION_CAUSES[ack.cause].label : null;
+      const note = ack?.causeNote || ack?.note || null;
+      if (!manualCause && !note) continue; // solo desviaciones documentadas
+
+      const observation = [manualCause, note].filter(Boolean).join(' — ');
+      const sev: 'info' | 'warn' | 'crit' =
+        d.level === 'severe' || d.level === 'crit' ? 'crit' : d.level === 'warn' ? 'warn' : 'info';
+      const tags: AlarmHistoryItem['tags'] = [{ icon: 'memory', label: d.tap }];
+      if (manualCause && ack?.cause) {
+        tags.unshift({ icon: DEVIATION_CAUSES[ack.cause].icon, label: manualCause });
+      }
+      out.push({
+        id: `dev:${d.id}`,
+        title: `Desviación de temperatura · ${d.area}`,
+        code: 'HACCP',
+        detail: `${d.peakT}°C (máx ${d.thresholdMax}°C) · ${d.durationMin} min`,
+        observation,
+        severity: sev,
+        severityLabel: sev === 'crit' ? 'Crítica' : sev === 'warn' ? 'Advertencia' : 'Info',
+        startedAt: d.startTs,
+        endedAt: d.endTs,
+        status: this.deviationsSvc.isOpen(d) ? 'activa' : 'resuelta',
+        icon: 'thermostat',
+        tags,
+      });
+    }
+    return out;
+  }
 
   private alarmEventSummary(e: AlarmEvent): string {
     if (!e.rule_metric) return e.target_label || '';
