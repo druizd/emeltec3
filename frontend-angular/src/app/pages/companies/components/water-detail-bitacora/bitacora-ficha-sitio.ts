@@ -118,7 +118,7 @@ import {
             </div>
           }
           @if (ficha().contactos.length === 0) {
-            <p class="text-caption italic text-slate-400">Sin contactos registrados.</p>
+            <p class="text-caption italic text-slate-500">Sin contactos registrados.</p>
           } @else {
             <ul class="space-y-2">
               @for (c of ficha().contactos; track $index) {
@@ -233,7 +233,7 @@ import {
             }
           </div>
           @if (ficha().acreditaciones.length === 0) {
-            <p class="text-caption italic text-slate-400">Sin acreditaciones registradas.</p>
+            <p class="text-caption italic text-slate-500">Sin acreditaciones registradas.</p>
           } @else {
             <ul class="space-y-2">
               @for (a of ficha().acreditaciones; track $index) {
@@ -316,7 +316,7 @@ import {
               <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
                 Matriz IPER — Probabilidad × Severidad
               </h3>
-              <p class="mt-0.5 text-caption-xs text-slate-400">
+              <p class="mt-0.5 text-caption-xs text-slate-500">
                 Prepará la salida a terreno antes de viajar. En sitio, marcá "Verificado" para
                 confirmar el riesgo al llegar.
               </p>
@@ -396,14 +396,14 @@ import {
             <span class="rounded bg-rose-200 px-2 py-0.5 font-bold text-rose-800">
               Intolerable (13-25)
             </span>
-            <span class="ml-auto text-slate-400">
+            <span class="ml-auto text-slate-500">
               {{ ficha().riesgos.length }} riesgo(s) · {{ riesgosVerificados() }} verificado(s) en
               terreno
             </span>
           </div>
 
           @if (ficha().riesgos.length === 0) {
-            <p class="text-caption italic text-slate-400">Sin riesgos registrados.</p>
+            <p class="text-caption italic text-slate-500">Sin riesgos registrados.</p>
           } @else {
             <ul class="space-y-2">
               @for (r of ficha().riesgos; track $index) {

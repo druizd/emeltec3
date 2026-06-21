@@ -35,7 +35,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Gráficos de Tendencia</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">{{ chartSubtitle() }}</p>
+            <p class="mt-0.5 text-caption-xs text-slate-500">{{ chartSubtitle() }}</p>
           </div>
 
           <!-- Dropdown button -->
@@ -149,7 +149,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p class="text-caption font-semibold text-slate-700">Nivel Freático</p>
-                <p class="text-caption-xs text-slate-400">m bajo superficie</p>
+                <p class="text-caption-xs text-slate-500">m bajo superficie</p>
               </div>
               <button
                 type="button"
@@ -165,7 +165,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
             <div class="relative h-44 w-full">
               @if (nivelEmpty()) {
-                <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+                <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
                   Sin datos de nivel freático en el rango seleccionado.
                 </div>
               } @else {
@@ -256,7 +256,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p class="text-caption font-semibold text-slate-700">Caudal Instantáneo</p>
-                <p class="text-caption-xs text-slate-400">L/s</p>
+                <p class="text-caption-xs text-slate-500">L/s</p>
               </div>
               <button
                 type="button"
@@ -272,7 +272,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
             <div class="relative h-44 w-full">
               @if (caudalEmpty()) {
-                <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+                <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
                   Sin datos de caudal en el rango seleccionado.
                 </div>
               } @else {
@@ -365,7 +365,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Mensual</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               Últimos 12 meses · {{ mensualUnit() }} totales por mes
             </p>
           </div>
@@ -384,7 +384,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           @if (mensualLoading()) {
             <app-chart-skeleton [bars]="12" [height]="160" />
           } @else if (mensualEmpty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
               Sin datos de totalizador para este sitio en los últimos 12 meses.
             </div>
           } @else {
@@ -457,7 +457,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Diario</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               Últimos 30 días · {{ diarioUnit() }}/día · días sin operación en gris
             </p>
           </div>
@@ -476,7 +476,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           @if (diarioLoading()) {
             <app-chart-skeleton [bars]="30" [height]="160" />
           } @else if (diarioEmpty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
               Sin datos de totalizador para este sitio en los últimos 30 días.
             </div>
           } @else {
@@ -560,7 +560,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 <span class="material-symbols-outlined text-[15px]">settings</span>
               </button>
             </div>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               Últimos 30 días · flujo acumulado por jornada ({{ jornadaInicio() }} a
               {{ jornadaFin() }} del día siguiente) · m³
             </p>
@@ -590,7 +590,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               class="flex flex-wrap items-center gap-3 text-caption font-semibold text-slate-600"
             >
               <label class="flex items-center gap-2">
-                <span class="text-slate-400">Inicio</span>
+                <span class="text-slate-500">Inicio</span>
                 <input
                   type="time"
                   [value]="jornadaInicio()"
@@ -600,7 +600,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               </label>
               <span class="text-slate-300">–</span>
               <label class="flex items-center gap-2">
-                <span class="text-slate-400">Fin</span>
+                <span class="text-slate-500">Fin</span>
                 <input
                   type="time"
                   [value]="jornadaFin()"
@@ -608,7 +608,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               </label>
-              <span class="text-caption-xs text-slate-400"
+              <span class="text-caption-xs text-slate-500"
                 >(del día siguiente si cruza medianoche)</span
               >
             </div>
@@ -627,7 +627,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           @if (turno7Loading()) {
             <app-chart-skeleton [bars]="14" [height]="160" />
           } @else if (turno7Empty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
               Sin datos de jornada para este sitio en los últimos 30 días.
             </div>
           } @else {
@@ -689,7 +689,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         </div>
 
         <!-- Leyenda -->
-        <div class="flex flex-wrap gap-4 px-5 pb-5 pt-3 text-caption-xs text-slate-400">
+        <div class="flex flex-wrap gap-4 px-5 pb-5 pt-3 text-caption-xs text-slate-500">
           <span class="flex items-center gap-1.5">
             <span class="inline-block h-3 w-3 rounded-sm bg-accent opacity-85"></span>
             Jornada con operación

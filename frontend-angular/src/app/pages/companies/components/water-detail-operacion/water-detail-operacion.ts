@@ -131,7 +131,7 @@ interface RealtimeChartPoint {
           >
           Resumen por Período
         </button>
-        <p class="ml-auto flex items-center gap-1 text-caption-xs font-semibold text-slate-400">
+        <p class="ml-auto flex items-center gap-1 text-caption-xs font-semibold text-slate-500">
           <span class="material-symbols-outlined text-[14px]">info</span>
           Puede presentar desfases momentáneos
         </p>
@@ -164,7 +164,7 @@ interface RealtimeChartPoint {
               </span>
               <div>
                 <p class="text-body font-semibold text-on-surface">Datos en tiempo real</p>
-                <p class="mt-0.5 text-caption-xs text-on-surface-muted">
+                <p class="mt-0.5 text-caption-xs text-on-surface-variant">
                   actualización cada minuto
                 </p>
               </div>
@@ -376,7 +376,7 @@ interface RealtimeChartPoint {
                     >
                       {{ turno.nombre }}
                     </p>
-                    <p class="mt-0.5 text-caption-xs text-on-surface-muted">{{ turno.horario }}</p>
+                    <p class="mt-0.5 text-caption-xs text-on-surface-variant">{{ turno.horario }}</p>
                     <p class="mt-3 font-mono text-h3 font-semibold text-on-surface">
                       {{ formatTurnoConsumo(turno.consumo)
                       }}<span class="ml-1 text-body-sm font-bold text-on-surface-muted">m³</span>
@@ -428,8 +428,8 @@ interface RealtimeChartPoint {
                     >
                       {{ turno.nombre }}
                     </p>
-                    <p class="mt-0.5 text-caption-xs text-slate-400">{{ turno.horario }}</p>
-                    <p class="mt-3 text-body-sm font-bold text-slate-400">No iniciado</p>
+                    <p class="mt-0.5 text-caption-xs text-slate-500">{{ turno.horario }}</p>
+                    <p class="mt-3 text-body-sm font-bold text-slate-500">No iniciado</p>
                   </div>
                 }
               }
@@ -457,7 +457,7 @@ interface RealtimeChartPoint {
                       [style.width]="d.pct + '%'"
                     ></div>
                   </div>
-                  <p class="mt-0.5 text-right font-mono text-caption-xs text-slate-400">
+                  <p class="mt-0.5 text-right font-mono text-caption-xs text-slate-500">
                     {{ formatTurnoConsumo(d.consumo) }} m³
                   </p>
                 </div>
@@ -472,7 +472,7 @@ interface RealtimeChartPoint {
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Distribución de consumo por turno
             </h3>
-            <span class="text-caption-xs font-semibold text-slate-400">% del total diario</span>
+            <span class="text-caption-xs font-semibold text-slate-500">% del total diario</span>
           </div>
           <div class="space-y-3">
             @for (d of distribucionReal(); track d.nombre) {
@@ -504,7 +504,7 @@ interface RealtimeChartPoint {
             <h3 class="text-body-sm font-semibold text-slate-800">
               Caudal en <span class="text-primary-container">Tiempo Real</span>
             </h3>
-            <span class="text-caption-xs font-semibold text-slate-400"
+            <span class="text-caption-xs font-semibold text-slate-500"
               >Últimos {{ realtimePoints().length }} registros</span
             >
           </div>

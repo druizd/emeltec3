@@ -46,7 +46,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
             Último heartbeat
           </p>
           <p class="mt-0.5 text-h4 font-semibold text-slate-800">{{ heartbeatLabel() }}</p>
-          <p class="text-caption-xs text-slate-400">{{ heartbeatFecha() }}</p>
+          <p class="text-caption-xs text-slate-500">{{ heartbeatFecha() }}</p>
         </article>
 
         <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -63,7 +63,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
           <p class="mt-0.5 text-h4 font-semibold text-slate-800">
             {{ countSensores('ok') }} / {{ salud().sensores.length }}
           </p>
-          <p class="text-caption-xs text-slate-400">en última lectura</p>
+          <p class="text-caption-xs text-slate-500">en última lectura</p>
         </article>
 
         <article class="rounded-2xl border border-amber-200 bg-white p-4 shadow-sm">
@@ -80,7 +80,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
           <p class="mt-0.5 text-h4 font-semibold text-slate-800">
             {{ countSensores('advertencia') + countSensores('error') }}
           </p>
-          <p class="text-caption-xs text-slate-400">advertencia + error</p>
+          <p class="text-caption-xs text-slate-500">advertencia + error</p>
         </article>
 
         <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -95,7 +95,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
             Gaps (30 días)
           </p>
           <p class="mt-0.5 text-h4 font-semibold text-slate-800">{{ salud().gaps.length }}</p>
-          <p class="text-caption-xs text-slate-400">interrupciones ≥ 1 h</p>
+          <p class="text-caption-xs text-slate-500">interrupciones ≥ 1 h</p>
         </article>
       </div>
 
@@ -108,7 +108,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
             Estado de sensores
           </h3>
           @if (salud().sensores.length === 0) {
-            <p class="text-caption italic text-slate-400">Sin sensores configurados.</p>
+            <p class="text-caption italic text-slate-500">Sin sensores configurados.</p>
           } @else {
             <div class="space-y-2">
               @for (s of salud().sensores; track s.reg_map_id) {
@@ -125,7 +125,7 @@ type Tono = 'ok' | 'advertencia' | 'error';
                     <p class="font-mono text-body-sm font-bold text-slate-700">
                       {{ formatSensorValue(s) }}
                     </p>
-                    <p class="text-caption-xs text-slate-400">{{ edadLabel(s.edad_seg) }}</p>
+                    <p class="text-caption-xs text-slate-500">{{ edadLabel(s.edad_seg) }}</p>
                   </div>
                 </div>
               }

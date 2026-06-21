@@ -236,7 +236,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <h1 class="truncate text-h5 font-semibold leading-tight text-slate-800">
                     {{ getSiteHeaderLabel(context) }}
                   </h1>
-                  <p class="truncate text-caption-xs font-semibold text-slate-400">
+                  <p class="truncate text-caption-xs font-semibold text-slate-500">
                     {{ context.subCompany.nombre }}
                   </p>
                 </div>
@@ -444,7 +444,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[22px]">database</span>
                     </span>
                     <div class="min-w-0">
-                      <p class="truncate text-caption-xs font-bold text-slate-400">
+                      <p class="truncate text-caption-xs font-bold text-slate-500">
                         Sitios / {{ context.subCompany.nombre }} / Datos Historicos
                       </p>
                       <h2 class="truncate text-h5 font-semibold leading-none text-slate-800">
@@ -522,7 +522,7 @@ type OperationMode = 'realtime' | 'turnos';
               >
                 <div>
                   <h3 class="text-body-sm font-semibold text-slate-800">Datos Historicos</h3>
-                  <p class="mt-0.5 text-caption font-semibold text-slate-400">
+                  <p class="mt-0.5 text-caption font-semibold text-slate-500">
                     @if (historyLoading()) {
                       Actualizando registros...
                     } @else if (isHistoryMock()) {
@@ -532,7 +532,7 @@ type OperationMode = 'realtime' | 'turnos';
                     }
                   </p>
                 </div>
-                <p class="text-caption font-semibold text-slate-400">
+                <p class="text-caption font-semibold text-slate-500">
                   {{ currentHistoryPageCount() }} registros en esta pagina
                 </p>
               </div>
@@ -568,7 +568,7 @@ type OperationMode = 'realtime' | 'turnos';
                       </tr>
                     } @empty {
                       <tr
-                        class="border-t border-slate-100 text-caption font-semibold text-slate-400"
+                        class="border-t border-slate-100 text-caption font-semibold text-slate-500"
                       >
                         <td class="px-4 py-8 text-center" colspan="5" data-label="">
                           Sin registros disponibles para este filtro.
@@ -580,7 +580,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
 
               <div
-                class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-caption font-semibold text-slate-400"
+                class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-caption font-semibold text-slate-500"
               >
                 <span
                   >Filas por pagina: 50 &middot; {{ historyRangeStart() }}-{{
@@ -700,7 +700,7 @@ type OperationMode = 'realtime' | 'turnos';
                         Último envío aceptado
                       </p>
                       <p class="font-mono text-h4 font-semibold leading-tight text-slate-400">—</p>
-                      <span class="text-caption-xs italic text-slate-400">sin envíos aún</span>
+                      <span class="text-caption-xs italic text-slate-500">sin envíos aún</span>
                     </article>
                   }
 
@@ -785,7 +785,7 @@ type OperationMode = 'realtime' | 'turnos';
                     >
                       {{ dgaTasaExitoLabel() }}
                     </p>
-                    <p class="text-caption-xs font-semibold text-slate-400">en rango filtrado</p>
+                    <p class="text-caption-xs font-semibold text-slate-500">en rango filtrado</p>
                   </article>
 
                   <!-- Rechazados: cuenta en rango -->
@@ -830,13 +830,13 @@ type OperationMode = 'realtime' | 'turnos';
                           <h2 class="truncate text-h5 font-semibold leading-none text-slate-800">
                             Flujo Mensual
                           </h2>
-                          <p class="mt-1 text-body-sm font-bold text-slate-400">
+                          <p class="mt-1 text-body-sm font-bold text-slate-500">
                             Volumen acumulado en {{ monthlyFlowUnit() }}
                           </p>
                         </div>
                       </div>
 
-                      <div class="flex items-center gap-3 text-caption font-bold text-slate-400">
+                      <div class="flex items-center gap-3 text-caption font-bold text-slate-500">
                         <span class="inline-flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-[16px]">info</span>
                           Últimos 12 meses
@@ -972,7 +972,7 @@ type OperationMode = 'realtime' | 'turnos';
                           >
                             {{ action.title }}
                           </p>
-                          <p class="text-caption font-medium text-slate-400">
+                          <p class="text-caption font-medium text-slate-500">
                             {{ action.subtitle }}
                           </p>
                           @if (quickActionDisabled(action)) {
@@ -995,7 +995,7 @@ type OperationMode = 'realtime' | 'turnos';
                 >
                   <div>
                     <h2 class="text-body-sm font-semibold text-slate-800">Detalle de Registros</h2>
-                    <p class="mt-1 text-caption font-semibold text-slate-400">
+                    <p class="mt-1 text-caption font-semibold text-slate-500">
                       Reportes completos enviados a la DGA
                     </p>
                   </div>
@@ -1009,7 +1009,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                       {{ dgaSelectedRangeLabel() }}
                     </button>
-                    <span class="text-slate-400">{{ dgaTotalRecordsLabel() }}</span>
+                    <span class="text-slate-500">{{ dgaTotalRecordsLabel() }}</span>
                   </div>
                 </div>
 
@@ -1108,7 +1108,7 @@ type OperationMode = 'realtime' | 'turnos';
                           <tr>
                             <td
                               colspan="5"
-                              class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
+                              class="px-4 py-8 text-center text-body-sm font-semibold text-slate-500"
                               data-label=""
                             >
                               Sin registros para el periodo seleccionado.
@@ -1224,7 +1224,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <h2 id="dga-date-filter-title" class="text-h6 font-semibold text-slate-800">
                     Filtrar por Período
                   </h2>
-                  <p class="text-caption font-semibold text-slate-400">Registros DGA</p>
+                  <p class="text-caption font-semibold text-slate-500">Registros DGA</p>
                 </div>
               </div>
               <button
@@ -1404,7 +1404,7 @@ type OperationMode = 'realtime' | 'turnos';
                     Exportar Datos
                   </h2>
                   @if (siteContext(); as ctx) {
-                    <p class="text-caption font-semibold text-slate-400">
+                    <p class="text-caption font-semibold text-slate-500">
                       {{ getSiteName(ctx) }}
                     </p>
                   }
@@ -1612,7 +1612,7 @@ type OperationMode = 'realtime' | 'turnos';
               }
               <p
                 class="text-caption font-semibold"
-                [class]="downloadError() ? 'text-rose-500' : 'text-slate-400'"
+                [class]="downloadError() ? 'text-rose-500' : 'text-slate-500'"
               >
                 {{
                   downloadSelectedTypes().length === 0
@@ -1794,7 +1794,7 @@ type OperationMode = 'realtime' | 'turnos';
                   </button>
                 }
               </div>
-              <p class="mt-1 text-caption-xs text-slate-400">
+              <p class="mt-1 text-caption-xs text-slate-500">
                 1 fila por bucket. La medición es la más reciente dentro del bucket.
               </p>
             </div>
@@ -1822,7 +1822,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <p class="text-caption font-semibold text-slate-700">
                   {{ dgaReportRangeLabel() }}
                 </p>
-                <p class="text-caption-xs font-semibold text-slate-400">
+                <p class="text-caption-xs font-semibold text-slate-500">
                   {{ dgaReportDaysCount() > 0 ? dgaReportDaysCount() + ' días' : '—' }}
                 </p>
               </div>
@@ -1995,7 +1995,7 @@ type OperationMode = 'realtime' | 'turnos';
                       </p>
                     }
                   } @else {
-                    <p class="mt-1 text-body-sm italic text-slate-400">sin comprobante</p>
+                    <p class="mt-1 text-body-sm italic text-slate-500">sin comprobante</p>
                   }
                 </div>
               </div>

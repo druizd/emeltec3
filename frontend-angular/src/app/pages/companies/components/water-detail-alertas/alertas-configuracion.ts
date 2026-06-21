@@ -106,7 +106,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
     <div class="space-y-3">
       <!-- Header -->
       <div class="flex items-center justify-between gap-3">
-        <p class="text-caption-xs font-semibold text-slate-400">
+        <p class="text-caption-xs font-semibold text-slate-500">
           {{ reglas().length }}
           {{ reglas().length === 1 ? 'regla configurada' : 'reglas configuradas' }}
         </p>
@@ -231,16 +231,16 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             <div
               class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-3"
             >
-              <span class="flex items-center gap-1 text-caption-xs text-slate-400">
+              <span class="flex items-center gap-1 text-caption-xs text-slate-500">
                 <span class="material-symbols-outlined text-[14px]">calendar_today</span>
                 {{ diasResumen(regla.dias_activos) }}
               </span>
-              <span class="flex items-center gap-1 text-caption-xs text-slate-400">
+              <span class="flex items-center gap-1 text-caption-xs text-slate-500">
                 <span class="material-symbols-outlined text-[14px]">schedule</span>
                 cooldown {{ regla.cooldown_minutos }} min
               </span>
               @if (regla.variable_key && regla.condicion !== 'dga_atrasado') {
-                <span class="flex items-center gap-1 text-caption-xs text-slate-400">
+                <span class="flex items-center gap-1 text-caption-xs text-slate-500">
                   <span class="material-symbols-outlined text-[14px]">data_object</span>
                   {{ regla.variable_key }}
                 </span>
@@ -369,7 +369,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 placeholder="Ej: caudal, nivel_freatico"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
-              <p class="mt-1 text-caption-xs text-slate-400">
+              <p class="mt-1 text-caption-xs text-slate-500">
                 Sin variables registradas en el sitio; ingresa la clave manualmente.
               </p>
             }
@@ -479,7 +479,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             [(ngModel)]="draft.cooldown_minutos"
             class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
-          <span class="ml-2 text-caption-xs text-slate-400"
+          <span class="ml-2 text-caption-xs text-slate-500"
             >tiempo mínimo entre notificaciones</span
           >
         </div>
@@ -538,7 +538,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 {{ simulating() ? 'Probando…' : 'Probar regla' }}
               </button>
             </header>
-            <p class="text-caption-xs text-on-surface-muted">
+            <p class="text-caption-xs text-on-surface-variant">
               Evalúa la condición contra las últimas 500 lecturas del sitio. Read-only — no guarda
               nada ni dispara notificaciones.
             </p>
@@ -562,7 +562,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   {{ sim.matched === 1 ? 'match' : 'matches' }} en {{ sim.total }} lecturas
                 </span>
                 @if (draft.condicion !== 'sin_datos') {
-                  <span class="text-on-surface-muted">
+                  <span class="text-on-surface-variant">
                     {{ sim.withValueCount }} con valor numérico
                   </span>
                 }
@@ -593,7 +593,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                             @if (row.value !== null) {
                               {{ row.value }}
                             } @else {
-                              <span class="text-on-surface-muted italic">sin dato</span>
+                              <span class="text-on-surface-variant italic">sin dato</span>
                             }
                           </td>
                           <td class="px-3 py-2 text-right">
@@ -611,7 +611,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     </tbody>
                   </table>
                   @if (sim.matched > sim.rows.length) {
-                    <p class="bg-slate-50 px-3 py-2 text-caption-xs text-on-surface-muted">
+                    <p class="bg-slate-50 px-3 py-2 text-caption-xs text-on-surface-variant">
                       Mostrando los primeros {{ sim.rows.length }} matches de {{ sim.matched }} en
                       total.
                     </p>
