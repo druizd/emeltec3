@@ -1608,7 +1608,7 @@ router.get('/:siteId/sensors/:sensorId/history', (req, res) => {
   });
 });
 
-router.get('/:siteId/concentrator', (req, res) => {
+router.get('/:siteId/concentrator', requireRole('SuperAdmin', 'Admin'), (req, res) => {
   const tap = normalizeTap(req.query.tap);
   if (tap && tap !== 'TAP 1') {
     return res.json({ ok: true, data: { alerted: false, lastSeen: null } });
@@ -1637,7 +1637,7 @@ router.get('/:siteId/concentrator', (req, res) => {
   });
 });
 
-router.get('/:siteId/backup', (req, res) => {
+router.get('/:siteId/backup', requireRole('SuperAdmin', 'Admin'), (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
   if (tap && tap !== 'TAP 1') return res.json({ ok: true, data: [] });

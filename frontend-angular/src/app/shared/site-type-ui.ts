@@ -249,9 +249,12 @@ function tapRouteSegmentForSite(site: SiteRecord): string | null {
   return null;
 }
 
-export function dashboardRouteForSite(site: SiteRecord): string[] {
+export function dashboardRouteForSite(site: SiteRecord, canViewTap = true): string[] {
   const type = normalizeSiteType(site.tipo_sitio);
   if (type === 'camara_frio') {
+    // El detalle técnico de TAP es solo-admin. Los no-admin van al panel de
+    // /companies (vista general embebida con mapa + salas).
+    if (!canViewTap) return ['/companies'];
     const tapSegment = tapRouteSegmentForSite(site);
     return tapSegment
       ? ['/companies', site.id, 'tap', tapSegment]

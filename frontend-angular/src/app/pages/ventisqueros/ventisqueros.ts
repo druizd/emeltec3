@@ -18,6 +18,7 @@ import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-
 import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
 import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
+import { AuthService } from '../../services/auth.service';
 import {
   ColdRoomService,
   type ColdRoomExportInterval,
@@ -4980,6 +4981,10 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   private readonly deviationsSvc = inject(ColdRoomDeviationsService);
   private readonly defrostSvc = inject(ColdRoomDefrostService);
   private readonly auditSvc = inject(ColdRoomAuditService);
+  private readonly auth = inject(AuthService);
+
+  // TAP (técnico) solo para tier administrador (SuperAdmin/Admin).
+  readonly canViewTap = computed(() => this.auth.isSuperAdmin() || this.auth.isAdmin());
 
   readonly siteId = input.required<string>();
   readonly siteName = input<string>('');
@@ -5036,6 +5041,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly effectiveTab = computed<TabKey>(() => {
     const v = this.view();
+    let tab: TabKey;
     if (
       v === 'general' ||
       v === 'salas' ||
@@ -5044,8 +5050,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       v === 'alarmas' ||
       v === 'contacts'
     )
-      return v;
-    return this.activeTab();
+      tab = v;
+    else tab = this.activeTab();
+    // No-admin nunca cae en TAP (técnico) aunque quede persistido o forzado.
+    if (tab === 'taps' && !this.canViewTap()) return 'salas';
+    return tab;
   });
 
   readonly metric = signal<MetricKey>('T');
@@ -5122,12 +5131,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly subTabs = computed<SubTab[]>(() => {
     const c = this.alarmsCounts();
-    return [
+    const tabs: SubTab[] = [
       { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
       { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
       { key: 'alarmas', icon: 'notifications_active', label: 'Alarmas activas', badge: c.total },
-      { key: 'taps', icon: 'memory', label: 'TAP (técnico)' },
     ];
+    // TAP (técnico) solo admin.
+    if (this.canViewTap()) tabs.push({ key: 'taps', icon: 'memory', label: 'TAP (técnico)' });
+    return tabs;
   });
 
   salaSlug(area: string): string {

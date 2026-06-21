@@ -189,7 +189,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
               'Sin referencia',
             ageMinutes: ageMin,
             status: this.statusFromAge(ageMin),
-            route: dashboardRouteForSite(site),
+            route: dashboardRouteForSite(site, this.auth.isSuperAdmin() || this.auth.isAdmin()),
           };
         }),
       ),

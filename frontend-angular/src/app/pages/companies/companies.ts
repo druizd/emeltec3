@@ -141,7 +141,9 @@ export class CompaniesComponent implements OnInit {
       return;
     }
 
-    this.router.navigate(dashboardRouteForSite(site));
+    this.router.navigate(
+      dashboardRouteForSite(site, this.auth.isSuperAdmin() || this.auth.isAdmin()),
+    );
   }
 
   private filterSitesBySelection(
