@@ -18,7 +18,7 @@ function canEditAlarm(role) {
  * usuario. Admin-tier → sin filtro (clause null). Otros → visible_to_all o
  * estar en viewer_user_ids.
  *
- * @param {{tipo?:string, id?:string}} user
+ * @param {{tipo?:string, id?:string}|null|undefined} user
  * @param {string} alias  Alias de la tabla en la query (ej. 'a').
  * @param {number} nextParamIndex  Índice del próximo placeholder ($N).
  * @returns {{clause: string|null, params: any[]}}
