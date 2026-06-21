@@ -260,6 +260,58 @@ ${securityNoteHtml('Por seguridad, no compartas este código con nadie. Si no so
   }
 };
 
+// Código 2FA step-up para acciones sensibles (borrar alarma, crear/eliminar
+// usuario). Mismo diseño branded que el resto de los correos.
+exports.send2faCode = async ({ to, code, minutes = 5 }) => {
+  try {
+    const otp = String(code ?? '');
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Verificación de seguridad</p>
+              <h1 style="margin:0 0 14px;font-size:24px;line-height:1.25;color:#1E293B;font-weight:600;letter-spacing:-0.01em;">Confirmá la acción</h1>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">Usa este código para confirmar una acción sensible en Emeltec Cloud. Es de un solo uso y expira en <strong style="color:#1E293B;">${minutes} minutos</strong>.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#F8FAFC;border:1px solid rgba(13,175,189,0.35);border-radius:10px;">
+                <tr>
+                  <td style="padding:22px 24px;text-align:center;">
+                    <p style="margin:0 0 10px;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#94A3B8;font-weight:700;">Código de verificación</p>
+                    <p style="margin:0;font-family:'SF Mono','JetBrains Mono',Consolas,'Liberation Mono',Menlo,monospace;font-size:34px;font-weight:600;letter-spacing:10px;color:#0DAFBD;line-height:1;">${escapeHtml(otp)}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+${securityNoteHtml('Si no solicitaste esta acción, ignora este correo y revisá el acceso a tu cuenta.')}`;
+
+    const html = renderShell({
+      title: 'Código de verificación · Emeltec',
+      preheader: `Tu código de verificación expira en ${minutes} minutos.`,
+      contentHtml,
+    });
+
+    const data = await enviar({
+      to,
+      subject: 'Código de verificación · Emeltec Cloud',
+      text: [
+        'Código de verificación para confirmar una acción en Emeltec Cloud:',
+        '',
+        `${otp}`,
+        `Válido por ${minutes} minutos. Es de un solo uso.`,
+        '',
+        'Si no solicitaste esta acción, ignora este correo.',
+      ].join('\n'),
+      html,
+    });
+    return { ok: true, id: data.id };
+  } catch (error) {
+    console.error('[emailService] Error enviando código 2FA:', error.message);
+    return { ok: false, error: error.message };
+  }
+};
+
 exports.sendNewUserNotificationToAdmin = async (emailAdmin, nombreAdmin, datosUsuario) => {
   try {
     const admin = (nombreAdmin || '').trim() || 'administrador';

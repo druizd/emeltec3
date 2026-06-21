@@ -1,7 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Evita cargar el emailService real (y sus dependencias) — no se usa en estos tests.
-vi.mock('../../services/emailService', () => ({ sendAdminPlainEmail: vi.fn(async () => {}) }));
+vi.mock('../../services/emailService', () => ({
+  send2faCode: vi.fn(async () => ({ ok: true })),
+}));
 
 import { verifyCode, require2fa, _seedCode } from '../stepUp2fa';
 

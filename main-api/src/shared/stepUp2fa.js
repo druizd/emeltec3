@@ -12,7 +12,7 @@
 // Multi-instance: migrar `pending` a Redis con TTL.
 
 const crypto = require('crypto');
-const { sendAdminPlainEmail } = require('../services/emailService');
+const { send2faCode } = require('../services/emailService');
 
 const CODE_TTL_MS = 5 * 60 * 1000;
 const CODE_LEN = 6;
@@ -40,14 +40,12 @@ async function requestCode(user) {
     throw e;
   }
   const code = genCode();
-  await sendAdminPlainEmail({
-    to,
-    subject: 'Código de verificación (2FA)',
-    text:
-      `Tu código de verificación es: ${code}\n\n` +
-      `Vence en 5 minutos y es de un solo uso.\n` +
-      `Si no solicitaste esta acción, ignora este correo y revisá el acceso a tu cuenta.`,
-  });
+  const sent = await send2faCode({ to, code, minutes: Math.round(CODE_TTL_MS / 60000) });
+  if (!sent || !sent.ok) {
+    const e = new Error('No se pudo enviar el código 2FA por email');
+    e.status = 502;
+    throw e;
+  }
   pending.set(key, { code, expiresAt: Date.now() + CODE_TTL_MS });
 }
 

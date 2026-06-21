@@ -1925,7 +1925,7 @@ export class CompaniesAlarmRulesPanelComponent {
   }
 
   remove(id: string): void {
-    if (!confirm('¿Eliminar esta regla?')) return;
+    // Sin confirm() nativo: el popup 2FA (paso de verificación) es la confirmación.
     this.svc.remove(id);
   }
 

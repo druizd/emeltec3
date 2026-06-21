@@ -832,7 +832,7 @@ export class AlertasConfiguracionComponent {
   }
 
   eliminar(regla: AlertaRow): void {
-    if (!confirm(`¿Eliminar la regla "${regla.nombre}"? Esta acción no se puede deshacer.`)) return;
+    // Sin confirm() nativo: el popup 2FA es la confirmación de la acción.
     this.alertaService.eliminar(regla.id).subscribe({
       next: () => this.reglas.update((rs) => rs.filter((r) => r.id !== regla.id)),
       error: (err) => this.errorMsg.set(err?.error?.error || 'No se pudo eliminar'),
