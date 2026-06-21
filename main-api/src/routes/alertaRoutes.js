@@ -4,12 +4,15 @@ const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 const c = require('../controllers/alertaController');
 
 const adminRoles = ['SuperAdmin', 'Admin'];
+// Alarmas: editar (crear/modificar/borrar) solo Admin/Gerente (+ SuperAdmin).
+// El resto de roles solo puede verlas (según visibilidad).
+const alarmEditorRoles = ['SuperAdmin', 'Admin', 'Gerente'];
 
-router.post('/alertas', protect, c.crearAlerta);
+router.post('/alertas', protect, authorizeRoles(...alarmEditorRoles), c.crearAlerta);
 router.get('/alertas', protect, c.listarAlertas);
 router.get('/alertas/:id', protect, c.obtenerAlerta);
-router.put('/alertas/:id', protect, c.actualizarAlerta);
-router.delete('/alertas/:id', protect, c.eliminarAlerta);
+router.put('/alertas/:id', protect, authorizeRoles(...alarmEditorRoles), c.actualizarAlerta);
+router.delete('/alertas/:id', protect, authorizeRoles(...alarmEditorRoles), c.eliminarAlerta);
 
 router.get('/eventos', protect, c.listarEventos);
 router.get('/eventos/:id', protect, c.obtenerEvento);

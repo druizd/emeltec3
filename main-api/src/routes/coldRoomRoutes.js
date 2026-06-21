@@ -1711,6 +1711,8 @@ function ruleRowToObj(r) {
     notifyEmail: r.notify_email,
     notifyUi: r.notify_ui,
     recipientUserIds: Array.isArray(r.recipient_user_ids) ? r.recipient_user_ids : [],
+    visibleToAll: r.visible_to_all !== false,
+    viewerUserIds: Array.isArray(r.viewer_user_ids) ? r.viewer_user_ids : [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -1719,10 +1721,21 @@ function ruleRowToObj(r) {
 // --- Reglas CRUD ---
 router.get('/:siteId/alarm-rules', async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
-      [req.params.siteId],
-    );
+    // Admin/Gerente/SuperAdmin ven todas; otros roles solo las visibles para
+    // todos o donde estén en viewer_user_ids.
+    const u = req.user || {};
+    const isAdminTier = ADMIN_ROLES.includes(u.tipo);
+    const { rows } = isAdminTier
+      ? await pool.query(
+          `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
+          [req.params.siteId],
+        )
+      : await pool.query(
+          `SELECT * FROM cold_room_alarm_rule
+            WHERE site_id = $1 AND (visible_to_all OR $2 = ANY(viewer_user_ids))
+            ORDER BY created_at DESC`,
+          [req.params.siteId, u.id || ''],
+        );
     res.json({ ok: true, data: rows.map(ruleRowToObj) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
@@ -1736,11 +1749,16 @@ router.post('/:siteId/alarm-rules', requireRole(...ADMIN_ROLES), async (req, res
     const recUserIds = Array.isArray(b.recipientUserIds)
       ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
       : [];
+    const viewerIds = Array.isArray(b.viewerUserIds)
+      ? b.viewerUserIds.filter((s) => typeof s === 'string' && s.length > 0)
+      : [];
+    const visibleToAll = b.visibleToAll !== false;
     await pool.query(
       `INSERT INTO cold_room_alarm_rule
         (id, site_id, name, enabled, metric, op, threshold, target_kind, target_value,
-         sustained_min, severity, notify_email, notify_ui, recipient_user_ids, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())`,
+         sustained_min, severity, notify_email, notify_ui, recipient_user_ids,
+         visible_to_all, viewer_user_ids, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, NOW())`,
       [
         id,
         req.params.siteId,
@@ -1756,6 +1774,8 @@ router.post('/:siteId/alarm-rules', requireRole(...ADMIN_ROLES), async (req, res
         recUserIds.length > 0,
         b.notifyUi !== false,
         recUserIds,
+        visibleToAll,
+        visibleToAll ? [] : viewerIds,
       ],
     );
     res.json({ ok: true, data: { id } });
@@ -1770,12 +1790,16 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
     const recUserIds = Array.isArray(b.recipientUserIds)
       ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
       : [];
+    const viewerIds = Array.isArray(b.viewerUserIds)
+      ? b.viewerUserIds.filter((s) => typeof s === 'string' && s.length > 0)
+      : [];
+    const visibleToAll = b.visibleToAll !== false;
     await pool.query(
       `UPDATE cold_room_alarm_rule SET
         name=$1, enabled=$2, metric=$3, op=$4, threshold=$5, target_kind=$6, target_value=$7,
         sustained_min=$8, severity=$9, notify_email=$10, notify_ui=$11, recipient_user_ids=$12,
-        updated_at=NOW()
-       WHERE id=$13 AND site_id=$14`,
+        visible_to_all=$13, viewer_user_ids=$14, updated_at=NOW()
+       WHERE id=$15 AND site_id=$16`,
       [
         b.name,
         b.enabled !== false,
@@ -1789,6 +1813,8 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
         recUserIds.length > 0,
         b.notifyUi !== false,
         recUserIds,
+        visibleToAll,
+        visibleToAll ? [] : viewerIds,
         req.params.ruleId,
         req.params.siteId,
       ],
