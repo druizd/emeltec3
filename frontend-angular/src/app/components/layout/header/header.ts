@@ -85,7 +85,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
               @if (viewAsMenuOpen()) {
                 <div
-                  class="absolute right-0 top-full z-50 mt-2 w-[390px] overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
+                  class="absolute right-0 top-full z-50 mt-2 w-[min(390px,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
                 >
                   <div class="border-b border-[#E2E8F0] px-4 py-3">
                     <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">

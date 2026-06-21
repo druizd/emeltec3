@@ -59,13 +59,13 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
 
     <!-- ── Chatbot flotante ── -->
     @if (chatOpen()) {
+      <!-- Ancho cap a viewport en mobile. Dock por translateX relativo al
+           ANCHO propio (100% - 44px del pull-tab) → funciona a cualquier ancho,
+           a diferencia del offset right:-356px hardcoded para 400px. -->
       <div
-        class="fixed bottom-[110px] z-50 w-[400px]"
-        [style]="
-          'right:' +
-          (chatDocked() ? '-356px' : '24px') +
-          '; transition: right 0.35s cubic-bezier(0.4,0,0.2,1)'
-        "
+        class="fixed bottom-[110px] right-3 z-50 w-[min(400px,calc(100vw-1.5rem))] sm:right-6"
+        style="transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);"
+        [style.transform]="chatDocked() ? 'translateX(calc(100% - 44px))' : 'none'"
       >
         <!-- Pull tab (solo visible cuando está oculto al costado) -->
         @if (chatDocked()) {
