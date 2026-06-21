@@ -548,6 +548,22 @@ exports.updateUser = async (req, res, next) => {
 };
 
 // Reset de contraseña por admin: regenera el OTP de acceso y lo reenvía por email.
+/**
+ * Reset de contraseña por administrador (re-onboarding, NO genera clave nueva).
+ *
+ * Reutiliza el flujo de bienvenida: genera un OTP de un solo uso, ANULA la
+ * contraseña actual (`password_hash = NULL`) y reenvía el código por email.
+ *
+ * Efectos:
+ *  - La contraseña vigente del usuario deja de servir inmediatamente.
+ *  - El usuario debe ingresar con el OTP (flujo /start setup) y fijar una nueva.
+ *  - El OTP vence a los `WELCOME_OTP_MINUTES`. Si no lo usa a tiempo, queda sin
+ *    acceso hasta un nuevo reset.
+ *
+ * No es un "envío de la clave actual" ni un código que siga sirviendo tras
+ * usarse: es destructivo sobre la password + OTP de un solo uso con vencimiento.
+ * Exige 2FA (require2fa en la ruta) y respeta la jerarquía (managePermissionError).
+ */
 exports.resetUserPassword = async (req, res, next) => {
   try {
     const { id } = req.params;
