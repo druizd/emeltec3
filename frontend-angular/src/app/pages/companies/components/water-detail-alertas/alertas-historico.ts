@@ -10,7 +10,10 @@ import {
 } from '@angular/core';
 import { AlertaService, AlertaSeveridad, EventoRow } from '../../../../services/alerta.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
-import { SkeletonComponent } from '../../../../components/ui/skeleton';
+import {
+  AlarmHistoryListComponent,
+  type AlarmHistoryItem,
+} from '../../../../components/ui/alarm-history-list';
 
 type HistoricoFiltro = 'todos' | AlertaSeveridad;
 
@@ -18,7 +21,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
   selector: 'app-alertas-historico',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, InlineErrorComponent, SkeletonComponent],
+  imports: [CommonModule, InlineErrorComponent, AlarmHistoryListComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -37,128 +40,23 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
         >
       </header>
 
-      <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[720px] text-left text-body-sm">
-            <thead>
-              <tr class="border-b border-slate-100 bg-slate-50">
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Código
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Variable
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Severidad
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Inicio
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Duración
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Resolvió
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Incidencia
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @if (loading()) {
-                @for (_ of [0, 1, 2, 3, 4]; track $index) {
-                  <tr>
-                    @for (__ of [0, 1, 2, 3, 4, 5, 6]; track $index) {
-                      <td class="px-4 py-3">
-                        <app-skeleton class="h-3 w-full rounded" />
-                      </td>
-                    }
-                  </tr>
-                }
-              } @else {
-                @for (ev of historialFiltrado(); track ev.id) {
-                  <tr class="group hover:bg-slate-50/60">
-                    <td class="px-4 py-3 font-mono text-caption text-slate-500">
-                      {{ codigoEvento(ev) }}
-                    </td>
-                    <td class="px-4 py-3 font-semibold text-slate-800">
-                      {{ ev.alerta_nombre || ev.variable_key }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <span
-                        [class]="severidadClass(ev.severidad)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
-                      >
-                        <span
-                          [class]="severidadDotClass(ev.severidad)"
-                          class="h-1.5 w-1.5 rounded-full"
-                        ></span>
-                        {{ severidadLabel(ev.severidad) }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 font-mono text-caption text-slate-600">
-                      {{ formatFecha(ev.triggered_at) }}
-                    </td>
-                    <td class="px-4 py-3 text-caption font-semibold text-slate-600">
-                      {{ duracion(ev.triggered_at, ev.resuelta_at) }}
-                    </td>
-                    <td class="px-4 py-3 text-caption text-slate-600">
-                      {{ ev.asignado_nombre_completo || '—' }}
-                    </td>
-                    <td class="px-4 py-3">
-                      @if (ev.incidencia_id) {
-                        <span
-                          class="inline-flex items-center gap-1 rounded-full bg-primary-tint-08 px-2 py-0.5 text-caption-xs font-bold text-primary-container"
-                        >
-                          <span class="material-symbols-outlined text-[12px]">link</span>
-                          {{ ev.incidencia_id }}
-                        </span>
-                      } @else {
-                        <span class="text-caption-xs text-slate-300">—</span>
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="7" class="px-4 py-10 text-center">
-                      <span class="material-symbols-outlined text-3xl text-slate-300">history</span>
-                      <p class="mt-2 text-body-sm font-semibold text-slate-400">
-                        Sin registros con estos filtros
-                      </p>
-                    </td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
-        <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-          <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
-          <button
-            type="button"
-            (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
-          >
-            <span class="material-symbols-outlined text-[14px]">download</span>
-            Exportar CSV
-          </button>
-        </div>
-      </section>
+      <!-- Lista compartida (mismo diseño que el historial de Ventisqueros) -->
+      <app-alarm-history-list
+        [items]="items()"
+        [loading]="loading()"
+        emptyText="Sin registros con estos filtros"
+      />
+      <div class="flex items-center justify-between px-1 pt-1">
+        <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
+        <button
+          type="button"
+          (click)="exportarCsv()"
+          class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
+        >
+          <span class="material-symbols-outlined text-[14px]">download</span>
+          Exportar CSV
+        </button>
+      </div>
     </div>
   `,
 })
@@ -212,6 +110,30 @@ export class AlertasHistoricoComponent {
     return f === 'todos' ? this.historial() : this.historial().filter((e) => e.severidad === f);
   });
 
+  // Mapea EventoRow → AlarmHistoryItem para el componente compartido.
+  readonly items = computed<AlarmHistoryItem[]>(() =>
+    this.historialFiltrado().map((ev) => {
+      const sev: 'info' | 'warn' | 'crit' =
+        ev.severidad === 'critica' ? 'crit' : ev.severidad === 'baja' ? 'info' : 'warn';
+      const tags: AlarmHistoryItem['tags'] = [];
+      if (ev.asignado_nombre_completo)
+        tags.push({ icon: 'person', label: ev.asignado_nombre_completo });
+      if (ev.incidencia_id) tags.push({ icon: 'link', label: ev.incidencia_id, emphasis: true });
+      return {
+        id: ev.id,
+        title: ev.alerta_nombre || ev.variable_key,
+        code: this.codigoEvento(ev),
+        detail: ev.variable_key,
+        severity: sev,
+        severityLabel: this.severidadLabel(ev.severidad),
+        startedAt: ev.triggered_at,
+        endedAt: ev.resuelta_at,
+        status: ev.resuelta_at ? 'resuelta' : 'activa',
+        tags,
+      } satisfies AlarmHistoryItem;
+    }),
+  );
+
   codigoEvento(ev: EventoRow): string {
     return `ALT-${String(ev.id).padStart(4, '0')}`;
   }
@@ -236,20 +158,6 @@ export class AlertasHistoricoComponent {
 
   severidadLabel(s: AlertaSeveridad): string {
     return { baja: 'Baja', media: 'Media', alta: 'Alta', critica: 'Crítica' }[s];
-  }
-
-  severidadClass(s: AlertaSeveridad): string {
-    if (s === 'critica') return 'bg-rose-50 text-rose-600';
-    if (s === 'alta') return 'bg-orange-50 text-orange-600';
-    if (s === 'media') return 'bg-amber-50 text-amber-600';
-    return 'bg-slate-100 text-slate-500';
-  }
-
-  severidadDotClass(s: AlertaSeveridad): string {
-    if (s === 'critica') return 'bg-rose-500';
-    if (s === 'alta') return 'bg-orange-500';
-    if (s === 'media') return 'bg-amber-500';
-    return 'bg-slate-400';
   }
 
   filtroClass(key: HistoricoFiltro): string {
