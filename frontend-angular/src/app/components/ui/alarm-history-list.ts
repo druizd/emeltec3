@@ -41,6 +41,8 @@ export interface AlarmHistoryItem {
   link?: string[] | null;
   linkQuery?: Record<string, string>;
   linkTitle?: string;
+  /** Columnas extra SOLO para el export Excel (ej. Resolvió, Incidencia). */
+  exportExtra?: Record<string, string>;
 }
 
 /**
@@ -191,17 +193,26 @@ export class AlarmHistoryListComponent {
     if (this.exporting()) return;
     this.exporting.set(true);
     try {
-      const rows = this.items().map((it) => ({
-        Código: it.code ?? '',
-        Alarma: it.title,
-        Severidad: it.severityLabel,
-        Detalle: it.detail ?? '',
-        Observación: it.observation ?? '',
-        Inicio: this.when(it.startedAt),
-        Cierre: it.endedAt ? this.when(it.endedAt) : '',
-        Duración: this.duration(it),
-        Estado: it.status === 'resuelta' ? 'Resuelta' : 'Activa',
-      }));
+      const items = this.items();
+      // Columnas extra aportadas por el módulo (unión de claves de todos los items).
+      const extraKeys = Array.from(
+        new Set(items.flatMap((it) => Object.keys(it.exportExtra ?? {}))),
+      );
+      const rows = items.map((it) => {
+        const row: Record<string, string> = {
+          Código: it.code ?? '',
+          Alarma: it.title,
+          Severidad: it.severityLabel,
+          Detalle: it.detail ?? '',
+          Observación: it.observation ?? '',
+          Inicio: this.when(it.startedAt),
+          Cierre: it.endedAt ? this.when(it.endedAt) : '',
+          Duración: this.duration(it),
+          Estado: it.status === 'resuelta' ? 'Resuelta' : 'Activa',
+        };
+        for (const k of extraKeys) row[k] = it.exportExtra?.[k] ?? '';
+        return row;
+      });
 
       const XLSX = await import('xlsx');
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -210,10 +221,7 @@ export class AlarmHistoryListComponent {
       ws['!cols'] = headers.map((h) => ({
         wch: Math.min(
           48,
-          Math.max(
-            h.length + 2,
-            ...rows.map((r) => String((r as Record<string, string>)[h] ?? '').length + 2),
-          ),
+          Math.max(h.length + 2, ...rows.map((r) => String(r[h] ?? '').length + 2)),
         ),
       }));
       ws['!freeze'] = { xSplit: 0, ySplit: 1 };
