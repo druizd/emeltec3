@@ -1835,12 +1835,12 @@ interface MetricOption {
             <!-- Intervalo de agrupación (promedio / mín / máx) -->
             <div class="vs-hx-section">
               <div class="vs-hx-section-title">2. Intervalo de agrupación</div>
-              <div class="vs-hx-interval">
+              <div class="flex flex-wrap gap-1.5">
                 @for (opt of historyExportIntervalOptions; track opt.value) {
                   <button
                     type="button"
-                    class="vs-hx-interval-pill"
-                    [class.vs-hx-interval-pill--active]="historyExportInterval() === opt.value"
+                    class="vs-hx-btn"
+                    [class.vs-hx-btn--primary]="historyExportInterval() === opt.value"
                     (click)="historyExportInterval.set(opt.value)"
                   >
                     {{ opt.label }}
@@ -1856,12 +1856,12 @@ interface MetricOption {
             <!-- Variables -->
             <div class="vs-hx-section">
               <div class="vs-hx-section-title">3. Variables</div>
-              <div class="vs-hx-interval">
+              <div class="flex flex-wrap gap-1.5">
                 @for (opt of historyExportVarsOptions; track opt.value) {
                   <button
                     type="button"
-                    class="vs-hx-interval-pill"
-                    [class.vs-hx-interval-pill--active]="historyExportVars() === opt.value"
+                    class="vs-hx-btn"
+                    [class.vs-hx-btn--primary]="historyExportVars() === opt.value"
                     (click)="historyExportVars.set(opt.value)"
                   >
                     {{ opt.label }}
@@ -3496,33 +3496,6 @@ interface MetricOption {
         font-size: 10.5px;
         color: #94a3b8;
         font-style: italic;
-      }
-      .vs-hx-interval {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-      .vs-hx-interval-pill {
-        font-family: var(--font-mono);
-        font-size: 11.5px;
-        font-weight: 500;
-        padding: 5px 11px;
-        border-radius: 7px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        color: #475569;
-        transition:
-          border-color 0.15s,
-          background 0.15s,
-          color 0.15s;
-      }
-      .vs-hx-interval-pill:hover {
-        border-color: var(--color-primary-tint-30);
-      }
-      .vs-hx-interval-pill--active {
-        background: var(--color-primary);
-        border-color: var(--color-primary);
-        color: #ffffff;
       }
       .vs-hx-grid {
         display: grid;
