@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Sensor, humColor, tempColor } from './ventisqueros-data';
 
 @Component({
   selector: 'app-ventisqueros-focus-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block shrink-0' },
   template: `
@@ -22,9 +23,16 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
             </div>
             <div class="vs-focus-area">{{ f.area }}</div>
           </div>
-          <button class="vs-focus-open-btn flex">
-            <span class="material-symbols-outlined text-[13px]">open_in_new</span>
-          </button>
+          @if (salaLink(); as link) {
+            <button
+              class="vs-focus-open-btn flex"
+              [routerLink]="link"
+              [queryParams]="salaQuery()"
+              title="Ver sala"
+            >
+              <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+            </button>
+          }
         </div>
 
         <div class="mt-3 grid grid-cols-2 gap-2.5">
@@ -216,6 +224,9 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
 })
 export class VentisquerosFocusCardComponent {
   readonly focus = input.required<Sensor | undefined>();
+  /** routerLink a la sala del sensor enfocado (lo arma el padre). */
+  readonly salaLink = input<string[] | null>(null);
+  readonly salaQuery = input<Record<string, string>>({});
 
   fmtHumValue(h: number): number {
     return Number(h.toFixed(2));
