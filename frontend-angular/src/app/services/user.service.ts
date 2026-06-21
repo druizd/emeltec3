@@ -5,6 +5,7 @@ import type {
   ApiResponse,
   CreateUserPayload,
   UpdateUserPasswordPayload,
+  UpdateUserAdminPayload,
   UpdateUserProfilePayload,
   UpdateUserSecurityPayload,
   User,
@@ -54,6 +55,21 @@ export class UserService {
     return this.http.post<ApiResponse<User>>('/api/users', userData);
   }
 
+  updateUser(id: string, payload: UpdateUserAdminPayload): Observable<ApiResponse<User>> {
+    return this.http.patch<ApiResponse<User>>(`/api/users/${id}`, payload);
+  }
+
+  /** Reactiva un usuario desactivado (soft-delete inverso). */
+  reactivateUser(id: string): Observable<ApiResponse<User>> {
+    return this.http.patch<ApiResponse<User>>(`/api/users/${id}`, { activo: true });
+  }
+
+  /** Reset de contraseña por admin: reenvía el código de acceso. */
+  resetUserPassword(id: string): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`/api/users/${id}/reset-password`, {});
+  }
+
+  /** Desactiva (soft-delete). El backend marca activo=false. */
   deleteUser(id: string): Observable<ApiResponse<unknown>> {
     return this.http.delete<ApiResponse<unknown>>(`/api/users/${id}`);
   }
