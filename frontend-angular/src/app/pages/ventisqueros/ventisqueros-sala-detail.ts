@@ -653,11 +653,28 @@ function slugify(area: string): string {
               </div>
             </div>
 
+            <!-- Variables -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">3. Variables</div>
+              <div class="vs-hx-interval">
+                @for (opt of exportVarsOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-interval-pill"
+                    [class.vs-hx-interval-pill--active]="exportVars() === opt.value"
+                    (click)="exportVars.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+            </div>
+
             <!-- Sensores de la sala -->
             <div class="vs-hx-section">
               <div class="vs-hx-section-head">
                 <div class="vs-hx-section-title">
-                  3. Sensores
+                  4. Sensores
                   <span class="vs-hx-count">
                     {{ exportSelectedSensors().size }} / {{ sensors().length }}
                   </span>
@@ -2887,6 +2904,13 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     { value: '1h', label: '1 hora' },
     { value: '1d', label: '1 día' },
   ];
+  // Variables a incluir en el Excel: temperatura, humedad o ambas.
+  readonly exportVars = signal<'both' | 'temp' | 'hum'>('both');
+  readonly exportVarsOptions: { value: 'both' | 'temp' | 'hum'; label: string }[] = [
+    { value: 'both', label: 'Ambas' },
+    { value: 'temp', label: 'Temperatura' },
+    { value: 'hum', label: 'Humedad' },
+  ];
 
   private toDatetimeLocal(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -3038,22 +3062,30 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     const wb = XLSX.utils.book_new();
     const r2 = (n: number | null | undefined) => (n == null ? null : Math.round(n * 100) / 100);
 
-    // Hoja 1: Lecturas (promedio/mín/máx por intervalo).
+    // Hoja 1: Lecturas (promedio/mín/máx por intervalo). Columnas según variables elegidas.
+    const vars = this.exportVars();
+    const incT = vars !== 'hum';
+    const incH = vars !== 'temp';
     const rows = points.map((p) => {
       const dt = this.formatChileParts(p.ts);
-      return {
+      const row: Record<string, string | number | null> = {
         Fecha: dt.date,
         Hora: dt.time,
         Sensor: p.sensorId,
         Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
         TAP: p.tap,
-        'Temp prom (°C)': r2(p.t),
-        'Temp mín (°C)': r2(p.tMin),
-        'Temp máx (°C)': r2(p.tMax),
-        'HR prom (%)': r2(p.h),
-        'HR mín (%)': r2(p.hMin),
-        'HR máx (%)': r2(p.hMax),
       };
+      if (incT) {
+        row['Temp prom (°C)'] = r2(p.t);
+        row['Temp mín (°C)'] = r2(p.tMin);
+        row['Temp máx (°C)'] = r2(p.tMax);
+      }
+      if (incH) {
+        row['HR prom (%)'] = r2(p.h);
+        row['HR mín (%)'] = r2(p.hMin);
+        row['HR máx (%)'] = r2(p.hMax);
+      }
+      return row;
     });
     const sheet1 = XLSX.utils.json_to_sheet(rows);
     sheet1['!cols'] = [
@@ -3062,12 +3094,8 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
       { wch: 10 },
       { wch: 28 },
       { wch: 8 },
-      { wch: 14 },
-      { wch: 13 },
-      { wch: 13 },
-      { wch: 12 },
-      { wch: 11 },
-      { wch: 11 },
+      ...(incT ? [{ wch: 14 }, { wch: 13 }, { wch: 13 }] : []),
+      ...(incH ? [{ wch: 12 }, { wch: 11 }, { wch: 11 }] : []),
     ];
     XLSX.utils.book_append_sheet(wb, sheet1, 'Lecturas');
 
@@ -3097,6 +3125,11 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
         Valor: intervalLabel ? intervalNames[intervalLabel] || intervalLabel : cagg[view] || view,
       },
       { Campo: 'Resolución base', Valor: cagg[view] || view },
+      {
+        Campo: 'Variables',
+        Valor:
+          vars === 'both' ? 'Temperatura + Humedad' : vars === 'temp' ? 'Temperatura' : 'Humedad',
+      },
       { Campo: 'Sensores', Valor: sensorIds.join(', ') },
       { Campo: 'Total filas', Valor: points.length },
     ];
