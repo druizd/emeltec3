@@ -1822,16 +1822,17 @@ router.delete(
   requireRole(...ADMIN_ROLES),
   require2fa,
   async (req, res) => {
-  try {
-    await pool.query(`DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`, [
-      req.params.ruleId,
-      req.params.siteId,
-    ]);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+    try {
+      await pool.query(`DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`, [
+        req.params.ruleId,
+        req.params.siteId,
+      ]);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 // --- Usuarios elegibles del sitio: sub_empresa + admins de la empresa + SuperAdmin ---
 router.get('/:siteId/alarm-eligible-users', async (req, res) => {
