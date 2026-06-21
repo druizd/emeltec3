@@ -8,6 +8,7 @@ const {
 } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
 const { sendAlertEmail } = require('../services/emailService');
+const { require2fa } = require('../shared/stepUp2fa');
 
 const ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
 const OPERATOR_ROLES = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
@@ -1816,7 +1817,11 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
   }
 });
 
-router.delete('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
+router.delete(
+  '/:siteId/alarm-rules/:ruleId',
+  requireRole(...ADMIN_ROLES),
+  require2fa,
+  async (req, res) => {
   try {
     await pool.query(`DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`, [
       req.params.ruleId,

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
+const { require2fa } = require('../shared/stepUp2fa');
 const c = require('../controllers/alertaController');
 
 const adminRoles = ['SuperAdmin', 'Admin'];
@@ -12,7 +13,13 @@ router.post('/alertas', protect, authorizeRoles(...alarmEditorRoles), c.crearAle
 router.get('/alertas', protect, c.listarAlertas);
 router.get('/alertas/:id', protect, c.obtenerAlerta);
 router.put('/alertas/:id', protect, authorizeRoles(...alarmEditorRoles), c.actualizarAlerta);
-router.delete('/alertas/:id', protect, authorizeRoles(...alarmEditorRoles), c.eliminarAlerta);
+router.delete(
+  '/alertas/:id',
+  protect,
+  authorizeRoles(...alarmEditorRoles),
+  require2fa,
+  c.eliminarAlerta,
+);
 
 router.get('/eventos', protect, c.listarEventos);
 router.get('/eventos/:id', protect, c.obtenerEvento);
