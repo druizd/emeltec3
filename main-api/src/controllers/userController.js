@@ -17,6 +17,7 @@ const USER_PROFILE_SELECT = `
          u.tipo,
          u.empresa_id,
          u.sub_empresa_id,
+         COALESCE(u.activo, true) AS activo,
          u.last_login_at,
          u.activated_at,
          u.auth_mode,
@@ -90,6 +91,7 @@ exports.getAllUsers = async (req, res, next) => {
              u.tipo,
              u.empresa_id,
              u.sub_empresa_id,
+             COALESCE(u.activo, true) AS activo,
              u.last_login_at,
              u.activated_at,
              u.auth_mode,
@@ -423,43 +425,160 @@ exports.createUser = async (req, res, next) => {
   }
 };
 
+// Jerarquía de gestión (editar/eliminar/reset). Devuelve mensaje de error o null
+// si está permitido. SuperAdmin sin restricción.
+function managePermissionError(currentUser, target) {
+  if (currentUser.tipo === 'Admin') {
+    if (target.empresa_id !== currentUser.empresa_id)
+      return 'No puede gestionar usuarios de otra empresa';
+    if (target.tipo === 'SuperAdmin') return 'No puede gestionar a un SuperAdmin';
+  } else if (currentUser.tipo === 'Gerente') {
+    if (target.sub_empresa_id !== currentUser.sub_empresa_id)
+      return 'No puede gestionar usuarios de otra división';
+    if (target.tipo === 'SuperAdmin' || target.tipo === 'Admin')
+      return 'No tiene permiso sobre este usuario';
+  }
+  return null;
+}
+
+// Soft-delete: desactiva (no borra). Reversible vía updateUser activo=true.
 exports.deleteUser = async (req, res, next) => {
   try {
     const { id } = req.params;
     const currentUser = req.user;
+    if (id === currentUser.id) {
+      return res.status(400).json({ ok: false, error: 'No puede desactivar su propia cuenta' });
+    }
+    const check = await db.query(
+      'SELECT empresa_id, sub_empresa_id, tipo FROM usuario WHERE id = $1',
+      [id],
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+    const permErr = managePermissionError(currentUser, check.rows[0]);
+    if (permErr) return res.status(403).json({ ok: false, error: permErr });
 
-    if (currentUser.tipo === 'Admin' || currentUser.tipo === 'Gerente') {
-      const check = await db.query(
-        'SELECT empresa_id, sub_empresa_id, tipo FROM usuario WHERE id = $1',
-        [id],
-      );
-      if (check.rows.length === 0) {
-        return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    await db.query('UPDATE usuario SET activo = false, updated_at = NOW() WHERE id = $1', [id]);
+    res.json({ ok: true, message: 'Usuario desactivado' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Editar usuario (admin). Campos: nombre, apellido, telefono, cargo, rut_usuario,
+// tipo, empresa_id, sub_empresa_id, activo. NO email. Respeta jerarquía de roles.
+exports.updateUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user;
+    const check = await db.query(
+      'SELECT empresa_id, sub_empresa_id, tipo FROM usuario WHERE id = $1',
+      [id],
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+    const permErr = managePermissionError(currentUser, check.rows[0]);
+    if (permErr) return res.status(403).json({ ok: false, error: permErr });
+
+    const b = req.body || {};
+
+    // Guard de elevación de rol según quién edita.
+    if (b.tipo !== undefined) {
+      if (currentUser.tipo === 'Admin' && b.tipo === 'SuperAdmin') {
+        return res.status(403).json({ ok: false, error: 'No puede asignar el rol SuperAdmin.' });
       }
-      const targetUser = check.rows[0];
-
-      if (currentUser.tipo === 'Admin' && targetUser.empresa_id !== currentUser.empresa_id) {
-        return res
-          .status(403)
-          .json({ ok: false, error: 'No puede eliminar usuarios de otra empresa' });
-      }
-
-      if (currentUser.tipo === 'Gerente') {
-        if (targetUser.sub_empresa_id !== currentUser.sub_empresa_id) {
-          return res
-            .status(403)
-            .json({ ok: false, error: 'No puede eliminar usuarios de otra division' });
-        }
-        if (targetUser.tipo === 'SuperAdmin' || targetUser.tipo === 'Admin') {
-          return res
-            .status(403)
-            .json({ ok: false, error: 'No tiene permiso para eliminar a este usuario' });
-        }
+      if (currentUser.tipo === 'Gerente' && (b.tipo === 'SuperAdmin' || b.tipo === 'Admin')) {
+        return res.status(403).json({ ok: false, error: 'No puede asignar ese rol.' });
       }
     }
+    // Admin/Gerente no pueden mover usuarios fuera de su alcance.
+    if (b.empresa_id !== undefined && currentUser.tipo !== 'SuperAdmin') {
+      if (b.empresa_id !== currentUser.empresa_id) {
+        return res.status(403).json({ ok: false, error: 'No puede cambiar la empresa.' });
+      }
+    }
+    if (
+      b.sub_empresa_id !== undefined &&
+      currentUser.tipo === 'Gerente' &&
+      b.sub_empresa_id !== currentUser.sub_empresa_id
+    ) {
+      return res.status(403).json({ ok: false, error: 'No puede cambiar la división.' });
+    }
+    if (b.activo === false && id === currentUser.id) {
+      return res.status(400).json({ ok: false, error: 'No puede desactivar su propia cuenta' });
+    }
 
-    await db.query('DELETE FROM usuario WHERE id = $1', [id]);
-    res.json({ ok: true, message: 'Usuario eliminado' });
+    const allowed = {
+      nombre: b.nombre,
+      apellido: b.apellido,
+      telefono: b.telefono,
+      cargo: b.cargo,
+      rut_usuario: b.rut_usuario === undefined ? undefined : formatRutForStorage(b.rut_usuario),
+      tipo: b.tipo,
+      empresa_id: b.empresa_id,
+      sub_empresa_id: b.sub_empresa_id,
+      activo: b.activo,
+    };
+    const sets = [];
+    const params = [];
+    for (const [col, val] of Object.entries(allowed)) {
+      if (val !== undefined) {
+        params.push(val);
+        sets.push(`${col} = $${params.length}`);
+      }
+    }
+    if (sets.length === 0) {
+      return res.status(400).json({ ok: false, error: 'No hay campos para actualizar' });
+    }
+    params.push(id);
+    await db.query(
+      `UPDATE usuario SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${params.length}`,
+      params,
+    );
+    const updated = await getUserProfileById(id);
+    res.json({ ok: true, data: updated });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ ok: false, error: 'Dato duplicado' });
+    }
+    next(err);
+  }
+};
+
+// Reset de contraseña por admin: regenera el OTP de acceso y lo reenvía por email.
+exports.resetUserPassword = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user;
+    const check = await db.query(
+      'SELECT nombre, apellido, email, empresa_id, sub_empresa_id, tipo FROM usuario WHERE id = $1',
+      [id],
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+    const target = check.rows[0];
+    const permErr = managePermissionError(currentUser, target);
+    if (permErr) return res.status(403).json({ ok: false, error: permErr });
+
+    const otpCode = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const otpHash = await bcrypt.hash(otpCode, 10);
+    const otpExpiresAt = new Date(Date.now() + WELCOME_OTP_MINUTES * 60 * 1000);
+    await db.query(
+      'UPDATE usuario SET otp_hash = $1, otp_expires_at = $2, password_hash = NULL, updated_at = NOW() WHERE id = $3',
+      [otpHash, otpExpiresAt, id],
+    );
+    emailService
+      .sendWelcomeEmail(
+        target.email,
+        `${target.nombre} ${target.apellido || ''}`.trim(),
+        otpCode,
+        WELCOME_OTP_MINUTES,
+      )
+      .catch((e) => console.error('[resetUserPassword] email fallo:', e.message));
+    res.json({ ok: true, message: 'Se reenvió un código de acceso al usuario.' });
   } catch (err) {
     next(err);
   }

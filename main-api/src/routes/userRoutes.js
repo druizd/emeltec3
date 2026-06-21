@@ -27,7 +27,23 @@ router.post(
   userController.createUser,
 );
 
-// Eliminar usuarios (Solo Admin, SuperAdmin y Gerente) — exige 2FA.
+// Editar usuario (Solo Admin, SuperAdmin y Gerente) — exige 2FA.
+router.patch(
+  '/:id',
+  authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  require2fa,
+  userController.updateUser,
+);
+
+// Reset de contraseña por admin (reenvía código de acceso) — exige 2FA.
+router.post(
+  '/:id/reset-password',
+  authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
+  require2fa,
+  userController.resetUserPassword,
+);
+
+// Eliminar (desactivar) usuarios (Solo Admin, SuperAdmin y Gerente) — exige 2FA.
 router.delete(
   '/:id',
   authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),
