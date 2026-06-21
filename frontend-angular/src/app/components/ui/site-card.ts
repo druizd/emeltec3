@@ -115,6 +115,13 @@ export class SiteCardComponent {
   @Input() selected = false;
   @Input() contextLabel = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
+  /**
+   * Timestamp ISO de la última lectura, resuelto por el panel padre vía
+   * fetch secuencial (uno-a-uno) de dashboard-data. Tiene prioridad sobre
+   * los campos del propio `site`. NULL mientras no se ha resuelto su fetch
+   * o el sitio no tiene lecturas → card en "Sin datos".
+   */
+  @Input() lastSeenAt: string | null = null;
 
   @Output() siteSelected = new EventEmitter<SiteRecord>();
 
@@ -186,64 +193,35 @@ export class SiteCardComponent {
   }
 
   /**
-   * Estado conectado a la última lectura. Requiere que backend pueble
-   * `site.last_seen_at` (timestamp ISO) — sin este campo, fallback a
-   * los flags status/transmision_activa pre-existentes.
+   * Estado binario derivado de la última lectura:
+   *   - "En vivo"   → última lectura < 1h  (verde)
+   *   - "Sin datos" → ≥ 1h, sin timestamp, o fetch aún sin resolver  (gris)
    *
-   * Etiquetas:
-   *   - "En vivo"   → última lectura < 1h    (verde)
-   *   - "Con datos" → < 24h                  (cyan)
-   *   - "Sin datos" → ≥ 24h o sin timestamp  (gris)
+   * La frescura llega vía `lastSeenAt` (resuelto por el panel padre con
+   * fetch secuencial). Sin ese dato → "Sin datos".
    */
   getStatusLabel(): string {
     const ageMin = this.lastSeenAgeMinutes();
-    if (ageMin !== null) {
-      if (ageMin < 60) return 'En vivo';
-      if (ageMin < 24 * 60) return 'Con datos';
-      return 'Sin datos';
-    }
-
-    // Fallback a flags legacy si backend no manda last_seen_at todavía.
-    const rawStatus = this.pickFirst(['status', 'estado', 'data_status', 'estado_datos']);
-    if (typeof rawStatus === 'string') {
-      const normalized = rawStatus.toLowerCase();
-      if (normalized.includes('vivo') || normalized.includes('activo')) return 'En vivo';
-      if (normalized.includes('sin')) return 'Sin datos';
-      if (normalized.includes('con')) return 'Con datos';
-      return rawStatus;
-    }
-    const hasData = this.pickFirst(['hasData', 'has_data', 'tiene_datos', 'dataAvailable']);
-    if (typeof hasData === 'boolean') return hasData ? 'Con datos' : 'Sin datos';
-    const live = this.pickFirst(['transmision_activa', 'is_live', 'online']);
-    if (typeof live === 'boolean') return live ? 'En vivo' : 'Sin datos';
-    return 'Sin datos';
+    return ageMin !== null && ageMin < 60 ? 'En vivo' : 'Sin datos';
   }
 
   getStatusClass(): string {
-    const status = this.getStatusLabel().toLowerCase();
-    if (status.includes('vivo')) return 'text-emerald-500';
-    if (status.includes('con')) return 'text-primary-container';
-    return 'text-slate-400';
+    return this.getStatusLabel() === 'En vivo' ? 'text-emerald-500' : 'text-slate-400';
   }
 
   getStatusDotClass(): string {
-    const status = this.getStatusLabel().toLowerCase();
-    if (status.includes('vivo')) return 'bg-emerald-500';
-    if (status.includes('con')) return 'bg-primary';
-    return 'bg-slate-300';
+    return this.getStatusLabel() === 'En vivo' ? 'bg-emerald-500' : 'bg-slate-300';
   }
 
   /**
-   * Minutos transcurridos desde la última lectura, o null si el backend
-   * no manda timestamp. Probamos varios nombres de campo por compat.
+   * Minutos transcurridos desde la última lectura, o null si no hay
+   * timestamp. Prioriza `lastSeenAt` (panel padre); fallback a campos del
+   * propio `site` por compat.
    */
   private lastSeenAgeMinutes(): number | null {
-    const raw = this.pickFirst([
-      'last_seen_at',
-      'ultima_lectura_at',
-      'last_telemetry_at',
-      'ultimaLecturaAt',
-    ]);
+    const raw =
+      this.lastSeenAt ??
+      this.pickFirst(['last_seen_at', 'ultima_lectura_at', 'last_telemetry_at', 'ultimaLecturaAt']);
     if (!raw) return null;
     const t = new Date(raw).getTime();
     if (!Number.isFinite(t)) return null;

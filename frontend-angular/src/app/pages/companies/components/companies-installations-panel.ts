@@ -1,8 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, computed, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  EventEmitter,
+  Input,
+  Output,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subscription, catchError, concatMap, from, map, of } from 'rxjs';
 import { SiteCardComponent } from '../../../components/ui/site-card';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
+import { CompanyService } from '../../../services/company.service';
 import type { SiteRecord } from '@emeltec/shared';
 
 @Component({
@@ -26,6 +38,7 @@ import type { SiteRecord } from '@emeltec/shared';
             [site]="site"
             [contextLabel]="contextLabel"
             [variant]="variant"
+            [lastSeenAt]="lastSeenMap()[site.id] ?? null"
             (siteSelected)="siteSelected.emit($event)"
           />
         }
@@ -49,19 +62,70 @@ import type { SiteRecord } from '@emeltec/shared';
   `,
 })
 export class CompaniesInstallationsPanelComponent {
+  private readonly companyService = inject(CompanyService);
+  private readonly destroyRef = inject(DestroyRef);
+
   @Input() set sites(value: SiteRecord[]) {
     this._sites.set(value || []);
+    this.startFreshnessProbe();
   }
   get sites(): SiteRecord[] {
     return this._sites();
   }
   private _sites = signal<SiteRecord[]>([]);
 
+  /**
+   * Última lectura ISO por sitio, resuelta uno-a-uno (ver
+   * `startFreshnessProbe`). El card la lee vía [lastSeenAt] y pinta verde
+   * "En vivo" si <1h, sino gris "Sin datos".
+   */
+  readonly lastSeenMap = signal<Record<string, string | null>>({});
+  private probeSub?: Subscription;
+
   @Input() loading = false;
   @Input() contextLabel = '';
   @Input() variant: 'default' | 'superadmin' = 'default';
 
   @Output() siteSelected = new EventEmitter<SiteRecord>();
+
+  /**
+   * Probe de frescura SECUENCIAL (concatMap → un request a la vez) para
+   * evitar sobrecargar el backend cuando hay muchas instalaciones. Por cada
+   * sitio pide dashboard-data y guarda el timestamp de `ultima_lectura`.
+   * Los cards arrancan en "Sin datos" y van pasando a verde a medida que
+   * cada respuesta llega. Se reinicia cada vez que cambia `sites`.
+   */
+  private startFreshnessProbe(): void {
+    this.probeSub?.unsubscribe();
+    this.lastSeenMap.set({});
+
+    // Vista cold-room renderiza ventisqueros, no cards → no hay nada que probar.
+    if (this.coldRoomSite()) return;
+
+    const cards = this._sites().filter((s) => normalizeSiteType(s.tipo_sitio) !== 'camara_frio');
+    if (cards.length === 0) return;
+
+    this.probeSub = from(cards)
+      .pipe(
+        concatMap((site) =>
+          this.companyService.getSiteDashboardData(site.id).pipe(
+            catchError(() => of(null)),
+            map((res) => ({
+              id: site.id,
+              ts:
+                res?.data?.ultima_lectura?.timestamp_completo ??
+                res?.data?.ultima_lectura?.time ??
+                res?.data?.ultima_lectura?.received_at ??
+                null,
+            })),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(({ id, ts }) => {
+        this.lastSeenMap.update((prev) => ({ ...prev, [id]: ts }));
+      });
+  }
 
   readonly coldRoomSites = computed<SiteRecord[]>(() => {
     const list = this._sites();
