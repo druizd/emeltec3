@@ -138,6 +138,14 @@
 }
 
 @layer base {
+  /* Root font-size sube de 16px a 17px → escala ~6% TODO el sistema de tokens
+     tipográficos (--text-* están en rem). Los tamaños hardcoded en px
+     (text-[10px], etc.) no se ven afectados — son casos puntuales de iconos
+     y badges donde el px fijo es intencional. */
+  html {
+    font-size: 17px;
+  }
+
   body {
     @apply bg-background font-body text-on-surface antialiased;
   }
@@ -181,6 +189,46 @@
   [tabindex]:focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+  }
+}
+
+/* ── Responsive tables → card-stack en mobile ────────────────────────────
+   Opt-in: agregar class="responsive-table" a la <table> y [attr.data-label]
+   a cada <td>. En <md (767px) cada <tr> se vuelve tarjeta y cada celda
+   muestra su etiqueta. Single-source: el mismo *ngFor/@for sirve desktop y
+   mobile, sin duplicar markup. Fuera de @layer para ganar sobre el display
+   de las utilities de Tailwind. Las tablas anchas deben quedar dentro de un
+   contenedor .overflow-x-auto y usar md:min-w-[...] (no min-w- a secas). */
+@media (max-width: 767px) {
+  .responsive-table thead {
+    display: none;
+  }
+  .responsive-table tr {
+    display: block;
+    margin: 0 0 8px;
+    padding: 4px 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+  }
+  .responsive-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 14px;
+    border: 0;
+  }
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+  .responsive-table td[data-label='']::before {
+    content: none;
   }
 }
 

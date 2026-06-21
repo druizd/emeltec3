@@ -1,8 +1,9 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './header/header';
 import { SidebarComponent } from './sidebar/sidebar';
+import { LayoutUiService } from './layout-ui.service';
 import { ViewAsBannerComponent } from './view-as-banner/view-as-banner';
 import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
 import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
@@ -32,6 +33,15 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
       class="fixed inset-0 flex overflow-hidden bg-[#f0f2f5]"
       style="font-family: 'DM Sans', 'Josefin Sans', sans-serif;"
     >
+      <!-- Backdrop del drawer (solo mobile/tablet <lg). Click cierra. -->
+      @if (ui.mobileNavOpen()) {
+        <div
+          (click)="ui.closeMobileNav()"
+          class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
+          aria-hidden="true"
+        ></div>
+      }
+
       <app-sidebar></app-sidebar>
 
       <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -49,13 +59,13 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
 
     <!-- ── Chatbot flotante ── -->
     @if (chatOpen()) {
+      <!-- Ancho cap a viewport en mobile. Dock por translateX relativo al
+           ANCHO propio (100% - 44px del pull-tab) → funciona a cualquier ancho,
+           a diferencia del offset right:-356px hardcoded para 400px. -->
       <div
-        class="fixed bottom-[110px] z-50 w-[400px]"
-        [style]="
-          'right:' +
-          (chatDocked() ? '-356px' : '24px') +
-          '; transition: right 0.35s cubic-bezier(0.4,0,0.2,1)'
-        "
+        class="fixed bottom-[110px] right-3 z-50 w-[min(400px,calc(100vw-1.5rem))] sm:right-6"
+        style="transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);"
+        [style.transform]="chatDocked() ? 'translateX(calc(100% - 44px))' : 'none'"
       >
         <!-- Pull tab (solo visible cuando está oculto al costado) -->
         @if (chatDocked()) {
@@ -189,6 +199,8 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
   `,
 })
 export class LayoutComponent {
+  readonly ui = inject(LayoutUiService);
+
   chatOpen = signal(false);
   chatDocked = signal(false);
   bubbleHidden = signal(false);
