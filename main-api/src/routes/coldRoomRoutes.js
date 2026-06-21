@@ -1356,11 +1356,41 @@ router.get('/:siteId/history-export', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Rango máximo: 365 días' });
     }
 
-    // Elegir cagg según rango.
+    // Cagg BASE según rango (acota cantidad de filas leídas).
     let view = 'equipo_1min';
     if (durMs > 7 * 86_400_000) view = 'equipo_daily';
     else if (durMs > 2 * 86_400_000) view = 'equipo_hourly';
     else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
+    const BASE_MS = {
+      equipo_1min: 60_000,
+      equipo_5min: 300_000,
+      equipo_hourly: 3_600_000,
+      equipo_daily: 86_400_000,
+    };
+    const baseMs = BASE_MS[view];
+
+    // Intervalo de agrupación pedido (promedio/min/max por intervalo). 'auto' =
+    // usa la resolución base. No puede ser más fino que la base (se clampa).
+    const INTERVAL_MS = {
+      '1min': 60_000,
+      '5min': 300_000,
+      '15min': 900_000,
+      '1h': 3_600_000,
+      '1d': 86_400_000,
+    };
+    const intervalRaw = String(req.query.interval || 'auto')
+      .toLowerCase()
+      .trim();
+    const requestedMs = INTERVAL_MS[intervalRaw] || null; // null = auto
+    const effectiveMs = requestedMs ? Math.max(requestedMs, baseMs) : baseMs;
+    const INTERVAL_LABEL = {
+      60_000: '1min',
+      300_000: '5min',
+      900_000: '15min',
+      3_600_000: '1h',
+      86_400_000: '1d',
+    };
+    const intervalLabel = INTERVAL_LABEL[effectiveMs] || `${effectiveMs}ms`;
 
     const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
     const siteIds = siteIdsRaw
@@ -1447,8 +1477,14 @@ router.get('/:siteId/history-export', async (req, res) => {
 
     const toSigned16 = (n) => (typeof n === 'number' && n > 32767 ? n - 65536 : n);
 
-    // Pivot: por bucket+sensor.
-    const points = [];
+    // Agrupa los buckets base en el intervalo efectivo y calcula promedio/min/max
+    // por sensor. Alineación a día Chile (offset fijo -04:00) para que los buckets
+    // de 1d/1h caigan en horario local, coherente con el resto del sistema.
+    const CHILE_OFFSET_MS = 4 * 3_600_000;
+    const bucketStart = (tsMs) =>
+      Math.floor((tsMs - CHILE_OFFSET_MS) / effectiveMs) * effectiveMs + CHILE_OFFSET_MS;
+
+    const acc = new Map(); // `${sensorId}@${siteId}__${bucketMs}` → agregados
     for (const row of histRes.rows) {
       for (const s of sensorList) {
         if (s.idSerial !== row.id_serial) continue;
@@ -1457,22 +1493,63 @@ router.get('/:siteId/history-export', async (req, res) => {
         const tVal = typeof rawT === 'number' ? +(rawT * s.factor + s.offset).toFixed(2) : null;
         const hVal = typeof rawH === 'number' ? +(rawH * s.factor + s.offset).toFixed(2) : null;
         if (tVal === null && hVal === null) continue;
-        points.push({
-          ts: new Date(row.bucket).toISOString(),
-          sensorId: s.id,
-          area: s.area,
-          tap: s.tap,
-          t: tVal,
-          h: hVal,
-        });
+        const bMs = bucketStart(new Date(row.bucket).getTime());
+        const key = `${s.id}@${s.siteId}__${bMs}`;
+        let a = acc.get(key);
+        if (!a) {
+          a = {
+            ts: bMs,
+            sensorId: s.id,
+            area: s.area,
+            tap: s.tap,
+            tSum: 0,
+            tCount: 0,
+            tMin: Infinity,
+            tMax: -Infinity,
+            hSum: 0,
+            hCount: 0,
+            hMin: Infinity,
+            hMax: -Infinity,
+          };
+          acc.set(key, a);
+        }
+        if (tVal !== null) {
+          a.tSum += tVal;
+          a.tCount += 1;
+          if (tVal < a.tMin) a.tMin = tVal;
+          if (tVal > a.tMax) a.tMax = tVal;
+        }
+        if (hVal !== null) {
+          a.hSum += hVal;
+          a.hCount += 1;
+          if (hVal < a.hMin) a.hMin = hVal;
+          if (hVal > a.hMax) a.hMax = hVal;
+        }
       }
     }
+
+    const round2 = (n) => +n.toFixed(2);
+    const points = [...acc.values()]
+      .sort((x, y) => x.ts - y.ts || x.sensorId.localeCompare(y.sensorId))
+      .map((a) => ({
+        ts: new Date(a.ts).toISOString(),
+        sensorId: a.sensorId,
+        area: a.area,
+        tap: a.tap,
+        t: a.tCount > 0 ? round2(a.tSum / a.tCount) : null,
+        tMin: a.tCount > 0 ? a.tMin : null,
+        tMax: a.tCount > 0 ? a.tMax : null,
+        h: a.hCount > 0 ? round2(a.hSum / a.hCount) : null,
+        hMin: a.hCount > 0 ? a.hMin : null,
+        hMax: a.hCount > 0 ? a.hMax : null,
+      }));
 
     res.json({
       ok: true,
       data: { points },
       meta: {
         view,
+        interval: intervalLabel,
         rows: points.length,
         from: from.toISOString(),
         to: to.toISOString(),

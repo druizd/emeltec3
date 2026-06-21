@@ -24,6 +24,8 @@ import { AuthService } from '../../services/auth.service';
 import { CompanyService } from '../../services/company.service';
 import {
   ColdRoomService,
+  type ColdRoomExportInterval,
+  type ColdRoomExportPoint,
   type ColdRoomRange,
   type ColdRoomSensor,
   type ColdRoomSensorHistory,
@@ -625,7 +627,29 @@ function slugify(area: string): string {
                 </label>
               </div>
               <div class="vs-hx-hint">
-                Cagg se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h (≤30d), 1d (resto).
+                La resolución base se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h
+                (≤30d), 1d (resto).
+              </div>
+            </div>
+
+            <!-- Intervalo de agrupación (promedio / mín / máx) -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">2. Intervalo de agrupación</div>
+              <div class="vs-hx-interval">
+                @for (opt of exportIntervalOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-interval-pill"
+                    [class.vs-hx-interval-pill--active]="exportInterval() === opt.value"
+                    (click)="exportInterval.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <div class="vs-hx-hint">
+                Cada fila trae promedio, mínimo y máximo por intervalo. "Auto" usa la resolución
+                base. No puede ser más fino que la base disponible para el rango.
               </div>
             </div>
 
@@ -633,7 +657,7 @@ function slugify(area: string): string {
             <div class="vs-hx-section">
               <div class="vs-hx-section-head">
                 <div class="vs-hx-section-title">
-                  2. Sensores
+                  3. Sensores
                   <span class="vs-hx-count">
                     {{ exportSelectedSensors().size }} / {{ sensors().length }}
                   </span>
@@ -1473,6 +1497,33 @@ function slugify(area: string): string {
         font-size: 10.5px;
         color: #94a3b8;
         font-style: italic;
+      }
+      .vs-hx-interval {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .vs-hx-interval-pill {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        padding: 5px 11px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          color 0.15s;
+      }
+      .vs-hx-interval-pill:hover {
+        border-color: var(--color-primary-tint-30);
+      }
+      .vs-hx-interval-pill--active {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: #ffffff;
       }
       .vs-hx-grid {
         display: grid;
@@ -2826,6 +2877,16 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly exportSelectedSensors = signal<Set<string>>(new Set<string>());
   readonly exportLoading = signal<boolean>(false);
   readonly exportError = signal<string | null>(null);
+  // Intervalo de agrupación (promedio/min/max por intervalo). 'auto' = resolución base.
+  readonly exportInterval = signal<ColdRoomExportInterval>('auto');
+  readonly exportIntervalOptions: { value: ColdRoomExportInterval; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: '1min', label: '1 min' },
+    { value: '5min', label: '5 min' },
+    { value: '15min', label: '15 min' },
+    { value: '1h', label: '1 hora' },
+    { value: '1d', label: '1 día' },
+  ];
 
   private toDatetimeLocal(d: Date): string {
     const pad = (n: number) => String(n).padStart(2, '0');
@@ -2900,7 +2961,14 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     if (!sid) return;
     this.exportLoading.set(true);
     this.coldRoom
-      .exportHistory(sid, from.toISOString(), to.toISOString(), this.bundleSiteIds(), sensors)
+      .exportHistory(
+        sid,
+        from.toISOString(),
+        to.toISOString(),
+        this.bundleSiteIds(),
+        sensors,
+        this.exportInterval(),
+      )
       .subscribe({
         next: async (res) => {
           this.exportLoading.set(false);
@@ -2913,7 +2981,14 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
             return;
           }
           try {
-            await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
+            await this.downloadHistoryXlsx(
+              res.data.points,
+              from,
+              to,
+              res.meta.view,
+              sensors,
+              res.meta.interval,
+            );
             this.closeExportModal();
           } catch (err) {
             this.exportError.set(
@@ -2952,23 +3027,19 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   private async downloadHistoryXlsx(
-    points: {
-      ts: string;
-      sensorId: string;
-      area: string;
-      tap: string;
-      t: number | null;
-      h: number | null;
-    }[],
+    points: ColdRoomExportPoint[],
     from: Date,
     to: Date,
     view: string,
     sensorIds: string[],
+    intervalLabel?: string,
   ): Promise<void> {
     const XLSX = await this.loadXlsx();
     const wb = XLSX.utils.book_new();
+    const r2 = (n: number | null | undefined) =>
+      n == null ? null : Math.round(n * 100) / 100;
 
-    // Hoja 1: Lecturas (datos crudos).
+    // Hoja 1: Lecturas (promedio/mín/máx por intervalo).
     const rows = points.map((p) => {
       const dt = this.formatChileParts(p.ts);
       return {
@@ -2977,8 +3048,12 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
         Sensor: p.sensorId,
         Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
         TAP: p.tap,
-        'Temperatura (°C)': p.t !== null ? Math.round(p.t * 100) / 100 : null,
-        'Humedad (%)': p.h !== null ? Math.round(p.h * 100) / 100 : null,
+        'Temp prom (°C)': r2(p.t),
+        'Temp mín (°C)': r2(p.tMin),
+        'Temp máx (°C)': r2(p.tMax),
+        'HR prom (%)': r2(p.h),
+        'HR mín (%)': r2(p.hMin),
+        'HR máx (%)': r2(p.hMax),
       };
     });
     const sheet1 = XLSX.utils.json_to_sheet(rows);
@@ -2988,8 +3063,12 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
       { wch: 10 },
       { wch: 28 },
       { wch: 8 },
-      { wch: 16 },
       { wch: 14 },
+      { wch: 13 },
+      { wch: 13 },
+      { wch: 12 },
+      { wch: 11 },
+      { wch: 11 },
     ];
     XLSX.utils.book_append_sheet(wb, sheet1, 'Lecturas');
 
@@ -3001,15 +3080,26 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
       equipo_hourly: '1 hora',
       equipo_daily: '1 día',
     };
+    const intervalNames: Record<string, string> = {
+      '1min': '1 minuto',
+      '5min': '5 minutos',
+      '15min': '15 minutos',
+      '1h': '1 hora',
+      '1d': '1 día',
+    };
     const summary = [
       { Campo: 'Sitio', Valor: this.siteName() },
       { Campo: 'Sala', Valor: this.sensors()[0]?.area ?? this.salaSlug() },
       { Campo: 'Generado', Valor: this.formatChileShort(new Date().toISOString()) },
       { Campo: 'Rango desde', Valor: fmtRange(from) },
       { Campo: 'Rango hasta', Valor: fmtRange(to) },
-      { Campo: 'Granularidad', Valor: cagg[view] || view },
+      {
+        Campo: 'Agrupación (promedio/mín/máx)',
+        Valor: intervalLabel ? intervalNames[intervalLabel] || intervalLabel : cagg[view] || view,
+      },
+      { Campo: 'Resolución base', Valor: cagg[view] || view },
       { Campo: 'Sensores', Valor: sensorIds.join(', ') },
-      { Campo: 'Total lecturas', Valor: points.length },
+      { Campo: 'Total filas', Valor: points.length },
     ];
     const sheet2 = XLSX.utils.json_to_sheet(summary);
     sheet2['!cols'] = [{ wch: 18 }, { wch: 60 }];
