@@ -3207,28 +3207,32 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     const id = this.siteId();
     if (!id) return;
     this.isLoading.set(true);
+    // Ventana de datos:
+    //  - fecha elegida en el picker → ese día.
+    //  - modo vivo + rango 24h → ancla al DÍA ACTUAL (hoy 00:00 → ahora), no rolling
+    //    (sin datos futuros, el backend devuelve 00:00→ahora). Sigue en vivo (polling).
+    //  - modo vivo + 1h/6h/7d → rolling relativo a ahora (sin date).
+    const dateParam = this.selectedDate() ?? (this.range() === '24h' ? this.todayChile() : null);
     // Pasa bundle de siteIds para que backend cubra concentrador + TAPs reales.
     // Sin esto, si siteId es el maestro (sin STH-*), backend devuelve [].
-    this.coldRoom
-      .getSensors(id, null, this.range(), this.bundleSiteIds(), this.selectedDate())
-      .subscribe({
-        next: (res) => {
-          if (res.ok) {
-            this.allSensors.set(res.data || []);
-            this.lastUpdate.set(new Date());
-            this.serviceError.set(null);
-          } else {
-            this.serviceError.set(res.error || 'Sin datos');
-          }
-          this.isLoading.set(false);
-          this.scheduleNextPoll();
-        },
-        error: () => {
-          this.serviceError.set('Error de conexión');
-          this.isLoading.set(false);
-          this.scheduleNextPoll();
-        },
-      });
+    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds(), dateParam).subscribe({
+      next: (res) => {
+        if (res.ok) {
+          this.allSensors.set(res.data || []);
+          this.lastUpdate.set(new Date());
+          this.serviceError.set(null);
+        } else {
+          this.serviceError.set(res.error || 'Sin datos');
+        }
+        this.isLoading.set(false);
+        this.scheduleNextPoll();
+      },
+      error: () => {
+        this.serviceError.set('Error de conexión');
+        this.isLoading.set(false);
+        this.scheduleNextPoll();
+      },
+    });
   }
 
   private scheduleNextPoll(): void {
