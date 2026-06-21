@@ -43,7 +43,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <button
               type="button"
               (click)="chartRangeOpen.update((v) => !v)"
-              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               [class]="
                 chartRangeOpen()
                   ? 'border-primary-tint-25 bg-primary-tint-08 text-primary-container'
@@ -81,7 +81,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                       <button
                         type="button"
                         (click)="setPreset(p.key)"
-                        class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                        class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         [class]="
                           chartPreset() === p.key
                             ? 'bg-primary text-white'
@@ -130,7 +130,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                     <button
                       type="button"
                       (click)="applyCustomRange()"
-                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container"
                     >
                       <span class="material-symbols-outlined text-[14px]">check</span>
                       Aplicar rango
@@ -156,7 +156,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 (click)="downloadNivelXlsx()"
                 [disabled]="nivelEmpty()"
                 aria-label="Descargar Nivel Freático en Excel"
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                   >download</span
@@ -263,7 +263,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 (click)="downloadCaudalXlsx()"
                 [disabled]="caudalEmpty()"
                 aria-label="Descargar Caudal Instantáneo en Excel"
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                   >download</span
@@ -374,7 +374,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             (click)="downloadMensualXlsx()"
             [disabled]="mensualLoading() || mensualEmpty()"
             aria-label="Descargar Flujo Mensual en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
             >.XLSX
@@ -466,7 +466,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             (click)="downloadDiarioXlsx()"
             [disabled]="diarioLoading() || diarioEmpty()"
             aria-label="Descargar Flujo Diario en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
             >.XLSX
@@ -548,7 +548,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               <button
                 type="button"
                 (click)="jornadaSettingsOpen.update((v) => !v)"
-                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 [class]="
                   jornadaSettingsOpen()
                     ? 'bg-primary-tint-14 text-primary-container'
@@ -570,7 +570,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             (click)="downloadJornadaXlsx()"
             [disabled]="turno7Loading() || turno7Empty()"
             aria-label="Descargar Resumen Jornada en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
             >.XLSX
@@ -615,7 +615,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <button
               type="button"
               (click)="jornadaSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
             >
               <span class="material-symbols-outlined text-[14px]">check</span>
               Listo

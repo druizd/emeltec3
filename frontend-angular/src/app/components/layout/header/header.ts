@@ -15,13 +15,13 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
   standalone: true,
   imports: [CommonModule],
   template: `
-    <header class="h-16 shrink-0 border-b border-[#E2E8F0] bg-white">
+    <header class="h-16 shrink-0 border-b border-surface-container bg-white">
       <div class="flex h-full items-stretch px-3 sm:px-5">
         <!-- Hamburguesa: abre el drawer del sidebar (solo mobile/tablet <lg). -->
         <button
           type="button"
           (click)="ui.toggleMobileNav()"
-          class="my-auto mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
+          class="my-auto mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           aria-label="Abrir menú de navegación"
         >
           <span class="material-symbols-outlined text-[22px]">menu</span>
@@ -57,7 +57,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           <button
             type="button"
             (click)="shortcuts.openPalette()"
-            class="hidden h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] sm:flex"
+            class="hidden h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex"
             aria-label="Atajos de teclado (?)"
             title="Atajos de teclado (?)"
           >
@@ -70,7 +70,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                 (click)="toggleViewAsMenu()"
                 [class.text-amber-600]="auth.isViewingAs()"
                 [class.bg-amber-50]="auth.isViewingAs()"
-                class="flex h-[30px] items-center gap-1 rounded-md px-2 text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="flex h-[30px] items-center gap-1 rounded-md px-2 text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label="Vista previa de roles"
                 title="Vista previa de roles"
                 [attr.aria-expanded]="viewAsMenuOpen()"
@@ -85,9 +85,9 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
               @if (viewAsMenuOpen()) {
                 <div
-                  class="absolute right-0 top-full z-50 mt-2 w-[min(390px,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
+                  class="absolute right-0 top-full z-50 mt-2 w-[min(390px,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
                 >
-                  <div class="border-b border-[#E2E8F0] px-4 py-3">
+                  <div class="border-b border-surface-container px-4 py-3">
                     <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
                       Vista previa
                     </p>
@@ -100,7 +100,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                     <button
                       type="button"
                       (click)="clearPreview()"
-                      class="flex w-full items-center justify-between gap-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2.5 text-left transition-colors hover:bg-white"
+                      class="flex w-full items-center justify-between gap-3 rounded-lg border border-surface-container bg-surface-subtle px-3 py-2.5 text-left transition-colors hover:bg-white"
                     >
                       <span class="flex min-w-0 items-center gap-2.5">
                         <span
@@ -109,7 +109,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                           shield_person
                         </span>
                         <span class="min-w-0">
-                          <span class="block text-body-sm font-semibold text-[#1E293B]">
+                          <span class="block text-body-sm font-semibold text-on-surface">
                             Mi rol real
                           </span>
                           <span class="block truncate text-caption-xs text-slate-400">
@@ -118,7 +118,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                         </span>
                       </span>
                       @if (!auth.isViewingAs()) {
-                        <span class="material-symbols-outlined text-[16px] text-[#0DAFBD]">
+                        <span class="material-symbols-outlined text-[16px] text-primary">
                           check
                         </span>
                       }
@@ -132,7 +132,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                           [class.border-primary-tint-40]="draftRole() === role.value"
                           [class.bg-primary-tint-08]="draftRole() === role.value"
                           [class.text-primary-container]="draftRole() === role.value"
-                          class="flex min-h-[66px] flex-col items-start justify-between rounded-lg border border-[#E2E8F0] bg-white px-2.5 py-2 text-left text-slate-500 transition-all hover:border-primary-tint-30 hover:bg-[#F8FAFC]"
+                          class="flex min-h-[66px] flex-col items-start justify-between rounded-lg border border-surface-container bg-white px-2.5 py-2 text-left text-slate-500 transition-all hover:border-primary-tint-30 hover:bg-surface-subtle"
                         >
                           <span class="material-symbols-outlined text-[17px]">{{ role.icon }}</span>
                           <span>
@@ -149,7 +149,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
                     @if (previewCompanies().length === 0) {
                       <div
-                        class="rounded-lg border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-3 py-4 text-center text-caption text-slate-400"
+                        class="rounded-lg border border-dashed border-[#CBD5E1] bg-surface-subtle px-3 py-4 text-center text-caption text-slate-400"
                       >
                         No hay empresas cargadas para crear una preview.
                       </div>
@@ -164,7 +164,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                           <select
                             [value]="draftCompanyId()"
                             (change)="onDraftCompanyChange($event)"
-                            class="h-9 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                            class="h-9 w-full rounded-lg border border-surface-container bg-white px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
                           >
                             @for (company of previewCompanies(); track company.id) {
                               <option [value]="company.id">{{ company.nombre }}</option>
@@ -182,7 +182,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                             <select
                               [value]="draftSubCompanyId()"
                               (change)="onDraftSubCompanyChange($event)"
-                              class="h-9 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                              class="h-9 w-full rounded-lg border border-surface-container bg-white px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
                             >
                               @for (subCompany of previewSubCompanies(); track subCompany.id) {
                                 <option [value]="subCompany.id">{{ subCompany.nombre }}</option>
@@ -201,7 +201,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                             <select
                               [value]="draftSiteId()"
                               (change)="onDraftSiteChange($event)"
-                              class="h-9 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-body-sm font-semibold text-[#1E293B] outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                              class="h-9 w-full rounded-lg border border-surface-container bg-white px-3 text-body-sm font-semibold text-on-surface outline-none focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
                             >
                               @for (site of previewSites(); track site.id) {
                                 <option [value]="site.id">{{ siteLabel(site) }}</option>
@@ -212,7 +212,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                       </div>
 
                       <div
-                        class="rounded-lg border border-primary-tint-20 bg-primary-tint-08 px-3 py-2 text-caption text-[#04606A]"
+                        class="rounded-lg border border-primary-tint-20 bg-primary-tint-08 px-3 py-2 text-caption text-primary-deep"
                       >
                         <span class="font-bold">Alcance:</span>
                         {{ previewDraftScopeLabel() || 'Selecciona un alcance valido' }}
@@ -236,7 +236,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
             <button
               [hidden]="!auth.canAccessAdministration()"
               (click)="router.navigate(['/administration'])"
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Administración"
             >
               <span class="material-symbols-outlined text-[16px]">settings</span>
@@ -244,7 +244,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           } @else if (auth.canAccessAdministration()) {
             <button
               (click)="router.navigate(['/administration'])"
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Administración"
             >
               <span class="material-symbols-outlined text-[16px]">settings</span>
@@ -256,7 +256,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
             <button
               type="button"
               (click)="toggleUserMenu()"
-              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-all hover:ring-primary-tint-30 focus-visible:outline-none focus-visible:ring-[#0DAFBD]"
+              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-all hover:ring-primary-tint-30 focus-visible:outline-none focus-visible:ring-primary"
               aria-label="Menú de usuario"
               [attr.aria-expanded]="userMenuOpen()"
             >
@@ -265,10 +265,10 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
             @if (userMenuOpen()) {
               <div
-                class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+                class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
               >
                 <!-- User info -->
-                <div class="border-b border-[#E2E8F0] px-4 py-3">
+                <div class="border-b border-surface-container px-4 py-3">
                   <p class="text-body-sm font-bold text-slate-800">
                     {{ auth.user()?.nombre }} {{ auth.user()?.apellido }}
                   </p>
@@ -294,7 +294,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                     Notificaciones
                   </button>
                 </div>
-                <div class="border-t border-[#E2E8F0] py-1">
+                <div class="border-t border-surface-container py-1">
                   <button
                     type="button"
                     (click)="logout()"

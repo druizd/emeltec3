@@ -143,7 +143,7 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
             <input
               type="text"
               placeholder="Escribe un mensaje..."
-              class="h-9 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] text-slate-700 outline-none transition-all placeholder:text-slate-300 focus:border-[#0dafbd]/40 focus:bg-white"
+              class="h-9 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] text-slate-700 outline-none transition-all placeholder:text-slate-300 focus:border-primary/40 focus:bg-white"
               disabled
             />
             <button

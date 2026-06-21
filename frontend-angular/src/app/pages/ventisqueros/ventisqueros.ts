@@ -462,7 +462,7 @@ interface MetricOption {
             <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="umbralesOpen.set(true)"
                 [title]="
                   salasSinUmbralCount() > 0
@@ -480,7 +480,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="defrostOpen.set(true)"
                 [title]="
                   defrostEnabledCount() > 0
@@ -496,7 +496,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="auditOpen.set(true)"
                 title="Registro auditoría HACCP"
               >
@@ -508,7 +508,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="openHistoryExport()"
                 title="Descargar historial Excel con rango y sensores configurables"
               >

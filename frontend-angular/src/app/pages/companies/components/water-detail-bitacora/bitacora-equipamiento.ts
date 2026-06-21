@@ -291,7 +291,7 @@ import {
               type="button"
               (click)="save()"
               [disabled]="!form().nombre || saving()"
-              class="rounded bg-primary px-4 py-1.5 text-body-sm font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
+              class="rounded bg-primary px-4 py-1.5 text-body-sm font-bold text-white hover:bg-primary-container disabled:opacity-40"
             >
               {{ saving() ? 'Guardando…' : 'Guardar' }}
             </button>

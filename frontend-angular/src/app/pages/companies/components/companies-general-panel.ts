@@ -396,7 +396,7 @@ interface Periodo {
             <div class="mb-4 flex items-center justify-between gap-3">
               <h3 class="text-body-sm font-semibold text-slate-800">Resumen operacional</h3>
               <span
-                class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
+                class="rounded-full border border-surface-container bg-surface-subtle px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
               >
                 Mayo 2026
               </span>
@@ -576,7 +576,7 @@ interface Periodo {
                   type="button"
                   (click)="aplicarPeriodosCustom()"
                   [disabled]="!periodosCustomPendientes()"
-                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                 >
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   Aplicar

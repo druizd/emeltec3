@@ -556,7 +556,7 @@ import {
             type="button"
             (click)="save()"
             [disabled]="saving() || !dirty()"
-            class="rounded-lg bg-primary px-4 py-2 text-body-sm font-bold text-white hover:bg-[#0899a5] disabled:opacity-40"
+            class="rounded-lg bg-primary px-4 py-2 text-body-sm font-bold text-white hover:bg-primary-container disabled:opacity-40"
           >
             {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
           </button>

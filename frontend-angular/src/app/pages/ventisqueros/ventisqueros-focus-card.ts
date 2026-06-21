@@ -78,7 +78,7 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
           <div class="vs-stat-card">
             <div class="vs-stat-label">Humedad</div>
             <div class="mt-1 flex items-baseline gap-0.75">
-              <span class="vs-stat-value text-[#1E293B]">{{ fmtHumValue(f.h) }}</span>
+              <span class="vs-stat-value text-on-surface">{{ fmtHumValue(f.h) }}</span>
               <span class="vs-stat-unit">%</span>
             </div>
             <div class="vs-h-bar-track">

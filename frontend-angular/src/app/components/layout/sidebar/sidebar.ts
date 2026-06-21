@@ -57,7 +57,7 @@ const MODULES = SITE_MODULES;
       aria-label="Menú lateral de navegación"
     >
       <!-- Header -->
-      <div class="relative flex h-16 shrink-0 items-center border-b border-[#E2E8F0] px-4">
+      <div class="relative flex h-16 shrink-0 items-center border-b border-surface-container px-4">
         @if (!collapsed()) {
           <!-- Logo más grande que el header (64px): sobresale hacia ABAJO sin
                recorte. Anclaje en top-[36px] + -translate-y-1/2 deja el borde
@@ -76,7 +76,7 @@ const MODULES = SITE_MODULES;
         <button
           type="button"
           (click)="collapsed.update((v) => !v)"
-          class="hidden h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:flex"
+          class="hidden h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-on-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
           [class.ml-auto]="!collapsed()"
           [class.mx-auto]="collapsed()"
           [attr.aria-label]="collapsed() ? 'Expandir barra lateral' : 'Contraer barra lateral'"
@@ -90,7 +90,7 @@ const MODULES = SITE_MODULES;
         <button
           type="button"
           (click)="ui.closeMobileNav()"
-          class="ml-auto flex h-11 w-11 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
+          class="ml-auto flex h-11 w-11 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           aria-label="Cerrar menú"
         >
           <span class="material-symbols-outlined text-[18px]">close</span>
@@ -99,7 +99,7 @@ const MODULES = SITE_MODULES;
 
       <!-- User card -->
       @if (!collapsed()) {
-        <div class="mx-2 mt-3.5 rounded-lg border border-[#E2E8F0] bg-[#f8fafc] px-2 py-1.5">
+        <div class="mx-2 mt-3.5 rounded-lg border border-surface-container bg-surface-subtle px-2 py-1.5">
           <div class="flex items-center gap-1.5">
             <div class="relative shrink-0">
               <div
@@ -108,14 +108,14 @@ const MODULES = SITE_MODULES;
                 {{ getUserInitials() }}
               </div>
               <span
-                class="absolute bottom-[1px] right-[1px] h-2 w-2 rounded-full border-[1.5px] border-[#f8fafc] bg-[#22c55e]"
+                class="absolute bottom-[1px] right-[1px] h-2 w-2 rounded-full border-[1.5px] border-surface-subtle bg-[#22c55e]"
               ></span>
             </div>
             <div class="min-w-0">
-              <p class="truncate text-caption font-semibold leading-tight text-[#1e293b]">
+              <p class="truncate text-caption font-semibold leading-tight text-on-surface">
                 {{ userFullName() }}
               </p>
-              <p class="text-caption-xs text-[#64748b]">{{ roleLabel() }}</p>
+              <p class="text-caption-xs text-on-surface-variant">{{ roleLabel() }}</p>
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ const MODULES = SITE_MODULES;
           <div class="mx-2 mt-2">
             <label class="relative block">
               <span
-                class="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[14px] text-[#94a3b8]"
+                class="material-symbols-outlined pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[14px] text-on-surface-muted"
                 >search</span
               >
               <input
@@ -133,13 +133,13 @@ const MODULES = SITE_MODULES;
                 [value]="searchTerm()"
                 (input)="onSearchInput($event)"
                 placeholder="Buscar..."
-                class="h-8 w-full rounded-lg border border-[#E2E8F0] bg-white pl-7 pr-7 text-caption-xs font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-primary-tint-40 focus:bg-white"
+                class="h-8 w-full rounded-lg border border-surface-container bg-white pl-7 pr-7 text-caption-xs font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-primary-tint-40 focus:bg-white"
               />
               @if (searchTerm()) {
                 <button
                   type="button"
                   (click)="clearSearch()"
-                  class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#64748b]"
+                  class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-on-surface-variant"
                   aria-label="Limpiar búsqueda"
                 >
                   <span class="material-symbols-outlined text-[13px]">close</span>
@@ -157,7 +157,7 @@ const MODULES = SITE_MODULES;
             <button
               type="button"
               (click)="onModuleClick(mod.key)"
-              class="flex w-full cursor-pointer select-none items-center rounded-lg transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              class="flex w-full cursor-pointer select-none items-center rounded-lg transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               [style.justify-content]="collapsed() ? 'center' : 'space-between'"
               [style.padding]="collapsed() ? '8px' : '6px 7px'"
               [style.gap]="collapsed() ? '0' : '7px'"
@@ -199,7 +199,7 @@ const MODULES = SITE_MODULES;
                   <button
                     type="button"
                     (click)="toggleCompany(company.id)"
-                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-[#94a3b8] transition-colors hover:bg-[#f8fafc] hover:text-[#64748b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-on-surface-muted transition-colors hover:bg-surface-subtle hover:text-on-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     [attr.aria-expanded]="isCompanyOpen(company.id)"
                   >
                     <span class="material-symbols-outlined text-[11px] opacity-50">domain</span>
@@ -208,12 +208,12 @@ const MODULES = SITE_MODULES;
 
                   @if (isCompanyOpen(company.id)) {
                     <div class="relative ml-2.5 pl-2.5">
-                      <span class="absolute bottom-[6px] left-1 top-0 w-px bg-[#e2e8f0]"></span>
+                      <span class="absolute bottom-[6px] left-1 top-0 w-px bg-surface-container"></span>
                       @for (site of company.sites; track site.id) {
                         <button
                           type="button"
                           (click)="selectSubCompany($event, mod.key, company.id, site.id)"
-                          class="relative mb-px block w-full cursor-pointer rounded-md py-[3px] pl-2 pr-1.5 text-left text-[10.5px] transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                          class="relative mb-px block w-full cursor-pointer rounded-md py-[3px] pl-2 pr-1.5 text-left text-[10.5px] transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           [style.color]="activeSiteId() === site.id ? '#0899a5' : '#64748b'"
                           [style.font-weight]="activeSiteId() === site.id ? '600' : '400'"
                           [style.background]="
@@ -238,7 +238,7 @@ const MODULES = SITE_MODULES;
 
         @if (!collapsed() && searchTerm() && !hasSearchResults()) {
           <div
-            class="mx-2 mt-2 rounded-lg border border-dashed border-[#E2E8F0] bg-[#f8fafc] px-2 py-2 text-center text-caption-xs font-medium text-[#94a3b8]"
+            class="mx-2 mt-2 rounded-lg border border-dashed border-surface-container bg-surface-subtle px-2 py-2 text-center text-caption-xs font-medium text-on-surface-muted"
           >
             Sin resultados
           </div>
@@ -247,11 +247,11 @@ const MODULES = SITE_MODULES;
 
       <!-- Admin DGA Review (solo SuperAdmin / Admin) -->
       @if (canSeeDgaReview()) {
-        <div class="shrink-0 border-t border-[#E2E8F0] p-1.5">
+        <div class="shrink-0 border-t border-surface-container p-1.5">
           <button
             type="button"
             (click)="router.navigate(['/dga-review'])"
-            class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-[#64748b] transition-colors hover:bg-[#f0fdfa] hover:text-[#0899a5]"
+            class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-on-surface-variant transition-colors hover:bg-[#f0fdfa] hover:text-primary-container"
             [class.justify-center]="collapsed()"
             [class.gap-1.5]="!collapsed()"
             [title]="collapsed() ? 'Revisión DGA (admin)' : ''"
@@ -265,11 +265,11 @@ const MODULES = SITE_MODULES;
       }
 
       <!-- Logout -->
-      <div class="shrink-0 border-t border-[#E2E8F0] p-1.5">
+      <div class="shrink-0 border-t border-surface-container p-1.5">
         <button
           type="button"
           (click)="auth.logout()"
-          class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-[#94a3b8] transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626]"
+          class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-on-surface-muted transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626]"
           [class.justify-center]="collapsed()"
           [class.gap-1.5]="!collapsed()"
           [title]="collapsed() ? 'Cerrar sesión' : ''"

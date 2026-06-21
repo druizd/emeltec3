@@ -522,7 +522,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
       <div class="mx-auto flex max-w-[1500px] flex-col gap-5">
         <header
-          class="flex flex-col gap-5 border-b border-[#e2e8f0] pb-5 lg:flex-row lg:items-end lg:justify-between"
+          class="flex flex-col gap-5 border-b border-surface-container pb-5 lg:flex-row lg:items-end lg:justify-between"
         >
           <div class="min-w-0">
             <div class="flex items-center gap-1.5">
@@ -570,7 +570,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               type="button"
               (click)="loadDashboard()"
               [disabled]="loading()"
-              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-[#e2e8f0] bg-white text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container hover:shadow-primary-glow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
+              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-surface-container bg-white text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container hover:shadow-primary-glow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
               aria-label="Actualizar"
             >
               <span
@@ -2901,7 +2901,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     const base = 'cursor-pointer transition-colors';
     return selected
       ? `${base} bg-primary-tint-08 shadow-[inset_3px_0_0_var(--color-primary)]`
-      : `${base} bg-white hover:bg-[#f8fafc]`;
+      : `${base} bg-white hover:bg-surface-subtle`;
   }
 
   statusClass(): string {
