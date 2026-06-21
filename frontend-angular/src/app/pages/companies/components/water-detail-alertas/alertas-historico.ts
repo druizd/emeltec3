@@ -123,6 +123,10 @@ export class AlertasHistoricoComponent {
         endedAt: ev.resuelta_at,
         status: ev.resuelta_at ? 'resuelta' : 'activa',
         tags,
+        exportExtra: {
+          Resolvió: ev.asignado_nombre_completo || '',
+          Incidencia: ev.incidencia_id || '',
+        },
       } satisfies AlarmHistoryItem;
     }),
   );
