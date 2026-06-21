@@ -3379,7 +3379,11 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           },
           y: {
             grid: { color: 'rgba(148,163,184,0.15)' },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}°C` },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${(+v).toFixed(1).replace(/\.0$/, '')}°C`,
+            },
           },
         },
         onClick: () => {
@@ -3464,14 +3468,18 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           yT: {
             position: 'left',
             grid: { color: 'rgba(148,163,184,0.15)' },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}°C` },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${(+v).toFixed(1).replace(/\.0$/, '')}°C`,
+            },
           },
           yH: {
             position: 'right',
             min: 0,
             max: 100,
             grid: { drawOnChartArea: false },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}%` },
+            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${(+v).toFixed(0)}%` },
           },
         },
         onClick: () => {
@@ -3542,7 +3550,11 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           y: {
             position: 'left',
             grid: { color: 'rgba(148,163,184,0.15)' },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}°C` },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${(+v).toFixed(1).replace(/\.0$/, '')}°C`,
+            },
           },
           y1: {
             position: 'right',
