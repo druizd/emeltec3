@@ -59,7 +59,7 @@ type FiltroEstado = EventoEstado | 'todos';
             {{ f.label }}
           </button>
         }
-        <span class="ml-auto self-center text-caption-xs font-semibold text-slate-400">
+        <span class="ml-auto self-center text-caption-xs font-semibold text-slate-500">
           {{ eventosFiltrados().length }} alertas
         </span>
       </div>
@@ -86,7 +86,7 @@ type FiltroEstado = EventoEstado | 'todos';
                   <div class="flex flex-wrap items-start justify-between gap-2">
                     <div class="min-w-0">
                       <div class="flex flex-wrap items-center gap-2">
-                        <span class="font-mono text-caption-xs font-bold text-slate-400">{{
+                        <span class="font-mono text-caption-xs font-bold text-slate-500">{{
                           codigoEvento(ev)
                         }}</span>
                         <span
@@ -115,7 +115,7 @@ type FiltroEstado = EventoEstado | 'todos';
 
                   <!-- Meta info -->
                   <div
-                    class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption-xs text-slate-400"
+                    class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-caption-xs text-slate-500"
                   >
                     <span class="flex items-center gap-1">
                       <span class="material-symbols-outlined text-[14px]">calendar_today</span>
@@ -228,7 +228,7 @@ type FiltroEstado = EventoEstado | 'todos';
               class="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
             >
               <span class="material-symbols-outlined text-4xl text-slate-300">inbox</span>
-              <p class="mt-2 text-body-sm font-semibold text-slate-400">
+              <p class="mt-2 text-body-sm font-semibold text-slate-500">
                 Bandeja vacía con estos filtros
               </p>
             </div>

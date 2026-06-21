@@ -303,7 +303,7 @@ function emptyVariables(): SiteVariablesPayload {
             >
               <div>
                 <p class="text-body-sm font-semibold text-slate-900">Variables del equipo</p>
-                <p class="mt-1 text-caption font-semibold text-slate-400">
+                <p class="mt-1 text-caption font-semibold text-slate-500">
                   Se guardan directamente en este sitio, sin seleccionar equipo.
                 </p>
               </div>
@@ -369,7 +369,7 @@ function emptyVariables(): SiteVariablesPayload {
                     }
                   </select>
                   @if (selectedVariableTransform()?.description) {
-                    <p class="mt-1 text-caption font-semibold text-slate-400">
+                    <p class="mt-1 text-caption font-semibold text-slate-500">
                       {{ selectedVariableTransform()?.description }}
                     </p>
                   }
@@ -412,7 +412,7 @@ function emptyVariables(): SiteVariablesPayload {
                             <option value="true">Invertido CDAB</option>
                           }
                         </select>
-                        <p class="mt-1 text-caption font-semibold text-slate-400">
+                        <p class="mt-1 text-caption font-semibold text-slate-500">
                           {{ registerOrderHint() }}
                         </p>
                       </div>
@@ -455,7 +455,7 @@ function emptyVariables(): SiteVariablesPayload {
                   }
                 </select>
                 @if (selectedVariableRole()?.description) {
-                  <p class="mt-1 text-caption font-semibold text-slate-400">
+                  <p class="mt-1 text-caption font-semibold text-slate-500">
                     {{ selectedVariableRole()?.description }}
                   </p>
                 }
@@ -530,7 +530,7 @@ function emptyVariables(): SiteVariablesPayload {
                     />
                   </div>
                 </div>
-                <p class="text-caption-xs text-slate-400">
+                <p class="text-caption-xs text-slate-500">
                   Fórmula:
                   <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usá
                   divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
@@ -579,7 +579,7 @@ function emptyVariables(): SiteVariablesPayload {
                     />
                   </div>
                 </div>
-                <p class="text-caption-xs text-slate-400">
+                <p class="text-caption-xs text-slate-500">
                   Fórmula:
                   <span class="font-mono"
                     >resultado = ((registro alto × 65536) + registro bajo) × factor / divisor +
@@ -666,11 +666,11 @@ function emptyVariables(): SiteVariablesPayload {
                 <h3 class="text-body-sm font-semibold text-slate-900">
                   Datos detectados del equipo
                 </h3>
-                <p class="text-caption font-semibold text-slate-400">
+                <p class="text-caption font-semibold text-slate-500">
                   REG1, REG2 y similares se asignan manualmente por sitio.
                 </p>
               </div>
-              <p class="text-caption font-semibold text-slate-400">
+              <p class="text-caption font-semibold text-slate-500">
                 {{ siteVariables().variables.length }} variables
               </p>
             </div>
@@ -704,7 +704,7 @@ function emptyVariables(): SiteVariablesPayload {
                           @if (variable.mapping) {
                             <div>
                               <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
-                              <p class="text-caption text-slate-400">
+                              <p class="text-caption text-slate-500">
                                 {{ displayRole(variable.mapping.rol_dashboard) }} ·
                                 {{ displayTransform(variable.mapping.transformacion) }}
                                 {{ variable.mapping.unidad || '' }}
@@ -734,7 +734,7 @@ function emptyVariables(): SiteVariablesPayload {
                     <tr class="bg-white">
                       <td
                         colspan="3"
-                        class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
+                        class="px-4 py-8 text-center text-body-sm font-semibold text-slate-500"
                       >
                         Aún no hay variables detectadas para el serial de este sitio.
                       </td>

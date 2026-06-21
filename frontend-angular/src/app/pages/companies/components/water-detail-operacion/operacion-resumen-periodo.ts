@@ -195,7 +195,7 @@ interface IncidenciaPeriodo {
                 {{ k.label }}
               </p>
               <p class="mt-0.5 text-h5 font-semibold text-slate-800">{{ k.valor }}</p>
-              <p class="text-caption-xs text-slate-400">{{ k.subtext }}</p>
+              <p class="text-caption-xs text-slate-500">{{ k.subtext }}</p>
             </div>
           </article>
         }
@@ -210,7 +210,7 @@ interface IncidenciaPeriodo {
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Resumen operacional por turno
             </h3>
-            <p class="mt-0.5 flex items-center gap-1 text-caption-xs font-medium text-slate-400">
+            <p class="mt-0.5 flex items-center gap-1 text-caption-xs font-medium text-slate-500">
               <span class="material-symbols-outlined text-[12px]">link</span>
               Turnos vinculados con "Hoy en tiempo real" — los cambios se guardan por sitio
             </p>
@@ -360,7 +360,7 @@ interface IncidenciaPeriodo {
         <div class="mb-4 flex items-center justify-between">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo diario en el período</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">m³/día · días sin operación en gris</p>
+            <p class="mt-0.5 text-caption-xs text-slate-500">m³/día · días sin operación en gris</p>
           </div>
           <span
             class="rounded-full bg-primary-tint-08 px-2.5 py-1 text-caption-xs font-bold text-primary-container"
@@ -474,7 +474,7 @@ interface IncidenciaPeriodo {
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Resumen diario
             </h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               {{ data().tabla.length }} días · {{ periodoLabel() }}
               @if (dailyAggregatesLoading()) {
                 · <span class="text-primary-container">cargando…</span>
@@ -577,7 +577,7 @@ interface IncidenciaPeriodo {
           </table>
         </div>
         <div class="border-t border-slate-100 px-4 py-2.5">
-          <p class="text-caption-xs text-slate-400">
+          <p class="text-caption-xs text-slate-500">
             Los datos son provisorios hasta confirmar sincronización con DGA.
           </p>
         </div>
@@ -623,7 +623,7 @@ interface IncidenciaPeriodo {
         @if (data().alertas.length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">check_circle</span>
-            <p class="text-body-sm font-bold text-slate-400">
+            <p class="text-body-sm font-bold text-slate-500">
               Sin alertas en el período seleccionado
             </p>
           </div>
@@ -643,7 +643,7 @@ interface IncidenciaPeriodo {
                 <!-- Contenido -->
                 <div class="min-w-0 flex-1">
                   <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
-                  <p class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                  <p class="mt-0.5 font-mono text-caption-xs text-slate-500">
                     {{ alerta.fechaHora }}
                   </p>
                 </div>
@@ -668,7 +668,7 @@ interface IncidenciaPeriodo {
           <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Incidencias en el período
           </h3>
-          <span class="font-mono text-caption-xs text-slate-400"
+          <span class="font-mono text-caption-xs text-slate-500"
             >{{ data().incidencias.length }} registro{{
               data().incidencias.length !== 1 ? 's' : ''
             }}</span
@@ -678,7 +678,7 @@ interface IncidenciaPeriodo {
         @if (data().incidencias.length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
-            <p class="text-body-sm font-bold text-slate-400">
+            <p class="text-body-sm font-bold text-slate-500">
               Sin incidencias registradas en el período
             </p>
           </div>

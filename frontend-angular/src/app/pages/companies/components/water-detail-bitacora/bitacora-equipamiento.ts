@@ -24,7 +24,7 @@ import {
   template: `
     <div class="space-y-3">
       <div class="flex items-center justify-between gap-3">
-        <p class="text-caption-xs font-semibold text-slate-400">
+        <p class="text-caption-xs font-semibold text-slate-500">
           {{ equipos().length }} equipos registrados
         </p>
         <button
@@ -93,7 +93,7 @@ import {
                     <td class="px-3 py-2 font-semibold text-slate-800">{{ eq.nombre }}</td>
                     <td class="px-3 py-2 text-slate-600">
                       <span class="font-semibold">{{ eq.fabricante || '—' }}</span>
-                      <span class="block text-caption-xs text-slate-400">{{
+                      <span class="block text-caption-xs text-slate-500">{{
                         eq.modelo || '—'
                       }}</span>
                     </td>

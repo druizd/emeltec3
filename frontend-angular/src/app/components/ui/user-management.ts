@@ -195,7 +195,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   placeholder="usuario@correo.com"
                 />
                 @if (editingId()) {
-                  <p class="text-[10px] text-slate-400 font-semibold">
+                  <p class="text-[10px] text-slate-500 font-semibold">
                     El correo no se puede modificar.
                   </p>
                 }
@@ -405,7 +405,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                     <span class="material-symbols-outlined text-slate-300 text-4xl mb-2"
                       >group_off</span
                     >
-                    <p class="text-slate-400 font-bold text-body-sm">Sin usuarios registrados</p>
+                    <p class="text-slate-500 font-bold text-body-sm">Sin usuarios registrados</p>
                   </td>
                 </tr>
               }
