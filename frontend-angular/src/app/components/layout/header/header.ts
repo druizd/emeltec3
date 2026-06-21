@@ -6,6 +6,7 @@ import { AuthService } from '../../../services/auth.service';
 import type { PreviewRole, ViewAsContext } from '../../../services/auth.service';
 import { CompanyService } from '../../../services/company.service';
 import { ShortcutService } from '../../../services/shortcut.service';
+import { LayoutUiService } from '../layout-ui.service';
 import { getSiteTypeUi, siteTypesForModule } from '../../../shared/site-type-ui';
 import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
@@ -15,7 +16,17 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
   imports: [CommonModule],
   template: `
     <header class="h-16 shrink-0 border-b border-[#E2E8F0] bg-white">
-      <div class="flex h-full items-stretch px-5">
+      <div class="flex h-full items-stretch px-3 sm:px-5">
+        <!-- Hamburguesa: abre el drawer del sidebar (solo mobile/tablet <lg). -->
+        <button
+          type="button"
+          (click)="ui.toggleMobileNav()"
+          class="my-auto mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
+          aria-label="Abrir menú de navegación"
+        >
+          <span class="material-symbols-outlined text-[22px]">menu</span>
+        </button>
+
         <nav class="flex items-stretch" aria-label="Navegación principal">
           <button
             type="button"
@@ -25,7 +36,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
             class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors"
           >
             <span class="material-symbols-outlined text-[16px]">grid_view</span>
-            <span>Dashboard</span>
+            <span class="hidden sm:inline">Dashboard</span>
           </button>
 
           <button
@@ -36,7 +47,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
             class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors"
           >
             <span class="material-symbols-outlined text-[16px]">monitoring</span>
-            <span>Monitoreo</span>
+            <span class="hidden sm:inline">Monitoreo</span>
           </button>
         </nav>
 
@@ -46,7 +57,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           <button
             type="button"
             (click)="shortcuts.openPalette()"
-            class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="hidden h-[30px] w-[30px] items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] sm:flex"
             aria-label="Atajos de teclado (?)"
             title="Atajos de teclado (?)"
           >
@@ -306,6 +317,7 @@ export class HeaderComponent implements OnInit {
   readonly shortcuts = inject(ShortcutService);
   readonly companyService = inject(CompanyService);
   readonly router = inject(Router);
+  readonly ui = inject(LayoutUiService);
 
   private currentUrl = signal(this.router.url);
   readonly userMenuOpen = signal(false);

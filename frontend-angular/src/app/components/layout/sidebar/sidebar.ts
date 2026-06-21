@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../services/auth.service';
 import { CompanyService } from '../../../services/company.service';
+import { LayoutUiService } from '../layout-ui.service';
 import {
   SITE_MODULES,
   normalizeSiteType,
@@ -45,9 +46,13 @@ const MODULES = SITE_MODULES;
   standalone: true,
   imports: [CommonModule],
   template: `
+    <!-- <lg: drawer off-canvas (fixed + translate). lg+: en flujo normal,
+         como siempre. lg:translate-x-0 revierte el ocultamiento mobile en
+         desktop sin importar el estado de mobileNavOpen. -->
     <aside
-      class="flex h-full shrink-0 flex-col overflow-hidden bg-white"
-      style="border-right: 1px solid #E2E8F0; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04); transition: width 0.2s cubic-bezier(0.4,0,0.2,1);"
+      class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col overflow-hidden bg-white transition-all duration-200 lg:relative lg:z-auto lg:translate-x-0"
+      [class.-translate-x-full]="!ui.mobileNavOpen()"
+      style="border-right: 1px solid #E2E8F0; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
       [style.width]="collapsed() ? '60px' : '248px'"
       aria-label="Menú lateral de navegación"
     >
@@ -67,10 +72,11 @@ const MODULES = SITE_MODULES;
             />
           </div>
         }
+        <!-- Colapsar (solo desktop): en mobile el drawer no se colapsa, se cierra. -->
         <button
           type="button"
           (click)="collapsed.update((v) => !v)"
-          class="flex h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+          class="hidden h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-[#94a3b8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:flex"
           [class.ml-auto]="!collapsed()"
           [class.mx-auto]="collapsed()"
           [attr.aria-label]="collapsed() ? 'Expandir barra lateral' : 'Contraer barra lateral'"
@@ -78,6 +84,16 @@ const MODULES = SITE_MODULES;
           <span class="material-symbols-outlined text-[16px]">
             {{ collapsed() ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left' }}
           </span>
+        </button>
+
+        <!-- Cerrar drawer (solo mobile/tablet). -->
+        <button
+          type="button"
+          (click)="ui.closeMobileNav()"
+          class="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
+          aria-label="Cerrar menú"
+        >
+          <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
@@ -271,6 +287,7 @@ export class SidebarComponent implements OnInit {
   readonly auth = inject(AuthService);
   readonly companyService = inject(CompanyService);
   readonly router = inject(Router);
+  readonly ui = inject(LayoutUiService);
 
   collapsed = signal(false);
   openModule = signal<string | null>('Agua');
