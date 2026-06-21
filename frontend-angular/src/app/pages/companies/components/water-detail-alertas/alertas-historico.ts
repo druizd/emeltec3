@@ -37,117 +37,82 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
         >
       </header>
 
-      <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[720px] text-left text-body-sm">
-            <thead>
-              <tr class="border-b border-slate-100 bg-slate-50">
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Código
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Variable
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Severidad
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Inicio
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Duración
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Resolvió
-                </th>
-                <th
-                  class="px-4 py-3 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Incidencia
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @if (loading()) {
-                @for (_ of [0, 1, 2, 3, 4]; track $index) {
-                  <tr>
-                    @for (__ of [0, 1, 2, 3, 4, 5, 6]; track $index) {
-                      <td class="px-4 py-3">
-                        <app-skeleton class="h-3 w-full rounded" />
-                      </td>
-                    }
-                  </tr>
-                }
-              } @else {
-                @for (ev of historialFiltrado(); track ev.id) {
-                  <tr class="group hover:bg-slate-50/60">
-                    <td class="px-4 py-3 font-mono text-caption text-slate-500">
-                      {{ codigoEvento(ev) }}
-                    </td>
-                    <td class="px-4 py-3 font-semibold text-slate-800">
-                      {{ ev.alerta_nombre || ev.variable_key }}
-                    </td>
-                    <td class="px-4 py-3">
-                      <span
-                        [class]="severidadClass(ev.severidad)"
-                        class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
-                      >
-                        <span
-                          [class]="severidadDotClass(ev.severidad)"
-                          class="h-1.5 w-1.5 rounded-full"
-                        ></span>
-                        {{ severidadLabel(ev.severidad) }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 font-mono text-caption text-slate-600">
-                      {{ formatFecha(ev.triggered_at) }}
-                    </td>
-                    <td class="px-4 py-3 text-caption font-semibold text-slate-600">
-                      {{ duracion(ev.triggered_at, ev.resuelta_at) }}
-                    </td>
-                    <td class="px-4 py-3 text-caption text-slate-600">
-                      {{ ev.asignado_nombre_completo || '—' }}
-                    </td>
-                    <td class="px-4 py-3">
-                      @if (ev.incidencia_id) {
-                        <span
-                          class="inline-flex items-center gap-1 rounded-full bg-primary-tint-08 px-2 py-0.5 text-caption-xs font-bold text-primary-container"
-                        >
-                          <span class="material-symbols-outlined text-[12px]">link</span>
-                          {{ ev.incidencia_id }}
-                        </span>
-                      } @else {
-                        <span class="text-caption-xs text-slate-300">—</span>
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="7" class="px-4 py-10 text-center">
-                      <span class="material-symbols-outlined text-3xl text-slate-300">history</span>
-                      <p class="mt-2 text-body-sm font-semibold text-slate-400">
-                        Sin registros con estos filtros
-                      </p>
-                    </td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
+      <!-- Lista de cards (mismo diseño que el historial de Ventisqueros) -->
+      @if (loading()) {
+        <div class="space-y-2">
+          @for (_ of [0, 1, 2, 3, 4]; track $index) {
+            <app-skeleton class="h-[68px] w-full rounded-xl" />
+          }
         </div>
-        <div class="flex items-center justify-between border-t border-slate-100 px-4 py-3">
+      } @else {
+        <div class="space-y-2">
+          @for (ev of historialFiltrado(); track ev.id) {
+            <article
+              class="flex items-stretch gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+            >
+              <div
+                [class]="sevIconClass(ev.severidad)"
+                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+              >
+                <span class="material-symbols-outlined text-[20px]">history</span>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="truncate font-semibold text-slate-800">{{
+                    ev.alerta_nombre || ev.variable_key
+                  }}</span>
+                  <span
+                    [class]="severidadClass(ev.severidad)"
+                    class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
+                  >
+                    <span
+                      [class]="severidadDotClass(ev.severidad)"
+                      class="h-1.5 w-1.5 rounded-full"
+                    ></span>
+                    {{ severidadLabel(ev.severidad) }}
+                  </span>
+                </div>
+                <div class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                  {{ codigoEvento(ev) }} · {{ ev.variable_key }}
+                </div>
+                <div
+                  class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-caption-xs font-medium text-slate-500"
+                >
+                  <span class="inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[12px]">schedule</span>
+                    {{ formatFecha(ev.triggered_at) }}
+                  </span>
+                  <span class="inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[12px]">timelapse</span>
+                    {{ duracion(ev.triggered_at, ev.resuelta_at) }}
+                  </span>
+                  @if (ev.asignado_nombre_completo) {
+                    <span class="inline-flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[12px]">person</span>
+                      {{ ev.asignado_nombre_completo }}
+                    </span>
+                  }
+                  @if (ev.incidencia_id) {
+                    <span class="inline-flex items-center gap-1 font-bold text-primary-container">
+                      <span class="material-symbols-outlined text-[12px]">link</span>
+                      {{ ev.incidencia_id }}
+                    </span>
+                  }
+                </div>
+              </div>
+            </article>
+          } @empty {
+            <div
+              class="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-10 text-center"
+            >
+              <span class="material-symbols-outlined text-3xl text-slate-300">history</span>
+              <p class="mt-2 text-body-sm font-semibold text-slate-400">
+                Sin registros con estos filtros
+              </p>
+            </div>
+          }
+        </div>
+        <div class="flex items-center justify-between px-1 pt-1">
           <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
           <button
             type="button"
@@ -158,7 +123,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
             Exportar CSV
           </button>
         </div>
-      </section>
+      }
     </div>
   `,
 })
@@ -243,6 +208,13 @@ export class AlertasHistoricoComponent {
     if (s === 'alta') return 'bg-orange-50 text-orange-600';
     if (s === 'media') return 'bg-amber-50 text-amber-600';
     return 'bg-slate-100 text-slate-500';
+  }
+
+  sevIconClass(s: AlertaSeveridad): string {
+    if (s === 'critica') return 'bg-rose-50 text-rose-500';
+    if (s === 'alta') return 'bg-orange-50 text-orange-500';
+    if (s === 'media') return 'bg-amber-50 text-amber-500';
+    return 'bg-slate-100 text-slate-400';
   }
 
   severidadDotClass(s: AlertaSeveridad): string {
