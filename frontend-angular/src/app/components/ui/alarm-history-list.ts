@@ -54,11 +54,12 @@ export interface AlarmHistoryItem {
       <div class="space-y-2">
         @for (it of items(); track it.id) {
           <article
-            class="flex items-stretch gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+            [class]="borderClass(it.severity)"
+            class="flex items-stretch gap-3 rounded-xl border border-l-[3px] border-slate-200 bg-white p-3 shadow-sm"
           >
             <div
               [class]="iconClass(it.severity)"
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+              class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
             >
               <span class="material-symbols-outlined text-[20px]">{{
                 it.status === 'resuelta' ? 'history' : 'notifications_active'
@@ -138,22 +139,30 @@ export class AlarmHistoryListComponent {
   readonly loading = input<boolean>(false);
   readonly emptyText = input<string>('Sin alarmas registradas');
 
+  // Mismos colores que las cards .vs-alarm-* de Ventisqueros: crit=rojo,
+  // warn=ámbar, info=teal (primary).
+  borderClass(s: AlarmHistoryItem['severity']): string {
+    if (s === 'crit') return 'border-l-rose-500';
+    if (s === 'warn') return 'border-l-amber-500';
+    return 'border-l-primary';
+  }
+
   iconClass(s: AlarmHistoryItem['severity']): string {
-    if (s === 'crit') return 'bg-rose-50 text-rose-500';
-    if (s === 'warn') return 'bg-amber-50 text-amber-500';
-    return 'bg-slate-100 text-slate-400';
+    if (s === 'crit') return 'bg-rose-500/10 text-rose-600';
+    if (s === 'warn') return 'bg-amber-500/10 text-amber-600';
+    return 'bg-primary-tint-10 text-primary-container';
   }
 
   badgeClass(s: AlarmHistoryItem['severity']): string {
-    if (s === 'crit') return 'bg-rose-50 text-rose-600';
-    if (s === 'warn') return 'bg-amber-50 text-amber-600';
-    return 'bg-slate-100 text-slate-500';
+    if (s === 'crit') return 'bg-rose-500/10 text-rose-700';
+    if (s === 'warn') return 'bg-amber-500/10 text-amber-700';
+    return 'bg-primary-tint-14 text-primary-container';
   }
 
   dotClass(s: AlarmHistoryItem['severity']): string {
     if (s === 'crit') return 'bg-rose-500';
     if (s === 'warn') return 'bg-amber-500';
-    return 'bg-slate-400';
+    return 'bg-primary';
   }
 
   when(iso: string): string {
