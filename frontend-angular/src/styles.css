@@ -138,6 +138,14 @@
 }
 
 @layer base {
+  /* Root font-size sube de 16px a 17px → escala ~6% TODO el sistema de tokens
+     tipográficos (--text-* están en rem). Los tamaños hardcoded en px
+     (text-[10px], etc.) no se ven afectados — son casos puntuales de iconos
+     y badges donde el px fijo es intencional. */
+  html {
+    font-size: 17px;
+  }
+
   body {
     @apply bg-background font-body text-on-surface antialiased;
   }

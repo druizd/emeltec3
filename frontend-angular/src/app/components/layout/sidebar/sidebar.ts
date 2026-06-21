@@ -54,11 +54,16 @@ const MODULES = SITE_MODULES;
       <!-- Header -->
       <div class="relative flex h-16 shrink-0 items-center border-b border-[#E2E8F0] px-4">
         @if (!collapsed()) {
-          <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <!-- Logo más grande que el header (64px): sobresale hacia ABAJO sin
+               recorte. Anclaje en top-[36px] + -translate-y-1/2 deja el borde
+               superior del logo justo en el tope del aside (sin clip por el
+               overflow-hidden), y el resto cruza el divisor. El user-card de
+               abajo lleva margen extra para no chocar. -->
+          <div class="absolute left-1/2 top-[36px] -translate-x-1/2 -translate-y-1/2">
             <img
               src="/images/emeltec-logo.webp"
               alt="Emeltec"
-              class="h-[30px] w-auto object-contain"
+              class="h-[72px] w-auto object-contain"
             />
           </div>
         }
@@ -78,7 +83,7 @@ const MODULES = SITE_MODULES;
 
       <!-- User card -->
       @if (!collapsed()) {
-        <div class="mx-2 mt-2.5 rounded-lg border border-[#E2E8F0] bg-[#f8fafc] px-2 py-1.5">
+        <div class="mx-2 mt-3.5 rounded-lg border border-[#E2E8F0] bg-[#f8fafc] px-2 py-1.5">
           <div class="flex items-center gap-1.5">
             <div class="relative shrink-0">
               <div
