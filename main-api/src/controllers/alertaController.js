@@ -4,6 +4,7 @@ const {
   buildUserSiteScope,
   userCanAccessSiteId,
 } = require('../services/dataAccess');
+const { alarmVisibilityFilter } = require('../shared/alarmAccess');
 
 const DIAS_VALIDOS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
 
@@ -159,10 +160,10 @@ exports.listarAlertas = async (req, res) => {
 
   // Visibilidad: Admin/Gerente/SuperAdmin ven todas (dentro de su alcance); otros
   // roles solo las visibles para todos o donde estén en viewer_user_ids.
-  const adminTier = ['SuperAdmin', 'Admin', 'Gerente'].includes(req.user?.tipo);
-  if (!adminTier) {
-    params.push(req.user?.id || '');
-    conditions.push(`(a.visible_to_all OR $${params.length} = ANY(a.viewer_user_ids))`);
+  const vis = alarmVisibilityFilter(req.user, 'a', params.length + 1);
+  if (vis.clause) {
+    conditions.push(vis.clause);
+    params.push(...vis.params);
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';

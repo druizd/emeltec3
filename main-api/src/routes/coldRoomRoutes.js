@@ -8,6 +8,7 @@ const {
 } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
 const { sendAlertEmail } = require('../services/emailService');
+const { alarmVisibilityFilter } = require('../shared/alarmAccess');
 
 const ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
 const OPERATOR_ROLES = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
@@ -1723,19 +1724,12 @@ router.get('/:siteId/alarm-rules', async (req, res) => {
   try {
     // Admin/Gerente/SuperAdmin ven todas; otros roles solo las visibles para
     // todos o donde estén en viewer_user_ids.
-    const u = req.user || {};
-    const isAdminTier = ADMIN_ROLES.includes(u.tipo);
-    const { rows } = isAdminTier
-      ? await pool.query(
-          `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
-          [req.params.siteId],
-        )
-      : await pool.query(
-          `SELECT * FROM cold_room_alarm_rule
-            WHERE site_id = $1 AND (visible_to_all OR $2 = ANY(viewer_user_ids))
-            ORDER BY created_at DESC`,
-          [req.params.siteId, u.id || ''],
-        );
+    const vis = alarmVisibilityFilter(req.user, 'cold_room_alarm_rule', 2);
+    const where = vis.clause ? ` AND ${vis.clause}` : '';
+    const { rows } = await pool.query(
+      `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1${where} ORDER BY created_at DESC`,
+      [req.params.siteId, ...vis.params],
+    );
     res.json({ ok: true, data: rows.map(ruleRowToObj) });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
