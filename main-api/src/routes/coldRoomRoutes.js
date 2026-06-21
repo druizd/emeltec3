@@ -8,7 +8,6 @@ const {
 } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
 const { sendAlertEmail } = require('../services/emailService');
-const { alarmVisibilityFilter } = require('../shared/alarmAccess');
 
 const ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
 const OPERATOR_ROLES = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
@@ -1722,13 +1721,11 @@ function ruleRowToObj(r) {
 // --- Reglas CRUD ---
 router.get('/:siteId/alarm-rules', async (req, res) => {
   try {
-    // Admin/Gerente/SuperAdmin ven todas; otros roles solo las visibles para
-    // todos o donde estén en viewer_user_ids.
-    const vis = alarmVisibilityFilter(req.user, 'cold_room_alarm_rule', 2);
-    const where = vis.clause ? ` AND ${vis.clause}` : '';
+    // Todos los usuarios con acceso al sitio ven las alarmas (compartidas).
+    // Solo crear/editar/borrar está restringido (ver requireRole en POST/PUT/DELETE).
     const { rows } = await pool.query(
-      `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1${where} ORDER BY created_at DESC`,
-      [req.params.siteId, ...vis.params],
+      `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
+      [req.params.siteId],
     );
     res.json({ ok: true, data: rows.map(ruleRowToObj) });
   } catch (err) {

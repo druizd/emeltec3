@@ -507,12 +507,6 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           </div>
         </div>
 
-        <!-- Visibilidad -->
-        <label class="flex items-center gap-2 text-caption font-semibold text-slate-600">
-          <input type="checkbox" [(ngModel)]="draft.visible_to_all" />
-          <span>{{ draft.visible_to_all ? 'Visible para todo el sitio' : 'Restringida' }}</span>
-        </label>
-
         <!-- Vista previa con datos reales (rule-tester) -->
         @if (esCondicionSimulable(draft.condicion)) {
           <section

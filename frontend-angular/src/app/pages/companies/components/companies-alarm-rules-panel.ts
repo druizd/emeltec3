@@ -426,51 +426,6 @@ const DEFAULT_DRAFT: DraftRule = {
               }
             </section>
 
-            <!-- STEP 7: Quién puede verla -->
-            <section class="ar-step">
-              <div class="ar-step-head">
-                <span class="ar-step-num">7</span>
-                <div>
-                  <div class="ar-step-title">Visibilidad</div>
-                  <div class="ar-step-hint">
-                    Quién puede ver esta alarma. Por defecto la ve todo el sitio.
-                  </div>
-                </div>
-              </div>
-              <label class="ar-band-toggle" style="display: flex; align-items: center; gap: 8px">
-                <input type="checkbox" [(ngModel)]="draft.visibleToAll" />
-                <span>{{ draft.visibleToAll ? 'Visible para todo el sitio' : 'Restringida' }}</span>
-              </label>
-              @if (!draft.visibleToAll) {
-                @if (eligibleUsers().length === 0) {
-                  <div class="ar-empty-inline">No hay usuarios disponibles.</div>
-                } @else {
-                  <div class="ar-recipient-picker">
-                    @for (u of eligibleUsers(); track u.id) {
-                      <label
-                        class="ar-user-card"
-                        [class.ar-user-card--active]="isDraftViewer(u.id)"
-                        (click)="toggleDraftViewer(u.id)"
-                      >
-                        @if (isDraftViewer(u.id)) {
-                          <span class="ar-user-check-overlay">
-                            <span class="material-symbols-outlined text-[16px]">check</span>
-                          </span>
-                        }
-                        <span class="ar-user-avatar" [style.background]="avatarColor(u.id)">
-                          {{ userInitials(u) }}
-                        </span>
-                        <span class="ar-user-info">
-                          <span class="ar-user-name">{{ userLabel(u) }}</span>
-                          <span class="ar-user-email">{{ u.email }}</span>
-                        </span>
-                      </label>
-                    }
-                  </div>
-                }
-              }
-            </section>
-
             @if (formError(); as err) {
               <div class="ar-error">
                 <span class="material-symbols-outlined text-[14px]">error</span>
@@ -1899,17 +1854,6 @@ export class CompaniesAlarmRulesPanelComponent {
 
   isDraftUser(userId: string): boolean {
     return this.draft.recipientUserIds.includes(userId);
-  }
-
-  toggleDraftViewer(userId: string): void {
-    const cur = new Set(this.draft.viewerUserIds);
-    if (cur.has(userId)) cur.delete(userId);
-    else cur.add(userId);
-    this.draft.viewerUserIds = [...cur];
-  }
-
-  isDraftViewer(userId: string): boolean {
-    return this.draft.viewerUserIds.includes(userId);
   }
 
   closeForm(): void {
