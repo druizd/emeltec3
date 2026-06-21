@@ -20,6 +20,10 @@ import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
 import { AuthService } from '../../services/auth.service';
 import {
+  AlarmHistoryListComponent,
+  type AlarmHistoryItem,
+} from '../../components/ui/alarm-history-list';
+import {
   ColdRoomAlarmRulesService,
   type AlarmEvent,
 } from '../../services/cold-room-alarm-rules.service';
@@ -128,6 +132,7 @@ interface MetricOption {
     VentisquerosFloorMapComponent,
     VentisquerosVisibilityPanelComponent,
     VentisquerosFocusCardComponent,
+    AlarmHistoryListComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -1435,64 +1440,12 @@ interface MetricOption {
               </div>
             }
           } @else {
-            <!-- Historial de alarmas disparadas -->
-            @if (!alarmEventsLoaded()) {
-              <div class="vs-alarms-empty">
-                <div class="vs-alarms-empty-title">Cargando historial…</div>
-              </div>
-            } @else if (alarmEvents().length === 0) {
-              <div class="vs-alarms-empty">
-                <span class="material-symbols-outlined text-[32px] text-slate-300">history</span>
-                <div class="vs-alarms-empty-title">Sin alarmas registradas</div>
-                <div class="vs-alarms-empty-sub">
-                  Las alarmas disparadas aparecerán aquí con su fecha y duración.
-                </div>
-              </div>
-            } @else {
-              <div class="vs-alarms-list">
-                @for (ev of alarmEvents(); track ev.id) {
-                  <article class="vs-alarm-card" [attr.data-severity]="ev.rule_severity || 'info'">
-                    <div class="vs-alarm-icon" [attr.data-severity]="ev.rule_severity || 'info'">
-                      <span class="material-symbols-outlined">{{
-                        alarmEventStatus(ev) === 'resuelta' ? 'history' : 'notifications_active'
-                      }}</span>
-                    </div>
-                    <div class="vs-alarm-body">
-                      <div class="vs-alarm-head">
-                        <span class="vs-alarm-title">{{ ev.rule_name || 'Alarma' }}</span>
-                        <span
-                          class="vs-alarm-sev"
-                          [attr.data-severity]="
-                            alarmEventStatus(ev) === 'resuelta'
-                              ? 'info'
-                              : ev.rule_severity || 'warn'
-                          "
-                        >
-                          {{ alarmEventStatus(ev) === 'resuelta' ? 'Resuelta' : 'Activa' }}
-                        </span>
-                      </div>
-                      <div class="vs-alarm-detail">{{ alarmEventSummary(ev) }}</div>
-                      <div class="vs-alarm-meta">
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">schedule</span>
-                          {{ alarmEventWhen(ev.triggered_at) }}
-                        </span>
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">timelapse</span>
-                          {{ alarmEventDuration(ev) }}
-                        </span>
-                        @if (ev.email_sent) {
-                          <span class="vs-alarm-tag">
-                            <span class="material-symbols-outlined text-[11px]">mail</span>
-                            Notificada
-                          </span>
-                        }
-                      </div>
-                    </div>
-                  </article>
-                }
-              </div>
-            }
+            <!-- Historial de alarmas disparadas (componente compartido) -->
+            <app-alarm-history-list
+              [items]="alarmHistoryItems()"
+              [loading]="!alarmEventsLoaded()"
+              emptyText="Sin alarmas registradas"
+            />
           }
         }
 
@@ -6010,31 +5963,26 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly alarmEvents = computed<AlarmEvent[]>(() => this.alarmRulesSvc.events());
   readonly alarmEventsLoaded = computed(() => this.alarmRulesSvc.eventsLoaded());
 
-  alarmEventStatus(e: AlarmEvent): 'activa' | 'resuelta' {
-    return e.resolved_at ? 'resuelta' : 'activa';
-  }
+  // Mapea los eventos al modelo compartido AlarmHistoryItem.
+  readonly alarmHistoryItems = computed<AlarmHistoryItem[]>(() =>
+    this.alarmEvents().map((e) => {
+      const sev: 'info' | 'warn' | 'crit' = e.rule_severity || 'warn';
+      const sevLabel = sev === 'crit' ? 'Crítica' : sev === 'warn' ? 'Advertencia' : 'Info';
+      return {
+        id: e.id,
+        title: e.rule_name || 'Alarma',
+        detail: this.alarmEventSummary(e),
+        severity: sev,
+        severityLabel: sevLabel,
+        startedAt: e.triggered_at,
+        endedAt: e.resolved_at,
+        status: e.resolved_at ? 'resuelta' : 'activa',
+        tags: e.email_sent ? [{ icon: 'mail', label: 'Notificada' }] : [],
+      } satisfies AlarmHistoryItem;
+    }),
+  );
 
-  alarmEventDuration(e: AlarmEvent): string {
-    const start = new Date(e.triggered_at).getTime();
-    const end = e.resolved_at ? new Date(e.resolved_at).getTime() : this.now();
-    const min = Math.max(0, Math.round((end - start) / 60000));
-    if (min < 60) return `${min} min`;
-    const h = Math.floor(min / 60);
-    const m = min % 60;
-    return m > 0 ? `${h}h ${m}min` : `${h}h`;
-  }
-
-  alarmEventWhen(iso: string): string {
-    return new Date(iso).toLocaleString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  }
-
-  alarmEventSummary(e: AlarmEvent): string {
+  private alarmEventSummary(e: AlarmEvent): string {
     if (!e.rule_metric) return e.target_label || '';
     const unit = e.rule_metric === 'temperatura' ? '°C' : e.rule_metric === 'humedad' ? '%' : 'min';
     const val = e.current_value !== null ? `${e.current_value}${unit}` : '—';

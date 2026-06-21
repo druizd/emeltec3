@@ -10,7 +10,10 @@ import {
 } from '@angular/core';
 import { AlertaService, AlertaSeveridad, EventoRow } from '../../../../services/alerta.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
-import { SkeletonComponent } from '../../../../components/ui/skeleton';
+import {
+  AlarmHistoryListComponent,
+  type AlarmHistoryItem,
+} from '../../../../components/ui/alarm-history-list';
 
 type HistoricoFiltro = 'todos' | AlertaSeveridad;
 
@@ -18,7 +21,7 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
   selector: 'app-alertas-historico',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, InlineErrorComponent, SkeletonComponent],
+  imports: [CommonModule, InlineErrorComponent, AlarmHistoryListComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -37,93 +40,23 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
         >
       </header>
 
-      <!-- Lista de cards (mismo diseño que el historial de Ventisqueros) -->
-      @if (loading()) {
-        <div class="space-y-2">
-          @for (_ of [0, 1, 2, 3, 4]; track $index) {
-            <app-skeleton class="h-[68px] w-full rounded-xl" />
-          }
-        </div>
-      } @else {
-        <div class="space-y-2">
-          @for (ev of historialFiltrado(); track ev.id) {
-            <article
-              class="flex items-stretch gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-            >
-              <div
-                [class]="sevIconClass(ev.severidad)"
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
-              >
-                <span class="material-symbols-outlined text-[20px]">history</span>
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="truncate font-semibold text-slate-800">{{
-                    ev.alerta_nombre || ev.variable_key
-                  }}</span>
-                  <span
-                    [class]="severidadClass(ev.severidad)"
-                    class="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-semibold uppercase tracking-wide"
-                  >
-                    <span
-                      [class]="severidadDotClass(ev.severidad)"
-                      class="h-1.5 w-1.5 rounded-full"
-                    ></span>
-                    {{ severidadLabel(ev.severidad) }}
-                  </span>
-                </div>
-                <div class="mt-0.5 font-mono text-caption-xs text-slate-400">
-                  {{ codigoEvento(ev) }} · {{ ev.variable_key }}
-                </div>
-                <div
-                  class="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-caption-xs font-medium text-slate-500"
-                >
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[12px]">schedule</span>
-                    {{ formatFecha(ev.triggered_at) }}
-                  </span>
-                  <span class="inline-flex items-center gap-1">
-                    <span class="material-symbols-outlined text-[12px]">timelapse</span>
-                    {{ duracion(ev.triggered_at, ev.resuelta_at) }}
-                  </span>
-                  @if (ev.asignado_nombre_completo) {
-                    <span class="inline-flex items-center gap-1">
-                      <span class="material-symbols-outlined text-[12px]">person</span>
-                      {{ ev.asignado_nombre_completo }}
-                    </span>
-                  }
-                  @if (ev.incidencia_id) {
-                    <span class="inline-flex items-center gap-1 font-bold text-primary-container">
-                      <span class="material-symbols-outlined text-[12px]">link</span>
-                      {{ ev.incidencia_id }}
-                    </span>
-                  }
-                </div>
-              </div>
-            </article>
-          } @empty {
-            <div
-              class="flex flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white py-10 text-center"
-            >
-              <span class="material-symbols-outlined text-3xl text-slate-300">history</span>
-              <p class="mt-2 text-body-sm font-semibold text-slate-400">
-                Sin registros con estos filtros
-              </p>
-            </div>
-          }
-        </div>
-        <div class="flex items-center justify-between px-1 pt-1">
-          <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
-          <button
-            type="button"
-            (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
-          >
-            <span class="material-symbols-outlined text-[14px]">download</span>
-            Exportar CSV
-          </button>
-        </div>
-      }
+      <!-- Lista compartida (mismo diseño que el historial de Ventisqueros) -->
+      <app-alarm-history-list
+        [items]="items()"
+        [loading]="loading()"
+        emptyText="Sin registros con estos filtros"
+      />
+      <div class="flex items-center justify-between px-1 pt-1">
+        <p class="text-caption-xs text-slate-400">Últimos 90 días</p>
+        <button
+          type="button"
+          (click)="exportarCsv()"
+          class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
+        >
+          <span class="material-symbols-outlined text-[14px]">download</span>
+          Exportar CSV
+        </button>
+      </div>
     </div>
   `,
 })
@@ -177,6 +110,30 @@ export class AlertasHistoricoComponent {
     return f === 'todos' ? this.historial() : this.historial().filter((e) => e.severidad === f);
   });
 
+  // Mapea EventoRow → AlarmHistoryItem para el componente compartido.
+  readonly items = computed<AlarmHistoryItem[]>(() =>
+    this.historialFiltrado().map((ev) => {
+      const sev: 'info' | 'warn' | 'crit' =
+        ev.severidad === 'critica' ? 'crit' : ev.severidad === 'baja' ? 'info' : 'warn';
+      const tags: AlarmHistoryItem['tags'] = [];
+      if (ev.asignado_nombre_completo)
+        tags.push({ icon: 'person', label: ev.asignado_nombre_completo });
+      if (ev.incidencia_id) tags.push({ icon: 'link', label: ev.incidencia_id, emphasis: true });
+      return {
+        id: ev.id,
+        title: ev.alerta_nombre || ev.variable_key,
+        code: this.codigoEvento(ev),
+        detail: ev.variable_key,
+        severity: sev,
+        severityLabel: this.severidadLabel(ev.severidad),
+        startedAt: ev.triggered_at,
+        endedAt: ev.resuelta_at,
+        status: ev.resuelta_at ? 'resuelta' : 'activa',
+        tags,
+      } satisfies AlarmHistoryItem;
+    }),
+  );
+
   codigoEvento(ev: EventoRow): string {
     return `ALT-${String(ev.id).padStart(4, '0')}`;
   }
@@ -201,27 +158,6 @@ export class AlertasHistoricoComponent {
 
   severidadLabel(s: AlertaSeveridad): string {
     return { baja: 'Baja', media: 'Media', alta: 'Alta', critica: 'Crítica' }[s];
-  }
-
-  severidadClass(s: AlertaSeveridad): string {
-    if (s === 'critica') return 'bg-rose-50 text-rose-600';
-    if (s === 'alta') return 'bg-orange-50 text-orange-600';
-    if (s === 'media') return 'bg-amber-50 text-amber-600';
-    return 'bg-slate-100 text-slate-500';
-  }
-
-  sevIconClass(s: AlertaSeveridad): string {
-    if (s === 'critica') return 'bg-rose-50 text-rose-500';
-    if (s === 'alta') return 'bg-orange-50 text-orange-500';
-    if (s === 'media') return 'bg-amber-50 text-amber-500';
-    return 'bg-slate-100 text-slate-400';
-  }
-
-  severidadDotClass(s: AlertaSeveridad): string {
-    if (s === 'critica') return 'bg-rose-500';
-    if (s === 'alta') return 'bg-orange-500';
-    if (s === 'media') return 'bg-amber-500';
-    return 'bg-slate-400';
   }
 
   filtroClass(key: HistoricoFiltro): string {
