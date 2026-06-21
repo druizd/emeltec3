@@ -535,12 +535,59 @@ export class VentisquerosFloorMapComponent {
       : 'Sensor fuera de servicio';
   }
 
+  // Layout de etiquetas con anti-solapamiento. Las posiciones base salen de
+  // cx/cy (screenXPct/YPct, zoom/pan-aware); si dos chips se solapan se empujan
+  // por el eje de menor penetración. Los halos SVG quedan en cx/cy reales; solo
+  // la tarjeta se separa. Footprint en % aproximado (CHIP_W/CHIP_H, ajustable).
+  private readonly CHIP_W_PCT = 10;
+  private readonly CHIP_H_PCT = 9;
+  readonly chipLayout = computed(() => {
+    const nodes = this.visibleSensors().map((s) => ({
+      id: s.id,
+      x: this.screenXPct(s.cx),
+      y: this.screenYPct(s.cy),
+    }));
+    const W = this.CHIP_W_PCT;
+    const H = this.CHIP_H_PCT;
+    for (let iter = 0; iter < 80; iter++) {
+      let moved = false;
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const a = nodes[i];
+          const b = nodes[j];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const adx = Math.abs(dx);
+          const ady = Math.abs(dy);
+          if (adx < W && ady < H) {
+            const ox = (W - adx) / 2;
+            const oy = (H - ady) / 2;
+            if (ox <= oy) {
+              const dir = dx < 0 ? -1 : 1;
+              a.x -= dir * ox;
+              b.x += dir * ox;
+            } else {
+              const dir = dy < 0 ? -1 : 1;
+              a.y -= dir * oy;
+              b.y += dir * oy;
+            }
+            moved = true;
+          }
+        }
+      }
+      if (!moved) break;
+    }
+    const map = new Map<string, { x: number; y: number }>();
+    for (const n of nodes) map.set(n.id, { x: n.x, y: n.y });
+    return map;
+  });
+
   chipLeftPct(s: Sensor): number {
-    return this.screenXPct(s.cx);
+    return this.chipLayout().get(s.id)?.x ?? this.screenXPct(s.cx);
   }
 
   chipTopPct(s: Sensor): number {
-    return this.screenYPct(s.cy);
+    return this.chipLayout().get(s.id)?.y ?? this.screenYPct(s.cy);
   }
 
   screenXPct(svgX: number): number {

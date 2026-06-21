@@ -309,10 +309,12 @@ interface MetricOption {
                 [hasAlerts]="alerts().length > 0"
                 (selectSensor)="selectedId.set($event)"
               ></app-ventisqueros-floor-map>
-              @if (focusSensor()) {
+              @if (focusSensor(); as fs) {
                 <app-ventisqueros-focus-card
                   class="vs-focus-overlay"
-                  [focus]="focusSensor()"
+                  [focus]="fs"
+                  [salaLink]="salaRouterLink(fs.area)"
+                  [salaQuery]="salaQueryParams()"
                 ></app-ventisqueros-focus-card>
               }
               @if (floorMapSensors().length === 0) {
