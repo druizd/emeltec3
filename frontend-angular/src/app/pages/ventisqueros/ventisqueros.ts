@@ -5132,6 +5132,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly subTabs = computed<SubTab[]>(() => {
     const c = this.alarmsCounts();
     const tabs: SubTab[] = [
+      { key: 'general', icon: 'map', label: 'Mapa' },
       { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
       { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
       { key: 'alarmas', icon: 'notifications_active', label: 'Alarmas activas', badge: c.total },

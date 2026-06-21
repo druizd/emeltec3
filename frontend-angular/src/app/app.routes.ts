@@ -62,11 +62,8 @@ export const routes: Routes = [
       },
       {
         path: 'companies/:siteId/cold-room',
-        canActivate: [roleGuard('SuperAdmin', 'Admin')],
         loadComponent: () =>
-          import('./pages/ventisqueros/ventisqueros-tap-detail').then(
-            (m) => m.VentisquerosTapDetailComponent,
-          ),
+          import('./pages/ventisqueros/cold-room-page').then((m) => m.ColdRoomPageComponent),
       },
       {
         path: 'companies/:siteId/tap/:tapId',
