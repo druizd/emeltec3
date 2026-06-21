@@ -1544,7 +1544,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <app-table-skeleton [rows]="6" [columns]="5" [showHeader]="false" />
                     </div>
                   } @else {
-                    <table class="w-full min-w-[960px] text-left text-body-sm">
+                    <table class="responsive-table w-full text-left text-body-sm md:min-w-[960px]">
                       <thead class="bg-slate-50">
                         <tr class="border-b border-slate-100">
                           @for (
@@ -1564,19 +1564,19 @@ type OperationMode = 'realtime' | 'turnos';
                       <tbody>
                         @for (report of paginatedDgaReports(); track report.id) {
                           <tr class="border-b border-slate-100">
-                            <td class="dga-table-cell dga-table-cell--muted">
+                            <td class="dga-table-cell dga-table-cell--muted" data-label="Fecha">
                               {{ report.fecha }}
                             </td>
-                            <td class="dga-table-cell">
+                            <td class="dga-table-cell" data-label="Nv. freático">
                               {{ formatDgaNumber(report.nivelFreatico) }}
                             </td>
-                            <td class="dga-table-cell">
+                            <td class="dga-table-cell" data-label="Caudal">
                               {{ formatDgaNumber(report.caudal) }}
                             </td>
-                            <td class="dga-table-cell">
+                            <td class="dga-table-cell" data-label="Totalizador">
                               {{ formatDgaInteger(report.totalizador) }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3" data-label="Estado">
                               <div class="flex flex-col gap-1">
                                 <div class="inline-flex items-center gap-2">
                                   <button
@@ -1634,6 +1634,7 @@ type OperationMode = 'realtime' | 'turnos';
                             <td
                               colspan="5"
                               class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
+                              data-label=""
                             >
                               Sin registros para el periodo seleccionado.
                             </td>

@@ -128,7 +128,7 @@ interface EditState {
             </div>
           } @else {
             <div class="overflow-x-auto">
-              <table class="w-full min-w-[900px] text-left text-body-sm">
+              <table class="responsive-table w-full text-left text-body-sm md:min-w-[900px]">
                 <thead class="border-b border-[#e2e8f0] bg-slate-50">
                   <tr>
                     <th
@@ -157,11 +157,11 @@ interface EditState {
                 <tbody class="divide-y divide-[#edf2f7]">
                   @for (user of pagedUsers(); track user.id) {
                     <tr class="group transition-colors hover:bg-slate-50/70">
-                      <td class="px-5 py-4">
+                      <td class="px-5 py-4" data-label="Usuario">
                         <p class="font-bold text-[#1e293b]">{{ fullName(user) }}</p>
                       </td>
-                      <td class="px-5 py-4 text-[#64748b]">{{ user.email }}</td>
-                      <td class="px-5 py-4 text-[#64748b]">
+                      <td class="px-5 py-4 text-[#64748b]" data-label="Correo">{{ user.email }}</td>
+                      <td class="px-5 py-4 text-[#64748b]" data-label="Empresa / Sub empresa">
                         <p class="font-semibold text-[#475569]">
                           {{ displayValue(user.empresa_nombre, 'Por verse') }}
                         </p>
@@ -169,7 +169,7 @@ interface EditState {
                           {{ displayValue(user.sub_empresa_nombre, 'Sin sub empresa') }}
                         </p>
                       </td>
-                      <td class="px-5 py-4 text-right">
+                      <td class="px-5 py-4 text-right" data-label="Estado">
                         <span
                           class="inline-flex h-2.5 w-2.5 rounded-full ring-4"
                           [class.bg-emerald-500]="hasLoggedIn(user)"
@@ -188,7 +188,7 @@ interface EditState {
                           "
                         ></span>
                       </td>
-                      <td class="px-3 py-4 text-right">
+                      <td class="px-3 py-4 text-right" data-label="">
                         @if (canDeleteUser(user)) {
                           <button
                             type="button"
@@ -206,7 +206,7 @@ interface EditState {
 
                   @if (filteredUsers().length === 0) {
                     <tr>
-                      <td colspan="5" class="px-5 py-10 text-center text-[#94a3b8]">
+                      <td colspan="5" class="px-5 py-10 text-center text-[#94a3b8]" data-label="">
                         No hay usuarios para mostrar.
                       </td>
                     </tr>

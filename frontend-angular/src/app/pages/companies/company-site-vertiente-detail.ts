@@ -538,7 +538,7 @@ type OperationMode = 'realtime' | 'turnos';
               </div>
 
               <div class="overflow-x-auto">
-                <table class="w-full min-w-[1040px] text-left text-caption">
+                <table class="responsive-table w-full text-left text-caption md:min-w-[1040px]">
                   <thead class="bg-slate-50">
                     <tr
                       class="text-caption-xs font-semibold uppercase tracking-[0.16em] text-slate-400"
@@ -555,22 +555,22 @@ type OperationMode = 'realtime' | 'turnos';
                       <tr
                         class="border-t border-slate-100 text-body-sm font-semibold text-slate-600 odd:bg-white even:bg-slate-50/60"
                       >
-                        <td class="px-4 py-3">
+                        <td class="px-4 py-3" data-label="Fecha">
                           <span class="inline-flex items-center gap-2">
                             <span class="h-1.5 w-1.5 rounded-full bg-primary/10"></span>
                             {{ row.fecha }}
                           </span>
                         </td>
-                        <td class="px-4 py-3">{{ row.caudal }}</td>
-                        <td class="px-4 py-3">{{ row.nivel || '--' }}</td>
-                        <td class="px-4 py-3">{{ row.totalizador }}</td>
-                        <td class="px-4 py-3">{{ row.nivelFreatico }}</td>
+                        <td class="px-4 py-3" data-label="Caudal">{{ row.caudal }}</td>
+                        <td class="px-4 py-3" data-label="Nivel">{{ row.nivel || '--' }}</td>
+                        <td class="px-4 py-3" data-label="Totalizador">{{ row.totalizador }}</td>
+                        <td class="px-4 py-3" data-label="Nivel freático">{{ row.nivelFreatico }}</td>
                       </tr>
                     } @empty {
                       <tr
                         class="border-t border-slate-100 text-caption font-semibold text-slate-400"
                       >
-                        <td class="px-4 py-8 text-center" colspan="5">
+                        <td class="px-4 py-8 text-center" colspan="5" data-label="">
                           Sin registros disponibles para este filtro.
                         </td>
                       </tr>
@@ -1019,7 +1019,7 @@ type OperationMode = 'realtime' | 'turnos';
                       <app-table-skeleton [rows]="6" [columns]="5" [showHeader]="false" />
                     </div>
                   } @else {
-                    <table class="w-full min-w-[960px] text-left text-body-sm">
+                    <table class="responsive-table w-full text-left text-body-sm md:min-w-[960px]">
                       <thead class="bg-slate-50">
                         <tr class="border-b border-slate-100">
                           @for (
@@ -1039,19 +1039,19 @@ type OperationMode = 'realtime' | 'turnos';
                       <tbody>
                         @for (report of paginatedDgaReports(); track report.id) {
                           <tr class="border-b border-slate-100">
-                            <td class="dga-table-cell dga-table-cell--muted">
+                            <td class="dga-table-cell dga-table-cell--muted" data-label="Fecha">
                               {{ report.fecha }}
                             </td>
-                            <td class="dga-table-cell">
+                            <td class="dga-table-cell" data-label="Nv. freático">
                               {{ formatDgaNumber(report.nivelFreatico) }}
                             </td>
-                            <td class="dga-table-cell">
+                            <td class="dga-table-cell" data-label="Caudal">
                               {{ formatDgaNumber(report.caudal) }}
                             </td>
-                            <td class="dga-table-cell">
+                            <td class="dga-table-cell" data-label="Totalizador">
                               {{ formatDgaInteger(report.totalizador) }}
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3" data-label="Estado">
                               <div class="flex flex-col gap-1">
                                 <div class="inline-flex items-center gap-2">
                                   <button
@@ -1109,6 +1109,7 @@ type OperationMode = 'realtime' | 'turnos';
                             <td
                               colspan="5"
                               class="px-4 py-8 text-center text-body-sm font-semibold text-slate-400"
+                              data-label=""
                             >
                               Sin registros para el periodo seleccionado.
                             </td>
