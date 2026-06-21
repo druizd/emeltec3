@@ -18,7 +18,12 @@ import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-
 import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
 import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
-import { ColdRoomService, type ColdRoomSensor } from '../../services/cold-room.service';
+import {
+  ColdRoomService,
+  type ColdRoomExportInterval,
+  type ColdRoomExportPoint,
+  type ColdRoomSensor,
+} from '../../services/cold-room.service';
 import {
   ColdRoomThresholdsService,
   type SalaThreshold,
@@ -1822,7 +1827,46 @@ interface MetricOption {
                 </label>
               </div>
               <div class="vs-hx-hint">
-                Cagg se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h (≤30d), 1d (resto).
+                La resolución base se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h
+                (≤30d), 1d (resto).
+              </div>
+            </div>
+
+            <!-- Intervalo de agrupación (promedio / mín / máx) -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">2. Intervalo de agrupación</div>
+              <div class="flex flex-wrap gap-1.5">
+                @for (opt of historyExportIntervalOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-btn"
+                    [class.vs-hx-btn--primary]="historyExportInterval() === opt.value"
+                    (click)="historyExportInterval.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <div class="vs-hx-hint">
+                Cada fila trae promedio, mínimo y máximo por intervalo. "Auto" usa la resolución
+                base. No puede ser más fino que la base disponible para el rango.
+              </div>
+            </div>
+
+            <!-- Variables -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">3. Variables</div>
+              <div class="flex flex-wrap gap-1.5">
+                @for (opt of historyExportVarsOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-btn"
+                    [class.vs-hx-btn--primary]="historyExportVars() === opt.value"
+                    (click)="historyExportVars.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
               </div>
             </div>
 
@@ -1830,7 +1874,7 @@ interface MetricOption {
             <div class="vs-hx-section">
               <div class="vs-hx-section-head">
                 <div class="vs-hx-section-title">
-                  2. Salas
+                  4. Salas
                   <span class="vs-hx-count">
                     {{ historyExportSelectedSalas().size }} / {{ salaAggregates().length }}
                   </span>
@@ -1868,7 +1912,7 @@ interface MetricOption {
             <div class="vs-hx-section">
               <div class="vs-hx-section-head">
                 <div class="vs-hx-section-title">
-                  3. Sensores
+                  5. Sensores
                   <span class="vs-hx-count">
                     {{ historyExportSelectedSensors().size }} /
                     {{ exportAvailableSensors().length }}
@@ -5874,6 +5918,23 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly historyExportTo = signal<string>('');
   readonly historyExportLoading = signal<boolean>(false);
   readonly historyExportError = signal<string | null>(null);
+  // Intervalo de agrupación (promedio/mín/máx por intervalo). 'auto' = resolución base.
+  readonly historyExportInterval = signal<ColdRoomExportInterval>('auto');
+  readonly historyExportIntervalOptions: { value: ColdRoomExportInterval; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: '1min', label: '1 min' },
+    { value: '5min', label: '5 min' },
+    { value: '15min', label: '15 min' },
+    { value: '1h', label: '1 hora' },
+    { value: '1d', label: '1 día' },
+  ];
+  // Variables a incluir en el Excel.
+  readonly historyExportVars = signal<'both' | 'temp' | 'hum'>('both');
+  readonly historyExportVarsOptions: { value: 'both' | 'temp' | 'hum'; label: string }[] = [
+    { value: 'both', label: 'Ambas' },
+    { value: 'temp', label: 'Temperatura' },
+    { value: 'hum', label: 'Humedad' },
+  ];
 
   openHistoryExport(): void {
     // Default: hoy 00:00 → ahora.
@@ -5971,7 +6032,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
     this.historyExportLoading.set(true);
     this.coldRoom
-      .exportHistory(sid, from.toISOString(), to.toISOString(), allIds, sensors)
+      .exportHistory(
+        sid,
+        from.toISOString(),
+        to.toISOString(),
+        allIds,
+        sensors,
+        this.historyExportInterval(),
+      )
       .subscribe({
         next: async (res) => {
           this.historyExportLoading.set(false);
@@ -5984,7 +6052,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
             return;
           }
           try {
-            await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
+            await this.downloadHistoryXlsx(
+              res.data.points,
+              from,
+              to,
+              res.meta.view,
+              sensors,
+              res.meta.interval,
+            );
             this.closeHistoryExport();
           } catch (err) {
             this.historyExportError.set(
@@ -6033,34 +6108,41 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   private async downloadHistoryXlsx(
-    points: {
-      ts: string;
-      sensorId: string;
-      area: string;
-      tap: string;
-      t: number | null;
-      h: number | null;
-    }[],
+    points: ColdRoomExportPoint[],
     from: Date,
     to: Date,
     view: string,
     sensorIds: string[],
+    intervalLabel?: string,
   ): Promise<void> {
     const XLSX = await this.loadXlsx();
     const wb = XLSX.utils.book_new();
+    const r2 = (n: number | null | undefined) => (n == null ? null : Math.round(n * 100) / 100);
+    const vars = this.historyExportVars();
+    const incT = vars !== 'hum';
+    const incH = vars !== 'temp';
 
-    // Hoja 1: Lecturas (datos crudos).
+    // Hoja 1: Lecturas (promedio/mín/máx por intervalo). Columnas según variables.
     const rows = points.map((p) => {
       const dt = this.formatChileParts(p.ts);
-      return {
+      const row: Record<string, string | number | null> = {
         Fecha: dt.date,
         Hora: dt.time,
         Sensor: p.sensorId,
         Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
         TAP: p.tap,
-        'Temperatura (°C)': p.t !== null ? Math.round(p.t * 100) / 100 : null,
-        'Humedad (%)': p.h !== null ? Math.round(p.h * 100) / 100 : null,
       };
+      if (incT) {
+        row['Temp prom (°C)'] = r2(p.t);
+        row['Temp mín (°C)'] = r2(p.tMin);
+        row['Temp máx (°C)'] = r2(p.tMax);
+      }
+      if (incH) {
+        row['HR prom (%)'] = r2(p.h);
+        row['HR mín (%)'] = r2(p.hMin);
+        row['HR máx (%)'] = r2(p.hMax);
+      }
+      return row;
     });
     const sheet1 = XLSX.utils.json_to_sheet(rows);
     sheet1['!cols'] = [
@@ -6069,8 +6151,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       { wch: 10 }, // Sensor
       { wch: 28 }, // Sala
       { wch: 8 }, // TAP
-      { wch: 16 }, // Temperatura
-      { wch: 14 }, // Humedad
+      ...(incT ? [{ wch: 14 }, { wch: 13 }, { wch: 13 }] : []),
+      ...(incH ? [{ wch: 12 }, { wch: 11 }, { wch: 11 }] : []),
     ];
     // Freeze header row.
     sheet1['!freeze'] = { xSplit: 0, ySplit: 1 };
@@ -6084,14 +6166,30 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       equipo_hourly: '1 hora',
       equipo_daily: '1 día',
     };
+    const intervalNames: Record<string, string> = {
+      '1min': '1 minuto',
+      '5min': '5 minutos',
+      '15min': '15 minutos',
+      '1h': '1 hora',
+      '1d': '1 día',
+    };
     const summary = [
       { Campo: 'Sitio', Valor: 'Ventisqueros' },
       { Campo: 'Generado', Valor: this.formatChileShort(new Date().toISOString()) },
       { Campo: 'Rango desde', Valor: fmtRange(from) },
       { Campo: 'Rango hasta', Valor: fmtRange(to) },
-      { Campo: 'Granularidad', Valor: cagg[view] || view },
+      {
+        Campo: 'Agrupación (promedio/mín/máx)',
+        Valor: intervalLabel ? intervalNames[intervalLabel] || intervalLabel : cagg[view] || view,
+      },
+      { Campo: 'Resolución base', Valor: cagg[view] || view },
+      {
+        Campo: 'Variables',
+        Valor:
+          vars === 'both' ? 'Temperatura + Humedad' : vars === 'temp' ? 'Temperatura' : 'Humedad',
+      },
       { Campo: 'Sensores', Valor: sensorIds.join(', ') },
-      { Campo: 'Total lecturas', Valor: points.length },
+      { Campo: 'Total filas', Valor: points.length },
     ];
     const sheet2 = XLSX.utils.json_to_sheet(summary);
     sheet2['!cols'] = [{ wch: 18 }, { wch: 60 }];
