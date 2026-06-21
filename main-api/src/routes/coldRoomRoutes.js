@@ -1356,21 +1356,12 @@ router.get('/:siteId/history-export', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Rango máximo: 365 días' });
     }
 
-    // Cagg BASE según rango (acota cantidad de filas leídas).
-    let view = 'equipo_1min';
-    if (durMs > 7 * 86_400_000) view = 'equipo_daily';
-    else if (durMs > 2 * 86_400_000) view = 'equipo_hourly';
-    else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
     const BASE_MS = {
       equipo_1min: 60_000,
       equipo_5min: 300_000,
       equipo_hourly: 3_600_000,
       equipo_daily: 86_400_000,
     };
-    const baseMs = BASE_MS[view];
-
-    // Intervalo de agrupación pedido (promedio/min/max por intervalo). 'auto' =
-    // usa la resolución base. No puede ser más fino que la base (se clampa).
     const INTERVAL_MS = {
       '1min': 60_000,
       '5min': 300_000,
@@ -1382,7 +1373,38 @@ router.get('/:siteId/history-export', async (req, res) => {
       .toLowerCase()
       .trim();
     const requestedMs = INTERVAL_MS[intervalRaw] || null; // null = auto
-    const effectiveMs = requestedMs ? Math.max(requestedMs, baseMs) : baseMs;
+
+    // Cagg BASE: cuando el usuario fija intervalo, la base se elige POR el
+    // intervalo (cagg ≤ intervalo) para respetar la granularidad pedida — NO por
+    // la duración del rango. En 'auto' sí se elige por duración.
+    let view;
+    if (requestedMs) {
+      // Lee de un cagg igual o más fino que el intervalo, así el promedio/min/max
+      // se calcula sobre varias muestras dentro de cada intervalo.
+      if (requestedMs <= 900_000)
+        view = 'equipo_1min'; // 1/5/15 min ← 1min
+      else if (requestedMs <= 3_600_000)
+        view = 'equipo_5min'; // 1h ← 5min
+      else view = 'equipo_hourly'; // 1d ← hourly
+    } else {
+      view = 'equipo_1min';
+      if (durMs > 7 * 86_400_000) view = 'equipo_daily';
+      else if (durMs > 2 * 86_400_000) view = 'equipo_hourly';
+      else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
+    }
+    const baseMs = BASE_MS[view];
+    const effectiveMs = requestedMs ? requestedMs : baseMs; // requestedMs siempre ≥ baseMs
+
+    // Guard: acota filas base leídas (evita escanear millones en rangos enormes
+    // con intervalo fino). Si se pasa, pedir intervalo mayor o rango menor.
+    const MAX_BASE_BUCKETS = 50_000;
+    if (Math.ceil(durMs / baseMs) > MAX_BASE_BUCKETS) {
+      return res.status(400).json({
+        ok: false,
+        error: `Rango demasiado grande para intervalo "${intervalRaw}". Reduce el rango o elige un intervalo mayor.`,
+      });
+    }
+
     const INTERVAL_LABEL = {
       60_000: '1min',
       300_000: '5min',
