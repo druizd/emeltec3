@@ -69,12 +69,11 @@ export class CompaniesInstallationsPanelComponent {
   });
 
   readonly coldRoomSite = computed<SiteRecord | null>(() => {
-    const list = this._sites();
-    if (list.length === 0) return null;
+    // Si hay sitios cold-room, mostramos el general AGREGADO de todos los TAPs
+    // (coldRoomSites alimenta el bundle). No exigimos que TODOS los sitios sean
+    // cold-room: evita forzar la selección de un TAP cuando hay mezcla.
     const cold = this.coldRoomSites();
-    if (cold.length === 0) return null;
-    if (cold.length !== list.length) return null;
-    return cold[0];
+    return cold.length > 0 ? cold[0] : null;
   });
 
   getGridClass(): string {
