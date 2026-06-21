@@ -21,7 +21,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
         <button
           type="button"
           (click)="ui.toggleMobileNav()"
-          class="my-auto mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
+          class="my-auto mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
           aria-label="Abrir menú de navegación"
         >
           <span class="material-symbols-outlined text-[22px]">menu</span>

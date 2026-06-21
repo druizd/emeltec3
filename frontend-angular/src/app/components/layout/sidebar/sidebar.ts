@@ -90,7 +90,7 @@ const MODULES = SITE_MODULES;
         <button
           type="button"
           (click)="ui.closeMobileNav()"
-          class="ml-auto flex h-7 w-7 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
+          class="ml-auto flex h-11 w-11 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD] lg:hidden"
           aria-label="Cerrar menú"
         >
           <span class="material-symbols-outlined text-[18px]">close</span>
@@ -115,7 +115,7 @@ const MODULES = SITE_MODULES;
               <p class="truncate text-caption font-semibold leading-tight text-[#1e293b]">
                 {{ userFullName() }}
               </p>
-              <p class="text-caption-xs text-[#94a3b8]">{{ roleLabel() }}</p>
+              <p class="text-caption-xs text-[#64748b]">{{ roleLabel() }}</p>
             </div>
           </div>
         </div>
