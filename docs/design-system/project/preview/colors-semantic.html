@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .chip { border-radius: 8px; padding: 12px 10px; border: 1px solid; }
+  .chip-name { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+  .chip-hex  { font-size: 10px; font-family: 'JetBrains Mono',monospace; opacity: 0.7; }
+  .chip-example { margin-top: 8px; display:inline-flex; align-items:center; gap:5px; border-radius:9999px; padding:3px 9px; font-size:11px; font-weight:500; }
+  .dot { width:6px; height:6px; border-radius:50%; }
+</style>
+</head><body>
+<div class="grid">
+  <div class="chip" style="background:rgba(13,175,189,0.10);border-color:rgba(13,175,189,0.25)">
+    <div class="chip-name" style="color:#0DAFBD">Primary</div>
+    <div class="chip-hex" style="color:#0DAFBD">#0DAFBD</div>
+    <div class="chip-example" style="background:rgba(13,175,189,0.15);color:#0DAFBD">
+      <div class="dot" style="background:#0DAFBD"></div>Activo
+    </div>
+  </div>
+  <div class="chip" style="background:rgba(34,197,94,0.10);border-color:rgba(34,197,94,0.25)">
+    <div class="chip-name" style="color:#22C55E">Success</div>
+    <div class="chip-hex" style="color:#22C55E">#22C55E</div>
+    <div class="chip-example" style="background:rgba(34,197,94,0.15);color:#22C55E">
+      <div class="dot" style="background:#22C55E"></div>Enviado
+    </div>
+  </div>
+  <div class="chip" style="background:rgba(251,191,36,0.10);border-color:rgba(251,191,36,0.25)">
+    <div class="chip-name" style="color:#FBBF24">Warning</div>
+    <div class="chip-hex" style="color:#FBBF24">#FBBF24</div>
+    <div class="chip-example" style="background:rgba(251,191,36,0.15);color:#FBBF24">
+      <div class="dot" style="background:#FBBF24"></div>Pendiente
+    </div>
+  </div>
+  <div class="chip" style="background:rgba(248,113,113,0.10);border-color:rgba(248,113,113,0.25)">
+    <div class="chip-name" style="color:#F87171">Danger</div>
+    <div class="chip-hex" style="color:#F87171">#F87171</div>
+    <div class="chip-example" style="background:rgba(248,113,113,0.15);color:#F87171">
+      <div class="dot" style="background:#F87171"></div>Rechazado
+    </div>
+  </div>
+  <div class="chip" style="background:rgba(96,165,250,0.10);border-color:rgba(96,165,250,0.25)">
+    <div class="chip-name" style="color:#60A5FA">Info</div>
+    <div class="chip-hex" style="color:#60A5FA">#60A5FA</div>
+    <div class="chip-example" style="background:rgba(96,165,250,0.15);color:#60A5FA">
+      <div class="dot" style="background:#60A5FA"></div>Legacy
+    </div>
+  </div>
+</div>
+</body></html>

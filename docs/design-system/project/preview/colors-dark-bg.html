@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .row { display: flex; gap: 8px; margin-bottom: 6px; }
+  .layer { flex: 1; height: 60px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.04); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px 10px; }
+  .layer-name { font-size: 10px; color: #8B9BB8; font-weight: 500; }
+  .layer-hex  { font-size: 10px; color: #4A5A72; font-family: 'JetBrains Mono', monospace; }
+  .border-row { display:flex; gap:8px; margin-top:12px; }
+  .border-chip { flex:1; height:28px; border-radius:6px; }
+  .blbl { flex:1; font-size:10px; color:#4A5A72; font-family:'JetBrains Mono',monospace; text-align:center; padding-top:4px; }
+  .section-title { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #4A5A72; margin-bottom: 10px; }
+  .divider { height:1px; background:#1E2D42; margin:12px 0; }
+</style>
+</head><body>
+<div class="section-title">Background Scale</div>
+<div class="row">
+  <div class="layer" style="background:#080C12">
+    <div class="layer-name">Base</div>
+    <div class="layer-hex">#080C12</div>
+  </div>
+  <div class="layer" style="background:#0F1520">
+    <div class="layer-name">Surface</div>
+    <div class="layer-hex">#0F1520</div>
+  </div>
+  <div class="layer" style="background:#162030">
+    <div class="layer-name">Elevated</div>
+    <div class="layer-hex">#162030</div>
+  </div>
+  <div class="layer" style="background:#1C2A3E">
+    <div class="layer-name">Subtle</div>
+    <div class="layer-hex">#1C2A3E</div>
+  </div>
+</div>
+<div class="divider"></div>
+<div class="section-title">Border Scale</div>
+<div class="border-row">
+  <div class="border-chip" style="border:1px solid #1E2D42; background:transparent"></div>
+  <div class="border-chip" style="border:1px solid #253550; background:transparent"></div>
+  <div class="border-chip" style="border:1px solid #3A5070; background:transparent"></div>
+  <div class="border-chip" style="border:1px solid #0DAFBD; background:transparent"></div>
+</div>
+<div class="border-row">
+  <div class="blbl">Muted</div><div class="blbl">Default</div><div class="blbl">Strong</div><div class="blbl">Focus</div>
+</div>
+</body></html>
