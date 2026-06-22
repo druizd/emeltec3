@@ -10,21 +10,20 @@ Stack: **Angular 21**, standalone components, signals, Tailwind CSS v4, Chart.js
 
 ## Design System
 
-This project follows the **Emeltec Design System** created in Codex Design. The full source bundle is at:
+This project follows the **Emeltec Design System**. The full source bundle lives in the repo at `docs/design-system/`:
 
 ```
-C:/Users/dmave/.Codex/projects/D--cloud-emeltec-platform-main-frontend-angular/
-  design_extracted/emeltec-design-system/
-    README.md                  — Overview, brand guidelines, copy rules
-    project/README.md          — Full design spec (colors, type, spacing, icons)
-    project/colors_and_type.css — Complete CSS token system
-    project/ui_kits/emeltec-cloud/
-      index.html               — Interactive prototype (open in browser)
-      Sidebar.jsx              — Sidebar navigation component
-      TopNav.jsx               — Top navigation component
-      MonitorScreen.jsx        — Monitoring screen (DGA + Operación + Well diagram)
-      DashboardScreen.jsx      — Dashboard grid
-      DownloadModal.jsx        — Data export modal
+docs/design-system/
+  README.md                  — Overview, brand guidelines, copy rules
+  project/README.md          — Full design spec (colors, type, spacing, icons)
+  project/colors_and_type.css — Complete CSS token system
+  project/ui_kits/emeltec-cloud/
+    index.html               — Interactive prototype (open in browser)
+    Sidebar.jsx              — Sidebar navigation component
+    TopNav.jsx               — Top navigation component
+    MonitorScreen.jsx        — Monitoring screen (DGA + Operación + Well diagram)
+    DashboardScreen.jsx      — Dashboard grid
+    DownloadModal.jsx        — Data export modal
 ```
 
 ### Colors

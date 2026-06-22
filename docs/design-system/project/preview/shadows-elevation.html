@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .shadow-card { flex: 1; background: #0F1520; border-radius: 10px; padding: 14px; border: 1px solid #1E2D42; }
+  .shadow-label { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #4A5A72; margin-bottom: 6px; }
+  .shadow-val   { font-family: 'JetBrains Mono'; font-size: 9px; color: #253550; margin-top: 4px; line-height: 1.5; }
+  .divider { height: 1px; background: #1E2D42; margin: 12px 0; }
+</style>
+</head><body>
+<div class="row">
+  <div class="shadow-card" style="box-shadow:0 1px 2px rgba(0,0,0,0.3)">
+    <div class="shadow-label">xs</div>
+    <div class="shadow-val">0 1px 2px rgba(0,0,0,0.3)</div>
+  </div>
+  <div class="shadow-card" style="box-shadow:0 2px 6px rgba(0,0,0,0.35)">
+    <div class="shadow-label">sm — Cards</div>
+    <div class="shadow-val">0 2px 6px rgba(0,0,0,0.35)</div>
+  </div>
+  <div class="shadow-card" style="box-shadow:0 4px 16px rgba(0,0,0,0.40)">
+    <div class="shadow-label">md — Modals</div>
+    <div class="shadow-val">0 4px 16px rgba(0,0,0,0.40)</div>
+  </div>
+  <div class="shadow-card" style="box-shadow:0 8px 32px rgba(0,0,0,0.50)">
+    <div class="shadow-label">lg — Drawers</div>
+    <div class="shadow-val">0 8px 32px rgba(0,0,0,0.50)</div>
+  </div>
+</div>
+<div class="divider"></div>
+<div class="row">
+  <div class="shadow-card" style="box-shadow:0 0 0 1px rgba(13,175,189,0.25),0 2px 8px rgba(13,175,189,0.15);border-color:rgba(13,175,189,0.25)">
+    <div class="shadow-label" style="color:#0DAFBD">Teal Glow sm</div>
+    <div class="shadow-val" style="color:#04606A">Active/focused cards</div>
+  </div>
+  <div class="shadow-card" style="box-shadow:0 0 0 1px rgba(13,175,189,0.35),0 4px 20px rgba(13,175,189,0.20);border-color:rgba(13,175,189,0.35)">
+    <div class="shadow-label" style="color:#0DAFBD">Teal Glow md</div>
+    <div class="shadow-val" style="color:#04606A">Selected / live data panels</div>
+  </div>
+  <div class="shadow-card" style="box-shadow:0 0 0 1px rgba(34,197,94,0.25),0 2px 8px rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.25)">
+    <div class="shadow-label" style="color:#22C55E">Green Glow</div>
+    <div class="shadow-val" style="color:#065F46">Enviado / success cards</div>
+  </div>
+  <div class="shadow-card" style="box-shadow:0 0 0 2px rgba(13,175,189,0.5);border-color:rgba(13,175,189,0.5)">
+    <div class="shadow-label" style="color:#0DAFBD">Focus Ring</div>
+    <div class="shadow-val" style="color:#04606A">Keyboard focus on inputs</div>
+  </div>
+</div>
+</body></html>

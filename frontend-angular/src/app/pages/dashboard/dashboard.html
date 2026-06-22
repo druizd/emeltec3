@@ -142,7 +142,9 @@
     </div>
 
     @if (visibleInstallations().length < installations().length) {
-      <div class="mt-3 flex items-center justify-center gap-2 text-caption-xs text-on-surface-muted">
+      <div
+        class="mt-3 flex items-center justify-center gap-2 text-caption-xs text-on-surface-muted"
+      >
         <span class="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
         Cargando {{ installations().length - visibleInstallations().length }} más…
       </div>

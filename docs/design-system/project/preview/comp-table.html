@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face {
+    font-family: 'Josefin Sans';
+    src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 700; font-style: normal;
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; padding: 20px; }
+
+  .card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    font-family: 'Josefin Sans'; font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: #94A3B8;
+    padding: 10px 14px; text-align: left;
+    border-bottom: 1px solid #E2E8F0; background: #F8FAFC;
+  }
+  tbody tr { border-bottom: 1px solid #F1F5F9; transition: background 0.1s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #F8FAFC; }
+  tbody td { padding: 10px 14px; color: #475569; }
+  .mono { font-family: 'JetBrains Mono'; font-size: 12px; color: #1E293B; }
+  .mono-muted { font-family: 'JetBrains Mono'; font-size: 12px; color: #94A3B8; }
+
+  .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 9999px; padding: 3px 9px; font-size: 11px; font-weight: 600; }
+  .dot   { width: 5px; height: 5px; border-radius: 50%; }
+  .sent    { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+  .pending { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+  .rejected{ background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; }
+
+  .pagination {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 14px; border-top: 1px solid #F1F5F9;
+    font-size: 12px; color: #94A3B8; background: #F8FAFC;
+  }
+  .pg-btn { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 4px 10px; color: #475569; cursor: pointer; font-size: 12px; font-family: 'DM Sans'; }
+  .pg-btn:hover { background: #F1F5F9; }
+</style>
+</head><body>
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Nv. Freático [m]</th>
+        <th>Caudal [l/s]</th>
+        <th>Totalizador [m³]</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="mono-muted">31/03/2026 21:00</td>
+        <td class="mono">3.2</td>
+        <td class="mono">19.75</td>
+        <td class="mono">530,806.375</td>
+        <td><span class="badge sent"><div class="dot" style="background:#16A34A"></div>Enviado</span></td>
+      </tr>
+      <tr>
+        <td class="mono-muted">31/03/2026 22:00</td>
+        <td class="mono">3.5</td>
+        <td class="mono">19.75</td>
+        <td class="mono">530,858.938</td>
+        <td><span class="badge sent"><div class="dot" style="background:#16A34A"></div>Enviado</span></td>
+      </tr>
+      <tr>
+        <td class="mono-muted">01/04/2026 00:00</td>
+        <td class="mono">1.5</td>
+        <td class="mono">0</td>
+        <td class="mono">530,921.625</td>
+        <td><span class="badge sent"><div class="dot" style="background:#16A34A"></div>Enviado</span></td>
+      </tr>
+      <tr>
+        <td class="mono-muted">01/04/2026 01:00</td>
+        <td class="mono">3.1</td>
+        <td class="mono">19.88</td>
+        <td class="mono">530,956.188</td>
+        <td><span class="badge pending"><div class="dot" style="background:#D97706"></div>Pendiente</span></td>
+      </tr>
+      <tr>
+        <td class="mono-muted">01/04/2026 02:00</td>
+        <td class="mono">3.4</td>
+        <td class="mono">19.63</td>
+        <td class="mono">530,986.750</td>
+        <td><span class="badge sent"><div class="dot" style="background:#16A34A"></div>Enviado</span></td>
+      </tr>
+      <tr>
+        <td class="mono-muted">01/04/2026 03:00</td>
+        <td class="mono">3.3</td>
+        <td class="mono">19.75</td>
+        <td class="mono">531,009.375</td>
+        <td><span class="badge rejected"><div class="dot" style="background:#E11D48"></div>Rechazado</span></td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="pagination">
+    <span>Filas por página: 10 &nbsp;·&nbsp; 1–10 de 720</span>
+    <div style="display:flex;gap:4px">
+      <button class="pg-btn">←</button>
+      <button class="pg-btn">→</button>
+    </div>
+  </div>
+</div>
+</body></html>

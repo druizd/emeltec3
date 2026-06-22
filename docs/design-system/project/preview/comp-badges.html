@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face { font-family: 'Josefin Sans'; src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype'); font-weight: 100 700; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .section-title { font-family: 'Josefin Sans'; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #94A3B8; margin-bottom: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .divider { height: 1px; background: #E2E8F0; margin: 4px 0 14px; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 9999px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge-success { background: #F0FDF4; color: #16A34A; border: 1px solid #BBF7D0; }
+  .badge-warning { background: #FFFBEB; color: #D97706; border: 1px solid #FDE68A; }
+  .badge-danger  { background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; }
+  .badge-primary { background: rgba(13,175,189,0.08); color: #0899A5; border: 1px solid rgba(13,175,189,0.25); }
+  .badge-muted   { background: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; }
+  .badge-info    { background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; }
+  .ts-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ts-chip { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 6px; padding: 6px 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .ts-label { font-family: 'Josefin Sans'; font-size: 9px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
+  .ts-value { font-family: 'JetBrains Mono'; font-size: 12px; color: #475569; margin-top: 2px; }
+</style>
+</head><body>
+<div class="section-title">DGA Status Badges</div>
+<div class="row">
+  <span class="badge badge-success"><div class="dot" style="background:#16A34A"></div>Enviado</span>
+  <span class="badge badge-warning"><div class="dot" style="background:#D97706"></div>Pendiente</span>
+  <span class="badge badge-danger"><div class="dot" style="background:#E11D48"></div>Rechazado</span>
+  <span class="badge badge-muted"><div class="dot" style="background:#94A3B8"></div>Sin enviar</span>
+</div>
+<div class="section-title">Context Badges</div>
+<div class="row">
+  <span class="badge badge-primary">DGA</span>
+  <span class="badge badge-info">Legacy</span>
+  <span class="badge badge-muted">Sin datos</span>
+  <span class="badge badge-primary"><div class="dot" style="background:#0DAFBD"></div>Tiempo Real</span>
+  <span class="badge badge-success">Aceptado</span>
+</div>
+<div class="divider"></div>
+<div class="section-title">Timestamp Chips</div>
+<div class="ts-row">
+  <div class="ts-chip">
+    <div class="ts-label">Último dato</div>
+    <div class="ts-value">hace 0 segundos</div>
+  </div>
+  <div class="ts-chip">
+    <div class="ts-label">Equipo</div>
+    <div class="ts-value">26 abr 2026, 22:23</div>
+  </div>
+  <div class="ts-chip" style="border-color:#BBF7D0">
+    <div class="ts-label" style="color:#16A34A">Reporte DGA</div>
+    <div class="ts-value" style="color:#16A34A">Aceptado · 26 abr 2026, 17:00</div>
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+</body></html>

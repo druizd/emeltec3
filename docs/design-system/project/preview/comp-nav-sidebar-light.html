@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face {
+    font-family: 'Josefin Sans';
+    src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 700; font-style: normal;
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; padding: 0; }
+  .sidebar { width: 240px; background: #FFFFFF; border-right: 1px solid #E2E8F0; height: 880px; display: flex; flex-direction: column; box-shadow: 2px 0 8px rgba(0,0,0,0.06); }
+
+  /* Brand */
+  .brand { padding: 14px 16px 12px; border-bottom: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: space-between; }
+  .brand img { height: 32px; object-fit: contain; }
+  .collapse-btn { color: #CBD5E1; cursor: pointer; display: flex; }
+
+  /* User card */
+  .user-card { margin: 12px 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px; }
+  .user-row { display: flex; align-items: center; gap: 10px; }
+  .avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#0DAFBD,#04606A); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; position: relative; }
+  .avatar-dot { position: absolute; bottom: 1px; right: 1px; width: 8px; height: 8px; border-radius: 50%; background: #22C55E; border: 2px solid #F8FAFC; }
+  .user-name  { font-size: 13px; font-weight: 600; color: #1E293B; }
+  .user-role  { font-size: 11px; color: #94A3B8; }
+  .user-email { font-size: 11px; color: #0899A5; }
+
+  /* Module items */
+  .modules { flex: 1; padding: 8px 0; overflow-y: auto; }
+  .module { margin: 2px 10px; border-radius: 8px; overflow: hidden; }
+  .module-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: #475569;
+    transition: all 0.12s; border-radius: 8px;
+    justify-content: space-between;
+  }
+  .module-header:hover { background: #F1F5F9; color: #1E293B; }
+  .module-header.active { background: rgba(13,175,189,0.08); color: #0899A5; font-weight: 600; }
+  .module-header .left { display: flex; align-items: center; gap: 10px; }
+  .module-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .chevron { color: #CBD5E1; transition: transform 0.2s; }
+  .chevron.open { transform: rotate(90deg); color: #0899A5; }
+
+  /* Sub-items — tree */
+  .sub-items { padding: 2px 0 6px 16px; }
+
+  .company-group { position: relative; margin-bottom: 2px; }
+
+  /* Vertical line for company groups */
+  .company-children { position: relative; padding-left: 14px; }
+  .company-children::before {
+    content: ''; position: absolute; left: 4px; top: 0; bottom: 6px;
+    width: 1px; background: #E2E8F0;
+  }
+
+  .company-label {
+    font-size: 11px; font-weight: 700; color: #94A3B8;
+    letter-spacing: 0.07em; text-transform: uppercase;
+    padding: 6px 10px 3px; display: flex; align-items: center; gap: 5px;
+  }
+  .company-label i { opacity: 0.5; }
+
+  .plant-item {
+    position: relative; font-size: 12px; color: #64748B;
+    padding: 5px 10px 5px 12px; border-radius: 6px;
+    cursor: pointer; transition: all 0.12s; display: flex; align-items: center; gap: 5px;
+    margin-bottom: 1px;
+  }
+  .plant-item::before {
+    content: ''; position: absolute; left: -10px; top: 50%;
+    width: 8px; height: 1px; background: #E2E8F0;
+  }
+  .plant-item:hover { background: #F1F5F9; color: #1E293B; }
+  .plant-item.active { color: #0899A5; font-weight: 600; background: rgba(13,175,189,0.06); }
+  .plant-item.active::before { background: #0DAFBD; }
+
+  /* Standalone sub-item (no company group) */
+  .sub-item { font-size: 12px; color: #64748B; padding: 5px 10px; border-radius: 6px; cursor: pointer; transition: all 0.12s; }
+  .sub-item:hover { background: #F1F5F9; color: #1E293B; }
+  .sub-item.active { color: #0899A5; font-weight: 600; }
+</style>
+</head><body>
+<div class="sidebar">
+
+  <div class="brand">
+    <div style="flex:1;display:flex;justify-content:center">
+      <img src="../assets/logo.avif" alt="Emeltec" style="height:32px;object-fit:contain">
+    </div>
+    <div class="collapse-btn"><i data-lucide="chevrons-left" style="width:16px;height:16px"></i></div>
+  </div>
+
+  <div class="user-card">
+    <div class="user-row">
+      <div class="avatar">DR<div class="avatar-dot"></div></div>
+      <div>
+        <div class="user-name">Dylan Ruiz</div>
+        <div class="user-role">Admin</div>
+        <div class="user-email">druiz@emeltec.cl</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modules">
+
+    <div class="module">
+      <div class="module-header active">
+        <div class="left">
+          <div class="module-icon" style="background:rgba(13,175,189,0.1)">
+            <i data-lucide="droplets" style="width:14px;height:14px;color:#0DAFBD"></i>
+          </div>
+          Consumo de Agua
+        </div>
+        <i data-lucide="chevron-right" class="chevron open" style="width:14px;height:14px"></i>
+      </div>
+      <div class="sub-items">
+        <!-- Cachantún group -->
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>Cachantún
+          </div>
+          <div class="company-children">
+            <div class="plant-item active">Cachantún Coinco</div>
+          </div>
+        </div>
+        <!-- Cementos Melón (standalone) -->
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>Cementos Melón
+          </div>
+          <div class="company-children">
+            <div class="plant-item">Planta Melón</div>
+          </div>
+        </div>
+        <!-- CCU group -->
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>CCU
+          </div>
+          <div class="company-children">
+            <div class="plant-item">Cervecera CCU</div>
+          </div>
+        </div>
+        <!-- Matthei group -->
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>Matthei
+          </div>
+          <div class="company-children">
+            <div class="plant-item">Pozo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="module">
+      <div class="module-header">
+        <div class="left">
+          <div class="module-icon" style="background:#F0FDF4">
+            <i data-lucide="waves" style="width:14px;height:14px;color:#22C55E"></i>
+          </div>
+          Generación de Riles
+        </div>
+        <i data-lucide="chevron-right" class="chevron open" style="width:14px;height:14px"></i>
+      </div>
+      <div class="sub-items">
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>Matthei
+          </div>
+          <div class="company-children">
+            <div class="plant-item">Riles</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="module">
+      <div class="module-header">
+        <div class="left">
+          <div class="module-icon" style="background:#F0F4FF">
+            <i data-lucide="cpu" style="width:14px;height:14px;color:#6366F1"></i>
+          </div>
+          Variables de Proceso
+        </div>
+        <i data-lucide="chevron-right" class="chevron open" style="width:14px;height:14px"></i>
+      </div>
+      <div class="sub-items">
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>Matthei
+          </div>
+          <div class="company-children">
+            <div class="plant-item">Pasteurizador 1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="module">
+      <div class="module-header">
+        <div class="left">
+          <div class="module-icon" style="background:#FFFBEB">
+            <i data-lucide="zap" style="width:14px;height:14px;color:#F59E0B"></i>
+          </div>
+          Consumo Eléctrico
+        </div>
+        <i data-lucide="chevron-right" class="chevron open" style="width:14px;height:14px"></i>
+      </div>
+      <div class="sub-items">
+        <div class="company-group">
+          <div class="company-label">
+            <i data-lucide="building-2" style="width:10px;height:10px"></i>Matthei
+          </div>
+          <div class="company-children">
+            <div class="plant-item">Planta 1</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="module">
+      <div class="module-header">
+        <div class="left">
+          <div class="module-icon" style="background:#FFF7F0">
+            <i data-lucide="rocket" style="width:14px;height:14px;color:#F97316"></i>
+          </div>
+          Maletas Piloto
+        </div>
+        <i data-lucide="chevron-right" class="chevron" style="width:14px;height:14px"></i>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script>lucide.createIcons();</script>
+</body></html>
