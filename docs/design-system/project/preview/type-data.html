@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .card { background: #0F1520; border: 1px solid #253550; border-radius: 8px; padding: 14px 16px; }
+  .card-label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #4A5A72; margin-bottom: 6px; }
+  .val { font-family: 'JetBrains Mono', monospace; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .unit { font-family: 'JetBrains Mono', monospace; font-weight: 400; color: #8B9BB8; }
+  .sub { font-size: 11px; color: #4A5A72; margin-top: 4px; }
+  .ts { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #4A5A72; margin-top: 6px; }
+</style>
+</head><body>
+<div class="grid">
+  <div class="card" style="border-color:rgba(13,175,189,0.3)">
+    <div class="card-label">Caudal Actual</div>
+    <div class="val" style="font-size:48px;color:#0DAFBD">541<span class="unit" style="font-size:28px">,551</span></div>
+    <div class="unit" style="font-size:18px">m³</div>
+    <div class="ts">26/04/2026 22:24</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Nivel Freático</div>
+    <div class="val" style="font-size:48px;color:#E8EDF5">-1<span class="unit" style="font-size:28px">.30</span></div>
+    <div class="unit" style="font-size:18px">m</div>
+    <div class="sub">▲ 0.00m vs. ayer</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Totalizador</div>
+    <div class="val" style="font-size:32px;color:#E8EDF5">530,806<span class="unit" style="font-size:18px">.375</span></div>
+    <div class="unit" style="font-size:14px">m³</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Tasa de Éxito</div>
+    <div class="val" style="font-size:48px;color:#22C55E">100<span class="unit" style="font-size:22px">%</span></div>
+    <div class="sub" style="color:#22C55E">622 registros exitosos</div>
+  </div>
+</div>
+</body></html>

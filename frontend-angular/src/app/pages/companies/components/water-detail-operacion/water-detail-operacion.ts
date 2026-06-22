@@ -376,7 +376,9 @@ interface RealtimeChartPoint {
                     >
                       {{ turno.nombre }}
                     </p>
-                    <p class="mt-0.5 text-caption-xs text-on-surface-variant">{{ turno.horario }}</p>
+                    <p class="mt-0.5 text-caption-xs text-on-surface-variant">
+                      {{ turno.horario }}
+                    </p>
                     <p class="mt-3 font-mono text-h3 font-semibold text-on-surface">
                       {{ formatTurnoConsumo(turno.consumo)
                       }}<span class="ml-1 text-body-sm font-bold text-on-surface-muted">m³</span>

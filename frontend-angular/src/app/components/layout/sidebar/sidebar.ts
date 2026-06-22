@@ -99,7 +99,9 @@ const MODULES = SITE_MODULES;
 
       <!-- User card -->
       @if (!collapsed()) {
-        <div class="mx-2 mt-3.5 rounded-lg border border-surface-container bg-surface-subtle px-2 py-1.5">
+        <div
+          class="mx-2 mt-3.5 rounded-lg border border-surface-container bg-surface-subtle px-2 py-1.5"
+        >
           <div class="flex items-center gap-1.5">
             <div class="relative shrink-0">
               <div
@@ -208,7 +210,9 @@ const MODULES = SITE_MODULES;
 
                   @if (isCompanyOpen(company.id)) {
                     <div class="relative ml-2.5 pl-2.5">
-                      <span class="absolute bottom-[6px] left-1 top-0 w-px bg-surface-container"></span>
+                      <span
+                        class="absolute bottom-[6px] left-1 top-0 w-px bg-surface-container"
+                      ></span>
                       @for (site of company.sites; track site.id) {
                         <button
                           type="button"

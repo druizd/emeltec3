@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .swatch { flex: 1; height: 48px; border-radius: 6px; position: relative; }
+  .swatch.active::after { content: '●'; position: absolute; bottom: 6px; right: 8px; font-size: 10px; color: rgba(255,255,255,0.7); }
+  .labels { display: flex; gap: 6px; margin-bottom: 16px; }
+  .lbl { flex: 1; font-size: 10px; color: #4A5A72; font-family: 'JetBrains Mono', monospace; text-align: center; }
+  .section-title { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: #4A5A72; margin-bottom: 8px; }
+  .divider { height: 1px; background: #1E2D42; margin: 12px 0; }
+</style>
+</head><body>
+<div class="section-title">Teal — Primary Brand</div>
+<div class="row">
+  <div class="swatch" style="background:#E6FAFB"></div>
+  <div class="swatch" style="background:#BDEFEF"></div>
+  <div class="swatch" style="background:#7EDDE0"></div>
+  <div class="swatch" style="background:#39C9CD"></div>
+  <div class="swatch active" style="background:#0DAFBD"></div>
+  <div class="swatch" style="background:#0899A5"></div>
+  <div class="swatch" style="background:#067D88"></div>
+  <div class="swatch" style="background:#04606A"></div>
+  <div class="swatch" style="background:#02444C"></div>
+  <div class="swatch" style="background:#01282D"></div>
+</div>
+<div class="labels">
+  <div class="lbl">50</div><div class="lbl">100</div><div class="lbl">200</div><div class="lbl">300</div>
+  <div class="lbl" style="color:#0DAFBD">400 ★</div><div class="lbl">500</div><div class="lbl">600</div>
+  <div class="lbl">700</div><div class="lbl">800</div><div class="lbl">900</div>
+</div>
+<div class="divider"></div>
+<div class="section-title">Brand Identity</div>
+<div class="row">
+  <div class="swatch" style="background:#0DAFBD; border-radius: 8px; flex: 3; display:flex; align-items:center; justify-content:center;">
+    <span style="font-family:'DM Sans';font-size:13px;font-weight:600;color:#080C12;letter-spacing:-0.02em">emeltec</span>
+  </div>
+  <div class="swatch" style="background:#0F1520; border:1px solid #253550; border-radius:8px; flex:2; display:flex; align-items:center; justify-content:center;">
+    <span style="font-size:11px;color:#8B9BB8; letter-spacing:0.08em; text-transform:uppercase">Experiencia & Flexibilidad</span>
+  </div>
+  <div class="swatch" style="background:linear-gradient(135deg,#04606A,#0DAFBD); border-radius:8px; flex:1"></div>
+</div>
+</body></html>

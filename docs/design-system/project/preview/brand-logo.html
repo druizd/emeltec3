@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face {
+    font-family: 'Josefin Sans';
+    src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 700; font-style: normal;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .row { display: flex; gap: 12px; align-items: stretch; margin-bottom: 12px; }
+  .logo-box { border-radius: 10px; padding: 20px 28px; display: flex; align-items: center; justify-content: center; flex: 1; }
+  .divider  { height: 1px; background: #1E2D42; margin: 10px 0; }
+  .usage-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .usage-chip { background: #0F1520; border: 1px solid #253550; border-radius: 6px; padding: 6px 12px; font-size: 11px; color: #8B9BB8; font-family: 'DM Sans', sans-serif; }
+</style>
+</head><body>
+<div class="row">
+  <div class="logo-box" style="background:#0F1520;border:1px solid #253550">
+    <img src="../assets/logo.avif" alt="Emeltec" style="height:48px;object-fit:contain">
+  </div>
+  <div class="logo-box" style="background:linear-gradient(135deg,#04606A,#0DAFBD)">
+    <img src="../assets/logo.avif" alt="Emeltec" style="height:48px;object-fit:contain;filter:brightness(10)">
+  </div>
+  <div class="logo-box" style="background:#0DAFBD">
+    <img src="../assets/logo.avif" alt="Emeltec" style="height:48px;object-fit:contain;filter:brightness(0)">
+  </div>
+</div>
+<div class="divider"></div>
+<div class="usage-row">
+  <div class="usage-chip">Sidebar — on dark surface</div>
+  <div class="usage-chip">Splash / loading — teal gradient bg</div>
+  <div class="usage-chip">Reports / print — inverted on teal</div>
+  <div class="usage-chip">Min size: 80px wide</div>
+  <div class="usage-chip">Font: Josefin Sans</div>
+</div>
+</body></html>

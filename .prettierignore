@@ -16,3 +16,5 @@ grpc-pipeline/**/*.go
 infra-db/init-db
 # Auto-generated por preview-gen-digest.js — no formatear manualmente.
 main-api/preview-email-digest-*.html
+# Design system bundle — referencia vendored, no fuente mantenida.
+docs/design-system

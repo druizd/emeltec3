@@ -563,7 +563,9 @@ type OperationMode = 'realtime' | 'turnos';
                         <td class="px-4 py-3" data-label="Caudal">{{ row.caudal }}</td>
                         <td class="px-4 py-3" data-label="Nivel">{{ row.nivel || '--' }}</td>
                         <td class="px-4 py-3" data-label="Totalizador">{{ row.totalizador }}</td>
-                        <td class="px-4 py-3" data-label="Nivel freático">{{ row.nivelFreatico }}</td>
+                        <td class="px-4 py-3" data-label="Nivel freático">
+                          {{ row.nivelFreatico }}
+                        </td>
                       </tr>
                     } @empty {
                       <tr

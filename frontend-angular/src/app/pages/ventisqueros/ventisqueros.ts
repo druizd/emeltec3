@@ -112,8 +112,6 @@ interface TapDiagnostic {
   status: TapTechStatus;
   oldestSeenIso: string | null;
   oldestSeenMs: number | null;
-  sensorsReporting: number;
-  sensorsTotal: number;
   coveragePct: number;
   coverageMinutes: number;
   coverageSlots: boolean[];
@@ -673,34 +671,6 @@ interface MetricOption {
                       <span class="sala-op-lbl">Desviaciones</span>
                       <strong>{{ sa.deviationsOpenCount }}</strong>
                     </span>
-                    @if (sa.activeCount > 0) {
-                      <span
-                        class="sala-op-pill"
-                        [class.sala-op-pill--bad]="sa.reportingCount < sa.activeCount"
-                        [title]="
-                          'Sensores activos con lectura reciente (≤5 min) vs total activos. ' +
-                          (sa.reportingCount === 0
-                            ? 'Ninguno reportando: sin lectura reciente o canal offline.'
-                            : sa.reportingCount < sa.activeCount
-                              ? 'Algunos sensores stale (>5 min sin transmitir).'
-                              : 'Todos transmitiendo OK.')
-                        "
-                      >
-                        <span class="material-symbols-outlined text-[11px]">sensors</span>
-                        <span class="sala-op-lbl">Reportando</span>
-                        <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
-                      </span>
-                    }
-                    @if (sa.defectiveCount > 0) {
-                      <span
-                        class="sala-op-pill sala-op-pill--bad"
-                        [title]="sa.defectiveReasons.join(' · ')"
-                      >
-                        <span class="material-symbols-outlined text-[11px]">sensors_off</span>
-                        <span class="sala-op-lbl">En falla</span>
-                        <strong>{{ sa.defectiveCount }}/{{ sa.count }}</strong>
-                      </span>
-                    }
                   </div>
 
                   <footer class="sala-card-foot">
@@ -1217,22 +1187,6 @@ interface MetricOption {
                             ? 'Offline'
                             : '—'
                     }}
-                  </span>
-                </div>
-
-                <!-- Sensores reportando (cagg) -->
-                <div class="mt-2 vs-tap-sensors-row">
-                  <span class="vs-tap-sensors-lbl">
-                    <span class="material-symbols-outlined text-[11px]">sensors</span>
-                    Sensores reportando
-                  </span>
-                  <span
-                    class="vs-tap-sensors-val"
-                    [class.vs-tap-sensors-val--bad]="
-                      d.sensorsTotal > 0 && d.sensorsReporting < d.sensorsTotal
-                    "
-                  >
-                    {{ d.sensorsReporting }} / {{ d.sensorsTotal }}
                   </span>
                 </div>
 
@@ -6385,11 +6339,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return taps.map((tap) => {
       // Sensores del TAP reportando reciente (cagg propio).
       const tapSensors = coldSensors.filter((s) => s.tap === tap);
-      const sensorsReporting = tapSensors.filter((s) => {
-        if (!s.lastSeen) return false;
-        const ts = new Date(s.lastSeen).getTime();
-        return Number.isFinite(ts) && ts > 0 && now - ts < STALE_FRESH_MS;
-      }).length;
 
       // Cobertura 24h: cuántos minutos del cagg tienen al menos una lectura.
       // 1440 = 24h * 60min. Sparkline en 60 slots de 24min cada uno.
@@ -6436,8 +6385,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         status,
         oldestSeenIso: oldestIso,
         oldestSeenMs: transmissionAgeMs,
-        sensorsReporting,
-        sensorsTotal: tapSensors.length,
         coveragePct,
         coverageMinutes,
         coverageSlots,

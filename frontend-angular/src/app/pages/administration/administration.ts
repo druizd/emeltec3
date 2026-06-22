@@ -780,7 +780,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     ></app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="responsive-table w-full text-left text-body-sm md:min-w-[680px]">
+                      <table
+                        class="responsive-table w-full text-left text-body-sm md:min-w-[680px]"
+                      >
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Nombre</th>
@@ -798,13 +800,18 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
                                 {{ company.nombre }}
                               </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="RUT">{{ company.rut }}</td>
+                              <td class="px-4 py-3 text-slate-500" data-label="RUT">
+                                {{ company.rut }}
+                              </td>
                               <td class="px-4 py-3" data-label="Tipo">
                                 <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
                                   company.tipo_empresa
                                 }}</span>
                               </td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600" data-label="Sitios">
+                              <td
+                                class="px-4 py-3 text-right font-bold text-slate-600"
+                                data-label="Sitios"
+                              >
                                 {{ countCompanySites(company) }}
                               </td>
                             </tr>
@@ -914,7 +921,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     ></app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="responsive-table w-full text-left text-body-sm md:min-w-[760px]">
+                      <table
+                        class="responsive-table w-full text-left text-body-sm md:min-w-[760px]"
+                      >
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Nombre</th>
@@ -929,10 +938,19 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                               (click)="selectSubCompany(sub.id)"
                               [class]="rowClass(selectedSubCompanyId() === sub.id)"
                             >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">{{ sub.nombre }}</td>
-                              <td class="px-4 py-3 text-slate-500" data-label="Empresa">{{ sub.companyName }}</td>
-                              <td class="px-4 py-3 text-slate-500" data-label="RUT">{{ sub.rut }}</td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-600" data-label="Sitios">
+                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
+                                {{ sub.nombre }}
+                              </td>
+                              <td class="px-4 py-3 text-slate-500" data-label="Empresa">
+                                {{ sub.companyName }}
+                              </td>
+                              <td class="px-4 py-3 text-slate-500" data-label="RUT">
+                                {{ sub.rut }}
+                              </td>
+                              <td
+                                class="px-4 py-3 text-right font-bold text-slate-600"
+                                data-label="Sitios"
+                              >
                                 {{ sub.sites.length }}
                               </td>
                             </tr>
@@ -1178,7 +1196,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     ></app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="responsive-table w-full text-left text-body-sm md:min-w-[680px]">
+                      <table
+                        class="responsive-table w-full text-left text-body-sm md:min-w-[680px]"
+                      >
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Sitio</th>
@@ -1202,10 +1222,15 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                   siteTypeLabel(site.tipo_sitio)
                                 }}</span>
                               </td>
-                              <td class="px-4 py-3 font-mono text-caption text-slate-600" data-label="Serial">
+                              <td
+                                class="px-4 py-3 font-mono text-caption text-slate-600"
+                                data-label="Serial"
+                              >
                                 {{ site.id_serial }}
                               </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="Subempresa">{{ site.subCompanyName }}</td>
+                              <td class="px-4 py-3 text-slate-500" data-label="Subempresa">
+                                {{ site.subCompanyName }}
+                              </td>
                               <td class="px-4 py-3" data-label="Estado">
                                 <span
                                   [class]="statusBadgeClass(site.activo ? 'success' : 'neutral')"
@@ -1246,7 +1271,9 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                     </app-admin-table-toolbar>
 
                     <div class="overflow-x-auto">
-                      <table class="responsive-table w-full text-left text-body-sm md:min-w-[1080px]">
+                      <table
+                        class="responsive-table w-full text-left text-body-sm md:min-w-[1080px]"
+                      >
                         <thead class="table-head">
                           <tr>
                             <th class="px-4 py-3">Serial</th>
@@ -1259,7 +1286,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                         <tbody class="divide-y divide-slate-100">
                           @for (device of paginatedDevices(); track device.id_serial) {
                             <tr class="bg-white transition-colors hover:bg-slate-50">
-                              <td class="px-4 py-3 font-mono text-caption font-bold text-slate-700" data-label="Serial">
+                              <td
+                                class="px-4 py-3 font-mono text-caption font-bold text-slate-700"
+                                data-label="Serial"
+                              >
                                 {{ device.id_serial }}
                               </td>
                               <td class="px-4 py-3" data-label="Registro">
@@ -1289,7 +1319,10 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                                   {{ deviceClockSkewLabel(device) }}
                                 </span>
                               </td>
-                              <td class="px-4 py-3 text-right font-bold text-slate-700" data-label="Cantidad de datos">
+                              <td
+                                class="px-4 py-3 text-right font-bold text-slate-700"
+                                data-label="Cantidad de datos"
+                              >
                                 {{ deviceDataCountLabel(device) }}
                               </td>
                               <td class="px-4 py-3" data-label="Sitio">
