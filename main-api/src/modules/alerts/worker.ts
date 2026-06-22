@@ -54,9 +54,11 @@ interface Alerta {
     | 'fuera_rango'
     | 'sin_datos'
     | 'dga_atrasado'
+    | 'dga_slots_fallidos'
+    | 'review_queue_acumulacion'
     | string;
-  umbral_bajo: number;
-  umbral_alto: number;
+  umbral_bajo: number | null;
+  umbral_alto: number | null;
   severidad: string;
   cooldown_minutos: number;
   dias_activos: string[] | null;
@@ -116,6 +118,10 @@ function formatCondicion(alerta: Alerta): string {
       return `sin datos durante ${alerta.cooldown_minutos} minutos`;
     case 'dga_atrasado':
       return 'reporte DGA atrasado más de 24h (escala a 48h y 72h)';
+    case 'dga_slots_fallidos':
+      return 'tiene slots DGA en estado fallido';
+    case 'review_queue_acumulacion':
+      return `la cola de revisión DGA superó el umbral de ${alerta.umbral_bajo} slots`;
     default:
       return alerta.condicion;
   }
@@ -160,6 +166,12 @@ function buildMensaje(alerta: Alerta, valor: number | null): string {
   if (alerta.condicion === 'sin_datos') {
     return `[${severidad}] Sin datos en ${sitio}. Equipo ${alerta.id_serial} no reporta informacion hace mas de ${alerta.cooldown_minutos} minutos.`;
   }
+  if (alerta.condicion === 'dga_slots_fallidos') {
+    return `[${severidad}] ${sitio}. ${valor ?? 0} slot(s) DGA en estado fallido requieren intervención.`;
+  }
+  if (alerta.condicion === 'review_queue_acumulacion') {
+    return `[${severidad}] ${sitio}. Cola de revisión DGA: ${valor ?? 0} slots requires_review (umbral ${alerta.umbral_bajo}).`;
+  }
   return `[${severidad}] ${sitio}. Variable ${alerta.variable_key}: valor detectado ${formatValor(valor)}. Regla: ${formatCondicion(alerta)}.`;
 }
 
@@ -193,21 +205,20 @@ async function notificarUsuarios(
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Promise<void> {
-  // Lookup informante DGA del sitio.
+export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Promise<void> {
+  // Lookup config DGA del sitio desde pozo_config (dga_user fue eliminado en 2026-05-17).
   const u = await client.query(
-    `SELECT id_dgauser, periodicidad, last_run_at,
-            to_char(fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
-            to_char(hora_inicio,  'HH24:MI:SS') AS hora_inicio
-       FROM dga_user
-      WHERE site_id = $1 AND activo = TRUE
-      ORDER BY created_at ASC
+    `SELECT pc.dga_periodicidad                       AS periodicidad,
+            pc.dga_last_run_at                        AS last_run_at,
+            to_char(pc.dga_fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
+            to_char(pc.dga_hora_inicio,  'HH24:MI:SS') AS hora_inicio
+       FROM pozo_config pc
+      WHERE pc.sitio_id = $1 AND pc.dga_activo = TRUE
       LIMIT 1`,
     [alerta.sitio_id],
   );
   const dgaUser = u.rows[0] as
     | {
-        id_dgauser: number;
         periodicidad: string;
         last_run_at: string | null;
         fecha_inicio: string;
@@ -292,12 +303,158 @@ async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Promise<vo
   );
 }
 
+/**
+ * Comprueba si ya existe un evento reciente dentro del cooldown para esta alerta.
+ * Usado internamente por los evaluadores DGA sticky-state para evitar re-disparos
+ * cada 60s (ADR-6a). Los evaluadores DGA hacen early-return antes del cooldown
+ * genérico de evaluarAlerta(), por lo que deben gestionar su propia deduplicación.
+ *
+ * @returns true si hay un evento dentro del window de cooldown (→ caller debe retornar).
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
+async function dentroDeCooldown(client: any, alerta: Alerta): Promise<boolean> {
+  const r = await client.query(
+    `SELECT triggered_at FROM alertas_eventos
+     WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
+     ORDER BY triggered_at DESC LIMIT 1`,
+    [alerta.id, alerta.cooldown_minutos],
+  );
+  return (r as { rows: unknown[] }).rows.length > 0;
+}
+
+/**
+ * Evalúa la condición `dga_slots_fallidos`.
+ * Cuenta slots dato_dga en estado 'fallido' para el sitio. Si n >= 1 y el
+ * cooldown no está activo, inserta alertas_eventos y notifica. (ADR-6)
+ *
+ * Guard W-1: si pozo_config.dga_activo=FALSE (o no existe config), el evaluador
+ * sale temprano sin disparar alarma — evita falsos positivos por datos residuales
+ * en dato_dga luego de que el operador desactiva DGA para el sitio.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta): Promise<void> {
+  if (await dentroDeCooldown(client, alerta)) return;
+
+  // Guard W-1: verificar que DGA sigue activo para el sitio antes de contar.
+  // Mismo patrón que evaluarAlertaDgaAtrasado (ADR-1).
+  const cfg = (await client.query(
+    `SELECT 1 FROM pozo_config
+     WHERE sitio_id = $1 AND dga_activo = TRUE
+     LIMIT 1`,
+    [alerta.sitio_id],
+  )) as { rows: unknown[] };
+  if (cfg.rows.length === 0) return; // DGA desactivado o sin config — no disparar
+
+  const r = (await client.query(
+    `SELECT COUNT(*)::int AS n FROM dato_dga
+     WHERE site_id = $1 AND estatus = 'fallido'`,
+    [alerta.sitio_id],
+  )) as { rows: Array<{ n: number }> };
+  const n = r.rows[0]?.n ?? 0;
+  if (n === 0) return;
+
+  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  const severidad = alerta.severidad.toUpperCase();
+  const mensaje = `[${severidad}] ${sitio}. ${n} slot(s) DGA en estado fallido requieren intervención.`;
+  const ctx = {
+    ...alerta,
+    valor_detectado: String(n),
+    condicion_texto: formatCondicion(alerta),
+  };
+  const ins = (await client.query(
+    `INSERT INTO alertas_eventos
+       (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
+        valor_detectado, valor_texto, mensaje, severidad)
+     VALUES ($1,$2,$3,$4,$5,NULL,$6,$7,$8)
+     RETURNING id`,
+    [
+      alerta.id,
+      alerta.empresa_id,
+      alerta.sub_empresa_id ?? null,
+      alerta.sitio_id,
+      alerta.variable_key,
+      String(n),
+      mensaje,
+      alerta.severidad,
+    ],
+  )) as { rows: Array<{ id: string }> };
+  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
+    logger.error({ err: (err as Error).message }, 'alerts: notificacion dga_slots_fallidos falló'),
+  );
+}
+
+/**
+ * Evalúa la condición `review_queue_acumulacion`.
+ * Cuenta slots dato_dga en estado 'requires_review'. Si n > umbral_bajo (N) y el
+ * cooldown no está activo, inserta alertas_eventos y notifica. (ADR-5, ADR-6)
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Promise<void> {
+  // Guard de misconfiguración: umbral_bajo debe ser un número positivo.
+  if (alerta.umbral_bajo === null || alerta.umbral_bajo === undefined || alerta.umbral_bajo <= 0) {
+    logger.warn(
+      { alertaId: alerta.id, umbral_bajo: alerta.umbral_bajo },
+      'alerts: review_queue_acumulacion sin umbral_bajo válido — alerta mal configurada',
+    );
+    return;
+  }
+
+  if (await dentroDeCooldown(client, alerta)) return;
+
+  const r = (await client.query(
+    `SELECT COUNT(*)::int AS n FROM dato_dga
+     WHERE site_id = $1 AND estatus = 'requires_review'`,
+    [alerta.sitio_id],
+  )) as { rows: Array<{ n: number }> };
+  const n = r.rows[0]?.n ?? 0;
+  if (n <= alerta.umbral_bajo) return;
+
+  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  const severidad = alerta.severidad.toUpperCase();
+  const mensaje = `[${severidad}] ${sitio}. Cola de revisión DGA: ${n} slots requires_review (umbral ${alerta.umbral_bajo}).`;
+  const ctx = {
+    ...alerta,
+    valor_detectado: String(n),
+    condicion_texto: formatCondicion(alerta),
+  };
+  const ins = (await client.query(
+    `INSERT INTO alertas_eventos
+       (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
+        valor_detectado, valor_texto, mensaje, severidad)
+     VALUES ($1,$2,$3,$4,$5,NULL,$6,$7,$8)
+     RETURNING id`,
+    [
+      alerta.id,
+      alerta.empresa_id,
+      alerta.sub_empresa_id ?? null,
+      alerta.sitio_id,
+      alerta.variable_key,
+      String(n),
+      mensaje,
+      alerta.severidad,
+    ],
+  )) as { rows: Array<{ id: string }> };
+  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
+    logger.error({ err: (err as Error).message }, 'alerts: notificacion review_queue_acumulacion falló'),
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
 
   if (alerta.condicion === 'dga_atrasado') {
     await evaluarAlertaDgaAtrasado(client, alerta);
+    return;
+  }
+
+  if (alerta.condicion === 'dga_slots_fallidos') {
+    await evaluarAlertaDgaSlotsFallidos(client, alerta);
+    return;
+  }
+
+  if (alerta.condicion === 'review_queue_acumulacion') {
+    await evaluarAlertaReviewQueue(client, alerta);
     return;
   }
 
@@ -331,7 +488,7 @@ async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   const valorTexto = String(rawVal);
   if (
     !Number.isNaN(valorNum) &&
-    evalCondicion(alerta.condicion, valorNum, alerta.umbral_bajo, alerta.umbral_alto)
+    evalCondicion(alerta.condicion, valorNum, alerta.umbral_bajo ?? 0, alerta.umbral_alto ?? 0)
   ) {
     await insertarEvento(client, alerta, valorNum, valorTexto);
   }
