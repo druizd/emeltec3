@@ -275,7 +275,11 @@ describe('validateSlot — combinación múltiple', () => {
 // ---------------------------------------------------------------------------
 describe('validateSlot — regla sensor_frozen', () => {
   // Helpers para construir lecturas previas con totalizador idéntico al actual.
-  function makePriors(count: number, totalizador: number, caudal = 5): { ts: string; caudal: number | null; totalizador: number | null }[] {
+  function makePriors(
+    count: number,
+    totalizador: number,
+    caudal = 5,
+  ): { ts: string; caudal: number | null; totalizador: number | null }[] {
     return Array.from({ length: count }, (_, i) => ({
       ts: `2026-06-01T0${i}:00:00Z`,
       caudal,

@@ -89,8 +89,8 @@ const DGA_ACTIVO_ROW = { rows: [{ '?column?': 1 }] };
 describe('evaluarAlertaDgaSlotsFallidos — COUNT = 0', () => {
   it('COUNT = 0 fallidos → no inserta alertas_eventos', async () => {
     const client = makeClient([
-      { rows: [] },          // cooldown: sin evento reciente
-      DGA_ACTIVO_ROW,        // pozo_config: dga_activo=TRUE
+      { rows: [] }, // cooldown: sin evento reciente
+      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
       { rows: [{ n: 0 }] }, // COUNT query: sin fallidos
     ]);
 
@@ -105,10 +105,10 @@ describe('evaluarAlertaDgaSlotsFallidos — COUNT >= 1', () => {
   it('COUNT = 3 → inserta alertas_eventos con valor_texto="3", valor_detectado=NULL, severidad=alerta.severidad', async () => {
     const insertResult = { rows: [{ id: 'evento-sf-1' }] };
     const client = makeClient([
-      { rows: [] },          // cooldown: no activo
-      DGA_ACTIVO_ROW,        // pozo_config: dga_activo=TRUE
+      { rows: [] }, // cooldown: no activo
+      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
       { rows: [{ n: 3 }] }, // COUNT: 3 slots fallidos
-      insertResult,          // INSERT alertas_eventos
+      insertResult, // INSERT alertas_eventos
     ]);
 
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
@@ -129,7 +129,7 @@ describe('evaluarAlertaDgaSlotsFallidos — COUNT >= 1', () => {
     const insertResult = { rows: [{ id: 'evento-sf-2' }] };
     const client = makeClient([
       { rows: [] },
-      DGA_ACTIVO_ROW,        // pozo_config: dga_activo=TRUE
+      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
       { rows: [{ n: 1 }] },
       insertResult,
     ]);
@@ -144,7 +144,7 @@ describe('evaluarAlertaDgaSlotsFallidos — COUNT >= 1', () => {
     const insertResult = { rows: [{ id: 'evento-sf-3' }] };
     const client = makeClient([
       { rows: [] },
-      DGA_ACTIVO_ROW,        // pozo_config: dga_activo=TRUE
+      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
       { rows: [{ n: 5 }] },
       insertResult,
     ]);
@@ -152,9 +152,7 @@ describe('evaluarAlertaDgaSlotsFallidos — COUNT >= 1', () => {
     await evaluarAlertaDgaSlotsFallidos(client, BASE_ALERTA);
 
     const insertCall = client._calls.find((c) => c.sql.toUpperCase().includes('INSERT'));
-    const mensaje = insertCall!.params.find(
-      (p) => typeof p === 'string' && p.includes('fallido'),
-    );
+    const mensaje = insertCall!.params.find((p) => typeof p === 'string' && p.includes('fallido'));
     expect(mensaje).toBeDefined();
     // El mensaje debe incluir el count
     expect(mensaje as string).toMatch(/5/);
@@ -171,7 +169,7 @@ describe('evaluarAlertaDgaSlotsFallidos — notificarUsuarios', () => {
     const insertResult = { rows: [{ id: 'evento-sf-4' }] };
     const client = makeClient([
       { rows: [] },
-      DGA_ACTIVO_ROW,        // pozo_config: dga_activo=TRUE
+      DGA_ACTIVO_ROW, // pozo_config: dga_activo=TRUE
       { rows: [{ n: 2 }] },
       insertResult,
     ]);
@@ -198,8 +196,8 @@ describe('evaluarAlertaDgaSlotsFallidos — DGA desactivado (W-1)', () => {
    */
   it('pozo_config.dga_activo=FALSE para el sitio → el evaluador sale sin INSERT aunque COUNT > 0', async () => {
     const client = makeClient([
-      { rows: [] },       // cooldown: no activo
-      { rows: [] },       // pozo_config lookup: dga_activo=FALSE → sin filas
+      { rows: [] }, // cooldown: no activo
+      { rows: [] }, // pozo_config lookup: dga_activo=FALSE → sin filas
       { rows: [{ n: 3 }] }, // COUNT dato_dga: 3 slots fallidos (datos residuales)
       // No debe llegarse a este punto — si hay INSERT es un bug
     ]);
@@ -210,8 +208,9 @@ describe('evaluarAlertaDgaSlotsFallidos — DGA desactivado (W-1)', () => {
     expect(hasInsert).toBe(false);
 
     // El evaluador debe haber chequeado pozo_config
-    const hasPozoConfigCheck = client._calls.some((c) =>
-      c.sql.toLowerCase().includes('pozo_config') && c.sql.toLowerCase().includes('dga_activo'),
+    const hasPozoConfigCheck = client._calls.some(
+      (c) =>
+        c.sql.toLowerCase().includes('pozo_config') && c.sql.toLowerCase().includes('dga_activo'),
     );
     expect(hasPozoConfigCheck).toBe(true);
   });

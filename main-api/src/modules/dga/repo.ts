@@ -335,7 +335,11 @@ export async function findRecentDatoDgaReadings(
   beforeTs: string,
   n: number,
 ): Promise<PriorReading[]> {
-  const r = await query<{ ts: string; caudal_instantaneo: string | null; flujo_acumulado: string | null }>(
+  const r = await query<{
+    ts: string;
+    caudal_instantaneo: string | null;
+    flujo_acumulado: string | null;
+  }>(
     `SELECT ts, caudal_instantaneo, flujo_acumulado
        FROM dato_dga
       WHERE site_id = $1

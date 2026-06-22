@@ -73,7 +73,10 @@ export interface ValidationResult {
  *
  * @returns ValidationWarning o null (sin flag).
  */
-export function checkSensorFrozen(values: SlotValues, ctx: ValidationContext): ValidationWarning | null {
+export function checkSensorFrozen(
+  values: SlotValues,
+  ctx: ValidationContext,
+): ValidationWarning | null {
   const { totalizadorParams, priorReadings } = ctx;
   const { totalizador, caudal } = values;
 
@@ -121,7 +124,10 @@ export function checkSensorFrozen(values: SlotValues, ctx: ValidationContext): V
  *
  * @returns ValidationWarning o null (sin flag).
  */
-export function checkCaudalSpike(values: SlotValues, ctx: ValidationContext): ValidationWarning | null {
+export function checkCaudalSpike(
+  values: SlotValues,
+  ctx: ValidationContext,
+): ValidationWarning | null {
   const { totalizadorParams, priorReadings } = ctx;
   const { caudal } = values;
 

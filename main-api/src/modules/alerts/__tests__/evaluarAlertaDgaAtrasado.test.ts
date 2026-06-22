@@ -132,7 +132,7 @@ describe('evaluarAlertaDgaAtrasado — lag math y tiers', () => {
     };
     const client = makeClient([
       { rows: [configRow] }, // config query
-      { rows: [] },          // last severity query
+      { rows: [] }, // last severity query
     ]);
 
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
@@ -158,8 +158,8 @@ describe('evaluarAlertaDgaAtrasado — lag math y tiers', () => {
 
     const client = makeClient([
       { rows: [configRow] }, // config query
-      { rows: [] },          // last severity query (sin evento previo)
-      insertResult,          // INSERT alertas_eventos
+      { rows: [] }, // last severity query (sin evento previo)
+      insertResult, // INSERT alertas_eventos
     ]);
 
     // También se llama a query() global para notificarUsuarios — necesitamos mockear eso
@@ -187,11 +187,7 @@ describe('evaluarAlertaDgaAtrasado — lag math y tiers', () => {
     };
     const insertResult = { rows: [{ id: 'evento-2' }] };
 
-    const client = makeClient([
-      { rows: [configRow] },
-      { rows: [] },
-      insertResult,
-    ]);
+    const client = makeClient([{ rows: [configRow] }, { rows: [] }, insertResult]);
 
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
 
@@ -213,10 +209,7 @@ describe('evaluarAlertaDgaAtrasado — lag math y tiers', () => {
       fecha_inicio: '2026-06-20',
       hora_inicio: '06:00:00',
     };
-    const client = makeClient([
-      { rows: [configRow] },
-      { rows: [] },
-    ]);
+    const client = makeClient([{ rows: [configRow] }, { rows: [] }]);
 
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
 
@@ -238,11 +231,7 @@ describe('evaluarAlertaDgaAtrasado — lag math y tiers', () => {
     };
     const insertResult = { rows: [{ id: 'evento-3' }] };
 
-    const client = makeClient([
-      { rows: [configRow] },
-      { rows: [] },
-      insertResult,
-    ]);
+    const client = makeClient([{ rows: [configRow] }, { rows: [] }, insertResult]);
 
     await evaluarAlertaDgaAtrasado(client, BASE_ALERTA);
 

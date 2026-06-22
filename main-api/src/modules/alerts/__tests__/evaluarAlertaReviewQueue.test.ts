@@ -109,7 +109,7 @@ describe('evaluarAlertaReviewQueue — cooldown activo', () => {
 describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => {
   it('COUNT = 5, N = 5 → NO inserta (5 no es estrictamente mayor que 5)', async () => {
     const client = makeClient([
-      { rows: [] },          // cooldown: no activo
+      { rows: [] }, // cooldown: no activo
       { rows: [{ n: 5 }] }, // COUNT: 5 — igual al umbral, NO dispara
     ]);
 
@@ -120,10 +120,7 @@ describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => 
   });
 
   it('COUNT = 2, N = 5 → NO inserta (count debajo del umbral)', async () => {
-    const client = makeClient([
-      { rows: [] },
-      { rows: [{ n: 2 }] },
-    ]);
+    const client = makeClient([{ rows: [] }, { rows: [{ n: 2 }] }]);
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
@@ -134,9 +131,9 @@ describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => 
   it('COUNT = 6, N = 5 → INSERTA con valor_texto="6", valor_detectado=NULL, severidad=alerta.severidad', async () => {
     const insertResult = { rows: [{ id: 'evento-rq-1' }] };
     const client = makeClient([
-      { rows: [] },          // cooldown: no activo
+      { rows: [] }, // cooldown: no activo
       { rows: [{ n: 6 }] }, // COUNT: 6 > umbral 5
-      insertResult,          // INSERT alertas_eventos
+      insertResult, // INSERT alertas_eventos
     ]);
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
@@ -145,9 +142,9 @@ describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => 
     expect(insertCall).toBeDefined();
 
     const params = insertCall!.params;
-    expect(params).toContain('6');      // valor_texto
-    expect(params).toContain(null);     // valor_detectado
-    expect(params).toContain('media');  // severidad del alerta fixture
+    expect(params).toContain('6'); // valor_texto
+    expect(params).toContain(null); // valor_detectado
+    expect(params).toContain('media'); // severidad del alerta fixture
   });
 
   it('cooldown activo con COUNT > N → NO inserta (cooldown tiene prioridad)', async () => {
@@ -165,11 +162,7 @@ describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => 
 describe('evaluarAlertaReviewQueue — mensaje en español', () => {
   it('mensaje contiene referencia a requires_review o cola de revisión', async () => {
     const insertResult = { rows: [{ id: 'evento-rq-2' }] };
-    const client = makeClient([
-      { rows: [] },
-      { rows: [{ n: 8 }] },
-      insertResult,
-    ]);
+    const client = makeClient([{ rows: [] }, { rows: [{ n: 8 }] }, insertResult]);
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 

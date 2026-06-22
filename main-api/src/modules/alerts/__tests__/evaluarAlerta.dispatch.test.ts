@@ -86,9 +86,7 @@ describe('evaluarAlerta — dispatch dga_slots_fallidos', () => {
 
   it('condicion=dga_slots_fallidos retorna (no llega al cooldown genérico de equipo)', async () => {
     // Con cooldown activo, solo 1 llamada: la de cooldown del evaluador.
-    const client = makeClient([
-      { rows: [{ triggered_at: new Date().toISOString() }] },
-    ]);
+    const client = makeClient([{ rows: [{ triggered_at: new Date().toISOString() }] }]);
 
     await evaluarAlerta(client, makeAlerta('dga_slots_fallidos'));
 

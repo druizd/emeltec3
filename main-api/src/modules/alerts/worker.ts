@@ -435,7 +435,10 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
     ],
   )) as { rows: Array<{ id: string }> };
   notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
-    logger.error({ err: (err as Error).message }, 'alerts: notificacion review_queue_acumulacion falló'),
+    logger.error(
+      { err: (err as Error).message },
+      'alerts: notificacion review_queue_acumulacion falló',
+    ),
   );
 }
 
