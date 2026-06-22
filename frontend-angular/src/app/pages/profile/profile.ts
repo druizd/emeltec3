@@ -105,7 +105,8 @@ interface EditState {
               </label>
 
               @if (usersLoading()) {
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                   >Cargando</span
                 >
               }
@@ -160,8 +161,13 @@ interface EditState {
                       <td class="px-5 py-4" data-label="Usuario">
                         <p class="font-bold text-on-surface">{{ fullName(user) }}</p>
                       </td>
-                      <td class="px-5 py-4 text-on-surface-variant" data-label="Correo">{{ user.email }}</td>
-                      <td class="px-5 py-4 text-on-surface-variant" data-label="Empresa / Sub empresa">
+                      <td class="px-5 py-4 text-on-surface-variant" data-label="Correo">
+                        {{ user.email }}
+                      </td>
+                      <td
+                        class="px-5 py-4 text-on-surface-variant"
+                        data-label="Empresa / Sub empresa"
+                      >
                         <p class="font-semibold text-[#475569]">
                           {{ displayValue(user.empresa_nombre, 'Por verse') }}
                         </p>
@@ -206,7 +212,11 @@ interface EditState {
 
                   @if (filteredUsers().length === 0) {
                     <tr>
-                      <td colspan="5" class="px-5 py-10 text-center text-on-surface-muted" data-label="">
+                      <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-on-surface-muted"
+                        data-label=""
+                      >
                         No hay usuarios para mostrar.
                       </td>
                     </tr>
@@ -351,7 +361,9 @@ interface EditState {
                 </div>
                 <div>
                   <h2 class="text-body font-bold text-on-surface">Confirmar cambio</h2>
-                  <p class="text-caption text-on-surface-muted">Tu proximo inicio usara esta clave.</p>
+                  <p class="text-caption text-on-surface-muted">
+                    Tu proximo inicio usara esta clave.
+                  </p>
                 </div>
               </div>
             </div>
@@ -400,8 +412,12 @@ interface EditState {
                 <p class="mt-1 truncate text-body-sm font-semibold text-primary">
                   {{ displayValue(user.email) }}
                 </p>
-                <p class="mt-3 flex items-center gap-1.5 text-body-sm font-semibold text-on-surface-variant">
-                  <span class="material-symbols-outlined text-[16px] text-on-surface-muted">work</span>
+                <p
+                  class="mt-3 flex items-center gap-1.5 text-body-sm font-semibold text-on-surface-variant"
+                >
+                  <span class="material-symbols-outlined text-[16px] text-on-surface-muted"
+                    >work</span
+                  >
                   {{ displayValue(user.cargo, 'Cargo no registrado') }}
                 </p>
                 @if (companyLine(user)) {
@@ -545,7 +561,9 @@ interface EditState {
                 </label>
               }
               <label class="grid gap-1">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Nueva contraseña
                 </span>
                 <div class="relative">
@@ -598,7 +616,9 @@ interface EditState {
                 </div>
               </div>
               <label class="grid gap-1">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Confirmar contraseña
                 </span>
                 <div class="relative">
@@ -711,7 +731,9 @@ interface EditState {
                 />
                 <span>
                   <span class="block text-body-sm font-bold text-on-surface">Solo código OTP</span>
-                  <span class="text-caption text-on-surface-variant">Enviaremos un código a tu correo.</span>
+                  <span class="text-caption text-on-surface-variant"
+                    >Enviaremos un código a tu correo.</span
+                  >
                 </span>
               </label>
 
@@ -779,7 +801,9 @@ interface EditState {
             class="w-full max-w-md overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
             (click)="$event.stopPropagation()"
           >
-            <div class="flex items-center justify-between border-b border-surface-container px-5 py-4">
+            <div
+              class="flex items-center justify-between border-b border-surface-container px-5 py-4"
+            >
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[19px] text-primary">edit</span>
                 <h2 class="text-body font-bold text-on-surface">Editar {{ edit.label }}</h2>
@@ -796,7 +820,9 @@ interface EditState {
 
             <div class="space-y-4 px-5 py-5">
               <label class="grid gap-1.5">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Actual
                 </span>
                 <input
@@ -808,7 +834,9 @@ interface EditState {
               </label>
 
               <label class="grid gap-1.5">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Nuevo
                 </span>
                 <input

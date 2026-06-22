@@ -13,19 +13,22 @@ import path from 'node:path';
 export const SVELTE_LIVE_ROOT_COMPONENT = 'src/lib/impeccable/ImpeccableLiveRoot.svelte';
 export const SVELTE_LAYOUT_MARKER_OPEN = '<!-- impeccable-live-svelte-start -->';
 export const SVELTE_LAYOUT_MARKER_CLOSE = '<!-- impeccable-live-svelte-end -->';
-export const SVELTE_ROOT_IMPORT = "import ImpeccableLiveRoot from '$lib/impeccable/ImpeccableLiveRoot.svelte';";
+export const SVELTE_ROOT_IMPORT =
+  "import ImpeccableLiveRoot from '$lib/impeccable/ImpeccableLiveRoot.svelte';";
 
 export function detectSvelteKitProject(cwd = process.cwd(), config = null) {
   const appHtml = findSvelteKitAppHtml(cwd, config);
   if (!appHtml) return null;
-  const hasTemplateMarkers = fileIncludes(path.join(cwd, appHtml), '%sveltekit.body%')
-    && fileIncludes(path.join(cwd, appHtml), '%sveltekit.head%');
+  const hasTemplateMarkers =
+    fileIncludes(path.join(cwd, appHtml), '%sveltekit.body%') &&
+    fileIncludes(path.join(cwd, appHtml), '%sveltekit.head%');
   if (!hasTemplateMarkers) return null;
 
-  const hasSvelteConfig = fs.existsSync(path.join(cwd, 'svelte.config.js'))
-    || fs.existsSync(path.join(cwd, 'svelte.config.mjs'))
-    || fs.existsSync(path.join(cwd, 'svelte.config.cjs'))
-    || fs.existsSync(path.join(cwd, 'svelte.config.ts'));
+  const hasSvelteConfig =
+    fs.existsSync(path.join(cwd, 'svelte.config.js')) ||
+    fs.existsSync(path.join(cwd, 'svelte.config.mjs')) ||
+    fs.existsSync(path.join(cwd, 'svelte.config.cjs')) ||
+    fs.existsSync(path.join(cwd, 'svelte.config.ts'));
   const hasKitPackage = packageHasSvelteKit(cwd);
   if (!hasSvelteConfig && !hasKitPackage) return null;
 
@@ -124,10 +127,11 @@ export function patchSvelteLayout(content) {
 export function unpatchSvelteLayout(content) {
   let out = String(content || '');
   const blockRe = new RegExp(
-    '([ \\t]*)' + escapeRegExp(SVELTE_LAYOUT_MARKER_OPEN)
-    + '\\n<ImpeccableLiveRoot\\s*/>\\n'
-    + escapeRegExp(SVELTE_LAYOUT_MARKER_CLOSE)
-    + '\\n?',
+    '([ \\t]*)' +
+      escapeRegExp(SVELTE_LAYOUT_MARKER_OPEN) +
+      '\\n<ImpeccableLiveRoot\\s*/>\\n' +
+      escapeRegExp(SVELTE_LAYOUT_MARKER_CLOSE) +
+      '\\n?',
     'g',
   );
   out = out.replace(blockRe, '$1');
@@ -218,10 +222,7 @@ function findSvelteKitAppHtml(cwd, config) {
 }
 
 function findSvelteKitLayout(cwd) {
-  const candidates = [
-    'src/routes/+layout.svelte',
-    'src/routes/(app)/+layout.svelte',
-  ];
+  const candidates = ['src/routes/+layout.svelte', 'src/routes/(app)/+layout.svelte'];
   for (const rel of candidates) {
     if (fs.existsSync(path.join(cwd, rel))) return rel;
   }

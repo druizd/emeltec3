@@ -4,8 +4,12 @@ import path from 'node:path';
 import { getLiveDir } from '../lib/impeccable-paths.mjs';
 import { readBuffer as readManualEditsBuffer } from './manual-edits-buffer.mjs';
 
-const APPLY_EVENT_HARD_TIMEOUT_MS = Number(process.env.IMPECCABLE_LIVE_APPLY_EVENT_HARD_TIMEOUT_MS || 150_000);
-const APPLY_EVENT_SOFT_DEADLINE_MS = Number(process.env.IMPECCABLE_LIVE_APPLY_EVENT_SOFT_DEADLINE_MS || 120_000);
+const APPLY_EVENT_HARD_TIMEOUT_MS = Number(
+  process.env.IMPECCABLE_LIVE_APPLY_EVENT_HARD_TIMEOUT_MS || 150_000,
+);
+const APPLY_EVENT_SOFT_DEADLINE_MS = Number(
+  process.env.IMPECCABLE_LIVE_APPLY_EVENT_SOFT_DEADLINE_MS || 120_000,
+);
 const DEFAULT_MANUAL_EDIT_APPLY_CHUNK_SIZE = 3;
 const MIN_MANUAL_EDIT_APPLY_CHUNK_SIZE = 1;
 const MAX_MANUAL_EDIT_APPLY_CHUNK_SIZE = 20;
@@ -22,7 +26,7 @@ export function createManualApplyController({
   recordManualEditActivity,
   cwd = () => process.cwd(),
 } = {}) {
-  const projectCwd = () => typeof cwd === 'function' ? cwd() : cwd || process.cwd();
+  const projectCwd = () => (typeof cwd === 'function' ? cwd() : cwd || process.cwd());
 
   function tombstoneTimedOutApplyId(eventId, details = {}) {
     if (!eventId) return;
@@ -73,7 +77,16 @@ export function createManualApplyController({
         });
         reject(new Error('chat_agent_timeout'));
       }, APPLY_EVENT_HARD_TIMEOUT_MS);
-      pendingApplyDeferreds.set(eventId, { resolve, reject, timer, event, batch, pageUrl, rollbackSnapshot, cwd: cwdValue });
+      pendingApplyDeferreds.set(eventId, {
+        resolve,
+        reject,
+        timer,
+        event,
+        batch,
+        pageUrl,
+        rollbackSnapshot,
+        cwd: cwdValue,
+      });
       enqueueEvent(event);
     });
   }
@@ -103,7 +116,9 @@ export function createManualApplyController({
 
       let result;
       try {
-        result = normalizeApplyChunkResult(await pushApplyEventAndWait(chunk.batch, pageUrl, chunk.meta));
+        result = normalizeApplyChunkResult(
+          await pushApplyEventAndWait(chunk.batch, pageUrl, chunk.meta),
+        );
       } catch (err) {
         markChunkEntriesFailed(failedByEntry, chunk, err.message || 'chat_agent_error');
         aborted = true;
@@ -128,7 +143,11 @@ export function createManualApplyController({
       }
 
       if (result.status === 'error') {
-        markChunkEntriesFailed(failedByEntry, chunk, result.message || firstFailureReason(result) || 'chat_agent_error');
+        markChunkEntriesFailed(
+          failedByEntry,
+          chunk,
+          result.message || firstFailureReason(result) || 'chat_agent_error',
+        );
         aborted = true;
         continue;
       }
@@ -136,7 +155,10 @@ export function createManualApplyController({
       const reportedAppliedIds = new Set(result.appliedEntryIds);
       for (const entryId of reportedAppliedIds) {
         if (!chunk.entryIds.has(entryId) || chunkFailedIds.has(entryId)) continue;
-        appliedOpsByEntry.set(entryId, (appliedOpsByEntry.get(entryId) || 0) + (chunk.opCountsByEntry.get(entryId) || 0));
+        appliedOpsByEntry.set(
+          entryId,
+          (appliedOpsByEntry.get(entryId) || 0) + (chunk.opCountsByEntry.get(entryId) || 0),
+        );
       }
 
       for (const entryId of chunk.entryIds) {
@@ -241,7 +263,8 @@ export function createManualApplyController({
 
   function cancelPendingEvents(pageUrl, reason = 'manual_edit_discarded') {
     const canceledById = new Map();
-    const shouldCancel = (event) => event?.type === 'manual_edit_apply' && (!pageUrl || event.pageUrl === pageUrl);
+    const shouldCancel = (event) =>
+      event?.type === 'manual_edit_apply' && (!pageUrl || event.pageUrl === pageUrl);
 
     for (let i = pendingEvents.length - 1; i >= 0; i -= 1) {
       const event = pendingEvents[i]?.event;
@@ -260,7 +283,13 @@ export function createManualApplyController({
       pendingApplyDeferreds.delete(eventId);
       clearTimeout(deferred.timer);
       const cwdValue = deferred.cwd || projectCwd();
-      const rollback = rollbackApplySnapshot(deferred.batch, deferred.rollbackSnapshot, [], reason, cwdValue);
+      const rollback = rollbackApplySnapshot(
+        deferred.batch,
+        deferred.rollbackSnapshot,
+        [],
+        reason,
+        cwdValue,
+      );
       tombstoneTimedOutApplyId(eventId, {
         batch: deferred.batch,
         rollbackSnapshot: deferred.rollbackSnapshot,
@@ -285,7 +314,8 @@ export function createManualApplyController({
   return {
     buildAgentAction: buildManualApplyAgentAction,
     cancelPendingEvents,
-    clearTransaction: (transactionId = null) => clearManualApplyTransaction(projectCwd(), transactionId),
+    clearTransaction: (transactionId = null) =>
+      clearManualApplyTransaction(projectCwd(), transactionId),
     countOps: countManualApplyOps,
     getDeferred,
     hasTimedOutId,
@@ -295,12 +325,14 @@ export function createManualApplyController({
     rejectDeferred,
     resolveDeferred,
     rollbackTimedOutReply,
-    rollbackTransaction: (opts = {}) => rollbackManualApplyTransaction({
-      cwd: projectCwd(),
-      recordManualEditActivity,
-      ...opts,
-    }),
-    summarizeEvent: (event = {}, batch = event.batch) => summarizeManualApplyEvent(event, batch, projectCwd()),
+    rollbackTransaction: (opts = {}) =>
+      rollbackManualApplyTransaction({
+        cwd: projectCwd(),
+        recordManualEditActivity,
+        ...opts,
+      }),
+    summarizeEvent: (event = {}, batch = event.batch) =>
+      summarizeManualApplyEvent(event, batch, projectCwd()),
     validateResultMessage: validateManualApplyResultMessage,
     writeTransaction: (opts = {}) => writeManualApplyTransaction({ cwd: projectCwd(), ...opts }),
   };
@@ -310,13 +342,18 @@ export function manualEditApplyChunkSize(env = process.env) {
   const raw = Number(env.IMPECCABLE_LIVE_MANUAL_EDIT_CHUNK_SIZE);
   if (!Number.isFinite(raw)) return DEFAULT_MANUAL_EDIT_APPLY_CHUNK_SIZE;
   const size = Math.trunc(raw);
-  return Math.max(MIN_MANUAL_EDIT_APPLY_CHUNK_SIZE, Math.min(MAX_MANUAL_EDIT_APPLY_CHUNK_SIZE, size));
+  return Math.max(
+    MIN_MANUAL_EDIT_APPLY_CHUNK_SIZE,
+    Math.min(MAX_MANUAL_EDIT_APPLY_CHUNK_SIZE, size),
+  );
 }
 
 export function countManualApplyOps(entriesOrBatch) {
   const entries = Array.isArray(entriesOrBatch)
     ? entriesOrBatch
-    : Array.isArray(entriesOrBatch?.entries) ? entriesOrBatch.entries : [];
+    : Array.isArray(entriesOrBatch?.entries)
+      ? entriesOrBatch.entries
+      : [];
   let count = 0;
   for (const entry of entries) count += Array.isArray(entry.ops) ? entry.ops.length : 0;
   return count;
@@ -365,29 +402,29 @@ export function compactManualApplyBatch(batch = {}, cwd = process.cwd()) {
     entries,
     ops: entries.flatMap((entry) => entry.ops.map((op) => ({ ...op, entryId: entry.id }))),
     candidates: candidates.length > 0 ? candidates : undefined,
-    context: batch.context ? {
-      bufferPath: batch.context.bufferPath,
-      totalEntries: batch.context.totalEntries,
-      totalOps: batch.context.totalOps,
-      chunkIndex: batch.context.chunkIndex,
-      chunkTotal: batch.context.chunkTotal,
-      totalApplyOps: batch.context.totalApplyOps,
-    } : undefined,
+    context: batch.context
+      ? {
+          bufferPath: batch.context.bufferPath,
+          totalEntries: batch.context.totalEntries,
+          totalOps: batch.context.totalOps,
+          chunkIndex: batch.context.chunkIndex,
+          chunkTotal: batch.context.chunkTotal,
+          totalApplyOps: batch.context.totalApplyOps,
+        }
+      : undefined,
   };
 }
 
 export function compactManualApplyCandidates(candidates, cwd = process.cwd()) {
-  return (Array.isArray(candidates) ? candidates : [])
-    .slice(0, 24)
-    .map((candidate) => ({
-      entryId: candidate.entryId,
-      ref: candidate.ref,
-      sourceHint: compactManualApplySourceMatch(candidate.sourceHint, cwd),
-      textMatches: compactManualApplySourceMatches(candidate.textMatches, 8, cwd),
-      objectKeyMatches: compactManualApplySourceMatches(candidate.objectKeyMatches, 8, cwd),
-      contextTextMatches: compactManualApplySourceMatches(candidate.contextTextMatches, 8, cwd),
-      locatorMatches: compactManualApplySourceMatches(candidate.locatorMatches, 6, cwd),
-    }));
+  return (Array.isArray(candidates) ? candidates : []).slice(0, 24).map((candidate) => ({
+    entryId: candidate.entryId,
+    ref: candidate.ref,
+    sourceHint: compactManualApplySourceMatch(candidate.sourceHint, cwd),
+    textMatches: compactManualApplySourceMatches(candidate.textMatches, 8, cwd),
+    objectKeyMatches: compactManualApplySourceMatches(candidate.objectKeyMatches, 8, cwd),
+    contextTextMatches: compactManualApplySourceMatches(candidate.contextTextMatches, 8, cwd),
+    locatorMatches: compactManualApplySourceMatches(candidate.locatorMatches, 6, cwd),
+  }));
 }
 
 function compactManualApplySourceMatches(matches, limit, cwd) {
@@ -453,12 +490,16 @@ function compactManualApplyContext(value) {
 function compactNearbyManualEditTexts(items) {
   return (Array.isArray(items) ? items : [])
     .slice(0, MANUAL_APPLY_COMPACT_NEARBY_LIMIT)
-    .map((item) => typeof item === 'string' ? { text: truncateManualApplyText(item, MANUAL_APPLY_COMPACT_TEXT_LIMIT) } : {
-      ref: item?.ref,
-      tag: item?.tag,
-      classes: Array.isArray(item?.classes) ? item.classes : [],
-      text: truncateManualApplyText(item?.text, MANUAL_APPLY_COMPACT_TEXT_LIMIT),
-    });
+    .map((item) =>
+      typeof item === 'string'
+        ? { text: truncateManualApplyText(item, MANUAL_APPLY_COMPACT_TEXT_LIMIT) }
+        : {
+            ref: item?.ref,
+            tag: item?.tag,
+            classes: Array.isArray(item?.classes) ? item.classes : [],
+            text: truncateManualApplyText(item?.text, MANUAL_APPLY_COMPACT_TEXT_LIMIT),
+          },
+    );
 }
 
 function truncateManualApplyText(value, max) {
@@ -467,14 +508,21 @@ function truncateManualApplyText(value, max) {
 }
 
 function normalizeApplyChunkResult(result) {
-  const status = result?.status === 'partial' ? 'partial' : result?.status === 'error' ? 'error' : 'done';
+  const status =
+    result?.status === 'partial' ? 'partial' : result?.status === 'error' ? 'error' : 'done';
   return {
     status,
     message: typeof result?.message === 'string' ? result.message : null,
-    appliedEntryIds: Array.isArray(result?.appliedEntryIds) ? result.appliedEntryIds.filter((id) => typeof id === 'string') : [],
+    appliedEntryIds: Array.isArray(result?.appliedEntryIds)
+      ? result.appliedEntryIds.filter((id) => typeof id === 'string')
+      : [],
     failed: Array.isArray(result?.failed) ? result.failed.filter(Boolean) : [],
-    files: Array.isArray(result?.files) ? result.files.filter((file) => typeof file === 'string') : [],
-    notes: Array.isArray(result?.notes) ? result.notes.filter((note) => typeof note === 'string') : [],
+    files: Array.isArray(result?.files)
+      ? result.files.filter((file) => typeof file === 'string')
+      : [],
+    notes: Array.isArray(result?.notes)
+      ? result.notes.filter((note) => typeof note === 'string')
+      : [],
   };
 }
 
@@ -540,7 +588,9 @@ export function validateManualApplyResultMessage(msg, deferred) {
     }
   }
 
-  const eventEntryIds = new Set((deferred?.batch?.entries || []).map((entry) => entry.id).filter(Boolean));
+  const eventEntryIds = new Set(
+    (deferred?.batch?.entries || []).map((entry) => entry.id).filter(Boolean),
+  );
   for (const entryId of data.appliedEntryIds) {
     if (eventEntryIds.size > 0 && !eventEntryIds.has(entryId)) {
       return invalidManualApplyResult('applied_entry_id_not_in_event', eventId, { entryId });
@@ -548,7 +598,9 @@ export function validateManualApplyResultMessage(msg, deferred) {
   }
   for (const item of data.failed) {
     if (eventEntryIds.size > 0 && !eventEntryIds.has(item.entryId)) {
-      return invalidManualApplyResult('failed_entry_id_not_in_event', eventId, { entryId: item.entryId });
+      return invalidManualApplyResult('failed_entry_id_not_in_event', eventId, {
+        entryId: item.entryId,
+      });
     }
   }
 
@@ -595,12 +647,19 @@ function markChunkEntriesFailed(failedByEntry, chunk, reason) {
 export function splitManualApplyBatch(batch, maxOps) {
   const totalOpCount = countManualApplyOps(batch);
   if (totalOpCount <= maxOps) {
-    return [{
-      batch,
-      meta: null,
-      entryIds: new Set((batch?.entries || []).map((entry) => entry.id).filter(Boolean)),
-      opCountsByEntry: new Map((batch?.entries || []).map((entry) => [entry.id, Array.isArray(entry.ops) ? entry.ops.length : 0])),
-    }];
+    return [
+      {
+        batch,
+        meta: null,
+        entryIds: new Set((batch?.entries || []).map((entry) => entry.id).filter(Boolean)),
+        opCountsByEntry: new Map(
+          (batch?.entries || []).map((entry) => [
+            entry.id,
+            Array.isArray(entry.ops) ? entry.ops.length : 0,
+          ]),
+        ),
+      },
+    ];
   }
 
   const rawChunks = [];
@@ -783,7 +842,13 @@ export function rollbackManualApplyTransaction({
   const shouldRollback = (transaction.entryIds || []).some((id) => pendingIds.has(id));
   if (!shouldRollback) {
     clearManualApplyTransaction(cwd, transaction.id);
-    return { id: transaction.id, reason, rolledBackFiles: [], rollbackFailures: [], skipped: 'entries_not_pending' };
+    return {
+      id: transaction.id,
+      reason,
+      rolledBackFiles: [],
+      rollbackFailures: [],
+      skipped: 'entries_not_pending',
+    };
   }
 
   const rolledBackFiles = [];
@@ -801,7 +866,11 @@ export function rollbackManualApplyTransaction({
       }
       rolledBackFiles.push(relativeFile);
     } catch (err) {
-      rollbackFailures.push({ file: relativeFile, reason: 'restore_failed', message: err.message || String(err) });
+      rollbackFailures.push({
+        file: relativeFile,
+        reason: 'restore_failed',
+        message: err.message || String(err),
+      });
     }
   }
   clearManualApplyTransaction(cwd, transaction.id);
@@ -810,7 +879,9 @@ export function rollbackManualApplyTransaction({
     pageUrl: transaction.pageUrl || null,
     reason,
     entryIds: transaction.entryIds || [],
-    rolledBackFiles: rolledBackFiles.map((file) => summarizeManualLogFile(file, cwd)).filter(Boolean),
+    rolledBackFiles: rolledBackFiles
+      .map((file) => summarizeManualLogFile(file, cwd))
+      .filter(Boolean),
     rollbackFailures: summarizeManualDiagnostics(rollbackFailures, cwd),
   });
   return { id: transaction.id, reason, rolledBackFiles, rollbackFailures };
@@ -829,9 +900,7 @@ export function collectManualApplyFiles(batch, extraFiles = [], cwd = process.cw
     for (const item of candidate.contextTextMatches || []) files.push(item.file);
   }
   files.push(...(extraFiles || []));
-  return [...new Set(files)]
-    .map((file) => normalizeProjectFile(file, cwd))
-    .filter(Boolean);
+  return [...new Set(files)].map((file) => normalizeProjectFile(file, cwd)).filter(Boolean);
 }
 
 function normalizeProjectFile(file, cwd = process.cwd()) {
@@ -865,7 +934,11 @@ export function rollbackApplySnapshot(
       }
       rolledBackFiles.push(relativeFile);
     } catch (err) {
-      rollbackFailures.push({ file: relativeFile, reason: 'restore_failed', message: err.message || String(err) });
+      rollbackFailures.push({
+        file: relativeFile,
+        reason: 'restore_failed',
+        message: err.message || String(err),
+      });
     }
   }
   return { rolledBackFiles, rollbackFailures };
@@ -887,7 +960,10 @@ export function buildManualApplyAgentAction(eventOrId = 'EVENT_ID') {
 
 export function summarizeManualApplyEvent(event = {}, batch = event.batch, cwd = process.cwd()) {
   const entries = Array.isArray(batch?.entries) ? batch.entries : [];
-  const opCount = entries.reduce((sum, entry) => sum + (Array.isArray(entry.ops) ? entry.ops.length : 0), 0);
+  const opCount = entries.reduce(
+    (sum, entry) => sum + (Array.isArray(entry.ops) ? entry.ops.length : 0),
+    0,
+  );
   return {
     pageUrl: event.pageUrl || null,
     chunk: event.chunk || null,
@@ -903,7 +979,12 @@ export function summarizeManualApplyFailures(failed, cwd = process.cwd()) {
     id: item.id || item.entryId || null,
     reason: item.reason || item.message || 'failed',
     message: compactManualLogText(item.message, 300),
-    files: Array.isArray(item.files) ? item.files.slice(0, 12).map((file) => summarizeManualLogFile(file, cwd)).filter(Boolean) : undefined,
+    files: Array.isArray(item.files)
+      ? item.files
+          .slice(0, 12)
+          .map((file) => summarizeManualLogFile(file, cwd))
+          .filter(Boolean)
+      : undefined,
     checks: summarizeManualDiagnostics(item.checks, cwd),
     failures: summarizeManualDiagnostics(item.failures, cwd),
     candidates: summarizeManualDiagnostics(item.candidates, cwd),
@@ -920,7 +1001,12 @@ export function summarizeManualDiagnostics(items, cwd = process.cwd()) {
     line: item.line || undefined,
     ref: compactManualLogText(item.ref, 180),
     marker: compactManualLogText(item.marker, 120),
-    files: Array.isArray(item.files) ? item.files.slice(0, 8).map((file) => summarizeManualLogFile(file, cwd)).filter(Boolean) : undefined,
+    files: Array.isArray(item.files)
+      ? item.files
+          .slice(0, 8)
+          .map((file) => summarizeManualLogFile(file, cwd))
+          .filter(Boolean)
+      : undefined,
   }));
 }
 

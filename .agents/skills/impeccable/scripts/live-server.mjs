@@ -42,10 +42,7 @@ import {
   writeLiveServerInfo,
 } from './lib/impeccable-paths.mjs';
 import { countByPage as countPendingByPage } from './live/manual-edits-buffer.mjs';
-import {
-  createManualApplyController,
-  summarizeManualApplyFailures,
-} from './live/manual-apply.mjs';
+import { createManualApplyController, summarizeManualApplyFailures } from './live/manual-apply.mjs';
 import {
   applyDeferredSvelteComponentAccepts,
   removeAllSvelteComponentSessions,
@@ -60,8 +57,8 @@ const CONTEXT_DIR = PROJECT_CONTEXT.contextDir;
 const DESIGN_MD_PATH = PROJECT_CONTEXT.designPath
   ? path.resolve(process.cwd(), PROJECT_CONTEXT.designPath)
   : null;
-const DEFAULT_POLL_TIMEOUT = 600_000;   // 10 min — agent re-polls on timeout anyway
-const SSE_HEARTBEAT_INTERVAL = 30_000;  // keepalive ping every 30s
+const DEFAULT_POLL_TIMEOUT = 600_000; // 10 min — agent re-polls on timeout anyway
+const SSE_HEARTBEAT_INTERVAL = 30_000; // keepalive ping every 30s
 
 // ---------------------------------------------------------------------------
 // Port detection
@@ -85,13 +82,13 @@ async function findOpenPort(start = 8400) {
 const state = {
   token: null,
   port: null,
-  sseClients: new Set(),   // SSE response objects (server→browser push)
-  pendingEvents: [],        // browser events waiting for agent ack ({ event, leaseUntil })
-  pendingPolls: [],         // agent poll callbacks waiting for browser events
+  sseClients: new Set(), // SSE response objects (server→browser push)
+  pendingEvents: [], // browser events waiting for agent ack ({ event, leaseUntil })
+  pendingPolls: [], // agent poll callbacks waiting for browser events
   nextEventSeq: 1,
   lastAgentPollingBroadcast: null,
   exitTimer: null,
-  sessionDir: null,         // per-session tmp dir for annotation screenshots
+  sessionDir: null, // per-session tmp dir for annotation screenshots
   sessionStore: null,
   leaseTimer: null,
   manualEditActivity: null,
@@ -109,7 +106,9 @@ const state = {
 
 const CHAT_POLL_FRESHNESS_MS = 60_000;
 const POLL_LEASE_EXPIRY_TIMER_GRACE_MS = 2;
-const DEBUG_MANUAL_EDIT_EVENTS = /^(1|true|yes)$/i.test(process.env.IMPECCABLE_LIVE_DEBUG_EVENTS || '');
+const DEBUG_MANUAL_EDIT_EVENTS = /^(1|true|yes)$/i.test(
+  process.env.IMPECCABLE_LIVE_DEBUG_EVENTS || '',
+);
 
 const manualApply = createManualApplyController({
   pendingEvents: state.pendingEvents,
@@ -143,7 +142,14 @@ function chatAgentLikelyActive() {
 const MAX_ANNOTATION_BYTES = 10 * 1024 * 1024;
 
 function enqueueEvent(event) {
-  if (!event || (event.id && state.pendingEvents.some((entry) => entry.event?.id === event.id && entry.event?.type === event.type))) return;
+  if (
+    !event ||
+    (event.id &&
+      state.pendingEvents.some(
+        (entry) => entry.event?.id === event.id && entry.event?.type === event.type,
+      ))
+  )
+    return;
   state.pendingEvents.push({ event, leaseUntil: 0, seq: state.nextEventSeq++ });
   flushPendingPolls();
 }
@@ -206,7 +212,10 @@ function summarizePendingEventForStatus(entry) {
     summary.repair = event.repair || null;
     summary.evidencePath = event.evidencePath || null;
     summary.agentAction = event.agentAction || manualApply.buildAgentAction(event);
-    summary.manualApplySummary = manualApply.summarizeEvent(event, manualApply.getDeferred(event.id)?.batch || event.batch);
+    summary.manualApplySummary = manualApply.summarizeEvent(
+      event,
+      manualApply.getDeferred(event.id)?.batch || event.batch,
+    );
   }
   return summary;
 }
@@ -229,7 +238,9 @@ function summarizeActiveSessionForClient(snapshot = {}) {
 
 function activeSessionSummaries() {
   if (!state.sessionStore) return [];
-  return state.sessionStore.listActiveSessions().map((snapshot) => summarizeActiveSessionForClient(snapshot));
+  return state.sessionStore
+    .listActiveSessions()
+    .map((snapshot) => summarizeActiveSessionForClient(snapshot));
 }
 
 function cancelQueuedAnonymousExitEvents() {
@@ -258,11 +269,14 @@ function scheduleLeaseFlush() {
     .filter((leaseUntil) => leaseUntil > now)
     .sort((a, b) => a - b)[0];
   if (!nextLeaseUntil) return;
-  state.leaseTimer = setTimeout(() => {
-    state.leaseTimer = null;
-    flushPendingPolls();
-    broadcastAgentPollingIfChanged();
-  }, Math.max(0, nextLeaseUntil - now + POLL_LEASE_EXPIRY_TIMER_GRACE_MS));
+  state.leaseTimer = setTimeout(
+    () => {
+      state.leaseTimer = null;
+      flushPendingPolls();
+      broadcastAgentPollingIfChanged();
+    },
+    Math.max(0, nextLeaseUntil - now + POLL_LEASE_EXPIRY_TIMER_GRACE_MS),
+  );
 }
 
 function flushPendingPolls() {
@@ -284,8 +298,10 @@ function flushPendingPolls() {
 
 function agentPollingConnected() {
   const now = Date.now();
-  return state.pendingPolls.length > 0
-    || state.pendingEvents.some((entry) => entry.leaseUntil && entry.leaseUntil > now);
+  return (
+    state.pendingPolls.length > 0 ||
+    state.pendingEvents.some((entry) => entry.leaseUntil && entry.leaseUntil > now)
+  );
 }
 
 function broadcastAgentPollingIfChanged() {
@@ -299,7 +315,11 @@ function broadcastAgentPollingIfChanged() {
 function broadcast(msg) {
   const data = 'data: ' + JSON.stringify(msg) + '\n\n';
   for (const res of state.sseClients) {
-    try { res.write(data); } catch { /* client gone */ }
+    try {
+      res.write(data);
+    } catch {
+      /* client gone */
+    }
   }
 }
 
@@ -350,11 +370,23 @@ function loadBrowserScripts() {
     path.join(__dirname, 'detector', 'detect-antipatterns-browser.js'),
     path.join(__dirname, '..', '..', 'cli', 'engine', 'detect-antipatterns-browser.js'),
     path.join(__dirname, '..', '..', '..', '..', 'cli', 'engine', 'detect-antipatterns-browser.js'),
-    path.join(process.cwd(), 'node_modules', 'impeccable', 'cli', 'engine', 'detect-antipatterns-browser.js'),
+    path.join(
+      process.cwd(),
+      'node_modules',
+      'impeccable',
+      'cli',
+      'engine',
+      'detect-antipatterns-browser.js',
+    ),
   ];
   let detectScript = '';
   for (const p of detectPaths) {
-    try { detectScript = fs.readFileSync(p, 'utf-8'); break; } catch { /* try next */ }
+    try {
+      detectScript = fs.readFileSync(p, 'utf-8');
+      break;
+    } catch {
+      /* try next */
+    }
   }
 
   // Browser script parts: DO NOT cache. Return paths so the /live.js handler
@@ -379,7 +411,11 @@ function hasProjectContext() {
 }
 
 function statOrNull(filePath) {
-  try { return fs.statSync(filePath); } catch { return null; }
+  try {
+    return fs.statSync(filePath);
+  } catch {
+    return null;
+  }
 }
 
 // HTTP request handler
@@ -391,7 +427,11 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
 
     const p = url.pathname;
 
@@ -418,13 +458,17 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
       res.writeHead(200, {
         'Content-Type': 'application/javascript',
         'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-        'Pragma': 'no-cache',
+        Pragma: 'no-cache',
       });
       res.end(body);
       return;
     }
     if (p === '/detect.js' || p === '/') {
-      if (!detectScript) { res.writeHead(404); res.end('Not available'); return; }
+      if (!detectScript) {
+        res.writeHead(404);
+        res.end('Not available');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': 'application/javascript' });
       res.end(detectScript);
       return;
@@ -442,7 +486,8 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
         });
         res.end(fs.readFileSync(vendorPath));
       } catch {
-        res.writeHead(404); res.end('Vendor script not found');
+        res.writeHead(404);
+        res.end('Vendor script not found');
       }
       return;
     }
@@ -453,7 +498,11 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     // bridge and preserves the "one shot from the user's POV" UX.
     if (p === '/annotation' && req.method === 'POST') {
       const token = url.searchParams.get('token');
-      if (token !== state.token) { res.writeHead(401); res.end('Unauthorized'); return; }
+      if (token !== state.token) {
+        res.writeHead(401);
+        res.end('Unauthorized');
+        return;
+      }
       const eventId = url.searchParams.get('eventId');
       if (!eventId || !/^[A-Za-z0-9_-]{1,64}$/.test(eventId)) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -510,28 +559,38 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     // --- Health ---
     if (p === '/status') {
       const token = url.searchParams.get('token');
-      if (token !== state.token) { res.writeHead(401, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Unauthorized' })); return; }
+      if (token !== state.token) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Unauthorized' }));
+        return;
+      }
       const sessions = activeSessionSummaries();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'ok',
-        port: state.port,
-        connectedClients: state.sseClients.size,
-        pendingEvents: state.pendingEvents.map((entry) => summarizePendingEventForStatus(entry)),
-        agentPolling: agentPollingConnected(),
-        activeSessions: sessions,
-        manualEdits: getManualEditStatus(),
-      }));
+      res.end(
+        JSON.stringify({
+          status: 'ok',
+          port: state.port,
+          connectedClients: state.sseClients.size,
+          pendingEvents: state.pendingEvents.map((entry) => summarizePendingEventForStatus(entry)),
+          agentPolling: agentPollingConnected(),
+          activeSessions: sessions,
+          manualEdits: getManualEditStatus(),
+        }),
+      );
       return;
     }
 
     if (p === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        status: 'ok', port: state.port, mode: 'variant',
-        hasProjectContext: hasProjectContext(),
-        connectedClients: state.sseClients.size,
-      }));
+      res.end(
+        JSON.stringify({
+          status: 'ok',
+          port: state.port,
+          mode: 'variant',
+          hasProjectContext: hasProjectContext(),
+          connectedClients: state.sseClients.size,
+        }),
+      );
       return;
     }
 
@@ -548,15 +607,25 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     //   /design-system/raw     returns DESIGN.md markdown verbatim
     if (p === '/design-system.json' || p === '/design-system/raw') {
       const token = url.searchParams.get('token');
-      if (token !== state.token) { res.writeHead(401); res.end('Unauthorized'); return; }
+      if (token !== state.token) {
+        res.writeHead(401);
+        res.end('Unauthorized');
+        return;
+      }
 
       const mdPath = DESIGN_MD_PATH;
-      const jsonPath = resolveDesignSidecarPath(process.cwd(), PROJECT_CONTEXT.designContextDir || CONTEXT_DIR) || getDesignSidecarPath(process.cwd());
+      const jsonPath =
+        resolveDesignSidecarPath(process.cwd(), PROJECT_CONTEXT.designContextDir || CONTEXT_DIR) ||
+        getDesignSidecarPath(process.cwd());
       const mdStat = statOrNull(mdPath);
       const jsonStat = statOrNull(jsonPath);
 
       if (p === '/design-system/raw') {
-        if (!mdStat) { res.writeHead(404); res.end('Not found'); return; }
+        if (!mdStat) {
+          res.writeHead(404);
+          res.end('Not found');
+          return;
+        }
         res.writeHead(200, { 'Content-Type': 'text/markdown; charset=utf-8' });
         res.end(fs.readFileSync(mdPath, 'utf-8'));
         return;
@@ -599,14 +668,31 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     // --- Source file (no-HMR fallback) ---
     if (p === '/source') {
       const token = url.searchParams.get('token');
-      if (token !== state.token) { res.writeHead(401); res.end('Unauthorized'); return; }
+      if (token !== state.token) {
+        res.writeHead(401);
+        res.end('Unauthorized');
+        return;
+      }
       const filePath = url.searchParams.get('path');
-      if (!filePath || filePath.includes('..')) { res.writeHead(400); res.end('Bad path'); return; }
+      if (!filePath || filePath.includes('..')) {
+        res.writeHead(400);
+        res.end('Bad path');
+        return;
+      }
       const absPath = path.resolve(process.cwd(), filePath);
-      if (!absPath.startsWith(process.cwd())) { res.writeHead(403); res.end('Forbidden'); return; }
+      if (!absPath.startsWith(process.cwd())) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+      }
       let content;
-      try { content = fs.readFileSync(absPath, 'utf-8'); }
-      catch { res.writeHead(404); res.end('File not found'); return; }
+      try {
+        content = fs.readFileSync(absPath, 'utf-8');
+      } catch {
+        res.writeHead(404);
+        res.end('File not found');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(content);
       return;
@@ -615,27 +701,39 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     // --- SSE: server→browser push (replaces WebSocket) ---
     if (p === '/events' && req.method === 'GET') {
       const token = url.searchParams.get('token');
-      if (token !== state.token) { res.writeHead(401); res.end('Unauthorized'); return; }
+      if (token !== state.token) {
+        res.writeHead(401);
+        res.end('Unauthorized');
+        return;
+      }
       clearTimeout(state.exitTimer);
       state.exitTimer = null;
       cancelQueuedAnonymousExitEvents();
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
+        Connection: 'keep-alive',
       });
-      res.write('data: ' + JSON.stringify({
-        type: 'connected',
-        hasProjectContext: hasProjectContext(),
-        agentPolling: agentPollingConnected(),
-        activeSessions: activeSessionSummaries(),
-      }) + '\n\n');
+      res.write(
+        'data: ' +
+          JSON.stringify({
+            type: 'connected',
+            hasProjectContext: hasProjectContext(),
+            agentPolling: agentPollingConnected(),
+            activeSessions: activeSessionSummaries(),
+          }) +
+          '\n\n',
+      );
 
       state.sseClients.add(res);
 
       // Keepalive: SSE comment every 30s prevents silent connection drops.
       const heartbeat = setInterval(() => {
-        try { res.write(': keepalive\n\n'); } catch { clearInterval(heartbeat); }
+        try {
+          res.write(': keepalive\n\n');
+        } catch {
+          clearInterval(heartbeat);
+        }
       }, SSE_HEARTBEAT_INTERVAL);
 
       req.on('close', () => {
@@ -656,10 +754,14 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     // --- Browser→server events (replaces WebSocket messages) ---
     if (p === '/events' && req.method === 'POST') {
       let body = '';
-      req.on('data', (c) => { body += c; });
+      req.on('data', (c) => {
+        body += c;
+      });
       req.on('end', () => {
         let msg;
-        try { msg = JSON.parse(body); } catch {
+        try {
+          msg = JSON.parse(body);
+        } catch {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Invalid JSON' }));
           return;
@@ -673,12 +775,19 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
         // endpoints. The direct Save event path is disabled in the browser.
         if (msg.type === 'manual_edits') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'manual_edits must POST to /manual-edit-stash, not /events' }));
+          res.end(
+            JSON.stringify({ error: 'manual_edits must POST to /manual-edit-stash, not /events' }),
+          );
           return;
         }
         if (msg.type === 'manual_edit_apply') {
           res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'manual_edit_apply is disabled; use /manual-edit-stash then /manual-edit-commit' }));
+          res.end(
+            JSON.stringify({
+              error:
+                'manual_edit_apply is disabled; use /manual-edit-stash then /manual-edit-commit',
+            }),
+          );
           return;
         }
         const error = validateEvent(msg);
@@ -711,7 +820,11 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
     // --- Stop ---
     if (p === '/stop') {
       const token = url.searchParams.get('token');
-      if (token !== state.token) { res.writeHead(401); res.end('Unauthorized'); return; }
+      if (token !== state.token) {
+        res.writeHead(401);
+        res.end('Unauthorized');
+        return;
+      }
       res.writeHead(200, { 'Content-Type': 'text/plain' });
       res.end('stopping');
       shutdown();
@@ -728,7 +841,8 @@ function createRequestHandler({ detectScript, liveScriptParts }) {
       return;
     }
 
-    res.writeHead(404); res.end('Not found');
+    res.writeHead(404);
+    res.end('Not found');
   };
 }
 
@@ -782,7 +896,11 @@ function sessionFileMetadataFromPollReply(file) {
   const normalized = file.split(path.sep).join('/');
   const base = { file: normalized };
   if (!normalized.endsWith('/manifest.json') && normalized !== 'manifest.json') return base;
-  if (!normalized.includes('node_modules/.impeccable-live/') && !normalized.includes('src/lib/impeccable/')) return base;
+  if (
+    !normalized.includes('node_modules/.impeccable-live/') &&
+    !normalized.includes('src/lib/impeccable/')
+  )
+    return base;
 
   let full;
   try {
@@ -809,10 +927,14 @@ function sessionFileMetadataFromPollReply(file) {
 
 function handlePollPost(req, res) {
   let body = '';
-  req.on('data', (c) => { body += c; });
+  req.on('data', (c) => {
+    body += c;
+  });
   req.on('end', () => {
     let msg;
-    try { msg = JSON.parse(body); } catch {
+    try {
+      msg = JSON.parse(body);
+    } catch {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'Invalid JSON' }));
       return;
@@ -831,7 +953,8 @@ function handlePollPost(req, res) {
           pageUrl: pendingApplyDeferred.pageUrl,
           chunk: pendingApplyDeferred.event?.chunk || null,
           repair: pendingApplyDeferred.event?.repair || null,
-          reason: validation.body?.reason || validation.body?.error || 'invalid_manual_apply_result',
+          reason:
+            validation.body?.reason || validation.body?.error || 'invalid_manual_apply_result',
           status: msg.data?.status || null,
         });
         res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -868,13 +991,19 @@ function handlePollPost(req, res) {
       return;
     }
     const pendingEventBeforeAck = findPendingEventById(msg.id);
-    if (pendingEventBeforeAck?.type === 'steer' && msg.type === 'steer_done'
-        && !msg.file && !(typeof msg.message === 'string' && msg.message.trim())) {
+    if (
+      pendingEventBeforeAck?.type === 'steer' &&
+      msg.type === 'steer_done' &&
+      !msg.file &&
+      !(typeof msg.message === 'string' && msg.message.trim())
+    ) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        error: 'steer_done_requires_file_or_message',
-        hint: 'Reply with --file after writing source, or include a message explaining an intentional no-op.',
-      }));
+      res.end(
+        JSON.stringify({
+          error: 'steer_done_requires_file_or_message',
+          hint: 'Reply with --file after writing source, or include a message explaining an intentional no-op.',
+        }),
+      );
       return;
     }
     const acknowledgedEvent = acknowledgePendingEvent(msg.id);
@@ -884,8 +1013,11 @@ function handlePollPost(req, res) {
       try {
         existingSession = state.sessionStore.getSnapshot(msg.id, { includeCompleted: true });
         if (!existingSession?.updatedAt) existingSession = null;
-        skipJournalReply = existingSession?.phase === 'completed' || existingSession?.phase === 'discarded';
-      } catch { /* fall through and record the reply normally */ }
+        skipJournalReply =
+          existingSession?.phase === 'completed' || existingSession?.phase === 'discarded';
+      } catch {
+        /* fall through and record the reply normally */
+      }
     }
     if (!acknowledgedEvent && !existingSession) {
       recordManualEditActivity('manual_edit_poll_reply_unknown', {
@@ -893,24 +1025,27 @@ function handlePollPost(req, res) {
         type: msg.type || null,
       });
       res.writeHead(msg.id ? 404 : 400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({
-        error: msg.id ? 'unknown_poll_reply_id' : 'missing_poll_reply_id',
-        id: msg.id,
-      }));
+      res.end(
+        JSON.stringify({
+          error: msg.id ? 'unknown_poll_reply_id' : 'missing_poll_reply_id',
+          id: msg.id,
+        }),
+      );
       return;
     }
     const replyFileMeta = sessionFileMetadataFromPollReply(msg.file);
     if (state.sessionStore && msg.id && !skipJournalReply) {
       try {
-        const eventType = msg.type === 'steer_done'
-          ? 'steer_done'
-          : msg.type === 'discard' || msg.type === 'discarded'
-            ? 'discarded'
-            : msg.type === 'complete'
-              ? 'complete'
-              : msg.type === 'error'
-                ? 'agent_error'
-                : 'agent_done';
+        const eventType =
+          msg.type === 'steer_done'
+            ? 'steer_done'
+            : msg.type === 'discard' || msg.type === 'discarded'
+              ? 'discarded'
+              : msg.type === 'complete'
+                ? 'complete'
+                : msg.type === 'error'
+                  ? 'agent_error'
+                  : 'agent_done';
         state.sessionStore.appendEvent({
           type: eventType,
           id: msg.id,
@@ -922,7 +1057,9 @@ function handlePollPost(req, res) {
           sourceEventType: acknowledgedEvent?.type,
           carbonize: msg.data?.carbonize === true,
         });
-      } catch { /* keep reply path best-effort; browser still needs SSE */ }
+      } catch {
+        /* keep reply path best-effort; browser still needs SSE */
+      }
     }
     flushPendingPolls();
     // Forward the reply to the browser via SSE
@@ -953,9 +1090,15 @@ function shutdown() {
   if (state.leaseTimer) clearTimeout(state.leaseTimer);
   state.leaseTimer = null;
   if (state.sessionDir) {
-    try { fs.rmSync(state.sessionDir, { recursive: true, force: true }); } catch {}
+    try {
+      fs.rmSync(state.sessionDir, { recursive: true, force: true });
+    } catch {}
   }
-  for (const res of state.sseClients) { try { res.end(); } catch {} }
+  for (const res of state.sseClients) {
+    try {
+      res.end();
+    } catch {}
+  }
   state.sseClients.clear();
   for (const poll of state.pendingPolls) poll.resolve({ type: 'exit' });
   state.pendingPolls.length = 0;
@@ -975,7 +1118,10 @@ function applyLegacyDeferredAcceptsOnStartup() {
   try {
     const result = applyDeferredSvelteComponentAccepts(process.cwd());
     if (result.applied > 0 || result.failed > 0) {
-      console.log('[impeccable] applied legacy deferred Svelte component accepts:', JSON.stringify(result));
+      console.log(
+        '[impeccable] applied legacy deferred Svelte component accepts:',
+        JSON.stringify(result),
+      );
     }
   } catch (err) {
     console.warn('[impeccable] legacy deferred Svelte component accept apply failed:', err.message);
@@ -1048,10 +1194,11 @@ if (args.includes('stop')) {
         }
       }
     } catch (err) {
-      const detail = err.stderr?.toString?.().trim?.()
-        || err.stdout?.toString?.().trim?.()
-        || err.message
-        || String(err);
+      const detail =
+        err.stderr?.toString?.().trim?.() ||
+        err.stdout?.toString?.().trim?.() ||
+        err.message ||
+        String(err);
       console.warn(`Note: could not remove live script tag (${detail.split('\n')[0]})`);
     }
   }
@@ -1062,7 +1209,7 @@ if (args.includes('stop')) {
 // print the connection JSON, then exit.  This keeps the startup command
 // simple (no shell backgrounding or chained commands).
 if (args.includes('--background')) {
-  const childArgs = args.filter(a => a !== '--background');
+  const childArgs = args.filter((a) => a !== '--background');
   const child = spawn(process.execPath, [fileURLToPath(import.meta.url), ...childArgs], {
     detached: true,
     stdio: 'ignore',
@@ -1080,8 +1227,10 @@ if (args.includes('--background')) {
         console.log(JSON.stringify(info));
         process.exit(0);
       }
-    } catch { /* not ready yet */ }
-    await new Promise(r => setTimeout(r, 200));
+    } catch {
+      /* not ready yet */
+    }
+    await new Promise((r) => setTimeout(r, 200));
   }
   console.error('Timed out waiting for live server to start.');
   process.exit(1);
@@ -1094,10 +1243,14 @@ if (existingRecord?.info) {
   try {
     process.kill(existing.pid, 0);
     console.error(`Live server already running on port ${existing.port} (pid ${existing.pid}).`);
-    console.error('Stop it first with: node ' + path.basename(fileURLToPath(import.meta.url)) + ' stop');
+    console.error(
+      'Stop it first with: node ' + path.basename(fileURLToPath(import.meta.url)) + ' stop',
+    );
     process.exit(1);
   } catch {
-    try { fs.unlinkSync(existingRecord.path); } catch {}
+    try {
+      fs.unlinkSync(existingRecord.path);
+    } catch {}
   }
 }
 
@@ -1109,7 +1262,7 @@ manualApply.rollbackTransaction({
 applyLegacyDeferredAcceptsOnStartup();
 restorePendingEventsFromStore();
 manualApply.pruneStaleEvidence();
-const portArg = args.find(a => a.startsWith('--port='));
+const portArg = args.find((a) => a.startsWith('--port='));
 state.port = portArg ? parseInt(portArg.split('=')[1], 10) : await findOpenPort();
 // Annotation screenshots live in the project root so the agent's Read tool
 // doesn't trip a per-file permission prompt. Sessioned by token so concurrent

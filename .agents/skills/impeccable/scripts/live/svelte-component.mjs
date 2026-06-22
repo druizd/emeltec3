@@ -106,10 +106,10 @@ export function parseSvelteComponentFile(content) {
     : withoutScript.trim();
   const cssLines = styleBlock
     ? styleBlock
-      .replace(/^<style\b[^>]*>/i, '')
-      .replace(/<\/style\s*>$/i, '')
-      .split('\n')
-      .map((line) => line.trimEnd())
+        .replace(/^<style\b[^>]*>/i, '')
+        .replace(/<\/style\s*>$/i, '')
+        .split('\n')
+        .map((line) => line.trimEnd())
     : [];
   while (cssLines.length > 0 && cssLines[0].trim() === '') cssLines.shift();
   while (cssLines.length > 0 && cssLines[cssLines.length - 1].trim() === '') cssLines.pop();
@@ -126,9 +126,10 @@ function buildPropsScript(contract) {
 }
 
 function buildVariantStub(variantNum, originalWithProps, contract) {
-  const propsComment = contract.length > 0
-    ? `\n<!-- Props: ${contract.map((c) => `${c.prop} <- {${c.expr}}`).join(', ')} -->\n`
-    : '';
+  const propsComment =
+    contract.length > 0
+      ? `\n<!-- Props: ${contract.map((c) => `${c.prop} <- {${c.expr}}`).join(', ')} -->\n`
+      : '';
   return `${buildPropsScript(contract)}${propsComment}${originalWithProps.trim()}\n\n<style>\n  /* Variant ${variantNum}: add scoped CSS here */\n</style>\n`;
 }
 
@@ -166,7 +167,11 @@ export function scaffoldSvelteComponentSession({
     runtimeModule: `/${SVELTE_RUNTIME_FILE}`,
   };
 
-  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+  fs.writeFileSync(
+    path.join(dir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2) + '\n',
+    'utf-8',
+  );
 
   for (let n = 1; n <= count; n++) {
     const variantFile = path.join(dir, `v${n}.svelte`);
@@ -216,7 +221,11 @@ export function scaffoldSvelteComponentInsertSession({
     runtimeModule: `/${SVELTE_RUNTIME_FILE}`,
   };
 
-  fs.writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2) + '\n', 'utf-8');
+  fs.writeFileSync(
+    path.join(dir, 'manifest.json'),
+    JSON.stringify(manifest, null, 2) + '\n',
+    'utf-8',
+  );
 
   for (let n = 1; n <= count; n++) {
     const variantFile = path.join(dir, `v${n}.svelte`);
@@ -247,7 +256,9 @@ export function findSvelteComponentManifest(id, cwd = process.cwd()) {
     try {
       const manifest = readManifest(candidate);
       if (manifest?.id === id) return { ...manifest, manifestPath: candidate };
-    } catch { /* skip */ }
+    } catch {
+      /* skip */
+    }
   }
   return null;
 }
@@ -277,15 +288,14 @@ export function resolveSourceFile(sourceFile, cwd = process.cwd()) {
 
 function appendCssToSvelteStyle(lines, cssLines) {
   const closeIdx = findLastStyleCloseLine(lines);
-  const prepared = ['', ...cssLines.map((line) => (line.trim() === '' ? '' : '  ' + line.trimStart()))];
+  const prepared = [
+    '',
+    ...cssLines.map((line) => (line.trim() === '' ? '' : '  ' + line.trimStart())),
+  ];
   if (closeIdx === -1) {
     return [...lines, '', '<style>', ...prepared.slice(1), '</style>'];
   }
-  return [
-    ...lines.slice(0, closeIdx),
-    ...prepared,
-    ...lines.slice(closeIdx),
-  ];
+  return [...lines.slice(0, closeIdx), ...prepared, ...lines.slice(closeIdx)];
 }
 
 function findLastStyleCloseLine(lines) {
@@ -301,7 +311,10 @@ function bakeParamValuesInCss(cssLines, paramValues) {
     let out = line;
     for (const [key, value] of Object.entries(paramValues)) {
       const varName = `--p-${key}`;
-      out = out.replace(new RegExp(`var\\(${escapeRegExp(varName)}(?:,\\s*[^)]+)?\\)`, 'g'), String(value));
+      out = out.replace(
+        new RegExp(`var\\(${escapeRegExp(varName)}(?:,\\s*[^)]+)?\\)`, 'g'),
+        String(value),
+      );
     }
     return out;
   });
@@ -316,7 +329,8 @@ function sanitizeAcceptedSvelteCss(cssLines, variantNum, paramValues = null, roo
   for (const rule of rules) {
     appendSanitizedCssRule(output, rule, variantNum, paramValues, rootTag);
   }
-  return output.join('\n')
+  return output
+    .join('\n')
     .split('\n')
     .map((line) => line.trimEnd())
     .filter((line) => line.trim() !== '');
@@ -331,14 +345,26 @@ function appendSanitizedCssRule(output, rule, variantNum, paramValues, rootTag) 
     if (/data-impeccable-variant/.test(prelude) && !selectorHasVariant(prelude, variantNum)) return;
     const inner = parseCssRules(body);
     for (const innerRule of inner) {
-      const rewrittenPrelude = rewriteAcceptedSvelteSelector(innerRule.prelude, variantNum, paramValues, rootTag, true);
+      const rewrittenPrelude = rewriteAcceptedSvelteSelector(
+        innerRule.prelude,
+        variantNum,
+        paramValues,
+        rootTag,
+        true,
+      );
       if (!rewrittenPrelude || /--impeccable-variant-ready\s*:/.test(innerRule.body)) continue;
       output.push(formatCssRule(rewrittenPrelude, innerRule.body.trim()));
     }
     return;
   }
 
-  const rewrittenPrelude = rewriteAcceptedSvelteSelector(prelude, variantNum, paramValues, rootTag, false);
+  const rewrittenPrelude = rewriteAcceptedSvelteSelector(
+    prelude,
+    variantNum,
+    paramValues,
+    rootTag,
+    false,
+  );
   if (!rewrittenPrelude) return;
   output.push(formatCssRule(rewrittenPrelude, body));
 }
@@ -403,7 +429,13 @@ function rewriteAcceptedSvelteSelector(prelude, variantNum, paramValues, rootTag
   const selectors = splitSelectorList(prelude);
   const rewritten = [];
   for (const selector of selectors) {
-    const next = rewriteAcceptedSvelteSelectorPart(selector, variantNum, paramValues, rootTag, fromScope);
+    const next = rewriteAcceptedSvelteSelectorPart(
+      selector,
+      variantNum,
+      paramValues,
+      rootTag,
+      fromScope,
+    );
     if (next) rewritten.push(next);
   }
   return rewritten.join(', ');
@@ -435,19 +467,29 @@ function rewriteAcceptedSvelteSelectorPart(selector, variantNum, paramValues, ro
 
 function rewriteParamSelectors(selector, paramValues) {
   let keep = true;
-  const next = selector.replace(/\[data-p-([A-Za-z0-9_-]+)(?:=(["'])(.*?)\2)?\]/g, (_match, key, _quote, expected) => {
-    if (!paramValues || !Object.prototype.hasOwnProperty.call(paramValues, key)) return '';
-    const actual = paramValues[key];
-    if (expected != null && String(actual) !== String(expected)) {
-      keep = false;
+  const next = selector.replace(
+    /\[data-p-([A-Za-z0-9_-]+)(?:=(["'])(.*?)\2)?\]/g,
+    (_match, key, _quote, expected) => {
+      if (!paramValues || !Object.prototype.hasOwnProperty.call(paramValues, key)) return '';
+      const actual = paramValues[key];
+      if (expected != null && String(actual) !== String(expected)) {
+        keep = false;
+        return '';
+      }
+      if (
+        expected == null &&
+        (actual === false ||
+          actual == null ||
+          actual === 'false' ||
+          actual === 'off' ||
+          actual === '0')
+      ) {
+        keep = false;
+        return '';
+      }
       return '';
-    }
-    if (expected == null && (actual === false || actual == null || actual === 'false' || actual === 'off' || actual === '0')) {
-      keep = false;
-      return '';
-    }
-    return '';
-  });
+    },
+  );
   return { keep, selector: next };
 }
 
@@ -486,7 +528,10 @@ function selectorHasVariant(selector, variantNum) {
 }
 
 function variantSelectorRegex(variantNum) {
-  return new RegExp(`\\[data-impeccable-variant=(["'])${escapeRegExp(String(variantNum))}\\1\\]`, 'g');
+  return new RegExp(
+    `\\[data-impeccable-variant=(["'])${escapeRegExp(String(variantNum))}\\1\\]`,
+    'g',
+  );
 }
 
 function formatCssRule(selector, body) {
@@ -497,7 +542,12 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-export function inlineSvelteComponentAccept(manifest, variantNum, paramValues = null, cwd = process.cwd()) {
+export function inlineSvelteComponentAccept(
+  manifest,
+  variantNum,
+  paramValues = null,
+  cwd = process.cwd(),
+) {
   const sourceFile = resolveSourceFile(manifest.sourceFile, cwd);
   const variantPath = path.join(cwd, manifest.componentDir, `v${variantNum}.svelte`);
   const resultBase = {
@@ -536,8 +586,18 @@ export function inlineSvelteComponentAccept(manifest, variantNum, paramValues = 
   const sourceLines = sourceContent.split('\n');
   const start = Number(manifest.sourceStartLine) - 1;
   const end = Number(manifest.sourceEndLine) - 1;
-  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end < start || end >= sourceLines.length) {
-    return { handled: false, error: 'Invalid source line range for ' + manifest.sourceFile, ...resultBase };
+  if (
+    !Number.isInteger(start) ||
+    !Number.isInteger(end) ||
+    start < 0 ||
+    end < start ||
+    end >= sourceLines.length
+  ) {
+    return {
+      handled: false,
+      error: 'Invalid source line range for ' + manifest.sourceFile,
+      ...resultBase,
+    };
   }
 
   const indent = sourceLines[start].match(/^(\s*)/)?.[1] || '';
@@ -546,11 +606,7 @@ export function inlineSvelteComponentAccept(manifest, variantNum, paramValues = 
     return indent + line.trimStart();
   });
 
-  let newLines = [
-    ...sourceLines.slice(0, start),
-    ...indentedMarkup,
-    ...sourceLines.slice(end + 1),
-  ];
+  let newLines = [...sourceLines.slice(0, start), ...indentedMarkup, ...sourceLines.slice(end + 1)];
 
   const sanitizedCss = sanitizeAcceptedSvelteCss(cssLines, variantNum, paramValues, rootTag);
   const bakedCss = bakeParamValuesInCss(sanitizedCss, paramValues);
@@ -561,7 +617,11 @@ export function inlineSvelteComponentAccept(manifest, variantNum, paramValues = 
   try {
     fs.writeFileSync(sourceFile, newLines.join('\n'), 'utf-8');
   } catch (err) {
-    return { handled: false, error: 'Failed to write Svelte source: ' + err.message, ...resultBase };
+    return {
+      handled: false,
+      error: 'Failed to write Svelte source: ' + err.message,
+      ...resultBase,
+    };
   }
   removeSvelteComponentSession(manifest.id, cwd);
 
@@ -585,7 +645,11 @@ function inlineSvelteComponentInsertAccept({
     return { handled: false, error: 'Accepted Svelte insert variant is empty', ...resultBase };
   }
   if (/\bdata-impeccable-[\w-]*\s*=/.test(markup)) {
-    return { handled: false, error: 'Accepted Svelte insert variant contains preview-only data-impeccable attributes', ...resultBase };
+    return {
+      handled: false,
+      error: 'Accepted Svelte insert variant contains preview-only data-impeccable attributes',
+      ...resultBase,
+    };
   }
 
   const rootTag = matchOpeningTag(markup)?.tag || 'div';
@@ -596,7 +660,11 @@ function inlineSvelteComponentInsertAccept({
   const sourceLines = sourceContent.split('\n');
   const insertIndex = Number(manifest.insertLine) - 1;
   if (!Number.isInteger(insertIndex) || insertIndex < 0 || insertIndex > sourceLines.length) {
-    return { handled: false, error: 'Invalid insert line for ' + manifest.sourceFile, ...resultBase };
+    return {
+      handled: false,
+      error: 'Invalid insert line for ' + manifest.sourceFile,
+      ...resultBase,
+    };
   }
 
   const nearbyLine = sourceLines[insertIndex] ?? sourceLines[insertIndex - 1] ?? '';
@@ -621,7 +689,11 @@ function inlineSvelteComponentInsertAccept({
   try {
     fs.writeFileSync(sourceFile, newLines.join('\n'), 'utf-8');
   } catch (err) {
-    return { handled: false, error: 'Failed to write Svelte source: ' + err.message, ...resultBase };
+    return {
+      handled: false,
+      error: 'Failed to write Svelte source: ' + err.message,
+      ...resultBase,
+    };
   }
   removeSvelteComponentSession(manifest.id, cwd);
 
@@ -672,12 +744,17 @@ function mergeOriginalTopLevelAttrs(markup, originalMarkup) {
   }
 
   if (additions.length === 0 && attrs === variantOpen.attrs) return markup;
-  const nextOpen = variantOpen.prefix
-    + variantOpen.tag
-    + attrs
-    + additions.map((attr) => ' ' + attr.trim()).join('')
-    + variantOpen.close;
-  return markup.slice(0, variantOpen.index) + nextOpen + markup.slice(variantOpen.index + variantOpen.raw.length);
+  const nextOpen =
+    variantOpen.prefix +
+    variantOpen.tag +
+    attrs +
+    additions.map((attr) => ' ' + attr.trim()).join('') +
+    variantOpen.close;
+  return (
+    markup.slice(0, variantOpen.index) +
+    nextOpen +
+    markup.slice(variantOpen.index + variantOpen.raw.length)
+  );
 }
 
 function matchOpeningTag(markup) {
@@ -715,10 +792,9 @@ function mergeStaticClassAttr(originalClass, variantClass) {
   const variantValue = variantClass.raw.match(/class\s*=\s*(["'])(.*?)\1/);
   if (!originalValue || !variantValue) return null;
   const quote = variantValue[1];
-  const classes = [
-    ...variantValue[2].split(/\s+/),
-    ...originalValue[2].split(/\s+/),
-  ].filter(Boolean);
+  const classes = [...variantValue[2].split(/\s+/), ...originalValue[2].split(/\s+/)].filter(
+    Boolean,
+  );
   return `class=${quote}${[...new Set(classes)].join(' ')}${quote}`;
 }
 
@@ -726,7 +802,9 @@ export function removeSvelteComponentSession(id, cwd = process.cwd()) {
   const dir = componentSessionDir(id, cwd);
   try {
     fs.rmSync(dir, { recursive: true, force: true });
-  } catch { /* non-fatal */ }
+  } catch {
+    /* non-fatal */
+  }
 }
 
 export function removeAllSvelteComponentSessions(cwd = process.cwd()) {
@@ -737,7 +815,9 @@ export function removeAllSvelteComponentSessions(cwd = process.cwd()) {
     if (entry.name.startsWith('__')) continue;
     try {
       fs.rmSync(path.join(root, entry.name), { recursive: true, force: true });
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   }
 }
 
@@ -794,9 +874,15 @@ export function applyDeferredSvelteComponentAccepts(cwd = process.cwd()) {
   if (remaining.length > 0) {
     fs.writeFileSync(file, JSON.stringify({ accepts: remaining }, null, 2) + '\n', 'utf-8');
   } else {
-    try { fs.rmSync(file, { force: true }); } catch {}
+    try {
+      fs.rmSync(file, { force: true });
+    } catch {}
   }
-  return { applied: results.filter((r) => r.ok).length, failed: results.filter((r) => !r.ok).length, results };
+  return {
+    applied: results.filter((r) => r.ok).length,
+    failed: results.filter((r) => !r.ok).length,
+    results,
+  };
 }
 
 export function buildSvelteComponentCssAuthoring(count) {

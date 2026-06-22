@@ -61,12 +61,18 @@ The agent should then:
 
   const targetSelection = resolveTargetSelection(liveTarget.originalCwd, liveTarget.targetOptions);
   if (targetSelection) {
-    console.log(JSON.stringify({
-      ok: false,
-      error: 'target_selection_required',
-      ...targetSelection,
-      hint: 'Ask the user which app Impeccable should use, then rerun live from that child app cwd. Use --target <path> only as a fallback or explicit path diagnostic.',
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          error: 'target_selection_required',
+          ...targetSelection,
+          hint: 'Ask the user which app Impeccable should use, then rerun live from that child app cwd. Use --target <path> only as a fallback or explicit path diagnostic.',
+        },
+        null,
+        2,
+      ),
+    );
     process.exit(0);
   }
 
@@ -76,17 +82,23 @@ The agent should then:
 
   const missingContext = missingLiveContext(ctx);
   if (missingContext.length > 0) {
-    console.log(JSON.stringify({
-      ok: false,
-      error: 'context_missing',
-      missing: missingContext,
-      nextCommand: missingContext.includes('PRODUCT.md') ? 'init' : 'document',
-      targetPath: outputTargetPath,
-      projectRoot: ctx.projectRoot,
-      repoRoot: ctx.repoRoot,
-      productPath: ctx.productPath,
-      designPath: ctx.designPath,
-    }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          ok: false,
+          error: 'context_missing',
+          missing: missingContext,
+          nextCommand: missingContext.includes('PRODUCT.md') ? 'init' : 'document',
+          targetPath: outputTargetPath,
+          projectRoot: ctx.projectRoot,
+          repoRoot: ctx.repoRoot,
+          productPath: ctx.productPath,
+          designPath: ctx.designPath,
+        },
+        null,
+        2,
+      ),
+    );
     process.exit(0);
   }
 
@@ -94,12 +106,14 @@ The agent should then:
   const checkOut = runScript('live-inject.mjs', ['--check'], { cwd: activeCwd });
   const checkResult = safeParse(checkOut);
   if (!checkResult || !checkResult.ok) {
-    console.log(JSON.stringify({
-      ...(checkResult || { ok: false, error: 'check_failed', raw: checkOut }),
-      targetPath: outputTargetPath,
-      projectRoot: ctx.projectRoot,
-      repoRoot: ctx.repoRoot,
-    }));
+    console.log(
+      JSON.stringify({
+        ...(checkResult || { ok: false, error: 'check_failed', raw: checkOut }),
+        targetPath: outputTargetPath,
+        projectRoot: ctx.projectRoot,
+        repoRoot: ctx.repoRoot,
+      }),
+    );
     process.exit(0);
   }
 
@@ -111,15 +125,19 @@ The agent should then:
   }
 
   // 3. Inject the script tag at the current port
-  const injectOut = runScript('live-inject.mjs', ['--port', String(serverInfo.port)], { cwd: activeCwd });
+  const injectOut = runScript('live-inject.mjs', ['--port', String(serverInfo.port)], {
+    cwd: activeCwd,
+  });
   const injectResult = safeParse(injectOut);
   if (!injectResult || !injectResult.ok) {
-    console.log(JSON.stringify({
-      ok: false,
-      error: 'inject_failed',
-      detail: injectResult || injectOut,
-      serverPort: serverInfo.port,
-    }));
+    console.log(
+      JSON.stringify({
+        ok: false,
+        error: 'inject_failed',
+        detail: injectResult || injectOut,
+        serverPort: serverInfo.port,
+      }),
+    );
     process.exit(1);
   }
 
@@ -130,23 +148,29 @@ The agent should then:
   const drift = scanForDrift(activeCwd, resolvedFiles, checkResult.config);
 
   // 5. Emit everything the agent needs
-  console.log(JSON.stringify({
-    ok: true,
-    serverPort: serverInfo.port,
-    serverToken: serverInfo.token,
-    pageFiles: resolvedFiles,
-    liveConfigPath: checkResult.path,
-    configDrift: drift,
-    targetPath: outputTargetPath,
-    projectRoot: ctx.projectRoot,
-    repoRoot: ctx.repoRoot,
-    hasProduct: ctx.hasProduct,
-    product: ctx.product,
-    productPath: ctx.productPath,
-    hasDesign: ctx.hasDesign,
-    design: ctx.design,
-    designPath: ctx.designPath,
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        serverPort: serverInfo.port,
+        serverToken: serverInfo.token,
+        pageFiles: resolvedFiles,
+        liveConfigPath: checkResult.path,
+        configDrift: drift,
+        targetPath: outputTargetPath,
+        projectRoot: ctx.projectRoot,
+        repoRoot: ctx.repoRoot,
+        hasProduct: ctx.hasProduct,
+        product: ctx.product,
+        productPath: ctx.productPath,
+        hasDesign: ctx.hasDesign,
+        design: ctx.design,
+        designPath: ctx.designPath,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 function missingLiveContext(ctx) {
@@ -169,24 +193,38 @@ function missingLiveContext(ctx) {
 function scanForDrift(rootDir, resolvedFiles, config) {
   const SCAN_ROOTS = ['public', 'src', 'app', 'pages'];
   const IGNORE_DIRS = new Set([
-    'node_modules', '.git', '.next', '.nuxt', '.svelte-kit', '.astro',
-    '.turbo', '.vercel', '.cache', 'coverage', 'dist', 'build',
+    'node_modules',
+    '.git',
+    '.next',
+    '.nuxt',
+    '.svelte-kit',
+    '.astro',
+    '.turbo',
+    '.vercel',
+    '.cache',
+    'coverage',
+    'dist',
+    'build',
   ]);
 
   const resolvedSet = new Set(resolvedFiles.map((f) => f.split(path.sep).join('/')));
 
   // Files matching the user's `exclude` globs are intentional omissions,
   // not drift. Compile them to regexes so the orphan list stays signal.
-  const userExcludeRegexes = (Array.isArray(config.exclude) ? config.exclude : [])
-    .map((p) => globToRegex(p));
+  const userExcludeRegexes = (Array.isArray(config.exclude) ? config.exclude : []).map((p) =>
+    globToRegex(p),
+  );
   const isUserExcluded = (rel) => userExcludeRegexes.some((re) => re.test(rel));
 
   const orphans = [];
 
   const walk = (dir, relBase) => {
     let entries;
-    try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
-    catch { return; }
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     for (const e of entries) {
       const rel = relBase ? `${relBase}/${e.name}` : e.name;
       if (e.isDirectory()) {
@@ -228,8 +266,13 @@ function globToRegex(pattern) {
     const c = pattern[i];
     if (c === '*') {
       if (pattern[i + 1] === '*') {
-        if (pattern[i + 2] === '/') { re += '(?:.*/)?'; i += 3; }
-        else { re += '.*'; i += 2; }
+        if (pattern[i + 2] === '/') {
+          re += '(?:.*/)?';
+          i += 3;
+        } else {
+          re += '.*';
+          i += 2;
+        }
       } else {
         re += '[^/]*';
         i += 1;
@@ -254,7 +297,7 @@ function globToRegex(pattern) {
 
 function runScript(name, args, options = {}) {
   const scriptPath = path.join(__dirname, name);
-  const cmd = `node "${scriptPath}" ${args.map(a => `"${a}"`).join(' ')}`;
+  const cmd = `node "${scriptPath}" ${args.map((a) => `"${a}"`).join(' ')}`;
   try {
     return execSync(cmd, { encoding: 'utf-8', cwd: options.cwd || process.cwd(), timeout: 15_000 });
   } catch (err) {
@@ -264,7 +307,11 @@ function runScript(name, args, options = {}) {
 }
 
 function safeParse(out) {
-  try { return JSON.parse(String(out).trim()); } catch { return null; }
+  try {
+    return JSON.parse(String(out).trim());
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -278,9 +325,13 @@ function ensureServerRunning(cwd = process.cwd()) {
       try {
         process.kill(existing.pid, 0); // throws if dead
         return existing;
-      } catch { /* stale PID file — the server script will clean it up */ }
+      } catch {
+        /* stale PID file — the server script will clean it up */
+      }
     }
-  } catch { /* no PID file */ }
+  } catch {
+    /* no PID file */
+  }
 
   // Start a new server
   const out = runScript('live-server.mjs', ['--background'], { cwd });

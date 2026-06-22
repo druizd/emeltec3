@@ -7,12 +7,7 @@
  * values at runtime because it is served as a standalone script.
  */
 
-export const LIVE_CHROME_MOUNT_CONTRACT = Object.freeze([
-  'root',
-  'transport',
-  'state',
-  'actions',
-]);
+export const LIVE_CHROME_MOUNT_CONTRACT = Object.freeze(['root', 'transport', 'state', 'actions']);
 
 export const LIVE_UI_SURFACES = Object.freeze([
   {
@@ -67,7 +62,16 @@ export const LIVE_UI_SURFACES = Object.freeze([
   {
     key: 'variant-cycling-row',
     ids: ['impeccable-live-bar', 'impeccable-live-params-panel'],
-    states: ['variant-1', 'variant-2', 'variant-3', 'left-disabled', 'right-disabled', 'dot-click', 'accept', 'discard'],
+    states: [
+      'variant-1',
+      'variant-2',
+      'variant-3',
+      'left-disabled',
+      'right-disabled',
+      'dot-click',
+      'accept',
+      'discard',
+    ],
   },
   {
     key: 'variant-params-panel',
@@ -125,8 +129,7 @@ export const LIVE_UI_COMPONENT_IDS = Object.freeze([
 
 export function resolveLiveUiRoot(env = globalThis) {
   const doc = env?.document;
-  const explicit = env?.__IMPECCABLE_LIVE_UI_ROOT__
-    || env?.window?.__IMPECCABLE_LIVE_UI_ROOT__;
+  const explicit = env?.__IMPECCABLE_LIVE_UI_ROOT__ || env?.window?.__IMPECCABLE_LIVE_UI_ROOT__;
   if (explicit && typeof explicit.appendChild === 'function') return explicit;
   return doc?.body || null;
 }

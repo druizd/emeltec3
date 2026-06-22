@@ -15,7 +15,9 @@ import { AuthService } from '../../../services/auth.service';
         aria-live="polite"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
-          <span class="material-symbols-outlined shrink-0 text-[16px] text-amber-700">visibility</span>
+          <span class="material-symbols-outlined shrink-0 text-[16px] text-amber-700"
+            >visibility</span
+          >
           <span class="truncate">
             Vista previa:
             <strong class="font-bold uppercase tracking-wide">{{ auth.viewAsRole() }}</strong>

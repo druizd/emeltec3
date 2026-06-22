@@ -64,6 +64,10 @@ function hasGeneratedHeader(absPath) {
   } catch {
     return false;
   } finally {
-    if (fd !== undefined) { try { fs.closeSync(fd); } catch {} }
+    if (fd !== undefined) {
+      try {
+        fs.closeSync(fd);
+      } catch {}
+    }
   }
 }

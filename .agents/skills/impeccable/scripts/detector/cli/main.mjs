@@ -36,7 +36,9 @@ function formatFindings(findings, jsonMode) {
   }
   const out = [];
   for (const [file, items] of Object.entries(grouped)) {
-    const importNote = items[0]?.importedBy?.length ? ` (imported by ${items[0].importedBy.join(', ')})` : '';
+    const importNote = items[0]?.importedBy?.length
+      ? ` (imported by ${items[0].importedBy.join(', ')})`
+      : '';
     out.push(`\n${file}${importNote}`);
     for (const item of items) {
       out.push(`  ${item.line ? `line ${item.line}: ` : ''}[${item.antipattern}] ${item.snippet}`);
@@ -60,12 +62,14 @@ async function handleStdin(options = {}) {
     const fp = parsed?.tool_input?.file_path;
     if (fp && fs.existsSync(fp)) {
       return HTML_EXTENSIONS.has(path.extname(fp).toLowerCase())
-        ? detectHtml(fp, options) : detectText(fs.readFileSync(fp, 'utf-8'), fp, options);
+        ? detectHtml(fp, options)
+        : detectText(fs.readFileSync(fp, 'utf-8'), fp, options);
     }
-  } catch { /* not JSON */ }
+  } catch {
+    /* not JSON */
+  }
   return detectText(input, '<stdin>', options);
 }
-
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -73,7 +77,8 @@ async function handleStdin(options = {}) {
 
 async function confirm(question) {
   const rl = (await import('node:readline')).default.createInterface({
-    input: process.stdin, output: process.stderr,
+    input: process.stdin,
+    output: process.stderr,
   });
   return new Promise((resolve) => {
     rl.question(`${question} [Y/n] `, (answer) => {
@@ -126,7 +131,7 @@ Examples:
 }
 
 async function detectCli() {
-  let args = process.argv.slice(2).map(arg => {
+  let args = process.argv.slice(2).map((arg) => {
     if (arg === '-json') return '--json';
     if (arg === '-fast') return '--fast';
     return arg;
@@ -151,7 +156,10 @@ async function detectCli() {
   const providers = [];
   if (args.includes('--gpt')) providers.push('gpt');
   if (args.includes('--gemini')) providers.push('gemini');
-  const designSystemEnabled = configEnabled && !args.includes('--no-design-system') && detectionConfig.designSystem?.enabled !== false;
+  const designSystemEnabled =
+    configEnabled &&
+    !args.includes('--no-design-system') &&
+    detectionConfig.designSystem?.enabled !== false;
   const designSystem = designSystemEnabled ? loadDesignSystemForCwd(process.cwd()) : null;
   // Inline `impeccable-disable*` waivers are part of the scanned file, so they
   // apply by default. `--no-config` (raw scan) and the dedicated
@@ -159,9 +167,12 @@ async function detectCli() {
   const inlineIgnoresEnabled = configEnabled && !args.includes('--no-inline-ignores');
   const scanOptions = { providers, inlineIgnores: inlineIgnoresEnabled };
   if (designSystem) scanOptions.designSystem = designSystem;
-  const targets = args.filter(a => !a.startsWith('--'));
+  const targets = args.filter((a) => !a.startsWith('--'));
 
-  if (helpMode) { printUsage(); process.exit(0); }
+  if (helpMode) {
+    printUsage();
+    process.exit(0);
+  }
 
   let allFindings = [];
 
@@ -169,7 +180,7 @@ async function detectCli() {
     allFindings = await handleStdin(scanOptions);
   } else {
     const paths = targets.length > 0 ? targets : [process.cwd()];
-    const urlTargetCount = paths.filter(target => /^https?:\/\//i.test(target)).length;
+    const urlTargetCount = paths.filter((target) => /^https?:\/\//i.test(target)).length;
     const browserDetector = urlTargetCount > 1 ? await createBrowserDetector() : null;
 
     try {
@@ -179,15 +190,21 @@ async function detectCli() {
             const scanner = browserDetector
               ? (url) => browserDetector.detectUrl(url, scanOptions)
               : (url) => detectUrl(url, scanOptions);
-            allFindings.push(...await scanner(target));
-          } catch (e) { process.stderr.write(`Error: ${e.message}\n`); }
+            allFindings.push(...(await scanner(target)));
+          } catch (e) {
+            process.stderr.write(`Error: ${e.message}\n`);
+          }
           continue;
         }
 
         const resolved = path.resolve(target);
         let stat;
-        try { stat = fs.statSync(resolved); }
-        catch { process.stderr.write(`Warning: cannot access ${target}\n`); continue; }
+        try {
+          stat = fs.statSync(resolved);
+        } catch {
+          process.stderr.write(`Warning: cannot access ${target}\n`);
+          continue;
+        }
 
         if (stat.isDirectory()) {
           // Check for framework dev server config (skip in JSON/quiet modes to avoid polluting output)
@@ -198,37 +215,43 @@ async function detectCli() {
               if (probe.listening && probe.matched) {
                 process.stderr.write(
                   `\n${fwConfig.name} dev server detected on localhost:${fwConfig.port}.\n` +
-                  `For more accurate results, scan the running site:\n` +
-                  `  npx impeccable detect http://localhost:${fwConfig.port}\n\n`
+                    `For more accurate results, scan the running site:\n` +
+                    `  npx impeccable detect http://localhost:${fwConfig.port}\n\n`,
                 );
               } else if (probe.listening && !probe.matched) {
                 process.stderr.write(
                   `\n${fwConfig.name} project detected (${path.basename(fwConfig.configPath)}).\n` +
-                  `Port ${fwConfig.port} is in use by another service. Start the ${fwConfig.name} dev server and scan via URL for best results.\n\n`
+                    `Port ${fwConfig.port} is in use by another service. Start the ${fwConfig.name} dev server and scan via URL for best results.\n\n`,
                 );
               } else {
                 process.stderr.write(
                   `\n${fwConfig.name} project detected (${path.basename(fwConfig.configPath)}).\n` +
-                  `Start the dev server and scan via URL for best results:\n` +
-                  `  npx impeccable detect http://localhost:${fwConfig.port}\n\n`
+                    `Start the dev server and scan via URL for best results:\n` +
+                    `  npx impeccable detect http://localhost:${fwConfig.port}\n\n`,
                 );
               }
             }
           }
 
-          const files = walkDir(resolved)
-            .filter(file => !shouldIgnoreDetectionFile(file, process.cwd(), detectionConfig));
-          const htmlCount = files.filter(f => HTML_EXTENSIONS.has(path.extname(f).toLowerCase())).length;
+          const files = walkDir(resolved).filter(
+            (file) => !shouldIgnoreDetectionFile(file, process.cwd(), detectionConfig),
+          );
+          const htmlCount = files.filter((f) =>
+            HTML_EXTENSIONS.has(path.extname(f).toLowerCase()),
+          ).length;
 
           // Warn and confirm if scanning many files (static HTML/CSS processes each HTML file)
           if (files.length > 50 && process.stdin.isTTY && !jsonMode && !quietMode) {
             process.stderr.write(
               `\nFound ${files.length} files (${htmlCount} HTML) in ${target}.\n` +
-              `Scanning may take a while${htmlCount > 10 ? ' (static HTML/CSS processes each HTML file individually)' : ''}.\n` +
-              `Target a specific subdirectory to narrow scope.\n`
+                `Scanning may take a while${htmlCount > 10 ? ' (static HTML/CSS processes each HTML file individually)' : ''}.\n` +
+                `Target a specific subdirectory to narrow scope.\n`,
             );
             const ok = await confirm('Continue?');
-            if (!ok) { process.stderr.write('Aborted.\n'); process.exit(0); }
+            if (!ok) {
+              process.stderr.write('Aborted.\n');
+              process.exit(0);
+            }
           }
 
           // Build import graph for multi-file awareness
@@ -253,7 +276,7 @@ async function detectCli() {
             // Annotate findings with import context
             const importers = importedByMap.get(file);
             if (importers && importers.size > 0) {
-              const importerNames = [...importers].map(f => path.basename(f));
+              const importerNames = [...importers].map((f) => path.basename(f));
               for (const f of fileFindings) {
                 f.importedBy = importerNames;
               }
@@ -264,9 +287,11 @@ async function detectCli() {
           if (shouldIgnoreDetectionFile(resolved, process.cwd(), detectionConfig)) continue;
           const ext = path.extname(resolved).toLowerCase();
           if (HTML_EXTENSIONS.has(ext)) {
-            allFindings.push(...await detectHtml(resolved, scanOptions));
+            allFindings.push(...(await detectHtml(resolved, scanOptions)));
           } else {
-            allFindings.push(...detectText(fs.readFileSync(resolved, 'utf-8'), resolved, scanOptions));
+            allFindings.push(
+              ...detectText(fs.readFileSync(resolved, 'utf-8'), resolved, scanOptions),
+            );
           }
         }
       }

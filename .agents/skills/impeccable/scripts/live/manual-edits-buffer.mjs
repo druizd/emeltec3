@@ -50,7 +50,10 @@ function readBufferInternal(cwd, { strict }) {
 export function writeBuffer(cwd, buffer) {
   const filePath = getBufferPath(cwd);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify({ version: BUFFER_VERSION, entries: buffer.entries }, null, 2));
+  fs.writeFileSync(
+    filePath,
+    JSON.stringify({ version: BUFFER_VERSION, entries: buffer.entries }, null, 2),
+  );
 }
 
 /**

@@ -28,7 +28,12 @@
         background: var(--bg);
         color: var(--ink);
         font-family:
-          'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          'DM Sans',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
         line-height: 1.55;
       }
       .wrap {
@@ -300,7 +305,10 @@
 
       <h2>A · Alarmas: compartidas, con visibilidad y edición restringida — Definido</h2>
       <div class="card">
-        <h3>Modelo de alarmas <span class="badge b-ready">Listo para construir</span><span class="size">M · 2-3 días</span></h3>
+        <h3>
+          Modelo de alarmas <span class="badge b-ready">Listo para construir</span
+          ><span class="size">M · 2-3 días</span>
+        </h3>
         <p class="desc">
           Alarmas <b>compartidas por sitio</b> (evita duplicados), con selección de
           <b>quién puede verlas</b>; solo <b>Admin y Gerente</b> (+ SuperAdmin) editan. Aplica a
@@ -316,25 +324,52 @@
         <div class="lbl">Estado actual vs modelo</div>
         <table>
           <thead>
-            <tr><th>Aspecto</th><th>Cold-room</th><th>Agua</th></tr>
+            <tr>
+              <th>Aspecto</th>
+              <th>Cold-room</th>
+              <th>Agua</th>
+            </tr>
           </thead>
           <tbody>
-            <tr><td>Compartidas por sitio</td><td class="ok-i">✓ ya</td><td class="ok-i">✓ ya</td></tr>
-            <tr><td>Editar solo Admin/Gerente</td><td class="ok-i">✓ ya</td><td class="x-i">✗ falta gating</td></tr>
-            <tr><td>Elegir quién ve</td><td class="x-i">✗ falta</td><td class="x-i">✗ falta</td></tr>
+            <tr>
+              <td>Compartidas por sitio</td>
+              <td class="ok-i">✓ ya</td>
+              <td class="ok-i">✓ ya</td>
+            </tr>
+            <tr>
+              <td>Editar solo Admin/Gerente</td>
+              <td class="ok-i">✓ ya</td>
+              <td class="x-i">✗ falta gating</td>
+            </tr>
+            <tr>
+              <td>Elegir quién ve</td>
+              <td class="x-i">✗ falta</td>
+              <td class="x-i">✗ falta</td>
+            </tr>
           </tbody>
         </table>
         <div class="lbl">Trabajo</div>
         <ul>
-          <li><b>DB</b>: campo de visibilidad (<code>visible_para[]</code> + flag "todo el sitio") en <code>cold_room_alarm_rule</code> y <code>alertas</code>. Migración.</li>
-          <li><b>Backend</b>: la lista filtra por visibilidad para no-admin; agregar role-gating al CRUD de alertas de agua.</li>
-          <li><b>Frontend</b>: multi-select "quién puede ver"; ocultar editar a no-admin/gerente.</li>
+          <li>
+            <b>DB</b>: campo de visibilidad (<code>visible_para[]</code> + flag "todo el sitio") en
+            <code>cold_room_alarm_rule</code> y <code>alertas</code>. Migración.
+          </li>
+          <li>
+            <b>Backend</b>: la lista filtra por visibilidad para no-admin; agregar role-gating al
+            CRUD de alertas de agua.
+          </li>
+          <li>
+            <b>Frontend</b>: multi-select "quién puede ver"; ocultar editar a no-admin/gerente.
+          </li>
         </ul>
       </div>
 
       <h2>2 · Historial de alertas + observaciones (export)</h2>
       <div class="card">
-        <h3>Descarga de historial <span class="badge b-pend">Definir decisiones</span><span class="size">M · ~2 días</span></h3>
+        <h3>
+          Descarga de historial <span class="badge b-pend">Definir decisiones</span
+          ><span class="size">M · ~2 días</span>
+        </h3>
         <p class="desc">
           Exportar (Excel) el historial de alertas con fecha, hora y la observación asociada si se
           ingresó. Los datos ya están persistidos (eventos + observaciones HACCP); falta el endpoint
@@ -349,21 +384,30 @@
 
       <h2>4 · Observaciones por temperatura alta</h2>
       <div class="card">
-        <h3>Ver y agregar observaciones <span class="badge b-pend">Definir gap</span><span class="size">S-M · 1-2 días</span></h3>
+        <h3>
+          Ver y agregar observaciones <span class="badge b-pend">Definir gap</span
+          ><span class="size">S-M · 1-2 días</span>
+        </h3>
         <p class="desc">
           <b>Ya existe ~90%</b>: detección de desviaciones + modal HACCP (reconocer/clasificar/
           resolver + nota) + persistencia + auditoría, en el detalle de sala.
         </p>
         <div class="lbl">Pendiente</div>
         <ul>
-          <li>¿El flujo HACCP actual alcanza, o se quiere una <b>bandeja</b> que liste desviaciones pendientes de observación?</li>
+          <li>
+            ¿El flujo HACCP actual alcanza, o se quiere una <b>bandeja</b> que liste desviaciones
+            pendientes de observación?
+          </li>
           <li>Confirmar qué rol puede agregar observaciones.</li>
         </ul>
       </div>
 
       <h2>3 · Administración de usuarios</h2>
       <div class="card">
-        <h3>Crear / editar / eliminar usuarios <span class="badge b-pend">Definir decisiones</span><span class="size">L · 4-5 días</span></h3>
+        <h3>
+          Crear / editar / eliminar usuarios <span class="badge b-pend">Definir decisiones</span
+          ><span class="size">L · 4-5 días</span>
+        </h3>
         <p class="desc">
           Backend a medio camino: existe crear (con jerarquía de roles), borrar y listar; auth/OTP/
           lockout sólido. <b>Falta</b>: endpoint de actualización, reset de contraseña por admin,
@@ -396,8 +440,8 @@
 
       <div class="note" style="margin-top: 16px">
         <b>Pendiente de definir antes de construir #2, #3, #4:</b> fuente de alerta y alcance del
-        export (#2); soft-delete y reset de contraseña (#3); flujo actual vs bandeja (#4). La fase de
-        Alarmas (A) y #1 ya están listas/definidas.
+        export (#2); soft-delete y reset de contraseña (#3); flujo actual vs bandeja (#4). La fase
+        de Alarmas (A) y #1 ya están listas/definidas.
       </div>
     </div>
   </body>

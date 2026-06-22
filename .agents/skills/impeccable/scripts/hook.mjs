@@ -30,7 +30,11 @@ async function main() {
   process.env.IMPECCABLE_HOOK_DEPTH = process.env.IMPECCABLE_HOOK_DEPTH || '1';
 
   let stdinJson = '';
-  try { stdinJson = await readStdin(); } catch { /* fall through */ }
+  try {
+    stdinJson = await readStdin();
+  } catch {
+    /* fall through */
+  }
 
   const result = await runHook({
     stdinJson,
@@ -53,7 +57,9 @@ main().catch((err) => {
       event: 'PostToolUse',
       error: String(err && err.message ? err.message : err),
     });
-  } catch { /* swallow */ }
+  } catch {
+    /* swallow */
+  }
   if (process.env.IMPECCABLE_HOOK_DEBUG) {
     process.stderr.write(`[impeccable-hook] ${err}\n`);
   }

@@ -36,14 +36,23 @@ function safeReadJson(filePath) {
 }
 
 function hookSection(raw) {
-  return raw && raw.hook && typeof raw.hook === 'object' && !Array.isArray(raw.hook) ? raw.hook : null;
+  return raw && raw.hook && typeof raw.hook === 'object' && !Array.isArray(raw.hook)
+    ? raw.hook
+    : null;
 }
 
 function detectorSection(raw) {
-  return raw && raw.detector && typeof raw.detector === 'object' && !Array.isArray(raw.detector) ? raw.detector : null;
+  return raw && raw.detector && typeof raw.detector === 'object' && !Array.isArray(raw.detector)
+    ? raw.detector
+    : null;
 }
 
-const DETECTOR_CONFIG_KEYS = new Set(['ignoreRules', 'ignoreFiles', 'ignoreValues', 'designSystem']);
+const DETECTOR_CONFIG_KEYS = new Set([
+  'ignoreRules',
+  'ignoreFiles',
+  'ignoreValues',
+  'designSystem',
+]);
 
 const DEFAULT_DETECTION_CONFIG = Object.freeze({
   ignoreRules: [],
@@ -71,7 +80,11 @@ function cloneRawDetectionConfig() {
 
 function applyDetectionConfigSource(config, raw) {
   if (!raw || typeof raw !== 'object') return config;
-  if (raw.designSystem && typeof raw.designSystem === 'object' && !Array.isArray(raw.designSystem)) {
+  if (
+    raw.designSystem &&
+    typeof raw.designSystem === 'object' &&
+    !Array.isArray(raw.designSystem)
+  ) {
     config.designSystem = {
       ...config.designSystem,
       enabled: raw.designSystem.enabled === false ? false : true,
@@ -145,13 +158,21 @@ export function writeDetectionConfig(root, detectorConfig, opts = {}) {
 function normalizeDetectionConfigForWrite(config) {
   const out = {};
   if (Array.isArray(config?.ignoreRules)) {
-    out.ignoreRules = uniqueStrings(config.ignoreRules.map((rule) => normalizeIgnoreRule(rule)).filter(Boolean));
+    out.ignoreRules = uniqueStrings(
+      config.ignoreRules.map((rule) => normalizeIgnoreRule(rule)).filter(Boolean),
+    );
   }
   if (Array.isArray(config?.ignoreFiles)) {
-    out.ignoreFiles = uniqueStrings(config.ignoreFiles.filter(v => typeof v === 'string' && v.trim()).map(v => v.trim()));
+    out.ignoreFiles = uniqueStrings(
+      config.ignoreFiles.filter((v) => typeof v === 'string' && v.trim()).map((v) => v.trim()),
+    );
   }
   out.ignoreValues = normalizeIgnoreValueEntries(config?.ignoreValues || []);
-  if (config?.designSystem && typeof config.designSystem === 'object' && !Array.isArray(config.designSystem)) {
+  if (
+    config?.designSystem &&
+    typeof config.designSystem === 'object' &&
+    !Array.isArray(config.designSystem)
+  ) {
     out.designSystem = {
       enabled: config.designSystem.enabled === false ? false : true,
     };
@@ -178,7 +199,9 @@ export function normalizeIgnoreValue(value) {
 }
 
 function normalizeIgnoreRule(rule) {
-  return String(rule || '').trim().toLowerCase();
+  return String(rule || '')
+    .trim()
+    .toLowerCase();
 }
 
 function colorIgnoreKey(value) {
@@ -188,7 +211,9 @@ function colorIgnoreKey(value) {
 }
 
 function parseIgnoreColor(value) {
-  const text = String(value || '').trim().toLowerCase();
+  const text = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!text) return null;
 
   const hex = text.match(/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i);
@@ -240,15 +265,24 @@ function splitColorArgs(body) {
   const text = String(body || '').trim();
   if (!text) return [];
   if (text.includes(',')) {
-    const parts = text.split(',').map((part) => part.trim()).filter(Boolean);
+    const parts = text
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
     const last = parts[parts.length - 1];
     if (last && last.includes('/')) {
-      const split = last.split('/').map((part) => part.trim()).filter(Boolean);
+      const split = last
+        .split('/')
+        .map((part) => part.trim())
+        .filter(Boolean);
       return [...parts.slice(0, -1), ...split];
     }
     return parts;
   }
-  return text.replace(/\s*\/\s*/g, ' / ').split(/\s+/).filter((part) => part && part !== '/');
+  return text
+    .replace(/\s*\/\s*/g, ' / ')
+    .split(/\s+/)
+    .filter((part) => part && part !== '/');
 }
 
 function parseRgbChannel(raw) {
@@ -300,9 +334,10 @@ function hslToRgb(hue, saturation, lightness, alpha) {
     const gray = clampByte(Math.round(lightness * 255));
     return { r: gray, g: gray, b: gray, a: alpha };
   }
-  const q = lightness < 0.5
-    ? lightness * (1 + saturation)
-    : lightness + saturation - lightness * saturation;
+  const q =
+    lightness < 0.5
+      ? lightness * (1 + saturation)
+      : lightness + saturation - lightness * saturation;
   const p = 2 * lightness - q;
   const toRgb = (t) => {
     let channel = t;
@@ -343,7 +378,9 @@ export function normalizeIgnoreValueEntries(entries) {
     const normalized = { rule, value };
     const files = uniqueStrings([
       ...(typeof entry.file === 'string' && entry.file.trim() ? [entry.file.trim()] : []),
-      ...(Array.isArray(entry.files) ? entry.files.filter(v => typeof v === 'string' && v.trim()).map(v => v.trim()) : []),
+      ...(Array.isArray(entry.files)
+        ? entry.files.filter((v) => typeof v === 'string' && v.trim()).map((v) => v.trim())
+        : []),
     ]);
     if (files.length > 0) normalized.files = files;
     if (typeof entry.reason === 'string' && entry.reason.trim()) {
@@ -392,8 +429,15 @@ function globToRegex(glob) {
       i += 1;
     } else if (c === '{') {
       const end = glob.indexOf('}', i);
-      if (end === -1) { re += '\\{'; i += 1; continue; }
-      const parts = glob.slice(i + 1, end).split(',').map((p) => p.replace(/[.+^$()|[\]\\]/g, '\\$&'));
+      if (end === -1) {
+        re += '\\{';
+        i += 1;
+        continue;
+      }
+      const parts = glob
+        .slice(i + 1, end)
+        .split(',')
+        .map((p) => p.replace(/[.+^$()|[\]\\]/g, '\\$&'));
       re += `(?:${parts.join('|')})`;
       i = end + 1;
     } else if (/[.+^$()|[\]\\]/.test(c)) {
@@ -410,7 +454,9 @@ function globToRegex(glob) {
 
 export function matchesAnyGlob(filePath, globs) {
   if (!Array.isArray(globs) || globs.length === 0) return false;
-  const normalized = String(filePath || '').split(sep).join('/');
+  const normalized = String(filePath || '')
+    .split(sep)
+    .join('/');
   for (const glob of globs) {
     try {
       const re = globToRegex(String(glob));
@@ -463,7 +509,8 @@ function isIgnoredFindingValue(finding, ignoreValues) {
   if (!rule || !value) return false;
   return ignoreValues.some((entry) => {
     const wildcardValue = entry.value === '*';
-    if (entry.rule !== rule || (!wildcardValue && !ignoreValueMatches(rule, entry.value, value))) return false;
+    if (entry.rule !== rule || (!wildcardValue && !ignoreValueMatches(rule, entry.value, value)))
+      return false;
     if (!Array.isArray(entry.files) || entry.files.length === 0) return !wildcardValue;
     return findingMatchesScopedIgnoreFile(finding, entry.files);
   });
@@ -562,7 +609,8 @@ export function getHookConsent(root) {
   let consent;
   for (const filePath of [getConfigPath(root), getLocalConfigPath(root)]) {
     const hook = hookSection(safeReadJson(filePath));
-    if (hook && (hook.consent === 'accepted' || hook.consent === 'declined')) consent = hook.consent;
+    if (hook && (hook.consent === 'accepted' || hook.consent === 'declined'))
+      consent = hook.consent;
   }
   return consent;
 }
@@ -598,12 +646,15 @@ export function ensureConfigGitExclude(root) {
     const target = join(gitDir, 'info', 'exclude');
     const existing = existsSync(target) ? readFileSync(target, 'utf-8') : '';
     const block = [EXCLUDE_OPEN, ...EXCLUDE_PATTERNS, EXCLUDE_CLOSE].join('\n');
-    const markerRe = new RegExp(`${escapeRegExp(EXCLUDE_OPEN)}[\\s\\S]*?${escapeRegExp(EXCLUDE_CLOSE)}`);
+    const markerRe = new RegExp(
+      `${escapeRegExp(EXCLUDE_OPEN)}[\\s\\S]*?${escapeRegExp(EXCLUDE_CLOSE)}`,
+    );
     let updated;
     if (markerRe.test(existing)) {
       updated = existing.replace(markerRe, block);
     } else {
-      const prefix = existing.length === 0 ? '' : existing.endsWith('\n') ? existing : `${existing}\n`;
+      const prefix =
+        existing.length === 0 ? '' : existing.endsWith('\n') ? existing : `${existing}\n`;
       updated = `${prefix}${block}\n`;
     }
     if (updated !== existing) {

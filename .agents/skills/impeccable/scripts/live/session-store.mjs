@@ -49,7 +49,11 @@ export function createLiveSessionStore({ cwd = process.cwd(), sessionId } = {}) 
       };
       fs.appendFileSync(journalPath, JSON.stringify(entry) + '\n');
       const next = applyEvent(prior.snapshot, entry, prior.diagnostics);
-      snapshotCache.set(normalized.id, { snapshot: next, diagnostics: next.diagnostics || [], nextSeq: seq + 1 });
+      snapshotCache.set(normalized.id, {
+        snapshot: next,
+        diagnostics: next.diagnostics || [],
+        nextSeq: seq + 1,
+      });
       writeSnapshot(snapshotPath, next);
       return next;
     },
@@ -174,7 +178,11 @@ function applyEvent(snapshot, entry, inheritedDiagnostics = []) {
       next.expectedVariants = event.count ?? next.expectedVariants;
       next.pendingEventSeq = entry.seq ?? next.pendingEventSeq;
       next.pendingEvent = toPendingEvent(event);
-      if (event.screenshotPath) upsertArtifact(next.annotationArtifacts, { type: 'screenshot', path: event.screenshotPath });
+      if (event.screenshotPath)
+        upsertArtifact(next.annotationArtifacts, {
+          type: 'screenshot',
+          path: event.screenshotPath,
+        });
       break;
     case 'variants_ready':
     case 'agent_done':
@@ -182,20 +190,26 @@ function applyEvent(snapshot, entry, inheritedDiagnostics = []) {
       next.sourceFile = event.sourceFile ?? event.file ?? next.sourceFile;
       next.previewFile = event.previewFile ?? next.previewFile;
       next.previewMode = event.previewMode ?? next.previewMode;
-      next.arrivedVariants = event.arrivedVariants ?? (next.expectedVariants || next.arrivedVariants || 0);
+      next.arrivedVariants =
+        event.arrivedVariants ?? (next.expectedVariants || next.arrivedVariants || 0);
       next.pendingEventSeq = null;
       next.pendingEvent = null;
       if (event.carbonize === true) {
         next.diagnostics.push({
           error: 'carbonize_cleanup_required',
           file: event.file || null,
-          message: 'Accepted variant still has carbonize markers that must be folded into source CSS.',
+          message:
+            'Accepted variant still has carbonize markers that must be folded into source CSS.',
         });
       }
       break;
     case 'checkpoint':
       if (COMPLETED_PHASES.has(next.phase)) {
-        next.diagnostics.push({ error: 'checkpoint_after_terminal_ignored', phase: event.phase ?? null, revision: event.revision ?? null });
+        next.diagnostics.push({
+          error: 'checkpoint_after_terminal_ignored',
+          phase: event.phase ?? null,
+          revision: event.revision ?? null,
+        });
         break;
       }
       if ((event.revision ?? 0) >= (next.checkpointRevision ?? 0)) {
@@ -263,7 +277,10 @@ function applyEvent(snapshot, entry, inheritedDiagnostics = []) {
       next.phase = 'agent_error';
       next.pendingEventSeq = null;
       next.pendingEvent = null;
-      next.diagnostics.push({ error: 'agent_error', message: event.message || 'unknown agent error' });
+      next.diagnostics.push({
+        error: 'agent_error',
+        message: event.message || 'unknown agent error',
+      });
       break;
     default:
       next.diagnostics.push({ error: 'unknown_event_type', type: event.type });
@@ -279,7 +296,11 @@ function toPendingEvent(event) {
 }
 
 function upsertArtifact(artifacts, artifact) {
-  if (!artifacts.some((existing) => existing.path === artifact.path && existing.type === artifact.type)) {
+  if (
+    !artifacts.some(
+      (existing) => existing.path === artifact.path && existing.type === artifact.type,
+    )
+  ) {
     artifacts.push(artifact);
   }
 }

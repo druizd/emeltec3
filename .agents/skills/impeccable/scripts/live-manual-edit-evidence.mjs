@@ -14,8 +14,29 @@ import { isGeneratedFile } from './lib/is-generated.mjs';
 import { readBuffer, getBufferPath } from './live/manual-edits-buffer.mjs';
 
 const EVIDENCE_VERSION = 1;
-const TEXT_EXTENSIONS = new Set(['.html', '.jsx', '.tsx', '.vue', '.svelte', '.astro', '.js', '.mjs', '.ts']);
-const SEARCH_DIRS = ['src', 'app', 'pages', 'components', 'public', 'views', 'templates', 'site', 'lib', 'data'];
+const TEXT_EXTENSIONS = new Set([
+  '.html',
+  '.jsx',
+  '.tsx',
+  '.vue',
+  '.svelte',
+  '.astro',
+  '.js',
+  '.mjs',
+  '.ts',
+]);
+const SEARCH_DIRS = [
+  'src',
+  'app',
+  'pages',
+  'components',
+  'public',
+  'views',
+  'templates',
+  'site',
+  'lib',
+  'data',
+];
 const STRONG_LITERAL_MATCH_LIMIT = 8;
 const WEAK_LITERAL_MATCH_LIMIT = 4;
 const OBJECT_KEY_MATCH_LIMIT = 8;
@@ -137,10 +158,17 @@ function buildCandidatesForOp(op, cwd, searchFiles) {
     ref: op.ref,
     originalText,
     sourceHint: analyzeSourceHint(op, cwd),
-    textMatches: originalText ? findLiteralMatches(searchFiles, originalText, { max: literalMatchLimit(originalText) }) : [],
-    objectKeyMatches: originalText ? findObjectKeyMatches(searchFiles, originalText, { max: OBJECT_KEY_MATCH_LIMIT }) : [],
+    textMatches: originalText
+      ? findLiteralMatches(searchFiles, originalText, { max: literalMatchLimit(originalText) })
+      : [],
+    objectKeyMatches: originalText
+      ? findObjectKeyMatches(searchFiles, originalText, { max: OBJECT_KEY_MATCH_LIMIT })
+      : [],
     locatorMatches: findLocatorMatches(searchFiles, op, { max: LOCATOR_MATCH_LIMIT }),
-    contextTextMatches: findContextMatches(searchFiles, contextNeedles, { maxPerHint: CONTEXT_MATCH_PER_HINT, max: CONTEXT_MATCH_LIMIT }),
+    contextTextMatches: findContextMatches(searchFiles, contextNeedles, {
+      maxPerHint: CONTEXT_MATCH_PER_HINT,
+      max: CONTEXT_MATCH_LIMIT,
+    }),
   };
 }
 
@@ -174,7 +202,8 @@ function analyzeSourceHint(op, cwd) {
   const start = Math.max(0, line - 4);
   const end = Math.min(lines.length, line + 3);
   const windowText = lines.slice(start, end).join('\n');
-  const containsOriginalText = typeof op.originalText === 'string' && windowText.includes(op.originalText);
+  const containsOriginalText =
+    typeof op.originalText === 'string' && windowText.includes(op.originalText);
   return {
     ...hint,
     status: containsOriginalText ? 'ok' : 'text_not_found_near_hint',
@@ -219,12 +248,20 @@ function collectSearchFiles(cwd) {
 function scanDir(dir, cwd, seenDirs, seenFiles, out, depth) {
   if (depth > 7 || !fs.existsSync(dir)) return;
   let realDir;
-  try { realDir = fs.realpathSync(dir); } catch { return; }
+  try {
+    realDir = fs.realpathSync(dir);
+  } catch {
+    return;
+  }
   if (seenDirs.has(realDir)) return;
   seenDirs.add(realDir);
 
   let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
@@ -239,7 +276,11 @@ function scanDir(dir, cwd, seenDirs, seenFiles, out, depth) {
 
 function scanRootFiles(cwd, seenFiles, out) {
   let entries;
-  try { entries = fs.readdirSync(cwd, { withFileTypes: true }); } catch { return; }
+  try {
+    entries = fs.readdirSync(cwd, { withFileTypes: true });
+  } catch {
+    return;
+  }
   for (const entry of entries) {
     if (!entry.isFile() || !TEXT_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) continue;
     maybeAddSearchFile(path.join(cwd, entry.name), cwd, seenFiles, out);
@@ -248,12 +289,20 @@ function scanRootFiles(cwd, seenFiles, out) {
 
 function maybeAddSearchFile(file, cwd, seenFiles, out) {
   let realFile;
-  try { realFile = fs.realpathSync(file); } catch { return; }
+  try {
+    realFile = fs.realpathSync(file);
+  } catch {
+    return;
+  }
   if (seenFiles.has(realFile)) return;
   seenFiles.add(realFile);
   if (isGeneratedFile(file, { cwd })) return;
   let content;
-  try { content = fs.readFileSync(file, 'utf-8'); } catch { return; }
+  try {
+    content = fs.readFileSync(file, 'utf-8');
+  } catch {
+    return;
+  }
   out.push({ file, relativeFile: path.relative(cwd, file), content, lines: content.split('\n') });
 }
 
@@ -345,7 +394,9 @@ function isPathInsideOrEqual(cwd, file) {
 }
 
 function normalizeText(value) {
-  return String(value || '').replace(/\s+/g, ' ').trim();
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function decodeBasicHtml(value) {

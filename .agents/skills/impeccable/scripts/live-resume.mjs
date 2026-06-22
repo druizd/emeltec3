@@ -16,7 +16,8 @@ export function manualApplyResumeHint(event = {}) {
   if (summary.pageUrl) parts.push(`page ${summary.pageUrl}`);
   if (summary.chunk) parts.push(`chunk ${summary.chunk.index}/${summary.chunk.total}`);
   if (Number.isFinite(summary.opCount)) parts.push(`${summary.opCount} op(s)`);
-  if (Number.isFinite(summary.entryCount)) parts.push(`${summary.entryCount} entr${summary.entryCount === 1 ? 'y' : 'ies'}`);
+  if (Number.isFinite(summary.entryCount))
+    parts.push(`${summary.entryCount} entr${summary.entryCount === 1 ? 'y' : 'ies'}`);
   if (summary.files?.length) parts.push(`likely files: ${summary.files.join(', ')}`);
   const scope = parts.length ? ` (${parts.join(', ')})` : '';
   return `Manual Apply pending${scope}. If you have not already leased it, run live-poll.mjs. Apply the source edits from the manual_edit_apply batch, then reply with ${manualApplyReplyCommand(event.id)}. Polling only leases this work item; it does not commit source edits. Do not run live-commit-manual-edits.mjs for this leased event. Do not poll again before replying.`;
@@ -24,7 +25,10 @@ export function manualApplyResumeHint(event = {}) {
 
 function summarizeManualApplyEvent(event = {}) {
   const entries = Array.isArray(event.batch?.entries) ? event.batch.entries : [];
-  const opCount = entries.reduce((sum, entry) => sum + (Array.isArray(entry.ops) ? entry.ops.length : 0), 0);
+  const opCount = entries.reduce(
+    (sum, entry) => sum + (Array.isArray(entry.ops) ? entry.ops.length : 0),
+    0,
+  );
   return {
     pageUrl: event.pageUrl || null,
     chunk: event.chunk || null,
@@ -63,14 +67,22 @@ function parseArgs(argv) {
 export async function resumeCli() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log(`Usage: node live-resume.mjs [--id SESSION_ID]\n\nPrint the active durable session checkpoint and the next safe agent action.`);
+    console.log(
+      `Usage: node live-resume.mjs [--id SESSION_ID]\n\nPrint the active durable session checkpoint and the next safe agent action.`,
+    );
     return;
   }
 
   const store = createLiveSessionStore({ cwd: process.cwd(), sessionId: args.id || undefined });
   const snapshot = args.id ? store.getSnapshot(args.id) : store.listActiveSessions()[0] || null;
   if (!snapshot) {
-    console.log(JSON.stringify({ active: false, nextAction: 'No active durable live session found.' }, null, 2));
+    console.log(
+      JSON.stringify(
+        { active: false, nextAction: 'No active durable live session found.' },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
@@ -85,7 +97,9 @@ export async function resumeCli() {
         ? `Run live-complete.mjs --id ${snapshot.id} after verifying the accepted variant is written.`
         : `Inspect ${snapshot.id}; no pending agent event is currently queued.`;
 
-  console.log(JSON.stringify({ active: true, snapshot, pendingEvent: pending, nextAction }, null, 2));
+  console.log(
+    JSON.stringify({ active: true, snapshot, pendingEvent: pending, nextAction }, null, 2),
+  );
 }
 
 const _running = process.argv[1];

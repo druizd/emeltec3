@@ -16,10 +16,7 @@ export function getDesignSidecarPath(cwd = process.cwd(), options = {}) {
 
 export function getDesignSidecarCandidates(cwd = process.cwd(), contextDir = cwd, options = {}) {
   const projectRoot = resolveProjectRoot(cwd, options);
-  const candidates = [
-    getDesignSidecarPath(cwd, options),
-    path.join(projectRoot, 'DESIGN.json'),
-  ];
+  const candidates = [getDesignSidecarPath(cwd, options), path.join(projectRoot, 'DESIGN.json')];
   const contextLegacy = path.join(contextDir, 'DESIGN.json');
   if (!candidates.includes(contextLegacy)) candidates.push(contextLegacy);
   return candidates;
@@ -41,7 +38,12 @@ export function getLegacyLiveConfigPath(scriptsDir) {
   return path.join(scriptsDir, 'config.json');
 }
 
-export function resolveLiveConfigPath({ cwd = process.cwd(), scriptsDir, env = process.env, targetPath } = {}) {
+export function resolveLiveConfigPath({
+  cwd = process.cwd(),
+  scriptsDir,
+  env = process.env,
+  targetPath,
+} = {}) {
   if (env.IMPECCABLE_LIVE_CONFIG && env.IMPECCABLE_LIVE_CONFIG.trim()) {
     const configured = env.IMPECCABLE_LIVE_CONFIG.trim();
     return path.isAbsolute(configured) ? configured : path.resolve(cwd, configured);
@@ -68,7 +70,9 @@ export function readLiveServerInfo(cwd = process.cwd(), options = {}) {
     try {
       const info = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
       if (info && typeof info.pid === 'number' && !isLiveServerPidReachable(info.pid)) {
-        try { fs.unlinkSync(filePath); } catch {}
+        try {
+          fs.unlinkSync(filePath);
+        } catch {}
         continue;
       }
       return { info, path: filePath };
@@ -99,7 +103,9 @@ export function writeLiveServerInfo(cwd = process.cwd(), info, options = {}) {
 
 export function removeLiveServerInfo(cwd = process.cwd(), options = {}) {
   for (const filePath of [getLiveServerPath(cwd, options), getLegacyLiveServerPath(cwd, options)]) {
-    try { fs.unlinkSync(filePath); } catch {}
+    try {
+      fs.unlinkSync(filePath);
+    } catch {}
   }
 }
 

@@ -40,17 +40,37 @@ export function computeInsertLine(startLine, endLine, position) {
 export function buildInsertWrapperLines({ id, count, indent, commentSyntax, isJsx }) {
   const styleContents = isJsx ? 'style={{ display: "contents" }}' : 'style="display: contents"';
   const attrs =
-    'data-impeccable-variants="' + id + '" ' +
+    'data-impeccable-variants="' +
+    id +
+    '" ' +
     'data-impeccable-mode="insert" ' +
-    'data-impeccable-variant-count="' + count + '" ' +
+    'data-impeccable-variant-count="' +
+    count +
+    '" ' +
     styleContents;
 
   if (isJsx) {
     return [
       indent + '<div ' + attrs + '>',
-      indent + '  ' + commentSyntax.open + ' impeccable-variants-start ' + id + ' ' + commentSyntax.close,
-      indent + '  ' + commentSyntax.open + ' Variants: insert below this line ' + commentSyntax.close,
-      indent + '  ' + commentSyntax.open + ' impeccable-variants-end ' + id + ' ' + commentSyntax.close,
+      indent +
+        '  ' +
+        commentSyntax.open +
+        ' impeccable-variants-start ' +
+        id +
+        ' ' +
+        commentSyntax.close,
+      indent +
+        '  ' +
+        commentSyntax.open +
+        ' Variants: insert below this line ' +
+        commentSyntax.close,
+      indent +
+        '  ' +
+        commentSyntax.open +
+        ' impeccable-variants-end ' +
+        id +
+        ' ' +
+        commentSyntax.close,
       indent + '</div>',
     ];
   }
@@ -132,9 +152,18 @@ Output (JSON):
   const filePath = argVal(args, '--file');
   const text = argVal(args, '--text');
 
-  if (!id) { console.error('Missing --id'); process.exit(1); }
-  if (!position) { console.error('Missing --position (before | after)'); process.exit(1); }
-  if (!isInsertPosition(position)) { console.error('Invalid --position: ' + position); process.exit(1); }
+  if (!id) {
+    console.error('Missing --id');
+    process.exit(1);
+  }
+  if (!position) {
+    console.error('Missing --position (before | after)');
+    process.exit(1);
+  }
+  if (!isInsertPosition(position)) {
+    console.error('Invalid --position: ' + position);
+    process.exit(1);
+  }
   if (!elementId && !classes && !query) {
     console.error('Need at least one of: --element-id, --classes, --query');
     process.exit(1);
@@ -155,19 +184,23 @@ Output (JSON):
         generatedHit = findFileWithQuery(q, process.cwd(), { ...genOpts, includeGenerated: true });
         if (generatedHit) break;
       }
-      console.error(JSON.stringify({
-        error: generatedHit ? 'element_not_in_source' : 'element_not_found',
-        fallback: 'agent-driven',
-        hint: 'See "Handle fallback" in live.md.',
-      }));
+      console.error(
+        JSON.stringify({
+          error: generatedHit ? 'element_not_in_source' : 'element_not_found',
+          fallback: 'agent-driven',
+          hint: 'See "Handle fallback" in live.md.',
+        }),
+      );
       process.exit(1);
     }
   } else if (isGeneratedFile(targetFile, genOpts)) {
-    console.error(JSON.stringify({
-      error: 'file_is_generated',
-      fallback: 'agent-driven',
-      file: path.relative(process.cwd(), path.resolve(process.cwd(), targetFile)),
-    }));
+    console.error(
+      JSON.stringify({
+        error: 'file_is_generated',
+        fallback: 'agent-driven',
+        file: path.relative(process.cwd(), path.resolve(process.cwd(), targetFile)),
+      }),
+    );
     process.exit(1);
   }
 
@@ -176,15 +209,17 @@ Output (JSON):
   const resolved = resolveElementMatch({ lines, queries, tag, text });
 
   if (resolved.error === 'element_ambiguous') {
-    console.error(JSON.stringify({
-      error: 'element_ambiguous',
-      fallback: 'agent-driven',
-      file: path.relative(process.cwd(), targetFile),
-      candidates: resolved.candidates.map((c) => ({
-        startLine: c.startLine + 1,
-        endLine: c.endLine + 1,
-      })),
-    }));
+    console.error(
+      JSON.stringify({
+        error: 'element_ambiguous',
+        fallback: 'agent-driven',
+        file: path.relative(process.cwd(), targetFile),
+        candidates: resolved.candidates.map((c) => ({
+          startLine: c.startLine + 1,
+          endLine: c.endLine + 1,
+        })),
+      }),
+    );
     process.exit(1);
   }
   if (!resolved.match) {
@@ -211,30 +246,31 @@ Output (JSON):
       anchorLines: lines.slice(startLine, endLine + 1),
       cwd: process.cwd(),
     });
-    console.log(JSON.stringify({
-      mode: 'insert',
-      position,
-      file: session.manifestFile,
-      sourceFile: relTargetFile,
-      previewMode: 'svelte-component',
-      componentDir: session.componentDir,
-      propContract: session.propContract,
-      insertLine: 1,
-      sourceInsertLine: spliceIndex + 1,
-      anchorStartLine: startLine + 1,
-      anchorEndLine: endLine + 1,
-      commentSyntax,
-      styleMode: 'svelte-component',
-      styleTag: null,
-      cssSelectorPrefixExamples: [],
-      cssAuthoring: buildSvelteComponentCssAuthoring(count),
-    }));
+    console.log(
+      JSON.stringify({
+        mode: 'insert',
+        position,
+        file: session.manifestFile,
+        sourceFile: relTargetFile,
+        previewMode: 'svelte-component',
+        componentDir: session.componentDir,
+        propContract: session.propContract,
+        insertLine: 1,
+        sourceInsertLine: spliceIndex + 1,
+        anchorStartLine: startLine + 1,
+        anchorEndLine: endLine + 1,
+        commentSyntax,
+        styleMode: 'svelte-component',
+        styleTag: null,
+        cssSelectorPrefixExamples: [],
+        cssAuthoring: buildSvelteComponentCssAuthoring(count),
+      }),
+    );
     return;
   }
 
-  const indent = lines[spliceIndex]?.match(/^(\s*)/)?.[1]
-    ?? lines[startLine]?.match(/^(\s*)/)?.[1]
-    ?? '';
+  const indent =
+    lines[spliceIndex]?.match(/^(\s*)/)?.[1] ?? lines[startLine]?.match(/^(\s*)/)?.[1] ?? '';
 
   const wrapperLines = buildInsertWrapperLines({
     id,
@@ -244,26 +280,24 @@ Output (JSON):
     isJsx,
   });
 
-  const newLines = [
-    ...lines.slice(0, spliceIndex),
-    ...wrapperLines,
-    ...lines.slice(spliceIndex),
-  ];
+  const newLines = [...lines.slice(0, spliceIndex), ...wrapperLines, ...lines.slice(spliceIndex)];
   fs.writeFileSync(targetFile, newLines.join('\n'), 'utf-8');
 
   const insertLine = spliceIndex + 3;
 
-  console.log(JSON.stringify({
-    mode: 'insert',
-    position,
-    file: relTargetFile,
-    insertLine: insertLine + 1,
-    commentSyntax,
-    styleMode: styleMode.mode,
-    styleTag: styleMode.styleTag,
-    cssSelectorPrefixExamples: buildCssSelectorPrefixExamples(styleMode.mode, count),
-    cssAuthoring: buildCssAuthoring(styleMode, count),
-  }));
+  console.log(
+    JSON.stringify({
+      mode: 'insert',
+      position,
+      file: relTargetFile,
+      insertLine: insertLine + 1,
+      commentSyntax,
+      styleMode: styleMode.mode,
+      styleTag: styleMode.styleTag,
+      cssSelectorPrefixExamples: buildCssSelectorPrefixExamples(styleMode.mode, count),
+      cssAuthoring: buildCssAuthoring(styleMode, count),
+    }),
+  );
 }
 
 const _running = process.argv[1];

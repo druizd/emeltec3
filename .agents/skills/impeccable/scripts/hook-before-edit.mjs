@@ -74,9 +74,8 @@ function toolInput(event) {
 function proposedFilePath(event, cwd) {
   const input = toolInput(event);
   const raw = input.file_path || input.path || input.target_file || event?.file_path;
-  const candidate = typeof raw === 'string' && raw.trim()
-    ? raw
-    : shellWriteDestination(shellCommand(input));
+  const candidate =
+    typeof raw === 'string' && raw.trim() ? raw : shellWriteDestination(shellCommand(input));
   if (typeof candidate !== 'string' || !candidate.trim()) return '';
   return path.isAbsolute(candidate) ? candidate : path.resolve(cwd, candidate);
 }
@@ -106,7 +105,12 @@ function proposedContent(event, cwd, filePath) {
 
 function hasFragmentEditContent(input) {
   if (!input || typeof input !== 'object') return false;
-  if (typeof input.new_string === 'string' || typeof input.newString === 'string' || typeof input.new_str === 'string' || typeof input.replacement === 'string') {
+  if (
+    typeof input.new_string === 'string' ||
+    typeof input.newString === 'string' ||
+    typeof input.new_str === 'string' ||
+    typeof input.replacement === 'string'
+  ) {
     return true;
   }
   return Array.isArray(input.edits) && input.edits.some((edit) => edit && typeof edit === 'object');
@@ -117,7 +121,8 @@ function projectedEditContent(input, filePath, cwd) {
   const singleOld = firstString(input, ['old_string', 'oldString', 'old_str', 'target']);
   const singleNew = firstString(input, ['new_string', 'newString', 'new_str', 'replacement']);
   if (singleOld !== undefined || singleNew !== undefined) {
-    if (singleOld === undefined || singleNew === undefined) return { skipped: 'fragment-only-edit' };
+    if (singleOld === undefined || singleNew === undefined)
+      return { skipped: 'fragment-only-edit' };
     const original = readExistingProjectFile(filePath, cwd);
     if (original === null) return { skipped: 'edit-original-unreadable' };
     const projected = replaceOnce(original, singleOld, singleNew);
@@ -133,7 +138,8 @@ function projectedEditContent(input, filePath, cwd) {
     if (!edit || typeof edit !== 'object') return { skipped: 'fragment-only-edit' };
     const oldString = firstString(edit, ['old_string', 'oldString', 'old_str', 'target']);
     const newString = firstString(edit, ['new_string', 'newString', 'new_str', 'replacement']);
-    if (oldString === undefined || newString === undefined) return { skipped: 'fragment-only-edit' };
+    if (oldString === undefined || newString === undefined)
+      return { skipped: 'fragment-only-edit' };
     const next = replaceOnce(projected, oldString, newString);
     if (next === null) return { skipped: 'edit-old-string-missing' };
     projected = next;
@@ -180,12 +186,21 @@ function shellRedirectPath(command) {
 }
 
 function shellWriteDestination(command) {
-  return shellRedirectPath(command) || shellTeeDestination(command) || shellCopyPaths(command)?.dest || shellPythonWriteDestination(command) || '';
+  return (
+    shellRedirectPath(command) ||
+    shellTeeDestination(command) ||
+    shellCopyPaths(command)?.dest ||
+    shellPythonWriteDestination(command) ||
+    ''
+  );
 }
 
 function shellPythonWriteDestination(command) {
   if (!/\bpython(?:3)?\b/.test(command || '')) return '';
-  const directPath = firstMatch(command, /(?:^|[^\w.])(?:pathlib\.)?Path\(\s*(["'])(.*?)\1\s*\)\s*\.write_text\s*\(/);
+  const directPath = firstMatch(
+    command,
+    /(?:^|[^\w.])(?:pathlib\.)?Path\(\s*(["'])(.*?)\1\s*\)\s*\.write_text\s*\(/,
+  );
   if (directPath) return directPath;
 
   const pathsByVar = new Map();
@@ -278,7 +293,9 @@ function shellHereDocContent(command) {
 function shellPythonWriteContent(command) {
   if (!/\bpython(?:3)?\b/.test(command || '')) return '';
   const script = shellHereDocContent(command) || command;
-  return pythonStringArg(script, /\.write_text\s*\(\s*/g) || pythonStringArg(script, /\.write\s*\(\s*/g);
+  return (
+    pythonStringArg(script, /\.write_text\s*\(\s*/g) || pythonStringArg(script, /\.write\s*\(\s*/g)
+  );
 }
 
 function pythonStringArg(script, prefixRe) {
@@ -355,9 +372,10 @@ function bumpCursorDenial(cache, sessionId, filePath, findings) {
   const fileEntry = session.files[filePath] || { editCount: 0, findings: [] };
   session.files[filePath] = fileEntry;
   const key = findingSignature(findings);
-  fileEntry.cursorDenials = fileEntry.cursorDenials && typeof fileEntry.cursorDenials === 'object'
-    ? fileEntry.cursorDenials
-    : {};
+  fileEntry.cursorDenials =
+    fileEntry.cursorDenials && typeof fileEntry.cursorDenials === 'object'
+      ? fileEntry.cursorDenials
+      : {};
   fileEntry.cursorDenials[key] = (fileEntry.cursorDenials[key] || 0) + 1;
   return { key, count: fileEntry.cursorDenials[key] };
 }
@@ -389,24 +407,31 @@ async function main() {
     file: filePath || null,
   };
 
-  if (!filePath) return allow({ ...audit, skipped: 'no-file-path', durationMs: Date.now() - started });
-  if (!isInsideProject(filePath, cwd)) return allow({ ...audit, skipped: 'outside-project', durationMs: Date.now() - started });
-  if (SENSITIVE_PATH.test(filePath)) return allow({ ...audit, skipped: 'sensitive', durationMs: Date.now() - started });
-  if (GENERATED_PATH.test(filePath)) return allow({ ...audit, skipped: 'generated', durationMs: Date.now() - started });
+  if (!filePath)
+    return allow({ ...audit, skipped: 'no-file-path', durationMs: Date.now() - started });
+  if (!isInsideProject(filePath, cwd))
+    return allow({ ...audit, skipped: 'outside-project', durationMs: Date.now() - started });
+  if (SENSITIVE_PATH.test(filePath))
+    return allow({ ...audit, skipped: 'sensitive', durationMs: Date.now() - started });
+  if (GENERATED_PATH.test(filePath))
+    return allow({ ...audit, skipped: 'generated', durationMs: Date.now() - started });
 
   const ext = path.extname(filePath).toLowerCase();
   audit.ext = ext;
-  if (!ALLOWED_EXTS.has(ext)) return allow({ ...audit, skipped: 'extension', durationMs: Date.now() - started });
+  if (!ALLOWED_EXTS.has(ext))
+    return allow({ ...audit, skipped: 'extension', durationMs: Date.now() - started });
 
   const contentResult = proposedContent(event, cwd, filePath);
   if (contentResult && typeof contentResult === 'object' && contentResult.skipped) {
     return allow({ ...audit, skipped: contentResult.skipped, durationMs: Date.now() - started });
   }
   const content = typeof contentResult === 'string' ? contentResult : '';
-  if (!content) return allow({ ...audit, skipped: 'no-proposed-content', durationMs: Date.now() - started });
+  if (!content)
+    return allow({ ...audit, skipped: 'no-proposed-content', durationMs: Date.now() - started });
 
   const config = readConfig(cwd);
-  if (config.enabled === false) return allow({ ...audit, skipped: 'config-disabled', durationMs: Date.now() - started });
+  if (config.enabled === false)
+    return allow({ ...audit, skipped: 'config-disabled', durationMs: Date.now() - started });
 
   const rel = relativePath(filePath, cwd);
   if (matchesAnyGlob(rel, config.ignoreFiles) || matchesAnyGlob(filePath, config.ignoreFiles)) {
@@ -436,26 +461,32 @@ async function main() {
     });
   }
 
-  const message = appendDesignSystemNote(cursorBlockMessage(filtered, filePath, config, cwd), scanOptions);
+  const message = appendDesignSystemNote(
+    cursorBlockMessage(filtered, filePath, config, cwd),
+    scanOptions,
+  );
   const sessionId = event.session_id || event.conversation_id || 'unknown';
   const cache = readCache(cwd);
   const denial = bumpCursorDenial(cache, sessionId, filePath, filtered);
   persistCache(cwd, cache);
   if (denial.count > EDIT_COUNT_THRESHOLD) {
     const warning = `${message}\n\nThis is the ${denial.count}th repeated denial for the same file and finding signature, so Impeccable is allowing this write to avoid a loop. Reconsider the issue immediately after the tool runs.`;
-    return allow({
-      ...audit,
-      findings: (findings || []).length,
-      blockedFindings: filtered.length,
-      cursorDenialKey: denial.key,
-      cursorDenialCount: denial.count,
-      downgraded: true,
-      chars: warning.length,
-      durationMs: Date.now() - started,
-    }, {
-      user_message: warning,
-      agent_message: warning,
-    });
+    return allow(
+      {
+        ...audit,
+        findings: (findings || []).length,
+        blockedFindings: filtered.length,
+        cursorDenialKey: denial.key,
+        cursorDenialCount: denial.count,
+        downgraded: true,
+        chars: warning.length,
+        durationMs: Date.now() - started,
+      },
+      {
+        user_message: warning,
+        agent_message: warning,
+      },
+    );
   }
   return deny(message, {
     ...audit,

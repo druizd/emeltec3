@@ -45,11 +45,13 @@ export function detectInsertAxisFromStyle(style) {
 export function computeInsertPosition(clientX, clientY, rect, axis = 'column') {
   if (!rect) return 'after';
   if (axis === 'row') {
-    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.width) || rect.width <= 0) return 'after';
+    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.width) || rect.width <= 0)
+      return 'after';
     const mid = rect.left + rect.width / 2;
     return clientX < mid ? 'before' : 'after';
   }
-  if (!Number.isFinite(rect.top) || !Number.isFinite(rect.height) || rect.height <= 0) return 'after';
+  if (!Number.isFinite(rect.top) || !Number.isFinite(rect.height) || rect.height <= 0)
+    return 'after';
   const mid = rect.top + rect.height / 2;
   return clientY < mid ? 'before' : 'after';
 }
@@ -61,9 +63,8 @@ export function computeInsertPosition(clientX, clientY, rect, axis = 'column') {
 export function canCreateInsert({ prompt, comments, strokes }) {
   const hasPrompt = typeof prompt === 'string' && prompt.trim().length > 0;
   const hasComments = Array.isArray(comments) && comments.length > 0;
-  const hasStrokes = Array.isArray(strokes) && strokes.some(
-    (s) => Array.isArray(s?.points) && s.points.length >= 2,
-  );
+  const hasStrokes =
+    Array.isArray(strokes) && strokes.some((s) => Array.isArray(s?.points) && s.points.length >= 2);
   return hasPrompt || hasComments || hasStrokes;
 }
 
@@ -161,7 +162,9 @@ export function hitSiblingInsertGap(clientX, clientY, siblings, opts = {}) {
     }
   }
 
-  const sortedCol = [...siblings].sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left);
+  const sortedCol = [...siblings].sort(
+    (a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left,
+  );
   for (let i = 0; i < sortedCol.length - 1; i++) {
     const a = sortedCol[i];
     const b = sortedCol[i + 1];
@@ -218,9 +221,8 @@ export function placeholderSizing({ axis, parentDisplay, parentWidth, anchorFlex
 
   if (axis === 'row') {
     if (display.includes('flex')) {
-      const flex = anchorFlex && anchorFlex !== 'none' && anchorFlex !== '0 1 auto'
-        ? anchorFlex
-        : '1 1 0';
+      const flex =
+        anchorFlex && anchorFlex !== 'none' && anchorFlex !== '0 1 auto' ? anchorFlex : '1 1 0';
       return { kind: 'flex', flex, minWidth: 0 };
     }
     if (display === 'grid' || display === 'inline-grid') {

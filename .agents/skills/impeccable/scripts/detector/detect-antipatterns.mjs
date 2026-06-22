@@ -10,9 +10,30 @@
 
 import { detectCli } from './cli/main.mjs';
 
-export { ANTIPATTERNS, RULE_ENGINE_SUPPORT, getAntipattern, getRulesForCategory, getRuleEngineSupport } from './registry/antipatterns.mjs';
-export { SAFE_TAGS, BORDER_SAFE_TAGS, OVERUSED_FONTS, GENERIC_FONTS, KNOWN_SERIF_FONTS } from './shared/constants.mjs';
-export { isNeutralColor, parseRgb, relativeLuminance, contrastRatio, parseGradientColors, hasChroma, getHue, colorToHex } from './shared/color.mjs';
+export {
+  ANTIPATTERNS,
+  RULE_ENGINE_SUPPORT,
+  getAntipattern,
+  getRulesForCategory,
+  getRuleEngineSupport,
+} from './registry/antipatterns.mjs';
+export {
+  SAFE_TAGS,
+  BORDER_SAFE_TAGS,
+  OVERUSED_FONTS,
+  GENERIC_FONTS,
+  KNOWN_SERIF_FONTS,
+} from './shared/constants.mjs';
+export {
+  isNeutralColor,
+  parseRgb,
+  relativeLuminance,
+  contrastRatio,
+  parseGradientColors,
+  hasChroma,
+  getHue,
+  colorToHex,
+} from './shared/color.mjs';
 export { isFullPage } from './shared/page.mjs';
 export {
   checkElementBorders,
@@ -45,6 +66,7 @@ export {
 } from './node/file-system.mjs';
 export { formatFindings, detectCli } from './cli/main.mjs';
 
-const isMainModule = process.argv[1]?.endsWith('detect-antipatterns.mjs') ||
+const isMainModule =
+  process.argv[1]?.endsWith('detect-antipatterns.mjs') ||
   process.argv[1]?.endsWith('detect-antipatterns.mjs/');
 if (isMainModule) detectCli();
