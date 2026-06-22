@@ -7,18 +7,18 @@ Compose.
 
 ## Repo y entorno reales
 
-| Campo           | Valor                                        |
-| --------------- | -------------------------------------------- |
-| Repo            | `github.com/druizd/emeltec3`                 |
-| Branch deploy   | `main`                                       |
-| VM              | Azure, `104.46.7.78`                         |
-| Usuario VM      | `azureuser`                                  |
-| Path repo en VM | `~/emeltec3` (= `/home/azureuser/emeltec3`)  |
-| Container DB    | `timescaledb-infra` (TimescaleDB + PG16)     |
-| Volumen datos   | `timescaledb_data` (persiste entre rebuilds) |
-| Container API   | `emeltec-api` (main-api)                     |
-| DB user/name    | `postgres` / `telemetry_platform`            |
-| Puerto API      | 3000                                         |
+| Campo           | Valor                                       |
+| --------------- | ------------------------------------------- |
+| Repo            | `github.com/druizd/emeltec3`                |
+| Branch deploy   | `main`                                      |
+| VM              | Azure, `104.46.7.78`                        |
+| Usuario VM      | `azureuser`                                 |
+| Path repo en VM | `~/emeltec3` (= `/home/azureuser/emeltec3`) |
+| Container DB    | `emeltec-db` (servicio `timescaledb`, PG16) |
+| Volumen datos   | `timescale_data` (persiste entre rebuilds)  |
+| Container API   | `emeltec-api` (main-api)                    |
+| DB user/name    | `postgres` / `telemetry_platform`           |
+| Puerto API      | 3000                                        |
 
 > **Nota DB local vs prod**: el compose en `infra-db/docker-compose.yml`
 > usa defaults `admin_infra` / `db_infra` para desarrollo local. La VM
