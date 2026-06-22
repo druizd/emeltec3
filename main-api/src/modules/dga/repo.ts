@@ -230,6 +230,17 @@ export interface ValidationWarning {
   [k: string]: unknown;
 }
 
+/**
+ * Lectura previa de un slot DGA. Usada por las reglas de validación que
+ * necesitan historial (sensor_frozen, caudal_spike). Index 0 = slot
+ * inmediatamente anterior al actual.
+ */
+export interface PriorReading {
+  ts: string;
+  caudal: number | null;
+  totalizador: number | null;
+}
+
 export interface DatoDgaRow {
   site_id: string;
   obra: string;
@@ -303,6 +314,47 @@ export async function findLastValidTotalizador(
   );
   const v = r.rows[0]?.flujo_acumulado;
   return v == null ? null : Number(v);
+}
+
+/**
+ * Lecturas previas de un pozo para las reglas de historial (sensor_frozen,
+ * caudal_spike). Retorna hasta `n` slots anteriores a `beforeTs`, ordenados
+ * más reciente primero (index 0 = inmediatamente anterior al slot actual).
+ *
+ * Excluye estatus 'vacio', 'requires_review' y 'fallido' deliberadamente:
+ * - 'vacio': sin valores fiables aún.
+ * - 'requires_review': incluirlos contaminaría el historial (un sensor_frozen
+ *   previo arrastraría el flag indefinidamente → falsos positivos en cadena).
+ * - 'fallido': valor no confiable como referencia de tendencia.
+ *
+ * Usa el índice existente (site_id, ts) → coste equivalente a
+ * findLastValidTotalizador.
+ */
+export async function findRecentDatoDgaReadings(
+  siteId: string,
+  beforeTs: string,
+  n: number,
+): Promise<PriorReading[]> {
+  const r = await query<{
+    ts: string;
+    caudal_instantaneo: string | null;
+    flujo_acumulado: string | null;
+  }>(
+    `SELECT ts, caudal_instantaneo, flujo_acumulado
+       FROM dato_dga
+      WHERE site_id = $1
+        AND ts < $2
+        AND estatus IN ('pendiente', 'enviado', 'enviando')
+      ORDER BY ts DESC
+      LIMIT $3`,
+    [siteId, beforeTs, n],
+    { name: 'dga__recent_readings' },
+  );
+  return r.rows.map((row) => ({
+    ts: row.ts,
+    caudal: row.caudal_instantaneo == null ? null : Number(row.caudal_instantaneo),
+    totalizador: row.flujo_acumulado == null ? null : Number(row.flujo_acumulado),
+  }));
 }
 
 export async function transitionSlotToPendiente(input: {
