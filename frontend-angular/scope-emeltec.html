@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Emeltec Cloud — Alcance de funcionalidades</title>
+    <style>
+      :root {
+        --teal: #0dafbd;
+        --teal-d: #0899a5;
+        --ink: #1e293b;
+        --sec: #64748b;
+        --mut: #94a3b8;
+        --bg: #f0f2f5;
+        --line: #e2e8f0;
+        --ok: #16a34a;
+        --okbg: #f0fdf4;
+        --warn: #d97706;
+        --warnbg: #fffbeb;
+        --pend: #6366f1;
+        --pendbg: #eef2ff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 40px 20px 80px;
+      }
+      header.top {
+        border-bottom: 2px solid var(--teal);
+        padding-bottom: 18px;
+        margin-bottom: 8px;
+      }
+      .kicker {
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--mut);
+        font-weight: 600;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 6px 0 4px;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--sec);
+        font-size: 14px;
+      }
+      h2 {
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--sec);
+        margin: 40px 0 14px;
+        border-bottom: 1px solid var(--line);
+        padding-bottom: 8px;
+      }
+      .card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+      }
+      .card h3 {
+        margin: 0 0 4px;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .card .desc {
+        color: var(--sec);
+        font-size: 13.5px;
+        margin: 6px 0 12px;
+      }
+      .badge {
+        font-size: 10.5px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        padding: 3px 9px;
+        border-radius: 999px;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+      .b-done {
+        color: var(--ok);
+        background: var(--okbg);
+        border: 1px solid #bbf7d0;
+      }
+      .b-ready {
+        color: var(--teal-d);
+        background: #ecfeff;
+        border: 1px solid #a5f3fc;
+      }
+      .b-pend {
+        color: var(--pend);
+        background: var(--pendbg);
+        border: 1px solid #c7d2fe;
+      }
+      .size {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 11px;
+        color: var(--mut);
+        margin-left: auto;
+      }
+      ul {
+        margin: 8px 0;
+        padding-left: 18px;
+      }
+      li {
+        font-size: 13.5px;
+        margin: 3px 0;
+      }
+      .lbl {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--mut);
+        font-weight: 600;
+        margin: 12px 0 4px;
+      }
+      .ok-i {
+        color: var(--ok);
+        font-weight: 600;
+      }
+      .x-i {
+        color: #dc2626;
+        font-weight: 600;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 6px 0;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        background: #f8fafc;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--sec);
+      }
+      .seq {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 6px 0;
+      }
+      .seq .step {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 12.5px;
+        flex: 1 1 150px;
+      }
+      .seq .step b {
+        color: var(--teal-d);
+      }
+      .note {
+        background: var(--warnbg);
+        border: 1px solid #fde68a;
+        border-radius: 10px;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: #92400e;
+      }
+      .deco {
+        background: #eef2ff;
+        border-left: 3px solid var(--pend);
+        padding: 10px 14px;
+        border-radius: 0 8px 8px 0;
+        font-size: 13px;
+        margin: 6px 0;
+      }
+      code {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 12px;
+        background: #f1f5f9;
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      .total {
+        font-size: 14px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div class="kicker">Emeltec Cloud · Documento de alcance</div>
+        <h1>Permisos, Alarmas, Historial y Administración</h1>
+        <div class="sub">
+          Estado real contra el código + plan por fases. Cada fase es mergeable y deployable por
+          separado. Diseño <b>modular y repetible</b> para futuros procesos.
+        </div>
+      </header>
+
+      <h2>Resumen</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Funcionalidad</th>
+            <th>Estado</th>
+            <th>Esfuerzo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Vista de TAP (técnico) solo administrador</td>
+            <td><span class="ok-i">Listo</span> (PR #110)</td>
+            <td>S</td>
+          </tr>
+          <tr>
+            <td>A</td>
+            <td>Alarmas: compartidas + visibilidad + edición restringida</td>
+            <td><span class="ok-i">Definido</span> · listo para construir</td>
+            <td>M (2-3 d)</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Descargar historial de alertas + observaciones</td>
+            <td>Pendiente de decisiones</td>
+            <td>M (~2 d)</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Ver y agregar observaciones por temperatura alta</td>
+            <td>Existe ~90% · definir gap</td>
+            <td>S-M (1-2 d)</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Administración de usuarios (crear/editar/eliminar)</td>
+            <td>Backend ~50% · UI faltante</td>
+            <td>L (4-5 d)</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>1 · Vista de TAP solo administrador — Listo</h2>
+      <div class="card">
+        <h3>TAP técnico restringido <span class="badge b-done">Listo · PR #110</span></h3>
+        <p class="desc">
+          La vista técnica de TAP (concentrador, backup, sensores) es solo SuperAdmin/Admin. El
+          resto de cámaras (mapa, salas, compliance, alarmas) sigue para todos los roles.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Rol</th>
+              <th>Mapa + salas</th>
+              <th>Compliance/Alarmas</th>
+              <th>TAP técnico</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SuperAdmin / Admin</td>
+              <td class="ok-i">✓</td>
+              <td class="ok-i">✓</td>
+              <td class="ok-i">✓</td>
+            </tr>
+            <tr>
+              <td>Gerente / Cliente</td>
+              <td class="ok-i">✓</td>
+              <td class="ok-i">✓</td>
+              <td class="x-i">✗</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="desc">
+          Defensa en 3 capas: guard de ruta + UI + backend (403). Incluye: general ruteable, Cliente
+          cold-room ve <b>toda la planta</b> (todos los TAPs agregados), pestaña "Mapa".
+        </p>
+      </div>
+
+      <h2>A · Alarmas: compartidas, con visibilidad y edición restringida — Definido</h2>
+      <div class="card">
+        <h3>Modelo de alarmas <span class="badge b-ready">Listo para construir</span><span class="size">M · 2-3 días</span></h3>
+        <p class="desc">
+          Alarmas <b>compartidas por sitio</b> (evita duplicados), con selección de
+          <b>quién puede verlas</b>; solo <b>Admin y Gerente</b> (+ SuperAdmin) editan. Aplica a
+          <b>ambos sistemas</b> (cámaras de frío + agua). Diseño genérico, reutilizable en otros
+          procesos.
+        </p>
+        <div class="lbl">Decisiones cerradas</div>
+        <ul>
+          <li>Default: <b>visible para todo el sitio</b>, restringible a una lista de usuarios.</li>
+          <li>Editan: <b>Admin + Gerente</b> (+ SuperAdmin). El resto solo ve.</li>
+          <li>Alcance: <b>cold-room y agua</b>.</li>
+        </ul>
+        <div class="lbl">Estado actual vs modelo</div>
+        <table>
+          <thead>
+            <tr><th>Aspecto</th><th>Cold-room</th><th>Agua</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Compartidas por sitio</td><td class="ok-i">✓ ya</td><td class="ok-i">✓ ya</td></tr>
+            <tr><td>Editar solo Admin/Gerente</td><td class="ok-i">✓ ya</td><td class="x-i">✗ falta gating</td></tr>
+            <tr><td>Elegir quién ve</td><td class="x-i">✗ falta</td><td class="x-i">✗ falta</td></tr>
+          </tbody>
+        </table>
+        <div class="lbl">Trabajo</div>
+        <ul>
+          <li><b>DB</b>: campo de visibilidad (<code>visible_para[]</code> + flag "todo el sitio") en <code>cold_room_alarm_rule</code> y <code>alertas</code>. Migración.</li>
+          <li><b>Backend</b>: la lista filtra por visibilidad para no-admin; agregar role-gating al CRUD de alertas de agua.</li>
+          <li><b>Frontend</b>: multi-select "quién puede ver"; ocultar editar a no-admin/gerente.</li>
+        </ul>
+      </div>
+
+      <h2>2 · Historial de alertas + observaciones (export)</h2>
+      <div class="card">
+        <h3>Descarga de historial <span class="badge b-pend">Definir decisiones</span><span class="size">M · ~2 días</span></h3>
+        <p class="desc">
+          Exportar (Excel) el historial de alertas con fecha, hora y la observación asociada si se
+          ingresó. Los datos ya están persistidos (eventos + observaciones HACCP); falta el endpoint
+          de historial por rango + el export.
+        </p>
+        <div class="lbl">Pendiente</div>
+        <ul>
+          <li>Fuente de "alerta": eventos persistidos vs desviaciones detectadas.</li>
+          <li>¿Solo cold-room (HACCP, las que tienen observaciones) o también agua?</li>
+        </ul>
+      </div>
+
+      <h2>4 · Observaciones por temperatura alta</h2>
+      <div class="card">
+        <h3>Ver y agregar observaciones <span class="badge b-pend">Definir gap</span><span class="size">S-M · 1-2 días</span></h3>
+        <p class="desc">
+          <b>Ya existe ~90%</b>: detección de desviaciones + modal HACCP (reconocer/clasificar/
+          resolver + nota) + persistencia + auditoría, en el detalle de sala.
+        </p>
+        <div class="lbl">Pendiente</div>
+        <ul>
+          <li>¿El flujo HACCP actual alcanza, o se quiere una <b>bandeja</b> que liste desviaciones pendientes de observación?</li>
+          <li>Confirmar qué rol puede agregar observaciones.</li>
+        </ul>
+      </div>
+
+      <h2>3 · Administración de usuarios</h2>
+      <div class="card">
+        <h3>Crear / editar / eliminar usuarios <span class="badge b-pend">Definir decisiones</span><span class="size">L · 4-5 días</span></h3>
+        <p class="desc">
+          Backend a medio camino: existe crear (con jerarquía de roles), borrar y listar; auth/OTP/
+          lockout sólido. <b>Falta</b>: endpoint de actualización, reset de contraseña por admin,
+          desactivación, y <b>toda la UI</b> de usuarios (la administración hoy maneja empresas/
+          sitios/equipos, no usuarios).
+        </p>
+        <div class="lbl">Pendiente</div>
+        <ul>
+          <li>¿Desactivar (soft-delete, recomendado para auditoría) o borrado real?</li>
+          <li>¿Reset de contraseña por admin?</li>
+        </ul>
+      </div>
+
+      <h2>Secuencia sugerida</h2>
+      <div class="seq">
+        <div class="step"><b>1.</b> TAP admin ✓ (hecho)</div>
+        <div class="step"><b>2.</b> Alarmas (visibilidad + edición)</div>
+        <div class="step"><b>3.</b> Observaciones temp alta</div>
+        <div class="step"><b>4.</b> Export historial</div>
+        <div class="step"><b>5.</b> Administración de usuarios</div>
+      </div>
+      <p class="total">Total estimado restante: ~9-12 días de desarrollo, por fases.</p>
+
+      <h2>Principio de diseño</h2>
+      <div class="deco">
+        <b>Modular y repetible.</b> Visibilidad de alarmas, observaciones y gestión de usuarios se
+        construyen de forma genérica (por sitio/rol, no atados a cámaras de frío) para reutilizarse
+        en futuros procesos (riles, eléctrico, proceso, pasteurizador).
+      </div>
+
+      <div class="note" style="margin-top: 16px">
+        <b>Pendiente de definir antes de construir #2, #3, #4:</b> fuente de alerta y alcance del
+        export (#2); soft-delete y reset de contraseña (#3); flujo actual vs bandeja (#4). La fase de
+        Alarmas (A) y #1 ya están listas/definidas.
+      </div>
+    </div>
+  </body>
+</html>

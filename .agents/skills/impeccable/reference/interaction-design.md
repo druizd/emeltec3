@@ -4,16 +4,16 @@
 
 Every interactive element needs these states designed:
 
-| State        | When                        | Visual Treatment            |
-| ------------ | --------------------------- | --------------------------- |
-| **Default**  | At rest                     | Base styling                |
-| **Hover**    | Pointer over (not touch)    | Subtle lift, color shift    |
-| **Focus**    | Keyboard/programmatic focus | Visible ring (see below)    |
-| **Active**   | Being pressed               | Pressed in, darker          |
-| **Disabled** | Not interactive             | Reduced opacity, no pointer |
-| **Loading**  | Processing                  | Spinner, skeleton           |
-| **Error**    | Invalid state               | Red border, icon, message   |
-| **Success**  | Completed                   | Green check, confirmation   |
+| State | When | Visual Treatment |
+|-------|------|------------------|
+| **Default** | At rest | Base styling |
+| **Hover** | Pointer over (not touch) | Subtle lift, color shift |
+| **Focus** | Keyboard/programmatic focus | Visible ring (see below) |
+| **Active** | Being pressed | Pressed in, darker |
+| **Disabled** | Not interactive | Reduced opacity, no pointer |
+| **Loading** | Processing | Spinner, skeleton |
+| **Error** | Invalid state | Red border, icon, message |
+| **Success** | Completed | Green check, confirmation |
 
 **The common miss**: Designing hover without focus, or vice versa. They're different. Keyboard users never see hover states.
 
@@ -35,7 +35,6 @@ button:focus-visible {
 ```
 
 **Focus ring design**:
-
 - High contrast (3:1 minimum against adjacent colors)
 - 2-3px thick
 - Offset from element (not inside it)
@@ -68,7 +67,7 @@ Or use the native `<dialog>` element:
 
 ```javascript
 const dialog = document.querySelector('dialog');
-dialog.showModal(); // Opens with focus trap, closes on Escape
+dialog.showModal();  // Opens with focus trap, closes on Escape
 ```
 
 ## The Popover API
@@ -150,12 +149,6 @@ For browsers without anchor positioning support, `position: fixed` with manual c
 ```
 
 Check viewport boundaries before rendering. If the dropdown would overflow the bottom edge, flip it above the trigger. If it would overflow the right edge, align it to the trigger's right side instead.
-
-### Anti-Patterns
-
-- **`position: absolute` inside `overflow: hidden`** - The dropdown will be clipped. Use `position: fixed` or the top layer instead.
-- **Arbitrary z-index values** like `z-index: 9999` - Use a semantic z-index scale: `dropdown (100) -> sticky (200) -> modal-backdrop (300) -> modal (400) -> toast (500) -> tooltip (600)`.
-- **Rendering dropdown markup inline** without an escape hatch from the parent's stacking context. Either use `popover` (top layer), a portal, or `position: fixed`.
 
 ## Destructive Actions: Undo > Confirm
 

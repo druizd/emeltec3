@@ -6,7 +6,7 @@ Add motion that conveys state, gives feedback, and clarifies hierarchy. Cut moti
 
 ## Register
 
-Brand: orchestrated page-load sequences, staggered reveals, scroll-driven animation. Motion is part of the voice; one well-rehearsed entrance beats scattered micro-interactions.
+Brand: motion is part of the voice; one well-rehearsed entrance beats scattered micro-interactions. The saturated AI default is fade-and-rise reveals on every scrolled section; that's a tell, not a choreography. Reserve scroll-triggered motion for moments that earn it.
 
 Product: 150–250 ms on most transitions. Motion conveys state: feedback, reveal, loading, transitions between views. No page-load choreography; users are in a task and won't wait for it.
 
@@ -29,7 +29,7 @@ Analyze where motion would improve the experience:
    - Who's the audience? (Motion-sensitive users? Power users who want speed?)
    - What matters most? (One hero animation vs many micro-interactions?)
 
-If any of these are unclear from the codebase, {{ask_instruction}}
+If any of these are unclear from the codebase, STOP and use Codex's structured user-input/question tool when available; if unavailable, ask directly in chat to clarify what you cannot infer.
 
 **CRITICAL**: Respect `prefers-reduced-motion`. Always provide non-animated alternatives for users who need them.
 
@@ -49,14 +49,13 @@ Create a purposeful animation plan:
 Add motion systematically across these categories:
 
 ### Entrance Animations
-
-- **Page load choreography**: Stagger element reveals (100-150ms delays), fade + slide combinations
 - **Hero section**: Dramatic entrance for primary content (scale, parallax, or creative effects)
-- **Content reveals**: Scroll-triggered animations using intersection observer
 - **Modal/drawer entry**: Smooth slide + fade, backdrop fade, focus management
+- **List rhythm**: Sibling stagger is legitimate for cards-in-a-grid or list-items-appearing. Whole-section fade-on-scroll is not a list and is not legitimate. Cap total stagger time: 10 items at 50ms each = 500ms total. For more items, reduce per-item delay or cap the staggered count.
+
+  Use CSS custom properties for clean stagger: `animation-delay: calc(var(--i, 0) * 50ms)` with `style="--i: 0"`, `style="--i: 1"`, etc. on each item.
 
 ### Micro-interactions
-
 - **Button feedback**:
   - Hover: Subtle scale (1.02-1.05), color shift, shadow increase
   - Click: Quick scale down then up (0.95 → 1), ripple effect
@@ -69,7 +68,6 @@ Add motion systematically across these categories:
 - **Like/favorite**: Scale + rotation, particle effects, color transition
 
 ### State Transitions
-
 - **Show/hide**: Fade + slide (not instant), appropriate timing (200-300ms)
 - **Expand/collapse**: Height transition with overflow handling, icon rotation
 - **Loading states**: Skeleton screen fades, spinner animations, progress bars
@@ -77,21 +75,18 @@ Add motion systematically across these categories:
 - **Enable/disable**: Opacity transitions, cursor changes
 
 ### Navigation & Flow
-
 - **Page transitions**: Crossfade between routes, shared element transitions
 - **Tab switching**: Slide indicator, content fade/slide
 - **Carousel/slider**: Smooth transforms, snap points, momentum
 - **Scroll effects**: Parallax layers, sticky headers with state changes, scroll progress indicators
 
 ### Feedback & Guidance
-
 - **Hover hints**: Tooltip fade-ins, cursor changes, element highlights
 - **Drag & drop**: Lift effect (shadow + scale), drop zone highlights, smooth repositioning
 - **Copy/paste**: Brief highlight flash on paste, "copied" confirmation
 - **Focus flow**: Highlight path through form or workflow
 
 ### Delight Moments
-
 - **Empty states**: Subtle floating animations on illustrations
 - **Completed actions**: Confetti, check mark flourish, success celebrations
 - **Easter eggs**: Hidden interactions for discovery
@@ -103,20 +98,21 @@ Use appropriate techniques for each animation:
 
 ### Timing & Easing
 
-**Durations by purpose:**
+**Duration: the 100/300/500 rule.** Timing matters more than easing for "feels right":
 
-- **100-150ms**: Instant feedback (button press, toggle)
-- **200-300ms**: State changes (hover, menu open)
-- **300-500ms**: Layout changes (accordion, modal)
-- **500-800ms**: Entrance animations (page load)
+| Duration | Use Case | Examples |
+|----------|----------|----------|
+| **100–150ms** | Instant feedback | Button press, toggle, color change |
+| **200–300ms** | State changes | Menu open, tooltip, hover state |
+| **300–500ms** | Layout changes | Accordion, modal, drawer |
+| **500–800ms** | Entrance animations | Page load, hero reveal |
 
 **Easing curves (use these, not CSS defaults):**
-
 ```css
 /* Recommended: natural deceleration */
---ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1); /* Smooth */
---ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1); /* Slightly snappier */
---ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1); /* Confident, decisive */
+--ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);    /* Smooth */
+--ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);   /* Slightly snappier */
+--ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);     /* Confident, decisive */
 
 /* AVOID: feel dated and tacky */
 /* bounce: cubic-bezier(0.34, 1.56, 0.64, 1); */
@@ -126,7 +122,6 @@ Use appropriate techniques for each animation:
 **Exit animations are faster than entrances.** Use ~75% of enter duration.
 
 ### CSS Animations
-
 ```css
 /* Prefer for simple, declarative animations */
 - transitions for state changes
@@ -136,7 +131,6 @@ Use appropriate techniques for each animation:
 ```
 
 ### JavaScript Animation
-
 ```javascript
 /* Use for complex, interactive animations */
 - Web Animations API for programmatic control
@@ -144,16 +138,36 @@ Use appropriate techniques for each animation:
 - GSAP for complex sequences
 ```
 
-### Performance
+### Motion Materials
 
-- **Motion materials**: Use transform/opacity for reliable movement, but use blur, filters, masks, shadows, and color shifts when they materially improve the effect
+Transform and opacity are reliable defaults, not the whole palette. Premium interfaces often need atmospheric properties. Match material to effect:
+
+- **Transform / opacity**: movement, press feedback, simple reveals, list choreography
+- **Blur / filter / backdrop-filter**: focus pulls, depth, glass or lens effects, softened entrances
+- **Clip-path / masks**: wipes, reveals, editorial cropping, product-like transitions
+- **Shadow / glow / color filters**: energy, affordance, focus, warmth, active state
+- **Grid-template-rows or FLIP-style transforms**: expanding and reflowing layout without animating `height` directly
+
+The hard rule isn't "transform and opacity only." It's: avoid animating layout-driving properties casually (`width`, `height`, `top`, `left`, margins), keep expensive effects bounded to small or isolated areas, and verify smoothness in-browser on target viewports.
+
+### Performance
 - **Layout safety**: Avoid casual animation of layout-driving properties (`width`, `height`, `top`, `left`, margins)
-- **will-change**: Add sparingly for known expensive animations
+- **will-change**: Add sparingly for known expensive animations only (e.g. on `:hover` or an `.animating` class), never preemptively across the whole page
+- **Scroll triggers**: Use Intersection Observer instead of scroll event listeners; unobserve after the animation fires once
 - **Bound expensive effects**: Keep blur/filter/shadow areas small or isolated, use `contain` where appropriate
 - **Monitor FPS**: Ensure 60fps on target devices
 
-### Accessibility
+### Perceived Performance
 
+Nobody cares how fast your site *is*, only how fast it feels. The 80ms threshold: anything under ~80ms feels instant because our brains buffer sensory input for that long to synchronize perception. Target this for micro-interactions.
+
+- **Preemptive start**: Begin transitions immediately while loading (iOS app zoom, skeleton UI). Users perceive work happening.
+- **Early completion**: Show content progressively, don't wait for everything (progressive images, streaming HTML, skeleton fade-ins).
+- **Optimistic UI**: Update the interface immediately, handle failures gracefully. Use for low-stakes actions (likes, follows). Avoid for payments or destructive operations.
+- **Easing affects perceived duration**: Ease-in (accelerating toward completion) makes tasks feel shorter because the peak-end effect weights final moments heavily. Ease-out feels satisfying for entrances.
+- **Caution**: Too-fast responses can decrease perceived value for complex operations (search, analysis). Sometimes a brief delay signals "real work" is happening.
+
+### Accessibility
 ```css
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -165,7 +179,6 @@ Use appropriate techniques for each animation:
 ```
 
 **NEVER**:
-
 - Use bounce or elastic easing curves; they feel dated and draw attention to the animation itself
 - Animate layout properties casually (`width`, `height`, `top`, `left`, margins) when transform, FLIP, or grid-based techniques would work
 - Use durations over 500ms for feedback (it feels laggy)
@@ -185,4 +198,4 @@ Test animations thoroughly:
 - **Doesn't block**: Users can interact during/after animations
 - **Adds value**: Makes interface clearer or more delightful
 
-When the motion clarifies state instead of decorating it, hand off to `{{command_prefix}}impeccable polish` for the final pass.
+When the motion clarifies state instead of decorating it, hand off to `$impeccable polish` for the final pass.

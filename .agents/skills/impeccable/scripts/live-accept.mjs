@@ -15,7 +15,14 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { isGeneratedFile } from './is-generated.mjs';
+import { isGeneratedFile } from './lib/is-generated.mjs';
+import { readBuffer as readManualEditsBuffer, writeBuffer as writeManualEditsBuffer } from './live/manual-edits-buffer.mjs';
+import {
+  applyDeferredSvelteComponentAccepts,
+  findSvelteComponentManifest,
+  inlineSvelteComponentAccept,
+  removeSvelteComponentSession,
+} from './live/svelte-component.mjs';
 
 const EXTENSIONS = ['.html', '.jsx', '.tsx', '.vue', '.svelte', '.astro'];
 
@@ -38,6 +45,12 @@ Modes:
 Required:
   --id SESSION_ID    Session ID of the variant wrapper
 
+Options:
+  --page-url URL     Current browser page URL; scopes staged copy-edit cleanup
+  --defer-source-write
+                     Deprecated compatibility flag. Svelte component accepts
+                     now write the real source immediately.
+
 Output (JSON):
   { handled, file, carbonize }`);
     process.exit(0);
@@ -46,51 +59,88 @@ Output (JSON):
   const id = argVal(args, '--id');
   const variantNum = argVal(args, '--variant');
   const paramValuesRaw = argVal(args, '--param-values');
+  const pageUrl = argVal(args, '--page-url');
   const isDiscard = args.includes('--discard');
 
-  if (!id) {
-    console.error('Missing --id');
-    process.exit(1);
-  }
-  if (!isDiscard && !variantNum) {
-    console.error('Need --discard or --variant N');
-    process.exit(1);
-  }
+  if (!id) { console.error('Missing --id'); process.exit(1); }
+  if (!isDiscard && !variantNum) { console.error('Need --discard or --variant N'); process.exit(1); }
 
   let paramValues = null;
   if (paramValuesRaw) {
-    try {
-      paramValues = JSON.parse(paramValuesRaw);
-    } catch {
-      paramValues = null;
-    } // malformed blob: skip the comment rather than failing the accept
+    try { paramValues = JSON.parse(paramValuesRaw); }
+    catch { paramValues = null; } // malformed blob: skip the comment rather than failing the accept
   }
 
   // Find the file containing this session's markers
   const found = findSessionFile(id, process.cwd());
-  if (!found) {
-    console.log(
-      JSON.stringify({ handled: false, error: 'Session markers not found for id: ' + id }),
-    );
+  const svelteComponentManifest = found ? null : findSvelteComponentManifest(id, process.cwd());
+
+  if (!found && !svelteComponentManifest) {
+    console.log(JSON.stringify({ handled: false, error: 'Session markers not found for id: ' + id }));
     process.exit(0);
+  }
+
+  if (svelteComponentManifest) {
+    if (isDiscard) {
+      removeSvelteComponentSession(id, process.cwd());
+      console.log(JSON.stringify({
+        handled: true,
+        file: svelteComponentManifest.sourceFile,
+        carbonize: false,
+        previewMode: 'svelte-component',
+        componentDir: svelteComponentManifest.componentDir,
+      }));
+      return;
+    }
+
+    let result;
+    try {
+      result = inlineSvelteComponentAccept(
+        svelteComponentManifest,
+        variantNum,
+        paramValues,
+        process.cwd(),
+      );
+    } catch (err) {
+      result = {
+        handled: false,
+        error: err.message,
+        file: svelteComponentManifest.sourceFile,
+        sourceFile: svelteComponentManifest.sourceFile,
+        previewMode: 'svelte-component',
+        componentDir: svelteComponentManifest.componentDir,
+      };
+    }
+    if (result.carbonize) {
+      result.todo = 'REQUIRED before next poll: carbonize cleanup in ' + result.file + '. See reference/live.md "Required after accept".';
+    }
+    console.log(JSON.stringify({ handled: result.handled !== false, ...result }));
+    return;
   }
 
   const { file: targetFile, content, lines } = found;
   const relFile = path.relative(process.cwd(), targetFile);
+  const previewBlock = findMarkerBlock(id, lines);
+  const sourceShadowPreview = previewBlock
+    ? readSourceShadowPreviewMeta(content, id)
+    : null;
 
-  // Bail if the session lives in a generated file. The agent manually wrote
-  // the wrapper there for preview, and is responsible for writing the
-  // accepted variant to true source (or cleaning up on discard). See
-  // "Handle fallback" in live.md.
+  if (sourceShadowPreview) {
+    console.log(JSON.stringify({
+      handled: false,
+      error: 'source_shadow_preview_deprecated',
+      hint: 'Svelte live mode now uses svelte-component injection. Re-wrap the element and regenerate variants.',
+    }));
+    process.exit(0);
+  }
+
   if (isGeneratedFile(targetFile, { cwd: process.cwd() })) {
-    console.log(
-      JSON.stringify({
-        handled: false,
-        mode: 'fallback',
-        file: relFile,
-        hint: 'Session is in a generated file. Persist the accepted variant in source; do not rely on this script.',
-      }),
-    );
+    console.log(JSON.stringify({
+      handled: false,
+      mode: 'fallback',
+      file: relFile,
+      hint: 'Session is in a generated file. Persist the accepted variant in source; do not rely on this script.',
+    }));
     process.exit(0);
   }
 
@@ -99,17 +149,86 @@ Output (JSON):
     console.log(JSON.stringify({ handled: true, file: relFile, carbonize: false, ...result }));
   } else {
     const result = handleAccept(id, variantNum, lines, targetFile, paramValues);
+    const acceptedOriginalText = result.acceptedOriginalText || '';
+    delete result.acceptedOriginalText;
     // Single-line attention-grabber when cleanup is required. The full
     // five-step checklist lives in reference/live.md (loaded once per
     // session); repeating it per-event would waste tokens.
     if (result.carbonize) {
-      result.todo =
-        'REQUIRED before next poll: carbonize cleanup in ' +
-        relFile +
-        '. See reference/live.md "Required after accept".';
+      result.todo = 'REQUIRED before next poll: carbonize cleanup in ' + relFile + '. See reference/live.md "Required after accept".';
+    }
+    // Scrub stash entries whose text appeared inside the just-replaced
+    // original wrap block. The accept embodies those manual edits (wrap was
+    // buffer-aware), so only those scoped ops are redundant.
+    if (result.handled !== false) {
+      try {
+        scrubManualEditsAgainstOriginalBlock(acceptedOriginalText, process.cwd(), pageUrl);
+      } catch {
+        // Non-fatal; the buffer stays as-is and the user can discard later.
+      }
     }
     console.log(JSON.stringify({ handled: true, file: relFile, ...result }));
   }
+}
+
+/**
+ * After a variant accept rewrites one wrapper, drop only buffer ops whose
+ * text appeared inside that wrapper's original block. The previous file-wide
+ * scrub dropped unrelated staged edits from other components/files whenever
+ * their originalText wasn't present in the just-accepted file.
+ *
+ * Match both originalText and newText because live-wrap rewrites the original
+ * preview block to reflect pending manual edits before variants are generated.
+ */
+function scrubManualEditsAgainstOriginalBlock(originalBlockText, cwd = process.cwd(), pageUrl = null) {
+  const originalBlock = String(originalBlockText || '');
+  if (!originalBlock) return;
+  if (!pageUrl) return;
+  const buffer = readManualEditsBuffer(cwd);
+  if (buffer.entries.length === 0) return;
+  let mutated = false;
+  for (const entry of buffer.entries) {
+    if (entry.pageUrl !== pageUrl) continue;
+    const before = entry.ops.length;
+    entry.ops = entry.ops.filter((op) => {
+      return !manualEditOpAppearsInBlock(op, originalBlock);
+    });
+    if (entry.ops.length !== before) mutated = true;
+  }
+  buffer.entries = buffer.entries.filter((entry) => entry.ops.length > 0);
+  if (mutated) writeManualEditsBuffer(cwd, buffer);
+}
+
+function manualEditOpAppearsInBlock(op, originalBlock) {
+  const candidates = [op?.newText, op?.originalText]
+    .filter((text) => typeof text === 'string' && text.length > 0);
+  return candidates.some((text) => originalBlockHasExactManualText(originalBlock, text));
+}
+
+function originalBlockHasExactManualText(originalBlock, text) {
+  const needle = normalizeManualEditText(text);
+  if (!needle) return false;
+  return manualEditTextSegments(originalBlock).some((segment) => segment === needle);
+}
+
+function manualEditTextSegments(source) {
+  return String(source || '')
+    .replace(/<[^>]*>/g, '\n')
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, '\n')
+    .replace(/<!--[\s\S]*?-->/g, '\n')
+    .split(/\n+/)
+    .map(normalizeManualEditText)
+    .filter(Boolean);
+}
+
+function normalizeManualEditText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim();
+}
+
+// Compatibility export for older tests/callers. The unsafe file-wide scrub was
+// removed; callers must pass accepted original-block text for scoped cleanup.
+function scrubManualEditsAgainstFile(_targetFile, cwd = process.cwd(), originalBlockText = '', pageUrl = null) {
+  return scrubManualEditsAgainstOriginalBlock(originalBlockText, cwd, pageUrl);
 }
 
 // ---------------------------------------------------------------------------
@@ -146,6 +265,71 @@ function handleDiscard(id, lines, targetFile) {
 // Accept
 // ---------------------------------------------------------------------------
 
+/**
+ * Build carbonize stitch-in lines. JSX targets occupy a single child slot
+ * (ternary branch, return value, etc.) — the same constraint as live-wrap.
+ * When isJsx, tuck markers + <style> + variant wrapper inside one outer
+ * <div data-impeccable-carbonize> so the slot keeps a single root node.
+ */
+function buildCarbonizeReplacement({
+  indent,
+  commentSyntax,
+  isJsx,
+  id,
+  variantNum,
+  cssContent,
+  paramValues,
+  restored,
+}) {
+  const lines = [];
+  if (!cssContent) {
+    lines.push(...restored);
+    return lines;
+  }
+
+  const variantStyleAttr = isJsx
+    ? "style={{ display: 'contents' }}"
+    : 'style="display: contents"';
+
+  const pushCarbonizeBody = (bodyIndent) => {
+    const bodyRestored = reindentContent(restored, indent, bodyIndent + '  ');
+    lines.push(bodyIndent + commentSyntax.open + ' impeccable-carbonize-start ' + id + ' ' + commentSyntax.close);
+    lines.push(bodyIndent + '<style data-impeccable-css="' + id + '">' + (isJsx ? '{`' : ''));
+    for (const cssLine of cssContent) {
+      lines.push(bodyIndent + cssLine.trimStart());
+    }
+    lines.push(bodyIndent + (isJsx ? '`}</style>' : '</style>'));
+    if (paramValues && Object.keys(paramValues).length > 0) {
+      lines.push(
+        bodyIndent + commentSyntax.open + ' impeccable-param-values ' + id + ': ' + JSON.stringify(paramValues) + ' ' + commentSyntax.close,
+      );
+    }
+    lines.push(bodyIndent + commentSyntax.open + ' impeccable-carbonize-end ' + id + ' ' + commentSyntax.close);
+    lines.push(bodyIndent + '<div data-impeccable-variant="' + variantNum + '" ' + variantStyleAttr + '>');
+    lines.push(...bodyRestored);
+    lines.push(bodyIndent + '</div>');
+  };
+
+  if (isJsx) {
+    const wrapperStyle = 'style={{ display: "contents" }}';
+    lines.push(indent + '<div data-impeccable-carbonize="' + id + '" ' + wrapperStyle + '>');
+    pushCarbonizeBody(indent + '  ');
+    lines.push(indent + '</div>');
+  } else {
+    pushCarbonizeBody(indent);
+  }
+
+  return lines;
+}
+
+function reindentContent(contentLines, fromIndent, toIndent) {
+  return contentLines.map((line) => {
+    if (line.trim() === '') return '';
+    if (line.startsWith(fromIndent)) return toIndent + line.slice(fromIndent.length);
+    return toIndent + line.trimStart();
+  });
+}
+
 function handleAccept(id, variantNum, lines, targetFile, paramValues) {
   const block = findMarkerBlock(id, lines);
   if (!block) return { handled: false, error: 'Markers not found' };
@@ -162,6 +346,7 @@ function handleAccept(id, variantNum, lines, targetFile, paramValues) {
   // Extract the chosen variant's inner content
   const variantContent = extractVariant(lines, block, variantNum);
   if (!variantContent) return { handled: false, error: 'Variant ' + variantNum + ' not found' };
+  const originalContent = extractOriginal(lines, block);
 
   // Extract CSS block if present
   const cssContent = extractCss(lines, block, id);
@@ -173,60 +358,17 @@ function handleAccept(id, variantNum, lines, targetFile, paramValues) {
   const hasHelperAttrs = variantText.includes('data-impeccable-variant');
   const needsCarbonize = !!(cssContent || hasHelperAttrs);
 
-  // Build the replacement
   const restored = deindentContent(variantContent, indent);
-  const replacement = [];
-
-  if (cssContent) {
-    replacement.push(
-      indent + commentSyntax.open + ' impeccable-carbonize-start ' + id + ' ' + commentSyntax.close,
-    );
-    // JSX targets need the CSS body wrapped in a template literal so that the
-    // `{` and `}` in CSS rules don't get parsed as JSX expressions.
-    replacement.push(indent + '<style data-impeccable-css="' + id + '">' + (isJsx ? '{`' : ''));
-    // Re-indent CSS content to match
-    for (const cssLine of cssContent) {
-      replacement.push(indent + cssLine.trimStart());
-    }
-    replacement.push(indent + (isJsx ? '`}</style>' : '</style>'));
-    if (paramValues && Object.keys(paramValues).length > 0) {
-      // Preserve the user's knob positions for the carbonize-cleanup agent
-      // to bake into the final CSS when it collapses scoped rules.
-      replacement.push(
-        indent +
-          commentSyntax.open +
-          ' impeccable-param-values ' +
-          id +
-          ': ' +
-          JSON.stringify(paramValues) +
-          ' ' +
-          commentSyntax.close,
-      );
-    }
-    replacement.push(
-      indent + commentSyntax.open + ' impeccable-carbonize-end ' + id + ' ' + commentSyntax.close,
-    );
-  }
-
-  // Keep the `@scope ([data-impeccable-variant="N"])` selectors in the
-  // carbonize CSS block working visually by re-wrapping the accepted content
-  // in a data-impeccable-variant="N" div with `display: contents` (so layout
-  // isn't affected). The carbonize agent strips this attribute + wrapper when
-  // it moves the CSS to a proper stylesheet.
-  //
-  // Style attribute syntax has to follow the host file's flavor — JSX files
-  // need the object form, otherwise React 19 throws "Failed to set indexed
-  // property [0] on CSSStyleDeclaration" while parsing the string char-by-char.
-  if (cssContent) {
-    const styleAttr = isJsx ? "style={{ display: 'contents' }}" : 'style="display: contents"';
-    replacement.push(
-      indent + '<div data-impeccable-variant="' + variantNum + '" ' + styleAttr + '>',
-    );
-    replacement.push(...restored);
-    replacement.push(indent + '</div>');
-  } else {
-    replacement.push(...restored);
-  }
+  const replacement = buildCarbonizeReplacement({
+    indent,
+    commentSyntax,
+    isJsx,
+    id,
+    variantNum,
+    cssContent,
+    paramValues,
+    restored,
+  });
 
   const newLines = [
     ...lines.slice(0, replaceRange.start),
@@ -235,7 +377,35 @@ function handleAccept(id, variantNum, lines, targetFile, paramValues) {
   ];
   fs.writeFileSync(targetFile, newLines.join('\n'), 'utf-8');
 
-  return { carbonize: needsCarbonize };
+  return { carbonize: needsCarbonize, acceptedOriginalText: originalContent.join('\n') };
+}
+
+function readSourceShadowPreviewMeta(content, id) {
+  const escaped = escapeRegExp(id);
+  const wrapperRe = new RegExp('<[^>]+data-impeccable-variants=(["\'])' + escaped + '\\1[^>]*>');
+  const match = String(content || '').match(wrapperRe);
+  if (!match) return null;
+  const tag = match[0];
+  if (readHtmlAttr(tag, 'data-impeccable-preview') !== 'source-shadow') return null;
+  const sourceFile = readHtmlAttr(tag, 'data-impeccable-source-file');
+  const sourceStartLine = Number(readHtmlAttr(tag, 'data-impeccable-source-start'));
+  const sourceEndLine = Number(readHtmlAttr(tag, 'data-impeccable-source-end'));
+  if (!sourceFile || !Number.isFinite(sourceStartLine) || !Number.isFinite(sourceEndLine)) return null;
+  return { sourceFile, sourceStartLine, sourceEndLine };
+}
+
+function readHtmlAttr(tag, name) {
+  const match = String(tag || '').match(new RegExp('\\s' + escapeRegExp(name) + '\\s*=\\s*(["\'])(.*?)\\1'));
+  if (!match) return null;
+  return decodeHtmlAttr(match[2]);
+}
+
+function decodeHtmlAttr(value) {
+  return String(value || '')
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
 }
 
 // ---------------------------------------------------------------------------
@@ -254,13 +424,10 @@ function findMarkerBlock(id, lines) {
 
   for (let i = 0; i < lines.length; i++) {
     if (start === -1 && lines[i].includes(startPattern)) start = i;
-    if (lines[i].includes(endPattern)) {
-      end = i;
-      break;
-    }
+    if (lines[i].includes(endPattern)) { end = i; break; }
   }
 
-  return start !== -1 && end !== -1 ? { start, end } : null;
+  return (start !== -1 && end !== -1) ? { start, end, id } : null;
 }
 
 /**
@@ -287,11 +454,14 @@ function expandReplaceRange(block, lines, isJsx) {
   // Walk back for the wrapper `<div data-impeccable-variants="..."` opener.
   // The attr may sit on a continuation line of a multi-line opening tag, so
   // also walk to the line that actually contains `<div`.
-  for (let i = start - 1; i >= Math.max(0, start - 12); i--) {
-    if (/data-impeccable-variants=/.test(lines[i])) {
+  for (let i = start - 1; i >= 0; i--) {
+    if (isVariantEndMarkerLine(lines[i], block.id)) break;
+    if (hasVariantWrapperAttr(lines[i], block.id)) {
       let opener = i;
-      while (opener > 0 && !/<div\b/.test(lines[opener])) opener--;
-      start = opener;
+      while (opener > 0 && !/<div\b/.test(lines[opener]) && !isVariantEndMarkerLine(lines[opener], block.id)) {
+        opener--;
+      }
+      if (/<div\b/.test(lines[opener])) start = opener;
       break;
     }
   }
@@ -327,6 +497,19 @@ function expandReplaceRange(block, lines, isJsx) {
   }
 
   return { start, end };
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function isVariantEndMarkerLine(line, id) {
+  return new RegExp('impeccable-variants-end\\s+' + escapeRegExp(id) + '(?:\\s|--|\\*/|$)').test(line);
+}
+
+function hasVariantWrapperAttr(line, id) {
+  const escaped = escapeRegExp(id);
+  return new RegExp(`data-impeccable-variants\\s*=\\s*(?:"${escaped}"|'${escaped}'|\\{["']${escaped}["']\\})`).test(line);
 }
 
 /**
@@ -545,7 +728,7 @@ function deindentContent(contentLines, baseIndent) {
   if (minIndent === Infinity) minIndent = 0;
 
   // Strip the extra indentation and re-add base indent
-  return contentLines.map((line) => {
+  return contentLines.map(line => {
     if (line.trim() === '') return '';
     return baseIndent + line.slice(minIndent);
   });
@@ -583,20 +766,13 @@ function findSessionFile(id, cwd) {
 function searchDir(dir, query, seen, depth) {
   if (depth > 5) return null;
   let realDir;
-  try {
-    realDir = fs.realpathSync(dir);
-  } catch {
-    return null;
-  }
+  try { realDir = fs.realpathSync(dir); } catch { return null; }
   if (seen.has(realDir)) return null;
   seen.add(realDir);
 
   let entries;
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return null;
-  }
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+  catch { return null; }
 
   for (const entry of entries) {
     if (!entry.isFile()) continue;
@@ -605,9 +781,7 @@ function searchDir(dir, query, seen, depth) {
     try {
       const content = fs.readFileSync(filePath, 'utf-8');
       if (content.includes(query)) return filePath;
-    } catch {
-      /* skip */
-    }
+    } catch { /* skip */ }
   }
 
   for (const entry of entries) {
@@ -635,11 +809,4 @@ if (_running?.endsWith('live-accept.mjs') || _running?.endsWith('live-accept.mjs
   acceptCli();
 }
 
-export {
-  findMarkerBlock,
-  extractOriginal,
-  extractVariant,
-  extractCss,
-  deindentContent,
-  detectCommentSyntax,
-};
+export { findMarkerBlock, extractOriginal, extractVariant, extractCss, deindentContent, detectCommentSyntax, scrubManualEditsAgainstFile, scrubManualEditsAgainstOriginalBlock, applyDeferredSvelteComponentAccepts };

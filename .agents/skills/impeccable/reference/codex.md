@@ -1,8 +1,8 @@
 # Codex: Visual Direction & Asset Production
 
-This file is loaded by `{{command_prefix}}impeccable craft` when the harness has native image generation (currently Codex via `image_gen`). Other harnesses skip it. It covers the two craft steps that depend on real image generation: landing the visual direction, and producing the raster assets the implementation will compose.
+This file is loaded by `$impeccable craft` when the harness has native image generation (currently Codex via `image_gen`). Other harnesses skip it. It covers the two craft steps that depend on real image generation: landing the visual direction, and producing the raster assets the implementation will compose.
 
-Read this _before_ generating any images. The order matters, and the per-step user pauses are what keep generated imagery from drifting away from the brief.
+Read this *before* generating any images. The order matters, and the per-step user pauses are what keep generated imagery from drifting away from the brief.
 
 ### Four stop points before code
 
@@ -23,8 +23,8 @@ Before generating anything, run a brief direction conversation grounded in the s
 
 Ask **2-3 targeted questions** about visual lane, color strategy, atmosphere, and named anchor references. Don't enumerate generic menus; tie each question to the shape brief's answers. Example shape-grounded questions:
 
-- "Brief says 'editorial restraint, Klim-adjacent.' Are we closer to a quiet specimen page or a magazine-spread feel with hero imagery?"
-- "Palette strategy from shape was 'Committed.' Want it warm-grounded (deep oxblood + cream) or cool-grounded (slate + paper white)?"
+- "Brief says 'specimen-page restraint.' Are we closer to a quiet typographic page or a wider editorial spread with hero imagery?"
+- "Palette strategy from shape was 'Committed.' Which one color carries the surface (a brand-driven pick rather than a default warm-or-cool framing)? (And no, the answer isn't a cream/sand body bg; that's the saturated AI default.)"
 
 **STOP and wait for answers.** These pin the palette before any pixel gets generated. Do not proceed to Step B until the user has responded.
 
@@ -40,7 +40,7 @@ Show the palette to the user. Ask one question: "This is the palette I'm locking
 
 ## Step C: Generate 1-3 Visual Mocks Against the Palette
 
-Once the palette is confirmed, generate **1 to 3** high-fidelity north-star comps. Each mock must use the confirmed palette and typography. Mocks differ in _structural_ direction (hierarchy, topology, density, composition), not in color or motif.
+Once the palette is confirmed, generate **1 to 3** high-fidelity north-star comps. Each mock must use the confirmed palette and typography. Mocks differ in *structural* direction (hierarchy, topology, density, composition), not in color or motif.
 
 - Brand work: push visual identity, composition, mood, and signature motifs.
 - Product work: push hierarchy, topology, density, tone, grounded in realistic product structure.
@@ -54,7 +54,7 @@ Show the comps. Ask what carries forward. Iterate until **one direction is appro
 
 **STOP and wait for the approval or the delegation.** Do not begin Step E or return to craft.md Step 4 until a single direction is named. If the user delegates, pick the strongest direction and explain it from the brief, not personal taste.
 
-Before moving to assets, summarize what to carry into code and what _not_ to literalize from the mock. This is the handoff between visual exploration and semantic implementation.
+Before moving to assets, summarize what to carry into code and what *not* to literalize from the mock. This is the handoff between visual exploration and semantic implementation.
 
 ## Step E: Mock Fidelity Inventory
 

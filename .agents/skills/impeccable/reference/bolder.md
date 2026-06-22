@@ -28,7 +28,7 @@ Analyze what makes the design feel too safe or boring:
    - Who's the audience? (What will resonate?)
    - What are the constraints? (Brand guidelines, accessibility, performance)
 
-If any of these are unclear from the codebase, {{ask_instruction}}
+If any of these are unclear from the codebase, STOP and use Codex's structured user-input/question tool when available; if unavailable, ask directly in chat to clarify what you cannot infer.
 
 **CRITICAL**: "Bolder" doesn't mean chaotic or garish. It means distinctive, memorable, and confident. Think intentional drama, not random chaos.
 
@@ -50,14 +50,12 @@ Create a strategy to increase impact while maintaining coherence:
 Systematically increase impact across these dimensions:
 
 ### Typography Amplification
-
-- **Replace generic fonts**: Swap system fonts for distinctive choices (see the parent skill's typography guidelines and [typography.md](typography.md) for inspiration)
+- **Replace generic fonts**: Swap system fonts for distinctive choices (see the parent skill's typography guidelines and the [Reference Material section of typeset.md](typeset.md#reference-material) for inspiration)
 - **Extreme scale**: Create dramatic size jumps (3x-5x differences, not 1.5x)
 - **Weight contrast**: Pair 900 weights with 200 weights, not 600 with 400
 - **Unexpected choices**: Variable fonts, display fonts for headlines, condensed/extended widths, monospace as intentional accent (not as lazy "dev tool" default)
 
 ### Color Intensification
-
 - **Increase saturation**: Shift to more vibrant, energetic colors (but not neon)
 - **Bold palette**: Introduce unexpected color combinations. Avoid the purple-blue gradient AI slop
 - **Dominant color strategy**: Let one bold color own 60% of the design
@@ -66,7 +64,6 @@ Systematically increase impact across these dimensions:
 - **Rich gradients**: Intentional multi-stop gradients (not generic purple-to-blue)
 
 ### Spatial Drama
-
 - **Extreme scale jumps**: Make important elements 3-5x larger than surroundings
 - **Break the grid**: Let hero elements escape containers and cross boundaries
 - **Asymmetric layouts**: Replace centered, balanced layouts with tension-filled asymmetry
@@ -74,7 +71,6 @@ Systematically increase impact across these dimensions:
 - **Overlap**: Layer elements intentionally for depth
 
 ### Visual Effects
-
 - **Dramatic shadows**: Large, soft shadows for elevation (but not generic drop shadows on rounded rectangles)
 - **Background treatments**: Mesh patterns, noise textures, geometric patterns, intentional gradients (not purple-to-blue)
 - **Texture & depth**: Grain, halftone, duotone, layered elements. NOT glassmorphism (it's overused AI slop)
@@ -82,21 +78,18 @@ Systematically increase impact across these dimensions:
 - **Custom elements**: Illustrative elements, custom icons, decorative details that reinforce brand
 
 ### Motion & Animation
-
-- **Entrance choreography**: Staggered, dramatic page load animations with 50-100ms delays
-- **Scroll effects**: Parallax, reveal animations, scroll-triggered sequences
-- **Micro-interactions**: Satisfying hover effects, click feedback, state changes
-- **Transitions**: Smooth, noticeable transitions using ease-out-quart/quint/expo (not bounce or elastic, which cheapen the effect)
+- **Hero moment**: One signature entrance, once. Not on every visit and not on every section.
+- **Micro-interactions**: Satisfying hover effects, click feedback, state changes.
+- **Transitions**: Smooth, noticeable transitions using ease-out-quart/quint/expo (not bounce or elastic, which cheapen the effect).
+- **Bolder ≠ scroll-fade-rise on every section.** That's the saturated AI default, the opposite of bold.
 
 ### Composition Boldness
-
 - **Hero moments**: Create clear focal points with dramatic treatment
 - **Diagonal flows**: Escape horizontal/vertical rigidity with diagonal arrangements
 - **Full-bleed elements**: Use full viewport width/height for impact
 - **Unexpected proportions**: Golden ratio? Throw it out. Try 70/30, 80/20 splits
 
 **NEVER**:
-
 - Add effects randomly without purpose (chaos ≠ bold)
 - Sacrifice readability for aesthetics (body text must be readable)
 - Make everything bold (then nothing is bold; you need contrast)
@@ -117,4 +110,4 @@ Ensure amplification maintains usability and coherence:
 
 **The test**: If you showed this to someone and said "AI made this bolder," would they believe you immediately? If yes, you've failed. Bold means distinctive, not "more AI effects."
 
-When the result feels right, hand off to `{{command_prefix}}impeccable polish` for the final pass.
+When the result feels right, hand off to `$impeccable polish` for the final pass.

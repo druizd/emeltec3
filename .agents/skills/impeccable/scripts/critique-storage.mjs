@@ -27,8 +27,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { getCritiqueDir } from './impeccable-paths.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { getCritiqueDir } from './lib/impeccable-paths.mjs';
 
 const SLUG_MAX = 50;
 
@@ -48,11 +48,7 @@ export function slugFromTarget(resolved, { cwd = process.cwd() } = {}) {
   // URL
   if (/^https?:\/\//i.test(trimmed)) {
     let url;
-    try {
-      url = new URL(trimmed);
-    } catch {
-      return null;
-    }
+    try { url = new URL(trimmed); } catch { return null; }
     const hostPath = `${url.hostname}${url.pathname}`;
     return kebab(hostPath);
   }
@@ -89,7 +85,7 @@ function kebab(s) {
  * Plain colons aren't allowed on Windows filesystems.
  */
 export function nowFilenameStamp(date = new Date()) {
-  const iso = date.toISOString(); // 2026-05-12T18:30:00.123Z
+  const iso = date.toISOString();           // 2026-05-12T18:30:00.123Z
   return iso.replace(/[:.]/g, '-').replace(/-\d+Z$/, 'Z');
 }
 
@@ -138,11 +134,7 @@ function parseFrontmatter(text) {
     const key = line.slice(0, colon).trim();
     let value = line.slice(colon + 1).trim();
     if (/^".*"$/.test(value)) {
-      try {
-        value = JSON.parse(value);
-      } catch {
-        /* leave as-is */
-      }
+      try { value = JSON.parse(value); } catch { /* leave as-is */ }
     } else if (/^-?\d+$/.test(value)) {
       value = Number(value);
     }
@@ -158,8 +150,7 @@ function listSnapshotsForSlug(slug, cwd) {
   const dir = getCritiqueDir(cwd);
   if (!fs.existsSync(dir)) return [];
   const suffix = `__${slug}.md`;
-  return fs
-    .readdirSync(dir)
+  return fs.readdirSync(dir)
     .filter((f) => f.endsWith(suffix))
     .sort()
     .map((f) => path.join(dir, f));
@@ -194,19 +185,13 @@ function main(argv) {
   switch (cmd) {
     case 'slug': {
       const slug = slugFromTarget(args[0]);
-      if (!slug) {
-        process.stderr.write('no stable slug for input\n');
-        process.exit(1);
-      }
+      if (!slug) { process.stderr.write('no stable slug for input\n'); process.exit(1); }
       process.stdout.write(`${slug}\n`);
       return;
     }
     case 'write': {
       const [slug, bodyFile] = args;
-      if (!slug || !bodyFile) {
-        process.stderr.write('usage: write <slug> <body-file>\n');
-        process.exit(1);
-      }
+      if (!slug || !bodyFile) { process.stderr.write('usage: write <slug> <body-file>\n'); process.exit(1); }
       const raw = fs.readFileSync(bodyFile, 'utf-8');
       // The body file may be a full report. The caller passes the meta as
       // a JSON object on stdin if it wants structured frontmatter; otherwise
@@ -214,11 +199,7 @@ function main(argv) {
       let meta = {};
       const metaArg = process.env.IMPECCABLE_CRITIQUE_META;
       if (metaArg) {
-        try {
-          meta = JSON.parse(metaArg);
-        } catch {
-          /* ignore */
-        }
+        try { meta = JSON.parse(metaArg); } catch { /* ignore */ }
       }
       const out = writeSnapshot({ slug, meta, body: raw });
       process.stdout.write(`${out}\n`);
@@ -226,9 +207,7 @@ function main(argv) {
     }
     case 'latest': {
       const latest = readLatestSnapshot(args[0]);
-      if (!latest) {
-        process.exit(2);
-      }
+      if (!latest) { process.exit(2); }
       process.stdout.write(latest.body);
       return;
     }
@@ -243,10 +222,21 @@ function main(argv) {
   }
 }
 
-// Why pathToFileURL: on Windows, import.meta.url is file:///D:/... (forward
-// slashes) while process.argv[1] is D:\... (backslashes), so the naive
-// `file://${process.argv[1]}` compare fails and main() never runs — the
-// script silently exits 0. pathToFileURL normalizes both. (issue #155)
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+function isMainModule() {
+  if (!process.argv[1]) return false;
+  try {
+    return fs.realpathSync(fileURLToPath(import.meta.url)) === fs.realpathSync(process.argv[1]);
+  } catch {
+    // pathToFileURL normalizes Windows paths; keep it as a fallback for any
+    // environment where realpath is unavailable.
+    return import.meta.url === pathToFileURL(process.argv[1]).href;
+  }
+}
+
+// Why the realpath check: generated skills are often reached through symlinked
+// harness directories (for example a demo repo's `.agents` -> source `.agents`).
+// Node resolves import.meta.url to the real file, while process.argv[1] keeps
+// the symlink path. Comparing canonical paths prevents a silent exit-0 no-op.
+if (isMainModule()) {
   main(process.argv.slice(2));
 }
