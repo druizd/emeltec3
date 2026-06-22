@@ -1,5 +1,9 @@
 # Optimizaciones Operación Pozo — Mayo 2026
 
+> **Documento histórico (snapshot).** Registra trabajo de performance cerrado en
+> mayo 2026. Las métricas reflejan ese momento; no se mantiene al día. Para el
+> estado actual ver los docs vigentes en `docs/`.
+
 Sesión de performance + conexión de mocks restantes en la vista Operación de
 pozos (`/companies/:siteId/water` → tabs Hoy, Histórico, Resumen por Período).
 
