@@ -5,6 +5,37 @@ import type { ApiResponse } from '@emeltec/shared';
 
 export type ColdRoomRange = '1h' | '6h' | '24h' | '7d';
 
+/** Intervalo de agrupación para el export histórico ('auto' = resolución base). */
+export type ColdRoomExportInterval = 'auto' | '1min' | '5min' | '15min' | '1h' | '1d';
+
+export interface ColdRoomExportPoint {
+  ts: string;
+  sensorId: string;
+  area: string;
+  tap: string;
+  /** Promedio del intervalo. */
+  t: number | null;
+  tMin: number | null;
+  tMax: number | null;
+  h: number | null;
+  hMin: number | null;
+  hMax: number | null;
+}
+
+export interface ColdRoomHistoryExportResponse {
+  ok: boolean;
+  data: { points: ColdRoomExportPoint[] };
+  meta: {
+    view: string;
+    interval?: string;
+    rows: number;
+    from: string;
+    to: string;
+    sensorCount: number;
+  };
+  error?: string;
+}
+
 export interface ColdRoomHistPoint {
   t: string;
   v: number;
@@ -26,6 +57,8 @@ export interface ColdRoomSensor {
   lastSeen: string;
   hist: number[];
   histPoints: ColdRoomHistPoint[];
+  /** Serie histórica de humedad (mismo eje temporal que histPoints). */
+  histHumPoints?: ColdRoomHistPoint[];
   /** True si reg_map.parametros.defective === true. */
   defective?: boolean;
   defectiveReason?: string;
@@ -34,7 +67,18 @@ export interface ColdRoomSensor {
 export interface ColdRoomSensorsResponse {
   ok: boolean;
   data: ColdRoomSensor[];
-  meta?: { range: ColdRoomRange; count: number; serverTime: string };
+  meta?: {
+    range: ColdRoomRange;
+    count: number;
+    serverTime: string;
+    source?: string;
+    /** Presente solo en modo fecha específica (?date). 'YYYY-MM-DD' día Chile. */
+    date?: string;
+    /** Inicio de la ventana del día (ISO UTC). */
+    from?: string;
+    /** Fin de la ventana del día (ISO UTC, exclusivo). */
+    to?: string;
+  };
   error?: string;
 }
 
@@ -93,6 +137,7 @@ export class ColdRoomService {
     tap: string | null,
     range: ColdRoomRange = '24h',
     siteIds?: string[],
+    date?: string | null,
   ): Observable<ColdRoomSensorsResponse> {
     const params = new URLSearchParams();
     if (tap) params.set('tap', tap);
@@ -100,6 +145,10 @@ export class ColdRoomService {
     params.set('t', String(Date.now()));
     if (siteIds && siteIds.length > 0) {
       params.set('siteIds', siteIds.join(','));
+    }
+    // Modo fecha específica: backend ancla ventana 24h al día Chile, ignora range.
+    if (date) {
+      params.set('date', date);
     }
     return this.http.get<ColdRoomSensorsResponse>(
       `/api/cold-room/${encodeURIComponent(siteId)}/sensors?${params.toString()}`,
@@ -116,41 +165,17 @@ export class ColdRoomService {
     to: string,
     siteIds: string[],
     sensorIds: string[],
-  ): Observable<{
-    ok: boolean;
-    data: {
-      points: {
-        ts: string;
-        sensorId: string;
-        area: string;
-        tap: string;
-        t: number | null;
-        h: number | null;
-      }[];
-    };
-    meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
-    error?: string;
-  }> {
+    interval?: ColdRoomExportInterval,
+  ): Observable<ColdRoomHistoryExportResponse> {
     const params = new URLSearchParams();
     params.set('from', from);
     params.set('to', to);
     if (siteIds.length > 0) params.set('siteIds', siteIds.join(','));
     if (sensorIds.length > 0) params.set('sensorIds', sensorIds.join(','));
-    return this.http.get<{
-      ok: boolean;
-      data: {
-        points: {
-          ts: string;
-          sensorId: string;
-          area: string;
-          tap: string;
-          t: number | null;
-          h: number | null;
-        }[];
-      };
-      meta: { view: string; rows: number; from: string; to: string; sensorCount: number };
-      error?: string;
-    }>(`/api/cold-room/${encodeURIComponent(siteId)}/history-export?${params.toString()}`);
+    if (interval) params.set('interval', interval);
+    return this.http.get<ColdRoomHistoryExportResponse>(
+      `/api/cold-room/${encodeURIComponent(siteId)}/history-export?${params.toString()}`,
+    );
   }
 
   /**

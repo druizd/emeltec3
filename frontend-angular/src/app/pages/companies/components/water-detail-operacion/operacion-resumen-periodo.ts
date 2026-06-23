@@ -144,7 +144,7 @@ interface IncidenciaPeriodo {
                 type="button"
                 (click)="aplicarFechas()"
                 [disabled]="!fechasPendientes()"
-                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
                 Aplicar
@@ -195,7 +195,7 @@ interface IncidenciaPeriodo {
                 {{ k.label }}
               </p>
               <p class="mt-0.5 text-h5 font-semibold text-slate-800">{{ k.valor }}</p>
-              <p class="text-caption-xs text-slate-400">{{ k.subtext }}</p>
+              <p class="text-caption-xs text-slate-500">{{ k.subtext }}</p>
             </div>
           </article>
         }
@@ -210,7 +210,7 @@ interface IncidenciaPeriodo {
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Resumen operacional por turno
             </h3>
-            <p class="mt-0.5 flex items-center gap-1 text-caption-xs font-medium text-slate-400">
+            <p class="mt-0.5 flex items-center gap-1 text-caption-xs font-medium text-slate-500">
               <span class="material-symbols-outlined text-[12px]">link</span>
               Turnos vinculados con "Hoy en tiempo real" — los cambios se guardan por sitio
             </p>
@@ -218,7 +218,7 @@ interface IncidenciaPeriodo {
           <button
             type="button"
             (click)="resumenSettingsOpen.update((v) => !v)"
-            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             [class]="
               resumenSettingsOpen()
                 ? 'bg-primary-tint-14 text-primary-container'
@@ -245,7 +245,7 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(2)"
-                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 2 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -256,7 +256,7 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(3)"
-                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#0DAFBD]"
+                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 3 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -307,7 +307,7 @@ interface IncidenciaPeriodo {
             <button
               type="button"
               (click)="resumenSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
             >
               <span class="material-symbols-outlined text-[14px]">check</span>
               Listo
@@ -360,7 +360,7 @@ interface IncidenciaPeriodo {
         <div class="mb-4 flex items-center justify-between">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo diario en el período</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">m³/día · días sin operación en gris</p>
+            <p class="mt-0.5 text-caption-xs text-slate-500">m³/día · días sin operación en gris</p>
           </div>
           <span
             class="rounded-full bg-primary-tint-08 px-2.5 py-1 text-caption-xs font-bold text-primary-container"
@@ -474,7 +474,7 @@ interface IncidenciaPeriodo {
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Resumen diario
             </h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               {{ data().tabla.length }} días · {{ periodoLabel() }}
               @if (dailyAggregatesLoading()) {
                 · <span class="text-primary-container">cargando…</span>
@@ -484,7 +484,7 @@ interface IncidenciaPeriodo {
           <button
             type="button"
             aria-label="Descargar resumen diario en CSV"
-            class="inline-flex items-center gap-1 text-caption-xs font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex items-center gap-1 text-caption-xs font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[13px]" aria-hidden="true">download</span
             >.CSV
@@ -577,7 +577,7 @@ interface IncidenciaPeriodo {
           </table>
         </div>
         <div class="border-t border-slate-100 px-4 py-2.5">
-          <p class="text-caption-xs text-slate-400">
+          <p class="text-caption-xs text-slate-500">
             Los datos son provisorios hasta confirmar sincronización con DGA.
           </p>
         </div>
@@ -623,7 +623,7 @@ interface IncidenciaPeriodo {
         @if (data().alertas.length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">check_circle</span>
-            <p class="text-body-sm font-bold text-slate-400">
+            <p class="text-body-sm font-bold text-slate-500">
               Sin alertas en el período seleccionado
             </p>
           </div>
@@ -643,7 +643,7 @@ interface IncidenciaPeriodo {
                 <!-- Contenido -->
                 <div class="min-w-0 flex-1">
                   <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
-                  <p class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                  <p class="mt-0.5 font-mono text-caption-xs text-slate-500">
                     {{ alerta.fechaHora }}
                   </p>
                 </div>
@@ -668,7 +668,7 @@ interface IncidenciaPeriodo {
           <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
             Incidencias en el período
           </h3>
-          <span class="font-mono text-caption-xs text-slate-400"
+          <span class="font-mono text-caption-xs text-slate-500"
             >{{ data().incidencias.length }} registro{{
               data().incidencias.length !== 1 ? 's' : ''
             }}</span
@@ -678,7 +678,7 @@ interface IncidenciaPeriodo {
         @if (data().incidencias.length === 0) {
           <div class="flex flex-col items-center gap-2 py-10 text-center">
             <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
-            <p class="text-body-sm font-bold text-slate-400">
+            <p class="text-body-sm font-bold text-slate-500">
               Sin incidencias registradas en el período
             </p>
           </div>
@@ -825,7 +825,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     { key: '90d', label: '90 días' },
   ];
 
-  private readonly dotClasses = ['bg-primary', 'bg-[#0899a5]', 'bg-slate-400'];
+  private readonly dotClasses = ['bg-primary', 'bg-primary-container', 'bg-slate-400'];
 
   /**
    * Cards por turno con datos REALES desde `contadores-jornadas`.

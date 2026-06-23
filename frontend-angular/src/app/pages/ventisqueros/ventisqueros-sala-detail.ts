@@ -24,6 +24,8 @@ import { AuthService } from '../../services/auth.service';
 import { CompanyService } from '../../services/company.service';
 import {
   ColdRoomService,
+  type ColdRoomExportInterval,
+  type ColdRoomExportPoint,
   type ColdRoomRange,
   type ColdRoomSensor,
   type ColdRoomSensorHistory,
@@ -110,14 +112,12 @@ function slugify(area: string): string {
         <button
           type="button"
           class="sala-btn"
-          [disabled]="sensors().length === 0 || exporting()"
-          (click)="exportCsv()"
-          title="Descargar CSV"
+          [disabled]="sensors().length === 0"
+          (click)="openExportModal()"
+          title="Descargar historial (Excel)"
         >
-          <span class="material-symbols-outlined text-[16px]">{{
-            exporting() ? 'hourglass_top' : 'download'
-          }}</span>
-          CSV
+          <span class="material-symbols-outlined text-[16px]">download</span>
+          Excel
         </button>
         <button
           type="button"
@@ -526,9 +526,9 @@ function slugify(area: string): string {
         <!-- Histórico -->
         @if (sensors().length > 0) {
           <section class="mt-2">
-            <div class="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-3">
               <h3 class="section-title">Histórico de temperatura</h3>
-              <div class="flex items-center gap-3">
+              <div class="flex flex-wrap items-center gap-3">
                 <label class="band-toggle">
                   <input
                     type="checkbox"
@@ -537,13 +537,33 @@ function slugify(area: string): string {
                   />
                   <span>Banda tolerancia</span>
                 </label>
+                <div class="date-picker">
+                  <input
+                    type="date"
+                    class="date-input"
+                    aria-label="Ver fecha específica"
+                    [max]="todayChile()"
+                    [value]="selectedDate() ?? ''"
+                    (change)="onDateChange($any($event.target).value)"
+                  />
+                  @if (selectedDate()) {
+                    <button
+                      type="button"
+                      class="date-clear"
+                      title="Volver a tiempo real"
+                      (click)="clearDate()"
+                    >
+                      En vivo
+                    </button>
+                  }
+                </div>
                 <div class="range-pills" role="tablist" aria-label="Rango">
                   @for (r of ranges; track r) {
                     <button
                       type="button"
                       role="tab"
                       class="range-pill"
-                      [class.range-pill--active]="range() === r"
+                      [class.range-pill--active]="range() === r && !selectedDate()"
                       (click)="setRange(r)"
                     >
                       {{ r }}
@@ -552,6 +572,16 @@ function slugify(area: string): string {
                 </div>
               </div>
             </div>
+            <!-- Leyenda: qué fecha/rango cubre el gráfico -->
+            <div class="chart-window-legend">
+              @if (selectedDate()) {
+                <span class="chart-window-badge chart-window-badge--date">Fecha</span>
+                <span>{{ chartWindowLabel() }}</span>
+              } @else {
+                <span class="chart-window-badge chart-window-badge--live">En vivo</span>
+                <span>{{ chartWindowLabel() }}</span>
+              }
+            </div>
             <div class="chart-shell">
               <div class="h-[320px]">
                 <canvas #chartCanvas></canvas>
@@ -559,8 +589,173 @@ function slugify(area: string): string {
               <div class="chart-tip">scroll zoom · drag pan · click reset</div>
             </div>
           </section>
+
+          <!-- Combinado: temperatura + humedad -->
+          <section class="mt-4">
+            <div class="mb-1 flex flex-wrap items-baseline justify-between gap-3">
+              <h3 class="section-title">Temperatura y humedad</h3>
+            </div>
+            <div class="chart-window-legend">
+              <span class="chart-window-badge chart-window-badge--live">T °C</span>
+              <span>eje izquierdo · línea sólida</span>
+              <span class="chart-window-badge chart-window-badge--date">HR %</span>
+              <span>eje derecho · línea punteada</span>
+            </div>
+            <div class="chart-shell">
+              <div class="h-[320px]">
+                <canvas #comboCanvas></canvas>
+              </div>
+              <div class="chart-tip">scroll zoom · drag pan · click reset</div>
+            </div>
+          </section>
         }
       </div>
+
+      <!-- Modal descargar historial (Excel) — scoped a esta sala -->
+      @if (exportOpen()) {
+        <div class="vs-hx-backdrop" (click)="closeExportModal()" aria-hidden="true"></div>
+        <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
+          <header class="vs-hx-head">
+            <div class="vs-hx-title">Descargar historial</div>
+            <button
+              type="button"
+              class="vs-hx-close"
+              (click)="closeExportModal()"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined text-[18px]">close</span>
+            </button>
+          </header>
+
+          <div class="vs-hx-body">
+            <!-- Rango fechas -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">1. Rango de fechas</div>
+              <div class="vs-hx-range">
+                <label class="vs-hx-field">
+                  <span>Desde</span>
+                  <input
+                    type="datetime-local"
+                    [value]="exportFrom()"
+                    (input)="setExportFrom($event)"
+                  />
+                </label>
+                <label class="vs-hx-field">
+                  <span>Hasta</span>
+                  <input type="datetime-local" [value]="exportTo()" (input)="setExportTo($event)" />
+                </label>
+              </div>
+              <div class="vs-hx-hint">
+                La resolución base se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h
+                (≤30d), 1d (resto).
+              </div>
+            </div>
+
+            <!-- Intervalo de agrupación (promedio / mín / máx) -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">2. Intervalo de agrupación</div>
+              <div class="vs-hx-interval">
+                @for (opt of exportIntervalOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-interval-pill"
+                    [class.vs-hx-interval-pill--active]="exportInterval() === opt.value"
+                    (click)="exportInterval.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <div class="vs-hx-hint">
+                Cada fila trae promedio, mínimo y máximo por intervalo. "Auto" usa la resolución
+                base. No puede ser más fino que la base disponible para el rango.
+              </div>
+            </div>
+
+            <!-- Variables -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">3. Variables</div>
+              <div class="vs-hx-interval">
+                @for (opt of exportVarsOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-interval-pill"
+                    [class.vs-hx-interval-pill--active]="exportVars() === opt.value"
+                    (click)="exportVars.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+            </div>
+
+            <!-- Sensores de la sala -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-head">
+                <div class="vs-hx-section-title">
+                  4. Sensores
+                  <span class="vs-hx-count">
+                    {{ exportSelectedSensors().size }} / {{ sensors().length }}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  class="vs-hx-toggle-all"
+                  (click)="toggleExportSelectAllSensors()"
+                >
+                  {{
+                    exportSelectedSensors().size === sensors().length
+                      ? 'Quitar todos'
+                      : 'Seleccionar todos'
+                  }}
+                </button>
+              </div>
+              <div class="vs-hx-grid">
+                @for (s of sensors(); track s.id) {
+                  <label class="vs-hx-checkbox">
+                    <input
+                      type="checkbox"
+                      [checked]="exportSelectedSensors().has(s.id)"
+                      (change)="toggleExportSensor(s.id)"
+                    />
+                    <span class="vs-hx-checkbox-lbl">
+                      {{ s.id }}
+                      <span class="vs-hx-checkbox-meta">{{ s.area }} · {{ s.tap }}</span>
+                    </span>
+                  </label>
+                }
+              </div>
+            </div>
+
+            @if (exportError(); as err) {
+              <div class="vs-hx-error">
+                <span class="material-symbols-outlined text-[14px]">error</span>
+                {{ err }}
+              </div>
+            }
+          </div>
+
+          <footer class="vs-hx-foot">
+            <button type="button" class="vs-hx-btn" (click)="closeExportModal()">Cancelar</button>
+            <button
+              type="button"
+              class="vs-hx-btn vs-hx-btn--primary"
+              [disabled]="exportLoading() || exportSelectedSensors().size === 0"
+              (click)="confirmExport()"
+            >
+              @if (exportLoading()) {
+                <span class="material-symbols-outlined text-[14px] animate-spin"
+                  >progress_activity</span
+                >
+                Generando…
+              } @else {
+                <span class="material-symbols-outlined text-[14px]">download</span>
+                Descargar Excel
+              }
+            </button>
+          </footer>
+        </aside>
+      }
 
       <!-- Modal nota HACCP (reconocer / clasificar / resolver) -->
       @if (noteModal(); as nm) {
@@ -1121,6 +1316,348 @@ function slugify(area: string): string {
       }
       .band-toggle input {
         accent-color: var(--color-primary);
+      }
+
+      .date-picker {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .date-input {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #1e293b;
+        padding: 4px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #ffffff;
+        cursor: pointer;
+      }
+      .date-input:hover {
+        border-color: var(--color-primary);
+      }
+      .date-clear {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 4px 9px;
+        border-radius: 9999px;
+        color: var(--color-primary);
+        background: rgba(13, 175, 189, 0.1);
+        border: 1px solid rgba(13, 175, 189, 0.25);
+        transition: background 0.15s ease;
+      }
+      .date-clear:hover {
+        background: rgba(13, 175, 189, 0.18);
+      }
+      .chart-window-legend {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 11px;
+        color: #64748b;
+      }
+      .chart-window-badge {
+        font-family: var(--font-body), sans-serif;
+        font-size: 9.5px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 2px 7px;
+        border-radius: 9999px;
+      }
+      .chart-window-badge--live {
+        color: #16a34a;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.25);
+      }
+      .chart-window-badge--date {
+        color: var(--color-primary);
+        background: rgba(13, 175, 189, 0.1);
+        border: 1px solid rgba(13, 175, 189, 0.25);
+      }
+
+      /* History export modal (mismo diseño que el general de Ventisqueros) */
+      .vs-hx-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        z-index: 50;
+        animation: hxFadeIn 0.15s ease-out;
+      }
+      @keyframes hxFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .vs-hx-modal {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(640px, 94vw);
+        max-height: 88vh;
+        background: #ffffff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+        z-index: 51;
+        display: flex;
+        flex-direction: column;
+        animation: hxScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes hxScaleIn {
+        from {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.96);
+        }
+        to {
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1);
+        }
+      }
+      .vs-hx-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .vs-hx-title {
+        font-family: var(--font-josefin), sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .vs-hx-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: transparent;
+        color: #64748b;
+        border: 1px solid transparent;
+      }
+      .vs-hx-close:hover {
+        background: rgba(15, 23, 42, 0.06);
+        color: #1e293b;
+      }
+      .vs-hx-body {
+        padding: 16px 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .vs-hx-section {
+        border-bottom: 1px solid #f1f5f9;
+        padding-bottom: 12px;
+      }
+      .vs-hx-section:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .vs-hx-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .vs-hx-section-title {
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 600;
+        color: #1e293b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 6px;
+      }
+      .vs-hx-count {
+        font-family: var(--font-mono);
+        font-size: 10.5px;
+        font-weight: 500;
+        color: #94a3b8;
+        margin-left: 6px;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .vs-hx-toggle-all {
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: var(--color-primary);
+        background: transparent;
+        border: none;
+        font-weight: 500;
+      }
+      .vs-hx-toggle-all:hover {
+        text-decoration: underline;
+      }
+      .vs-hx-range {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .vs-hx-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-family: var(--font-dm);
+        font-size: 11px;
+        color: #64748b;
+      }
+      .vs-hx-field input {
+        padding: 7px 9px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #1e293b;
+        outline: none;
+      }
+      .vs-hx-field input:focus {
+        border-color: var(--color-primary);
+      }
+      .vs-hx-hint {
+        margin-top: 6px;
+        font-family: var(--font-dm);
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-style: italic;
+      }
+      .vs-hx-interval {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .vs-hx-interval-pill {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        padding: 5px 11px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        transition:
+          border-color 0.15s,
+          background 0.15s,
+          color 0.15s;
+      }
+      .vs-hx-interval-pill:hover {
+        border-color: var(--color-primary-tint-30);
+      }
+      .vs-hx-interval-pill--active {
+        background: var(--color-primary);
+        border-color: var(--color-primary);
+        color: #ffffff;
+      }
+      .vs-hx-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 6px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 4px 2px;
+      }
+      .vs-hx-checkbox {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 6px 9px;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          background 0.15s;
+      }
+      .vs-hx-checkbox:hover {
+        border-color: var(--color-primary-tint-30);
+        background: var(--color-primary-tint-04);
+      }
+      .vs-hx-checkbox input {
+        margin-top: 2px;
+        accent-color: var(--color-primary);
+      }
+      .vs-hx-checkbox-lbl {
+        display: flex;
+        flex-direction: column;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        color: #1e293b;
+        line-height: 1.3;
+      }
+      .vs-hx-checkbox-meta {
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-weight: 400;
+      }
+      .vs-hx-error {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 10px;
+        background: rgba(239, 68, 68, 0.1);
+        color: #b91c1c;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        border-radius: 7px;
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+      }
+      .vs-hx-foot {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 12px 18px;
+        border-top: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 0 0 14px 14px;
+      }
+      .vs-hx-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 8px 14px;
+        border-radius: 7px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #475569;
+        font-family: var(--font-dm);
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .vs-hx-btn:hover:not(:disabled) {
+        background: #f1f5f9;
+      }
+      .vs-hx-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .vs-hx-btn--primary {
+        background: var(--color-primary);
+        color: #ffffff;
+        border-color: var(--color-primary);
+      }
+      .vs-hx-btn--primary:hover:not(:disabled) {
+        background: #0c8b96;
+      }
+      .animate-spin {
+        animation: hxSpin 0.9s linear infinite;
+      }
+      @keyframes hxSpin {
+        to {
+          transform: rotate(360deg);
+        }
       }
 
       .chart-shell {
@@ -1995,6 +2532,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   @ViewChild('chartCanvas') chartCanvas?: ElementRef<HTMLCanvasElement>;
+  @ViewChild('comboCanvas') comboCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('drilldownCanvas') drilldownCanvas?: ElementRef<HTMLCanvasElement>;
 
   readonly ranges = RANGES;
@@ -2031,8 +2569,43 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   readonly serviceError = signal<string | null>(null);
   readonly lastUpdate = signal<Date | null>(null);
   readonly range = signal<ColdRoomRange>('24h');
-  readonly exporting = signal<boolean>(false);
   readonly showBand = signal<boolean>(true);
+
+  // Fecha específica seleccionada (YYYY-MM-DD día Chile). null = modo "en vivo"
+  // (últimas N horas relativas a ahora). Al fijar fecha, backend ancla 24h al día.
+  readonly selectedDate = signal<string | null>(null);
+
+  // Tope del date picker: hoy en zona Chile (no permitir futuro).
+  readonly todayChile = computed(() => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    return parts; // 'YYYY-MM-DD'
+  });
+
+  // Leyenda del rango temporal que cubre el gráfico.
+  //   - modo fecha: "DD/MM/YYYY · 00:00–23:59"
+  //   - modo vivo:  "DD/MM HH:MM – DD/MM HH:MM" (primer/último punto real)
+  readonly chartWindowLabel = computed(() => {
+    const d = this.selectedDate();
+    if (d) {
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}/${y} · 00:00–23:59`;
+    }
+    const pts = this.sensors()[0]?.histPoints || [];
+    if (pts.length === 0) return '';
+    const fmt = (iso: string) =>
+      new Date(iso).toLocaleString('es-CL', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    return `${fmt(pts[0].t)} – ${fmt(pts[pts.length - 1].t)}`;
+  });
 
   readonly drilldownSensorId = signal<string | null>(null);
   readonly drilldownRange = signal<ColdRoomRange>('24h');
@@ -2151,6 +2724,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   });
 
   chart: Chart | null = null;
+  private comboChart: Chart | null = null;
   private drilldownChart: Chart | null = null;
   private pollTimer: ReturnType<typeof setTimeout> | null = null;
   private clockId: ReturnType<typeof setInterval> | null = null;
@@ -2165,10 +2739,14 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
       const list = this.sensors();
       if (list.length === 0) {
         this.destroyChart();
+        this.destroyComboChart();
         return;
       }
       const band = this.showBand();
-      queueMicrotask(() => this.renderMainChart(list, band));
+      queueMicrotask(() => {
+        this.renderMainChart(list, band);
+        this.renderComboChart(list);
+      });
     });
 
     effect(() => {
@@ -2209,12 +2787,16 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   ngAfterViewInit(): void {
-    queueMicrotask(() => this.renderMainChart(this.sensors(), this.showBand()));
+    queueMicrotask(() => {
+      this.renderMainChart(this.sensors(), this.showBand());
+      this.renderComboChart(this.sensors());
+    });
   }
 
   ngOnDestroy(): void {
     this.stopPolling();
     this.destroyChart();
+    this.destroyComboChart();
     this.destroyDrilldownChart();
     if (this.clockId !== null) clearInterval(this.clockId);
   }
@@ -2245,8 +2827,32 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
   }
 
   setRange(r: ColdRoomRange): void {
-    if (this.range() === r) return;
+    const wasDateMode = this.selectedDate() !== null;
+    if (this.range() === r && !wasDateMode) return;
+    // Click en pill siempre vuelve a modo "en vivo" (relativo a ahora).
+    this.selectedDate.set(null);
     this.range.set(r);
+    this.fetchData();
+  }
+
+  // Cambio en el date picker. Vacío = volver a vivo. Con fecha = 24h de ese día.
+  onDateChange(value: string): void {
+    const v = (value || '').trim();
+    if (!v) {
+      if (this.selectedDate() === null) return;
+      this.selectedDate.set(null);
+      this.fetchData();
+      return;
+    }
+    if (this.selectedDate() === v) return;
+    this.selectedDate.set(v);
+    this.range.set('24h'); // fecha específica = siempre 24h del día
+    this.fetchData();
+  }
+
+  clearDate(): void {
+    if (this.selectedDate() === null) return;
+    this.selectedDate.set(null);
     this.fetchData();
   }
 
@@ -2300,29 +2906,269 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     this.drilldownData.set(null);
   }
 
-  exportCsv(): void {
+  // Lazy load xlsx — primer click paga la descarga (~150 kB), siguientes cacheado.
+  private xlsxLoader?: Promise<typeof import('xlsx')>;
+  private loadXlsx(): Promise<typeof import('xlsx')> {
+    if (!this.xlsxLoader) this.xlsxLoader = import('xlsx');
+    return this.xlsxLoader;
+  }
+
+  // === Descargar historial (modal "menú lindo", igual que el general) ===
+  // Scoped a ESTA sala: rango de fechas + multi-select de sus sensores. Usa el
+  // endpoint real exportHistory (rango arbitrario, cagg automático) → Excel con
+  // hojas "Lecturas" + "Resumen". No depende del ?date del gráfico.
+  readonly exportOpen = signal<boolean>(false);
+  readonly exportFrom = signal<string>('');
+  readonly exportTo = signal<string>('');
+  readonly exportSelectedSensors = signal<Set<string>>(new Set<string>());
+  readonly exportLoading = signal<boolean>(false);
+  readonly exportError = signal<string | null>(null);
+  // Intervalo de agrupación (promedio/min/max por intervalo). 'auto' = resolución base.
+  readonly exportInterval = signal<ColdRoomExportInterval>('auto');
+  readonly exportIntervalOptions: { value: ColdRoomExportInterval; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: '1min', label: '1 min' },
+    { value: '5min', label: '5 min' },
+    { value: '15min', label: '15 min' },
+    { value: '1h', label: '1 hora' },
+    { value: '1d', label: '1 día' },
+  ];
+  // Variables a incluir en el Excel: temperatura, humedad o ambas.
+  readonly exportVars = signal<'both' | 'temp' | 'hum'>('both');
+  readonly exportVarsOptions: { value: 'both' | 'temp' | 'hum'; label: string }[] = [
+    { value: 'both', label: 'Ambas' },
+    { value: 'temp', label: 'Temperatura' },
+    { value: 'hum', label: 'Humedad' },
+  ];
+
+  private toDatetimeLocal(d: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  openExportModal(): void {
+    const list = this.sensors();
+    if (list.length === 0) return;
+    // Default: si hay fecha elegida en el gráfico, ese día completo; si no, hoy 00:00 → ahora.
+    const sel = this.selectedDate();
+    if (sel) {
+      const start = new Date(`${sel}T00:00:00`);
+      const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 60 * 1000);
+      this.exportFrom.set(this.toDatetimeLocal(start));
+      this.exportTo.set(this.toDatetimeLocal(end));
+    } else {
+      const now = new Date();
+      const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      this.exportFrom.set(this.toDatetimeLocal(startToday));
+      this.exportTo.set(this.toDatetimeLocal(now));
+    }
+    this.exportSelectedSensors.set(new Set(list.map((s) => s.id)));
+    this.exportError.set(null);
+    this.exportOpen.set(true);
+  }
+
+  closeExportModal(): void {
+    this.exportOpen.set(false);
+  }
+
+  setExportFrom(ev: Event): void {
+    this.exportFrom.set((ev.target as HTMLInputElement).value);
+  }
+  setExportTo(ev: Event): void {
+    this.exportTo.set((ev.target as HTMLInputElement).value);
+  }
+
+  toggleExportSensor(id: string): void {
+    const cur = new Set(this.exportSelectedSensors());
+    if (cur.has(id)) cur.delete(id);
+    else cur.add(id);
+    this.exportSelectedSensors.set(cur);
+  }
+
+  toggleExportSelectAllSensors(): void {
+    const all = this.sensors().map((s) => s.id);
+    if (this.exportSelectedSensors().size === all.length) this.exportSelectedSensors.set(new Set());
+    else this.exportSelectedSensors.set(new Set(all));
+  }
+
+  async confirmExport(): Promise<void> {
+    this.exportError.set(null);
+    const sensors = [...this.exportSelectedSensors()];
+    if (sensors.length === 0) {
+      this.exportError.set('Selecciona al menos un sensor.');
+      return;
+    }
+    const fromStr = this.exportFrom();
+    const toStr = this.exportTo();
+    if (!fromStr || !toStr) {
+      this.exportError.set('Rango de fechas inválido.');
+      return;
+    }
+    const from = new Date(fromStr);
+    const to = new Date(toStr);
+    if (to <= from) {
+      this.exportError.set('La fecha "Hasta" debe ser mayor que "Desde".');
+      return;
+    }
     const sid = this.siteId();
     if (!sid) return;
-    this.exporting.set(true);
-    // Exporta todos los datos (sin filtro tap) y deja al usuario filtrar; sala-level
-    // export requeriría endpoint dedicado.
-    this.coldRoom.downloadCsv(sid, null, this.range()).subscribe({
-      next: (blob) => {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `sala-${this.salaSlug()}-${this.range()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        this.exporting.set(false);
-      },
-      error: () => {
-        this.exporting.set(false);
-        this.serviceError.set('No se pudo descargar el CSV');
-      },
+    this.exportLoading.set(true);
+    this.coldRoom
+      .exportHistory(
+        sid,
+        from.toISOString(),
+        to.toISOString(),
+        this.bundleSiteIds(),
+        sensors,
+        this.exportInterval(),
+      )
+      .subscribe({
+        next: async (res) => {
+          this.exportLoading.set(false);
+          if (!res.ok) {
+            this.exportError.set(res.error || 'Error al obtener datos.');
+            return;
+          }
+          if (res.data.points.length === 0) {
+            this.exportError.set('Sin datos en el rango seleccionado.');
+            return;
+          }
+          try {
+            await this.downloadHistoryXlsx(
+              res.data.points,
+              from,
+              to,
+              res.meta.view,
+              sensors,
+              res.meta.interval,
+            );
+            this.closeExportModal();
+          } catch (err) {
+            this.exportError.set(
+              'Error al generar Excel: ' + (err instanceof Error ? err.message : String(err)),
+            );
+          }
+        },
+        error: (err) => {
+          this.exportLoading.set(false);
+          this.exportError.set(
+            'Error HTTP: ' + (err?.error?.error || err?.message || 'desconocido'),
+          );
+        },
+      });
+  }
+
+  private formatChileParts(ts: string): { date: string; time: string } {
+    const parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date(ts));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+    return {
+      date: `${get('year')}-${get('month')}-${get('day')}`,
+      time: `${get('hour')}:${get('minute')}`,
+    };
+  }
+  private formatChileShort(ts: string): string {
+    const { date, time } = this.formatChileParts(ts);
+    return `${date} ${time}`;
+  }
+
+  private async downloadHistoryXlsx(
+    points: ColdRoomExportPoint[],
+    from: Date,
+    to: Date,
+    view: string,
+    sensorIds: string[],
+    intervalLabel?: string,
+  ): Promise<void> {
+    const XLSX = await this.loadXlsx();
+    const wb = XLSX.utils.book_new();
+    const r2 = (n: number | null | undefined) => (n == null ? null : Math.round(n * 100) / 100);
+
+    // Hoja 1: Lecturas (promedio/mín/máx por intervalo). Columnas según variables elegidas.
+    const vars = this.exportVars();
+    const incT = vars !== 'hum';
+    const incH = vars !== 'temp';
+    const rows = points.map((p) => {
+      const dt = this.formatChileParts(p.ts);
+      const row: Record<string, string | number | null> = {
+        Fecha: dt.date,
+        Hora: dt.time,
+        Sensor: p.sensorId,
+        Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
+        TAP: p.tap,
+      };
+      if (incT) {
+        row['Temp prom (°C)'] = r2(p.t);
+        row['Temp mín (°C)'] = r2(p.tMin);
+        row['Temp máx (°C)'] = r2(p.tMax);
+      }
+      if (incH) {
+        row['HR prom (%)'] = r2(p.h);
+        row['HR mín (%)'] = r2(p.hMin);
+        row['HR máx (%)'] = r2(p.hMax);
+      }
+      return row;
     });
+    const sheet1 = XLSX.utils.json_to_sheet(rows);
+    sheet1['!cols'] = [
+      { wch: 12 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 28 },
+      { wch: 8 },
+      ...(incT ? [{ wch: 14 }, { wch: 13 }, { wch: 13 }] : []),
+      ...(incH ? [{ wch: 12 }, { wch: 11 }, { wch: 11 }] : []),
+    ];
+    XLSX.utils.book_append_sheet(wb, sheet1, 'Lecturas');
+
+    // Hoja 2: Resumen.
+    const fmtRange = (d: Date) => this.formatChileShort(d.toISOString());
+    const cagg: Record<string, string> = {
+      equipo_1min: '1 minuto',
+      equipo_5min: '5 minutos',
+      equipo_hourly: '1 hora',
+      equipo_daily: '1 día',
+    };
+    const intervalNames: Record<string, string> = {
+      '1min': '1 minuto',
+      '5min': '5 minutos',
+      '15min': '15 minutos',
+      '1h': '1 hora',
+      '1d': '1 día',
+    };
+    const summary = [
+      { Campo: 'Sitio', Valor: this.siteName() },
+      { Campo: 'Sala', Valor: this.sensors()[0]?.area ?? this.salaSlug() },
+      { Campo: 'Generado', Valor: this.formatChileShort(new Date().toISOString()) },
+      { Campo: 'Rango desde', Valor: fmtRange(from) },
+      { Campo: 'Rango hasta', Valor: fmtRange(to) },
+      {
+        Campo: 'Agrupación (promedio/mín/máx)',
+        Valor: intervalLabel ? intervalNames[intervalLabel] || intervalLabel : cagg[view] || view,
+      },
+      { Campo: 'Resolución base', Valor: cagg[view] || view },
+      {
+        Campo: 'Variables',
+        Valor:
+          vars === 'both' ? 'Temperatura + Humedad' : vars === 'temp' ? 'Temperatura' : 'Humedad',
+      },
+      { Campo: 'Sensores', Valor: sensorIds.join(', ') },
+      { Campo: 'Total filas', Valor: points.length },
+    ];
+    const sheet2 = XLSX.utils.json_to_sheet(summary);
+    sheet2['!cols'] = [{ wch: 18 }, { wch: 60 }];
+    XLSX.utils.book_append_sheet(wb, sheet2, 'Resumen');
+
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+    XLSX.writeFile(wb, `sala-${this.salaSlug()}-historial-${fmt(from)}-${fmt(to)}.xlsx`);
   }
 
   exportPng(): void {
@@ -2390,9 +3236,15 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     const id = this.siteId();
     if (!id) return;
     this.isLoading.set(true);
+    // Ventana de datos:
+    //  - fecha elegida en el picker → ese día.
+    //  - modo vivo + rango 24h → ancla al DÍA ACTUAL (hoy 00:00 → ahora), no rolling
+    //    (sin datos futuros, el backend devuelve 00:00→ahora). Sigue en vivo (polling).
+    //  - modo vivo + 1h/6h/7d → rolling relativo a ahora (sin date).
+    const dateParam = this.selectedDate() ?? (this.range() === '24h' ? this.todayChile() : null);
     // Pasa bundle de siteIds para que backend cubra concentrador + TAPs reales.
     // Sin esto, si siteId es el maestro (sin STH-*), backend devuelve [].
-    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds()).subscribe({
+    this.coldRoom.getSensors(id, null, this.range(), this.bundleSiteIds(), dateParam).subscribe({
       next: (res) => {
         if (res.ok) {
           this.allSensors.set(res.data || []);
@@ -2414,6 +3266,8 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
 
   private scheduleNextPoll(): void {
     if (this.pollTimer !== null) clearTimeout(this.pollTimer);
+    // Modo fecha histórica: dato estático, no tiene sentido refrescar.
+    if (this.selectedDate() !== null) return;
     this.pollTimer = setTimeout(() => this.fetchData(), POLL_MS);
   }
 
@@ -2529,11 +3383,111 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           },
           y: {
             grid: { color: 'rgba(148,163,184,0.15)' },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}°C` },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${(+v).toFixed(1).replace(/\.0$/, '')}°C`,
+            },
           },
         },
         onClick: () => {
           if (this.chart) this.chart.resetZoom?.();
+        },
+      },
+    });
+  }
+
+  // Gráfico combinado: temperatura (°C, eje izq, sólido) + humedad (%, eje der,
+  // punteado), un par de líneas por sensor con el mismo color.
+  private renderComboChart(sensors: ColdRoomSensor[]): void {
+    if (!this.comboCanvas?.nativeElement || sensors.length === 0) return;
+    this.destroyComboChart();
+    const ctx = this.comboCanvas.nativeElement.getContext('2d');
+    if (!ctx) return;
+    const base = sensors[0]?.histPoints?.length ? sensors[0].histPoints : sensors[0]?.histHumPoints;
+    const labels =
+      base?.map((p) =>
+        new Date(p.t).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      ) || [];
+    const palette = ['#0EA5E9', '#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+    const tempSets = sensors.map((s, i) => ({
+      label: `${s.id} · T`,
+      data: s.histPoints?.map((p) => p.v) || s.hist,
+      borderColor: palette[i % palette.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.6,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      tension: 0.3,
+      yAxisID: 'yT',
+    }));
+    const humSets = sensors
+      .filter((s) => s.histHumPoints && s.histHumPoints.length > 0)
+      .map((s, i) => ({
+        label: `${s.id} · HR`,
+        data: (s.histHumPoints || []).map((p) => p.v),
+        borderColor: palette[i % palette.length],
+        backgroundColor: 'transparent',
+        borderWidth: 1.2,
+        borderDash: [4, 3],
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.3,
+        yAxisID: 'yH',
+      }));
+
+    this.comboChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [...tempSets, ...humSets] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const unit = c.dataset.yAxisID === 'yH' ? '%' : '°C';
+                return `${c.dataset.label}: ${(c.parsed.y as number).toFixed(1)}${unit}`;
+              },
+            },
+          },
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
+            zoom: {
+              wheel: { enabled: true, speed: 0.05 },
+              pinch: { enabled: true },
+              mode: 'x',
+            },
+            limits: { x: { min: 'original', max: 'original' } },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 10 }, color: '#94A3B8', maxTicksLimit: 8, autoSkip: true },
+          },
+          yT: {
+            position: 'left',
+            grid: { color: 'rgba(148,163,184,0.15)' },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${(+v).toFixed(1).replace(/\.0$/, '')}°C`,
+            },
+          },
+          yH: {
+            position: 'right',
+            min: 0,
+            max: 100,
+            grid: { drawOnChartArea: false },
+            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${(+v).toFixed(0)}%` },
+          },
+        },
+        onClick: () => {
+          if (this.comboChart) this.comboChart.resetZoom?.();
         },
       },
     });
@@ -2600,7 +3554,11 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           y: {
             position: 'left',
             grid: { color: 'rgba(148,163,184,0.15)' },
-            ticks: { font: { size: 10 }, color: '#94A3B8', callback: (v) => `${v}°C` },
+            ticks: {
+              font: { size: 10 },
+              color: '#94A3B8',
+              callback: (v) => `${(+v).toFixed(1).replace(/\.0$/, '')}°C`,
+            },
           },
           y1: {
             position: 'right',
@@ -2620,6 +3578,13 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
+    }
+  }
+
+  private destroyComboChart(): void {
+    if (this.comboChart) {
+      this.comboChart.destroy();
+      this.comboChart = null;
     }
   }
 

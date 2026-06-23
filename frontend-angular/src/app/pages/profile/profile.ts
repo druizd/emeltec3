@@ -35,12 +35,12 @@ interface EditState {
     <section class="min-h-full bg-[#F0F2F5] px-5 py-4">
       <div class="mb-3">
         <h1
-          class="text-h4 font-bold leading-tight tracking-[0.03em] text-[#1e293b]"
+          class="text-h4 font-bold leading-tight tracking-[0.03em] text-on-surface"
           style="font-family: 'Josefin Sans', sans-serif"
         >
           Cuenta
         </h1>
-        <p class="mt-0.5 text-body-sm text-[#94a3b8]">
+        <p class="mt-0.5 text-body-sm text-on-surface-muted">
           Perfil, seguridad y monitoreo de usuarios registrados.
         </p>
       </div>
@@ -78,34 +78,35 @@ interface EditState {
 
       @if (activeTab() === 'users' && auth.canViewUsers()) {
         <section
-          class="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+          class="overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
         >
           <div
-            class="flex flex-col gap-4 border-b border-[#e2e8f0] px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
+            class="flex flex-col gap-4 border-b border-surface-container px-5 py-4 lg:flex-row lg:items-center lg:justify-between"
           >
             <div>
-              <h2 class="text-body font-bold text-[#1e293b]">Usuarios</h2>
-              <p class="text-caption text-[#94a3b8]">Registro, empresa y primer ingreso.</p>
+              <h2 class="text-body font-bold text-on-surface">Usuarios</h2>
+              <p class="text-caption text-on-surface-muted">Registro, empresa y primer ingreso.</p>
             </div>
 
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
               <label class="relative block min-w-0 sm:w-[320px]">
                 <span
-                  class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#94a3b8]"
+                  class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-on-surface-muted"
                   >search</span
                 >
                 <input
                   type="search"
                   [ngModel]="userSearch()"
                   (ngModelChange)="setUserSearch($event)"
-                  class="h-10 w-full rounded-lg border border-[#dbe4ee] bg-slate-50 pl-10 pr-3 text-body-sm font-semibold text-[#1e293b] outline-none transition-colors placeholder:text-[#94a3b8] focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 w-full rounded-lg border border-[#dbe4ee] bg-slate-50 pl-10 pr-3 text-body-sm font-semibold text-on-surface outline-none transition-colors placeholder:text-on-surface-muted focus:border-primary focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   placeholder="Buscar usuario, correo o empresa"
                   aria-label="Buscar usuario"
                 />
               </label>
 
               @if (usersLoading()) {
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                   >Cargando</span
                 >
               }
@@ -123,31 +124,31 @@ interface EditState {
           }
 
           @if (!auth.canViewUsers()) {
-            <div class="px-5 py-10 text-center text-body-sm text-[#64748b]">
+            <div class="px-5 py-10 text-center text-body-sm text-on-surface-variant">
               Tu perfil no tiene permisos para ver el listado de usuarios.
             </div>
           } @else {
             <div class="overflow-x-auto">
-              <table class="w-full min-w-[900px] text-left text-body-sm">
-                <thead class="border-b border-[#e2e8f0] bg-slate-50">
+              <table class="responsive-table w-full text-left text-body-sm md:min-w-[900px]">
+                <thead class="border-b border-surface-container bg-slate-50">
                   <tr>
                     <th
-                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                     >
                       Usuario
                     </th>
                     <th
-                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                     >
                       Correo
                     </th>
                     <th
-                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                      class="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                     >
                       Empresa / Sub empresa
                     </th>
                     <th
-                      class="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                      class="px-5 py-3 text-right text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                     >
                       Estado
                     </th>
@@ -157,19 +158,24 @@ interface EditState {
                 <tbody class="divide-y divide-[#edf2f7]">
                   @for (user of pagedUsers(); track user.id) {
                     <tr class="group transition-colors hover:bg-slate-50/70">
-                      <td class="px-5 py-4">
-                        <p class="font-bold text-[#1e293b]">{{ fullName(user) }}</p>
+                      <td class="px-5 py-4" data-label="Usuario">
+                        <p class="font-bold text-on-surface">{{ fullName(user) }}</p>
                       </td>
-                      <td class="px-5 py-4 text-[#64748b]">{{ user.email }}</td>
-                      <td class="px-5 py-4 text-[#64748b]">
+                      <td class="px-5 py-4 text-on-surface-variant" data-label="Correo">
+                        {{ user.email }}
+                      </td>
+                      <td
+                        class="px-5 py-4 text-on-surface-variant"
+                        data-label="Empresa / Sub empresa"
+                      >
                         <p class="font-semibold text-[#475569]">
                           {{ displayValue(user.empresa_nombre, 'Por verse') }}
                         </p>
-                        <p class="mt-0.5 text-caption text-[#94a3b8]">
+                        <p class="mt-0.5 text-caption text-on-surface-muted">
                           {{ displayValue(user.sub_empresa_nombre, 'Sin sub empresa') }}
                         </p>
                       </td>
-                      <td class="px-5 py-4 text-right">
+                      <td class="px-5 py-4 text-right" data-label="Estado">
                         <span
                           class="inline-flex h-2.5 w-2.5 rounded-full ring-4"
                           [class.bg-emerald-500]="hasLoggedIn(user)"
@@ -188,12 +194,12 @@ interface EditState {
                           "
                         ></span>
                       </td>
-                      <td class="px-3 py-4 text-right">
+                      <td class="px-3 py-4 text-right" data-label="">
                         @if (canDeleteUser(user)) {
                           <button
                             type="button"
                             (click)="openDeleteUser(user)"
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-[#94a3b8] opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-200 group-hover:opacity-100"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-muted opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-200 group-hover:opacity-100"
                             aria-label="Eliminar usuario"
                             title="Eliminar usuario"
                           >
@@ -206,7 +212,11 @@ interface EditState {
 
                   @if (filteredUsers().length === 0) {
                     <tr>
-                      <td colspan="5" class="px-5 py-10 text-center text-[#94a3b8]">
+                      <td
+                        colspan="5"
+                        class="px-5 py-10 text-center text-on-surface-muted"
+                        data-label=""
+                      >
                         No hay usuarios para mostrar.
                       </td>
                     </tr>
@@ -217,9 +227,9 @@ interface EditState {
 
             @if (filteredUsers().length > 0) {
               <div
-                class="flex flex-col gap-3 border-t border-[#e2e8f0] px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+                class="flex flex-col gap-3 border-t border-surface-container px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
               >
-                <p class="text-caption font-semibold text-[#94a3b8]">
+                <p class="text-caption font-semibold text-on-surface-muted">
                   {{ usersPageStart() }}-{{ usersPageEnd() }} de {{ filteredUsers().length }}
                 </p>
                 <div class="flex flex-wrap items-center gap-2">
@@ -227,7 +237,7 @@ interface EditState {
                     type="button"
                     (click)="goToUsersPage(currentUsersPage() - 1)"
                     [disabled]="currentUsersPage() === 1"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-[#64748b] transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-on-surface-variant transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Pagina anterior"
                   >
                     <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -241,7 +251,7 @@ interface EditState {
                       [ngClass]="
                         page === currentUsersPage()
                           ? 'border-primary bg-primary text-white'
-                          : 'border-[#dbe4ee] text-[#64748b] hover:bg-slate-50'
+                          : 'border-[#dbe4ee] text-on-surface-variant hover:bg-slate-50'
                       "
                     >
                       {{ page }}
@@ -252,7 +262,7 @@ interface EditState {
                     type="button"
                     (click)="goToUsersPage(currentUsersPage() + 1)"
                     [disabled]="currentUsersPage() === totalUserPages()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-[#64748b] transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-on-surface-variant transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Pagina siguiente"
                   >
                     <span class="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -272,10 +282,10 @@ interface EditState {
           (click)="closeDeleteUser()"
         >
           <section
-            class="w-full max-w-md overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
             (click)="$event.stopPropagation()"
           >
-            <div class="border-b border-[#e2e8f0] px-5 py-4">
+            <div class="border-b border-surface-container px-5 py-4">
               <div class="flex items-center gap-3">
                 <span
                   class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600"
@@ -283,19 +293,19 @@ interface EditState {
                   <span class="material-symbols-outlined text-[21px]">delete</span>
                 </span>
                 <div>
-                  <h2 class="text-body font-bold text-[#1e293b]">Eliminar usuario</h2>
-                  <p class="text-caption text-[#94a3b8]">Esta accion elimina el registro.</p>
+                  <h2 class="text-body font-bold text-on-surface">Eliminar usuario</h2>
+                  <p class="text-caption text-on-surface-muted">Esta accion elimina el registro.</p>
                 </div>
               </div>
             </div>
 
             <div class="px-5 py-5">
-              <p class="text-body-sm text-[#64748b]">
+              <p class="text-body-sm text-on-surface-variant">
                 Confirma si realmente quieres eliminar a
-                <strong class="font-bold text-[#1e293b]">{{ fullName(user) }}</strong
+                <strong class="font-bold text-on-surface">{{ fullName(user) }}</strong
                 >.
               </p>
-              <p class="mt-2 break-words text-caption font-semibold text-[#94a3b8]">
+              <p class="mt-2 break-words text-caption font-semibold text-on-surface-muted">
                 {{ user.email }}
               </p>
               @if (deleteError()) {
@@ -308,13 +318,13 @@ interface EditState {
             </div>
 
             <div
-              class="flex items-center justify-end gap-2 border-t border-[#e2e8f0] bg-slate-50 px-5 py-4"
+              class="flex items-center justify-end gap-2 border-t border-surface-container bg-slate-50 px-5 py-4"
             >
               <button
                 type="button"
                 (click)="closeDeleteUser()"
                 [disabled]="deleteSaving()"
-                class="h-9 rounded-lg border border-[#e2e8f0] bg-white px-4 text-body-sm font-semibold text-[#64748b] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -339,10 +349,10 @@ interface EditState {
           (click)="closePasswordConfirm()"
         >
           <section
-            class="w-full max-w-md overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
             (click)="$event.stopPropagation()"
           >
-            <div class="border-b border-[#e2e8f0] px-5 py-4">
+            <div class="border-b border-surface-container px-5 py-4">
               <div class="flex items-center gap-3">
                 <div
                   class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-tint-10 text-primary"
@@ -350,24 +360,26 @@ interface EditState {
                   <span class="material-symbols-outlined text-[22px]">shield_lock</span>
                 </div>
                 <div>
-                  <h2 class="text-body font-bold text-[#1e293b]">Confirmar cambio</h2>
-                  <p class="text-caption text-[#94a3b8]">Tu proximo inicio usara esta clave.</p>
+                  <h2 class="text-body font-bold text-on-surface">Confirmar cambio</h2>
+                  <p class="text-caption text-on-surface-muted">
+                    Tu proximo inicio usara esta clave.
+                  </p>
                 </div>
               </div>
             </div>
             <div class="px-5 py-5">
-              <p class="text-body-sm leading-6 text-[#64748b]">
+              <p class="text-body-sm leading-6 text-on-surface-variant">
                 Estas seguro de cambiar tu contrasena?
               </p>
             </div>
             <div
-              class="flex items-center justify-end gap-2 border-t border-[#e2e8f0] bg-slate-50 px-5 py-4"
+              class="flex items-center justify-end gap-2 border-t border-surface-container bg-slate-50 px-5 py-4"
             >
               <button
                 type="button"
                 (click)="closePasswordConfirm()"
                 [disabled]="passwordSaving()"
-                class="h-9 rounded-lg border border-[#e2e8f0] bg-white px-4 text-body-sm font-semibold text-[#64748b] transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -375,7 +387,7 @@ interface EditState {
                 type="button"
                 (click)="confirmPasswordChange()"
                 [disabled]="passwordSaving()"
-                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ passwordSaving() ? 'Guardando...' : 'Confirmar' }}
               </button>
@@ -387,7 +399,7 @@ interface EditState {
       @if (activeTab() === 'profile' && displayUser(); as user) {
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(260px,340px)_1fr]">
           <section
-            class="rounded-xl border border-[#e2e8f0] bg-white px-5 py-5 shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+            class="rounded-xl border border-surface-container bg-white px-5 py-5 shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
           >
             <div class="flex items-start gap-4">
               <div
@@ -396,16 +408,20 @@ interface EditState {
                 {{ initials(user) }}
               </div>
               <div class="min-w-0 flex-1">
-                <h2 class="truncate text-h6 font-bold text-[#1e293b]">{{ fullName(user) }}</h2>
+                <h2 class="truncate text-h6 font-bold text-on-surface">{{ fullName(user) }}</h2>
                 <p class="mt-1 truncate text-body-sm font-semibold text-primary">
                   {{ displayValue(user.email) }}
                 </p>
-                <p class="mt-3 flex items-center gap-1.5 text-body-sm font-semibold text-[#64748b]">
-                  <span class="material-symbols-outlined text-[16px] text-[#94a3b8]">work</span>
+                <p
+                  class="mt-3 flex items-center gap-1.5 text-body-sm font-semibold text-on-surface-variant"
+                >
+                  <span class="material-symbols-outlined text-[16px] text-on-surface-muted"
+                    >work</span
+                  >
                   {{ displayValue(user.cargo, 'Cargo no registrado') }}
                 </p>
                 @if (companyLine(user)) {
-                  <p class="mt-1 flex items-center gap-1.5 text-caption text-[#94a3b8]">
+                  <p class="mt-1 flex items-center gap-1.5 text-caption text-on-surface-muted">
                     <span class="material-symbols-outlined text-[15px]">business</span>
                     {{ companyLine(user) }}
                   </p>
@@ -415,10 +431,10 @@ interface EditState {
           </section>
 
           <section
-            class="rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+            class="rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
           >
-            <div class="border-b border-[#e2e8f0] px-5 py-4">
-              <h2 class="text-body font-bold text-[#1e293b]">Datos personales</h2>
+            <div class="border-b border-surface-container px-5 py-4">
+              <h2 class="text-body font-bold text-on-surface">Datos personales</h2>
             </div>
 
             <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
@@ -427,11 +443,11 @@ interface EditState {
                   type="button"
                   (click)="openEdit(row)"
                   [disabled]="!row.field"
-                  class="group min-w-0 rounded-lg border border-[#e2e8f0] bg-white px-4 py-3 text-left transition-all hover:border-primary-tint-35 hover:bg-primary-tint-08/40 hover:shadow-[0_4px_14px_rgba(13,175,189,0.10)] disabled:cursor-default disabled:hover:border-[#e2e8f0] disabled:hover:bg-white disabled:hover:shadow-none"
+                  class="group min-w-0 rounded-lg border border-surface-container bg-white px-4 py-3 text-left transition-all hover:border-primary-tint-35 hover:bg-primary-tint-08/40 hover:shadow-[0_4px_14px_rgba(13,175,189,0.10)] disabled:cursor-default disabled:hover:border-surface-container disabled:hover:bg-white disabled:hover:shadow-none"
                 >
                   <div class="mb-2 flex items-center justify-between gap-2">
                     <p
-                      class="flex min-w-0 items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                      class="flex min-w-0 items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                     >
                       <span class="material-symbols-outlined text-[15px]">{{ row.icon }}</span>
                       {{ row.label }}
@@ -451,7 +467,7 @@ interface EditState {
                       </span>
                     }
                   </div>
-                  <p class="break-words text-body-sm font-semibold text-[#1e293b]">
+                  <p class="break-words text-body-sm font-semibold text-on-surface">
                     {{ row.value }}
                   </p>
                 </button>
@@ -460,21 +476,21 @@ interface EditState {
           </section>
 
           <section
-            class="rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)] xl:col-span-2"
+            class="rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)] xl:col-span-2"
           >
-            <div class="border-b border-[#e2e8f0] px-5 py-4">
-              <h2 class="text-body font-bold text-[#1e293b]">Empresa asociada</h2>
+            <div class="border-b border-surface-container px-5 py-4">
+              <h2 class="text-body font-bold text-on-surface">Empresa asociada</h2>
             </div>
             <div class="grid grid-cols-1 gap-3 p-4 md:grid-cols-2">
               @for (row of companyRows(); track row.label) {
-                <div class="min-w-0 rounded-lg border border-[#e2e8f0] bg-white px-4 py-3">
+                <div class="min-w-0 rounded-lg border border-surface-container bg-white px-4 py-3">
                   <p
-                    class="mb-2 flex items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    class="mb-2 flex items-center gap-1.5 text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                   >
                     <span class="material-symbols-outlined text-[15px]">{{ row.icon }}</span>
                     {{ row.label }}
                   </p>
-                  <p class="break-words text-body-sm font-semibold text-[#1e293b]">
+                  <p class="break-words text-body-sm font-semibold text-on-surface">
                     {{ row.value }}
                   </p>
                 </div>
@@ -489,13 +505,13 @@ interface EditState {
           class="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(320px,390px)]"
         >
           <section
-            class="overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+            class="overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
           >
-            <div class="border-b border-[#e2e8f0] px-4 py-3">
-              <h2 class="text-body font-bold text-[#1e293b]">
+            <div class="border-b border-surface-container px-4 py-3">
+              <h2 class="text-body font-bold text-on-surface">
                 {{ user.has_password ? 'Cambiar contraseña' : 'Crear contraseña' }}
               </h2>
-              <p class="text-caption text-[#94a3b8]">
+              <p class="text-caption text-on-surface-muted">
                 La contraseña permite iniciar sesión sin pedir código inicial.
               </p>
             </div>
@@ -511,7 +527,7 @@ interface EditState {
               @if (user.has_password) {
                 <label class="grid gap-1">
                   <span
-                    class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                   >
                     Contraseña actual
                   </span>
@@ -530,7 +546,7 @@ interface EditState {
                     <button
                       type="button"
                       (click)="showCurrentPassword.set(!showCurrentPassword())"
-                      class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
+                      class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary"
                       [attr.aria-label]="
                         showCurrentPassword()
                           ? 'Ocultar contrasena actual'
@@ -545,7 +561,9 @@ interface EditState {
                 </label>
               }
               <label class="grid gap-1">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Nueva contraseña
                 </span>
                 <div class="relative">
@@ -564,7 +582,7 @@ interface EditState {
                   <button
                     type="button"
                     (click)="showNewPassword.set(!showNewPassword())"
-                    class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
+                    class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary"
                     [attr.aria-label]="
                       showNewPassword() ? 'Ocultar nueva contrasena' : 'Ver nueva contrasena'
                     "
@@ -578,11 +596,11 @@ interface EditState {
               <div class="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
                 <div class="mb-1.5 flex items-center justify-between gap-3">
                   <span
-                    class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]"
+                    class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
                   >
                     Seguridad
                   </span>
-                  <span class="text-caption font-bold text-[#64748b]">{{
+                  <span class="text-caption font-bold text-on-surface-variant">{{
                     passwordStrengthLabel()
                   }}</span>
                 </div>
@@ -598,7 +616,9 @@ interface EditState {
                 </div>
               </div>
               <label class="grid gap-1">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Confirmar contraseña
                 </span>
                 <div class="relative">
@@ -619,7 +639,7 @@ interface EditState {
                   <button
                     type="button"
                     (click)="showConfirmPassword.set(!showConfirmPassword())"
-                    class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-primary"
+                    class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary"
                     [attr.aria-label]="
                       showConfirmPassword() ? 'Ocultar confirmacion' : 'Ver confirmacion'
                     "
@@ -647,7 +667,7 @@ interface EditState {
               <button
                 type="submit"
                 [disabled]="passwordSaving() || !canSavePassword(user)"
-                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {{
                   passwordSaving()
@@ -663,8 +683,8 @@ interface EditState {
           <section
             class="h-fit rounded-xl border border-primary-tint-25 bg-primary-tint-08/50 p-4 shadow-[0_1px_4px_rgba(15,23,42,0.04)]"
           >
-            <h2 class="text-body font-bold text-[#1e293b]">Métodos de inicio</h2>
-            <p class="mt-1 text-caption text-[#64748b]">
+            <h2 class="text-body font-bold text-on-surface">Métodos de inicio</h2>
+            <p class="mt-1 text-caption text-on-surface-variant">
               Debe quedar al menos un método activo para no bloquear la cuenta.
             </p>
 
@@ -687,8 +707,8 @@ interface EditState {
                   (change)="setAuthMode('password')"
                 />
                 <span>
-                  <span class="block text-body-sm font-bold text-[#1e293b]">Solo contraseña</span>
-                  <span class="text-caption text-[#64748b]"
+                  <span class="block text-body-sm font-bold text-on-surface">Solo contraseña</span>
+                  <span class="text-caption text-on-surface-variant"
                     >Ingreso directo con tu contraseña.</span
                   >
                 </span>
@@ -710,8 +730,10 @@ interface EditState {
                   (change)="setAuthMode('otp')"
                 />
                 <span>
-                  <span class="block text-body-sm font-bold text-[#1e293b]">Solo código OTP</span>
-                  <span class="text-caption text-[#64748b]">Enviaremos un código a tu correo.</span>
+                  <span class="block text-body-sm font-bold text-on-surface">Solo código OTP</span>
+                  <span class="text-caption text-on-surface-variant"
+                    >Enviaremos un código a tu correo.</span
+                  >
                 </span>
               </label>
 
@@ -733,8 +755,8 @@ interface EditState {
                   (change)="setAuthMode('password_otp')"
                 />
                 <span>
-                  <span class="block text-body-sm font-bold text-[#1e293b]">Contraseña + OTP</span>
-                  <span class="text-caption text-[#64748b]">
+                  <span class="block text-body-sm font-bold text-on-surface">Contraseña + OTP</span>
+                  <span class="text-caption text-on-surface-variant">
                     Primero contraseña, luego código por correo.
                   </span>
                 </span>
@@ -760,7 +782,7 @@ interface EditState {
               type="button"
               (click)="saveSecurity()"
               [disabled]="securitySaving()"
-              class="mt-3 h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
+              class="mt-3 h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-45"
             >
               {{ securitySaving() ? 'Guardando...' : 'Guardar métodos' }}
             </button>
@@ -776,18 +798,20 @@ interface EditState {
           (click)="closeEdit()"
         >
           <section
-            class="w-full max-w-md overflow-hidden rounded-2xl border border-[#e2e8f0] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
             (click)="$event.stopPropagation()"
           >
-            <div class="flex items-center justify-between border-b border-[#e2e8f0] px-5 py-4">
+            <div
+              class="flex items-center justify-between border-b border-surface-container px-5 py-4"
+            >
               <div class="flex items-center gap-2">
                 <span class="material-symbols-outlined text-[19px] text-primary">edit</span>
-                <h2 class="text-body font-bold text-[#1e293b]">Editar {{ edit.label }}</h2>
+                <h2 class="text-body font-bold text-on-surface">Editar {{ edit.label }}</h2>
               </div>
               <button
                 type="button"
                 (click)="closeEdit()"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-[#94a3b8] transition-colors hover:bg-slate-100 hover:text-[#475569]"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-[#475569]"
                 aria-label="Cerrar"
               >
                 <span class="material-symbols-outlined text-[18px]">close</span>
@@ -796,19 +820,23 @@ interface EditState {
 
             <div class="space-y-4 px-5 py-5">
               <label class="grid gap-1.5">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Actual
                 </span>
                 <input
                   type="text"
                   [value]="edit.currentValue || 'No registrado'"
                   disabled
-                  class="h-10 rounded-lg border border-[#e2e8f0] bg-slate-50 px-3 text-body-sm font-semibold text-[#64748b]"
+                  class="h-10 rounded-lg border border-surface-container bg-slate-50 px-3 text-body-sm font-semibold text-on-surface-variant"
                 />
               </label>
 
               <label class="grid gap-1.5">
-                <span class="text-caption-xs font-bold uppercase tracking-[0.14em] text-[#94a3b8]">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
                   Nuevo
                 </span>
                 <input
@@ -817,7 +845,7 @@ interface EditState {
                   [ngModel]="edit.value"
                   (ngModelChange)="setEditValue($event)"
                   [attr.inputmode]="edit.field === 'telefono' ? 'tel' : 'text'"
-                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm font-semibold text-[#1e293b] outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 text-body-sm font-semibold text-on-surface outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
                 />
               </label>
 
@@ -832,12 +860,12 @@ interface EditState {
             </div>
 
             <div
-              class="flex items-center justify-end gap-2 border-t border-[#e2e8f0] bg-slate-50 px-5 py-4"
+              class="flex items-center justify-end gap-2 border-t border-surface-container bg-slate-50 px-5 py-4"
             >
               <button
                 type="button"
                 (click)="closeEdit()"
-                class="h-9 rounded-lg border border-[#e2e8f0] bg-white px-4 text-body-sm font-semibold text-[#64748b] transition-colors hover:bg-slate-100"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100"
               >
                 Cancelar
               </button>
@@ -845,7 +873,7 @@ interface EditState {
                 type="button"
                 (click)="saveEdit()"
                 [disabled]="editSaving() || !canSaveEdit(edit)"
-                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-45"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {{ editSaving() ? 'Guardando...' : 'Confirmar' }}
               </button>

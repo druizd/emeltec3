@@ -67,6 +67,8 @@ exports.crearAlerta = async (req, res) => {
     severidad = 'media',
     cooldown_minutos = 5,
     dias_activos,
+    visible_to_all,
+    viewer_user_ids,
   } = req.body;
 
   if (!nombre || !sitio_id || !empresa_id || !variable_key || !condicion) {
@@ -95,11 +97,17 @@ exports.crearAlerta = async (req, res) => {
       .json({ ok: false, error: 'Debe seleccionar al menos un dia activo valido' });
   }
 
+  const visibleToAll = visible_to_all !== false;
+  const viewerIds = Array.isArray(viewer_user_ids)
+    ? viewer_user_ids.filter((s) => typeof s === 'string' && s.length > 0)
+    : [];
+
   const { rows } = await pool.query(
     `INSERT INTO alertas
        (nombre, descripcion, sitio_id, empresa_id, sub_empresa_id, variable_key,
-        condicion, umbral_bajo, umbral_alto, severidad, cooldown_minutos, dias_activos, creado_por)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+        condicion, umbral_bajo, umbral_alto, severidad, cooldown_minutos, dias_activos, creado_por,
+        visible_to_all, viewer_user_ids)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      RETURNING *`,
     [
       nombre,
@@ -115,6 +123,8 @@ exports.crearAlerta = async (req, res) => {
       cooldown_minutos,
       diasActivos,
       req.user.id,
+      visibleToAll,
+      visibleToAll ? [] : viewerIds,
     ],
   );
 
@@ -203,6 +213,8 @@ exports.actualizarAlerta = async (req, res) => {
     'cooldown_minutos',
     'dias_activos',
     'activa',
+    'visible_to_all',
+    'viewer_user_ids',
   ];
   const updates = [];
   const params = [];

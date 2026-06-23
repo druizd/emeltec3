@@ -252,10 +252,10 @@ function tapRouteSegmentForSite(site: SiteRecord): string | null {
 export function dashboardRouteForSite(site: SiteRecord): string[] {
   const type = normalizeSiteType(site.tipo_sitio);
   if (type === 'camara_frio') {
-    const tapSegment = tapRouteSegmentForSite(site);
-    return tapSegment
-      ? ['/companies', site.id, 'tap', tapSegment]
-      : ['/companies', site.id, 'cold-room'];
+    // Todos entran a la vista general (mapa + salas) en /cold-room. El detalle
+    // técnico de TAP (/tap/:tapId) es solo-admin y se alcanza desde la pestaña
+    // "TAP (técnico)" del general (visible solo para admin).
+    return ['/companies', site.id, 'cold-room'];
   }
   return ['/companies', site.id, getSiteTypeUi(site.tipo_sitio).routeSegment];
 }

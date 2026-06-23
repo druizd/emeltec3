@@ -35,7 +35,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Gráficos de Tendencia</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">{{ chartSubtitle() }}</p>
+            <p class="mt-0.5 text-caption-xs text-slate-500">{{ chartSubtitle() }}</p>
           </div>
 
           <!-- Dropdown button -->
@@ -43,7 +43,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <button
               type="button"
               (click)="chartRangeOpen.update((v) => !v)"
-              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+              class="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-caption font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               [class]="
                 chartRangeOpen()
                   ? 'border-primary-tint-25 bg-primary-tint-08 text-primary-container'
@@ -81,7 +81,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                       <button
                         type="button"
                         (click)="setPreset(p.key)"
-                        class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                        class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         [class]="
                           chartPreset() === p.key
                             ? 'bg-primary text-white'
@@ -130,7 +130,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                     <button
                       type="button"
                       (click)="applyCustomRange()"
-                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+                      class="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container"
                     >
                       <span class="material-symbols-outlined text-[14px]">check</span>
                       Aplicar rango
@@ -149,14 +149,14 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p class="text-caption font-semibold text-slate-700">Nivel Freático</p>
-                <p class="text-caption-xs text-slate-400">m bajo superficie</p>
+                <p class="text-caption-xs text-slate-500">m bajo superficie</p>
               </div>
               <button
                 type="button"
                 (click)="downloadNivelXlsx()"
                 [disabled]="nivelEmpty()"
                 aria-label="Descargar Nivel Freático en Excel"
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                   >download</span
@@ -165,7 +165,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
             <div class="relative h-44 w-full">
               @if (nivelEmpty()) {
-                <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+                <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
                   Sin datos de nivel freático en el rango seleccionado.
                 </div>
               } @else {
@@ -256,14 +256,14 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             <div class="mb-3 flex items-center justify-between gap-3">
               <div>
                 <p class="text-caption font-semibold text-slate-700">Caudal Instantáneo</p>
-                <p class="text-caption-xs text-slate-400">L/s</p>
+                <p class="text-caption-xs text-slate-500">L/s</p>
               </div>
               <button
                 type="button"
                 (click)="downloadCaudalXlsx()"
                 [disabled]="caudalEmpty()"
                 aria-label="Descargar Caudal Instantáneo en Excel"
-                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-500 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
                   >download</span
@@ -272,7 +272,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             </div>
             <div class="relative h-44 w-full">
               @if (caudalEmpty()) {
-                <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+                <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
                   Sin datos de caudal en el rango seleccionado.
                 </div>
               } @else {
@@ -365,7 +365,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Mensual</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               Últimos 12 meses · {{ mensualUnit() }} totales por mes
             </p>
           </div>
@@ -374,7 +374,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             (click)="downloadMensualXlsx()"
             [disabled]="mensualLoading() || mensualEmpty()"
             aria-label="Descargar Flujo Mensual en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
             >.XLSX
@@ -384,7 +384,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           @if (mensualLoading()) {
             <app-chart-skeleton [bars]="12" [height]="160" />
           } @else if (mensualEmpty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
               Sin datos de totalizador para este sitio en los últimos 12 meses.
             </div>
           } @else {
@@ -457,7 +457,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         <div class="mb-4 flex items-start justify-between gap-3">
           <div>
             <h3 class="text-body-sm font-semibold text-slate-800">Flujo Diario</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               Últimos 30 días · {{ diarioUnit() }}/día · días sin operación en gris
             </p>
           </div>
@@ -466,7 +466,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             (click)="downloadDiarioXlsx()"
             [disabled]="diarioLoading() || diarioEmpty()"
             aria-label="Descargar Flujo Diario en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
             >.XLSX
@@ -476,7 +476,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           @if (diarioLoading()) {
             <app-chart-skeleton [bars]="30" [height]="160" />
           } @else if (diarioEmpty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
               Sin datos de totalizador para este sitio en los últimos 30 días.
             </div>
           } @else {
@@ -548,7 +548,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               <button
                 type="button"
                 (click)="jornadaSettingsOpen.update((v) => !v)"
-                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+                class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 [class]="
                   jornadaSettingsOpen()
                     ? 'bg-primary-tint-14 text-primary-container'
@@ -560,7 +560,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                 <span class="material-symbols-outlined text-[15px]">settings</span>
               </button>
             </div>
-            <p class="mt-0.5 text-caption-xs text-slate-400">
+            <p class="mt-0.5 text-caption-xs text-slate-500">
               Últimos 30 días · flujo acumulado por jornada ({{ jornadaInicio() }} a
               {{ jornadaFin() }} del día siguiente) · m³
             </p>
@@ -570,7 +570,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
             (click)="downloadJornadaXlsx()"
             [disabled]="turno7Loading() || turno7Empty()"
             aria-label="Descargar Resumen Jornada en Excel"
-            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0DAFBD]"
+            class="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-caption-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span
             >.XLSX
@@ -590,7 +590,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               class="flex flex-wrap items-center gap-3 text-caption font-semibold text-slate-600"
             >
               <label class="flex items-center gap-2">
-                <span class="text-slate-400">Inicio</span>
+                <span class="text-slate-500">Inicio</span>
                 <input
                   type="time"
                   [value]="jornadaInicio()"
@@ -600,7 +600,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
               </label>
               <span class="text-slate-300">–</span>
               <label class="flex items-center gap-2">
-                <span class="text-slate-400">Fin</span>
+                <span class="text-slate-500">Fin</span>
                 <input
                   type="time"
                   [value]="jornadaFin()"
@@ -608,14 +608,14 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
                   class="h-8 rounded-lg border border-slate-200 bg-white px-2 text-center font-mono text-caption text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                 />
               </label>
-              <span class="text-caption-xs text-slate-400"
+              <span class="text-caption-xs text-slate-500"
                 >(del día siguiente si cruza medianoche)</span
               >
             </div>
             <button
               type="button"
               (click)="jornadaSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5]"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
             >
               <span class="material-symbols-outlined text-[14px]">check</span>
               Listo
@@ -627,7 +627,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
           @if (turno7Loading()) {
             <app-chart-skeleton [bars]="14" [height]="160" />
           } @else if (turno7Empty()) {
-            <div class="flex h-full items-center justify-center text-caption-xs text-slate-400">
+            <div class="flex h-full items-center justify-center text-caption-xs text-slate-500">
               Sin datos de jornada para este sitio en los últimos 30 días.
             </div>
           } @else {
@@ -689,7 +689,7 @@ type ChartPreset = '6h' | '12h' | '24h' | '48h' | '7d' | 'custom';
         </div>
 
         <!-- Leyenda -->
-        <div class="flex flex-wrap gap-4 px-5 pb-5 pt-3 text-caption-xs text-slate-400">
+        <div class="flex flex-wrap gap-4 px-5 pb-5 pt-3 text-caption-xs text-slate-500">
           <span class="flex items-center gap-1.5">
             <span class="inline-block h-3 w-3 rounded-sm bg-accent opacity-85"></span>
             Jornada con operación

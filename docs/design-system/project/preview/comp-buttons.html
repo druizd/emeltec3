@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face { font-family: 'Josefin Sans'; src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype'); font-weight: 100 700; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .section-title { font-family: 'Josefin Sans'; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #94A3B8; margin-bottom: 10px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .divider { height: 1px; background: #E2E8F0; margin: 4px 0 14px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: 'Josefin Sans'; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    border-radius: 4px; cursor: pointer; border: none; white-space: nowrap; transition: all 0.15s;
+  }
+  .btn-sm  { height: 30px; padding: 0 12px; font-size: 11px; }
+  .btn-md  { height: 38px; padding: 0 18px; font-size: 12px; }
+  .btn-lg  { height: 46px; padding: 0 24px; font-size: 13px; }
+  .btn-primary  { background: #0DAFBD; color: #fff; }
+  .btn-primary:hover { background: #0899A5; }
+  .btn-secondary{ background: transparent; color: #0899A5; border: 1px solid #0DAFBD; }
+  .btn-secondary:hover { background: rgba(13,175,189,0.06); }
+  .btn-ghost    { background: transparent; color: #64748B; border: 1px solid #E2E8F0; }
+  .btn-ghost:hover { border-color: #94A3B8; color: #1E293B; }
+  .btn-danger   { background: transparent; color: #E11D48; border: 1px solid #FECDD3; }
+  .btn-danger:hover { background: #FFF1F2; }
+  .btn-filled   { background: #F1F5F9; color: #64748B; border: 1px solid #E2E8F0; }
+  .btn-filled:hover { background: #E2E8F0; color: #1E293B; }
+  .btn-disabled { background: #F8FAFC; color: #CBD5E1; border: 1px solid #E2E8F0; cursor: not-allowed; }
+  .icon { width: 13px; height: 13px; opacity: 0.7; }
+</style>
+</head><body>
+<div class="section-title">Primary</div>
+<div class="row">
+  <button class="btn btn-md btn-primary">Aplicar</button>
+  <button class="btn btn-md btn-primary"><i data-lucide="download" class="icon"></i>Descargar</button>
+  <button class="btn btn-md btn-primary"><i data-lucide="send" class="icon"></i>Enviar a DGA</button>
+</div>
+<div class="section-title">Secondary &amp; Ghost</div>
+<div class="row">
+  <button class="btn btn-md btn-secondary"><i data-lucide="external-link" class="icon"></i>Ver en DGA</button>
+  <button class="btn btn-md btn-ghost"><i data-lucide="headphones" class="icon"></i>Contáctanos</button>
+  <button class="btn btn-md btn-filled"><i data-lucide="file-text" class="icon"></i>Reporte DGA</button>
+  <button class="btn btn-md btn-danger"><i data-lucide="x-circle" class="icon"></i>Rechazar</button>
+</div>
+<div class="divider"></div>
+<div class="section-title">Tamaños</div>
+<div class="row">
+  <button class="btn btn-sm btn-primary">Aplicar</button>
+  <button class="btn btn-md btn-primary">Aplicar</button>
+  <button class="btn btn-lg btn-primary">Aplicar</button>
+  <button class="btn btn-md btn-disabled" disabled>Sin datos</button>
+</div>
+<script>lucide.createIcons();</script>
+</body></html>

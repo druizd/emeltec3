@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face {
+    font-family: 'Josefin Sans';
+    src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 700; font-style: normal;
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .card { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .card.active { border-color: rgba(13,175,189,0.4); box-shadow: 0 0 0 1px rgba(13,175,189,0.15), 0 2px 8px rgba(0,0,0,0.08); }
+  .label { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #94A3B8; margin-bottom: 8px; }
+  .value { font-family: 'JetBrains Mono'; font-size: 34px; font-weight: 600; color: #1E293B; letter-spacing: -0.02em; line-height: 1; }
+  .value.teal { color: #0899A5; }
+  .unit  { font-family: 'JetBrains Mono'; font-size: 16px; font-weight: 400; color: #94A3B8; margin-left: 2px; }
+  .delta { font-size: 11px; color: #94A3B8; margin-top: 6px; }
+  .limit { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .limit-ok  { color: #16A34A; }
+  .limit-val { font-family: 'JetBrains Mono'; font-size: 11px; }
+
+  /* Sparkline */
+  .sparkline { margin-top: 10px; }
+
+  /* Shift cards */
+  .shift-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+  .shift-card { border-radius: 10px; padding: 14px 16px; }
+  .shift-name { font-family: 'Josefin Sans'; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .shift-time { font-size: 10px; margin-top: 2px; }
+  .shift-val  { font-family: 'JetBrains Mono'; font-size: 26px; font-weight: 700; margin-top: 10px; line-height: 1; }
+  .shift-unit { font-size: 12px; font-weight: 400; opacity: 0.65; }
+</style>
+</head><body>
+
+<div class="grid">
+  <!-- Caudal Actual — sparkline -->
+  <div class="card active">
+    <div class="label">Caudal Actual</div>
+    <div>
+      <span class="value teal">0.00</span><span class="unit">L/s</span>
+    </div>
+    <div class="limit limit-ok">
+      <i data-lucide="shield-check" style="width:11px;height:11px"></i>
+      Límite DGA: <span class="limit-val">&nbsp;25.0 L/s</span>
+    </div>
+    <div class="sparkline">
+      <svg width="100%" height="36" viewBox="0 0 220 36" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0DAFBD" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#0DAFBD" stop-opacity="0.01"/>
+          </linearGradient>
+        </defs>
+        <path d="M0,30 L30,28 L60,20 L90,8 L120,14 L150,22 L180,26 L220,30 L220,36 L0,36 Z" fill="url(#sg)"/>
+        <path d="M0,30 L30,28 L60,20 L90,8 L120,14 L150,22 L180,26 L220,30" fill="none" stroke="#0DAFBD" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Nivel Freático — live, no chart -->
+  <div class="card">
+    <div class="label">Nivel Freático</div>
+    <div>
+      <span class="value">14.70</span><span class="unit">m</span>
+    </div>
+    <div class="limit" style="color:#94A3B8;margin-top:6px">
+      <i data-lucide="radio" style="width:11px;height:11px;color:#22C55E"></i>
+      <span style="color:#22C55E;font-weight:600">En vivo</span>&nbsp;· hace 0s
+    </div>
+  </div>
+
+  <!-- Totalizador -->
+  <div class="card">
+    <div class="label">Totalizador</div>
+    <div>
+      <span class="value" style="font-size:24px">541,551</span><span class="unit">m³</span>
+    </div>
+    <div class="limit" style="color:#94A3B8">
+      <i data-lucide="database" style="width:11px;height:11px"></i>
+      Acumulación total
+    </div>
+  </div>
+
+  <!-- Consumo Hoy -->
+  <div class="card">
+    <div class="label">Consumo Hoy</div>
+    <div>
+      <span class="value">0.0</span><span class="unit">m³</span>
+    </div>
+    <div class="limit limit-ok">
+      <i data-lucide="shield-check" style="width:11px;height:11px"></i>
+      Límite DGA: <span class="limit-val">&nbsp;1,200 m³/día</span>
+    </div>
+  </div>
+</div>
+
+<!-- Shift cards -->
+<div class="shift-grid">
+  <div class="shift-card" style="background:linear-gradient(135deg,#04606A,#0DAFBD)">
+    <div class="shift-name" style="color:rgba(255,255,255,0.85)">Turno 1</div>
+    <div class="shift-time" style="color:rgba(255,255,255,0.5)">07:00 – 14:59</div>
+    <div class="shift-val" style="color:#fff">0.0 <span class="shift-unit">m³</span></div>
+  </div>
+  <div class="shift-card" style="background:linear-gradient(135deg,#065F46,#22C55E)">
+    <div class="shift-name" style="color:rgba(255,255,255,0.85)">Turno 2</div>
+    <div class="shift-time" style="color:rgba(255,255,255,0.5)">15:00 – 22:59</div>
+    <div class="shift-val" style="color:#fff">0.0 <span class="shift-unit">m³</span></div>
+  </div>
+  <div class="shift-card" style="background:#F1F5F9;border:1px solid #E2E8F0">
+    <div class="shift-name" style="color:#CBD5E1">Turno 3</div>
+    <div class="shift-time" style="color:#E2E8F0">23:00 – 06:59</div>
+    <div class="shift-val" style="color:#CBD5E1;font-size:16px;margin-top:10px">No Iniciado</div>
+  </div>
+  <div class="shift-card" style="background:#F8FAFC;border:1px solid #E2E8F0">
+    <div class="shift-name" style="color:#475569">Total del Día</div>
+    <div class="shift-time" style="color:#94A3B8">24 horas</div>
+    <div class="shift-val" style="color:#1E293B">0.0 <span class="shift-unit">m³</span></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons();</script>
+</body></html>

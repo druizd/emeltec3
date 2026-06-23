@@ -88,7 +88,7 @@ export class KpiCardComponent {
       case 'warning':
         return 'border-[rgba(251,191,36,0.25)] bg-[rgba(251,191,36,0.10)] text-[#d97706]';
       default:
-        return 'border-[#e2e8f0] bg-[#f8fafc] text-on-surface-variant';
+        return 'border-surface-container bg-surface-subtle text-on-surface-variant';
     }
   }
 }

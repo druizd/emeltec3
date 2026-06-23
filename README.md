@@ -140,7 +140,7 @@ pnpm --filter frontend-angular start
 Luego abre:
 
 ```text
-http://localhost:4200
+http://127.0.0.1:4300
 ```
 
 Para probar integracion completa, las APIs necesarias deben estar levantadas y accesibles segun la configuracion del proxy del frontend.

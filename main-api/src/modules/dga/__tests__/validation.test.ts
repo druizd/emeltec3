@@ -36,6 +36,7 @@ function makeCtx(overrides: Partial<ValidationContext> = {}): ValidationContext 
     pozoDga: makePozoDga(),
     totalizadorParams: {},
     lastValidTotalizador: null,
+    priorReadings: [],
     ...overrides,
   };
 }
@@ -266,5 +267,275 @@ describe('validateSlot — combinación múltiple', () => {
     // Orden en validation.ts: sensor → totalizator_zero (bloqueado por sensor) → flow.
     expect(res.failReason).toBe('sensor_known_defective');
     expect(res.warnings.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regla 6: sensor_frozen
+// ---------------------------------------------------------------------------
+describe('validateSlot — regla sensor_frozen', () => {
+  // Helpers para construir lecturas previas con totalizador idéntico al actual.
+  function makePriors(
+    count: number,
+    totalizador: number,
+    caudal = 5,
+  ): { ts: string; caudal: number | null; totalizador: number | null }[] {
+    return Array.from({ length: count }, (_, i) => ({
+      ts: `2026-06-01T0${i}:00:00Z`,
+      caudal,
+      totalizador,
+    }));
+  }
+
+  it('N lecturas idénticas de totalizador + caudal activo → sensor_frozen flagged', () => {
+    // frozen_window_n=4 por defecto → necesita 3 previas con mismo valor.
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: makePriors(3, 1000),
+      }),
+    );
+    expect(res.ok).toBe(false);
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('sensor_frozen');
+    expect(res.failReason).toBe('sensor_frozen');
+  });
+
+  it('totalizador avanzando (al menos un prior distinto) → no flagged', () => {
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1050, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: [
+          { ts: '2026-06-01T02:00:00Z', caudal: 5, totalizador: 1040 },
+          { ts: '2026-06-01T01:00:00Z', caudal: 5, totalizador: 1030 },
+          { ts: '2026-06-01T00:00:00Z', caudal: 5, totalizador: 1020 },
+        ],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('sensor_frozen');
+  });
+
+  it('pozo en reposo (caudal=0, totalizador plano) → NO flagged (exención)', () => {
+    const res = validateSlot(
+      { caudal: 0, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: makePriors(3, 1000, 0),
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('sensor_frozen');
+  });
+
+  it('historial insuficiente (< frozen_window_n - 1 previas) → no flagged', () => {
+    // frozen_window_n=4, necesita 3 previas pero solo hay 2 → no flag.
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: makePriors(2, 1000),
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('sensor_frozen');
+  });
+
+  it('config frozen_window_n ausente → usa FROZEN_WINDOW_DEFAULT_N=4', () => {
+    // Sin config: default N=4 → necesita 3 previas idénticas.
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: {},
+        priorReadings: makePriors(3, 1000),
+      }),
+    );
+    expect(res.warnings.map((w) => w.code)).toContain('sensor_frozen');
+  });
+
+  it('frozen_window_n inválido (NaN) → cae a default 4', () => {
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 'no-es-numero' },
+        priorReadings: makePriors(3, 1000),
+      }),
+    );
+    expect(res.warnings.map((w) => w.code)).toContain('sensor_frozen');
+  });
+
+  it('frozen_window_n inválido (< 2) → cae a default 4', () => {
+    // Valor 1 sería degenerado → cae a default 4, necesita 3 previas.
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 1 },
+        priorReadings: makePriors(3, 1000),
+      }),
+    );
+    expect(res.warnings.map((w) => w.code)).toContain('sensor_frozen');
+  });
+
+  it('totalizador actual null → no flagged', () => {
+    const res = validateSlot(
+      { caudal: 5, totalizador: null, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: makePriors(3, 1000),
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('sensor_frozen');
+  });
+
+  it('totalizador null en un prior de la ventana → no flagged', () => {
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: [
+          { ts: '2026-06-01T02:00:00Z', caudal: 5, totalizador: 1000 },
+          { ts: '2026-06-01T01:00:00Z', caudal: 5, totalizador: null },
+          { ts: '2026-06-01T00:00:00Z', caudal: 5, totalizador: 1000 },
+        ],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('sensor_frozen');
+  });
+
+  it('coexistencia con flow_negative → failReason=flow_negative, warnings incluye sensor_frozen', () => {
+    // caudal < 0 dispara flow_negative (regla más dura, evaluada antes).
+    // Totalizador plano + caudal negativo ≠ 0 → sensor_frozen también dispara.
+    const res = validateSlot(
+      { caudal: -5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: makePriors(3, 1000, -5),
+      }),
+    );
+    expect(res.failReason).toBe('flow_negative');
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('flow_negative');
+    expect(codes).toContain('sensor_frozen');
+    expect(res.ok).toBe(false);
+  });
+
+  it('warning sensor_frozen contiene mensaje en español con cantidad de lecturas', () => {
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: makePriors(3, 1000),
+      }),
+    );
+    const w = res.warnings.find((x) => x.code === 'sensor_frozen');
+    expect(w).toBeDefined();
+    expect(typeof w?.reason).toBe('string');
+    // Debe mencionar el número de lecturas (N=4)
+    expect(w!.reason).toMatch(/4/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regla 7: caudal_spike
+// ---------------------------------------------------------------------------
+describe('validateSlot — regla caudal_spike', () => {
+  it('sin umbral configurado → regla desactivada, no flagged, sin excepción', () => {
+    // Delta enorme pero sin config → la regla no dispara.
+    const res = validateSlot(
+      { caudal: 950, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: {},
+        priorReadings: [{ ts: '2026-06-01T00:00:00Z', caudal: 8, totalizador: 990 }],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('caudal_spike');
+    expect(res.ok).toBe(true);
+  });
+
+  it('delta supera umbral → caudal_spike flagged con requires_review', () => {
+    // caudal_spike_max_delta_lps=100, actual=950, prev=8 → delta=942 > 100
+    const res = validateSlot(
+      { caudal: 950, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { caudal_spike_max_delta_lps: 100 },
+        priorReadings: [{ ts: '2026-06-01T00:00:00Z', caudal: 8, totalizador: 990 }],
+      }),
+    );
+    expect(res.ok).toBe(false);
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('caudal_spike');
+    expect(res.failReason).toBe('caudal_spike');
+  });
+
+  it('delta bajo el umbral → no flagged', () => {
+    // caudal_spike_max_delta_lps=100, actual=10, prev=8 → delta=2 ≤ 100
+    const res = validateSlot(
+      { caudal: 10, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { caudal_spike_max_delta_lps: 100 },
+        priorReadings: [{ ts: '2026-06-01T00:00:00Z', caudal: 8, totalizador: 990 }],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('caudal_spike');
+    expect(res.ok).toBe(true);
+  });
+
+  it('primer slot del pozo (priorReadings vacío) → no flagged', () => {
+    const res = validateSlot(
+      { caudal: 500, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { caudal_spike_max_delta_lps: 10 },
+        priorReadings: [],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('caudal_spike');
+  });
+
+  it('priorReadings[0].caudal null → no flagged', () => {
+    const res = validateSlot(
+      { caudal: 500, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { caudal_spike_max_delta_lps: 10 },
+        priorReadings: [{ ts: '2026-06-01T00:00:00Z', caudal: null, totalizador: 990 }],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('caudal_spike');
+  });
+
+  it('caudal actual null → no flagged aunque haya prev y umbral', () => {
+    const res = validateSlot(
+      { caudal: null, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { caudal_spike_max_delta_lps: 10 },
+        priorReadings: [{ ts: '2026-06-01T00:00:00Z', caudal: 8, totalizador: 990 }],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).not.toContain('caudal_spike');
+  });
+
+  it('warning caudal_spike contiene delta y límite en el reason', () => {
+    // delta=942, limit=100
+    const res = validateSlot(
+      { caudal: 950, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { caudal_spike_max_delta_lps: 100 },
+        priorReadings: [{ ts: '2026-06-01T00:00:00Z', caudal: 8, totalizador: 990 }],
+      }),
+    );
+    const w = res.warnings.find((x) => x.code === 'caudal_spike');
+    expect(w).toBeDefined();
+    expect(typeof w?.reason).toBe('string');
+    // Debe mencionar el delta (942) y el límite (100)
+    expect(w!.reason).toMatch(/942/);
+    expect(w!.reason).toMatch(/100/);
   });
 });

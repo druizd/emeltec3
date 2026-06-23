@@ -8,6 +8,7 @@ const {
 } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
 const { sendAlertEmail } = require('../services/emailService');
+const { require2fa } = require('../shared/stepUp2fa');
 
 const ADMIN_ROLES = ['SuperAdmin', 'Admin', 'Gerente'];
 const OPERATOR_ROLES = ['SuperAdmin', 'Admin', 'Gerente', 'Cliente'];
@@ -994,9 +995,10 @@ const RANGE_CAGG_MAP = {
  * @param {string|null} tapFilter - Filtra por TAP label si se pasa (ej. 'TAP 2').
  * @returns {Promise<Array>} Array de sensores con histPoints + snapshot.
  */
-async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
+async function loadRealColdRoomSensors(siteIds, range, tapFilter, dateWindow = null) {
   if (!siteIds || siteIds.length === 0) return null;
-  const cfg = RANGE_CAGG_MAP[range] || RANGE_CAGG_MAP['24h'];
+  // Modo fecha específica: ignora `range`, fija ventana 24h del día (1-min cagg).
+  const cfg = dateWindow ? RANGE_CAGG_MAP['24h'] : RANGE_CAGG_MAP[range] || RANGE_CAGG_MAP['24h'];
 
   // 1. Sitios → id_serial + descripcion (= TAP label).
   const sitesRes = await pool.query(
@@ -1057,17 +1059,31 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
   if (tapFilter) sensorList = sensorList.filter((s) => s.tap === tapFilter);
   if (sensorList.length === 0) return [];
 
-  // 4. Query cagg para last N points.
-  const cutoffMs = Date.now() - cfg.points * (cfg.view === 'equipo_1min' ? 60_000 : 3_600_000);
-  const cutoff = new Date(cutoffMs);
-  const histRes = await pool.query(
-    `SELECT id_serial, bucket, data
-     FROM ${cfg.view}
-     WHERE id_serial = ANY($1) AND bucket >= $2
-     ORDER BY id_serial, bucket ASC
-     LIMIT $3`,
-    [idSerials, cutoff, cfg.points * idSerials.length + 100],
-  );
+  // 4. Query cagg. Dos modos:
+  //   - dateWindow: ventana [start, end) del día Chile → acota ambos extremos.
+  //   - live: últimos N points relativos a ahora (bucket >= cutoff).
+  let histRes;
+  if (dateWindow) {
+    histRes = await pool.query(
+      `SELECT id_serial, bucket, data
+       FROM ${cfg.view}
+       WHERE id_serial = ANY($1) AND bucket >= $2 AND bucket < $3
+       ORDER BY id_serial, bucket ASC
+       LIMIT $4`,
+      [idSerials, dateWindow.start, dateWindow.end, cfg.points * idSerials.length + 100],
+    );
+  } else {
+    const cutoffMs = Date.now() - cfg.points * (cfg.view === 'equipo_1min' ? 60_000 : 3_600_000);
+    const cutoff = new Date(cutoffMs);
+    histRes = await pool.query(
+      `SELECT id_serial, bucket, data
+       FROM ${cfg.view}
+       WHERE id_serial = ANY($1) AND bucket >= $2
+       ORDER BY id_serial, bucket ASC
+       LIMIT $3`,
+      [idSerials, cutoff, cfg.points * idSerials.length + 100],
+    );
+  }
 
   // 5. Agrupar buckets por id_serial.
   const bySerial = new Map();
@@ -1140,6 +1156,7 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
       lastSeen: lastBucket ? new Date(lastBucket).toISOString() : new Date(0).toISOString(),
       hist: histPoints.map((p) => p.v),
       histPoints,
+      histHumPoints,
       defective: s.defective || undefined,
       defectiveReason: s.defectiveReason || undefined,
     });
@@ -1150,6 +1167,23 @@ async function loadRealColdRoomSensors(siteIds, range, tapFilter) {
 router.get('/:siteId/sensors', async (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
+
+  // Modo fecha específica: ?date=YYYY-MM-DD → ventana 24h de ese día calendario
+  // CHILENO. Offset fijo -04:00 (mismo criterio que utils/timezone.js y
+  // contadores/service.ts) para evitar DST y mantener coherencia con la BD.
+  let dateWindow = null;
+  const dateRaw = req.query.date ? String(req.query.date).trim() : '';
+  if (dateRaw) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateRaw)) {
+      return res.status(400).json({ ok: false, error: 'date inválida (formato YYYY-MM-DD)' });
+    }
+    const start = new Date(`${dateRaw}T00:00:00-04:00`);
+    if (isNaN(start.getTime())) {
+      return res.status(400).json({ ok: false, error: 'date inválida' });
+    }
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    dateWindow = { start, end, date: dateRaw };
+  }
   // Support combo siteIds query for aggregation across multiple cold-room sites.
   // Frontend pasa ?siteIds=S110,S111,S113 cuando Ventisqueros tiene 4 TAPs.
   const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
@@ -1167,16 +1201,21 @@ router.get('/:siteId/sensors', async (req, res) => {
 
   // Intentar datos reales primero (reg_map + equipo_1min cagg).
   try {
-    const real = await loadRealColdRoomSensors(siteIds, range, tap);
+    const real = await loadRealColdRoomSensors(siteIds, range, tap, dateWindow);
     if (real !== null && real.length > 0) {
       return res.json({
         ok: true,
         data: real,
         meta: {
-          range,
+          range: dateWindow ? '24h' : range,
           count: real.length,
           serverTime: new Date().toISOString(),
           source: 'cagg',
+          ...(dateWindow && {
+            date: dateWindow.date,
+            from: dateWindow.start.toISOString(),
+            to: dateWindow.end.toISOString(),
+          }),
         },
       });
     }
@@ -1205,11 +1244,16 @@ router.get('/:siteId/sensors', async (req, res) => {
     ok: true,
     data: [],
     meta: {
-      range,
+      range: dateWindow ? '24h' : range,
       count: 0,
       serverTime: new Date().toISOString(),
       source: 'no-data',
       hint: 'reg_map sin sensores STH-* o siteIds no incluye los TAPs cold-room',
+      ...(dateWindow && {
+        date: dateWindow.date,
+        from: dateWindow.start.toISOString(),
+        to: dateWindow.end.toISOString(),
+      }),
     },
   });
 });
@@ -1314,11 +1358,63 @@ router.get('/:siteId/history-export', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Rango máximo: 365 días' });
     }
 
-    // Elegir cagg según rango.
-    let view = 'equipo_1min';
-    if (durMs > 7 * 86_400_000) view = 'equipo_daily';
-    else if (durMs > 2 * 86_400_000) view = 'equipo_hourly';
-    else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
+    const BASE_MS = {
+      equipo_1min: 60_000,
+      equipo_5min: 300_000,
+      equipo_hourly: 3_600_000,
+      equipo_daily: 86_400_000,
+    };
+    const INTERVAL_MS = {
+      '1min': 60_000,
+      '5min': 300_000,
+      '15min': 900_000,
+      '1h': 3_600_000,
+      '1d': 86_400_000,
+    };
+    const intervalRaw = String(req.query.interval || 'auto')
+      .toLowerCase()
+      .trim();
+    const requestedMs = INTERVAL_MS[intervalRaw] || null; // null = auto
+
+    // Cagg BASE: cuando el usuario fija intervalo, la base se elige POR el
+    // intervalo (cagg ≤ intervalo) para respetar la granularidad pedida — NO por
+    // la duración del rango. En 'auto' sí se elige por duración.
+    let view;
+    if (requestedMs) {
+      // Lee de un cagg igual o más fino que el intervalo, así el promedio/min/max
+      // se calcula sobre varias muestras dentro de cada intervalo.
+      if (requestedMs <= 900_000)
+        view = 'equipo_1min'; // 1/5/15 min ← 1min
+      else if (requestedMs <= 3_600_000)
+        view = 'equipo_5min'; // 1h ← 5min
+      else view = 'equipo_hourly'; // 1d ← hourly
+    } else {
+      view = 'equipo_1min';
+      if (durMs > 7 * 86_400_000) view = 'equipo_daily';
+      else if (durMs > 2 * 86_400_000) view = 'equipo_hourly';
+      else if (durMs > 6 * 3_600_000) view = 'equipo_5min';
+    }
+    const baseMs = BASE_MS[view];
+    const effectiveMs = requestedMs ? requestedMs : baseMs; // requestedMs siempre ≥ baseMs
+
+    // Guard: acota filas base leídas (evita escanear millones en rangos enormes
+    // con intervalo fino). Si se pasa, pedir intervalo mayor o rango menor.
+    const MAX_BASE_BUCKETS = 50_000;
+    if (Math.ceil(durMs / baseMs) > MAX_BASE_BUCKETS) {
+      return res.status(400).json({
+        ok: false,
+        error: `Rango demasiado grande para intervalo "${intervalRaw}". Reduce el rango o elige un intervalo mayor.`,
+      });
+    }
+
+    const INTERVAL_LABEL = {
+      60_000: '1min',
+      300_000: '5min',
+      900_000: '15min',
+      3_600_000: '1h',
+      86_400_000: '1d',
+    };
+    const intervalLabel = INTERVAL_LABEL[effectiveMs] || `${effectiveMs}ms`;
 
     const siteIdsRaw = String(req.query.siteIds || req.params.siteId || '');
     const siteIds = siteIdsRaw
@@ -1405,8 +1501,14 @@ router.get('/:siteId/history-export', async (req, res) => {
 
     const toSigned16 = (n) => (typeof n === 'number' && n > 32767 ? n - 65536 : n);
 
-    // Pivot: por bucket+sensor.
-    const points = [];
+    // Agrupa los buckets base en el intervalo efectivo y calcula promedio/min/max
+    // por sensor. Alineación a día Chile (offset fijo -04:00) para que los buckets
+    // de 1d/1h caigan en horario local, coherente con el resto del sistema.
+    const CHILE_OFFSET_MS = 4 * 3_600_000;
+    const bucketStart = (tsMs) =>
+      Math.floor((tsMs - CHILE_OFFSET_MS) / effectiveMs) * effectiveMs + CHILE_OFFSET_MS;
+
+    const acc = new Map(); // `${sensorId}@${siteId}__${bucketMs}` → agregados
     for (const row of histRes.rows) {
       for (const s of sensorList) {
         if (s.idSerial !== row.id_serial) continue;
@@ -1415,22 +1517,63 @@ router.get('/:siteId/history-export', async (req, res) => {
         const tVal = typeof rawT === 'number' ? +(rawT * s.factor + s.offset).toFixed(2) : null;
         const hVal = typeof rawH === 'number' ? +(rawH * s.factor + s.offset).toFixed(2) : null;
         if (tVal === null && hVal === null) continue;
-        points.push({
-          ts: new Date(row.bucket).toISOString(),
-          sensorId: s.id,
-          area: s.area,
-          tap: s.tap,
-          t: tVal,
-          h: hVal,
-        });
+        const bMs = bucketStart(new Date(row.bucket).getTime());
+        const key = `${s.id}@${s.siteId}__${bMs}`;
+        let a = acc.get(key);
+        if (!a) {
+          a = {
+            ts: bMs,
+            sensorId: s.id,
+            area: s.area,
+            tap: s.tap,
+            tSum: 0,
+            tCount: 0,
+            tMin: Infinity,
+            tMax: -Infinity,
+            hSum: 0,
+            hCount: 0,
+            hMin: Infinity,
+            hMax: -Infinity,
+          };
+          acc.set(key, a);
+        }
+        if (tVal !== null) {
+          a.tSum += tVal;
+          a.tCount += 1;
+          if (tVal < a.tMin) a.tMin = tVal;
+          if (tVal > a.tMax) a.tMax = tVal;
+        }
+        if (hVal !== null) {
+          a.hSum += hVal;
+          a.hCount += 1;
+          if (hVal < a.hMin) a.hMin = hVal;
+          if (hVal > a.hMax) a.hMax = hVal;
+        }
       }
     }
+
+    const round2 = (n) => +n.toFixed(2);
+    const points = [...acc.values()]
+      .sort((x, y) => x.ts - y.ts || x.sensorId.localeCompare(y.sensorId))
+      .map((a) => ({
+        ts: new Date(a.ts).toISOString(),
+        sensorId: a.sensorId,
+        area: a.area,
+        tap: a.tap,
+        t: a.tCount > 0 ? round2(a.tSum / a.tCount) : null,
+        tMin: a.tCount > 0 ? a.tMin : null,
+        tMax: a.tCount > 0 ? a.tMax : null,
+        h: a.hCount > 0 ? round2(a.hSum / a.hCount) : null,
+        hMin: a.hCount > 0 ? a.hMin : null,
+        hMax: a.hCount > 0 ? a.hMax : null,
+      }));
 
     res.json({
       ok: true,
       data: { points },
       meta: {
         view,
+        interval: intervalLabel,
         rows: points.length,
         from: from.toISOString(),
         to: to.toISOString(),
@@ -1466,7 +1609,7 @@ router.get('/:siteId/sensors/:sensorId/history', (req, res) => {
   });
 });
 
-router.get('/:siteId/concentrator', (req, res) => {
+router.get('/:siteId/concentrator', requireRole('SuperAdmin', 'Admin'), (req, res) => {
   const tap = normalizeTap(req.query.tap);
   if (tap && tap !== 'TAP 1') {
     return res.json({ ok: true, data: { alerted: false, lastSeen: null } });
@@ -1495,7 +1638,7 @@ router.get('/:siteId/concentrator', (req, res) => {
   });
 });
 
-router.get('/:siteId/backup', (req, res) => {
+router.get('/:siteId/backup', requireRole('SuperAdmin', 'Admin'), (req, res) => {
   const tap = normalizeTap(req.query.tap);
   const range = normalizeRange(req.query.range);
   if (tap && tap !== 'TAP 1') return res.json({ ok: true, data: [] });
@@ -1569,6 +1712,8 @@ function ruleRowToObj(r) {
     notifyEmail: r.notify_email,
     notifyUi: r.notify_ui,
     recipientUserIds: Array.isArray(r.recipient_user_ids) ? r.recipient_user_ids : [],
+    visibleToAll: r.visible_to_all !== false,
+    viewerUserIds: Array.isArray(r.viewer_user_ids) ? r.viewer_user_ids : [],
     createdAt: r.created_at,
     updatedAt: r.updated_at,
   };
@@ -1577,6 +1722,8 @@ function ruleRowToObj(r) {
 // --- Reglas CRUD ---
 router.get('/:siteId/alarm-rules', async (req, res) => {
   try {
+    // Todos los usuarios con acceso al sitio ven las alarmas (compartidas).
+    // Solo crear/editar/borrar está restringido (ver requireRole en POST/PUT/DELETE).
     const { rows } = await pool.query(
       `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
       [req.params.siteId],
@@ -1594,11 +1741,16 @@ router.post('/:siteId/alarm-rules', requireRole(...ADMIN_ROLES), async (req, res
     const recUserIds = Array.isArray(b.recipientUserIds)
       ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
       : [];
+    const viewerIds = Array.isArray(b.viewerUserIds)
+      ? b.viewerUserIds.filter((s) => typeof s === 'string' && s.length > 0)
+      : [];
+    const visibleToAll = b.visibleToAll !== false;
     await pool.query(
       `INSERT INTO cold_room_alarm_rule
         (id, site_id, name, enabled, metric, op, threshold, target_kind, target_value,
-         sustained_min, severity, notify_email, notify_ui, recipient_user_ids, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, NOW())`,
+         sustained_min, severity, notify_email, notify_ui, recipient_user_ids,
+         visible_to_all, viewer_user_ids, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, NOW())`,
       [
         id,
         req.params.siteId,
@@ -1614,6 +1766,8 @@ router.post('/:siteId/alarm-rules', requireRole(...ADMIN_ROLES), async (req, res
         recUserIds.length > 0,
         b.notifyUi !== false,
         recUserIds,
+        visibleToAll,
+        visibleToAll ? [] : viewerIds,
       ],
     );
     res.json({ ok: true, data: { id } });
@@ -1628,12 +1782,16 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
     const recUserIds = Array.isArray(b.recipientUserIds)
       ? b.recipientUserIds.filter((s) => typeof s === 'string' && s.length > 0)
       : [];
+    const viewerIds = Array.isArray(b.viewerUserIds)
+      ? b.viewerUserIds.filter((s) => typeof s === 'string' && s.length > 0)
+      : [];
+    const visibleToAll = b.visibleToAll !== false;
     await pool.query(
       `UPDATE cold_room_alarm_rule SET
         name=$1, enabled=$2, metric=$3, op=$4, threshold=$5, target_kind=$6, target_value=$7,
         sustained_min=$8, severity=$9, notify_email=$10, notify_ui=$11, recipient_user_ids=$12,
-        updated_at=NOW()
-       WHERE id=$13 AND site_id=$14`,
+        visible_to_all=$13, viewer_user_ids=$14, updated_at=NOW()
+       WHERE id=$15 AND site_id=$16`,
       [
         b.name,
         b.enabled !== false,
@@ -1647,6 +1805,8 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
         recUserIds.length > 0,
         b.notifyUi !== false,
         recUserIds,
+        visibleToAll,
+        visibleToAll ? [] : viewerIds,
         req.params.ruleId,
         req.params.siteId,
       ],
@@ -1657,17 +1817,22 @@ router.put('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (r
   }
 });
 
-router.delete('/:siteId/alarm-rules/:ruleId', requireRole(...ADMIN_ROLES), async (req, res) => {
-  try {
-    await pool.query(`DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`, [
-      req.params.ruleId,
-      req.params.siteId,
-    ]);
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
+router.delete(
+  '/:siteId/alarm-rules/:ruleId',
+  requireRole(...ADMIN_ROLES),
+  require2fa,
+  async (req, res) => {
+    try {
+      await pool.query(`DELETE FROM cold_room_alarm_rule WHERE id=$1 AND site_id=$2`, [
+        req.params.ruleId,
+        req.params.siteId,
+      ]);
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
+  },
+);
 
 // --- Usuarios elegibles del sitio: sub_empresa + admins de la empresa + SuperAdmin ---
 router.get('/:siteId/alarm-eligible-users', async (req, res) => {
@@ -1748,8 +1913,15 @@ router.post('/:siteId/alarm-test-email', async (req, res) => {
 // --- Events log (read-only) ---
 router.get('/:siteId/alarm-events', async (req, res) => {
   try {
+    // JOIN a la regla para mostrar nombre/métrica/severidad en el historial.
     const { rows } = await pool.query(
-      `SELECT * FROM cold_room_alarm_event WHERE site_id=$1 ORDER BY triggered_at DESC LIMIT 100`,
+      `SELECT e.*, r.name AS rule_name, r.metric AS rule_metric, r.op AS rule_op,
+              r.threshold AS rule_threshold, r.severity AS rule_severity
+         FROM cold_room_alarm_event e
+         LEFT JOIN cold_room_alarm_rule r ON r.id = e.rule_id
+        WHERE e.site_id = $1
+        ORDER BY e.triggered_at DESC
+        LIMIT 200`,
       [req.params.siteId],
     );
     res.json({ ok: true, data: rows });

@@ -9,6 +9,7 @@ import { logger } from '../../config/logger';
 import { beat } from '../../config/heartbeat';
 import {
   findLastValidTotalizador,
+  findRecentDatoDgaReadings,
   listPozosDgaActivos,
   listVacioSlotsForSite,
   markPozoDgaLastRun,
@@ -17,7 +18,7 @@ import {
   type PozoDgaConfigRow,
   type VacioSlotRow,
 } from './repo';
-import { validateSlot } from './validation';
+import { validateSlot, FROZEN_WINDOW_DEFAULT_N } from './validation';
 import {
   getDashboardBucketExact,
   getMappingsBySiteId,
@@ -97,9 +98,19 @@ async function fillSlot(
     lastValidTotalizador = await findLastValidTotalizador(pozoDga.sitio_id, slot.ts);
   }
 
+  // Fetch de historial previo para reglas sensor_frozen y caudal_spike.
+  // N = max(frozen_window_n configurado, 1). Una sola query cubre ambas reglas
+  // (spike solo usa priorReadings[0], frozen usa hasta n-1).
+  const configN = Number(totalizadorParams.frozen_window_n);
+  const historyN = Math.max(
+    Number.isFinite(configN) && configN >= 2 ? Math.trunc(configN) : FROZEN_WINDOW_DEFAULT_N,
+    1,
+  );
+  const priorReadings = await findRecentDatoDgaReadings(pozoDga.sitio_id, slot.ts, historyN);
+
   const validation = validateSlot(
     { caudal, totalizador, nivelFreatico },
-    { pozoDga, totalizadorParams, lastValidTotalizador },
+    { pozoDga, totalizadorParams, lastValidTotalizador, priorReadings },
   );
 
   if (validation.ok) {

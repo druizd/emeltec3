@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @font-face {
+    font-family: 'Josefin Sans';
+    src: url('../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 700; font-style: normal;
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; padding: 0; }
+
+  /* ── Top tab bar ── */
+  .topnav { background: #FFFFFF; border-bottom: 1px solid #E2E8F0; height: 52px; display: flex; align-items: stretch; padding: 0 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+  .nav-tabs { display: flex; align-items: stretch; }
+  .tab { display: flex; align-items: center; gap: 6px; padding: 0 16px; font-size: 14px; font-weight: 500; color: #94A3B8; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.12s; }
+  .tab.active { color: #0899A5; border-bottom-color: #0DAFBD; }
+  .tab svg { width: 15px; height: 15px; }
+  .spacer { flex: 1; }
+  .nav-actions { display: flex; align-items: center; gap: 6px; }
+
+  /* Theme toggle */
+  .theme-toggle { display: flex; align-items: center; background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 20px; padding: 3px; gap: 2px; }
+  .theme-btn { width: 26px; height: 26px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; background: transparent; color: #94A3B8; transition: all 0.15s; }
+  .theme-btn.active { background: #FFFFFF; color: #0899A5; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+
+  /* WIP badge */
+  .wip-badge { display: flex; align-items: center; gap: 5px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: #D97706; cursor: pointer; }
+
+  .contact-btn { display: flex; align-items: center; gap: 5px; color: #64748B; font-size: 13px; cursor: pointer; padding: 5px 8px; border-radius: 6px; transition: all 0.12s; }
+  .contact-btn:hover { background: #F1F5F9; }
+
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#0DAFBD,#04606A); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; cursor: pointer; }
+
+  /* ── Site header ── */
+  .site-header { background: #FFFFFF; border-bottom: 2px solid #0DAFBD; padding: 10px 20px; display: flex; align-items: center; gap: 12px; border-top: 1px solid #E2E8F0; }
+  .site-icon { width: 38px; height: 38px; border-radius: 9px; background: rgba(13,175,189,0.08); border: 1px solid rgba(13,175,189,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  .site-name { font-family: 'Josefin Sans'; font-size: 16px; font-weight: 700; color: #1E293B; letter-spacing: 0.02em; line-height: 1.1; }
+  .site-code { font-size: 11px; color: #94A3B8; font-family: 'DM Sans'; margin-top: 1px; }
+
+  /* Status chips */
+  .chips { display: flex; gap: 6px; align-items: center; margin-left: 16px; flex-wrap: wrap; }
+  .chip { border-radius: 6px; padding: 4px 9px; font-size: 11px; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+  .chip-live  { background: #F0FDF4; border: 1px solid #BBF7D0; color: #16A34A; }
+  .chip-time  { background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; }
+  .chip-dga   { background: #F0FDF4; border: 1px solid #BBF7D0; color: #16A34A; }
+  .chip-live-dot { width: 6px; height: 6px; border-radius: 50%; background: #22C55E; display: inline-block; }
+
+  /* Date range */
+  .date-range { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .date-input { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 5px 10px; font-size: 12px; color: #475569; display: flex; align-items: center; gap: 5px; }
+  .date-label { font-size: 12px; color: #94A3B8; }
+  .apply-btn { background: #0DAFBD; border: none; border-radius: 6px; padding: 5px 14px; font-size: 12px; font-weight: 700; color: #fff; cursor: pointer; font-family: 'Josefin Sans'; letter-spacing: 0.05em; }
+  .settings-btn { background: none; border: none; cursor: pointer; color: #94A3B8; padding: 4px; display: flex; }
+</style>
+</head><body>
+
+<!-- Tab bar -->
+<div class="topnav">
+  <div class="nav-tabs">
+    <div class="tab active">
+      <i data-lucide="layout-dashboard"></i>Dashboard
+    </div>
+    <div class="tab">
+      <i data-lucide="activity"></i>Dynamic
+    </div>
+  </div>
+  <div class="spacer"></div>
+  <div class="nav-actions">
+    <!-- Light/Dark toggle -->
+    <div class="theme-toggle">
+      <button class="theme-btn active" title="Modo claro">
+        <i data-lucide="sun" style="width:13px;height:13px"></i>
+      </button>
+      <button class="theme-btn" title="Modo oscuro">
+        <i data-lucide="moon" style="width:13px;height:13px"></i>
+      </button>
+    </div>
+    <div class="wip-badge">
+      <i data-lucide="wrench" style="width:12px;height:12px"></i>WIP
+    </div>
+    <div class="contact-btn">
+      <i data-lucide="headphones" style="width:13px;height:13px"></i>Contáctanos
+    </div>
+    <div class="avatar">DR</div>
+  </div>
+</div>
+
+<!-- Site header -->
+<div class="site-header">
+  <div class="site-icon">
+    <i data-lucide="droplets" style="width:18px;height:18px;color:#0DAFBD"></i>
+  </div>
+  <div>
+    <div class="site-name">Vertiente 3</div>
+    <div class="site-code">OB-0601-292</div>
+  </div>
+  <div class="chips">
+    <div class="chip chip-live">
+      <span class="chip-live-dot"></span>hace 0 segundos
+    </div>
+    <div class="chip chip-time">
+      <i data-lucide="clock" style="width:10px;height:10px"></i>
+      26 abr 2026, 22:23
+    </div>
+    <div class="chip chip-dga">
+      <i data-lucide="check-circle" style="width:10px;height:10px"></i>
+      Reporte DGA · Aceptado · 17:00
+    </div>
+  </div>
+  <div class="date-range">
+    <span class="date-label">Desde</span>
+    <div class="date-input">
+      <i data-lucide="calendar" style="width:12px;height:12px"></i>25-04-2026
+    </div>
+    <span class="date-label">Hasta</span>
+    <div class="date-input">
+      <i data-lucide="calendar" style="width:12px;height:12px"></i>26-04-2026
+    </div>
+    <button class="apply-btn">Aplicar</button>
+    <button class="settings-btn">
+      <i data-lucide="settings" style="width:15px;height:15px"></i>
+    </button>
+  </div>
+</div>
+
+<script>lucide.createIcons();</script>
+</body></html>

@@ -18,12 +18,29 @@ import { VentisquerosVisibilityPanelComponent } from './ventisqueros-visibility-
 import { VentisquerosFocusCardComponent } from './ventisqueros-focus-card';
 import type { SiteRecord } from '@emeltec/shared';
 import { VentisquerosService } from './ventisqueros.service';
-import { ColdRoomService, type ColdRoomSensor } from '../../services/cold-room.service';
+import { AuthService } from '../../services/auth.service';
+import {
+  AlarmHistoryListComponent,
+  type AlarmHistoryItem,
+} from '../../components/ui/alarm-history-list';
+import {
+  ColdRoomAlarmRulesService,
+  type AlarmEvent,
+} from '../../services/cold-room-alarm-rules.service';
+import {
+  ColdRoomService,
+  type ColdRoomExportInterval,
+  type ColdRoomExportPoint,
+  type ColdRoomSensor,
+} from '../../services/cold-room.service';
 import {
   ColdRoomThresholdsService,
   type SalaThreshold,
 } from '../../services/cold-room-thresholds.service';
-import { ColdRoomDeviationsService } from '../../services/cold-room-deviations.service';
+import {
+  ColdRoomDeviationsService,
+  DEVIATION_CAUSES,
+} from '../../services/cold-room-deviations.service';
 import {
   ColdRoomDefrostService,
   type DefrostWindow,
@@ -95,8 +112,6 @@ interface TapDiagnostic {
   status: TapTechStatus;
   oldestSeenIso: string | null;
   oldestSeenMs: number | null;
-  sensorsReporting: number;
-  sensorsTotal: number;
   coveragePct: number;
   coverageMinutes: number;
   coverageSlots: boolean[];
@@ -118,6 +133,7 @@ interface MetricOption {
     VentisquerosFloorMapComponent,
     VentisquerosVisibilityPanelComponent,
     VentisquerosFocusCardComponent,
+    AlarmHistoryListComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -304,10 +320,12 @@ interface MetricOption {
                 [hasAlerts]="alerts().length > 0"
                 (selectSensor)="selectedId.set($event)"
               ></app-ventisqueros-floor-map>
-              @if (focusSensor()) {
+              @if (focusSensor(); as fs) {
                 <app-ventisqueros-focus-card
                   class="vs-focus-overlay"
-                  [focus]="focusSensor()"
+                  [focus]="fs"
+                  [salaLink]="salaRouterLink(fs.area)"
+                  [salaQuery]="salaQueryParams()"
                 ></app-ventisqueros-focus-card>
               }
               @if (floorMapSensors().length === 0) {
@@ -442,7 +460,7 @@ interface MetricOption {
             <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="umbralesOpen.set(true)"
                 [title]="
                   salasSinUmbralCount() > 0
@@ -460,7 +478,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="defrostOpen.set(true)"
                 [title]="
                   defrostEnabledCount() > 0
@@ -476,7 +494,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="auditOpen.set(true)"
                 title="Registro auditoría HACCP"
               >
@@ -488,7 +506,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
                 (click)="openHistoryExport()"
                 title="Descargar historial Excel con rango y sensores configurables"
               >
@@ -653,34 +671,6 @@ interface MetricOption {
                       <span class="sala-op-lbl">Desviaciones</span>
                       <strong>{{ sa.deviationsOpenCount }}</strong>
                     </span>
-                    @if (sa.activeCount > 0) {
-                      <span
-                        class="sala-op-pill"
-                        [class.sala-op-pill--bad]="sa.reportingCount < sa.activeCount"
-                        [title]="
-                          'Sensores activos con lectura reciente (≤5 min) vs total activos. ' +
-                          (sa.reportingCount === 0
-                            ? 'Ninguno reportando: sin lectura reciente o canal offline.'
-                            : sa.reportingCount < sa.activeCount
-                              ? 'Algunos sensores stale (>5 min sin transmitir).'
-                              : 'Todos transmitiendo OK.')
-                        "
-                      >
-                        <span class="material-symbols-outlined text-[11px]">sensors</span>
-                        <span class="sala-op-lbl">Reportando</span>
-                        <strong>{{ sa.reportingCount }}/{{ sa.activeCount }}</strong>
-                      </span>
-                    }
-                    @if (sa.defectiveCount > 0) {
-                      <span
-                        class="sala-op-pill sala-op-pill--bad"
-                        [title]="sa.defectiveReasons.join(' · ')"
-                      >
-                        <span class="material-symbols-outlined text-[11px]">sensors_off</span>
-                        <span class="sala-op-lbl">En falla</span>
-                        <strong>{{ sa.defectiveCount }}/{{ sa.count }}</strong>
-                      </span>
-                    }
                   </div>
 
                   <footer class="sala-card-foot">
@@ -1200,22 +1190,6 @@ interface MetricOption {
                   </span>
                 </div>
 
-                <!-- Sensores reportando (cagg) -->
-                <div class="mt-2 vs-tap-sensors-row">
-                  <span class="vs-tap-sensors-lbl">
-                    <span class="material-symbols-outlined text-[11px]">sensors</span>
-                    Sensores reportando
-                  </span>
-                  <span
-                    class="vs-tap-sensors-val"
-                    [class.vs-tap-sensors-val--bad]="
-                      d.sensorsTotal > 0 && d.sensorsReporting < d.sensorsTotal
-                    "
-                  >
-                    {{ d.sensorsReporting }} / {{ d.sensorsTotal }}
-                  </span>
-                </div>
-
                 <!-- Cobertura 24h (cagg coverage + sparkline gaps) -->
                 <div class="mt-2 vs-tap-cov">
                   <div class="vs-tap-cov-head">
@@ -1282,118 +1256,85 @@ interface MetricOption {
         @if (effectiveTab() === 'alarmas') {
           <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 class="vs-h1 text-slate-800">Alarmas activas</h2>
+              <h2 class="vs-h1 text-slate-800">Alarmas</h2>
               <p class="mt-1 text-[12px] text-slate-500">
-                Eventos operacionales activos · {{ alarmsCounts().total }} total
+                {{
+                  alarmsView() === 'activas'
+                    ? 'Eventos operacionales activos · ' + alarmsCounts().total + ' total'
+                    : 'Historial de alarmas disparadas'
+                }}
               </p>
+              <div class="vs-alarms-filter mt-2">
+                <button
+                  type="button"
+                  class="vs-alarms-chip"
+                  [class.vs-alarms-chip--active]="alarmsView() === 'activas'"
+                  (click)="alarmsView.set('activas')"
+                >
+                  Activas
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip"
+                  [class.vs-alarms-chip--active]="alarmsView() === 'historial'"
+                  (click)="alarmsView.set('historial')"
+                >
+                  Historial
+                </button>
+              </div>
             </div>
-            <div class="vs-alarms-filter">
-              <button
-                type="button"
-                class="vs-alarms-chip"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'all'"
-                (click)="alarmsFilter.set('all')"
-              >
-                Todas <strong>{{ alarmsCounts().total }}</strong>
-              </button>
-              <button
-                type="button"
-                class="vs-alarms-chip vs-alarms-chip--crit"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'crit'"
-                (click)="alarmsFilter.set('crit')"
-              >
-                Críticas <strong>{{ alarmsCounts().crit }}</strong>
-              </button>
-              <button
-                type="button"
-                class="vs-alarms-chip vs-alarms-chip--warn"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'warn'"
-                (click)="alarmsFilter.set('warn')"
-              >
-                Advertencias <strong>{{ alarmsCounts().warn }}</strong>
-              </button>
-              <button
-                type="button"
-                class="vs-alarms-chip vs-alarms-chip--info"
-                [class.vs-alarms-chip--active]="alarmsFilter() === 'info'"
-                (click)="alarmsFilter.set('info')"
-              >
-                Info <strong>{{ alarmsCounts().info }}</strong>
-              </button>
-            </div>
+            @if (alarmsView() === 'activas') {
+              <div class="vs-alarms-filter">
+                <button
+                  type="button"
+                  class="vs-alarms-chip"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'all'"
+                  (click)="alarmsFilter.set('all')"
+                >
+                  Todas <strong>{{ alarmsCounts().total }}</strong>
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip vs-alarms-chip--crit"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'crit'"
+                  (click)="alarmsFilter.set('crit')"
+                >
+                  Críticas <strong>{{ alarmsCounts().crit }}</strong>
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip vs-alarms-chip--warn"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'warn'"
+                  (click)="alarmsFilter.set('warn')"
+                >
+                  Advertencias <strong>{{ alarmsCounts().warn }}</strong>
+                </button>
+                <button
+                  type="button"
+                  class="vs-alarms-chip vs-alarms-chip--info"
+                  [class.vs-alarms-chip--active]="alarmsFilter() === 'info'"
+                  (click)="alarmsFilter.set('info')"
+                >
+                  Info <strong>{{ alarmsCounts().info }}</strong>
+                </button>
+              </div>
+            }
           </div>
 
-          @if (alarmsFiltered().length === 0) {
-            <div class="vs-alarms-empty">
-              <span class="material-symbols-outlined text-[32px] text-emerald-300"
-                >check_circle</span
-              >
-              <div class="vs-alarms-empty-title">
-                {{
-                  alarmsCounts().total === 0 ? 'Sin alarmas activas' : 'Sin alarmas en este filtro'
-                }}
-              </div>
-              @if (alarmsCounts().total === 0) {
-                <div class="vs-alarms-empty-sub">
-                  Todos los sensores dentro de banda y reportando.
-                </div>
-              }
-            </div>
+          @if (alarmsView() === 'activas') {
+            <app-alarm-history-list
+              [items]="alarmsActivasItems()"
+              [emptyText]="alarmsEmptyText()"
+            />
           } @else {
-            <div class="vs-alarms-list">
-              @for (al of alarmsFiltered(); track al.id) {
-                <article class="vs-alarm-card" [attr.data-severity]="al.severity">
-                  <div class="vs-alarm-icon" [attr.data-severity]="al.severity">
-                    <span class="material-symbols-outlined">{{ al.icon }}</span>
-                  </div>
-                  <div class="vs-alarm-body">
-                    <div class="vs-alarm-head">
-                      <span class="vs-alarm-title">{{ al.title }}</span>
-                      <span class="vs-alarm-sev" [attr.data-severity]="al.severity">
-                        {{
-                          al.severity === 'crit'
-                            ? 'Crítica'
-                            : al.severity === 'warn'
-                              ? 'Advertencia'
-                              : 'Info'
-                        }}
-                      </span>
-                    </div>
-                    <div class="vs-alarm-detail">{{ al.detail }}</div>
-                    <div class="vs-alarm-meta">
-                      @if (al.area) {
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">meeting_room</span>
-                          {{ al.area }}
-                        </span>
-                      }
-                      @if (al.tap) {
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">memory</span>
-                          {{ al.tap }}
-                        </span>
-                      }
-                      @if (al.sinceMs !== null) {
-                        <span class="vs-alarm-tag">
-                          <span class="material-symbols-outlined text-[11px]">schedule</span>
-                          desde hace {{ relativeMs(al.sinceMs) }}
-                        </span>
-                      }
-                    </div>
-                  </div>
-                  @if (al.areaSlug; as slug) {
-                    <a
-                      [routerLink]="alarmAreaLink(slug)"
-                      [queryParams]="salaQueryParams()"
-                      class="vs-alarm-action"
-                      title="Ir a detalle de sala"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-                    </a>
-                  }
-                </article>
-              }
-            </div>
+            <!-- Historial de alarmas disparadas (componente compartido) -->
+            <app-alarm-history-list
+              [items]="alarmHistoryItems()"
+              [loading]="!alarmEventsLoaded()"
+              emptyText="Sin alarmas registradas"
+              [exportable]="true"
+              exportTitle="Historial de alarmas Ventisqueros"
+            />
           }
         }
 
@@ -1822,7 +1763,46 @@ interface MetricOption {
                 </label>
               </div>
               <div class="vs-hx-hint">
-                Cagg se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h (≤30d), 1d (resto).
+                La resolución base se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h
+                (≤30d), 1d (resto).
+              </div>
+            </div>
+
+            <!-- Intervalo de agrupación (promedio / mín / máx) -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">2. Intervalo de agrupación</div>
+              <div class="flex flex-wrap gap-1.5">
+                @for (opt of historyExportIntervalOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-btn"
+                    [class.vs-hx-btn--primary]="historyExportInterval() === opt.value"
+                    (click)="historyExportInterval.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+              <div class="vs-hx-hint">
+                Cada fila trae promedio, mínimo y máximo por intervalo. "Auto" usa la resolución
+                base. No puede ser más fino que la base disponible para el rango.
+              </div>
+            </div>
+
+            <!-- Variables -->
+            <div class="vs-hx-section">
+              <div class="vs-hx-section-title">3. Variables</div>
+              <div class="flex flex-wrap gap-1.5">
+                @for (opt of historyExportVarsOptions; track opt.value) {
+                  <button
+                    type="button"
+                    class="vs-hx-btn"
+                    [class.vs-hx-btn--primary]="historyExportVars() === opt.value"
+                    (click)="historyExportVars.set(opt.value)"
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
               </div>
             </div>
 
@@ -1830,7 +1810,7 @@ interface MetricOption {
             <div class="vs-hx-section">
               <div class="vs-hx-section-head">
                 <div class="vs-hx-section-title">
-                  2. Salas
+                  4. Salas
                   <span class="vs-hx-count">
                     {{ historyExportSelectedSalas().size }} / {{ salaAggregates().length }}
                   </span>
@@ -1868,7 +1848,7 @@ interface MetricOption {
             <div class="vs-hx-section">
               <div class="vs-hx-section-head">
                 <div class="vs-hx-section-title">
-                  3. Sensores
+                  5. Sensores
                   <span class="vs-hx-count">
                     {{ historyExportSelectedSensors().size }} /
                     {{ exportAvailableSensors().length }}
@@ -3615,160 +3595,6 @@ interface MetricOption {
         background: var(--color-primary);
         border-color: var(--color-primary);
       }
-      .vs-alarms-empty {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        padding: 60px 20px;
-        background: #ffffff;
-        border: 1px dashed #e2e8f0;
-        border-radius: 12px;
-        text-align: center;
-      }
-      .vs-alarms-empty-title {
-        font-family: var(--font-dm);
-        font-size: 14px;
-        font-weight: 600;
-        color: #1e293b;
-      }
-      .vs-alarms-empty-sub {
-        font-family: var(--font-dm);
-        font-size: 12px;
-        color: #64748b;
-      }
-      .vs-alarms-list {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      .vs-alarm-card {
-        display: flex;
-        align-items: stretch;
-        gap: 12px;
-        padding: 12px 14px;
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-left-width: 3px;
-        border-radius: 10px;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-        transition: box-shadow 0.15s;
-      }
-      .vs-alarm-card:hover {
-        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-      }
-      .vs-alarm-card[data-severity='crit'] {
-        border-left-color: var(--color-danger);
-      }
-      .vs-alarm-card[data-severity='warn'] {
-        border-left-color: var(--color-warning);
-      }
-      .vs-alarm-card[data-severity='info'] {
-        border-left-color: var(--color-primary);
-      }
-      .vs-alarm-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 36px;
-        height: 36px;
-        border-radius: 9px;
-        flex-shrink: 0;
-      }
-      .vs-alarm-icon[data-severity='crit'] {
-        background: rgba(239, 68, 68, 0.1);
-        color: var(--color-danger);
-      }
-      .vs-alarm-icon[data-severity='warn'] {
-        background: rgba(245, 158, 11, 0.1);
-        color: var(--color-warning);
-      }
-      .vs-alarm-icon[data-severity='info'] {
-        background: var(--color-primary-tint-10);
-        color: var(--color-primary);
-      }
-      .vs-alarm-icon .material-symbols-outlined {
-        font-size: 18px;
-      }
-      .vs-alarm-body {
-        flex: 1;
-        min-width: 0;
-      }
-      .vs-alarm-head {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-        margin-bottom: 3px;
-      }
-      .vs-alarm-title {
-        font-family: var(--font-dm);
-        font-size: 13px;
-        font-weight: 600;
-        color: #1e293b;
-      }
-      .vs-alarm-sev {
-        padding: 1px 7px;
-        border-radius: 999px;
-        font-family: var(--font-dm);
-        font-size: 9.5px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-      .vs-alarm-sev[data-severity='crit'] {
-        background: rgba(239, 68, 68, 0.12);
-        color: #b91c1c;
-      }
-      .vs-alarm-sev[data-severity='warn'] {
-        background: rgba(245, 158, 11, 0.12);
-        color: #b45309;
-      }
-      .vs-alarm-sev[data-severity='info'] {
-        background: var(--color-primary-tint-14);
-        color: var(--color-primary);
-      }
-      .vs-alarm-detail {
-        font-family: var(--font-dm);
-        font-size: 11.5px;
-        color: #475569;
-        line-height: 1.4;
-      }
-      .vs-alarm-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 6px;
-      }
-      .vs-alarm-tag {
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        font-family: var(--font-dm);
-        font-size: 10.5px;
-        color: #64748b;
-      }
-      .vs-alarm-action {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 32px;
-        height: 32px;
-        border-radius: 7px;
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        color: #64748b;
-        align-self: center;
-        flex-shrink: 0;
-        transition:
-          color 0.15s,
-          border-color 0.15s,
-          background 0.15s;
-      }
-      .vs-alarm-action:hover {
-        color: var(--color-primary);
-        border-color: var(--color-primary-tint-35);
-        background: var(--color-primary-tint-04);
-      }
       .vs-audit-body {
         padding: 14px;
         display: flex;
@@ -4934,6 +4760,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   private readonly deviationsSvc = inject(ColdRoomDeviationsService);
   private readonly defrostSvc = inject(ColdRoomDefrostService);
   private readonly auditSvc = inject(ColdRoomAuditService);
+  private readonly alarmRulesSvc = inject(ColdRoomAlarmRulesService);
+  private readonly auth = inject(AuthService);
+
+  // TAP (técnico) solo para tier administrador (SuperAdmin/Admin).
+  readonly canViewTap = computed(() => this.auth.isSuperAdmin() || this.auth.isAdmin());
 
   readonly siteId = input.required<string>();
   readonly siteName = input<string>('');
@@ -4990,6 +4821,7 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly effectiveTab = computed<TabKey>(() => {
     const v = this.view();
+    let tab: TabKey;
     if (
       v === 'general' ||
       v === 'salas' ||
@@ -4998,8 +4830,11 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       v === 'alarmas' ||
       v === 'contacts'
     )
-      return v;
-    return this.activeTab();
+      tab = v;
+    else tab = this.activeTab();
+    // No-admin nunca cae en TAP (técnico) aunque quede persistido o forzado.
+    if (tab === 'taps' && !this.canViewTap()) return 'salas';
+    return tab;
   });
 
   readonly metric = signal<MetricKey>('T');
@@ -5076,12 +4911,15 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly subTabs = computed<SubTab[]>(() => {
     const c = this.alarmsCounts();
-    return [
+    const tabs: SubTab[] = [
+      { key: 'general', icon: 'map', label: 'Mapa' },
       { key: 'salas', icon: 'space_dashboard', label: 'Salas' },
       { key: 'compliance', icon: 'verified', label: 'Compliance HACCP' },
       { key: 'alarmas', icon: 'notifications_active', label: 'Alarmas activas', badge: c.total },
-      { key: 'taps', icon: 'memory', label: 'TAP (técnico)' },
     ];
+    // TAP (técnico) solo admin.
+    if (this.canViewTap()) tabs.push({ key: 'taps', icon: 'memory', label: 'TAP (técnico)' });
+    return tabs;
   });
 
   salaSlug(area: string): string {
@@ -5855,11 +5693,116 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
   readonly alarmsFilter = signal<'all' | 'crit' | 'warn' | 'info'>('all');
 
+  // Vista de la pestaña Alarmas: activas (operacionales) vs historial (disparadas).
+  readonly alarmsView = signal<'activas' | 'historial'>('activas');
+  readonly alarmEvents = computed<AlarmEvent[]>(() => this.alarmRulesSvc.events());
+  readonly alarmEventsLoaded = computed(() => this.alarmRulesSvc.eventsLoaded());
+
+  // Mapea los eventos al modelo compartido AlarmHistoryItem.
+  readonly alarmHistoryItems = computed<AlarmHistoryItem[]>(() => {
+    const events = this.alarmEvents().map((e) => {
+      const sev: 'info' | 'warn' | 'crit' = e.rule_severity || 'warn';
+      const sevLabel = sev === 'crit' ? 'Crítica' : sev === 'warn' ? 'Advertencia' : 'Info';
+      return {
+        id: e.id,
+        title: e.rule_name || 'Alarma',
+        detail: this.alarmEventSummary(e),
+        severity: sev,
+        severityLabel: sevLabel,
+        startedAt: e.triggered_at,
+        endedAt: e.resolved_at,
+        status: e.resolved_at ? 'resuelta' : 'activa',
+        tags: e.email_sent ? [{ icon: 'mail', label: 'Notificada' }] : [],
+      } satisfies AlarmHistoryItem;
+    });
+    return [...events, ...this.deviationObservationItems()].sort(
+      (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
+    );
+  });
+
+  /**
+   * Desviaciones HACCP que tienen una observación del operador (nota o causa
+   * marcada manualmente) → entran al historial como items propios. La nota va
+   * siempre con SU desviación (nunca mal atribuida a otro evento).
+   */
+  private deviationObservationItems(): AlarmHistoryItem[] {
+    const out: AlarmHistoryItem[] = [];
+    for (const d of this.deviationsSvc.detect(this.coldRoomSensors())) {
+      const ack = this.deviationsSvc.getAck(d.id);
+      const manualCause =
+        ack?.cause && ack.causeSource === 'manual' ? DEVIATION_CAUSES[ack.cause].label : null;
+      const note = ack?.causeNote || ack?.note || null;
+      if (!manualCause && !note) continue; // solo desviaciones documentadas
+
+      const observation = [manualCause, note].filter(Boolean).join(' — ');
+      const sev: 'info' | 'warn' | 'crit' =
+        d.level === 'severe' || d.level === 'crit' ? 'crit' : d.level === 'warn' ? 'warn' : 'info';
+      const tags: AlarmHistoryItem['tags'] = [{ icon: 'memory', label: d.tap }];
+      if (manualCause && ack?.cause) {
+        tags.unshift({ icon: DEVIATION_CAUSES[ack.cause].icon, label: manualCause });
+      }
+      out.push({
+        id: `dev:${d.id}`,
+        title: `Desviación de temperatura · ${d.area}`,
+        code: 'HACCP',
+        detail: `${d.peakT}°C (máx ${d.thresholdMax}°C) · ${d.durationMin} min`,
+        observation,
+        severity: sev,
+        severityLabel: sev === 'crit' ? 'Crítica' : sev === 'warn' ? 'Advertencia' : 'Info',
+        startedAt: d.startTs,
+        endedAt: d.endTs,
+        status: this.deviationsSvc.isOpen(d) ? 'activa' : 'resuelta',
+        icon: 'thermostat',
+        tags,
+      });
+    }
+    return out;
+  }
+
+  private alarmEventSummary(e: AlarmEvent): string {
+    if (!e.rule_metric) return e.target_label || '';
+    const unit = e.rule_metric === 'temperatura' ? '°C' : e.rule_metric === 'humedad' ? '%' : 'min';
+    const val = e.current_value !== null ? `${e.current_value}${unit}` : '—';
+    const cond =
+      e.rule_op && e.rule_threshold !== null ? `${e.rule_op} ${e.rule_threshold}${unit}` : '';
+    return `${val} (umbral ${cond}) · ${e.target_label || ''}`.trim();
+  }
+
   readonly alarmsFiltered = computed(() => {
     const f = this.alarmsFilter();
     if (f === 'all') return this.alarmsList();
     return this.alarmsList().filter((a) => a.severity === f);
   });
+
+  // Alarmas ACTIVAS mapeadas al modelo compartido (mismo UI que el historial).
+  readonly alarmsActivasItems = computed<AlarmHistoryItem[]>(() => {
+    const q = this.salaQueryParams();
+    return this.alarmsFiltered().map((al) => {
+      const tags: AlarmHistoryItem['tags'] = [];
+      if (al.area) tags.push({ icon: 'meeting_room', label: al.area });
+      if (al.tap) tags.push({ icon: 'memory', label: al.tap });
+      return {
+        id: al.id,
+        title: al.title,
+        detail: al.detail,
+        severity: al.severity,
+        severityLabel:
+          al.severity === 'crit' ? 'Crítica' : al.severity === 'warn' ? 'Advertencia' : 'Info',
+        icon: al.icon,
+        startedAt: new Date(Date.now() - (al.sinceMs ?? 0)).toISOString(),
+        endedAt: null,
+        status: 'activa',
+        tags,
+        link: al.areaSlug ? this.alarmAreaLink(al.areaSlug) : null,
+        linkQuery: q,
+        linkTitle: 'Ir a detalle de sala',
+      } satisfies AlarmHistoryItem;
+    });
+  });
+
+  readonly alarmsEmptyText = computed(() =>
+    this.alarmsCounts().total === 0 ? 'Sin alarmas activas' : 'Sin alarmas en este filtro',
+  );
 
   alarmAreaLink(slug: string | null): string[] | null {
     if (!slug) return null;
@@ -5874,6 +5817,23 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   readonly historyExportTo = signal<string>('');
   readonly historyExportLoading = signal<boolean>(false);
   readonly historyExportError = signal<string | null>(null);
+  // Intervalo de agrupación (promedio/mín/máx por intervalo). 'auto' = resolución base.
+  readonly historyExportInterval = signal<ColdRoomExportInterval>('auto');
+  readonly historyExportIntervalOptions: { value: ColdRoomExportInterval; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: '1min', label: '1 min' },
+    { value: '5min', label: '5 min' },
+    { value: '15min', label: '15 min' },
+    { value: '1h', label: '1 hora' },
+    { value: '1d', label: '1 día' },
+  ];
+  // Variables a incluir en el Excel.
+  readonly historyExportVars = signal<'both' | 'temp' | 'hum'>('both');
+  readonly historyExportVarsOptions: { value: 'both' | 'temp' | 'hum'; label: string }[] = [
+    { value: 'both', label: 'Ambas' },
+    { value: 'temp', label: 'Temperatura' },
+    { value: 'hum', label: 'Humedad' },
+  ];
 
   openHistoryExport(): void {
     // Default: hoy 00:00 → ahora.
@@ -5971,7 +5931,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
 
     this.historyExportLoading.set(true);
     this.coldRoom
-      .exportHistory(sid, from.toISOString(), to.toISOString(), allIds, sensors)
+      .exportHistory(
+        sid,
+        from.toISOString(),
+        to.toISOString(),
+        allIds,
+        sensors,
+        this.historyExportInterval(),
+      )
       .subscribe({
         next: async (res) => {
           this.historyExportLoading.set(false);
@@ -5984,7 +5951,14 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
             return;
           }
           try {
-            await this.downloadHistoryXlsx(res.data.points, from, to, res.meta.view, sensors);
+            await this.downloadHistoryXlsx(
+              res.data.points,
+              from,
+              to,
+              res.meta.view,
+              sensors,
+              res.meta.interval,
+            );
             this.closeHistoryExport();
           } catch (err) {
             this.historyExportError.set(
@@ -6033,34 +6007,41 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
   }
 
   private async downloadHistoryXlsx(
-    points: {
-      ts: string;
-      sensorId: string;
-      area: string;
-      tap: string;
-      t: number | null;
-      h: number | null;
-    }[],
+    points: ColdRoomExportPoint[],
     from: Date,
     to: Date,
     view: string,
     sensorIds: string[],
+    intervalLabel?: string,
   ): Promise<void> {
     const XLSX = await this.loadXlsx();
     const wb = XLSX.utils.book_new();
+    const r2 = (n: number | null | undefined) => (n == null ? null : Math.round(n * 100) / 100);
+    const vars = this.historyExportVars();
+    const incT = vars !== 'hum';
+    const incH = vars !== 'temp';
 
-    // Hoja 1: Lecturas (datos crudos).
+    // Hoja 1: Lecturas (promedio/mín/máx por intervalo). Columnas según variables.
     const rows = points.map((p) => {
       const dt = this.formatChileParts(p.ts);
-      return {
+      const row: Record<string, string | number | null> = {
         Fecha: dt.date,
         Hora: dt.time,
         Sensor: p.sensorId,
         Sala: (p.area || '').replace(/\s+/g, ' ').trim(),
         TAP: p.tap,
-        'Temperatura (°C)': p.t !== null ? Math.round(p.t * 100) / 100 : null,
-        'Humedad (%)': p.h !== null ? Math.round(p.h * 100) / 100 : null,
       };
+      if (incT) {
+        row['Temp prom (°C)'] = r2(p.t);
+        row['Temp mín (°C)'] = r2(p.tMin);
+        row['Temp máx (°C)'] = r2(p.tMax);
+      }
+      if (incH) {
+        row['HR prom (%)'] = r2(p.h);
+        row['HR mín (%)'] = r2(p.hMin);
+        row['HR máx (%)'] = r2(p.hMax);
+      }
+      return row;
     });
     const sheet1 = XLSX.utils.json_to_sheet(rows);
     sheet1['!cols'] = [
@@ -6069,8 +6050,8 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       { wch: 10 }, // Sensor
       { wch: 28 }, // Sala
       { wch: 8 }, // TAP
-      { wch: 16 }, // Temperatura
-      { wch: 14 }, // Humedad
+      ...(incT ? [{ wch: 14 }, { wch: 13 }, { wch: 13 }] : []),
+      ...(incH ? [{ wch: 12 }, { wch: 11 }, { wch: 11 }] : []),
     ];
     // Freeze header row.
     sheet1['!freeze'] = { xSplit: 0, ySplit: 1 };
@@ -6084,14 +6065,30 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       equipo_hourly: '1 hora',
       equipo_daily: '1 día',
     };
+    const intervalNames: Record<string, string> = {
+      '1min': '1 minuto',
+      '5min': '5 minutos',
+      '15min': '15 minutos',
+      '1h': '1 hora',
+      '1d': '1 día',
+    };
     const summary = [
       { Campo: 'Sitio', Valor: 'Ventisqueros' },
       { Campo: 'Generado', Valor: this.formatChileShort(new Date().toISOString()) },
       { Campo: 'Rango desde', Valor: fmtRange(from) },
       { Campo: 'Rango hasta', Valor: fmtRange(to) },
-      { Campo: 'Granularidad', Valor: cagg[view] || view },
+      {
+        Campo: 'Agrupación (promedio/mín/máx)',
+        Valor: intervalLabel ? intervalNames[intervalLabel] || intervalLabel : cagg[view] || view,
+      },
+      { Campo: 'Resolución base', Valor: cagg[view] || view },
+      {
+        Campo: 'Variables',
+        Valor:
+          vars === 'both' ? 'Temperatura + Humedad' : vars === 'temp' ? 'Temperatura' : 'Humedad',
+      },
       { Campo: 'Sensores', Valor: sensorIds.join(', ') },
-      { Campo: 'Total lecturas', Valor: points.length },
+      { Campo: 'Total filas', Valor: points.length },
     ];
     const sheet2 = XLSX.utils.json_to_sheet(summary);
     sheet2['!cols'] = [{ wch: 18 }, { wch: 60 }];
@@ -6342,11 +6339,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
     return taps.map((tap) => {
       // Sensores del TAP reportando reciente (cagg propio).
       const tapSensors = coldSensors.filter((s) => s.tap === tap);
-      const sensorsReporting = tapSensors.filter((s) => {
-        if (!s.lastSeen) return false;
-        const ts = new Date(s.lastSeen).getTime();
-        return Number.isFinite(ts) && ts > 0 && now - ts < STALE_FRESH_MS;
-      }).length;
 
       // Cobertura 24h: cuántos minutos del cagg tienen al menos una lectura.
       // 1440 = 24h * 60min. Sparkline en 60 slots de 24min cada uno.
@@ -6393,8 +6385,6 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
         status,
         oldestSeenIso: oldestIso,
         oldestSeenMs: transmissionAgeMs,
-        sensorsReporting,
-        sensorsTotal: tapSensors.length,
         coveragePct,
         coverageMinutes,
         coverageSlots,
@@ -6454,6 +6444,12 @@ export class VentisquerosComponent implements OnInit, OnDestroy {
       }
       const id = this.siteId();
       if (id) this.service.startPolling(id);
+    });
+
+    // Carga reglas + historial de alarmas del sitio para la pestaña Alarmas.
+    effect(() => {
+      const id = this.siteId();
+      if (id) this.alarmRulesSvc.setSiteId(id);
     });
 
     effect(() => {

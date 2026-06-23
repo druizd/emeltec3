@@ -105,20 +105,20 @@
                     (step() === 'email' && dot === 1) ||
                     (step() !== 'email' && dot === 2) ||
                     ((step() === 'setup_otp' || step() === 'mfa') && dot === 3)
-                      ? 'bg-[#0dafbd]'
+                      ? 'bg-primary'
                       : 'bg-[rgba(13,175,189,0.15)]'
                   "
                 ></span>
               }
               <span
-                class="ml-1 text-[10px] font-semibold uppercase tracking-[0.20em] text-[#0dafbd]/60"
+                class="ml-1 text-[10px] font-semibold uppercase tracking-[0.20em] text-primary/60"
               >
                 Acceso seguro
               </span>
             </div>
 
             <h2 class="text-[1.42rem] font-semibold leading-tight text-slate-900">{{ title }}</h2>
-            <p class="mt-1 text-[12px] leading-4 text-slate-400">{{ subtitle }}</p>
+            <p class="mt-1 text-[12px] leading-4 text-slate-500">{{ subtitle }}</p>
           </div>
 
           @if (errorMsg()) {
@@ -147,7 +147,7 @@
               </label>
               <div class="relative">
                 <span
-                  class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#0dafbd]/70"
+                  class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-primary/70"
                   >mail</span
                 >
                 <input
@@ -180,7 +180,7 @@
                 </label>
                 <div class="relative">
                   <span
-                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#0dafbd]/70"
+                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-primary/70"
                     >lock</span
                   >
                   <input
@@ -197,7 +197,7 @@
                   <button
                     type="button"
                     (click)="showPassword.set(!showPassword())"
-                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#0dafbd]"
+                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary"
                     [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Ver contrasena'"
                   >
                     <span class="material-symbols-outlined text-[18px]">
@@ -237,7 +237,7 @@
                 </label>
                 <div class="relative">
                   <span
-                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-[#0dafbd]/70"
+                    class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-primary/70"
                     >lock</span
                   >
                   <input
@@ -255,7 +255,7 @@
                   <button
                     type="button"
                     (click)="showConfirmPassword.set(!showConfirmPassword())"
-                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-[#0dafbd]"
+                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary"
                     [attr.aria-label]="
                       showConfirmPassword() ? 'Ocultar confirmacion' : 'Ver confirmacion'
                     "
@@ -315,7 +315,7 @@
               <button
                 type="button"
                 (click)="goBack()"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold text-slate-400 transition-all hover:text-[#0dafbd]"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold text-slate-400 transition-all hover:text-primary"
                 style="
                   border: 1px solid rgba(13, 175, 189, 0.13);
                   background: rgba(13, 175, 189, 0.03);

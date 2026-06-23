@@ -48,23 +48,27 @@ export async function getDataTransmissionLag(): Promise<DataLagRaw[]> {
 }
 
 /**
- * Informantes DGA activos con datos crudos para que el worker compute
+ * Sitios DGA activos con datos crudos para que el worker compute
  * `expected_next` en JS según periodicidad.
+ *
+ * Fuente: pozo_config (dga_user fue eliminado en migración 2026-05-17).
+ * id_dgauser es un alias de sitio_id mantenido por compatibilidad con
+ * DgaUserRaw y los consumidores de healthDigest/worker.ts (ADR-3).
  */
 export async function getDgaUsersForMonitoring(): Promise<DgaUserRaw[]> {
   const r = await query<DgaUserRaw>(
-    `SELECT u.id_dgauser::text AS id_dgauser,
-            u.site_id,
+    `SELECT pc.sitio_id                                AS id_dgauser,
+            pc.sitio_id                                AS site_id,
             s.descripcion,
-            e.nombre AS empresa_nombre,
-            u.periodicidad,
-            u.last_run_at,
-            to_char(u.fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
-            to_char(u.hora_inicio,  'HH24:MI:SS') AS hora_inicio
-       FROM dga_user u
-       JOIN sitio s ON s.id = u.site_id
+            e.nombre                                   AS empresa_nombre,
+            pc.dga_periodicidad                        AS periodicidad,
+            pc.dga_last_run_at                         AS last_run_at,
+            to_char(pc.dga_fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
+            to_char(pc.dga_hora_inicio,  'HH24:MI:SS') AS hora_inicio
+       FROM pozo_config pc
+       JOIN sitio s   ON s.id = pc.sitio_id
        LEFT JOIN empresa e ON e.id = s.empresa_id
-      WHERE u.activo = TRUE
+      WHERE pc.dga_activo = TRUE
         AND s.activo = TRUE
         AND s.tipo_sitio <> 'maleta'`,
     [],

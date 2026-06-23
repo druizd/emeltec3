@@ -80,6 +80,23 @@ if [ -d infra-db/migrations ]; then
   done
 fi
 
+# Resuelve colisiones de container_name huérfanas. Los servicios usan
+# container_name fijo (ej. emeltec-landing); si quedó un container de un
+# COMPOSE_PROJECT_NAME anterior (o creado fuera de compose), `up` falla con
+# "container name already in use" y --remove-orphans NO lo cubre. Removemos por
+# nombre solo los que NO pertenecen al proyecto actual (los sanos no se tocan).
+echo "Checking for orphaned fixed-name containers..."
+while IFS= read -r cname; do
+  [ -n "$cname" ] || continue
+  cid="$(docker ps -aq --filter "name=^/${cname}$" || true)"
+  [ -n "$cid" ] || continue
+  proj="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.project" }}' "$cid" 2>/dev/null || true)"
+  if [ "$proj" != "$COMPOSE_PROJECT_NAME" ]; then
+    echo "  Removing orphaned container '$cname' (project '${proj:-none}' != '$COMPOSE_PROJECT_NAME')"
+    docker rm -f "$cid" >/dev/null
+  fi
+done < <(grep -E '^[[:space:]]*container_name:' "$COMPOSE_FILE" | sed -E 's/.*container_name:[[:space:]]*//; s/["'"'"']//g; s/\r//')
+
 echo "Building and restarting services..."
 docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
 

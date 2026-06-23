@@ -174,7 +174,7 @@ interface Periodo {
                 <h3 class="text-body-sm font-semibold text-slate-800">
                   Flujo mensual por instalación
                 </h3>
-                <p class="mt-0.5 text-caption-xs text-slate-400">
+                <p class="mt-0.5 text-caption-xs text-slate-500">
                   m³/mes · últimos 6 meses · clic en leyenda para ocultar
                 </p>
               </div>
@@ -258,7 +258,7 @@ interface Periodo {
             @if (sitiosResumen.length === 0) {
               <div class="py-8 text-center">
                 <span class="material-symbols-outlined text-3xl text-slate-300">sensors_off</span>
-                <p class="mt-2 text-caption font-semibold text-slate-400">Sin sitios registrados</p>
+                <p class="mt-2 text-caption font-semibold text-slate-500">Sin sitios registrados</p>
               </div>
             } @else {
               <div class="space-y-2 overflow-y-auto" style="max-height: 340px">
@@ -283,7 +283,7 @@ interface Periodo {
                         <p class="truncate text-caption font-semibold text-slate-800">
                           {{ s.nombre }}
                         </p>
-                        <p class="truncate font-mono text-caption-xs text-slate-400">
+                        <p class="truncate font-mono text-caption-xs text-slate-500">
                           @if (s.obraDga) {
                             Obra DGA · {{ s.obraDga }}
                           } @else {
@@ -316,7 +316,7 @@ interface Periodo {
                     <!-- Proyección mensual -->
                     <div class="mt-2 space-y-1.5 border-t border-slate-100 pt-2">
                       <div class="flex items-center justify-between">
-                        <span class="text-caption-xs font-semibold text-slate-400"
+                        <span class="text-caption-xs font-semibold text-slate-500"
                           >Consumido este mes</span
                         >
                         @if (s.monthlyLoaded) {
@@ -330,7 +330,7 @@ interface Periodo {
                         }
                       </div>
                       <div class="flex items-center justify-between">
-                        <span class="text-caption-xs font-semibold text-slate-400"
+                        <span class="text-caption-xs font-semibold text-slate-500"
                           >Proyección fin de mes</span
                         >
                         @if (s.monthlyLoaded) {
@@ -344,7 +344,7 @@ interface Periodo {
                         }
                       </div>
                       <div class="flex items-center justify-between">
-                        <span class="text-caption-xs font-semibold text-slate-400"
+                        <span class="text-caption-xs font-semibold text-slate-500"
                           >Días con extracción</span
                         >
                         @if (s.dailyLoaded) {
@@ -373,7 +373,7 @@ interface Periodo {
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
               <div>
                 <h3 class="text-body-sm font-semibold text-slate-800">Mapa de instalaciones</h3>
-                <p class="mt-0.5 text-caption-xs text-slate-400">
+                <p class="mt-0.5 text-caption-xs text-slate-500">
                   Posición geográfica · clic en marcador para métricas
                 </p>
               </div>
@@ -384,7 +384,7 @@ interface Periodo {
                 <div class="absolute inset-0 z-10 flex items-center justify-center bg-slate-50">
                   <div class="text-center">
                     <span class="material-symbols-outlined text-3xl text-slate-300">map</span>
-                    <p class="mt-2 text-caption font-semibold text-slate-400">Sin instalaciones</p>
+                    <p class="mt-2 text-caption font-semibold text-slate-500">Sin instalaciones</p>
                   </div>
                 </div>
               }
@@ -396,7 +396,7 @@ interface Periodo {
             <div class="mb-4 flex items-center justify-between gap-3">
               <h3 class="text-body-sm font-semibold text-slate-800">Resumen operacional</h3>
               <span
-                class="rounded-full border border-[#e2e8f0] bg-[#f8fafc] px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
+                class="rounded-full border border-surface-container bg-surface-subtle px-3 py-1 text-caption-xs font-semibold text-on-surface-variant"
               >
                 Mayo 2026
               </span>
@@ -432,7 +432,7 @@ interface Periodo {
               <h3 class="text-body-sm font-semibold text-slate-800">
                 Comparación de períodos por pozo
               </h3>
-              <p class="mt-0.5 text-caption-xs text-slate-400">
+              <p class="mt-0.5 text-caption-xs text-slate-500">
                 Período A vs Período B · caudal, nivel y consumo
               </p>
             </div>
@@ -576,7 +576,7 @@ interface Periodo {
                   type="button"
                   (click)="aplicarPeriodosCustom()"
                   [disabled]="!periodosCustomPendientes()"
-                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                 >
                   <span class="material-symbols-outlined text-[14px]">check</span>
                   Aplicar
@@ -589,7 +589,7 @@ interface Periodo {
           @if (sitiosComparacion.length === 0) {
             <div class="py-8 text-center">
               <span class="material-symbols-outlined text-3xl text-slate-300">sensors_off</span>
-              <p class="mt-2 text-caption font-semibold text-slate-400">Sin datos de pozos</p>
+              <p class="mt-2 text-caption font-semibold text-slate-500">Sin datos de pozos</p>
             </div>
           } @else {
             <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -820,12 +820,11 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   });
 
   readonly coldRoomSite = computed<SiteRecord | null>(() => {
-    const list = this._sitesSignal();
-    if (list.length === 0) return null;
+    // Si hay sitios cold-room, mostramos el general AGREGADO de todos los TAPs
+    // (coldRoomSites alimenta el bundle). No exigimos que TODOS los sitios sean
+    // cold-room: evita forzar la selección de un TAP cuando hay mezcla.
     const cold = this.coldRoomSites();
-    if (cold.length === 0) return null;
-    if (cold.length !== list.length) return null;
-    return cold[0];
+    return cold.length > 0 ? cold[0] : null;
   });
 
   @ViewChild('mapContainer') mapContainer?: ElementRef<HTMLDivElement>;

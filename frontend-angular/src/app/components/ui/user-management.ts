@@ -13,7 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { UserService } from '../../services/user.service';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
-import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
+import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } from '@emeltec/shared';
 
 @Component({
   selector: 'app-user-management',
@@ -28,14 +28,28 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
         <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
           <div class="flex items-center gap-3 mb-8">
             <div class="w-10 h-10 bg-primary-tint-10 rounded-xl flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary-container">person_add</span>
+              <span class="material-symbols-outlined text-primary-container">{{
+                editingId() ? 'manage_accounts' : 'person_add'
+              }}</span>
             </div>
-            <div>
-              <h2 class="text-h6 font-bold text-slate-800">Registrar nuevo miembro</h2>
+            <div class="flex-1">
+              <h2 class="text-h6 font-bold text-slate-800">
+                {{ editingId() ? 'Editar miembro' : 'Registrar nuevo miembro' }}
+              </h2>
               <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
                 Jerarquía Real: {{ companyName() }} / {{ subName() }}
               </p>
             </div>
+            @if (editingId()) {
+              <button
+                type="button"
+                (click)="cancelEdit()"
+                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-caption font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700"
+              >
+                <span class="material-symbols-outlined text-base">close</span>
+                Cancelar edición
+              </button>
+            }
           </div>
 
           @if (status().msg) {
@@ -176,9 +190,15 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                   type="email"
                   [(ngModel)]="newUser.email"
                   name="email"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm font-bold"
+                  [disabled]="!!editingId()"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
                   placeholder="usuario@correo.com"
                 />
+                @if (editingId()) {
+                  <p class="text-[10px] text-slate-500 font-semibold">
+                    El correo no se puede modificar.
+                  </p>
+                }
               </div>
               <div class="space-y-1.5 md:col-span-2">
                 <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
@@ -200,8 +220,10 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 [disabled]="loading()"
                 class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
               >
-                <span class="material-symbols-outlined text-lg">person_add</span>
-                {{ loading() ? 'Guardando...' : 'Crear usuario' }}
+                <span class="material-symbols-outlined text-lg">{{
+                  editingId() ? 'save' : 'person_add'
+                }}</span>
+                {{ loading() ? 'Guardando...' : editingId() ? 'Guardar cambios' : 'Crear usuario' }}
               </button>
             </div>
           </form>
@@ -231,7 +253,7 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                   [ngModel]="userSearch()"
                   (ngModelChange)="setUserSearch($event)"
                   placeholder="Buscar nombre, correo o empresa..."
-                  class="h-9 w-full rounded-lg border border-[#E2E8F0] bg-white pl-9 pr-3 text-caption font-semibold text-[#1E293B] outline-none transition-colors placeholder:text-slate-400 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-9 w-full rounded-lg border border-surface-container bg-white pl-9 pr-3 text-caption font-semibold text-on-surface outline-none transition-colors placeholder:text-slate-400 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
                 />
               </span>
             </label>
@@ -265,11 +287,26 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                 >
                   Alcance
                 </th>
+                @if (!readOnly) {
+                  <th
+                    class="px-6 py-4 font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+                  >
+                    Estado
+                  </th>
+                  <th
+                    class="px-6 py-4 text-right font-semibold text-slate-400 uppercase tracking-widest text-[10px]"
+                  >
+                    Acciones
+                  </th>
+                }
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
               @for (user of paginatedUsers(); track user.id) {
-                <tr class="hover:bg-slate-50/30 transition-colors">
+                <tr
+                  class="hover:bg-slate-50/30 transition-colors"
+                  [class.opacity-50]="user.activo === false"
+                >
                   <td class="px-6 py-4 font-bold text-slate-700">
                     {{ user.nombre }} {{ user.apellido }}
                   </td>
@@ -289,16 +326,86 @@ import type { ApiResponse, CreateUserPayload, User } from '@emeltec/shared';
                       {{ getUserScopeLabel(user) }}
                     </span>
                   </td>
+                  @if (!readOnly) {
+                    <td class="px-6 py-4">
+                      @if (user.activo === false) {
+                        <span
+                          class="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-tight text-slate-500"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
+                          Desactivado
+                        </span>
+                      } @else {
+                        <span
+                          class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-tight text-emerald-600"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          Activo
+                        </span>
+                      }
+                    </td>
+                    <td class="px-6 py-4">
+                      @if (canManage(user)) {
+                        <div class="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            (click)="startEdit(user)"
+                            [disabled]="rowBusyId() === user.id"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-tint-10 hover:text-primary-container disabled:opacity-40"
+                            title="Editar"
+                            aria-label="Editar usuario"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            (click)="resetPassword(user)"
+                            [disabled]="rowBusyId() === user.id"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600 disabled:opacity-40"
+                            title="Reenviar código de acceso"
+                            aria-label="Reenviar código de acceso"
+                          >
+                            <span class="material-symbols-outlined text-[18px]">lock_reset</span>
+                          </button>
+                          @if (user.activo === false) {
+                            <button
+                              type="button"
+                              (click)="reactivate(user)"
+                              [disabled]="rowBusyId() === user.id"
+                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40"
+                              title="Reactivar"
+                              aria-label="Reactivar usuario"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">person_add</span>
+                            </button>
+                          } @else {
+                            <button
+                              type="button"
+                              (click)="deactivate(user)"
+                              [disabled]="rowBusyId() === user.id"
+                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                              title="Desactivar"
+                              aria-label="Desactivar usuario"
+                            >
+                              <span class="material-symbols-outlined text-[18px]">person_off</span>
+                            </button>
+                          }
+                        </div>
+                      } @else {
+                        <span class="block text-right text-slate-300">—</span>
+                      }
+                    </td>
+                  }
                 </tr>
               }
 
               @if (filteredUsers().length === 0) {
                 <tr>
-                  <td colspan="4" class="px-6 py-10 text-center">
+                  <td [attr.colspan]="readOnly ? 4 : 6" class="px-6 py-10 text-center">
                     <span class="material-symbols-outlined text-slate-300 text-4xl mb-2"
                       >group_off</span
                     >
-                    <p class="text-slate-400 font-bold text-body-sm">Sin usuarios registrados</p>
+                    <p class="text-slate-500 font-bold text-body-sm">Sin usuarios registrados</p>
                   </td>
                 </tr>
               }
@@ -359,6 +466,8 @@ export class UserManagementComponent implements OnInit, OnChanges {
   userPage = signal(1);
   loading = signal(false);
   status = signal({ type: '', msg: '' });
+  editingId = signal<string | null>(null);
+  rowBusyId = signal<string | null>(null);
   readonly pageSize = 10;
 
   filteredUsers = computed(() => {
@@ -487,6 +596,11 @@ export class UserManagementComponent implements OnInit, OnChanges {
     event?.preventDefault();
     if (this.readOnly) return; // Double protection
 
+    if (this.editingId()) {
+      this.updateUser();
+      return;
+    }
+
     this.loading.set(true);
     this.status.set({ type: '', msg: '' });
     const submittedEmail = this.newUser.email.trim();
@@ -539,12 +653,154 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.userPage.set(Math.min(this.totalUserPages(), this.userPage() + 1));
   }
 
-  deleteUser(id: string) {
-    if (this.readOnly) return; // Double protection
-
-    if (confirm('¿Eliminar este usuario?')) {
-      this.userService.deleteUser(id).subscribe(() => this.loadUsers());
+  /** Replica la jerarquía del backend (managePermissionError) para mostrar acciones. */
+  canManage(target: User): boolean {
+    const me = this.auth.user();
+    if (!me || this.readOnly) return false;
+    if (me.id === target.id) return false; // no auto-gestión desde la tabla
+    if (this.auth.isSuperAdmin()) return true;
+    if (this.auth.isAdmin()) {
+      return target.tipo !== 'SuperAdmin' && target.empresa_id === me.empresa_id;
     }
+    if (this.auth.isGerente()) {
+      return (
+        target.tipo !== 'SuperAdmin' &&
+        target.tipo !== 'Admin' &&
+        target.sub_empresa_id === me.sub_empresa_id
+      );
+    }
+    return false;
+  }
+
+  startEdit(user: User) {
+    if (!this.canManage(user)) return;
+    this.editingId.set(user.id);
+    this.status.set({ type: '', msg: '' });
+    this.newUser = {
+      nombre: user.nombre,
+      apellido: user.apellido,
+      rut_usuario: user.rut_usuario ?? '',
+      email: user.email,
+      telefono: user.telefono ?? '',
+      cargo: user.cargo ?? '',
+      tipo: user.tipo,
+      empresa_id: user.empresa_id ?? this.empresaId,
+      sub_empresa_id: user.sub_empresa_id ?? this.subEmpresaId,
+    };
+    if (typeof document !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  cancelEdit() {
+    this.editingId.set(null);
+    this.clearForm();
+    this.status.set({ type: '', msg: '' });
+  }
+
+  private updateUser() {
+    const id = this.editingId();
+    if (!id) return;
+
+    this.loading.set(true);
+    this.status.set({ type: '', msg: '' });
+
+    // El correo no se edita. Empresa/división se conservan desde el contexto.
+    const payload: UpdateUserAdminPayload = {
+      nombre: this.newUser.nombre,
+      apellido: this.newUser.apellido,
+      rut_usuario: this.newUser.rut_usuario || null,
+      telefono: this.newUser.telefono || null,
+      cargo: this.newUser.cargo || null,
+      tipo: this.newUser.tipo,
+    };
+
+    this.userService.updateUser(id, payload).subscribe({
+      next: (res: ApiResponse<User>) => {
+        if (res.ok) {
+          this.cancelEdit();
+          this.status.set({ type: 'success', msg: 'Cambios guardados correctamente.' });
+          this.loadUsers();
+        } else {
+          this.status.set({
+            type: 'error',
+            msg: res.error || 'No se pudieron guardar los cambios.',
+          });
+        }
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.status.set({
+          type: 'error',
+          msg: this.errorDetail(err, 'No se pudo editar el usuario.'),
+        });
+        this.loading.set(false);
+      },
+    });
+  }
+
+  deactivate(user: User) {
+    if (!this.canManage(user)) return;
+    this.rowBusyId.set(user.id);
+    this.userService.deleteUser(user.id).subscribe({
+      next: () => {
+        this.status.set({
+          type: 'success',
+          msg: `${user.nombre} ${user.apellido} fue desactivado.`,
+        });
+        this.rowBusyId.set(null);
+        this.loadUsers();
+      },
+      error: (err) => {
+        this.status.set({ type: 'error', msg: this.errorDetail(err, 'No se pudo desactivar.') });
+        this.rowBusyId.set(null);
+      },
+    });
+  }
+
+  reactivate(user: User) {
+    if (!this.canManage(user)) return;
+    this.rowBusyId.set(user.id);
+    this.userService.reactivateUser(user.id).subscribe({
+      next: () => {
+        this.status.set({
+          type: 'success',
+          msg: `${user.nombre} ${user.apellido} fue reactivado.`,
+        });
+        this.rowBusyId.set(null);
+        this.loadUsers();
+      },
+      error: (err) => {
+        this.status.set({ type: 'error', msg: this.errorDetail(err, 'No se pudo reactivar.') });
+        this.rowBusyId.set(null);
+      },
+    });
+  }
+
+  resetPassword(user: User) {
+    if (!this.canManage(user)) return;
+    this.rowBusyId.set(user.id);
+    this.userService.resetUserPassword(user.id).subscribe({
+      next: () => {
+        this.status.set({
+          type: 'success',
+          msg: `Código de acceso reenviado a ${user.email}.`,
+        });
+        this.rowBusyId.set(null);
+      },
+      error: (err) => {
+        this.status.set({
+          type: 'error',
+          msg: this.errorDetail(err, 'No se pudo reenviar el código.'),
+        });
+        this.rowBusyId.set(null);
+      },
+    });
+  }
+
+  private errorDetail(err: unknown, fallback: string): string {
+    const e = err as { error?: { error?: string; message?: string }; message?: string };
+    return e?.error?.error || e?.error?.message || e?.message || fallback;
   }
 
   getRoleBadge(tipo: string): string {

@@ -110,7 +110,7 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
             </nav>
 
             @if (activeTab() === 'configurar') {
-              <div class="bg-[#f8fafc] p-5">
+              <div class="bg-surface-subtle p-5">
                 <app-site-variable-settings-panel
                   [siteId]="context.site.id"
                   [site]="context.site"
@@ -119,7 +119,7 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
                 />
               </div>
             } @else if (activeTab() === 'dashboard') {
-              <div class="space-y-6 bg-[#f8fafc] p-5">
+              <div class="space-y-6 bg-surface-subtle p-5">
                 <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   @for (kpi of kpis; track kpi.label) {
                     <app-kpi-card
@@ -157,7 +157,7 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
                 </div>
               </div>
             } @else {
-              <div class="grid min-h-[360px] place-items-center bg-[#f8fafc] p-8 text-center">
+              <div class="grid min-h-[360px] place-items-center bg-surface-subtle p-8 text-center">
                 <div class="max-w-md">
                   <span
                     class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-600"

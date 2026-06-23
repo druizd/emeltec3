@@ -270,10 +270,6 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 
 ## 10. Pendientes / deuda conocida
 
-- **`dga-api` (servicio legacy)**: sigue en `docker-compose.yml` con
-  ingestion worker activo por default, pero referencia la tabla `dga_user`
-  ya droppeada. Decomisionar (el frontend y main-api ya no lo usan salvo
-  health-check en `statusController.js`).
 - **Submission real**: `ENABLE_DGA_SUBMISSION_WORKER=false` en prod hasta
   cutover autorizado.
 

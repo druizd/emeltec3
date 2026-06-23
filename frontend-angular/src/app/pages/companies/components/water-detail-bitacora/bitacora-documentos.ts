@@ -196,7 +196,7 @@ const TIPOS: DocumentoTipo[] = [
                 type="button"
                 [disabled]="uploading() || !puedeSubir()"
                 (click)="subir()"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-[#0899a5] disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
                 {{ uploading() ? 'Subiendo…' : 'Subir' }}

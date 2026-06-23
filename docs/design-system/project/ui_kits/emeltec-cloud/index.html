@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emeltec Cloud — UI Kit</title>
+<style>
+  @font-face {
+    font-family: 'Josefin Sans';
+    src: url('../../fonts/JosefinSans-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 700; font-style: normal; font-display: swap;
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; }
+  body { background: #F0F2F5; font-family: 'DM Sans', sans-serif; color: #1E293B; overflow: hidden; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #FFFFFF; }
+  ::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #CBD5E1; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="Sidebar.jsx"></script>
+<script type="text/babel" src="TopNav.jsx"></script>
+<script type="text/babel" src="DashboardScreen.jsx"></script>
+<script type="text/babel" src="MonitorScreen.jsx"></script>
+<script type="text/babel" src="DownloadModal.jsx"></script>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+// CompanyScreen — inline as it's small
+const COMPANY_INSTALLS = [
+  { id:'OB-0601-292', name:'vertiente 3', type:'Legacy', lastDate:'26/04/2026 22:00', status:'live' },
+  { id:'OB-0601-293', name:'vertiente 2', type:'Legacy', lastDate:'26/04/2026 20:00', status:'nodata' },
+  { id:'OB-0601-294', name:'vertiente 1', type:'Legacy', lastDate:'26/04/2026 19:00', status:'nodata' },
+];
+
+function CompanyScreen({ company, onSelectInstall }) {
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(13,175,189,0.1)', border: '1px solid rgba(13,175,189,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <i data-lucide="building-2" style={{ width: 20, height: 20, color: '#0DAFBD' }}></i>
+          </div>
+          <div>
+            <div style={{ fontFamily: 'Josefin Sans', fontSize: 20, fontWeight: 700, color: '#1E293B', letterSpacing: '0.03em' }}>{company}</div>
+            <div style={{ fontSize: 13, color: '#94A3B8', marginTop: 2 }}>{COMPANY_INSTALLS.length} instalaciones</div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 8, padding: '6px 12px', fontSize: 12, color: '#FBBF24' }}>
+          <i data-lucide="bell" style={{ width: 13, height: 13 }}></i>
+          Venc. Contrato — 1 de Marzo
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #E2E8F0', marginBottom: 20 }}>
+        {[['bar-chart-2','General'],['grid','Instalaciones'],['users','Contactos']].map(([icon, label], i) => (
+          <div key={label} style={{
+            display: 'flex', alignItems: 'center', gap: 6, padding: '10px 16px',
+            fontSize: 13, fontWeight: 500, cursor: 'pointer',
+            color: i === 1 ? '#0DAFBD' : '#64748B',
+            borderBottom: i === 1 ? '2px solid #0DAFBD' : '2px solid transparent',
+          }}>
+            <i data-lucide={icon} style={{ width: 14, height: 14 }}></i>{label}
+          </div>
+        ))}
+      </div>
+
+      {/* Installation cards */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        {COMPANY_INSTALLS.map(inst => (
+          <div key={inst.id} onClick={() => onSelectInstall(inst)}
+            style={{ background: '#FFFFFF', border: `1px solid ${inst.status === 'live' ? 'rgba(34,197,94,0.25)' : '#E2E8F0'}`, borderRadius: 10, padding: '14px 16px', cursor: 'pointer', width: 260, transition: 'all 0.15s', boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = 'rgba(13,175,189,0.3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = inst.status === 'live' ? 'rgba(34,197,94,0.25)' : '#E2E8F0'; }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#1E293B' }}>{inst.id}</div>
+                <div style={{ fontSize: 12, color: '#64748B' }}>{inst.name}</div>
+              </div>
+              <i data-lucide="chevron-right" style={{ width: 14, height: 14, color: '#94A3B8' }}></i>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', borderRadius: 4, padding: '2px 6px', color: '#60A5FA' }}>{inst.type}</span>
+              <span style={{ fontSize: 11, color: '#94A3B8', fontFamily: 'JetBrains Mono' }}>{inst.lastDate}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ——— Main App ———
+function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeModule, setActiveModule] = useState('agua');
+  const [activePlant, setActivePlant] = useState('Cachantún Coinco');
+  const [activeTab, setActiveTab] = useState('Dashboard');
+  const [screen, setScreen] = useState('dashboard'); // dashboard | company | monitor
+  const [selectedInstall, setSelectedInstall] = useState(null);
+  const [showDownload, setShowDownload] = useState(false);
+
+  // Re-run lucide after every render
+  useEffect(() => { lucide.createIcons(); });
+
+  const handleSelectPlant = (moduleKey, plant) => {
+    setActiveModule(moduleKey);
+    setActivePlant(plant);
+    setScreen('monitor');
+    setSelectedInstall({ id: plant, name: plant, code: plant });
+  };
+
+  const handleSelectInstall = (inst) => {
+    setSelectedInstall(inst);
+    setScreen('monitor');
+  };
+
+  const siteHeader = selectedInstall ? {
+    name: selectedInstall.name || selectedInstall.id,
+    code: selectedInstall.code || '',
+    dateRange: true,
+  } : null;
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'Dashboard') { setScreen('dashboard'); setSelectedInstall(null); }
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Sidebar
+        activeModule={activeModule}
+        activePlant={activePlant}
+        onSelectPlant={handleSelectPlant}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(c => !c)}
+      />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <TopNav
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          site={siteHeader}
+        />
+        <div style={{ flex: 1, overflowY: 'auto', background: '#F0F2F5', display: 'flex', flexDirection: 'column' }}>
+          {screen === 'dashboard' && (
+            <DashboardScreen onSelectInstallation={(inst) => {
+              handleSelectInstall(inst);
+            }} />
+          )}
+          {screen === 'company' && (
+            <CompanyScreen company={activePlant} onSelectInstall={handleSelectInstall} />
+          )}
+          {screen === 'monitor' && selectedInstall && (
+            <MonitorScreen installation={selectedInstall} onDownload={() => setShowDownload(true)} />
+          )}
+        </div>
+      </div>
+
+      {showDownload && <DownloadModal onClose={() => setShowDownload(false)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

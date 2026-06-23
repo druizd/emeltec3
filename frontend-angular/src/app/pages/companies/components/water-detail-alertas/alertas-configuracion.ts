@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
+import { AuthService } from '../../../../services/auth.service';
 import { FormsModule } from '@angular/forms';
 import {
   AlertaCondicion,
@@ -44,6 +53,7 @@ interface DraftAlerta {
   severidad: AlertaSeveridad;
   cooldown_minutos: number;
   dias_activos: AlertaDia[];
+  visible_to_all: boolean;
 }
 
 const CONDICIONES_DISPONIBLES: AlertaCondicion[] = [
@@ -68,6 +78,7 @@ function emptyDraft(): DraftAlerta {
     severidad: 'media',
     cooldown_minutos: 5,
     dias_activos: [...DIAS_ORDEN],
+    visible_to_all: true,
   };
 }
 
@@ -82,6 +93,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
     severidad: r.severidad,
     cooldown_minutos: r.cooldown_minutos,
     dias_activos: [...r.dias_activos],
+    visible_to_all: r.visible_to_all !== false,
   };
 }
 
@@ -94,20 +106,22 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
     <div class="space-y-3">
       <!-- Header -->
       <div class="flex items-center justify-between gap-3">
-        <p class="text-caption-xs font-semibold text-slate-400">
+        <p class="text-caption-xs font-semibold text-slate-500">
           {{ reglas().length }}
           {{ reglas().length === 1 ? 'regla configurada' : 'reglas configuradas' }}
         </p>
-        <button
-          type="button"
-          (click)="toggleNuevo()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
-        >
-          <span class="material-symbols-outlined text-[16px]">{{
-            mostrandoNuevo() ? 'close' : 'add'
-          }}</span>
-          {{ mostrandoNuevo() ? 'Cancelar' : 'Nueva regla' }}
-        </button>
+        @if (canEdit()) {
+          <button
+            type="button"
+            (click)="toggleNuevo()"
+            class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
+          >
+            <span class="material-symbols-outlined text-[16px]">{{
+              mostrandoNuevo() ? 'close' : 'add'
+            }}</span>
+            {{ mostrandoNuevo() ? 'Cancelar' : 'Nueva regla' }}
+          </button>
+        }
       </div>
 
       <!-- Loading / error -->
@@ -143,7 +157,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaRegla)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear regla
@@ -160,18 +174,20 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         >
           <div class="flex items-start justify-between gap-3 px-5 py-4">
             <div class="flex items-start gap-3">
-              <button
-                type="button"
-                (click)="toggleActiva(regla)"
-                [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
-                class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
-                [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
-              >
-                <span
-                  [class]="regla.activa ? 'translate-x-4' : 'translate-x-0.5'"
-                  class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
-                ></span>
-              </button>
+              @if (canEdit()) {
+                <button
+                  type="button"
+                  (click)="toggleActiva(regla)"
+                  [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
+                  class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
+                  [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
+                >
+                  <span
+                    [class]="regla.activa ? 'translate-x-4' : 'translate-x-0.5'"
+                    class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
+                  ></span>
+                </button>
+              }
               <div class="min-w-0">
                 <p class="font-semibold text-slate-800">{{ regla.nombre }}</p>
                 <p class="mt-0.5 text-caption text-slate-500">
@@ -187,42 +203,44 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 </p>
               </div>
             </div>
-            <div class="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                (click)="expandirRegla(regla.id)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
-              >
-                <span class="material-symbols-outlined text-[18px]">{{
-                  reglaExpandida() === regla.id ? 'expand_less' : 'edit'
-                }}</span>
-              </button>
-              <button
-                type="button"
-                (click)="eliminar(regla)"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                aria-label="Eliminar regla"
-              >
-                <span class="material-symbols-outlined text-[18px]">delete</span>
-              </button>
-            </div>
+            @if (canEdit()) {
+              <div class="flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  (click)="expandirRegla(regla.id)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                  [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
+                >
+                  <span class="material-symbols-outlined text-[18px]">{{
+                    reglaExpandida() === regla.id ? 'expand_less' : 'edit'
+                  }}</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="eliminar(regla)"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                  aria-label="Eliminar regla"
+                >
+                  <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+              </div>
+            }
           </div>
 
           @if (reglaExpandida() !== regla.id) {
             <div
               class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-3"
             >
-              <span class="flex items-center gap-1 text-caption-xs text-slate-400">
+              <span class="flex items-center gap-1 text-caption-xs text-slate-500">
                 <span class="material-symbols-outlined text-[14px]">calendar_today</span>
                 {{ diasResumen(regla.dias_activos) }}
               </span>
-              <span class="flex items-center gap-1 text-caption-xs text-slate-400">
+              <span class="flex items-center gap-1 text-caption-xs text-slate-500">
                 <span class="material-symbols-outlined text-[14px]">schedule</span>
                 cooldown {{ regla.cooldown_minutos }} min
               </span>
               @if (regla.variable_key && regla.condicion !== 'dga_atrasado') {
-                <span class="flex items-center gap-1 text-caption-xs text-slate-400">
+                <span class="flex items-center gap-1 text-caption-xs text-slate-500">
                   <span class="material-symbols-outlined text-[14px]">data_object</span>
                   {{ regla.variable_key }}
                 </span>
@@ -250,7 +268,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   type="button"
                   [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
                   (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <span class="material-symbols-outlined text-[16px]">check</span>
                   Guardar
@@ -351,7 +369,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 placeholder="Ej: caudal, nivel_freatico"
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
-              <p class="mt-1 text-caption-xs text-slate-400">
+              <p class="mt-1 text-caption-xs text-slate-500">
                 Sin variables registradas en el sitio; ingresa la clave manualmente.
               </p>
             }
@@ -461,7 +479,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             [(ngModel)]="draft.cooldown_minutos"
             class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
           />
-          <span class="ml-2 text-caption-xs text-slate-400"
+          <span class="ml-2 text-caption-xs text-slate-500"
             >tiempo mínimo entre notificaciones</span
           >
         </div>
@@ -509,7 +527,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="button"
                 (click)="simularRegla(draft)"
                 [disabled]="simulating() || !puedeSimular(draft)"
-                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-[#0899a5] disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
               >
                 <span
                   class="material-symbols-outlined text-[14px]"
@@ -520,7 +538,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 {{ simulating() ? 'Probando…' : 'Probar regla' }}
               </button>
             </header>
-            <p class="text-caption-xs text-on-surface-muted">
+            <p class="text-caption-xs text-on-surface-variant">
               Evalúa la condición contra las últimas 500 lecturas del sitio. Read-only — no guarda
               nada ni dispara notificaciones.
             </p>
@@ -544,7 +562,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   {{ sim.matched === 1 ? 'match' : 'matches' }} en {{ sim.total }} lecturas
                 </span>
                 @if (draft.condicion !== 'sin_datos') {
-                  <span class="text-on-surface-muted">
+                  <span class="text-on-surface-variant">
                     {{ sim.withValueCount }} con valor numérico
                   </span>
                 }
@@ -575,7 +593,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                             @if (row.value !== null) {
                               {{ row.value }}
                             } @else {
-                              <span class="text-on-surface-muted italic">sin dato</span>
+                              <span class="text-on-surface-variant italic">sin dato</span>
                             }
                           </td>
                           <td class="px-3 py-2 text-right">
@@ -593,7 +611,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     </tbody>
                   </table>
                   @if (sim.matched > sim.rows.length) {
-                    <p class="bg-slate-50 px-3 py-2 text-caption-xs text-on-surface-muted">
+                    <p class="bg-slate-50 px-3 py-2 text-caption-xs text-on-surface-variant">
                       Mostrando los primeros {{ sim.rows.length }} matches de {{ sim.matched }} en
                       total.
                     </p>
@@ -619,6 +637,12 @@ export class AlertasConfiguracionComponent {
   private readonly alertaService = inject(AlertaService);
   private readonly adminService = inject(AdministrationService);
   private readonly companyService = inject(CompanyService);
+  private readonly auth = inject(AuthService);
+
+  // Solo Admin/Gerente (+ SuperAdmin) crean/editan/borran alarmas.
+  readonly canEdit = computed(
+    () => this.auth.isSuperAdmin() || this.auth.isAdmin() || this.auth.isGerente(),
+  );
 
   /** Rule-tester state. Una sola simulación activa a la vez — el draft
    * que está siendo testeado se identifica por su `variable_key` + `condicion`.
@@ -782,6 +806,7 @@ export class AlertasConfiguracionComponent {
       severidad: draft.condicion === 'dga_atrasado' ? 'media' : draft.severidad,
       cooldown_minutos: Number(draft.cooldown_minutos),
       dias_activos: draft.dias_activos,
+      visible_to_all: draft.visible_to_all,
     };
     this.saving.set(true);
     this.errorMsg.set(null);
@@ -807,7 +832,7 @@ export class AlertasConfiguracionComponent {
   }
 
   eliminar(regla: AlertaRow): void {
-    if (!confirm(`¿Eliminar la regla "${regla.nombre}"? Esta acción no se puede deshacer.`)) return;
+    // Sin confirm() nativo: el popup 2FA es la confirmación de la acción.
     this.alertaService.eliminar(regla.id).subscribe({
       next: () => this.reglas.update((rs) => rs.filter((r) => r.id !== regla.id)),
       error: (err) => this.errorMsg.set(err?.error?.error || 'No se pudo eliminar'),
@@ -828,6 +853,7 @@ export class AlertasConfiguracionComponent {
       severidad: d.condicion === 'dga_atrasado' ? 'media' : d.severidad,
       cooldown_minutos: Number(d.cooldown_minutos) || 5,
       dias_activos: d.dias_activos,
+      visible_to_all: d.visible_to_all,
     };
   }
 

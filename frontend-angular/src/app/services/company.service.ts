@@ -4,6 +4,7 @@ import { Observable, of, tap } from 'rxjs';
 import { finalize, shareReplay } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import type { ViewAsContext } from './auth.service';
+import { normalizeSiteType } from '../shared/site-type-ui';
 import type {
   ApiResponse,
   Company,
@@ -717,14 +718,29 @@ export class CompanyService {
   private scopeToSite(tree: CompanyNode[], siteId?: string): CompanyNode[] {
     if (!siteId) return tree;
 
+    // Cliente cold-room: si el sitio asignado es cámara de frío, mantenemos TODOS
+    // los TAPs (camara_frio) de su sub-empresa para que vea la planta completa
+    // agregada (Ventisqueros = varios sitios/TAPs). Otros tipos: solo su sitio.
+    const ownerSub = tree
+      .flatMap((c) => c.subCompanies || [])
+      .find((sc) => (sc.sites || []).some((s) => s.id === siteId));
+    const scopedSite = (ownerSub?.sites || []).find((s) => s.id === siteId);
+    const expandColdRoom =
+      !!scopedSite && normalizeSiteType(scopedSite.tipo_sitio) === 'camara_frio';
+
     return tree
       .map((company) => ({
         ...company,
         subCompanies: (company.subCompanies || [])
-          .map((subCompany) => ({
-            ...subCompany,
-            sites: (subCompany.sites || []).filter((site) => site.id === siteId),
-          }))
+          .map((subCompany) => {
+            const containsTarget = (subCompany.sites || []).some((s) => s.id === siteId);
+            const sites = (subCompany.sites || []).filter((site) =>
+              expandColdRoom && containsTarget
+                ? normalizeSiteType(site.tipo_sitio) === 'camara_frio'
+                : site.id === siteId,
+            );
+            return { ...subCompany, sites };
+          })
           .filter((subCompany) => subCompany.sites.length > 0),
       }))
       .filter((company) => company.subCompanies.length > 0);

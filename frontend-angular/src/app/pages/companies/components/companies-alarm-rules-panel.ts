@@ -19,6 +19,7 @@ import {
   ColdRoomAlarmRulesService,
 } from '../../../services/cold-room-alarm-rules.service';
 import { ColdRoomService } from '../../../services/cold-room.service';
+import { AuthService } from '../../../services/auth.service';
 
 interface DraftRule {
   name: string;
@@ -31,6 +32,8 @@ interface DraftRule {
   severity: AlarmSeverity;
   notifyUi: boolean;
   recipientUserIds: string[];
+  visibleToAll: boolean;
+  viewerUserIds: string[];
   enabled: boolean;
 }
 
@@ -45,6 +48,8 @@ const DEFAULT_DRAFT: DraftRule = {
   severity: 'warn',
   notifyUi: true,
   recipientUserIds: [],
+  visibleToAll: true,
+  viewerUserIds: [],
   enabled: true,
 };
 
@@ -84,22 +89,24 @@ const DEFAULT_DRAFT: DraftRule = {
               Test email
             }
           </button>
-          <button
-            type="button"
-            class="ar-btn ar-btn--primary ar-btn--big"
-            (click)="openCreate()"
-            [disabled]="formOpen()"
-          >
-            <span class="material-symbols-outlined text-[18px]">add_alert</span>
-            Crear alarma
-          </button>
+          @if (canEdit()) {
+            <button
+              type="button"
+              class="ar-btn ar-btn--primary ar-btn--big"
+              (click)="openCreate()"
+              [disabled]="formOpen()"
+            >
+              <span class="material-symbols-outlined text-[18px]">add_alert</span>
+              Crear alarma
+            </button>
+          }
         </div>
       </div>
       @if (testEmailMsg(); as msg) {
         <div class="ar-test-msg" [class.ar-test-msg--err]="testEmailError()">{{ msg }}</div>
       }
 
-      @if (!formOpen() && rules().length === 0) {
+      @if (canEdit() && !formOpen() && rules().length === 0) {
         <div class="ar-templates">
           <div class="ar-templates-title">Plantillas</div>
           <div class="ar-templates-grid">
@@ -523,29 +530,31 @@ const DEFAULT_DRAFT: DraftRule = {
                     </span>
                   </div>
                 </div>
-                <div class="ar-card-actions">
-                  <button
-                    type="button"
-                    class="ar-icon-btn"
-                    (click)="toggle(r.id)"
-                    [title]="r.enabled ? 'Desactivar' : 'Activar'"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">
-                      {{ r.enabled ? 'toggle_on' : 'toggle_off' }}
-                    </span>
-                  </button>
-                  <button type="button" class="ar-icon-btn" (click)="openEdit(r)" title="Editar">
-                    <span class="material-symbols-outlined text-[16px]">edit</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="ar-icon-btn ar-icon-btn--danger"
-                    (click)="remove(r.id)"
-                    title="Eliminar"
-                  >
-                    <span class="material-symbols-outlined text-[16px]">delete</span>
-                  </button>
-                </div>
+                @if (canEdit()) {
+                  <div class="ar-card-actions">
+                    <button
+                      type="button"
+                      class="ar-icon-btn"
+                      (click)="toggle(r.id)"
+                      [title]="r.enabled ? 'Desactivar' : 'Activar'"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">
+                        {{ r.enabled ? 'toggle_on' : 'toggle_off' }}
+                      </span>
+                    </button>
+                    <button type="button" class="ar-icon-btn" (click)="openEdit(r)" title="Editar">
+                      <span class="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="ar-icon-btn ar-icon-btn--danger"
+                      (click)="remove(r.id)"
+                      title="Eliminar"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                }
               </div>
             </article>
           }
@@ -1586,6 +1595,12 @@ export class CompaniesAlarmRulesPanelComponent {
   private readonly svc = inject(ColdRoomAlarmRulesService);
   private readonly coldRoom = inject(ColdRoomService);
   private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthService);
+
+  // Solo Admin/Gerente (+ SuperAdmin) pueden crear/editar/borrar alarmas.
+  readonly canEdit = computed(
+    () => this.auth.isSuperAdmin() || this.auth.isAdmin() || this.auth.isGerente(),
+  );
 
   readonly testEmailLoading = signal<boolean>(false);
   readonly testEmailMsg = signal<string | null>(null);
@@ -1821,6 +1836,8 @@ export class CompaniesAlarmRulesPanelComponent {
       severity: r.severity,
       notifyUi: r.notifyUi,
       recipientUserIds: [...(r.recipientUserIds || [])],
+      visibleToAll: r.visibleToAll !== false,
+      viewerUserIds: [...(r.viewerUserIds || [])],
       enabled: r.enabled,
     };
     this.editingId.set(r.id);
@@ -1890,6 +1907,8 @@ export class CompaniesAlarmRulesPanelComponent {
       notifyEmail: this.draft.recipientUserIds.length > 0,
       notifyUi: this.draft.notifyUi,
       recipientUserIds: this.draft.recipientUserIds,
+      visibleToAll: this.draft.visibleToAll,
+      viewerUserIds: this.draft.visibleToAll ? [] : this.draft.viewerUserIds,
     };
 
     const editId = this.editingId();
@@ -1906,7 +1925,7 @@ export class CompaniesAlarmRulesPanelComponent {
   }
 
   remove(id: string): void {
-    if (!confirm('¿Eliminar esta regla?')) return;
+    // Sin confirm() nativo: el popup 2FA (paso de verificación) es la confirmación.
     this.svc.remove(id);
   }
 

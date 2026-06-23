@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #080C12; font-family: 'DM Sans', sans-serif; padding: 20px; }
+  .section-title { font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #4A5A72; margin-bottom: 8px; }
+  .row { display: flex; gap: 4px; align-items: stretch; margin-bottom: 6px; }
+  .block { height: 28px; background: #0DAFBD; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+  .lbl { font-size: 9px; font-family: 'JetBrains Mono'; color: #4A5A72; text-align: center; margin-top: 3px; }
+  .divider { height: 1px; background: #1E2D42; margin: 14px 0; }
+  .radius-grid { display: flex; gap: 8px; flex-wrap: wrap; }
+  .r-chip { width: 56px; height: 44px; background: #162030; border: 1px solid #253550; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+  .r-name { font-size: 10px; color: #8B9BB8; font-weight: 500; }
+  .r-val  { font-size: 9px; color: #4A5A72; font-family: 'JetBrains Mono'; }
+</style>
+</head><body>
+<div class="section-title">Spacing Scale (4px base)</div>
+<div class="row">
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:4px;background:#253550"></div><div class="lbl">1<br>4</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:8px;background:#253550"></div><div class="lbl">2<br>8</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:12px"></div><div class="lbl">3<br>12</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:16px"></div><div class="lbl">4<br>16</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:20px"></div><div class="lbl">5<br>20</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:24px"></div><div class="lbl">6<br>24</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:32px"></div><div class="lbl">8<br>32</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:40px"></div><div class="lbl">10<br>40</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:48px"></div><div class="lbl">12<br>48</div></div>
+  <div style="display:flex;flex-direction:column;align-items:center"><div class="block" style="width:64px"></div><div class="lbl">16<br>64</div></div>
+</div>
+<div class="divider"></div>
+<div class="section-title">Border Radius</div>
+<div class="radius-grid">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="r-chip" style="border-radius:4px"><div class="r-name">sm</div><div class="r-val">4px</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="r-chip" style="border-radius:6px"><div class="r-name">base</div><div class="r-val">6px</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="r-chip" style="border-radius:8px"><div class="r-name">md</div><div class="r-val">8px</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="r-chip" style="border-radius:12px"><div class="r-name">lg</div><div class="r-val">12px</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="r-chip" style="border-radius:16px"><div class="r-name">xl</div><div class="r-val">16px</div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+    <div class="r-chip" style="border-radius:9999px"><div class="r-name">full</div><div class="r-val">∞</div></div>
+  </div>
+</div>
+</body></html>
