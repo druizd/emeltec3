@@ -72,13 +72,19 @@ async function main(): Promise<void> {
   const okSensor = fileStem === out[0]?.['NOMBRE_SENSOR'];
   console.log('\n=== CONCORDANCIA ===');
   console.log(`carpeta "${folder}" === PLANTA "${out[0]?.['PLANTA']}"  → ${okPlanta}`);
-  console.log(`archivo "${fileStem}" === NOMBRE_SENSOR "${out[0]?.['NOMBRE_SENSOR']}"  → ${okSensor}`);
+  console.log(
+    `archivo "${fileStem}" === NOMBRE_SENSOR "${out[0]?.['NOMBRE_SENSOR']}"  → ${okSensor}`,
+  );
 
   // 5) Instanciar cliente GCS con el SA simulado (NO sube nada).
   const storage = new Storage({ keyFilename: SA_PATH });
   const file = storage.bucket('raw-reg-ind-tc-ext-emeltec-prod').file(path);
   console.log('\n=== GCS CLIENT ===');
-  console.log('service account:', (storage.authClient as never as { jsonContent?: { client_email?: string } })?.['jsonContent']?.client_email ?? '(lazy)');
+  console.log(
+    'service account:',
+    (storage.authClient as never as { jsonContent?: { client_email?: string } })?.['jsonContent']
+      ?.client_email ?? '(lazy)',
+  );
   console.log('destino simulado:', `gs://${file.bucket.name}/${file.name}`);
   console.log('\n✓ wiring OK (subida real requiere creds reales de CCU)');
 

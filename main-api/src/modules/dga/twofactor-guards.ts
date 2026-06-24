@@ -13,11 +13,7 @@ import { requireDgaTwoFactor } from './twofactor';
  * Otros cambios (caudal_max, periodicidad, etc.) pasan derecho al handler.
  * Desactivar dga_gcs_export (false) NO requiere 2FA.
  */
-export function require2faIfSensitiveChange(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): void {
+export function require2faIfSensitiveChange(req: Request, res: Response, next: NextFunction): void {
   if (req.body?.dga_transport === 'rest' || req.body?.dga_gcs_export === true) {
     return requireDgaTwoFactor(req, res, next);
   }

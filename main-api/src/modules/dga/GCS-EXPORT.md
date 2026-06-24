@@ -25,7 +25,7 @@ debe exportarse, por eso el gate es `dga_status_code IS NOT NULL`.
 ## Flujo (cada `DGA_GCS_BATCH_MINUTES`)
 
 1. `listExportableSends` trae filas de `dga_send_audit` con `dga_status_code IS
-   NOT NULL`, de sitios con `pozo_config.dga_gcs_export = TRUE`, que aún no
+NOT NULL`, de sitios con `pozo_config.dga_gcs_export = TRUE`, que aún no
    estén en `dga_gcs_export_log`.
 2. Agrupa por `site_id`; por sitio genera **un** Parquet (3 filas por medición:
    `CAUDAL`, `TOTALIZADOR`, `NIVEL_FREATICO`).
@@ -70,25 +70,27 @@ reconciliable contra lo que efectivamente recibió DGA.
 
 ## Esquema Parquet (formato long, 1 fila por variable)
 
-| Columna | Fuente |
-|---|---|
-| `NOMBRE_PROVEEDOR` | `DGA_GCS_PROVEEDOR` (default `EMELTEC`) |
-| `PLANTA` | `sub_empresa.nombre` (sin tildes, ñ→n) |
-| `NOMBRE_SENSOR` | `sitio.id_serial` (serial físico del sensor/datalogger) |
-| `CENTRO_DE_OBRA` | `request_payload._headers.codigoObra` ∥ `pozo_config.obra_dga` |
-| `FECHA_MEDICION_SENSOR` | `dga_send_audit.ts` |
-| `VARIABLE` | `CAUDAL` / `TOTALIZADOR` / `NIVEL_FREATICO` |
-| `VALOR` | valor enviado (puede ser null) |
-| `FECHA_REPORTE_DGA` | `dga_send_audit.sent_at` |
-| `STATUS_DGA` | `dga_send_audit.dga_status_code` (`'00'` o código de rechazo) |
-| `COMPROBANTE` | `dga_send_audit.api_n_comprobante` verbatim de SNIA (null en rechazos) |
-| `MENSAJE_DGA` | `dga_send_audit.dga_message` verbatim de SNIA (texto OK o motivo de rechazo) |
-| `FECHA_HORA_CARGA` | timestamp del ciclo |
+| Columna                 | Fuente                                                                       |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `NOMBRE_PROVEEDOR`      | `DGA_GCS_PROVEEDOR` (default `EMELTEC`)                                      |
+| `PLANTA`                | `sub_empresa.nombre` (sin tildes, ñ→n)                                       |
+| `NOMBRE_SENSOR`         | `sitio.id_serial` (serial físico del sensor/datalogger)                      |
+| `CENTRO_DE_OBRA`        | `request_payload._headers.codigoObra` ∥ `pozo_config.obra_dga`               |
+| `FECHA_MEDICION_SENSOR` | `dga_send_audit.ts`                                                          |
+| `VARIABLE`              | `CAUDAL` / `TOTALIZADOR` / `NIVEL_FREATICO`                                  |
+| `VALOR`                 | valor enviado (puede ser null)                                               |
+| `FECHA_REPORTE_DGA`     | `dga_send_audit.sent_at`                                                     |
+| `STATUS_DGA`            | `dga_send_audit.dga_status_code` (`'00'` o código de rechazo)                |
+| `COMPROBANTE`           | `dga_send_audit.api_n_comprobante` verbatim de SNIA (null en rechazos)       |
+| `MENSAJE_DGA`           | `dga_send_audit.dga_message` verbatim de SNIA (texto OK o motivo de rechazo) |
+| `FECHA_HORA_CARGA`      | timestamp del ciclo                                                          |
 
 Path GCS (spec CCU_Central):
+
 ```
 {bucket}/{nombre_planta}/fecha_carga=YYYY-MM-DD/{nombre_sensor}_{yyyymmddhhmmss}.parquet
 ```
+
 La carpeta es **byte-idéntica** a la columna `PLANTA` y el stem del archivo a
 `NOMBRE_SENSOR` (misma función `sanitizeName`: sin tildes, Ñ→N, espacios
 colapsados, conservando mayúsculas y espacios). `fecha_carga` va **sin comillas**
@@ -121,11 +123,11 @@ bucket de CCU usando el SDK oficial de Google (`@google-cloud/storage`) sobre
 
 **Destino (credencial entregada por CCU):**
 
-| Dato | Valor |
-|---|---|
-| Proyecto GCP | `ccusa-90321100-mdw-prod` |
+| Dato            | Valor                                                                            |
+| --------------- | -------------------------------------------------------------------------------- |
+| Proyecto GCP    | `ccusa-90321100-mdw-prod`                                                        |
 | Service account | `id-sa-mdw-bucket-int-emeltec-p@ccusa-90321100-mdw-prod.iam.gserviceaccount.com` |
-| Bucket | `raw-reg-ind-tc-ext-emeltec-prod` |
+| Bucket          | `raw-reg-ind-tc-ext-emeltec-prod`                                                |
 
 **Autenticación:** el service account JSON contiene una llave privada RSA. El
 SDK firma un JWT con esa llave, lo canjea en `oauth2.googleapis.com/token` por un
@@ -165,40 +167,41 @@ repo), y se apunta con `DGA_GCS_KEY_FILE=/ruta/sa-mdw-bucket-int-emeltec-prod.js
 
 ## Archivos
 
-| Archivo | Rol |
-|---|---|
-| `infra-db/migrations/2026-06-24-dga-gcs-export.sql` | columna `dga_gcs_export` + tabla `dga_gcs_export_log` |
-| `main-api/src/modules/dga/gcs-repo.ts` | query de exportables + insert al ledger |
-| `main-api/src/modules/dga/gcs-parquet-builder.ts` | rows → Parquet Buffer (puro) |
-| `main-api/src/modules/dga/gcs-client.ts` | wrapper `@google-cloud/storage` |
-| `main-api/src/modules/dga/gcs-exporter.ts` | worker (cron, agrupa, sube, registra) |
-| `main-api/src/modules/dga/twofactor-guards.ts` | guard 2FA para cambios sensibles (transport=rest, gcs_export=true) |
-| `main-api/src/server.js` | arranque/cierre del worker |
-| `main-api/src/config/appConfig.ts` | env vars + `config.dga.gcs` |
-| `main-api/src/http/v2/routes.ts` | aplica `require2faIfSensitiveChange` en el PATCH |
-| `main-api/src/modules/dga/{schema,repo,service}.ts` | `dga_gcs_export` en payload/row/DTO |
-| `frontend-angular/.../dga-generar-reporte-modal.ts` | toggle "Copia a GCS" + ícono ayuda + 2FA |
-| `frontend-angular/.../services/dga.service.ts` | tipos `PozoDgaConfig` / payload |
+| Archivo                                             | Rol                                                                |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| `infra-db/migrations/2026-06-24-dga-gcs-export.sql` | columna `dga_gcs_export` + tabla `dga_gcs_export_log`              |
+| `main-api/src/modules/dga/gcs-repo.ts`              | query de exportables + insert al ledger                            |
+| `main-api/src/modules/dga/gcs-parquet-builder.ts`   | rows → Parquet Buffer (puro)                                       |
+| `main-api/src/modules/dga/gcs-client.ts`            | wrapper `@google-cloud/storage`                                    |
+| `main-api/src/modules/dga/gcs-exporter.ts`          | worker (cron, agrupa, sube, registra)                              |
+| `main-api/src/modules/dga/twofactor-guards.ts`      | guard 2FA para cambios sensibles (transport=rest, gcs_export=true) |
+| `main-api/src/server.js`                            | arranque/cierre del worker                                         |
+| `main-api/src/config/appConfig.ts`                  | env vars + `config.dga.gcs`                                        |
+| `main-api/src/http/v2/routes.ts`                    | aplica `require2faIfSensitiveChange` en el PATCH                   |
+| `main-api/src/modules/dga/{schema,repo,service}.ts` | `dga_gcs_export` en payload/row/DTO                                |
+| `frontend-angular/.../dga-generar-reporte-modal.ts` | toggle "Copia a GCS" + ícono ayuda + 2FA                           |
+| `frontend-angular/.../services/dga.service.ts`      | tipos `PozoDgaConfig` / payload                                    |
 
 ### Tests (vitest)
 
-| Test | Cubre |
-|---|---|
-| `__tests__/gcs-parquet-builder.test.ts` | 9 — 3 filas/medición, mapping VALOR, rechazados, nulls, sanitizeName, round-trip Parquet |
-| `__tests__/gcs-exporter.test.ts` | 6 — agrupa+sube+registra, falla-subida-no-registra, vacío, sin-bucket, byte-identidad path |
-| `__tests__/twofactor-guards.test.ts` | 7 — 2FA al activar gcs_export/rest, no-2FA al desactivar/cambios no sensibles |
+| Test                                    | Cubre                                                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `__tests__/gcs-parquet-builder.test.ts` | 9 — 3 filas/medición, mapping VALOR, rechazados, nulls, sanitizeName, round-trip Parquet   |
+| `__tests__/gcs-exporter.test.ts`        | 6 — agrupa+sube+registra, falla-subida-no-registra, vacío, sin-bucket, byte-identidad path |
+| `__tests__/twofactor-guards.test.ts`    | 7 — 2FA al activar gcs_export/rest, no-2FA al desactivar/cambios no sensibles              |
 
 ### Verificación local
 
-| Script | Qué hace |
-|---|---|
-| `scripts/verify-gcs-export.ts` | Genera Parquet de ejemplo, lo relee, valida concordancia byte-idéntica e instancia el cliente GCS (sin red) |
-| `scripts/verify-gcs-emulator.ts` | Subida REAL contra fake-gcs-server (Docker), descarga y relee (round-trip) |
+| Script                           | Qué hace                                                                                                    |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-gcs-export.ts`   | Genera Parquet de ejemplo, lo relee, valida concordancia byte-idéntica e instancia el cliente GCS (sin red) |
+| `scripts/verify-gcs-emulator.ts` | Subida REAL contra fake-gcs-server (Docker), descarga y relee (round-trip)                                  |
 
 Emulador:
+
 ```
 docker run -d --name fake-gcs -p 4443:4443 fsouza/fake-gcs-server -scheme http -public-host localhost:4443
-# crear bucket (el client createBucket falla contra el fake): 
+# crear bucket (el client createBucket falla contra el fake):
 curl -X POST "http://localhost:4443/storage/v1/b?project=ccu-datalake-sim" -d '{"name":"raw-reg-ind-tc-ext-emeltec-prod"}'
 STORAGE_EMULATOR_HOST=http://localhost:4443 DB_PASSWORD=x JWT_SECRET=xxxxxxxxxxxxxxxx tsx scripts/verify-gcs-emulator.ts
 ```

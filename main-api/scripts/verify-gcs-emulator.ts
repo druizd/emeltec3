@@ -9,7 +9,11 @@
  */
 import { Storage } from '@google-cloud/storage';
 import { ParquetReader } from '@dsnp/parquetjs';
-import { buildParquetRows, buildParquetBuffer, type ExportableSend } from '../src/modules/dga/gcs-parquet-builder';
+import {
+  buildParquetRows,
+  buildParquetBuffer,
+  type ExportableSend,
+} from '../src/modules/dga/gcs-parquet-builder';
 import { buildGcsPath } from '../src/modules/dga/gcs-exporter';
 
 const HOST = process.env['STORAGE_EMULATOR_HOST'] ?? 'http://localhost:4443';

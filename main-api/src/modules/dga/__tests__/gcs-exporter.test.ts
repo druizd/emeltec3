@@ -66,7 +66,11 @@ describe('buildGcsPath', () => {
 describe('runGcsExportCycle', () => {
   it('agrupa por sitio, sube un Parquet por sitio y registra un log por audit', async () => {
     const uploads: Array<{ path: string; bytes: number }> = [];
-    const logged: Array<{ audit_id: number; gcs_generation: string | null; gcs_md5: string | null }> = [];
+    const logged: Array<{
+      audit_id: number;
+      gcs_generation: string | null;
+      gcs_md5: string | null;
+    }> = [];
 
     const stats = await runGcsExportCycle({
       now: () => NOW,

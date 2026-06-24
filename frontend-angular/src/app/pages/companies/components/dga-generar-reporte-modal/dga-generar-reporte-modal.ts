@@ -686,10 +686,13 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
           const code = err.error?.error?.code;
           if (code === 'DGA_2FA_REQUIRED' || code === 'DGA_2FA_INVALID') {
             // Activar prompt de 2FA y reintento.
-            this.promptTwoFactor('Esta acción exige verificación 2FA (2 pasos).', async (twoCode) => {
-              const ok = await this.patchPozo(fieldLabel, payload, twoCode);
-              if (!ok) throw new Error('reintento falló');
-            });
+            this.promptTwoFactor(
+              'Esta acción exige verificación 2FA (2 pasos).',
+              async (twoCode) => {
+                const ok = await this.patchPozo(fieldLabel, payload, twoCode);
+                if (!ok) throw new Error('reintento falló');
+              },
+            );
             resolve(false);
           } else {
             this.pozoError.set(err.error?.error?.message ?? err.message ?? 'Error desconocido');
