@@ -100,6 +100,26 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // DGA GCS exporter TS (sube envíos DGA respondidos a Google Cloud Storage en
+  // Parquet). Default OFF — requiere ENABLE_DGA_GCS_WORKER=true + DGA_GCS_BUCKET.
+  // Solicitado por CCU_Central; selección por-sitio vía pozo_config.dga_gcs_export.
+  try {
+    const dgaGcsExporterPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'gcs-exporter',
+    );
+    const { startDgaGcsExporterWorker } = require(dgaGcsExporterPath);
+    startDgaGcsExporterWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar DGA GCS exporter:', err.message);
+    }
+  }
+
   // Health digest worker TS (monitor de transmisión + DGA, event + resumen 07/16).
   try {
     const healthWorkerPath = require('path').join(
@@ -239,6 +259,21 @@ function shutdown(signal) {
     );
     const { stopDgaReconcilerWorker } = require(dgaReconcilerPath);
     stopDgaReconcilerWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
+
+  try {
+    const dgaGcsExporterPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'gcs-exporter',
+    );
+    const { stopDgaGcsExporterWorker } = require(dgaGcsExporterPath);
+    stopDgaGcsExporterWorker();
   } catch (_err) {
     // worker no estaba activo
   }

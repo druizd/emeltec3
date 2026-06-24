@@ -76,6 +76,27 @@ const Schema = z.object({
     .default('false')
     .transform((v) => v === 'true' || v === '1'),
 
+  // ── DGA → GCS exporter (solicitado por CCU_Central, genérico) ───────────────
+  // Kill switch del worker que sube envíos DGA respondidos a Google Cloud
+  // Storage en Parquet. Default OFF — requiere bucket + credenciales.
+  ENABLE_DGA_GCS_WORKER: z
+    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
+  // Bucket GCS destino. Sin esto el worker loguea warning y omite el ciclo.
+  DGA_GCS_BUCKET: z.string().min(1).optional(),
+
+  // Ventana/intervalo del ciclo en minutos. También define cada cuánto corre.
+  DGA_GCS_BATCH_MINUTES: z.coerce.number().int().positive().default(60),
+
+  // Service account JSON de GCS. Si se omite, la librería usa
+  // GOOGLE_APPLICATION_CREDENTIALS (ADC) del entorno.
+  DGA_GCS_KEY_FILE: z.string().min(1).optional(),
+
+  // Valor del campo NOMBRE_PROVEEDOR en el Parquet. Constante de negocio.
+  DGA_GCS_PROVEEDOR: z.string().min(1).default('EMELTEC'),
+
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 
@@ -150,6 +171,13 @@ export const config = {
     // RUT o hay segundo Centro de Control, mover a env var.
     rutEmpresa: '76455593-7',
     submissionEnabled: env.ENABLE_DGA_SUBMISSION_WORKER,
+    gcs: {
+      enabled: env.ENABLE_DGA_GCS_WORKER,
+      bucket: env.DGA_GCS_BUCKET,
+      batchMinutes: env.DGA_GCS_BATCH_MINUTES,
+      keyFile: env.DGA_GCS_KEY_FILE,
+      proveedor: env.DGA_GCS_PROVEEDOR,
+    },
   },
 } as const;
 
