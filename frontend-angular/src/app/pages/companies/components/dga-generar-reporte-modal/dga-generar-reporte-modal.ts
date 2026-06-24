@@ -123,6 +123,27 @@ interface PeriodicidadOption {
                   }
                 </label>
 
+                <!-- Toggle Export GCS (desarrollo a medida CCU_Central; activar exige 2FA) -->
+                <label class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    [checked]="pozo()?.dga_gcs_export ?? false"
+                    [disabled]="pozoSaving() !== ''"
+                    (change)="changeField('dga_gcs_export', $any($event.target).checked)"
+                    class="h-4 w-4 rounded border-slate-300 text-primary-container focus:ring-[rgba(13,175,189,0.45)]"
+                  />
+                  <span class="text-[12px] font-semibold text-slate-700">Copia a GCS</span>
+                  <span
+                    class="material-symbols-outlined cursor-help text-[12px] leading-none text-slate-400 hover:text-primary-container"
+                    title="Copia cada envío DGA con respuesta de SNIA (enviado o rechazado) a Google Cloud Storage en formato Parquet. Desarrollo a medida solicitado por CCU_Central — usar SOLO en instalaciones de CCU. Activarlo exige verificación 2FA (2 pasos)."
+                    aria-label="Ayuda: Copia a GCS"
+                    >help</span
+                  >
+                  @if (pozoSaving() === 'dga_gcs_export') {
+                    <span class="text-[10px] italic text-primary-container">Guardando…</span>
+                  }
+                </label>
+
                 <!-- Modo envío -->
                 <label
                   class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
@@ -665,10 +686,13 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
           const code = err.error?.error?.code;
           if (code === 'DGA_2FA_REQUIRED' || code === 'DGA_2FA_INVALID') {
             // Activar prompt de 2FA y reintento.
-            this.promptTwoFactor('Cambiar a REST exige verificación 2FA.', async (twoCode) => {
-              const ok = await this.patchPozo(fieldLabel, payload, twoCode);
-              if (!ok) throw new Error('reintento falló');
-            });
+            this.promptTwoFactor(
+              'Esta acción exige verificación 2FA (2 pasos).',
+              async (twoCode) => {
+                const ok = await this.patchPozo(fieldLabel, payload, twoCode);
+                if (!ok) throw new Error('reintento falló');
+              },
+            );
             resolve(false);
           } else {
             this.pozoError.set(err.error?.error?.message ?? err.message ?? 'Error desconocido');

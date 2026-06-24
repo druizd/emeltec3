@@ -39,6 +39,7 @@ export interface PozoDgaConfig {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
+  dga_gcs_export: boolean;
   dga_last_run_at: string | null;
 }
 
@@ -52,6 +53,7 @@ export interface PatchPozoDgaConfigPayload {
   dga_hora_inicio?: string | null;
   dga_informante_rut?: string | null;
   dga_max_retry_attempts?: number;
+  dga_gcs_export?: boolean;
 }
 
 // ============================================================================

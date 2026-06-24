@@ -38,6 +38,7 @@ import {
   upsertInformanteHandler,
 } from '../../modules/dga/controller';
 import { requireDgaTwoFactor } from '../../modules/dga/twofactor';
+import { require2faIfSensitiveChange } from '../../modules/dga/twofactor-guards';
 
 // auditLog es CJS legacy: bitácora append-only para mutaciones (Ley 21.663 §32).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -98,18 +99,6 @@ const auditDgaMutations = auditMutations((req) => {
   }
   return { action: `dga.${req.method.toLowerCase()}.unknown` };
 });
-
-/**
- * Middleware: exige 2FA solo si el body de PATCH pozo-config intenta cambiar
- * dga_transport a 'rest'. Otros cambios (activo, caudal_max, etc.) no
- * requieren 2FA — pasan derecho al handler.
- */
-function require2faIfTransportRest(req: Request, res: Response, next: NextFunction): void {
-  if (req.body?.dga_transport === 'rest') {
-    return requireDgaTwoFactor(req, res, next);
-  }
-  next();
-}
 
 /**
  * Middleware: 2FA siempre para rotación de clave de informante.
@@ -177,7 +166,7 @@ router.delete(
   deleteInformanteHandler,
 );
 
-// Config DGA por pozo. Activar transport=rest exige 2FA.
+// Config DGA por pozo. Activar transport=rest o dga_gcs_export=true exige 2FA.
 router.get(
   '/dga/sites/:siteId/pozo-config',
   protect,
@@ -188,7 +177,7 @@ router.patch(
   '/dga/sites/:siteId/pozo-config',
   protect,
   requireSiteParamAccess(),
-  require2faIfTransportRest,
+  require2faIfSensitiveChange,
   auditDgaMutations,
   patchPozoDgaConfigHandler,
 );

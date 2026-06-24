@@ -26,6 +26,7 @@ function makePozoDga(overrides: Partial<PozoDgaConfigRow> = {}): PozoDgaConfigRo
     dga_hora_inicio: '00:00:00',
     dga_informante_rut: '12345678-9',
     dga_max_retry_attempts: 5,
+    dga_gcs_export: false,
     dga_last_run_at: null,
     ...overrides,
   };

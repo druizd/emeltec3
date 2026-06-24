@@ -69,6 +69,12 @@ services:
       - '127.0.0.1:${MAIN_API_HOST_PORT:-3000}:3000'
     env_file:
       - ./.env
+    volumes:
+      # Credenciales GCS para el exporter DGA→GCS (solicitado por CCU_Central).
+      # El service account JSON va en ./.secrets/ del host (gitignored) y se
+      # monta read-only. DGA_GCS_KEY_FILE en .env debe apuntar a /app/secrets/<archivo>.
+      # La carpeta ./.secrets debe existir antes de `docker compose up`.
+      - ./.secrets:/app/secrets:ro
     environment:
       <<: *db-env
       NODE_ENV: production

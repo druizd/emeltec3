@@ -59,6 +59,8 @@ export const PatchPozoDgaConfigPayload = z
       .optional(),
     dga_informante_rut: NullableRutPayload,
     dga_max_retry_attempts: z.number().int().min(1).max(30).optional(),
+    // Solicitado por CCU_Central: habilita el export de este sitio a GCS.
+    dga_gcs_export: z.boolean().optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: 'Debe especificarse al menos un campo a actualizar',
