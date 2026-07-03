@@ -1,0 +1,69 @@
+name: Build and publish images
+
+# Buildea las imágenes de los servicios en runner GitHub-hosted y las publica en
+# GHCR (ghcr.io/druizd/emeltec3/<servicio>). El deploy en la VM ya NO buildea:
+# deploy-selfhosted.yml se encadena a este workflow (workflow_run) y solo hace
+# `docker compose pull` + `up --no-build`. Así el build pesado (Angular/Rust) no
+# satura la RAM de la VM productiva.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: build-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-publish:
+    name: Build and push to GHCR
+    runs-on: ubuntu-latest
+
+    env:
+      REGISTRY: ghcr.io/druizd/emeltec3
+      SERVICES: >-
+        main-api auth-api linux-db-api frontend-angular metrics-page
+        landing-emeltec csvconsumer ftpconsumer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare example env files
+        run: |
+          cp .env.example .env
+          cp main-api/.env.example main-api/.env
+          cp auth-api/.env.example auth-api/.env
+
+      - name: Validate compose config
+        run: docker compose config --quiet
+
+      - name: Build images (tag latest)
+        env:
+          IMAGE_TAG: latest
+        run: docker compose build $SERVICES
+
+      - name: Push :latest
+        env:
+          IMAGE_TAG: latest
+        run: docker compose push $SERVICES
+
+      - name: Tag and push :<sha>
+        run: |
+          for svc in $SERVICES; do
+            docker tag "$REGISTRY/$svc:latest" "$REGISTRY/$svc:${GITHUB_SHA}"
+            docker push "$REGISTRY/$svc:${GITHUB_SHA}"
+          done
