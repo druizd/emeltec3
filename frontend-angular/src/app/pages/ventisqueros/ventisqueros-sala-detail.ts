@@ -3288,14 +3288,31 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     });
   }
 
+  /** Etiqueta de eje X: DD/MM HH:MM (compacta). */
+  private formatChartLabel(t: string | number | Date): string {
+    const d = new Date(t);
+    const date = d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
+    const time = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
+  }
+
+  /** Título de tooltip: fecha completa + hora (ej. "3 de enero de 2026 11:37"). */
+  private formatChartTooltip(t: string | number | Date): string {
+    const d = new Date(t);
+    const date = d.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
+    const time = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    return `${date} ${time}`;
+  }
+
   private renderMainChart(sensors: ColdRoomSensor[], showBand: boolean): void {
     if (!this.chartCanvas?.nativeElement || sensors.length === 0) return;
     this.destroyChart();
     const ctx = this.chartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
+    const times = sensors[0]?.histPoints?.map((p) => p.t) || [];
     const labels =
       sensors[0]?.histPoints?.map((p) =>
-        new Date(p.t).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+        this.formatChartLabel(p.t),
       ) || sensors[0]?.hist.map((_, i) => String(i));
     const palette = ['#0EA5E9', '#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -3362,6 +3379,10 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
           tooltip: {
             callbacks: {
+              title: (items) => {
+                const t = times[items[0]?.dataIndex ?? -1];
+                return t != null ? this.formatChartTooltip(t) : (items[0]?.label ?? '');
+              },
               label: (ctx) => `${ctx.dataset.label}: ${(ctx.parsed.y as number).toFixed(1)}°C`,
             },
           },
@@ -3405,9 +3426,10 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     const ctx = this.comboCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
     const base = sensors[0]?.histPoints?.length ? sensors[0].histPoints : sensors[0]?.histHumPoints;
+    const times = base?.map((p) => p.t) || [];
     const labels =
       base?.map((p) =>
-        new Date(p.t).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+        this.formatChartLabel(p.t),
       ) || [];
     const palette = ['#0EA5E9', '#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
@@ -3448,6 +3470,10 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
           tooltip: {
             callbacks: {
+              title: (items) => {
+                const t = times[items[0]?.dataIndex ?? -1];
+                return t != null ? this.formatChartTooltip(t) : (items[0]?.label ?? '');
+              },
               label: (c) => {
                 const unit = c.dataset.yAxisID === 'yH' ? '%' : '°C';
                 return `${c.dataset.label}: ${(c.parsed.y as number).toFixed(1)}${unit}`;
@@ -3498,9 +3524,8 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     this.destroyDrilldownChart();
     const ctx = this.drilldownCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
-    const labels = data.temperature.map((p) =>
-      new Date(p.t).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-    );
+    const times = data.temperature.map((p) => p.t);
+    const labels = data.temperature.map((p) => this.formatChartLabel(p.t));
     this.drilldownChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -3539,6 +3564,10 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
           legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } },
           tooltip: {
             callbacks: {
+              title: (items) => {
+                const t = times[items[0]?.dataIndex ?? -1];
+                return t != null ? this.formatChartTooltip(t) : (items[0]?.label ?? '');
+              },
               label: (ctx) => {
                 const unit = ctx.dataset.yAxisID === 'y1' ? '%' : '°C';
                 return `${ctx.dataset.label}: ${(ctx.parsed.y as number).toFixed(1)}${unit}`;
