@@ -63,6 +63,7 @@ services:
 
   main-api:
     build: ./main-api
+    image: ghcr.io/druizd/emeltec3/main-api:${IMAGE_TAG:-latest}
     container_name: emeltec-api
     ports:
       # EMT-H03: detrás del nginx de borde (proxy a 127.0.0.1:3000). Loopback.
@@ -94,6 +95,7 @@ services:
 
   linux-db-api:
     build: ./linux-db-api
+    image: ghcr.io/druizd/emeltec3/linux-db-api:${IMAGE_TAG:-latest}
     container_name: emeltec-linux-db-api
     ports:
       # EMT-H03/H02: consumido cross-host (procesadores en otra máquina), por eso
@@ -137,6 +139,7 @@ services:
 
   auth-api:
     build: ./auth-api
+    image: ghcr.io/druizd/emeltec3/auth-api:${IMAGE_TAG:-latest}
     container_name: emeltec-auth
     ports:
       # EMT-H03: detrás del nginx de borde (proxy a 127.0.0.1:3001). Loopback.
@@ -160,6 +163,7 @@ services:
     build:
       context: .
       dockerfile: frontend-angular/Dockerfile
+    image: ghcr.io/druizd/emeltec3/frontend-angular:${IMAGE_TAG:-latest}
     container_name: emeltec-frontend
     ports:
       # EMT-H03: detrás del nginx de borde (proxy a 127.0.0.1:5173). Loopback.
@@ -173,6 +177,7 @@ services:
 
   metrics-page:
     build: ./metrics-page
+    image: ghcr.io/druizd/emeltec3/metrics-page:${IMAGE_TAG:-latest}
     container_name: emeltec-metrics-page
     ports:
       - '127.0.0.1:${METRICS_HOST_PORT:-8081}:80'
@@ -185,6 +190,7 @@ services:
 
   landing-emeltec:
     build: ./landing-emeltec
+    image: ghcr.io/druizd/emeltec3/landing-emeltec:${IMAGE_TAG:-latest}
     container_name: emeltec-landing
     ports:
       - '127.0.0.1:${LANDING_HOST_PORT:-8082}:80'
@@ -194,6 +200,7 @@ services:
     build:
       context: ./grpc-pipeline
       dockerfile: csvconsumer-rust.Dockerfile
+    image: ghcr.io/druizd/emeltec3/csvconsumer:${IMAGE_TAG:-latest}
     container_name: emeltec-csvconsumer
     ports:
       # EMT-H03/H01: ingesta gRPC consumida cross-host (procesador CSV en otra
@@ -212,6 +219,7 @@ services:
     build:
       context: ./ftp-pipeline
       dockerfile: ftpconsumer-rust.Dockerfile
+    image: ghcr.io/druizd/emeltec3/ftpconsumer:${IMAGE_TAG:-latest}
     container_name: emeltec-ftpconsumer
     ports:
       # EMT-H03/H01: ingesta gRPC consumida cross-host (procesador FTP en otra
