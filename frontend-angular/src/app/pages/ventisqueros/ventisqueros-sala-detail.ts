@@ -3311,9 +3311,8 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     if (!ctx) return;
     const times = sensors[0]?.histPoints?.map((p) => p.t) || [];
     const labels =
-      sensors[0]?.histPoints?.map((p) =>
-        this.formatChartLabel(p.t),
-      ) || sensors[0]?.hist.map((_, i) => String(i));
+      sensors[0]?.histPoints?.map((p) => this.formatChartLabel(p.t)) ||
+      sensors[0]?.hist.map((_, i) => String(i));
     const palette = ['#0EA5E9', '#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
     const annotations: Record<string, AnnotationOptions> = {} as Record<string, AnnotationOptions>;
@@ -3427,10 +3426,7 @@ export class VentisquerosSalaDetailComponent implements OnInit, OnDestroy, After
     if (!ctx) return;
     const base = sensors[0]?.histPoints?.length ? sensors[0].histPoints : sensors[0]?.histHumPoints;
     const times = base?.map((p) => p.t) || [];
-    const labels =
-      base?.map((p) =>
-        this.formatChartLabel(p.t),
-      ) || [];
+    const labels = base?.map((p) => this.formatChartLabel(p.t)) || [];
     const palette = ['#0EA5E9', '#6366F1', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
     const tempSets = sensors.map((s, i) => ({

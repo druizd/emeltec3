@@ -10,10 +10,14 @@ name: Deploy self-hosted
 # La concurrencia comparte grupo con el deploy SSH manual para que NUNCA dos
 # deploys corran a la vez sobre la misma VM/BD.
 
+# NOTA: trigger `push` deshabilitado temporalmente. El paso `docker compose up
+# --build` buildea Angular DENTRO de la VM y satura la RAM, colgando la máquina.
+# Mientras tanto el deploy va por `deploy-production.yml` (SSH). Reactivar cuando
+# el build se mueva fuera de la VM (imágenes pre-construidas + pull en la VM).
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   workflow_dispatch:
 
 concurrency:
