@@ -4,7 +4,7 @@ const path = require('path');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const FROM_ADDRESS = process.env.RESEND_FROM || 'Emeltec - Panel Industrial <noreply@emeltec.cl>';
-const ACCESS_URL = process.env.FRONTEND_URL || 'https://cloud.emeltec.cl/login';
+const ACCESS_URL = process.env.FRONTEND_URL || 'https://nuevacloud.emeltec.cl/login';
 
 const LOGO_CID = 'emeltec-logo';
 const LOGO_CANDIDATES = [
@@ -43,7 +43,7 @@ function resolveAccessHost() {
   try {
     return new URL(ACCESS_URL).host;
   } catch {
-    return 'cloud.emeltec.cl';
+    return 'nuevacloud.emeltec.cl';
   }
 }
 
