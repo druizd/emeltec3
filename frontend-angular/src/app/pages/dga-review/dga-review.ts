@@ -236,15 +236,22 @@ export class DgaReviewComponent {
     return `${s.site_id}::${s.ts}`;
   }
 
+  /**
+   * Lectura PURA del edit de un slot (sin efectos). Escribir un signal desde
+   * un binding de template dispara change detection a mitad de render y
+   * produce filas fantasma — la inicialización ocurre en initEdits() al
+   * cargar la lista, nunca aquí.
+   */
   edit(s: DgaReviewSlot): RowEdit {
-    const key = this.slotKey(s);
-    const e = this.edits()[key];
-    if (e) return e;
-    // Inicializa con valores actuales o sugeridos.
+    return this.edits()[this.slotKey(s)] ?? DgaReviewComponent.initialEdit(s);
+  }
+
+  private static initialEdit(s: DgaReviewSlot): RowEdit {
+    // Valores actuales del slot o sugeridos por la validación.
     const suggestedTot = s.validation_warnings.find(
       (w) => w.code === 'totalizator_zero',
     )?.suggested;
-    const initial: RowEdit = {
+    return {
       caudal: s.caudal_instantaneo ?? '',
       totalizador:
         s.flujo_acumulado != null && s.flujo_acumulado !== ''
@@ -255,8 +262,14 @@ export class DgaReviewComponent {
       nivel: s.nivel_freatico ?? '',
       note: '',
     };
-    this.edits.update((m) => ({ ...m, [key]: initial }));
-    return initial;
+  }
+
+  private initEdits(list: DgaReviewSlot[]): void {
+    const map: Record<string, RowEdit> = {};
+    for (const s of list) {
+      map[this.slotKey(s)] = DgaReviewComponent.initialEdit(s);
+    }
+    this.edits.set(map);
   }
 
   setEdit(s: DgaReviewSlot, field: keyof RowEdit, value: string): void {
@@ -273,6 +286,7 @@ export class DgaReviewComponent {
     this.dga.listReviewQueue().subscribe({
       next: (list) => {
         this.slots.set(list);
+        this.initEdits(list);
         this.loading.set(false);
       },
       error: (err) => {
