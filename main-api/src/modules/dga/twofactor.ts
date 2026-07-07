@@ -18,7 +18,12 @@
  */
 import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
-import { InternalError, UnauthorizedError, ValidationError } from '../../shared/errors';
+import {
+  ForbiddenError,
+  InternalError,
+  UnauthorizedError,
+  ValidationError,
+} from '../../shared/errors';
 import type { AuthUser } from '../../shared/permissions';
 import { logger } from '../../config/logger';
 import { sendDgaUserEmail } from './notifier';
@@ -124,9 +129,11 @@ export function requireDgaTwoFactor(req: Request, _res: Response, next: NextFunc
     );
   }
   if (!verifyDgaCode(user, code)) {
-    return next(
-      new UnauthorizedError('Código 2FA inválido o expirado', { code: 'DGA_2FA_INVALID' }),
-    );
+    // 403, NUNCA 401: el usuario ESTÁ autenticado (JWT válido), solo falló
+    // el segundo factor. El interceptor del frontend hace logout() ante
+    // cualquier 401 — un 401 aquí expulsaba de la sesión al admin que
+    // reutilizaba un código single-use ya consumido.
+    return next(new ForbiddenError('Código 2FA inválido o expirado', { code: 'DGA_2FA_INVALID' }));
   }
   next();
 }
