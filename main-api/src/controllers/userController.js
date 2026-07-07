@@ -71,6 +71,28 @@ exports.getEmpresas = async (req, res, next) => {
   }
 };
 
+/**
+ * Técnicos asignables a incidencias = equipo Emeltec (tipo SuperAdmin,
+ * activos). Expone solo lo necesario para el dropdown (id, nombre, cargo) —
+ * sin email/teléfono, porque lo consumen admins de empresas cliente.
+ */
+exports.getTecnicos = async (req, res, next) => {
+  try {
+    if (req.user.tipo === 'Cliente') {
+      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver técnicos' });
+    }
+    const { rows } = await db.query(
+      `SELECT id, nombre, COALESCE(apellido, '') AS apellido, cargo
+         FROM usuario
+        WHERE tipo = 'SuperAdmin' AND COALESCE(activo, true) = true
+        ORDER BY nombre ASC`,
+    );
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getAllUsers = async (req, res, next) => {
   try {
     const { tipo, empresa_id, sub_empresa_id: userSubEmpresaId } = req.user;
