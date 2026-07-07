@@ -37,7 +37,7 @@ interface DraftIncidencia {
   categoria: IncidenciaCategoria;
   gravedad: IncidenciaGravedad;
   estado: IncidenciaEstado;
-  tecnico_id: string | null;
+  tecnico_ids: string[];
   alerta_evento_id: number | null;
 }
 
@@ -60,7 +60,7 @@ function emptyDraft(): DraftIncidencia {
     categoria: 'otro',
     gravedad: 'media',
     estado: 'abierta',
-    tecnico_id: null,
+    tecnico_ids: [],
     alerta_evento_id: null,
   };
 }
@@ -425,17 +425,25 @@ function emptyDraft(): DraftIncidencia {
         <div>
           <label
             class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-            >Técnico asignado</label
+            >Técnicos asignados</label
           >
-          <select
-            [(ngModel)]="draft.tecnico_id"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
-          >
-            <option [ngValue]="null">Sin asignar</option>
+          <div class="flex flex-wrap gap-1.5">
             @for (t of tecnicos(); track t.id) {
-              <option [ngValue]="t.id">{{ t.nombre }} {{ t.apellido }}</option>
+              <button
+                type="button"
+                (click)="toggleTecnico(draft, t.id)"
+                [attr.aria-pressed]="tecnicoSeleccionado(draft, t.id)"
+                [class]="tecnicoChipClass(draft, t.id)"
+              >
+                @if (tecnicoSeleccionado(draft, t.id)) {
+                  <span class="material-symbols-outlined text-[13px]">check</span>
+                }
+                {{ t.nombre }} {{ t.apellido }}
+              </button>
+            } @empty {
+              <span class="text-caption-xs text-slate-400">Sin técnicos disponibles</span>
             }
-          </select>
+          </div>
         </div>
 
         @if (isNew) {
@@ -543,6 +551,24 @@ export class BitacoraIncidenciasComponent {
     });
   }
 
+  tecnicoSeleccionado(d: DraftIncidencia, id: string): boolean {
+    return d.tecnico_ids.includes(id);
+  }
+
+  toggleTecnico(d: DraftIncidencia, id: string): void {
+    d.tecnico_ids = this.tecnicoSeleccionado(d, id)
+      ? d.tecnico_ids.filter((x) => x !== id)
+      : [...d.tecnico_ids, id];
+  }
+
+  tecnicoChipClass(d: DraftIncidencia, id: string): string {
+    const base =
+      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-caption-xs font-semibold transition-colors ';
+    return this.tecnicoSeleccionado(d, id)
+      ? base + 'border-primary-tint-35 bg-primary-tint-14 text-primary-container'
+      : base + 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50';
+  }
+
   private cargarTecnicos(): void {
     this.userService.getTecnicos().subscribe({
       next: (res) => {
@@ -585,7 +611,7 @@ export class BitacoraIncidenciasComponent {
         categoria: inc.categoria,
         gravedad: inc.gravedad,
         estado: inc.estado,
-        tecnico_id: inc.tecnico_id,
+        tecnico_ids: (inc.tecnicos ?? []).map((t) => t.id),
         alerta_evento_id: inc.alerta_evento_id,
       },
     }));
@@ -621,7 +647,7 @@ export class BitacoraIncidenciasComponent {
       categoria: this.nuevaDraft.categoria,
       gravedad: this.nuevaDraft.gravedad,
       estado: this.nuevaDraft.estado,
-      tecnico_id: this.nuevaDraft.tecnico_id || null,
+      tecnico_ids: this.nuevaDraft.tecnico_ids,
       alerta_evento_id: this.nuevaDraft.alerta_evento_id || null,
     };
     this.saving.set(true);
@@ -668,7 +694,7 @@ export class BitacoraIncidenciasComponent {
         categoria: draft.categoria,
         gravedad: draft.gravedad,
         estado: draft.estado,
-        tecnico_id: draft.tecnico_id || null,
+        tecnico_ids: draft.tecnico_ids,
       })
       .subscribe({
         next: (updated) => {
