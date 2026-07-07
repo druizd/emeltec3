@@ -22,6 +22,25 @@ interface RowEdit {
   note: string;
 }
 
+/**
+ * Etiquetas en español para los códigos de anomalía de validación.
+ * El código crudo (sensor_frozen) es vocabulario de backend; el admin decide
+ * más rápido leyendo la anomalía en su idioma. El detalle técnico completo
+ * (reason) queda disponible como tooltip del badge.
+ */
+const WARNING_LABELS: Record<string, string> = {
+  sensor_known_defective: 'Sensor marcado defectuoso',
+  sensor_frozen: 'Totalizador congelado',
+  totalizator_zero: 'Totalizador en cero',
+  flow_negative: 'Caudal negativo',
+  flow_exceeds_water_right: 'Caudal sobre el derecho',
+  flow_absurd_no_water_right: 'Caudal fuera de rango',
+  caudal_spike: 'Salto de caudal imposible',
+  transform_failed_all_nulls: 'Telemetría sin valores',
+  admin_override: 'Aceptado por admin',
+  admin_discarded: 'Descartado por admin',
+};
+
 @Component({
   selector: 'app-dga-review',
   standalone: true,
@@ -33,8 +52,8 @@ interface RowEdit {
         <div>
           <h1 class="text-h4 font-semibold text-slate-800">Cola de revisión DGA</h1>
           <p class="text-caption text-slate-500">
-            Slots con anomalías detectadas en validación. Requieren decisión admin antes de enviar a
-            SNIA.
+            Mediciones con anomalías detectadas en validación. Requieren decisión admin antes de
+            enviar a SNIA.
           </p>
         </div>
         <button
@@ -102,12 +121,12 @@ interface RowEdit {
           <p>
             Los campos <strong>Caudal, Totalizador y Nivel</strong> son los valores que se
             declararán a la DGA si aceptas. Vienen pre-cargados con la medición del sensor (o con el
-            valor sugerido por la validación). Puedes corregirlos solo si tienes fundamento — por
-            ejemplo, un totalizador congelado cuyo avance real conoces.
+            valor sugerido por la validación). Puedes corregirlos solo si tienes fundamento, por
+            ejemplo un totalizador congelado cuyo avance real conoces.
           </p>
           <ul class="list-disc space-y-1 pl-5">
             <li>
-              <strong>Aceptar → enviar</strong>: la medición pasa a la cola de envío a SNIA con los
+              <strong>Aceptar y enviar</strong>: la medición pasa a la cola de envío a SNIA con los
               valores de los campos.
             </li>
             <li>
@@ -116,7 +135,7 @@ interface RowEdit {
           </ul>
           <p>
             La <strong>nota admin</strong> es obligatoria y queda registrada de forma permanente en
-            la medición junto con <strong>quién ejecutó la acción y cuándo</strong> — es el respaldo
+            la medición junto con <strong>quién ejecutó la acción y cuándo</strong>: es el respaldo
             auditable de la decisión. Ambas acciones requieren el código 2FA.
           </p>
         </div>
@@ -140,21 +159,24 @@ interface RowEdit {
           class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center text-emerald-800"
         >
           <span class="material-symbols-outlined text-[24px]">check_circle</span>
-          <p class="mt-1 text-body-sm font-semibold">Sin slots en revisión.</p>
+          <p class="mt-1 text-body-sm font-semibold">Sin mediciones en revisión.</p>
+          <p class="text-caption-xs text-emerald-700">
+            Todas las mediciones pasaron validación y siguen su curso a SNIA.
+          </p>
         </div>
       } @else {
         <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table class="min-w-full text-caption">
-            <thead class="bg-slate-50 text-caption-xs uppercase tracking-wider text-slate-500">
+            <thead class="bg-surface-subtle">
               <tr>
-                <th class="px-3 py-2 text-left">Obra</th>
-                <th class="px-3 py-2 text-left">Slot</th>
-                <th class="px-3 py-2 text-left">Anomalías</th>
-                <th class="px-3 py-2 text-left">Caudal (L/s)</th>
-                <th class="px-3 py-2 text-left">Totalizador (m³)</th>
-                <th class="px-3 py-2 text-left">Nivel (m)</th>
-                <th class="px-3 py-2 text-left">Nota admin</th>
-                <th class="px-3 py-2"></th>
+                <th class="dga-table-header">Obra</th>
+                <th class="dga-table-header">Medición</th>
+                <th class="dga-table-header">Anomalías</th>
+                <th class="dga-table-header">Caudal (L/s)</th>
+                <th class="dga-table-header">Totalizador (m³)</th>
+                <th class="dga-table-header">Nivel (m)</th>
+                <th class="dga-table-header">Nota admin</th>
+                <th class="dga-table-header"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -166,19 +188,23 @@ interface RowEdit {
                       {{ s.referencia_informante || s.site_id }}
                     </div>
                   </td>
-                  <td class="px-3 py-2 align-top font-mono text-caption-xs text-slate-600">
-                    {{ s.ts }}
+                  <td class="px-3 py-2 align-top">
+                    <div class="font-mono text-caption text-slate-800">{{ formatTs(s.ts) }}</div>
+                    <div class="text-caption-xs text-slate-400">hora Chile</div>
                   </td>
                   <td class="px-3 py-2 align-top">
-                    <ul class="space-y-0.5">
+                    <ul class="space-y-1">
                       @for (w of s.validation_warnings; track w.code) {
                         <li>
                           <span
-                            class="rounded bg-rose-100 px-1.5 py-0.5 text-caption-xs font-bold text-rose-700"
-                            >{{ w.code }}</span
+                            [title]="w.reason || ''"
+                            class="inline-flex cursor-help items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
                           >
-                          @if (w.suggested !== null) {
-                            <span class="ml-1 text-caption-xs text-slate-500"
+                            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"></span>
+                            {{ warningLabel(w.code) }}
+                          </span>
+                          @if (w.suggested !== null && w.suggested !== undefined) {
+                            <span class="ml-1.5 font-mono text-caption-xs text-slate-500"
                               >sugerido: {{ w.suggested }}</span
                             >
                           }
@@ -192,7 +218,8 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).caudal"
                       (input)="setEdit(s, 'caudal', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
+                      [attr.aria-label]="'Caudal a declarar (L/s), medición ' + formatTs(s.ts)"
+                      class="h-8 w-24 rounded-md border border-slate-200 bg-white px-2 font-mono text-caption-xs text-slate-800 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -201,7 +228,8 @@ interface RowEdit {
                       step="1"
                       [value]="edit(s).totalizador"
                       (input)="setEdit(s, 'totalizador', $any($event.target).value)"
-                      class="h-8 w-32 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
+                      [attr.aria-label]="'Totalizador a declarar (m³), medición ' + formatTs(s.ts)"
+                      class="h-8 w-32 rounded-md border border-slate-200 bg-white px-2 font-mono text-caption-xs text-slate-800 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -210,7 +238,10 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).nivel"
                       (input)="setEdit(s, 'nivel', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
+                      [attr.aria-label]="
+                        'Nivel freático a declarar (m), medición ' + formatTs(s.ts)
+                      "
+                      class="h-8 w-24 rounded-md border border-slate-200 bg-white px-2 font-mono text-caption-xs text-slate-800 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -219,8 +250,9 @@ interface RowEdit {
                       [value]="edit(s).note"
                       (input)="setEdit(s, 'note', $any($event.target).value)"
                       maxlength="500"
-                      placeholder="Razón del cambio…"
-                      class="h-8 w-48 rounded border border-slate-200 bg-white px-2 text-caption-xs outline-none focus:border-accent/30"
+                      placeholder="Motivo de la decisión (queda registrado)"
+                      [attr.aria-label]="'Nota admin, medición ' + formatTs(s.ts)"
+                      class="h-8 w-48 rounded-md border border-slate-200 bg-white px-2 text-caption-xs text-slate-800 outline-none placeholder:text-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top space-y-1">
@@ -228,15 +260,15 @@ interface RowEdit {
                       type="button"
                       (click)="accept(s)"
                       [disabled]="acting() === slotKey(s)"
-                      class="block w-full rounded bg-emerald-600 px-2 py-1 text-caption-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      class="block w-full rounded-md bg-primary px-2 py-1 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-tint-40 active:scale-[0.98] disabled:opacity-50"
                     >
-                      Aceptar → enviar
+                      {{ acting() === slotKey(s) ? 'Enviando…' : 'Aceptar y enviar' }}
                     </button>
                     <button
                       type="button"
                       (click)="discard(s)"
                       [disabled]="acting() === slotKey(s)"
-                      class="block w-full rounded border border-red-200 bg-white px-2 py-1 text-caption-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      class="block w-full rounded-md border border-red-200 bg-white px-2 py-1 text-caption-xs font-bold text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 active:scale-[0.98] disabled:opacity-50"
                     >
                       Descartar
                     </button>
@@ -271,6 +303,30 @@ export class DgaReviewComponent {
 
   slotKey(s: DgaReviewSlot): string {
     return `${s.site_id}::${s.ts}`;
+  }
+
+  warningLabel(code: string): string {
+    return WARNING_LABELS[code] ?? code;
+  }
+
+  /** Formatea el ts UTC del slot como DD/MM/YYYY HH:MM hora de Chile. */
+  private static readonly TS_FORMAT = new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  formatTs(ts: string): string {
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return ts;
+    const p = Object.fromEntries(
+      DgaReviewComponent.TS_FORMAT.formatToParts(d).map((x) => [x.type, x.value]),
+    );
+    return `${p['day']}/${p['month']}/${p['year']} ${p['hour']}:${p['minute']}`;
   }
 
   /**
