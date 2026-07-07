@@ -299,12 +299,14 @@ export class DgaService {
     desdeIso: string,
     hastaIso: string,
     bucket: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes' = 'hora',
+    orden: 'asc' | 'desc' = 'asc',
   ): string {
     const qs = new URLSearchParams({
       site_id: siteId,
       desde: desdeIso,
       hasta: hastaIso,
       bucket,
+      orden,
     }).toString();
     return `/api/v2/dga/export-directo.csv?${qs}`;
   }

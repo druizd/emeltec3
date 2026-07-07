@@ -1801,6 +1801,28 @@ type OperationMode = 'realtime' | 'turnos';
               </p>
             </div>
 
+            <!-- Orden de los datos -->
+            <div class="px-5 pt-2 pb-2">
+              <label class="text-caption-xs uppercase tracking-wider font-semibold text-slate-500">
+                Orden de los datos
+              </label>
+              <div class="mt-2 grid grid-cols-2 gap-2">
+                @for (opt of dgaReportOrdenOptions; track opt.value) {
+                  <button
+                    type="button"
+                    (click)="dgaReportOrden.set(opt.value)"
+                    [class]="
+                      dgaReportOrden() === opt.value
+                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 hover:border-accent/20 hover:text-accent-container'
+                    "
+                  >
+                    {{ opt.label }}
+                  </button>
+                }
+              </div>
+            </div>
+
             <!-- Errores generales del modal de reporte -->
             @if (dgaReportError()) {
               <div
@@ -2147,6 +2169,11 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
     { value: 'dia', label: 'Cada día' },
     { value: 'semana', label: 'Cada semana' },
     { value: 'mes', label: 'Cada mes' },
+  ];
+  dgaReportOrden = signal<'asc' | 'desc'>('asc');
+  readonly dgaReportOrdenOptions: { value: 'asc' | 'desc'; label: string }[] = [
+    { value: 'asc', label: 'Ascendente (antiguo → reciente)' },
+    { value: 'desc', label: 'Descendente (reciente → antiguo)' },
   ];
   operationMode = signal<OperationMode>('realtime');
   historyLoading = signal(true);
@@ -3679,6 +3706,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
       desdeIso,
       hastaIso,
       this.dgaReportBucket(),
+      this.dgaReportOrden(),
     );
     const filename = `reporte_dga_${siteId}_${this.dgaReportBucket()}_${from}_${to}.csv`;
 
