@@ -45,7 +45,10 @@ exports.getEmpresas = async (req, res, next) => {
         'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa ORDER BY nombre ASC',
       );
       empresaRows = rows;
-    } else if ((tipo === 'Admin' || tipo === 'Gerente' || tipo === 'Cliente') && empresa_id) {
+    } else if (
+      (tipo === 'Admin' || tipo === 'Gerente' || tipo === 'Cliente' || tipo === 'Vendedor') &&
+      empresa_id
+    ) {
       const { rows } = await db.query(
         'SELECT id, nombre, rut, sitios, tipo_empresa FROM empresa WHERE id = $1',
         [empresa_id],
@@ -88,6 +91,39 @@ exports.getTecnicos = async (req, res, next) => {
         ORDER BY nombre ASC`,
     );
     res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Equipo Emeltec para la sección de /administration (solo SuperAdmin):
+ * miembros (SuperAdmin + Vendedor) con perfil completo + la empresa interna
+ * Emeltec (resuelta por nombre) a la que se asocian las altas nuevas.
+ */
+exports.getEquipoEmeltec = async (req, res, next) => {
+  try {
+    if (req.user.tipo !== 'SuperAdmin') {
+      return res.status(403).json({ ok: false, error: 'Solo SuperAdmin' });
+    }
+    const [{ rows: miembros }, { rows: empresas }] = await Promise.all([
+      db.query(
+        `SELECT u.id, u.nombre, COALESCE(u.apellido, '') AS apellido, u.email,
+                u.telefono, u.cargo, u.tipo, u.empresa_id,
+                COALESCE(u.activo, true) AS activo, u.last_login_at, u.activated_at
+           FROM usuario u
+          WHERE u.tipo IN ('SuperAdmin', 'Vendedor')
+          ORDER BY u.tipo, u.nombre ASC`,
+      ),
+      db.query(`SELECT id, nombre FROM empresa WHERE nombre ILIKE 'emeltec%' ORDER BY id LIMIT 1`),
+    ]);
+    res.json({
+      ok: true,
+      data: {
+        empresa_emeltec: empresas[0] ?? null,
+        miembros,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -136,7 +172,7 @@ exports.getAllUsers = async (req, res, next) => {
         params.push(queryEmpresaId);
         conditions.push(`u.empresa_id = $${params.length}`);
       }
-    } else if (tipo === 'Admin') {
+    } else if (tipo === 'Admin' || tipo === 'Vendedor') {
       params.push(empresa_id);
       conditions.push(`u.empresa_id = $${params.length}`);
       if (sub_empresa_id) {
@@ -336,14 +372,18 @@ exports.createUser = async (req, res, next) => {
         .json({ ok: false, error: 'nombre, apellido, email y tipo son requeridos.' });
     }
 
+    // Roles del equipo interno Emeltec: solo un SuperAdmin puede crearlos.
+    if ((tipo === 'SuperAdmin' || tipo === 'Vendedor') && currentUser.tipo !== 'SuperAdmin') {
+      return res
+        .status(403)
+        .json({ ok: false, error: 'Solo un SuperAdmin puede crear usuarios del equipo Emeltec.' });
+    }
+
     if (currentUser.tipo === 'Admin') {
       if (empresa_id && empresa_id !== currentUser.empresa_id) {
         return res
           .status(403)
           .json({ ok: false, error: 'No puede crear usuarios en otra empresa.' });
-      }
-      if (tipo === 'SuperAdmin') {
-        return res.status(403).json({ ok: false, error: 'No puede crear usuarios SuperAdmin.' });
       }
     } else if (currentUser.tipo === 'Gerente') {
       if (
@@ -354,7 +394,7 @@ exports.createUser = async (req, res, next) => {
           .status(403)
           .json({ ok: false, error: 'No puede crear usuarios fuera de su division.' });
       }
-      if (tipo === 'SuperAdmin' || tipo === 'Admin') {
+      if (tipo === 'Admin') {
         return res.status(403).json({ ok: false, error: 'No tiene permisos para crear este rol.' });
       }
     }
@@ -453,11 +493,12 @@ function managePermissionError(currentUser, target) {
   if (currentUser.tipo === 'Admin') {
     if (target.empresa_id !== currentUser.empresa_id)
       return 'No puede gestionar usuarios de otra empresa';
-    if (target.tipo === 'SuperAdmin') return 'No puede gestionar a un SuperAdmin';
+    if (target.tipo === 'SuperAdmin' || target.tipo === 'Vendedor')
+      return 'No puede gestionar usuarios del equipo Emeltec';
   } else if (currentUser.tipo === 'Gerente') {
     if (target.sub_empresa_id !== currentUser.sub_empresa_id)
       return 'No puede gestionar usuarios de otra división';
-    if (target.tipo === 'SuperAdmin' || target.tipo === 'Admin')
+    if (target.tipo === 'SuperAdmin' || target.tipo === 'Admin' || target.tipo === 'Vendedor')
       return 'No tiene permiso sobre este usuario';
   }
   return null;
@@ -506,12 +547,13 @@ exports.updateUser = async (req, res, next) => {
 
     const b = req.body || {};
 
-    // Guard de elevación de rol según quién edita.
+    // Guard de elevación de rol según quién edita. SuperAdmin y Vendedor son
+    // roles del equipo interno Emeltec: solo un SuperAdmin los asigna.
     if (b.tipo !== undefined) {
-      if (currentUser.tipo === 'Admin' && b.tipo === 'SuperAdmin') {
-        return res.status(403).json({ ok: false, error: 'No puede asignar el rol SuperAdmin.' });
+      if (currentUser.tipo !== 'SuperAdmin' && (b.tipo === 'SuperAdmin' || b.tipo === 'Vendedor')) {
+        return res.status(403).json({ ok: false, error: 'No puede asignar ese rol.' });
       }
-      if (currentUser.tipo === 'Gerente' && (b.tipo === 'SuperAdmin' || b.tipo === 'Admin')) {
+      if (currentUser.tipo === 'Gerente' && b.tipo === 'Admin') {
         return res.status(403).json({ ok: false, error: 'No puede asignar ese rol.' });
       }
     }

@@ -31,7 +31,9 @@ function canAccessSite(user, site) {
   if (!user) return false;
   if (user.tipo === 'SuperAdmin') return true;
   if (!site) return false;
-  if (user.tipo === 'Admin') return user.empresa_id === site.empresa_id;
+  // Vendedor: equipo comercial Emeltec — mismo alcance que Admin, siempre
+  // asociado a la empresa interna (demos + Maletas Piloto).
+  if (user.tipo === 'Admin' || user.tipo === 'Vendedor') return user.empresa_id === site.empresa_id;
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
     if (user.empresa_id !== site.empresa_id) return false;
     // Sin sub-empresa asignada → acceso a toda la empresa.
@@ -54,7 +56,7 @@ function buildUserSiteScope(user, alias = 's', startIndex = 1) {
   if (!user || user.tipo === 'SuperAdmin') {
     return { clause: '', params: [] };
   }
-  if (user.tipo === 'Admin') {
+  if (user.tipo === 'Admin' || user.tipo === 'Vendedor') {
     return { clause: `${alias}.empresa_id = $${startIndex}`, params: [user.empresa_id] };
   }
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {

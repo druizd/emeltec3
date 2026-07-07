@@ -40,8 +40,9 @@ import { AdminSectionHeaderComponent } from './components/admin-section-header';
 import { AdminTableToolbarComponent } from './components/admin-table-toolbar';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
+import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-section';
 
-type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos';
+type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
 type StatusType = 'success' | 'error' | '';
 
 interface AdminStatus {
@@ -517,6 +518,7 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     AdminTableToolbarComponent,
     SkeletonComponent,
     TableSkeletonComponent,
+    EquipoEmeltecSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -1347,6 +1349,12 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
                   </div>
                 </app-admin-section-shell>
               }
+
+              @if (activeSection() === 'equipo-emeltec') {
+                <app-admin-section-shell title="Equipo Emeltec">
+                  <app-equipo-emeltec-section />
+                </app-admin-section-shell>
+              }
             }
           </main>
         </section>
@@ -1640,6 +1648,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     { id: 'subempresas', icon: 'add_business', label: 'Subempresas' },
     { id: 'sitios', icon: 'location_on', label: 'Sitios' },
     { id: 'equipos', icon: 'memory', label: 'Equipos' },
+    { id: 'equipo-emeltec', icon: 'groups', label: 'Equipo Emeltec' },
   ];
 
   activeSection = signal<SectionId>('empresas');
