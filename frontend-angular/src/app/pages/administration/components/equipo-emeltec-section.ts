@@ -2,6 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../services/user.service';
+import { AuthService } from '../../../services/auth.service';
+import {
+  ConfirmDialogComponent,
+  type ConfirmDialogData,
+} from '../../../components/ui/confirm-dialog';
 import type { User, UserRole } from '@emeltec/shared';
 
 interface EquipoEmeltecData {
@@ -30,6 +35,13 @@ interface DraftMiembro {
   tipo: 'SuperAdmin' | 'Vendedor';
 }
 
+interface DraftEdicion {
+  nombre: string;
+  apellido: string;
+  cargo: string;
+  tipo: 'SuperAdmin' | 'Vendedor';
+}
+
 function emptyDraft(): DraftMiembro {
   return { nombre: '', apellido: '', email: '', telefono: '', cargo: '', tipo: 'Vendedor' };
 }
@@ -46,7 +58,7 @@ function emptyDraft(): DraftMiembro {
   selector: 'app-equipo-emeltec-section',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmDialogComponent],
   template: `
     @if (error()) {
       <div
@@ -200,13 +212,17 @@ function emptyDraft(): DraftMiembro {
               <th class="dga-table-header">Rol</th>
               <th class="dga-table-header">Cargo</th>
               <th class="dga-table-header">Estado</th>
+              <th class="dga-table-header"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 bg-white">
             @for (m of miembros(); track m.id) {
-              <tr class="hover:bg-slate-50">
+              <tr class="hover:bg-slate-50" [class.opacity-60]="!m.activo">
                 <td class="px-4 py-2 font-semibold text-slate-700">
                   {{ m.nombre }} {{ m.apellido }}
+                  @if (esYo(m)) {
+                    <span class="ml-1 text-caption-xs font-normal text-slate-400">(tú)</span>
+                  }
                 </td>
                 <td class="px-4 py-2 text-slate-500">{{ m.email }}</td>
                 <td class="px-4 py-2">
@@ -230,10 +246,134 @@ function emptyDraft(): DraftMiembro {
                     </span>
                   }
                 </td>
+                <td class="px-4 py-2">
+                  <div class="flex justify-end gap-1">
+                    <button
+                      type="button"
+                      (click)="toggleEdicion(m)"
+                      [attr.aria-label]="'Editar a ' + m.nombre"
+                      title="Editar"
+                      class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-container"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">{{
+                        editandoId() === m.id ? 'close' : 'edit'
+                      }}</span>
+                    </button>
+                    @if (m.activo) {
+                      <button
+                        type="button"
+                        (click)="pedirDesactivar(m)"
+                        [disabled]="esYo(m) || saving()"
+                        [attr.aria-label]="'Desactivar a ' + m.nombre"
+                        [title]="esYo(m) ? 'No puedes desactivar tu propia cuenta' : 'Desactivar'"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">person_off</span>
+                      </button>
+                    } @else {
+                      <button
+                        type="button"
+                        (click)="reactivar(m)"
+                        [disabled]="saving()"
+                        [attr.aria-label]="'Reactivar a ' + m.nombre"
+                        title="Reactivar"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">person_check</span>
+                      </button>
+                    }
+                  </div>
+                </td>
               </tr>
+              @if (editandoId() === m.id) {
+                <tr class="bg-primary-tint-08/30">
+                  <td colspan="6" class="px-4 py-3">
+                    <form (ngSubmit)="guardarEdicion(m)" class="space-y-3">
+                      <div class="grid gap-3 sm:grid-cols-4">
+                        <label class="block">
+                          <span
+                            class="mb-1 block text-caption-xs font-semibold uppercase text-slate-400"
+                            >Nombre *</span
+                          >
+                          <input
+                            type="text"
+                            required
+                            [(ngModel)]="editDraft.nombre"
+                            name="edit-nombre-{{ m.id }}"
+                            class="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                          />
+                        </label>
+                        <label class="block">
+                          <span
+                            class="mb-1 block text-caption-xs font-semibold uppercase text-slate-400"
+                            >Apellido *</span
+                          >
+                          <input
+                            type="text"
+                            required
+                            [(ngModel)]="editDraft.apellido"
+                            name="edit-apellido-{{ m.id }}"
+                            class="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                          />
+                        </label>
+                        <label class="block">
+                          <span
+                            class="mb-1 block text-caption-xs font-semibold uppercase text-slate-400"
+                            >Cargo</span
+                          >
+                          <input
+                            type="text"
+                            [(ngModel)]="editDraft.cargo"
+                            name="edit-cargo-{{ m.id }}"
+                            class="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20"
+                          />
+                        </label>
+                        <label class="block">
+                          <span
+                            class="mb-1 block text-caption-xs font-semibold uppercase text-slate-400"
+                            >Rol *</span
+                          >
+                          <select
+                            [(ngModel)]="editDraft.tipo"
+                            name="edit-tipo-{{ m.id }}"
+                            [disabled]="esYo(m)"
+                            [title]="esYo(m) ? 'No puedes cambiar tu propio rol' : ''"
+                            class="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-body-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint-20 disabled:bg-slate-50 disabled:text-slate-400"
+                          >
+                            <option value="Vendedor">Vendedor</option>
+                            <option value="SuperAdmin">SuperAdmin</option>
+                          </select>
+                        </label>
+                      </div>
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="text-caption-xs text-slate-400">
+                          Guardar requiere tu código 2FA. El email no se puede editar.
+                        </span>
+                        <div class="flex gap-2">
+                          <button
+                            type="button"
+                            (click)="toggleEdicion(m)"
+                            class="rounded-md bg-slate-100 px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-200"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            [disabled]="saving() || !editValido()"
+                            class="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:opacity-50"
+                          >
+                            <span class="material-symbols-outlined text-[14px]">check</span>
+                            {{ saving() ? 'Guardando…' : 'Guardar' }}
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </td>
+                </tr>
+              }
             } @empty {
               <tr>
-                <td colspan="5" class="px-4 py-6 text-center text-slate-400">
+                <td colspan="6" class="px-4 py-6 text-center text-slate-400">
                   Sin miembros registrados.
                 </td>
               </tr>
@@ -242,10 +382,17 @@ function emptyDraft(): DraftMiembro {
         </table>
       </div>
     }
+
+    <app-confirm-dialog
+      [data]="confirmData()"
+      (accept)="onConfirmAccept()"
+      (dismiss)="onConfirmCancel()"
+    />
   `,
 })
 export class EquipoEmeltecSectionComponent {
   private readonly userService = inject(UserService);
+  private readonly auth = inject(AuthService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -253,14 +400,127 @@ export class EquipoEmeltecSectionComponent {
   readonly aviso = signal('');
   readonly mostrandoForm = signal(false);
   readonly data = signal<EquipoEmeltecData>({ empresa_emeltec: null, miembros: [] });
+  /** id del miembro en edición inline (null = ninguno). */
+  readonly editandoId = signal<string | null>(null);
+  readonly confirmData = signal<ConfirmDialogData | null>(null);
 
   readonly miembros = computed(() => this.data().miembros);
   readonly empresaEmeltec = computed(() => this.data().empresa_emeltec);
 
   draft: DraftMiembro = emptyDraft();
+  editDraft: DraftEdicion = { nombre: '', apellido: '', cargo: '', tipo: 'Vendedor' };
+
+  private pendingConfirm: (() => void) | null = null;
 
   constructor() {
     this.recargar();
+  }
+
+  esYo(m: MiembroEquipo): boolean {
+    return String(this.auth.user()?.id ?? '') === String(m.id);
+  }
+
+  toggleEdicion(m: MiembroEquipo): void {
+    if (this.editandoId() === m.id) {
+      this.editandoId.set(null);
+      return;
+    }
+    this.editDraft = {
+      nombre: m.nombre,
+      apellido: m.apellido,
+      cargo: m.cargo ?? '',
+      tipo: m.tipo === 'SuperAdmin' ? 'SuperAdmin' : 'Vendedor',
+    };
+    this.editandoId.set(m.id);
+    this.error.set('');
+    this.aviso.set('');
+  }
+
+  editValido(): boolean {
+    return !!this.editDraft.nombre.trim() && !!this.editDraft.apellido.trim();
+  }
+
+  guardarEdicion(m: MiembroEquipo): void {
+    if (!this.editValido() || this.saving()) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.userService
+      .updateUser(m.id, {
+        nombre: this.editDraft.nombre.trim(),
+        apellido: this.editDraft.apellido.trim(),
+        cargo: this.editDraft.cargo.trim() || null,
+        // El propio rol no se auto-edita (select deshabilitado en UI).
+        ...(this.esYo(m) ? {} : { tipo: this.editDraft.tipo }),
+      })
+      .subscribe({
+        next: () => {
+          this.saving.set(false);
+          this.editandoId.set(null);
+          this.aviso.set(`Cambios guardados para ${this.editDraft.nombre}.`);
+          this.recargar();
+        },
+        error: (err) => {
+          this.saving.set(false);
+          this.error.set(err?.error?.error || 'No se pudo guardar la edición.');
+        },
+      });
+  }
+
+  pedirDesactivar(m: MiembroEquipo): void {
+    this.pendingConfirm = () => this.desactivar(m);
+    this.confirmData.set({
+      title: 'Desactivar miembro',
+      message:
+        `¿Desactivar a ${m.nombre} ${m.apellido}? Pierde acceso a la plataforma de inmediato. ` +
+        `Es reversible desde esta misma tabla.`,
+      confirmText: 'Desactivar',
+      tone: 'danger',
+      icon: 'person_off',
+    });
+  }
+
+  onConfirmAccept(): void {
+    const action = this.pendingConfirm;
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+    action?.();
+  }
+
+  onConfirmCancel(): void {
+    this.pendingConfirm = null;
+    this.confirmData.set(null);
+  }
+
+  private desactivar(m: MiembroEquipo): void {
+    this.saving.set(true);
+    this.error.set('');
+    this.userService.deleteUser(m.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.aviso.set(`${m.nombre} ${m.apellido} desactivado.`);
+        this.recargar();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(err?.error?.error || 'No se pudo desactivar.');
+      },
+    });
+  }
+
+  reactivar(m: MiembroEquipo): void {
+    this.saving.set(true);
+    this.error.set('');
+    this.userService.reactivateUser(m.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.aviso.set(`${m.nombre} ${m.apellido} reactivado.`);
+        this.recargar();
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(err?.error?.error || 'No se pudo reactivar.');
+      },
+    });
   }
 
   recargar(): void {
