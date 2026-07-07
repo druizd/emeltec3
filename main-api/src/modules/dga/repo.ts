@@ -6,7 +6,7 @@
  *   - dato_dga: PK (site_id, ts). Sin id_dgauser.
  *   - dga_send_audit: PK por id, FK lógica (site_id, ts).
  */
-import { query } from '../../config/dbHelpers';
+import { query, transaction } from '../../config/dbHelpers';
 import type { Periodicidad } from './schema';
 
 export type DgaTransport = 'off' | 'shadow' | 'rest';
@@ -664,6 +664,113 @@ export async function upsertDatoDgaFromLegacy(input: {
     ],
     { name: 'dga__upsert_legacy_dato' },
   );
+}
+
+// ============================================================================
+// Reconocer sensor defectuoso (marca + incidencia + backlog, una transacción)
+// ============================================================================
+
+/**
+ * Warnings atribuibles al totalizador defectuoso. Un slot retenido SOLO por
+ * estos códigos puede aceptarse en bloque al reconocer el sensor: su valor es
+ * la lectura real del instrumento, lo mismo que produciría el bypass de
+ * validación con la marca activa.
+ */
+const TOTALIZADOR_WARNING_CODES = ['sensor_frozen', 'sensor_known_defective', 'totalizator_zero'];
+
+export interface ReconocerSensorResult {
+  incidencia_id: number;
+  slots_aceptados: number;
+}
+
+/**
+ * Reconoce el totalizador de un sitio como defectuoso:
+ *  1. Marca sensor_known_defective=true (+ defect_description) en el reg_map
+ *     del rol totalizador → slots futuros fluyen con incidencia registrada.
+ *  2. Crea una incidencia abierta en la bitácora del sitio (categoría sensor)
+ *     → el recambio queda pendiente y trazable. Cerrarla NO quita la marca
+ *     (decisión explícita: cerrar una incidencia no debe cambiar config de
+ *     validación en silencio; quitar la marca es acción manual del admin).
+ *  3. Acepta el backlog de requires_review del sitio retenido SOLO por
+ *     anomalías del totalizador, registrando admin_override con autor.
+ */
+export async function reconocerSensorDefectuoso(input: {
+  site_id: string;
+  nota: string;
+  admin_id: string;
+  admin_email: string;
+}): Promise<ReconocerSensorResult> {
+  return transaction(async (client) => {
+    const marked = await client.query(
+      `UPDATE reg_map
+          SET parametros = COALESCE(parametros, '{}'::jsonb)
+                           || jsonb_build_object(
+                                'sensor_known_defective', true,
+                                'defect_description', $2::text
+                              )
+        WHERE sitio_id = $1 AND rol_dashboard = 'totalizador'`,
+      [input.site_id, input.nota],
+    );
+    if ((marked.rowCount ?? 0) === 0) {
+      throw new Error('SITIO_SIN_TOTALIZADOR');
+    }
+
+    const { rows: sitios } = await client.query(
+      `SELECT empresa_id, sub_empresa_id, descripcion FROM sitio WHERE id = $1`,
+      [input.site_id],
+    );
+    if (!sitios.length) throw new Error('SITIO_NO_EXISTE');
+    const sitio = sitios[0];
+
+    const { rows: inc } = await client.query(
+      `INSERT INTO incidencias
+         (sitio_id, empresa_id, sub_empresa_id, titulo, descripcion,
+          origen, categoria, gravedad, estado, creado_por)
+       VALUES ($1, $2, $3, $4, $5, 'remota', 'sensor', 'media', 'abierta', $6)
+       RETURNING id`,
+      [
+        input.site_id,
+        sitio.empresa_id,
+        sitio.sub_empresa_id,
+        `Totalizador defectuoso — ${sitio.descripcion ?? input.site_id}`,
+        input.nota,
+        input.admin_id,
+      ],
+    );
+
+    const accepted = await client.query(
+      `UPDATE dato_dga
+          SET estatus             = 'pendiente',
+              fail_reason         = NULL,
+              next_retry_at       = NULL,
+              intentos            = 0,
+              validation_warnings = validation_warnings
+                                    || jsonb_build_array(jsonb_build_object(
+                                         'code', 'admin_override',
+                                         'reason', $2::text,
+                                         'by', $3::text,
+                                         'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                       ))
+        WHERE site_id = $1
+          AND estatus = 'requires_review'
+          AND NOT EXISTS (
+                SELECT 1
+                  FROM jsonb_array_elements(validation_warnings) AS w
+                 WHERE NOT (w->>'code' = ANY($4::text[]))
+              )`,
+      [
+        input.site_id,
+        `Sensor reconocido defectuoso: ${input.nota}`,
+        input.admin_email,
+        TOTALIZADOR_WARNING_CODES,
+      ],
+    );
+
+    return {
+      incidencia_id: inc[0].id as number,
+      slots_aceptados: accepted.rowCount ?? 0,
+    };
+  });
 }
 
 // ============================================================================

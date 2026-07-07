@@ -132,6 +132,13 @@ const WARNING_LABELS: Record<string, string> = {
             <li>
               <strong>Descartar</strong>: la medición NO se envía y queda marcada como fallida.
             </li>
+            <li>
+              <strong>Reconocer sensor defectuoso</strong> (aparece en fallas de totalizador): marca
+              el sensor como defectuoso para que las mediciones futuras NO vuelvan a caer aquí (se
+              reportan con la incidencia registrada), abre una incidencia pendiente en la bitácora
+              del sitio y acepta de una vez las mediciones retenidas por esa falla. Al reemplazar el
+              equipo, quita la marca en la configuración del sensor.
+            </li>
           </ul>
           <p>
             La <strong>nota admin</strong> es obligatoria y queda registrada de forma permanente en
@@ -272,6 +279,17 @@ const WARNING_LABELS: Record<string, string> = {
                     >
                       Descartar
                     </button>
+                    @if (esFallaTotalizador(s)) {
+                      <button
+                        type="button"
+                        (click)="reconocerSensor(s)"
+                        [disabled]="acting() === slotKey(s)"
+                        title="Marca el sensor como defectuoso (las mediciones futuras dejan de caer aquí y quedan con incidencia registrada), crea una incidencia pendiente en la bitácora del sitio y acepta las mediciones retenidas por esta falla."
+                        class="block w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-caption-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        Reconocer sensor defectuoso
+                      </button>
+                    }
                   </td>
                 </tr>
               }
@@ -471,6 +489,60 @@ export class DgaReviewComponent {
       admin_note: e.note.trim(),
     };
     this.executeAction(s, payload);
+  }
+
+  /** Códigos de anomalía atribuibles al totalizador (mismos que el backend). */
+  private static readonly TOTALIZADOR_CODES = new Set([
+    'sensor_frozen',
+    'sensor_known_defective',
+    'totalizator_zero',
+  ]);
+
+  esFallaTotalizador(s: DgaReviewSlot): boolean {
+    return s.validation_warnings.some((w) =>
+      DgaReviewComponent.TOTALIZADOR_CODES.has(w.code as string),
+    );
+  }
+
+  /**
+   * Reconoce el sensor totalizador del sitio como defectuoso. Usa la nota
+   * admin de la fila como descripción (obligatoria: queda en la marca del
+   * sensor, en la incidencia de bitácora y en los slots aceptados).
+   */
+  reconocerSensor(s: DgaReviewSlot): void {
+    if (!this.requireCode()) return;
+    const nota = this.edit(s).note.trim();
+    if (nota.length < 5) {
+      this.error.set(
+        'Escribe la nota admin (mín. 5 caracteres) — describe la falla o el recambio programado.',
+      );
+      return;
+    }
+    const key = this.slotKey(s);
+    this.acting.set(key);
+    this.error.set('');
+    this.dga.reconocerSensorDefectuoso(s.site_id, nota, this.twoFactorCode()).subscribe({
+      next: (r) => {
+        this.twoFactorCode.set('');
+        this.acting.set('');
+        this.codeMessage.set(
+          `Sensor reconocido: ${r.slots_aceptados} medición(es) aceptada(s) y enviándose; ` +
+            `incidencia INC-${String(r.incidencia_id).padStart(4, '0')} abierta en la bitácora del sitio. ` +
+            `Al reemplazar el equipo, quita la marca en la configuración del sensor.`,
+        );
+        this.reload();
+      },
+      error: (err) => {
+        this.acting.set('');
+        const code = err?.error?.error?.code;
+        if (code === 'DGA_2FA_INVALID' || code === 'DGA_2FA_REQUIRED') {
+          this.error.set('Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.');
+          this.twoFactorCode.set('');
+        } else {
+          this.error.set(this.friendlyError(err, 'No se pudo reconocer el sensor.'));
+        }
+      },
+    });
   }
 
   discard(s: DgaReviewSlot): void {

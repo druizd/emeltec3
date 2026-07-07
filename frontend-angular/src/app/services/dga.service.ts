@@ -337,4 +337,22 @@ export class DgaService {
       })
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
+
+  /**
+   * Reconoce el totalizador del sitio como defectuoso: marca el sensor
+   * (los slots futuros fluyen con incidencia registrada), crea una
+   * incidencia abierta en la bitácora y acepta el backlog retenido solo
+   * por anomalías del totalizador.
+   */
+  reconocerSensorDefectuoso(
+    siteId: string,
+    nota: string,
+    twoFactorCode: string,
+  ): Observable<{ incidencia_id: number; slots_aceptados: number }> {
+    return this.http
+      .post<
+        ApiResponse<{ incidencia_id: number; slots_aceptados: number }>
+      >(`/api/v2/dga/sites/${siteId}/reconocer-sensor-defectuoso`, { nota }, { headers: this.headers2fa(twoFactorCode) })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
 }
