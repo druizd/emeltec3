@@ -10,6 +10,7 @@ import type {
   UpdateUserSecurityPayload,
   User,
   UserListFilters,
+  UserRole,
 } from '@emeltec/shared';
 
 export interface Tecnico {
@@ -17,6 +18,22 @@ export interface Tecnico {
   nombre: string;
   apellido: string;
   cargo: string | null;
+}
+
+export interface EquipoEmeltecResponse {
+  empresa_emeltec: { id: string; nombre: string } | null;
+  miembros: {
+    id: string;
+    nombre: string;
+    apellido: string;
+    email: string;
+    telefono: string | null;
+    cargo: string | null;
+    tipo: UserRole;
+    activo: boolean;
+    last_login_at: string | null;
+    activated_at: string | null;
+  }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -48,6 +65,11 @@ export class UserService {
    */
   getTecnicos(): Observable<ApiResponse<Tecnico[]>> {
     return this.http.get<ApiResponse<Tecnico[]>>('/api/users/tecnicos');
+  }
+
+  /** Equipo interno Emeltec (SuperAdmin + Vendedor) + empresa Emeltec. Solo SuperAdmin. */
+  getEquipoEmeltec(): Observable<ApiResponse<EquipoEmeltecResponse>> {
+    return this.http.get<ApiResponse<EquipoEmeltecResponse>>('/api/users/equipo-emeltec');
   }
 
   getCurrentUser(): Observable<ApiResponse<User>> {

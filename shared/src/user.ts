@@ -1,4 +1,4 @@
-export type UserRole = 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente';
+export type UserRole = 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente' | 'Vendedor';
 export type AuthMode = 'password' | 'otp' | 'password_otp';
 
 export interface User {

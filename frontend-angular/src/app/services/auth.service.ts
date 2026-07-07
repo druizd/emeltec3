@@ -59,6 +59,8 @@ export class AuthService {
   readonly isAdmin = computed(() => this.effectiveRole() === 'Admin');
   readonly isGerente = computed(() => this.effectiveRole() === 'Gerente');
   readonly isCliente = computed(() => this.effectiveRole() === 'Cliente');
+  /** Equipo comercial Emeltec: alcance tipo-Admin sobre la empresa Emeltec (demos). */
+  readonly isVendedor = computed(() => this.effectiveRole() === 'Vendedor');
 
   readonly canAccessAdministration = computed(() => this.effectiveRole() === 'SuperAdmin');
 
@@ -69,12 +71,12 @@ export class AuthService {
 
   readonly canEditSiteSettings = computed(() => {
     const tipo = this.effectiveRole();
-    return tipo === 'SuperAdmin' || tipo === 'Admin';
+    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Vendedor';
   });
 
   readonly canManageAlerts = computed(() => {
     const tipo = this.effectiveRole();
-    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Gerente';
+    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Gerente' || tipo === 'Vendedor';
   });
 
   readonly canViewAdvancedAnalysis = computed(() => this.effectiveRole() === 'SuperAdmin');
@@ -91,10 +93,10 @@ export class AuthService {
     return tipo === 'SuperAdmin';
   });
 
-  /** Solo SuperAdmin y Admin pueden crear/editar/eliminar */
+  /** SuperAdmin, Admin y Vendedor (en sus sitios demo) pueden crear/editar/eliminar */
   readonly canEdit = computed(() => {
     const tipo = this.effectiveRole();
-    return tipo === 'SuperAdmin' || tipo === 'Admin';
+    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Vendedor';
   });
 
   /** Aviso final: 31s deja 1s de margen para que el usuario vea al menos 00:30. */

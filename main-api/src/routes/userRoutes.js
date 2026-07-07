@@ -14,6 +14,13 @@ router.get('/empresas', userController.getEmpresas);
 // Cliente no accede; Admin/Gerente sí (asignan técnico al crear incidencia).
 router.get('/tecnicos', userController.getTecnicos);
 
+// Equipo Emeltec (SuperAdmin + Vendedor) para la sección de administración.
+router.get(
+  '/equipo-emeltec',
+  authMiddleware.authorizeRoles('SuperAdmin'),
+  userController.getEquipoEmeltec,
+);
+
 // Perfil del usuario autenticado
 router.get('/me', userController.getCurrentUser);
 router.patch('/me', userController.updateCurrentUser);
