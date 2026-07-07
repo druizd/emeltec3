@@ -85,6 +85,43 @@ interface RowEdit {
         }
       </section>
 
+      <!-- Ayuda -->
+      <details class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
+        <summary
+          class="flex cursor-pointer select-none items-center gap-2 text-body-sm font-semibold"
+        >
+          <span class="material-symbols-outlined text-[18px] text-primary">help</span>
+          ¿Cómo funciona esta cola?
+        </summary>
+        <div class="mt-3 space-y-2 text-caption text-slate-600">
+          <p>
+            Cada fila es una medición que la validación retuvo por una anomalía (columna
+            <strong>Anomalías</strong>) antes de enviarla a la DGA. Nada se envía hasta que un admin
+            decida.
+          </p>
+          <p>
+            Los campos <strong>Caudal, Totalizador y Nivel</strong> son los valores que se
+            declararán a la DGA si aceptas. Vienen pre-cargados con la medición del sensor (o con el
+            valor sugerido por la validación). Puedes corregirlos solo si tienes fundamento — por
+            ejemplo, un totalizador congelado cuyo avance real conoces.
+          </p>
+          <ul class="list-disc space-y-1 pl-5">
+            <li>
+              <strong>Aceptar → enviar</strong>: la medición pasa a la cola de envío a SNIA con los
+              valores de los campos.
+            </li>
+            <li>
+              <strong>Descartar</strong>: la medición NO se envía y queda marcada como fallida.
+            </li>
+          </ul>
+          <p>
+            La <strong>nota admin</strong> es obligatoria y queda registrada de forma permanente en
+            la medición junto con <strong>quién ejecutó la acción y cuándo</strong> — es el respaldo
+            auditable de la decisión. Ambas acciones requieren el código 2FA.
+          </p>
+        </div>
+      </details>
+
       <!-- Errores -->
       @if (error()) {
         <div

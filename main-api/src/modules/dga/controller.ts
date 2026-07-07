@@ -286,8 +286,12 @@ export async function reviewSlotActionHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    await assertSiteAccessById(getUser(req), parsed.data.site_id);
-    const result = await applyReviewDecision(parsed.data);
+    const user = getUser(req);
+    await assertSiteAccessById(user, parsed.data.site_id);
+    const result = await applyReviewDecision({
+      ...parsed.data,
+      admin_email: user?.email ?? 'desconocido',
+    });
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);

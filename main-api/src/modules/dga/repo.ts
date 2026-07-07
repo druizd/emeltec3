@@ -725,6 +725,7 @@ export async function acceptReviewSlotWithValues(input: {
   flujo_acumulado: number | null;
   nivel_freatico: number | null;
   admin_note: string;
+  admin_email: string;
 }): Promise<boolean> {
   const r = await query(
     `UPDATE dato_dga
@@ -736,6 +737,7 @@ export async function acceptReviewSlotWithValues(input: {
                                   || jsonb_build_array(jsonb_build_object(
                                        'code', 'admin_override',
                                        'reason', $6::text,
+                                       'by', $7::text,
                                        'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
                                      )),
             fail_reason         = NULL,
@@ -751,6 +753,7 @@ export async function acceptReviewSlotWithValues(input: {
       input.flujo_acumulado,
       input.nivel_freatico,
       input.admin_note,
+      input.admin_email,
     ],
     { name: 'dga__accept_review_slot' },
   );
@@ -761,6 +764,7 @@ export async function markReviewSlotFailedManual(input: {
   site_id: string;
   ts: string;
   admin_note: string;
+  admin_email: string;
 }): Promise<boolean> {
   const r = await query(
     `UPDATE dato_dga
@@ -770,12 +774,13 @@ export async function markReviewSlotFailedManual(input: {
                                   || jsonb_build_array(jsonb_build_object(
                                        'code', 'admin_discarded',
                                        'reason', $3::text,
+                                       'by', $4::text,
                                        'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
                                      ))
       WHERE site_id = $1
         AND ts      = $2
         AND estatus = 'requires_review'`,
-    [input.site_id, input.ts, input.admin_note],
+    [input.site_id, input.ts, input.admin_note, input.admin_email],
     { name: 'dga__mark_review_failed' },
   );
   return (r.rowCount ?? 0) > 0;
