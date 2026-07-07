@@ -202,12 +202,15 @@ export async function applyReviewDecision(input: {
       }
     | undefined;
   admin_note: string;
+  /** Email del admin autenticado que ejecuta la acción (auditoría por slot). */
+  admin_email: string;
 }): Promise<{ ok: boolean }> {
   if (input.action === 'discard') {
     const ok = await markReviewSlotFailedManual({
       site_id: input.site_id,
       ts: input.ts,
       admin_note: input.admin_note,
+      admin_email: input.admin_email,
     });
     if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
     return { ok: true };
@@ -224,6 +227,7 @@ export async function applyReviewDecision(input: {
       input.values.flujo_acumulado == null ? null : Math.trunc(input.values.flujo_acumulado),
     nivel_freatico: input.values.nivel_freatico ?? null,
     admin_note: input.admin_note,
+    admin_email: input.admin_email,
   });
   if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
   return { ok: true };
