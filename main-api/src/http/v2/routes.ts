@@ -33,6 +33,7 @@ import {
   listReviewQueueHandler,
   patchPozoDgaConfigHandler,
   queryDatoDgaHandler,
+  reconocerSensorDefectuosoHandler,
   request2faCodeHandler,
   reviewSlotActionHandler,
   upsertInformanteHandler,
@@ -95,6 +96,14 @@ const auditDgaMutations = auditMutations((req) => {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
       targetType: 'dato_dga',
       targetId: `${req.body?.site_id ?? ''}::${req.body?.ts ?? ''}`,
+    };
+  }
+  const reconMatch = path.match(/^\/dga\/sites\/([^/]+)\/reconocer-sensor-defectuoso$/);
+  if (req.method === 'POST' && reconMatch) {
+    return {
+      action: 'dga.sensor.reconocer_defectuoso',
+      targetType: 'sitio',
+      targetId: reconMatch[1] ?? '',
     };
   }
   return { action: `dga.${req.method.toLowerCase()}.unknown` };
@@ -257,6 +266,16 @@ router.post(
   requireDgaTwoFactor,
   auditDgaMutations,
   reviewSlotActionHandler,
+);
+
+// Reconocer sensor defectuoso: marca reg_map + incidencia + acepta backlog.
+router.post(
+  '/dga/sites/:siteId/reconocer-sensor-defectuoso',
+  protect,
+  authorizeRoles('SuperAdmin', 'Admin'),
+  requireDgaTwoFactor,
+  auditDgaMutations,
+  reconocerSensorDefectuosoHandler,
 );
 
 export default router;

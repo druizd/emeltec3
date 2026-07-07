@@ -77,6 +77,15 @@ export const ListReviewQueueParams = z.object({
 });
 export type ListReviewQueueParams = z.infer<typeof ListReviewQueueParams>;
 
+export const ReconocerSensorPayload = z.object({
+  site_id: z.string().trim().min(1).max(10),
+  /** Descripción de la falla / recambio programado. Queda en la marca del
+   *  sensor, en la incidencia de bitácora y en el admin_override de los
+   *  slots aceptados en bloque. */
+  nota: z.string().trim().min(5).max(500),
+});
+export type ReconocerSensorPayload = z.infer<typeof ReconocerSensorPayload>;
+
 export const ReviewSlotActionPayload = z.object({
   site_id: z.string().trim().min(1).max(10),
   ts: z.string().datetime({ offset: true }),
