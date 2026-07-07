@@ -114,13 +114,22 @@ async function fillSlot(
   );
 
   if (validation.ok) {
+    // ok con warnings = anomalías informativas (sensor marcado defectuoso):
+    // el slot se envía igual y las incidencias quedan persistidas en el slot.
     const updated = await transitionSlotToPendiente({
       site_id: pozoDga.sitio_id,
       ts: slot.ts,
       caudal_instantaneo: caudal,
       flujo_acumulado: totalizador,
       nivel_freatico: nivelFreatico,
+      validation_warnings: validation.warnings,
     });
+    if (updated && validation.warnings.length > 0) {
+      logger.warn(
+        { site_id: pozoDga.sitio_id, ts: slot.ts, codes: validation.warnings.map((w) => w.code) },
+        'DGA fill: slot enviable con incidencias registradas (sensor defectuoso)',
+      );
+    }
     return updated ? 'pendiente' : 'skipped';
   }
 

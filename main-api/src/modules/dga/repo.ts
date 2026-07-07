@@ -366,6 +366,11 @@ export async function transitionSlotToPendiente(input: {
   caudal_instantaneo: number | null;
   flujo_acumulado: number | null;
   nivel_freatico: number | null;
+  /**
+   * Warnings informativos que no bloquearon el envío (ej. sensor marcado
+   * defectuoso). Se persisten como incidencia auditable del slot.
+   */
+  validation_warnings?: ValidationWarning[];
 }): Promise<boolean> {
   const r = await query(
     `UPDATE dato_dga
@@ -373,7 +378,7 @@ export async function transitionSlotToPendiente(input: {
             caudal_instantaneo = $3,
             flujo_acumulado    = $4,
             nivel_freatico     = $5,
-            validation_warnings = '[]'::jsonb,
+            validation_warnings = $6::jsonb,
             fail_reason        = NULL
       WHERE site_id = $1
         AND ts      = $2
@@ -384,6 +389,7 @@ export async function transitionSlotToPendiente(input: {
       input.caudal_instantaneo,
       input.flujo_acumulado,
       input.nivel_freatico,
+      JSON.stringify(input.validation_warnings ?? []),
     ],
     { name: 'dga__slot_to_pendiente' },
   );

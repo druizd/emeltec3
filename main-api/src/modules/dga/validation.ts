@@ -1,6 +1,10 @@
 /**
  * Validación de slot DGA antes de marcar como 'pendiente'. Reglas:
- *   1. Sensor declarado defectuoso → requires_review siempre.
+ *   1. Sensor declarado defectuoso → warning INFORMATIVO (no bloquea envío):
+ *      la medición se reporta igual a DGA con la lectura del instrumento y la
+ *      anomalía queda registrada en validation_warnings como incidencia.
+ *      sensor_frozen tampoco bloquea bajo esta marca (es el síntoma esperado
+ *      del totalizador defectuoso). El resto de las reglas sigue bloqueando.
  *   2. Totalizador 0/NULL → requires_review con sugerencia de último válido.
  *   3. Caudal < 0 → requires_review (sensor invertido / glitch).
  *   4. Caudal > caudal_max_lps × tolerancia → requires_review.
@@ -53,10 +57,26 @@ export interface ValidationContext {
 }
 
 export interface ValidationResult {
+  /** Todas las anomalías detectadas (bloqueantes + informativas). */
   warnings: ValidationWarning[];
+  /** Código de la primera anomalía BLOQUEANTE; null si el slot es enviable. */
   failReason: string | null;
+  /** true = slot enviable (puede haber warnings informativos registrados). */
   ok: boolean;
 }
+
+/**
+ * Warnings que NO bloquean el envío cuando el admin marcó el totalizador como
+ * defectuoso (sensor_known_defective=true en reg_map.parametros):
+ *   - sensor_known_defective: la marca misma (incidencia documental).
+ *   - sensor_frozen: síntoma esperado de un totalizador pegado en recambio.
+ * Con la marca activa el pozo NO deja de reportar (obligación Res 2170); la
+ * anomalía queda anotada en validation_warnings del slot para auditoría.
+ */
+const INFORMATIVE_CODES_WHEN_DEFECTIVE: ReadonlySet<string> = new Set([
+  'sensor_known_defective',
+  'sensor_frozen',
+]);
 
 /**
  * Regla 6 — Sensor congelado / pegado.
@@ -233,9 +253,14 @@ export function validateSlot(values: SlotValues, ctx: ValidationContext): Valida
   const spikeWarning = checkCaudalSpike(values, ctx);
   if (spikeWarning != null) warnings.push(spikeWarning);
 
+  const sensorDefective = totalizadorParams.sensor_known_defective === true;
+  const blocking = sensorDefective
+    ? warnings.filter((w) => !INFORMATIVE_CODES_WHEN_DEFECTIVE.has(w.code as string))
+    : warnings;
+
   return {
     warnings,
-    failReason: warnings.length > 0 ? (warnings[0]!.code as string) : null,
-    ok: warnings.length === 0,
+    failReason: blocking.length > 0 ? (blocking[0]!.code as string) : null,
+    ok: blocking.length === 0,
   };
 }
