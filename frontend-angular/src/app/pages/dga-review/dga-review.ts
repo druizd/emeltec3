@@ -339,20 +339,37 @@ export class DgaReviewComponent {
     return this.edits()[this.slotKey(s)] ?? DgaReviewComponent.initialEdit(s);
   }
 
+  /**
+   * Normaliza al formato que EXIGE el envío a SNIA (Manual Técnico DGA,
+   * mismo contrato que snia-client.ts): caudal y nivel con 2 decimales,
+   * totalizador entero sin decimales. La DB entrega numerics con 3
+   * decimales ("1775.000") — mostrar eso induce a declarar mal.
+   */
+  private static fmtDecimal2(v: string | null | undefined): string {
+    if (v == null || v === '') return '';
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(2) : '';
+  }
+
+  private static fmtEntero(v: string | number | null | undefined): string {
+    if (v == null || v === '') return '';
+    const n = Number(v);
+    return Number.isFinite(n) ? String(Math.trunc(n)) : '';
+  }
+
   private static initialEdit(s: DgaReviewSlot): RowEdit {
-    // Valores actuales del slot o sugeridos por la validación.
+    // Valores actuales del slot o sugeridos por la validación, ya en el
+    // formato exacto que se declarará a la DGA.
     const suggestedTot = s.validation_warnings.find(
       (w) => w.code === 'totalizator_zero',
     )?.suggested;
     return {
-      caudal: s.caudal_instantaneo ?? '',
+      caudal: DgaReviewComponent.fmtDecimal2(s.caudal_instantaneo),
       totalizador:
         s.flujo_acumulado != null && s.flujo_acumulado !== ''
-          ? s.flujo_acumulado
-          : suggestedTot != null
-            ? String(Math.trunc(suggestedTot))
-            : '',
-      nivel: s.nivel_freatico ?? '',
+          ? DgaReviewComponent.fmtEntero(s.flujo_acumulado)
+          : DgaReviewComponent.fmtEntero(suggestedTot),
+      nivel: DgaReviewComponent.fmtDecimal2(s.nivel_freatico),
       note: '',
     };
   }
