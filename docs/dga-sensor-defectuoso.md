@@ -28,15 +28,15 @@ Marca opt-in por sensor, en `reg_map.parametros` del registro con
 
 Con la marca activa:
 
-| Anomalía | Sin marca | Con marca |
-| -------------------------------- | ----------------- | ------------------------------- |
-| `sensor_frozen` | `requires_review` | **informativa** — slot se envía |
-| `sensor_known_defective` | — | **informativa** — slot se envía |
-| `totalizator_zero` | `requires_review` | suprimida (cubierta por la marca) |
-| `flow_negative` | `requires_review` | `requires_review` (sin cambio) |
-| `flow_exceeds_water_right` | `requires_review` | `requires_review` (sin cambio) |
-| `caudal_spike` | `requires_review` | `requires_review` (sin cambio) |
-| `transform_failed_all_nulls` | `requires_review` | `requires_review` (sin cambio) |
+| Anomalía                     | Sin marca         | Con marca                         |
+| ---------------------------- | ----------------- | --------------------------------- |
+| `sensor_frozen`              | `requires_review` | **informativa** — slot se envía   |
+| `sensor_known_defective`     | —                 | **informativa** — slot se envía   |
+| `totalizator_zero`           | `requires_review` | suprimida (cubierta por la marca) |
+| `flow_negative`              | `requires_review` | `requires_review` (sin cambio)    |
+| `flow_exceeds_water_right`   | `requires_review` | `requires_review` (sin cambio)    |
+| `caudal_spike`               | `requires_review` | `requires_review` (sin cambio)    |
+| `transform_failed_all_nulls` | `requires_review` | `requires_review` (sin cambio)    |
 
 - El slot transiciona a `pendiente` con la **lectura real del instrumento**
   (no se inventan valores) y el submission worker lo envía normal.
