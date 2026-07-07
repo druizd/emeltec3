@@ -10,6 +10,10 @@ router.use(authMiddleware.protect);
 // Endpoint para traer las empresas disponibles (filtradas por rol del usuario actual)
 router.get('/empresas', userController.getEmpresas);
 
+// Técnicos asignables a incidencias (equipo Emeltec = SuperAdmin activos).
+// Cliente no accede; Admin/Gerente sí (asignan técnico al crear incidencia).
+router.get('/tecnicos', userController.getTecnicos);
+
 // Perfil del usuario autenticado
 router.get('/me', userController.getCurrentUser);
 router.patch('/me', userController.updateCurrentUser);

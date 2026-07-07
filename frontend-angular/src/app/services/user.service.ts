@@ -12,6 +12,13 @@ import type {
   UserListFilters,
 } from '@emeltec/shared';
 
+export interface Tecnico {
+  id: string;
+  nombre: string;
+  apellido: string;
+  cargo: string | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private http = inject(HttpClient);
@@ -33,6 +40,14 @@ export class UserService {
 
   getUsers(filters: UserListFilters = {}): Observable<ApiResponse<User[]>> {
     return this.http.get<ApiResponse<User[]>>(this.buildUsersUrl(filters));
+  }
+
+  /**
+   * Técnicos asignables a incidencias: equipo Emeltec (SuperAdmin activos).
+   * El backend expone solo id/nombre/apellido/cargo (sin datos de contacto).
+   */
+  getTecnicos(): Observable<ApiResponse<Tecnico[]>> {
+    return this.http.get<ApiResponse<Tecnico[]>>('/api/users/tecnicos');
   }
 
   getCurrentUser(): Observable<ApiResponse<User>> {

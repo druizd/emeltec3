@@ -9,7 +9,6 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { User } from '@emeltec/shared';
 import {
   CATEGORIA_LABELS,
   CreateIncidenciaPayload,
@@ -23,7 +22,7 @@ import {
   IncidenciaService,
   ORIGEN_LABELS,
 } from '../../../../services/incidencia.service';
-import { UserService } from '../../../../services/user.service';
+import { UserService, type Tecnico } from '../../../../services/user.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 import {
@@ -433,8 +432,8 @@ function emptyDraft(): DraftIncidencia {
             class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
           >
             <option [ngValue]="null">Sin asignar</option>
-            @for (u of usuariosEmpresa(); track u.id) {
-              <option [ngValue]="u.id">{{ u.nombre }} {{ u.apellido }}</option>
+            @for (t of tecnicos(); track t.id) {
+              <option [ngValue]="t.id">{{ t.nombre }} {{ t.apellido }}</option>
             }
           </select>
         </div>
@@ -479,7 +478,8 @@ export class BitacoraIncidenciasComponent {
   readonly mostrandoNueva = signal(false);
   readonly expandedId = signal<number | null>(null);
   readonly drafts = signal<Record<number, DraftIncidencia>>({});
-  readonly usuariosEmpresa = signal<User[]>([]);
+  /** Técnicos asignables: equipo Emeltec (SuperAdmin), no usuarios del cliente. */
+  readonly tecnicos = signal<Tecnico[]>([]);
 
   // Confirmación con modal del proyecto (reemplaza confirm() nativo).
   readonly confirmData = signal<ConfirmDialogData | null>(null);
@@ -523,10 +523,7 @@ export class BitacoraIncidenciasComponent {
       const sid = this.sitioId();
       if (sid) this.recargar();
     });
-    effect(() => {
-      const eid = this.empresaId();
-      if (eid) this.cargarUsuarios(eid);
-    });
+    this.cargarTecnicos();
   }
 
   private recargar(): void {
@@ -546,10 +543,10 @@ export class BitacoraIncidenciasComponent {
     });
   }
 
-  private cargarUsuarios(empresaId: string): void {
-    this.userService.getUsers({ empresa_id: empresaId }).subscribe({
+  private cargarTecnicos(): void {
+    this.userService.getTecnicos().subscribe({
       next: (res) => {
-        if (res.ok) this.usuariosEmpresa.set(res.data);
+        if (res.ok) this.tecnicos.set(res.data);
       },
     });
   }
