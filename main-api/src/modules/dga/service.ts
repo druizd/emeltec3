@@ -502,6 +502,7 @@ export async function getDatoDgaDirectoFromEquipo(
   desdeIso: string,
   hastaIso: string,
   bucket: BucketGranularidad = 'hora',
+  orden: 'asc' | 'desc' = 'asc',
 ): Promise<DatoDgaRow[]> {
   const site = await getSiteById(siteId);
   if (!site) throw new NotFoundError('Sitio no encontrado');
@@ -515,28 +516,28 @@ export async function getDatoDgaDirectoFromEquipo(
 
   const obra = pozoConfig?.obra_dga?.trim() || site.descripcion;
 
-  return rawRows
-    .slice()
-    .reverse()
-    .map((raw) => {
-      const mapped = mapHistoricalDashboardRow({ row: raw, site, mappings, pozoConfig });
-      const ts =
-        mapped.timestamp ??
-        (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
-      return {
-        site_id: site.id,
-        obra,
-        ts,
-        fecha: utcToChileFecha(ts),
-        hora: utcToChileHora(ts),
-        caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
-        flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
-        nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
-        // Filas sintetizadas desde equipo (sin pipeline DGA): no tienen estado real.
-        estatus: 'vacio',
-        comprobante: null,
-      } satisfies DatoDgaRow;
-    });
+  // fetchEquipoBucketed devuelve las filas en orden descendente (time DESC).
+  const orderedRows = orden === 'asc' ? rawRows.slice().reverse() : rawRows;
+
+  return orderedRows.map((raw) => {
+    const mapped = mapHistoricalDashboardRow({ row: raw, site, mappings, pozoConfig });
+    const ts =
+      mapped.timestamp ??
+      (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
+    return {
+      site_id: site.id,
+      obra,
+      ts,
+      fecha: utcToChileFecha(ts),
+      hora: utcToChileHora(ts),
+      caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
+      flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
+      nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
+      // Filas sintetizadas desde equipo (sin pipeline DGA): no tienen estado real.
+      estatus: 'vacio',
+      comprobante: null,
+    } satisfies DatoDgaRow;
+  });
 }
 
 function stringifyNumeric(value: number | null): string | null {

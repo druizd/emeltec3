@@ -58,6 +58,7 @@ const ExportDirectoParams = z.object({
   desde: z.string().datetime({ offset: true }),
   hasta: z.string().datetime({ offset: true }),
   bucket: z.enum(['minuto', 'hora', 'dia', 'semana', 'mes']).default('hora'),
+  orden: z.enum(['asc', 'desc']).default('asc'),
 });
 
 // ============================================================================
@@ -381,6 +382,7 @@ export async function exportDgaDirectoCsvHandler(
       parsed.data.desde,
       parsed.data.hasta,
       parsed.data.bucket,
+      parsed.data.orden,
     );
     const csv = toCsv(rows);
     const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;
