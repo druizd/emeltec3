@@ -124,6 +124,16 @@ para enviar.
      `nivel_freatico` (m).
   4. Valida (§5). OK → `pendiente`. Warnings → `requires_review` con
      `validation_warnings` JSON + `fail_reason`.
+- **Anti-starvation** (post-incidente 2026-07-10): la ventana toma los N slots
+  vacíos **más antiguos**; un hueco de datos irrecuperable (equipos/VPN caídos)
+  puede llenarla completa y congelar el fill para siempre. Mitigación:
+  - Slot `vacio` sin dato más viejo que `DGA_STALE_SLOT_HOURS` (default 48 h,
+    `0` desactiva) → `requires_review` con `fail_reason='no_data_stale'`.
+    Sale de la ventana y queda visible en la cola de revisión admin.
+  - Pozo cuyo ciclo produce **solo** `no_data` con slots atrasados más de
+    `DGA_NO_DATA_WARN_HOURS` (default 3 h) → `logger.warn`
+    (`DGA fill: pozo estancado sin datos para slots atrasados`). Antes esta
+    condición era 100 % silenciosa.
 
 > **Pre-condición**: `pozo_config.dga_hora_inicio` debe estar minuto-alineada
 > (segundos=00). El endpoint `PATCH pozo-config` snapea silenciosamente a
@@ -263,6 +273,8 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 | `RESEND_API_KEY`                                                                                   | ✅ (2FA)  | —            | OTP email                                                                                        |
 | `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —         | 5m/60s/6h/1h | Cadencias                                                                                        |
 | `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —         | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada       |
+| `DGA_STALE_SLOT_HOURS`                                                                             | —         | `48`         | Slot `vacio` sin dato más viejo que esto → `requires_review` (`no_data_stale`). `0` desactiva    |
+| `DGA_NO_DATA_WARN_HOURS`                                                                           | —         | `3`          | Warn cuando pozo solo produce `no_data` con slots atrasados más de este umbral                   |
 | `DGA_RECONCILER_STUCK_MIN`                                                                         | —         | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                                  |
 | `DGA_SUBMISSION_DELAY_MS`                                                                          | —         | `1000`       | Delay entre cada slot en `runSubmissionCycle`. Evita ráfagas → bloqueo SNIA (Res 2170 §6.1 + §7) |
 
