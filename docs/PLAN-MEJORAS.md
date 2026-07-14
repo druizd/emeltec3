@@ -24,16 +24,16 @@
 
 **Archivos clave:**
 
-| Archivo | Rol |
-| --- | --- |
-| `frontend-angular/src/app/services/auth.service.ts` | Tokens, localStorage, sesión |
-| `frontend-angular/src/app/services/user.service.ts` | CRUD usuarios (datos personales) |
-| `frontend-angular/src/app/services/audit-log.service.ts` | Consulta de auditoría |
-| `frontend-angular/src/app/interceptors/auth.interceptor.ts` | Inyección JWT |
-| `frontend-angular/src/app/interceptors/two-factor.interceptor.ts` | Orquestación 2FA |
-| `frontend-angular/src/app/guards/auth.guard.ts` | authGuard, publicGuard, roleGuard |
-| `frontend-angular/src/app/pages/profile/profile.ts` | Edición de datos del usuario |
-| `frontend-angular/nginx.conf` | Headers de seguridad, CSP |
+| Archivo                                                           | Rol                               |
+| ----------------------------------------------------------------- | --------------------------------- |
+| `frontend-angular/src/app/services/auth.service.ts`               | Tokens, localStorage, sesión      |
+| `frontend-angular/src/app/services/user.service.ts`               | CRUD usuarios (datos personales)  |
+| `frontend-angular/src/app/services/audit-log.service.ts`          | Consulta de auditoría             |
+| `frontend-angular/src/app/interceptors/auth.interceptor.ts`       | Inyección JWT                     |
+| `frontend-angular/src/app/interceptors/two-factor.interceptor.ts` | Orquestación 2FA                  |
+| `frontend-angular/src/app/guards/auth.guard.ts`                   | authGuard, publicGuard, roleGuard |
+| `frontend-angular/src/app/pages/profile/profile.ts`               | Edición de datos del usuario      |
+| `frontend-angular/nginx.conf`                                     | Headers de seguridad, CSP         |
 
 ---
 
@@ -43,11 +43,11 @@
 
 **Contexto**: tres componentes concentran la mayor parte de la lógica de la app. Bloqueador nº 1 de mantenibilidad: cada cambio toca archivos de miles de líneas, imposibles de testear o revisar.
 
-| Componente | Líneas |
-| --- | --- |
-| `pages/ventisqueros/ventisqueros.ts` | ~6.648 |
+| Componente                                     | Líneas |
+| ---------------------------------------------- | ------ |
+| `pages/ventisqueros/ventisqueros.ts`           | ~6.648 |
 | `pages/companies/company-site-water-detail.ts` | ~4.997 |
-| `pages/administration/administration.ts` | ~3.306 |
+| `pages/administration/administration.ts`       | ~3.306 |
 
 Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora, operación, config DGA…). Un PR por extracción, sin cambios funcionales.
 
@@ -199,12 +199,12 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 ## Calendario sugerido (deadline: 1-dic-2026)
 
-| Mes | Foco |
-| --- | --- |
-| Jul–Ago 2026 | B2 (localStorage) + B5 (retención) + B12.1/B12.3 (evaluaciones documentadas, rápidas) |
-| Ago–Sep 2026 | B1 (supresión real) + B8 (`/privacidad`) + B10.1 (política de seguridad pública) |
+| Mes          | Foco                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------- |
+| Jul–Ago 2026 | B2 (localStorage) + B5 (retención) + B12.1/B12.3 (evaluaciones documentadas, rápidas)  |
+| Ago–Sep 2026 | B1 (supresión real) + B8 (`/privacidad`) + B10.1 (política de seguridad pública)       |
 | Sep–Oct 2026 | B3 (ARCO+ en perfil) + B6 (registro de tratamientos) + B10.2/B10.3 (cifrado + backups) |
-| Oct–Nov 2026 | B4 (brechas + registro interno + alertas) + B7 (consentimiento) + B11 (encargados) |
-| Continuo | A1–A4 en paralelo; B12.2 (monitoreo Agencia) trimestral |
+| Oct–Nov 2026 | B4 (brechas + registro interno + alertas) + B7 (consentimiento) + B11 (encargados)     |
+| Continuo     | A1–A4 en paralelo; B12.2 (monitoreo Agencia) trimestral                                |
 
 **Referencia legal detallada**: `docs/LEY-21719-SEGURIDAD.md` (texto literal de artículos, sanciones, mapa exigencia→acción).
