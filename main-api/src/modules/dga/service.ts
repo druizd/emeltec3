@@ -124,6 +124,7 @@ export interface PozoDgaConfigPublic {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
+  dga_gcs_export: boolean;
   dga_last_run_at: string | null;
 }
 
@@ -140,6 +141,7 @@ function toPozoDgaPublic(row: PozoDgaConfigRow): PozoDgaConfigPublic {
     dga_hora_inicio: row.dga_hora_inicio,
     dga_informante_rut: row.dga_informante_rut,
     dga_max_retry_attempts: row.dga_max_retry_attempts,
+    dga_gcs_export: row.dga_gcs_export,
     dga_last_run_at: row.dga_last_run_at,
   };
 }
@@ -156,6 +158,7 @@ export async function patchPozoDgaConfigService(
     dga_hora_inicio?: string | null | undefined;
     dga_informante_rut?: string | null | undefined;
     dga_max_retry_attempts?: number | undefined;
+    dga_gcs_export?: boolean | undefined;
   },
 ): Promise<PozoDgaConfigPublic> {
   // hora_inicio normalizada a HH:MM:00. DGA slots deben caer en minuto exacto
@@ -199,12 +202,15 @@ export async function applyReviewDecision(input: {
       }
     | undefined;
   admin_note: string;
+  /** Email del admin autenticado que ejecuta la acción (auditoría por slot). */
+  admin_email: string;
 }): Promise<{ ok: boolean }> {
   if (input.action === 'discard') {
     const ok = await markReviewSlotFailedManual({
       site_id: input.site_id,
       ts: input.ts,
       admin_note: input.admin_note,
+      admin_email: input.admin_email,
     });
     if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
     return { ok: true };
@@ -221,6 +227,7 @@ export async function applyReviewDecision(input: {
       input.values.flujo_acumulado == null ? null : Math.trunc(input.values.flujo_acumulado),
     nivel_freatico: input.values.nivel_freatico ?? null,
     admin_note: input.admin_note,
+    admin_email: input.admin_email,
   });
   if (!ok) throw new NotFoundError('Slot no está en requires_review o no existe');
   return { ok: true };
@@ -495,6 +502,7 @@ export async function getDatoDgaDirectoFromEquipo(
   desdeIso: string,
   hastaIso: string,
   bucket: BucketGranularidad = 'hora',
+  orden: 'asc' | 'desc' = 'asc',
 ): Promise<DatoDgaRow[]> {
   const site = await getSiteById(siteId);
   if (!site) throw new NotFoundError('Sitio no encontrado');
@@ -508,28 +516,28 @@ export async function getDatoDgaDirectoFromEquipo(
 
   const obra = pozoConfig?.obra_dga?.trim() || site.descripcion;
 
-  return rawRows
-    .slice()
-    .reverse()
-    .map((raw) => {
-      const mapped = mapHistoricalDashboardRow({ row: raw, site, mappings, pozoConfig });
-      const ts =
-        mapped.timestamp ??
-        (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
-      return {
-        site_id: site.id,
-        obra,
-        ts,
-        fecha: utcToChileFecha(ts),
-        hora: utcToChileHora(ts),
-        caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
-        flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
-        nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
-        // Filas sintetizadas desde equipo (sin pipeline DGA): no tienen estado real.
-        estatus: 'vacio',
-        comprobante: null,
-      } satisfies DatoDgaRow;
-    });
+  // fetchEquipoBucketed devuelve las filas en orden descendente (time DESC).
+  const orderedRows = orden === 'asc' ? rawRows.slice().reverse() : rawRows;
+
+  return orderedRows.map((raw) => {
+    const mapped = mapHistoricalDashboardRow({ row: raw, site, mappings, pozoConfig });
+    const ts =
+      mapped.timestamp ??
+      (typeof raw.time === 'string' ? raw.time : new Date(raw.time).toISOString());
+    return {
+      site_id: site.id,
+      obra,
+      ts,
+      fecha: utcToChileFecha(ts),
+      hora: utcToChileHora(ts),
+      caudal_instantaneo: stringifyNumeric(numericOrNull(mapped.caudal.valor)),
+      flujo_acumulado: stringifyNumeric(numericOrNull(mapped.totalizador.valor)),
+      nivel_freatico: stringifyNumeric(numericOrNull(mapped.nivel_freatico.valor)),
+      // Filas sintetizadas desde equipo (sin pipeline DGA): no tienen estado real.
+      estatus: 'vacio',
+      comprobante: null,
+    } satisfies DatoDgaRow;
+  });
 }
 
 function stringifyNumeric(value: number | null): string | null {

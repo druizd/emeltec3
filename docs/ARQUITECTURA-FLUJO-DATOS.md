@@ -18,7 +18,7 @@ flowchart TB
   end
 
   subgraph WIN["🪟 Windows Server (lado Emeltec)"]
-    INC["data/incoming_logs/<br/>archivos CSV/log (SFTP/proceso)"]
+    INC["data/incoming_logs/<br/>archivos CSV/log<br/>(MTDataProvider 4)"]
     CSVP["csvprocessor (Go, servicio)<br/>extrae id_serial · respaldo raw<br/>transforma → TelemetryRecord"]
     FTPP["ftpprocessor (Go)"]
     SQLITE["SQLite local<br/>(pending / synced, reintentos)"]
@@ -52,7 +52,7 @@ flowchart TB
   end
 
   %% --- Ingesta de telemetría ---
-  MT -->|VPN Emeltec| INC
+  MT -->|"AES-128 (MTDataProvider 4)<br/>sobre VPN Emeltec permanente"| INC
   CSVP -->|gRPC :50051| CSVC
   FTPP -->|gRPC :50061| FTPC
 
@@ -74,7 +74,7 @@ flowchart TB
 ## Recorrido del dato (ingesta)
 
 1. El **MT** (equipo de telemetría / PLC) genera archivos CSV/log; el `id_serial` viaja embebido en el _tagname_ (`151.20.35.10--1.AI23`).
-2. Los archivos llegan al **Windows Server** por la **VPN de Emeltec** (SFTP / proceso externo) a `data/incoming_logs/`.
+2. **MTDataProvider 4** (software de recolección del fabricante) recibe los datos de los equipos MT con **cifrado AES-128 en tres capas + token de sesión única** (alineado a NIS2) y los deposita como CSV/log en `data/incoming_logs/` del **Windows Server**. Toda la transmisión equipo → servidor viaja además por la **VPN de Emeltec, siempre activa** (confirmado con operaciones, 2026-07).
 3. **csvprocessor (Go)** extrae el `id_serial`, respalda el raw por equipo, transforma a `TelemetryRecord`, lo guarda en **SQLite local** (estado `pending`) y lo envía por **gRPC** al consumidor.
 4. **csvconsumer (Rust)** en la VM Linux recibe los lotes por gRPC (`:50051`) e inserta en **TimescaleDB**. (`ftpconsumer` :50061 hace lo análogo para el pipeline FTP.)
 5. Si el envío gRPC falla, el registro queda `pending` en SQLite y un loop lo reintenta; los archivos que fallan 3 veces pasan a `failed_logs`.
@@ -90,6 +90,7 @@ flowchart TB
 
 ## Límites de seguridad (resumen)
 
+- **Tramo dispositivo (campo → Emeltec):** comunicación MT ↔ MTDataProvider 4 cifrada con **AES-128 (tres capas + token de sesión única, alineado a NIS2)**, transportada sobre **VPN permanente**. El fabricante de equipos y software está certificado **ISO/IEC 27001** e **ISO 9001:2015**.
 - **Borde:** Nginx termina TLS y publica solo `*.emeltec.cl`; el resto de los servicios web están atados a `127.0.0.1` detrás del proxy.
 - **Ingesta cross-host:** `csvconsumer`/`ftpconsumer`/`linux-db-api` reciben tráfico desde el Windows Server → se protegen por **firewall/NSG + (pendiente) auth/TLS gRPC** (ver `RUNBOOK-FASE-1`).
 - **Autorización de datos:** todo acceso a telemetría por `id_serial`/sitio pasa por el control multi-tenant (`canAccessSite`).

@@ -26,6 +26,7 @@ import {
   ListReviewQueueParams,
   PatchPozoDgaConfigPayload,
   QueryDatoDgaParams,
+  ReconocerSensorPayload,
   ReviewSlotActionPayload,
   UpsertInformantePayload,
 } from './schema';
@@ -45,7 +46,7 @@ import {
 } from './service';
 import { requestDgaCode } from './twofactor';
 import type { AuthUser } from '../../shared/permissions';
-import { getPozoDgaConfig } from './repo';
+import { getPozoDgaConfig, reconocerSensorDefectuoso } from './repo';
 import { formatRutForDga } from '../../utils/rut';
 
 function getUser(req: Request): AuthUser | undefined {
@@ -57,6 +58,7 @@ const ExportDirectoParams = z.object({
   desde: z.string().datetime({ offset: true }),
   hasta: z.string().datetime({ offset: true }),
   bucket: z.enum(['minuto', 'hora', 'dia', 'semana', 'mes']).default('hora'),
+  orden: z.enum(['asc', 'desc']).default('asc'),
 });
 
 // ============================================================================
@@ -286,9 +288,56 @@ export async function reviewSlotActionHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    await assertSiteAccessById(getUser(req), parsed.data.site_id);
-    const result = await applyReviewDecision(parsed.data);
+    const user = getUser(req);
+    await assertSiteAccessById(user, parsed.data.site_id);
+    const result = await applyReviewDecision({
+      ...parsed.data,
+      admin_email: user?.email ?? 'desconocido',
+    });
     res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * POST /dga/sites/:siteId/reconocer-sensor-defectuoso — marca el totalizador
+ * como defectuoso, crea la incidencia de bitácora y acepta el backlog
+ * retenido solo por anomalías del totalizador. 2FA + Admin/SuperAdmin.
+ */
+export async function reconocerSensorDefectuosoHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const parsed = ReconocerSensorPayload.safeParse({
+      ...req.body,
+      site_id: req.params['siteId'],
+    });
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const user = getUser(req);
+    await assertSiteAccessById(user, parsed.data.site_id);
+    try {
+      const result = await reconocerSensorDefectuoso({
+        site_id: parsed.data.site_id,
+        nota: parsed.data.nota,
+        admin_id: String(user?.id ?? ''),
+        admin_email: user?.email ?? 'desconocido',
+      });
+      res.json(ok(result, { durationMs: elapsedMs(startedAt) }));
+    } catch (err) {
+      if ((err as Error).message === 'SITIO_SIN_TOTALIZADOR') {
+        throw new ValidationError('El sitio no tiene un sensor con rol totalizador configurado.');
+      }
+      if ((err as Error).message === 'SITIO_NO_EXISTE') {
+        throw new ValidationError('El sitio no existe.');
+      }
+      throw err;
+    }
   } catch (err) {
     next(err);
   }
@@ -333,6 +382,7 @@ export async function exportDgaDirectoCsvHandler(
       parsed.data.desde,
       parsed.data.hasta,
       parsed.data.bucket,
+      parsed.data.orden,
     );
     const csv = toCsv(rows);
     const filename = `dga_${parsed.data.site_id}_${parsed.data.desde.slice(0, 10)}_${parsed.data.hasta.slice(0, 10)}.csv`;

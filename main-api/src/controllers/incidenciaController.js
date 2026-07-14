@@ -28,7 +28,8 @@ const SELECT_FIELDS = `
   ut.nombre     AS tecnico_nombre,
   ut.apellido   AS tecnico_apellido,
   uc.nombre     AS creador_nombre,
-  uc.apellido   AS creador_apellido
+  uc.apellido   AS creador_apellido,
+  tec.tecnicos
 `;
 
 const JOIN_CLAUSE = `
@@ -37,7 +38,62 @@ const JOIN_CLAUSE = `
   LEFT JOIN empresa e  ON e.id  = i.empresa_id
   LEFT JOIN usuario ut ON ut.id = i.tecnico_id
   LEFT JOIN usuario uc ON uc.id = i.creado_por
+  LEFT JOIN LATERAL (
+    SELECT COALESCE(
+             json_agg(
+               json_build_object(
+                 'id', u.id,
+                 'nombre', u.nombre,
+                 'apellido', COALESCE(u.apellido, '')
+               ) ORDER BY u.nombre
+             ),
+             '[]'::json
+           ) AS tecnicos
+      FROM incidencia_tecnicos it
+      JOIN usuario u ON u.id = it.usuario_id
+     WHERE it.incidencia_id = i.id
+  ) tec ON true
 `;
+
+/**
+ * Valida el array tecnico_ids: strings únicos, máx 10, y TODOS usuarios
+ * activos del equipo Emeltec (tipo SuperAdmin). Devuelve array normalizado
+ * o lanza objeto {status, error} para responder.
+ */
+async function validarTecnicoIds(raw) {
+  if (raw == null) return [];
+  if (!Array.isArray(raw) || raw.some((t) => typeof t !== 'string' || !t.trim())) {
+    throw { status: 400, error: 'tecnico_ids debe ser un array de ids de usuario' };
+  }
+  const ids = [...new Set(raw.map((t) => t.trim()))];
+  if (ids.length > 10) {
+    throw { status: 400, error: 'Máximo 10 técnicos por incidencia' };
+  }
+  if (ids.length === 0) return [];
+  const { rows } = await pool.query(
+    `SELECT COUNT(*)::int AS n FROM usuario
+      WHERE id = ANY($1) AND tipo = 'SuperAdmin' AND COALESCE(activo, true) = true`,
+    [ids],
+  );
+  if (rows[0].n !== ids.length) {
+    throw {
+      status: 400,
+      error: 'Todos los técnicos deben ser usuarios activos del equipo Emeltec',
+    };
+  }
+  return ids;
+}
+
+/** Reemplaza las asignaciones de la incidencia (dentro de la tx del caller). */
+async function reemplazarTecnicos(client, incidenciaId, tecnicoIds) {
+  await client.query('DELETE FROM incidencia_tecnicos WHERE incidencia_id = $1', [incidenciaId]);
+  for (const uid of tecnicoIds) {
+    await client.query(
+      'INSERT INTO incidencia_tecnicos (incidencia_id, usuario_id) VALUES ($1, $2)',
+      [incidenciaId, uid],
+    );
+  }
+}
 
 exports.listarIncidencias = async (req, res) => {
   const {
@@ -153,8 +209,21 @@ exports.crearIncidencia = async (req, res) => {
     gravedad = 'media',
     estado = 'abierta',
     tecnico_id = null,
+    tecnico_ids = undefined,
     alerta_evento_id = null,
   } = req.body;
+
+  // Multi-técnico: tecnico_ids manda; tecnico_id (legacy) se acepta como
+  // array de uno. La columna única se dual-escribe con el primero.
+  let tecnicosNorm;
+  try {
+    tecnicosNorm = await validarTecnicoIds(
+      tecnico_ids !== undefined ? tecnico_ids : tecnico_id ? [tecnico_id] : [],
+    );
+  } catch (e) {
+    if (e && e.status) return res.status(e.status).json({ ok: false, error: e.error });
+    throw e;
+  }
 
   if (!sitio_id || !empresa_id || !titulo) {
     return res
@@ -214,13 +283,17 @@ exports.crearIncidencia = async (req, res) => {
         categoria,
         gravedad,
         estado,
-        tecnico_id,
+        tecnicosNorm[0] ?? null,
         alerta_evento_id,
         req.user.id,
       ],
     );
 
     const incId = rows[0].id;
+
+    if (tecnicosNorm.length > 0) {
+      await reemplazarTecnicos(client, incId, tecnicosNorm);
+    }
 
     if (alerta_evento_id) {
       await client.query(
@@ -289,6 +362,19 @@ exports.actualizarIncidencia = async (req, res) => {
     updates.push(`${campo} = $${params.length}`);
   }
 
+  // Multi-técnico: reemplaza el set completo + dual-write de tecnico_id.
+  let tecnicosNorm = null;
+  if (req.body.tecnico_ids !== undefined) {
+    try {
+      tecnicosNorm = await validarTecnicoIds(req.body.tecnico_ids);
+    } catch (e) {
+      if (e && e.status) return res.status(e.status).json({ ok: false, error: e.error });
+      throw e;
+    }
+    params.push(tecnicosNorm[0] ?? null);
+    updates.push(`tecnico_id = $${params.length}`);
+  }
+
   if (!updates.length) {
     return res.status(400).json({ ok: false, error: 'Sin campos para actualizar' });
   }
@@ -302,15 +388,31 @@ exports.actualizarIncidencia = async (req, res) => {
   }
 
   params.push(id);
-  const { rows } = await pool.query(
-    `UPDATE incidencias SET ${updates.join(', ')}, updated_at = NOW()
-      WHERE id = $${params.length} RETURNING id`,
-    params,
-  );
+  const client = await pool.connect();
+  let updatedId;
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      `UPDATE incidencias SET ${updates.join(', ')}, updated_at = NOW()
+        WHERE id = $${params.length} RETURNING id`,
+      params,
+    );
+    updatedId = rows[0].id;
+    if (tecnicosNorm !== null) {
+      await reemplazarTecnicos(client, updatedId, tecnicosNorm);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[incidencias] Error actualizando:', err.message);
+    return res.status(500).json({ ok: false, error: 'Error actualizando incidencia' });
+  } finally {
+    client.release();
+  }
 
   const { rows: full } = await pool.query(
     `SELECT ${SELECT_FIELDS} ${JOIN_CLAUSE} WHERE i.id = $1`,
-    [rows[0].id],
+    [updatedId],
   );
   res.json({ ok: true, data: enrich(full[0]) });
 };
@@ -327,12 +429,18 @@ exports.eliminarIncidencia = async (req, res) => {
 };
 
 function enrich(row) {
+  const tecnicos = Array.isArray(row.tecnicos) ? row.tecnicos : [];
+  const nombres = tecnicos.map((t) => `${t.nombre} ${t.apellido || ''}`.trim());
   return {
     ...row,
+    tecnicos,
     codigo: `INC-${String(row.id).padStart(4, '0')}`,
-    tecnico_nombre_completo: row.tecnico_nombre
-      ? `${row.tecnico_nombre} ${row.tecnico_apellido || ''}`.trim()
-      : null,
+    // Compat: si hay array úsalo (todos los nombres); si no, cae al legacy.
+    tecnico_nombre_completo: nombres.length
+      ? nombres.join(', ')
+      : row.tecnico_nombre
+        ? `${row.tecnico_nombre} ${row.tecnico_apellido || ''}`.trim()
+        : null,
     creador_nombre_completo: row.creador_nombre
       ? `${row.creador_nombre} ${row.creador_apellido || ''}`.trim()
       : null,

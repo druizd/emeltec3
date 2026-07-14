@@ -4,10 +4,12 @@ const { protect, authorizeRoles } = require('../middlewares/authMiddleware');
 const { require2fa } = require('../shared/stepUp2fa');
 const c = require('../controllers/alertaController');
 
-const adminRoles = ['SuperAdmin', 'Admin'];
+const adminRoles = ['SuperAdmin', 'Admin', 'Vendedor'];
 // Alarmas: editar (crear/modificar/borrar) solo Admin/Gerente (+ SuperAdmin).
+// Vendedor (equipo Emeltec) opera los sitios demo de la empresa Emeltec con
+// alcance tipo-Admin — el scoping por empresa lo limita a esos sitios.
 // El resto de roles solo puede verlas (según visibilidad).
-const alarmEditorRoles = ['SuperAdmin', 'Admin', 'Gerente'];
+const alarmEditorRoles = ['SuperAdmin', 'Admin', 'Gerente', 'Vendedor'];
 
 router.post('/alertas', protect, authorizeRoles(...alarmEditorRoles), c.crearAlerta);
 router.get('/alertas', protect, c.listarAlertas);

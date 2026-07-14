@@ -39,6 +39,7 @@ export interface PozoDgaConfig {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
+  dga_gcs_export: boolean;
   dga_last_run_at: string | null;
 }
 
@@ -52,6 +53,7 @@ export interface PatchPozoDgaConfigPayload {
   dga_hora_inicio?: string | null;
   dga_informante_rut?: string | null;
   dga_max_retry_attempts?: number;
+  dga_gcs_export?: boolean;
 }
 
 // ============================================================================
@@ -297,12 +299,14 @@ export class DgaService {
     desdeIso: string,
     hastaIso: string,
     bucket: 'minuto' | 'hora' | 'dia' | 'semana' | 'mes' = 'hora',
+    orden: 'asc' | 'desc' = 'asc',
   ): string {
     const qs = new URLSearchParams({
       site_id: siteId,
       desde: desdeIso,
       hasta: hastaIso,
       bucket,
+      orden,
     }).toString();
     return `/api/v2/dga/export-directo.csv?${qs}`;
   }
@@ -333,6 +337,24 @@ export class DgaService {
       .post<ApiResponse<{ ok: true }>>('/api/v2/dga/review-queue/action', payload, {
         headers: this.headers2fa(twoFactorCode),
       })
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Reconoce el totalizador del sitio como defectuoso: marca el sensor
+   * (los slots futuros fluyen con incidencia registrada), crea una
+   * incidencia abierta en la bitácora y acepta el backlog retenido solo
+   * por anomalías del totalizador.
+   */
+  reconocerSensorDefectuoso(
+    siteId: string,
+    nota: string,
+    twoFactorCode: string,
+  ): Observable<{ incidencia_id: number; slots_aceptados: number }> {
+    return this.http
+      .post<
+        ApiResponse<{ incidencia_id: number; slots_aceptados: number }>
+      >(`/api/v2/dga/sites/${siteId}/reconocer-sensor-defectuoso`, { nota }, { headers: this.headers2fa(twoFactorCode) })
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 }

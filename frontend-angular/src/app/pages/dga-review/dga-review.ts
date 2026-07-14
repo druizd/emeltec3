@@ -22,6 +22,25 @@ interface RowEdit {
   note: string;
 }
 
+/**
+ * Etiquetas en español para los códigos de anomalía de validación.
+ * El código crudo (sensor_frozen) es vocabulario de backend; el admin decide
+ * más rápido leyendo la anomalía en su idioma. El detalle técnico completo
+ * (reason) queda disponible como tooltip del badge.
+ */
+const WARNING_LABELS: Record<string, string> = {
+  sensor_known_defective: 'Sensor marcado defectuoso',
+  sensor_frozen: 'Totalizador congelado',
+  totalizator_zero: 'Totalizador en cero',
+  flow_negative: 'Caudal negativo',
+  flow_exceeds_water_right: 'Caudal sobre el derecho',
+  flow_absurd_no_water_right: 'Caudal fuera de rango',
+  caudal_spike: 'Salto de caudal imposible',
+  transform_failed_all_nulls: 'Telemetría sin valores',
+  admin_override: 'Aceptado por admin',
+  admin_discarded: 'Descartado por admin',
+};
+
 @Component({
   selector: 'app-dga-review',
   standalone: true,
@@ -33,8 +52,8 @@ interface RowEdit {
         <div>
           <h1 class="text-h4 font-semibold text-slate-800">Cola de revisión DGA</h1>
           <p class="text-caption text-slate-500">
-            Slots con anomalías detectadas en validación. Requieren decisión admin antes de enviar a
-            SNIA.
+            Mediciones con anomalías detectadas en validación. Requieren decisión admin antes de
+            enviar a SNIA.
           </p>
         </div>
         <button
@@ -85,6 +104,50 @@ interface RowEdit {
         }
       </section>
 
+      <!-- Ayuda -->
+      <details class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
+        <summary
+          class="flex cursor-pointer select-none items-center gap-2 text-body-sm font-semibold"
+        >
+          <span class="material-symbols-outlined text-[18px] text-primary">help</span>
+          ¿Cómo funciona esta cola?
+        </summary>
+        <div class="mt-3 space-y-2 text-caption text-slate-600">
+          <p>
+            Cada fila es una medición que la validación retuvo por una anomalía (columna
+            <strong>Anomalías</strong>) antes de enviarla a la DGA. Nada se envía hasta que un admin
+            decida.
+          </p>
+          <p>
+            Los campos <strong>Caudal, Totalizador y Nivel</strong> son los valores que se
+            declararán a la DGA si aceptas. Vienen pre-cargados con la medición del sensor (o con el
+            valor sugerido por la validación). Puedes corregirlos solo si tienes fundamento, por
+            ejemplo un totalizador congelado cuyo avance real conoces.
+          </p>
+          <ul class="list-disc space-y-1 pl-5">
+            <li>
+              <strong>Aceptar y enviar</strong>: la medición pasa a la cola de envío a SNIA con los
+              valores de los campos.
+            </li>
+            <li>
+              <strong>Descartar</strong>: la medición NO se envía y queda marcada como fallida.
+            </li>
+            <li>
+              <strong>Reconocer sensor defectuoso</strong> (aparece en fallas de totalizador): marca
+              el sensor como defectuoso para que las mediciones futuras NO vuelvan a caer aquí (se
+              reportan con la incidencia registrada), abre una incidencia pendiente en la bitácora
+              del sitio y acepta de una vez las mediciones retenidas por esa falla. Al reemplazar el
+              equipo, quita la marca en la configuración del sensor.
+            </li>
+          </ul>
+          <p>
+            La <strong>nota admin</strong> es obligatoria y queda registrada de forma permanente en
+            la medición junto con <strong>quién ejecutó la acción y cuándo</strong>: es el respaldo
+            auditable de la decisión. Ambas acciones requieren el código 2FA.
+          </p>
+        </div>
+      </details>
+
       <!-- Errores -->
       @if (error()) {
         <div
@@ -103,21 +166,24 @@ interface RowEdit {
           class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center text-emerald-800"
         >
           <span class="material-symbols-outlined text-[24px]">check_circle</span>
-          <p class="mt-1 text-body-sm font-semibold">Sin slots en revisión.</p>
+          <p class="mt-1 text-body-sm font-semibold">Sin mediciones en revisión.</p>
+          <p class="text-caption-xs text-emerald-700">
+            Todas las mediciones pasaron validación y siguen su curso a SNIA.
+          </p>
         </div>
       } @else {
         <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table class="min-w-full text-caption">
-            <thead class="bg-slate-50 text-caption-xs uppercase tracking-wider text-slate-500">
+            <thead class="bg-surface-subtle">
               <tr>
-                <th class="px-3 py-2 text-left">Obra</th>
-                <th class="px-3 py-2 text-left">Slot</th>
-                <th class="px-3 py-2 text-left">Anomalías</th>
-                <th class="px-3 py-2 text-left">Caudal (L/s)</th>
-                <th class="px-3 py-2 text-left">Totalizador (m³)</th>
-                <th class="px-3 py-2 text-left">Nivel (m)</th>
-                <th class="px-3 py-2 text-left">Nota admin</th>
-                <th class="px-3 py-2"></th>
+                <th class="dga-table-header">Obra</th>
+                <th class="dga-table-header">Medición</th>
+                <th class="dga-table-header">Anomalías</th>
+                <th class="dga-table-header">Caudal (L/s)</th>
+                <th class="dga-table-header">Totalizador (m³)</th>
+                <th class="dga-table-header">Nivel (m)</th>
+                <th class="dga-table-header">Nota admin</th>
+                <th class="dga-table-header"></th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -129,19 +195,23 @@ interface RowEdit {
                       {{ s.referencia_informante || s.site_id }}
                     </div>
                   </td>
-                  <td class="px-3 py-2 align-top font-mono text-caption-xs text-slate-600">
-                    {{ s.ts }}
+                  <td class="px-3 py-2 align-top">
+                    <div class="font-mono text-caption text-slate-800">{{ formatTs(s.ts) }}</div>
+                    <div class="text-caption-xs text-slate-400">hora Chile</div>
                   </td>
                   <td class="px-3 py-2 align-top">
-                    <ul class="space-y-0.5">
+                    <ul class="space-y-1">
                       @for (w of s.validation_warnings; track w.code) {
                         <li>
                           <span
-                            class="rounded bg-rose-100 px-1.5 py-0.5 text-caption-xs font-bold text-rose-700"
-                            >{{ w.code }}</span
+                            [title]="w.reason || ''"
+                            class="inline-flex cursor-help items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
                           >
-                          @if (w.suggested !== null) {
-                            <span class="ml-1 text-caption-xs text-slate-500"
+                            <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400"></span>
+                            {{ warningLabel(w.code) }}
+                          </span>
+                          @if (w.suggested !== null && w.suggested !== undefined) {
+                            <span class="ml-1.5 font-mono text-caption-xs text-slate-500"
                               >sugerido: {{ w.suggested }}</span
                             >
                           }
@@ -155,7 +225,8 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).caudal"
                       (input)="setEdit(s, 'caudal', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
+                      [attr.aria-label]="'Caudal a declarar (L/s), medición ' + formatTs(s.ts)"
+                      class="h-8 w-24 rounded-md border border-slate-200 bg-white px-2 font-mono text-caption-xs text-slate-800 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -164,7 +235,8 @@ interface RowEdit {
                       step="1"
                       [value]="edit(s).totalizador"
                       (input)="setEdit(s, 'totalizador', $any($event.target).value)"
-                      class="h-8 w-32 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
+                      [attr.aria-label]="'Totalizador a declarar (m³), medición ' + formatTs(s.ts)"
+                      class="h-8 w-32 rounded-md border border-slate-200 bg-white px-2 font-mono text-caption-xs text-slate-800 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -173,7 +245,10 @@ interface RowEdit {
                       step="0.01"
                       [value]="edit(s).nivel"
                       (input)="setEdit(s, 'nivel', $any($event.target).value)"
-                      class="h-8 w-24 rounded border border-slate-200 bg-white px-2 font-mono text-caption-xs outline-none focus:border-accent/30"
+                      [attr.aria-label]="
+                        'Nivel freático a declarar (m), medición ' + formatTs(s.ts)
+                      "
+                      class="h-8 w-24 rounded-md border border-slate-200 bg-white px-2 font-mono text-caption-xs text-slate-800 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top">
@@ -182,8 +257,9 @@ interface RowEdit {
                       [value]="edit(s).note"
                       (input)="setEdit(s, 'note', $any($event.target).value)"
                       maxlength="500"
-                      placeholder="Razón del cambio…"
-                      class="h-8 w-48 rounded border border-slate-200 bg-white px-2 text-caption-xs outline-none focus:border-accent/30"
+                      placeholder="Motivo de la decisión (queda registrado)"
+                      [attr.aria-label]="'Nota admin, medición ' + formatTs(s.ts)"
+                      class="h-8 w-48 rounded-md border border-slate-200 bg-white px-2 text-caption-xs text-slate-800 outline-none placeholder:text-slate-500 focus:border-accent focus:ring-2 focus:ring-accent/20"
                     />
                   </td>
                   <td class="px-3 py-2 align-top space-y-1">
@@ -191,18 +267,29 @@ interface RowEdit {
                       type="button"
                       (click)="accept(s)"
                       [disabled]="acting() === slotKey(s)"
-                      class="block w-full rounded bg-emerald-600 px-2 py-1 text-caption-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                      class="block w-full rounded-md bg-primary px-2 py-1 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-tint-40 active:scale-[0.98] disabled:opacity-50"
                     >
-                      Aceptar → enviar
+                      {{ acting() === slotKey(s) ? 'Enviando…' : 'Aceptar y enviar' }}
                     </button>
                     <button
                       type="button"
                       (click)="discard(s)"
                       [disabled]="acting() === slotKey(s)"
-                      class="block w-full rounded border border-red-200 bg-white px-2 py-1 text-caption-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      class="block w-full rounded-md border border-red-200 bg-white px-2 py-1 text-caption-xs font-bold text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-200 active:scale-[0.98] disabled:opacity-50"
                     >
                       Descartar
                     </button>
+                    @if (esFallaTotalizador(s)) {
+                      <button
+                        type="button"
+                        (click)="reconocerSensor(s)"
+                        [disabled]="acting() === slotKey(s)"
+                        title="Marca el sensor como defectuoso (las mediciones futuras dejan de caer aquí y quedan con incidencia registrada), crea una incidencia pendiente en la bitácora del sitio y acepta las mediciones retenidas por esta falla."
+                        class="block w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-caption-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200 active:scale-[0.98] disabled:opacity-50"
+                      >
+                        Reconocer sensor defectuoso
+                      </button>
+                    }
                   </td>
                 </tr>
               }
@@ -236,27 +323,81 @@ export class DgaReviewComponent {
     return `${s.site_id}::${s.ts}`;
   }
 
+  warningLabel(code: string): string {
+    return WARNING_LABELS[code] ?? code;
+  }
+
+  /** Formatea el ts UTC del slot como DD/MM/YYYY HH:MM hora de Chile. */
+  private static readonly TS_FORMAT = new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+
+  formatTs(ts: string): string {
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return ts;
+    const p = Object.fromEntries(
+      DgaReviewComponent.TS_FORMAT.formatToParts(d).map((x) => [x.type, x.value]),
+    );
+    return `${p['day']}/${p['month']}/${p['year']} ${p['hour']}:${p['minute']}`;
+  }
+
+  /**
+   * Lectura PURA del edit de un slot (sin efectos). Escribir un signal desde
+   * un binding de template dispara change detection a mitad de render y
+   * produce filas fantasma — la inicialización ocurre en initEdits() al
+   * cargar la lista, nunca aquí.
+   */
   edit(s: DgaReviewSlot): RowEdit {
-    const key = this.slotKey(s);
-    const e = this.edits()[key];
-    if (e) return e;
-    // Inicializa con valores actuales o sugeridos.
+    return this.edits()[this.slotKey(s)] ?? DgaReviewComponent.initialEdit(s);
+  }
+
+  /**
+   * Normaliza al formato que EXIGE el envío a SNIA (Manual Técnico DGA,
+   * mismo contrato que snia-client.ts): caudal y nivel con 2 decimales,
+   * totalizador entero sin decimales. La DB entrega numerics con 3
+   * decimales ("1775.000") — mostrar eso induce a declarar mal.
+   */
+  private static fmtDecimal2(v: string | null | undefined): string {
+    if (v == null || v === '') return '';
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toFixed(2) : '';
+  }
+
+  private static fmtEntero(v: string | number | null | undefined): string {
+    if (v == null || v === '') return '';
+    const n = Number(v);
+    return Number.isFinite(n) ? String(Math.trunc(n)) : '';
+  }
+
+  private static initialEdit(s: DgaReviewSlot): RowEdit {
+    // Valores actuales del slot o sugeridos por la validación, ya en el
+    // formato exacto que se declarará a la DGA.
     const suggestedTot = s.validation_warnings.find(
       (w) => w.code === 'totalizator_zero',
     )?.suggested;
-    const initial: RowEdit = {
-      caudal: s.caudal_instantaneo ?? '',
+    return {
+      caudal: DgaReviewComponent.fmtDecimal2(s.caudal_instantaneo),
       totalizador:
         s.flujo_acumulado != null && s.flujo_acumulado !== ''
-          ? s.flujo_acumulado
-          : suggestedTot != null
-            ? String(Math.trunc(suggestedTot))
-            : '',
-      nivel: s.nivel_freatico ?? '',
+          ? DgaReviewComponent.fmtEntero(s.flujo_acumulado)
+          : DgaReviewComponent.fmtEntero(suggestedTot),
+      nivel: DgaReviewComponent.fmtDecimal2(s.nivel_freatico),
       note: '',
     };
-    this.edits.update((m) => ({ ...m, [key]: initial }));
-    return initial;
+  }
+
+  private initEdits(list: DgaReviewSlot[]): void {
+    const map: Record<string, RowEdit> = {};
+    for (const s of list) {
+      map[this.slotKey(s)] = DgaReviewComponent.initialEdit(s);
+    }
+    this.edits.set(map);
   }
 
   setEdit(s: DgaReviewSlot, field: keyof RowEdit, value: string): void {
@@ -273,6 +414,7 @@ export class DgaReviewComponent {
     this.dga.listReviewQueue().subscribe({
       next: (list) => {
         this.slots.set(list);
+        this.initEdits(list);
         this.loading.set(false);
       },
       error: (err) => {
@@ -347,6 +489,60 @@ export class DgaReviewComponent {
       admin_note: e.note.trim(),
     };
     this.executeAction(s, payload);
+  }
+
+  /** Códigos de anomalía atribuibles al totalizador (mismos que el backend). */
+  private static readonly TOTALIZADOR_CODES = new Set([
+    'sensor_frozen',
+    'sensor_known_defective',
+    'totalizator_zero',
+  ]);
+
+  esFallaTotalizador(s: DgaReviewSlot): boolean {
+    return s.validation_warnings.some((w) =>
+      DgaReviewComponent.TOTALIZADOR_CODES.has(w.code as string),
+    );
+  }
+
+  /**
+   * Reconoce el sensor totalizador del sitio como defectuoso. Usa la nota
+   * admin de la fila como descripción (obligatoria: queda en la marca del
+   * sensor, en la incidencia de bitácora y en los slots aceptados).
+   */
+  reconocerSensor(s: DgaReviewSlot): void {
+    if (!this.requireCode()) return;
+    const nota = this.edit(s).note.trim();
+    if (nota.length < 5) {
+      this.error.set(
+        'Escribe la nota admin (mín. 5 caracteres) — describe la falla o el recambio programado.',
+      );
+      return;
+    }
+    const key = this.slotKey(s);
+    this.acting.set(key);
+    this.error.set('');
+    this.dga.reconocerSensorDefectuoso(s.site_id, nota, this.twoFactorCode()).subscribe({
+      next: (r) => {
+        this.twoFactorCode.set('');
+        this.acting.set('');
+        this.codeMessage.set(
+          `Sensor reconocido: ${r.slots_aceptados} medición(es) aceptada(s) y enviándose; ` +
+            `incidencia INC-${String(r.incidencia_id).padStart(4, '0')} abierta en la bitácora del sitio. ` +
+            `Al reemplazar el equipo, quita la marca en la configuración del sensor.`,
+        );
+        this.reload();
+      },
+      error: (err) => {
+        this.acting.set('');
+        const code = err?.error?.error?.code;
+        if (code === 'DGA_2FA_INVALID' || code === 'DGA_2FA_REQUIRED') {
+          this.error.set('Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.');
+          this.twoFactorCode.set('');
+        } else {
+          this.error.set(this.friendlyError(err, 'No se pudo reconocer el sensor.'));
+        }
+      },
+    });
   }
 
   discard(s: DgaReviewSlot): void {

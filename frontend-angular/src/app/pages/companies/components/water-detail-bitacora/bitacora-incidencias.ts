@@ -9,7 +9,6 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { User } from '@emeltec/shared';
 import {
   CATEGORIA_LABELS,
   CreateIncidenciaPayload,
@@ -23,7 +22,7 @@ import {
   IncidenciaService,
   ORIGEN_LABELS,
 } from '../../../../services/incidencia.service';
-import { UserService } from '../../../../services/user.service';
+import { UserService, type Tecnico } from '../../../../services/user.service';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 import {
@@ -38,7 +37,7 @@ interface DraftIncidencia {
   categoria: IncidenciaCategoria;
   gravedad: IncidenciaGravedad;
   estado: IncidenciaEstado;
-  tecnico_id: string | null;
+  tecnico_ids: string[];
   alerta_evento_id: number | null;
 }
 
@@ -61,7 +60,7 @@ function emptyDraft(): DraftIncidencia {
     categoria: 'otro',
     gravedad: 'media',
     estado: 'abierta',
-    tecnico_id: null,
+    tecnico_ids: [],
     alerta_evento_id: null,
   };
 }
@@ -426,17 +425,25 @@ function emptyDraft(): DraftIncidencia {
         <div>
           <label
             class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-            >Técnico asignado</label
+            >Técnicos asignados</label
           >
-          <select
-            [(ngModel)]="draft.tecnico_id"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
-          >
-            <option [ngValue]="null">Sin asignar</option>
-            @for (u of usuariosEmpresa(); track u.id) {
-              <option [ngValue]="u.id">{{ u.nombre }} {{ u.apellido }}</option>
+          <div class="flex flex-wrap gap-1.5">
+            @for (t of tecnicos(); track t.id) {
+              <button
+                type="button"
+                (click)="toggleTecnico(draft, t.id)"
+                [attr.aria-pressed]="tecnicoSeleccionado(draft, t.id)"
+                [class]="tecnicoChipClass(draft, t.id)"
+              >
+                @if (tecnicoSeleccionado(draft, t.id)) {
+                  <span class="material-symbols-outlined text-[13px]">check</span>
+                }
+                {{ t.nombre }} {{ t.apellido }}
+              </button>
+            } @empty {
+              <span class="text-caption-xs text-slate-400">Sin técnicos disponibles</span>
             }
-          </select>
+          </div>
         </div>
 
         @if (isNew) {
@@ -479,7 +486,8 @@ export class BitacoraIncidenciasComponent {
   readonly mostrandoNueva = signal(false);
   readonly expandedId = signal<number | null>(null);
   readonly drafts = signal<Record<number, DraftIncidencia>>({});
-  readonly usuariosEmpresa = signal<User[]>([]);
+  /** Técnicos asignables: equipo Emeltec (SuperAdmin), no usuarios del cliente. */
+  readonly tecnicos = signal<Tecnico[]>([]);
 
   // Confirmación con modal del proyecto (reemplaza confirm() nativo).
   readonly confirmData = signal<ConfirmDialogData | null>(null);
@@ -523,10 +531,7 @@ export class BitacoraIncidenciasComponent {
       const sid = this.sitioId();
       if (sid) this.recargar();
     });
-    effect(() => {
-      const eid = this.empresaId();
-      if (eid) this.cargarUsuarios(eid);
-    });
+    this.cargarTecnicos();
   }
 
   private recargar(): void {
@@ -546,10 +551,28 @@ export class BitacoraIncidenciasComponent {
     });
   }
 
-  private cargarUsuarios(empresaId: string): void {
-    this.userService.getUsers({ empresa_id: empresaId }).subscribe({
+  tecnicoSeleccionado(d: DraftIncidencia, id: string): boolean {
+    return d.tecnico_ids.includes(id);
+  }
+
+  toggleTecnico(d: DraftIncidencia, id: string): void {
+    d.tecnico_ids = this.tecnicoSeleccionado(d, id)
+      ? d.tecnico_ids.filter((x) => x !== id)
+      : [...d.tecnico_ids, id];
+  }
+
+  tecnicoChipClass(d: DraftIncidencia, id: string): string {
+    const base =
+      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-caption-xs font-semibold transition-colors ';
+    return this.tecnicoSeleccionado(d, id)
+      ? base + 'border-primary-tint-35 bg-primary-tint-14 text-primary-container'
+      : base + 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50';
+  }
+
+  private cargarTecnicos(): void {
+    this.userService.getTecnicos().subscribe({
       next: (res) => {
-        if (res.ok) this.usuariosEmpresa.set(res.data);
+        if (res.ok) this.tecnicos.set(res.data);
       },
     });
   }
@@ -588,7 +611,7 @@ export class BitacoraIncidenciasComponent {
         categoria: inc.categoria,
         gravedad: inc.gravedad,
         estado: inc.estado,
-        tecnico_id: inc.tecnico_id,
+        tecnico_ids: (inc.tecnicos ?? []).map((t) => t.id),
         alerta_evento_id: inc.alerta_evento_id,
       },
     }));
@@ -624,7 +647,7 @@ export class BitacoraIncidenciasComponent {
       categoria: this.nuevaDraft.categoria,
       gravedad: this.nuevaDraft.gravedad,
       estado: this.nuevaDraft.estado,
-      tecnico_id: this.nuevaDraft.tecnico_id || null,
+      tecnico_ids: this.nuevaDraft.tecnico_ids,
       alerta_evento_id: this.nuevaDraft.alerta_evento_id || null,
     };
     this.saving.set(true);
@@ -671,7 +694,7 @@ export class BitacoraIncidenciasComponent {
         categoria: draft.categoria,
         gravedad: draft.gravedad,
         estado: draft.estado,
-        tecnico_id: draft.tecnico_id || null,
+        tecnico_ids: draft.tecnico_ids,
       })
       .subscribe({
         next: (updated) => {

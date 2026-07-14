@@ -9,7 +9,8 @@
     (activeTabChange)="setActiveTab($event)"
     (siteSelected)="openSite($event)"
   />
-} @else if (auth.isAdmin()) {
+} @else if (auth.isAdmin() || auth.isVendedor()) {
+  <!-- Vendedor: misma vista que Admin — su alcance es la empresa Emeltec (demos). -->
   <app-companies-admin-view
     [activeTab]="activeTab()"
     [selectedSubCompany]="selectedSubCompany()"

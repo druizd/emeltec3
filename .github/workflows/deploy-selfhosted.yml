@@ -1,9 +1,10 @@
 name: Deploy self-hosted
 
-# Deploy a producción en push a main usando el runner self-hosted en la VM Azure.
-# El runner ejecuta scripts/deploy-production.sh directamente sobre el dir
-# productivo (sin SSH). El script preserva los .env del VM, aplica migraciones
-# SQL y rebuilda los servicios docker compose.
+# Deploy a producción en la VM Azure usando el runner self-hosted. Se encadena a
+# "Build and publish images": cuando ese workflow termina OK en main, este corre
+# scripts/deploy-production.sh, que hace `docker compose pull` + `up --no-build`.
+# El build pesado ya ocurrió en GitHub-hosted, así que la VM NO buildea y no se
+# queda sin RAM (era la causa del cuelgue histórico).
 #
 # EMT-H12: el job declara `environment: production`, que tiene "required
 # reviewers" configurado en GitHub → cada deploy PAUSA hasta aprobación manual.
@@ -11,17 +12,27 @@ name: Deploy self-hosted
 # deploys corran a la vez sobre la misma VM/BD.
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: ['Build and publish images']
+    types:
+      - completed
   workflow_dispatch:
 
 concurrency:
   group: production-deploy
   cancel-in-progress: false
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   deploy:
+    # Solo si el build fue exitoso (o si se lanza a mano).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
     runs-on: [self-hosted, Linux]
     environment: production
 
@@ -33,6 +44,13 @@ jobs:
     steps:
       - name: Checkout workflow code
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Log in to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run deploy script
         run: bash scripts/deploy-production.sh

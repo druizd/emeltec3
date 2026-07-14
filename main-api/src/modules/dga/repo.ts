@@ -6,7 +6,7 @@
  *   - dato_dga: PK (site_id, ts). Sin id_dgauser.
  *   - dga_send_audit: PK por id, FK lógica (site_id, ts).
  */
-import { query } from '../../config/dbHelpers';
+import { query, transaction } from '../../config/dbHelpers';
 import type { Periodicidad } from './schema';
 
 export type DgaTransport = 'off' | 'shadow' | 'rest';
@@ -91,6 +91,7 @@ export interface PozoDgaConfigRow {
   dga_hora_inicio: string | null;
   dga_informante_rut: string | null;
   dga_max_retry_attempts: number;
+  dga_gcs_export: boolean;
   dga_last_run_at: string | null;
 }
 
@@ -100,7 +101,7 @@ const POZO_DGA_COLS =
   "to_char(dga_fecha_inicio,'YYYY-MM-DD') AS dga_fecha_inicio, " +
   "to_char(dga_hora_inicio,'HH24:MI:SS') AS dga_hora_inicio, " +
   'dga_periodicidad, dga_informante_rut, dga_max_retry_attempts, ' +
-  'dga_last_run_at';
+  'dga_gcs_export, dga_last_run_at';
 
 export async function getPozoDgaConfig(siteId: string): Promise<PozoDgaConfigRow | null> {
   const r = await query<PozoDgaConfigRow>(
@@ -151,6 +152,7 @@ export async function patchPozoDgaConfig(
     dga_hora_inicio?: string | null | undefined;
     dga_informante_rut?: string | null | undefined;
     dga_max_retry_attempts?: number | undefined;
+    dga_gcs_export?: boolean | undefined;
   },
 ): Promise<PozoDgaConfigRow | null> {
   const sets: string[] = [];
@@ -175,6 +177,7 @@ export async function patchPozoDgaConfig(
     addSet('dga_informante_rut', input.dga_informante_rut);
   if (input.dga_max_retry_attempts !== undefined)
     addSet('dga_max_retry_attempts', input.dga_max_retry_attempts);
+  if (input.dga_gcs_export !== undefined) addSet('dga_gcs_export', input.dga_gcs_export);
 
   if (sets.length === 0) return getPozoDgaConfig(siteId);
 
@@ -363,6 +366,11 @@ export async function transitionSlotToPendiente(input: {
   caudal_instantaneo: number | null;
   flujo_acumulado: number | null;
   nivel_freatico: number | null;
+  /**
+   * Warnings informativos que no bloquearon el envío (ej. sensor marcado
+   * defectuoso). Se persisten como incidencia auditable del slot.
+   */
+  validation_warnings?: ValidationWarning[];
 }): Promise<boolean> {
   const r = await query(
     `UPDATE dato_dga
@@ -370,7 +378,7 @@ export async function transitionSlotToPendiente(input: {
             caudal_instantaneo = $3,
             flujo_acumulado    = $4,
             nivel_freatico     = $5,
-            validation_warnings = '[]'::jsonb,
+            validation_warnings = $6::jsonb,
             fail_reason        = NULL
       WHERE site_id = $1
         AND ts      = $2
@@ -381,6 +389,7 @@ export async function transitionSlotToPendiente(input: {
       input.caudal_instantaneo,
       input.flujo_acumulado,
       input.nivel_freatico,
+      JSON.stringify(input.validation_warnings ?? []),
     ],
     { name: 'dga__slot_to_pendiente' },
   );
@@ -658,6 +667,113 @@ export async function upsertDatoDgaFromLegacy(input: {
 }
 
 // ============================================================================
+// Reconocer sensor defectuoso (marca + incidencia + backlog, una transacción)
+// ============================================================================
+
+/**
+ * Warnings atribuibles al totalizador defectuoso. Un slot retenido SOLO por
+ * estos códigos puede aceptarse en bloque al reconocer el sensor: su valor es
+ * la lectura real del instrumento, lo mismo que produciría el bypass de
+ * validación con la marca activa.
+ */
+const TOTALIZADOR_WARNING_CODES = ['sensor_frozen', 'sensor_known_defective', 'totalizator_zero'];
+
+export interface ReconocerSensorResult {
+  incidencia_id: number;
+  slots_aceptados: number;
+}
+
+/**
+ * Reconoce el totalizador de un sitio como defectuoso:
+ *  1. Marca sensor_known_defective=true (+ defect_description) en el reg_map
+ *     del rol totalizador → slots futuros fluyen con incidencia registrada.
+ *  2. Crea una incidencia abierta en la bitácora del sitio (categoría sensor)
+ *     → el recambio queda pendiente y trazable. Cerrarla NO quita la marca
+ *     (decisión explícita: cerrar una incidencia no debe cambiar config de
+ *     validación en silencio; quitar la marca es acción manual del admin).
+ *  3. Acepta el backlog de requires_review del sitio retenido SOLO por
+ *     anomalías del totalizador, registrando admin_override con autor.
+ */
+export async function reconocerSensorDefectuoso(input: {
+  site_id: string;
+  nota: string;
+  admin_id: string;
+  admin_email: string;
+}): Promise<ReconocerSensorResult> {
+  return transaction(async (client) => {
+    const marked = await client.query(
+      `UPDATE reg_map
+          SET parametros = COALESCE(parametros, '{}'::jsonb)
+                           || jsonb_build_object(
+                                'sensor_known_defective', true,
+                                'defect_description', $2::text
+                              )
+        WHERE sitio_id = $1 AND rol_dashboard = 'totalizador'`,
+      [input.site_id, input.nota],
+    );
+    if ((marked.rowCount ?? 0) === 0) {
+      throw new Error('SITIO_SIN_TOTALIZADOR');
+    }
+
+    const { rows: sitios } = await client.query(
+      `SELECT empresa_id, sub_empresa_id, descripcion FROM sitio WHERE id = $1`,
+      [input.site_id],
+    );
+    if (!sitios.length) throw new Error('SITIO_NO_EXISTE');
+    const sitio = sitios[0];
+
+    const { rows: inc } = await client.query(
+      `INSERT INTO incidencias
+         (sitio_id, empresa_id, sub_empresa_id, titulo, descripcion,
+          origen, categoria, gravedad, estado, creado_por)
+       VALUES ($1, $2, $3, $4, $5, 'remota', 'sensor', 'media', 'abierta', $6)
+       RETURNING id`,
+      [
+        input.site_id,
+        sitio.empresa_id,
+        sitio.sub_empresa_id,
+        `Totalizador defectuoso — ${sitio.descripcion ?? input.site_id}`,
+        input.nota,
+        input.admin_id,
+      ],
+    );
+
+    const accepted = await client.query(
+      `UPDATE dato_dga
+          SET estatus             = 'pendiente',
+              fail_reason         = NULL,
+              next_retry_at       = NULL,
+              intentos            = 0,
+              validation_warnings = validation_warnings
+                                    || jsonb_build_array(jsonb_build_object(
+                                         'code', 'admin_override',
+                                         'reason', $2::text,
+                                         'by', $3::text,
+                                         'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                       ))
+        WHERE site_id = $1
+          AND estatus = 'requires_review'
+          AND NOT EXISTS (
+                SELECT 1
+                  FROM jsonb_array_elements(validation_warnings) AS w
+                 WHERE NOT (w->>'code' = ANY($4::text[]))
+              )`,
+      [
+        input.site_id,
+        `Sensor reconocido defectuoso: ${input.nota}`,
+        input.admin_email,
+        TOTALIZADOR_WARNING_CODES,
+      ],
+    );
+
+    return {
+      incidencia_id: inc[0].id as number,
+      slots_aceptados: accepted.rowCount ?? 0,
+    };
+  });
+}
+
+// ============================================================================
 // Review queue
 // ============================================================================
 
@@ -716,6 +832,7 @@ export async function acceptReviewSlotWithValues(input: {
   flujo_acumulado: number | null;
   nivel_freatico: number | null;
   admin_note: string;
+  admin_email: string;
 }): Promise<boolean> {
   const r = await query(
     `UPDATE dato_dga
@@ -727,6 +844,7 @@ export async function acceptReviewSlotWithValues(input: {
                                   || jsonb_build_array(jsonb_build_object(
                                        'code', 'admin_override',
                                        'reason', $6::text,
+                                       'by', $7::text,
                                        'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
                                      )),
             fail_reason         = NULL,
@@ -742,6 +860,7 @@ export async function acceptReviewSlotWithValues(input: {
       input.flujo_acumulado,
       input.nivel_freatico,
       input.admin_note,
+      input.admin_email,
     ],
     { name: 'dga__accept_review_slot' },
   );
@@ -752,6 +871,7 @@ export async function markReviewSlotFailedManual(input: {
   site_id: string;
   ts: string;
   admin_note: string;
+  admin_email: string;
 }): Promise<boolean> {
   const r = await query(
     `UPDATE dato_dga
@@ -761,12 +881,13 @@ export async function markReviewSlotFailedManual(input: {
                                   || jsonb_build_array(jsonb_build_object(
                                        'code', 'admin_discarded',
                                        'reason', $3::text,
+                                       'by', $4::text,
                                        'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
                                      ))
       WHERE site_id = $1
         AND ts      = $2
         AND estatus = 'requires_review'`,
-    [input.site_id, input.ts, input.admin_note],
+    [input.site_id, input.ts, input.admin_note, input.admin_email],
     { name: 'dga__mark_review_failed' },
   );
   return (r.rowCount ?? 0) > 0;

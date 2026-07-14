@@ -87,6 +87,15 @@ sbom.json
 trivy-report.json
 gitleaks-report.json
 
+# Secrets / credenciales (GCS service accounts, claves) — NUNCA commitear
+.secrets/
+**/.secrets/
+*.simulated.json
+*service-account*.json
+gcs-sa*.json
+sa-*-emeltec-*.json
+*-mdw-bucket-*.json
+
 # Unlighthouse
 unlighthouse/
 **/unlighthouse/

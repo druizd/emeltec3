@@ -19,7 +19,10 @@ export interface IncidenciaRow {
   categoria: IncidenciaCategoria;
   gravedad: IncidenciaGravedad;
   estado: IncidenciaEstado;
+  /** @deprecated usar `tecnicos` (multi-técnico). Dual-write con el primero. */
   tecnico_id: string | null;
+  /** Técnicos asignados (equipo Emeltec). */
+  tecnicos: IncidenciaTecnico[];
   alerta_evento_id: number | null;
   creado_por: string | null;
   created_at: string;
@@ -29,6 +32,12 @@ export interface IncidenciaRow {
   empresa_nombre?: string | null;
   tecnico_nombre_completo?: string | null;
   creador_nombre_completo?: string | null;
+}
+
+export interface IncidenciaTecnico {
+  id: string;
+  nombre: string;
+  apellido: string;
 }
 
 export interface IncidenciaListFilters {
@@ -54,22 +63,15 @@ export interface CreateIncidenciaPayload {
   categoria?: IncidenciaCategoria;
   gravedad?: IncidenciaGravedad;
   estado?: IncidenciaEstado;
-  tecnico_id?: string | null;
+  tecnico_ids?: string[];
   alerta_evento_id?: number | null;
 }
 
 export type UpdateIncidenciaPayload = Partial<
   Pick<
     IncidenciaRow,
-    | 'titulo'
-    | 'descripcion'
-    | 'origen'
-    | 'categoria'
-    | 'gravedad'
-    | 'estado'
-    | 'tecnico_id'
-    | 'alerta_evento_id'
-  >
+    'titulo' | 'descripcion' | 'origen' | 'categoria' | 'gravedad' | 'estado' | 'alerta_evento_id'
+  > & { tecnico_ids: string[] }
 >;
 
 interface ApiEnvelope<T> {

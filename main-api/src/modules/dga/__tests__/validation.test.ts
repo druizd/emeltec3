@@ -26,6 +26,7 @@ function makePozoDga(overrides: Partial<PozoDgaConfigRow> = {}): PozoDgaConfigRo
     dga_hora_inicio: '00:00:00',
     dga_informante_rut: '12345678-9',
     dga_max_retry_attempts: 5,
+    dga_gcs_export: false,
     dga_last_run_at: null,
     ...overrides,
   };
@@ -65,8 +66,10 @@ describe('validateSlot — happy path', () => {
   });
 });
 
-describe('validateSlot — regla 1: sensor_known_defective', () => {
-  it('parametro true → warning con sugerencia lastValid', () => {
+describe('validateSlot — regla 1: sensor_known_defective (informativa, no bloquea)', () => {
+  it('parametro true → warning informativo con sugerencia lastValid, slot SIGUE enviable', () => {
+    // Sensor marcado defectuoso por admin (recambio programado): la medición
+    // se reporta igual (obligación DGA), el warning queda como incidencia.
     const res = validateSlot(
       { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
       makeCtx({
@@ -74,11 +77,11 @@ describe('validateSlot — regla 1: sensor_known_defective', () => {
         lastValidTotalizador: 950,
       }),
     );
-    expect(res.ok).toBe(false);
+    expect(res.ok).toBe(true);
     expect(res.warnings[0]?.code).toBe('sensor_known_defective');
     expect(res.warnings[0]?.suggested).toBe(950);
     expect(res.warnings[0]?.reason).toBe('sensor bug');
-    expect(res.failReason).toBe('sensor_known_defective');
+    expect(res.failReason).toBeNull();
   });
 
   it('parametro true sin defect_description → usa default reason', () => {
@@ -97,6 +100,68 @@ describe('validateSlot — regla 1: sensor_known_defective', () => {
     );
     expect(res.warnings).toHaveLength(1);
     expect(res.warnings[0]?.code).toBe('sensor_known_defective');
+    expect(res.ok).toBe(true);
+  });
+
+  it('defective + sensor_frozen → ambos informativos, slot enviable con incidencias', () => {
+    // Caso pozo 11 CCU: totalizador pegado esperando recambio. Se reporta la
+    // lectura del instrumento; ambas anomalías quedan anotadas.
+    const res = validateSlot(
+      { caudal: 56.9, totalizador: 6053530, nivelFreatico: 63.7 },
+      makeCtx({
+        totalizadorParams: { sensor_known_defective: true, frozen_window_n: 4 },
+        priorReadings: [
+          { ts: '2026-07-06T22:00:00Z', caudal: 56.9, totalizador: 6053530 },
+          { ts: '2026-07-06T21:00:00Z', caudal: 56.9, totalizador: 6053530 },
+          { ts: '2026-07-06T20:00:00Z', caudal: 56.9, totalizador: 6053530 },
+        ],
+      }),
+    );
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('sensor_known_defective');
+    expect(codes).toContain('sensor_frozen');
+    expect(res.ok).toBe(true);
+    expect(res.failReason).toBeNull();
+  });
+
+  it('defective NO exime anomalías ajenas al totalizador: flow_negative sigue bloqueando', () => {
+    const res = validateSlot(
+      { caudal: -5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({ totalizadorParams: { sensor_known_defective: true } }),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.failReason).toBe('flow_negative');
+    const codes = res.warnings.map((w) => w.code);
+    expect(codes).toContain('sensor_known_defective');
+    expect(codes).toContain('flow_negative');
+  });
+
+  it('defective NO exime flow_exceeds_water_right', () => {
+    const res = validateSlot(
+      { caudal: 999, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { sensor_known_defective: true },
+        pozoDga: makePozoDga({ dga_caudal_max_lps: '10', dga_caudal_tolerance_pct: '0' }),
+      }),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.failReason).toBe('flow_exceeds_water_right');
+  });
+
+  it('sensor_frozen SIN marca defective → sigue bloqueando (sin cambio)', () => {
+    const res = validateSlot(
+      { caudal: 5, totalizador: 1000, nivelFreatico: 10 },
+      makeCtx({
+        totalizadorParams: { frozen_window_n: 4 },
+        priorReadings: [
+          { ts: '2026-06-01T02:00:00Z', caudal: 5, totalizador: 1000 },
+          { ts: '2026-06-01T01:00:00Z', caudal: 5, totalizador: 1000 },
+          { ts: '2026-06-01T00:00:00Z', caudal: 5, totalizador: 1000 },
+        ],
+      }),
+    );
+    expect(res.ok).toBe(false);
+    expect(res.failReason).toBe('sensor_frozen');
   });
 });
 
@@ -255,7 +320,7 @@ describe('validateSlot — regla flow_negative', () => {
 });
 
 describe('validateSlot — combinación múltiple', () => {
-  it('múltiples warnings → failReason es el primero detectado', () => {
+  it('múltiples warnings → failReason es el primer BLOQUEANTE detectado', () => {
     const res = validateSlot(
       { caudal: 999, totalizador: 0, nivelFreatico: 1 },
       makeCtx({
@@ -264,9 +329,23 @@ describe('validateSlot — combinación múltiple', () => {
         lastValidTotalizador: 500,
       }),
     );
-    // Orden en validation.ts: sensor → totalizator_zero (bloqueado por sensor) → flow.
-    expect(res.failReason).toBe('sensor_known_defective');
+    // sensor_known_defective es informativo (no bloquea); el primer bloqueante
+    // es flow_exceeds_water_right.
+    expect(res.failReason).toBe('flow_exceeds_water_right');
+    expect(res.ok).toBe(false);
     expect(res.warnings.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('sin marca defective, múltiples warnings → failReason es el primero detectado', () => {
+    const res = validateSlot(
+      { caudal: 999, totalizador: 0, nivelFreatico: 1 },
+      makeCtx({
+        pozoDga: makePozoDga({ dga_caudal_max_lps: '10', dga_caudal_tolerance_pct: '0' }),
+        lastValidTotalizador: 500,
+      }),
+    );
+    expect(res.failReason).toBe('totalizator_zero');
+    expect(res.ok).toBe(false);
   });
 });
 

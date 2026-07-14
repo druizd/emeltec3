@@ -59,6 +59,8 @@ export const PatchPozoDgaConfigPayload = z
       .optional(),
     dga_informante_rut: NullableRutPayload,
     dga_max_retry_attempts: z.number().int().min(1).max(30).optional(),
+    // Solicitado por CCU_Central: habilita el export de este sitio a GCS.
+    dga_gcs_export: z.boolean().optional(),
   })
   .refine((v) => Object.values(v).some((x) => x !== undefined), {
     message: 'Debe especificarse al menos un campo a actualizar',
@@ -74,6 +76,15 @@ export const ListReviewQueueParams = z.object({
   limit: z.coerce.number().int().positive().max(500).optional(),
 });
 export type ListReviewQueueParams = z.infer<typeof ListReviewQueueParams>;
+
+export const ReconocerSensorPayload = z.object({
+  site_id: z.string().trim().min(1).max(10),
+  /** Descripción de la falla / recambio programado. Queda en la marca del
+   *  sensor, en la incidencia de bitácora y en el admin_override de los
+   *  slots aceptados en bloque. */
+  nota: z.string().trim().min(5).max(500),
+});
+export type ReconocerSensorPayload = z.infer<typeof ReconocerSensorPayload>;
 
 export const ReviewSlotActionPayload = z.object({
   site_id: z.string().trim().min(1).max(10),

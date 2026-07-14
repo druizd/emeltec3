@@ -233,22 +233,6 @@ export function siteMatchesModule(
   return siteTypeMatchesModule(site.tipo_sitio, moduleKey);
 }
 
-function tapRouteSegmentForSite(site: SiteRecord): string | null {
-  const candidates = [site.descripcion, site.ubicacion, site.id_serial];
-
-  for (const value of candidates) {
-    const match = value?.match(/\btap\s*[-_:#]?\s*(\d{1,2})\b/i);
-    if (!match) continue;
-
-    const tapNumber = Number(match[1]);
-    if (Number.isInteger(tapNumber) && tapNumber > 0) {
-      return `TAP-${tapNumber}`;
-    }
-  }
-
-  return null;
-}
-
 export function dashboardRouteForSite(site: SiteRecord): string[] {
   const type = normalizeSiteType(site.tipo_sitio);
   if (type === 'camara_frio') {

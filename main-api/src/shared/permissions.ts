@@ -4,7 +4,19 @@
  */
 import { ForbiddenError } from './errors';
 
-export type UserTipo = 'SuperAdmin' | 'Admin' | 'Gerente' | 'Cliente' | 'Empresa' | 'SubEmpresa';
+export type UserTipo =
+  | 'SuperAdmin'
+  | 'Admin'
+  | 'Gerente'
+  | 'Cliente'
+  | 'Empresa'
+  | 'SubEmpresa'
+  /**
+   * Equipo comercial Emeltec. Opera con alcance tipo-Admin pero SIEMPRE
+   * asociado a la empresa interna Emeltec (demos + Maletas Piloto). Sin
+   * acceso a administración de plataforma, DGA admin ni gestión de usuarios.
+   */
+  | 'Vendedor';
 
 export interface AuthUser {
   id?: string | number;
@@ -40,7 +52,8 @@ export function canReadSite(
 ): boolean {
   if (!user || !site) return false;
   if (user.tipo === 'SuperAdmin') return true;
-  if (user.tipo === 'Admin' || user.tipo === 'Empresa') return user.empresa_id === site.empresa_id;
+  if (user.tipo === 'Admin' || user.tipo === 'Empresa' || user.tipo === 'Vendedor')
+    return user.empresa_id === site.empresa_id;
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa') {
     if (user.empresa_id !== site.empresa_id) return false;
     // Sin sub-empresa asignada → acceso a toda la empresa (decisión jun-2026,
@@ -71,7 +84,7 @@ export interface TenantScope {
 export function scopeByTenant(user: AuthUser | undefined): TenantScope {
   if (!user) return { empresaIds: [], subEmpresaIds: [] };
   if (user.tipo === 'SuperAdmin') return { empresaIds: null, subEmpresaIds: null };
-  if (user.tipo === 'Admin' || user.tipo === 'Empresa') {
+  if (user.tipo === 'Admin' || user.tipo === 'Empresa' || user.tipo === 'Vendedor') {
     return {
       empresaIds: user.empresa_id ? [user.empresa_id] : [],
       subEmpresaIds: null,

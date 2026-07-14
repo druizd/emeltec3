@@ -97,8 +97,15 @@ while IFS= read -r cname; do
   fi
 done < <(grep -E '^[[:space:]]*container_name:' "$COMPOSE_FILE" | sed -E 's/.*container_name:[[:space:]]*//; s/["'"'"']//g; s/\r//')
 
-echo "Building and restarting services..."
-docker compose -f "$COMPOSE_FILE" up -d --build --remove-orphans
+# Las imágenes de aplicación se construyen en CI (GitHub-hosted) y se publican en
+# GHCR; aquí solo se descargan. NO se buildea en la VM (evita saturar la RAM).
+# Requiere `docker login ghcr.io` previo: el workflow self-hosted lo hace con
+# GITHUB_TOKEN; para un deploy manual por SSH, autenticar la VM una vez.
+echo "Pulling application images from registry..."
+docker compose -f "$COMPOSE_FILE" pull
+
+echo "Restarting services (no build)..."
+docker compose -f "$COMPOSE_FILE" up -d --no-build --remove-orphans
 
 echo "Current containers:"
 docker compose -f "$COMPOSE_FILE" ps

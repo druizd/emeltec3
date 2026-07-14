@@ -14,7 +14,7 @@ const logoAbs = path.resolve(
   'emeltec-logo.png',
 );
 const LOGO_FILE_URL = `file:///${logoAbs.replace(/\\/g, '/')}`;
-process.env.FRONTEND_URL = 'https://cloud.emeltec.cl/login';
+process.env.FRONTEND_URL = 'https://nuevacloud.emeltec.cl/login';
 
 const { _renderHealthDigestHtml, _renderHealthEventHtml } = require('./src/services/emailService');
 

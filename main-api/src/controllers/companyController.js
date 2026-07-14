@@ -656,7 +656,7 @@ exports.getHierarchyTree = async (req, res, next) => {
       companies = compRes.rows;
       subCompanies = subRes.rows;
       sites = siteRes.rows;
-    } else if (tipo === 'Admin') {
+    } else if (tipo === 'Admin' || tipo === 'Vendedor') {
       if (!empresa_id) {
         return res.json({ ok: true, data: [] });
       }
@@ -2861,7 +2861,7 @@ exports.listOperationalContacts = async (req, res, next) => {
         params.push(querySubEmpresaId);
         conditions.push(`co.sub_empresa_id = $${params.length}`);
       }
-    } else if (tipo === 'Admin') {
+    } else if (tipo === 'Admin' || tipo === 'Vendedor') {
       params.push(userEmpresaId);
       conditions.push(`co.empresa_id = $${params.length}`);
       if (querySubEmpresaId) {
