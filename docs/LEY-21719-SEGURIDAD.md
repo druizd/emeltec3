@@ -113,15 +113,15 @@ Definición amplia: incluye situación socioeconómica, salud, biometría, etc. 
 
 ## Sanciones vinculadas a seguridad (Arts. 34 bis/ter/quáter, 35)
 
-| Infracción | Categoría | Multa máx. |
-| --- | --- | --- |
-| Omitir envío de comunicaciones a la Agencia | Leve (34 bis d) | 5.000 UTM |
-| Vulnerar deber de secreto (14 bis) | Grave (34 ter i) | 10.000 UTM |
-| Infringir obligaciones de seguridad (14 quinquies) | Grave (34 ter j) | 10.000 UTM |
-| Omitir comunicaciones/registros de vulneraciones | Grave (34 ter k) | 10.000 UTM |
-| Vulnerar secreto sobre datos sensibles | Gravísima (34 quáter d) | 20.000 UTM |
-| Omitir deliberadamente comunicación de brechas | Gravísima (34 quáter f) | 20.000 UTM |
-| Omitir EIPD cuando corresponde | Gravísima (34 quáter k) | 20.000 UTM |
+| Infracción                                         | Categoría               | Multa máx. |
+| -------------------------------------------------- | ----------------------- | ---------- |
+| Omitir envío de comunicaciones a la Agencia        | Leve (34 bis d)         | 5.000 UTM  |
+| Vulnerar deber de secreto (14 bis)                 | Grave (34 ter i)        | 10.000 UTM |
+| Infringir obligaciones de seguridad (14 quinquies) | Grave (34 ter j)        | 10.000 UTM |
+| Omitir comunicaciones/registros de vulneraciones   | Grave (34 ter k)        | 10.000 UTM |
+| Vulnerar secreto sobre datos sensibles             | Gravísima (34 quáter d) | 20.000 UTM |
+| Omitir deliberadamente comunicación de brechas     | Gravísima (34 quáter f) | 20.000 UTM |
+| Omitir EIPD cuando corresponde                     | Gravísima (34 quáter k) | 20.000 UTM |
 
 Agravantes: +50% de recargo si no se subsana en 60 días; reincidencia hasta 3×; empresas no-PYME reincidentes: hasta **2% (graves) o 4% (gravísimas) de los ingresos anuales**. Agravante expresa (36 c): "haber puesto en riesgo la seguridad de los derechos y libertades de los titulares".
 
@@ -129,20 +129,20 @@ Agravantes: +50% de recargo si no se subsana en 60 días; reincidencia hasta 3×
 
 ## Mapa: exigencia legal → estado actual → acción
 
-| Exigencia (artículo) | Estado actual | Acción (tarea en PLAN-MEJORAS) |
-| --- | --- | --- |
-| Confidencialidad / acceso no autorizado (14 quinquies) | JWT + datos personales en localStorage plain text | B2 — minimizar + cookie httpOnly |
-| Minimización por defecto (14 quáter) | `user_data` completo en cliente | B2.1 |
-| Cifrado como medida ejemplar (14 quinquies a) | Credenciales DGA: verificar cifrado en reposo | B2.4 + B10.2 |
-| Disponibilidad / restauración rápida (14 quinquies c) | Sin plan de backup/restore documentado | B10.3 (nueva) |
-| Verificación regular de eficacia (14 quinquies d) | Sin auditorías periódicas | B10.4 (nueva) |
-| Política de seguridad pública (14 ter e) | No existe | B10.1 (nueva) |
-| Reporte de brechas + registro interno (14 sexies) | Sin procedimiento ni registro | B4 (ampliada: B4.4) |
-| Contratos con encargados (15 bis) | Sin inventario de encargados/DPAs | B11 (nueva) |
-| EIPD (15 ter) | Sin evaluación documentada | B12.1 (nueva) |
-| Estándares mínimos de la Agencia (14 septies) | Instrucción general aún no dictada | B12.2 (nueva) — monitorear |
-| Supresión/retención (14 quáter, ppio. proporcionalidad) | Soft-delete, retención indefinida | B1, B5 (ya en plan) |
-| Deber de secreto de dependientes (14 bis) | Sin NDAs formales verificados | B11.3 (nueva) |
+| Exigencia (artículo)                                    | Estado actual                                     | Acción (tarea en PLAN-MEJORAS)   |
+| ------------------------------------------------------- | ------------------------------------------------- | -------------------------------- |
+| Confidencialidad / acceso no autorizado (14 quinquies)  | JWT + datos personales en localStorage plain text | B2 — minimizar + cookie httpOnly |
+| Minimización por defecto (14 quáter)                    | `user_data` completo en cliente                   | B2.1                             |
+| Cifrado como medida ejemplar (14 quinquies a)           | Credenciales DGA: verificar cifrado en reposo     | B2.4 + B10.2                     |
+| Disponibilidad / restauración rápida (14 quinquies c)   | Sin plan de backup/restore documentado            | B10.3 (nueva)                    |
+| Verificación regular de eficacia (14 quinquies d)       | Sin auditorías periódicas                         | B10.4 (nueva)                    |
+| Política de seguridad pública (14 ter e)                | No existe                                         | B10.1 (nueva)                    |
+| Reporte de brechas + registro interno (14 sexies)       | Sin procedimiento ni registro                     | B4 (ampliada: B4.4)              |
+| Contratos con encargados (15 bis)                       | Sin inventario de encargados/DPAs                 | B11 (nueva)                      |
+| EIPD (15 ter)                                           | Sin evaluación documentada                        | B12.1 (nueva)                    |
+| Estándares mínimos de la Agencia (14 septies)           | Instrucción general aún no dictada                | B12.2 (nueva) — monitorear       |
+| Supresión/retención (14 quáter, ppio. proporcionalidad) | Soft-delete, retención indefinida                 | B1, B5 (ya en plan)              |
+| Deber de secreto de dependientes (14 bis)               | Sin NDAs formales verificados                     | B11.3 (nueva)                    |
 
 ---
 
