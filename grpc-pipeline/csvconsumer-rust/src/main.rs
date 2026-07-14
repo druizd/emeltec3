@@ -19,6 +19,8 @@ use tokio::time::Duration;
 use tokio_postgres::{Client, NoTls};
 use tonic::{transport::Server, Request, Response, Status};
 
+type SharedClient = Arc<Mutex<Arc<Client>>>;
+
 pub mod logpipeline {
     tonic::include_proto!("logpipeline");
 }
@@ -117,7 +119,10 @@ async fn insert_batch(client: &Client, batch: &[RecordTuple]) -> Result<u64, tok
 // Modo bulk (cola > BULK_THRESHOLD):
 //   Extrae hasta BATCH_BULK registros por iteración hasta vaciar la cola.
 //   Útil cuando hay muchos archivos acumulados: drena más rápido.
-async fn flush_task(client: Arc<Client>, queue: SharedQueue) {
+//
+// Reconexión: si el flush falla por conexión cerrada, reconecta con backoff
+// y reencola el lote para no perder datos.
+async fn flush_task(shared_client: SharedClient, queue: SharedQueue) {
     let mut ticker = tokio::time::interval(Duration::from_secs(FLUSH_SECS));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
@@ -146,9 +151,38 @@ async fn flush_task(client: Arc<Client>, queue: SharedQueue) {
                 break;
             }
 
+            let client = shared_client.lock().await.clone();
             match insert_batch(&client, &batch).await {
                 Ok(n) => eprintln!("flush: {} registros insertados", n),
-                Err(e) => eprintln!("flush error: {}", e),
+                Err(e) => {
+                    eprintln!("flush error: {}", e);
+                    if e.is_closed() {
+                        eprintln!("conexión cerrada — reconectando...");
+                        // Reencolar el lote antes de reconectar para no perder datos.
+                        {
+                            let mut q = queue.lock().await;
+                            for record in batch.into_iter().rev() {
+                                q.push_front(record);
+                            }
+                        }
+                        let mut delay_secs = 2u64;
+                        loop {
+                            tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+                            match connect_db().await {
+                                Ok(new_client) => {
+                                    *shared_client.lock().await = new_client;
+                                    eprintln!("reconexión exitosa");
+                                    break;
+                                }
+                                Err(e) => {
+                                    eprintln!("reconexión fallida: {} — reintentando en {}s", e, delay_secs);
+                                    delay_secs = (delay_secs * 2).min(60);
+                                }
+                            }
+                        }
+                        break; // Salir del inner loop; el ticker maneja el próximo flush.
+                    }
+                }
             }
         }
     }
@@ -242,7 +276,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let grpc_port = get_env("GRPC_PORT", "50051");
     let addr: std::net::SocketAddr = format!("0.0.0.0:{}", grpc_port).parse()?;
 
-    let client = connect_db().await?;
+    let client: SharedClient = Arc::new(Mutex::new(connect_db().await?));
     let queue: SharedQueue = Arc::new(Mutex::new(VecDeque::new()));
 
     // Lanzar tarea de fondo antes de aceptar conexiones gRPC.

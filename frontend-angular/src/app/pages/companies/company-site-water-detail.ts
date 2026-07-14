@@ -276,25 +276,27 @@ type OperationMode = 'realtime' | 'turnos';
               (keydown.home)="cycleDetailTab(0, 'first'); $event.preventDefault()"
               (keydown.end)="cycleDetailTab(0, 'last'); $event.preventDefault()"
             >
-              <button
-                type="button"
-                role="tab"
-                (click)="setDetailTab('dga')"
-                [class]="getDetailTabClass('dga')"
-                [attr.aria-selected]="activeDetailTab() === 'dga'"
-                id="tab-dga"
-                aria-controls="tabpanel-dga"
-                [attr.tabindex]="activeDetailTab() === 'dga' ? 0 : -1"
-              >
-                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
-                DGA
-                @if (activeDetailTab() === 'dga') {
-                  <span
-                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
-                    aria-hidden="true"
-                  ></span>
-                }
-              </button>
+              @if (!isVendedor()) {
+                <button
+                  type="button"
+                  role="tab"
+                  (click)="setDetailTab('dga')"
+                  [class]="getDetailTabClass('dga')"
+                  [attr.aria-selected]="activeDetailTab() === 'dga'"
+                  id="tab-dga"
+                  aria-controls="tabpanel-dga"
+                  [attr.tabindex]="activeDetailTab() === 'dga' ? 0 : -1"
+                >
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
+                  DGA
+                  @if (activeDetailTab() === 'dga') {
+                    <span
+                      class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
+                      aria-hidden="true"
+                    ></span>
+                  }
+                </button>
+              }
               <button
                 type="button"
                 role="tab"
@@ -1469,43 +1471,45 @@ type OperationMode = 'realtime' | 'turnos';
                     <p class="mb-2 text-body-sm font-semibold text-slate-700">Acciones Rápidas</p>
                     <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
                       @for (action of quickActions; track action.title) {
-                        <button
-                          type="button"
-                          (click)="handleQuickAction(action)"
-                          [disabled]="quickActionDisabled(action)"
-                          [title]="quickActionTitle(action)"
-                          [class]="
-                            quickActionDisabled(action)
-                              ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                              : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
-                          "
-                        >
-                          <span
+                        @if (!action.isDga || !isVendedor()) {
+                          <button
+                            type="button"
+                            (click)="handleQuickAction(action)"
+                            [disabled]="quickActionDisabled(action)"
+                            [title]="quickActionTitle(action)"
                             [class]="
                               quickActionDisabled(action)
-                                ? 'material-symbols-outlined text-[20px] text-slate-400'
-                                : 'material-symbols-outlined text-[20px] ' + action.color
-                            "
-                            >{{ action.icon }}</span
-                          >
-                          <p
-                            [class]="
-                              quickActionDisabled(action)
-                                ? 'mt-0.5 text-body-sm font-semibold text-slate-500'
-                                : 'mt-0.5 text-body-sm font-semibold text-slate-800'
+                                ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
+                                : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
                             "
                           >
-                            {{ action.title }}
-                          </p>
-                          <p class="text-caption font-medium text-slate-500">
-                            {{ action.subtitle }}
-                          </p>
-                          @if (quickActionDisabled(action)) {
-                            <p class="mt-1 text-caption-xs italic text-amber-600">
-                              {{ quickActionTitle(action) }}
+                            <span
+                              [class]="
+                                quickActionDisabled(action)
+                                  ? 'material-symbols-outlined text-[20px] text-slate-400'
+                                  : 'material-symbols-outlined text-[20px] ' + action.color
+                              "
+                              >{{ action.icon }}</span
+                            >
+                            <p
+                              [class]="
+                                quickActionDisabled(action)
+                                  ? 'mt-0.5 text-body-sm font-semibold text-slate-500'
+                                  : 'mt-0.5 text-body-sm font-semibold text-slate-800'
+                              "
+                            >
+                              {{ action.title }}
                             </p>
-                          }
-                        </button>
+                            <p class="text-caption font-medium text-slate-500">
+                              {{ action.subtitle }}
+                            </p>
+                            @if (quickActionDisabled(action)) {
+                              <p class="mt-1 text-caption-xs italic text-amber-600">
+                                {{ quickActionTitle(action) }}
+                              </p>
+                            }
+                          </button>
+                        }
                       }
                     </div>
                   </article>
@@ -2660,6 +2664,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   readonly isSuperAdmin = this.authService.canViewAdvancedAnalysis;
   readonly canEditSiteSettings = this.authService.canEditSiteSettings;
+  readonly isVendedor = this.authService.isVendedor;
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
@@ -2672,7 +2677,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dashboardLastLoadedAt = signal<Date | null>(null);
   serverClockOffsetMs = signal(0);
   currentTime = signal(new Date());
-  activeDetailTab = signal<DetailTab>('dga');
+  activeDetailTab = signal<DetailTab>(this.authService.isVendedor() ? 'operacion' : 'dga');
   historyPanelOpen = signal(false);
   settingsPanelOpen = signal(false);
   dgaReporteModalOpen = signal(false);
@@ -3197,6 +3202,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       subtitle: 'Portal oficial',
       color: 'text-primary-container',
       openDga: true,
+      isDga: true,
     },
     {
       icon: 'description',
@@ -3204,6 +3210,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       subtitle: 'Formato oficial',
       color: 'text-accent',
       openDgaReport: true,
+      isDga: true,
     },
   ];
 
@@ -3383,10 +3390,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         // Tab DGA es default — carga inicial de "Detalle de Registros" sin
         // requerir que admin re-clickee la tab. setDetailTab solo dispara
         // loadDgaReports en cambio de tab, no en mount inicial.
-        if (this.activeDetailTab() === 'dga') {
+        if (this.activeDetailTab() === 'dga' && !this.isVendedor()) {
           void this.loadDgaReports();
         }
-        this.loadUltimoEnvio(siteId);
+        if (!this.isVendedor()) this.loadUltimoEnvio(siteId);
       },
       error: () => this.router.navigate(['/companies']),
     });

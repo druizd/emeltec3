@@ -90,7 +90,7 @@ export function scopeByTenant(user: AuthUser | undefined): TenantScope {
       subEmpresaIds: null,
     };
   }
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa') {
+  if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'Vendedor' || user.tipo === 'SubEmpresa') {
     return {
       empresaIds: user.empresa_id ? [user.empresa_id] : [],
       subEmpresaIds: user.sub_empresa_id ? [user.sub_empresa_id] : [],

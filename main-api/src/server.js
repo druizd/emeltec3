@@ -82,6 +82,25 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // DGA GCS exporter TS (batch CSV → Google Cloud Storage cada N minutos).
+  // Requiere DGA_GCS_EMPRESA_ID + GOOGLE_APPLICATION_CREDENTIALS (service account).
+  try {
+    const dgaGcsPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'dga',
+      'gcs-exporter',
+    );
+    const { startDgaGcsExporter } = require(dgaGcsPath);
+    startDgaGcsExporter();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar DGA GCS exporter:', err.message);
+    }
+  }
+
   // DGA reconciler TS (red de seguridad: drift audit vs estado, slots atascados).
   try {
     const dgaReconcilerPath = require('path').join(

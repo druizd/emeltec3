@@ -69,6 +69,8 @@ export class AuthService {
     return tipo === 'SuperAdmin' || tipo === 'Admin';
   });
 
+  readonly canSeeDga = computed(() => this.effectiveRole() !== 'Vendedor');
+
   readonly canEditSiteSettings = computed(() => {
     const tipo = this.effectiveRole();
     return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Vendedor';
