@@ -296,7 +296,7 @@
           </div>
         </div>
 
-        <div class="hop">VPN Emeltec · SFTP</div>
+        <div class="hop">AES-128 (MTDataProvider 4) · VPN Emeltec permanente</div>
 
         <!-- ZONA: Windows Server -->
         <div class="zone">
@@ -307,7 +307,7 @@
           <div class="zone-body">
             <div class="node win">
               <h3>data/incoming_logs/</h3>
-              <p>Archivos CSV/log entrantes (SFTP / proceso externo).</p>
+              <p>Archivos CSV/log entrantes, depositados por MTDataProvider 4.</p>
             </div>
             <div class="node win">
               <h3>csvprocessor <span class="port">(Go)</span></h3>
@@ -388,8 +388,11 @@
                 El <strong>MT</strong> genera CSV/log con el <code>id_serial</code> en el tagname.
               </li>
               <li>
-                Llegan al <strong>Windows Server</strong> por la <strong>VPN de Emeltec</strong> a
-                <code>data/incoming_logs/</code>.
+                <strong>MTDataProvider 4</strong> los recibe con cifrado
+                <strong>AES-128</strong> (tres capas + token de sesión única, alineado a NIS2)
+                y los deposita en <code>data/incoming_logs/</code> del
+                <strong>Windows Server</strong>, sobre la <strong>VPN de Emeltec, siempre
+                activa</strong>.
               </li>
               <li>
                 <strong>csvprocessor</strong> extrae el serial, respalda el raw, transforma a
@@ -437,6 +440,11 @@
           <div class="card">
             <h3>🔒 Límites de seguridad</h3>
             <ul>
+              <li>
+                <strong>Tramo dispositivo:</strong> MT ↔ MTDataProvider 4 cifrado
+                <strong>AES-128</strong> (tres capas + token de sesión única, alineado a NIS2),
+                sobre VPN permanente. Fabricante certificado ISO/IEC 27001 e ISO 9001:2015.
+              </li>
               <li>
                 <strong>Borde:</strong> Nginx termina TLS y publica solo <code>*.emeltec.cl</code>;
                 el resto queda en <code>127.0.0.1</code> detrás del proxy.
