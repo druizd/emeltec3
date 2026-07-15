@@ -35,6 +35,25 @@ const DELAY_BETWEEN_MS = Number(process.env.DGA_SUBMISSION_DELAY_MS ?? 1_000);
  */
 export const CODIGO_OBRA_REGEX = /^O[BR]-\d{4}-\d+$/;
 
+/**
+ * SNIA responde 400 "Ya existe un registro en esa fecha, hora para la obra.
+ * Comprobante: XXX" cuando la medición ya fue recibida — típico tras un
+ * timeout donde el POST sí llegó pero la respuesta se perdió (incidente
+ * jun-jul 2026). El comprobante del registro existente viene embebido en el
+ * mensaje: tratarlo como envío exitoso evita reintentos diarios de
+ * retransmisión (Res 2170 §6.3) y el falso estado terminal `fallido`.
+ */
+export function parseSniaDuplicateMessage(msg: string | null): {
+  duplicate: boolean;
+  comprobante: string | null;
+} {
+  if (!msg || !/ya existe un registro/i.test(msg)) {
+    return { duplicate: false, comprobante: null };
+  }
+  const match = /comprobante:\s*([A-Za-z0-9]+)/i.exec(msg);
+  return { duplicate: true, comprobante: match?.[1] ?? null };
+}
+
 let intervalHandle: NodeJS.Timeout | null = null;
 
 function tsToChileLocal(tsIso: string): { fechaMedicion: string; horaMedicion: string } {
@@ -228,6 +247,36 @@ async function processSlot(
       comprobante: result.numero_comprobante,
     });
     return 'enviado';
+  }
+
+  // SNIA ya tiene el registro (envío previo cuya respuesta se perdió, ej.
+  // timeout). Reenviar cada 24h solo quema intentos y arriesga bloqueo por
+  // retransmisión (Res 2170 §6.3) — el dato SÍ está reportado.
+  const dup = parseSniaDuplicateMessage(result.dga_message);
+  if (dup.duplicate) {
+    if (dup.comprobante) {
+      logger.warn(
+        { site_id: slot.site_id, ts: slot.ts, comprobante: dup.comprobante },
+        'submission: SNIA reporta registro duplicado — auto-fix a enviado con comprobante del mensaje',
+      );
+      await markSlotEnviado({
+        site_id: slot.site_id,
+        ts: slot.ts,
+        comprobante: dup.comprobante,
+      });
+      return 'enviado';
+    }
+    logger.error(
+      { site_id: slot.site_id, ts: slot.ts, dga_message: result.dga_message },
+      'submission: SNIA reporta duplicado pero sin comprobante en el mensaje — requiere revisión manual',
+    );
+    const { terminal: dupTerminal } = await markSlotRechazado({
+      site_id: slot.site_id,
+      ts: slot.ts,
+      fail_reason: 'dga_duplicate_sin_comprobante',
+      max_retry_attempts: slot.max_retry_attempts,
+    });
+    return dupTerminal ? 'fallido' : 'rechazado';
   }
 
   const failReason =
