@@ -170,6 +170,13 @@ para enviar.
      `next_retry_at = now() + 24h` (Res 2170 §6.2: reintento al día
      siguiente). Intentos agotados (`dga_max_retry_attempts`) → `fallido`
      (terminal).
+  7. **Duplicado en SNIA** (post-incidente jun-jul 2026): respuesta 400
+     `"Ya existe un registro en esa fecha, hora para la obra. Comprobante: X"`
+     significa que la medición YA fue recibida (típico tras timeout donde el
+     POST sí llegó pero la respuesta se perdió). Se extrae el comprobante del
+     mensaje y el slot pasa a `enviado` — sin reintentos. Si el mensaje viene
+     sin comprobante → `rechazado` con
+     `fail_reason='dga_duplicate_sin_comprobante'` (revisión manual).
 
 ### 4.4 Reconciler (`reconciler.ts`)
 
