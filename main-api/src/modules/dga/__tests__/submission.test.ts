@@ -55,17 +55,9 @@ vi.mock('../snia-client', () => ({
   sendToSnia: vi.fn(),
 }));
 
-import {
-  listPendingForSubmission,
-  markSlotEnviado,
-  markSlotRechazado,
-} from '../repo';
+import { listPendingForSubmission, markSlotEnviado, markSlotRechazado } from '../repo';
 import { sendToSnia } from '../snia-client';
-import {
-  CODIGO_OBRA_REGEX,
-  parseSniaDuplicateMessage,
-  runSubmissionCycle,
-} from '../submission';
+import { CODIGO_OBRA_REGEX, parseSniaDuplicateMessage, runSubmissionCycle } from '../submission';
 
 const SLOT = {
   site_id: 'S999',
