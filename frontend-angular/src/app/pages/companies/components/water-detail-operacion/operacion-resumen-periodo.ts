@@ -1267,42 +1267,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     ],
   };
 
-  private readonly mockIncidencias: Record<Preset, IncidenciaPeriodo[]> = {
-    '7d': [],
-    '30d': [
-      {
-        fecha: '28/04/2026',
-        descripcion: 'Restablecimiento de comunicación tras corte eléctrico en sala de equipos',
-        categoria: 'Comunicación',
-        estado: 'resuelta',
-        tecnico: 'J. Pérez',
-      },
-    ],
-    '90d': [
-      {
-        fecha: '28/04/2026',
-        descripcion: 'Restablecimiento de comunicación tras corte eléctrico en sala de equipos',
-        categoria: 'Comunicación',
-        estado: 'resuelta',
-        tecnico: 'J. Pérez',
-      },
-      {
-        fecha: '02/04/2026',
-        descripcion: 'Revisión y limpieza de sensor de caudal — lectura en cero por obstrucción',
-        categoria: 'Sensor',
-        estado: 'resuelta',
-        tecnico: 'M. García',
-      },
-      {
-        fecha: '05/03/2026',
-        descripcion: 'Reemplazo de ventilador en gabinete — temperatura superó 60°C',
-        categoria: 'Hardware',
-        estado: 'resuelta',
-        tecnico: 'J. Pérez',
-      },
-    ],
-  };
-
   // ── KPIs reales (4 wireados) + 2 mock ─────────────────────
 
   /**
