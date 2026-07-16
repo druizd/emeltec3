@@ -74,7 +74,8 @@ interface ConfigDraft {
   template: `
     @if (open) {
       <div
-        class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+        class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+        animate.leave="anim-overlay-out"
         role="dialog"
         cdkTrapFocus
         cdkTrapFocusAutoCapture
@@ -83,7 +84,7 @@ interface ConfigDraft {
         (click)="onBackdrop($event)"
       >
         <div
-          class="relative mx-4 max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          class="anim-panel relative mx-4 max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-2xl"
           (click)="$event.stopPropagation()"
         >
           <!-- Header -->

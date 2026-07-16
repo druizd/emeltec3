@@ -15,8 +15,19 @@ import { TwoFactorService } from '../../services/two-factor.service';
   imports: [CommonModule, FormsModule],
   template: `
     @if (twoFactor.visible()) {
-      <div class="tf-backdrop" (click)="cancel()" aria-hidden="true"></div>
-      <div class="tf-modal" role="dialog" aria-modal="true" aria-label="Verificación 2FA">
+      <div
+        class="tf-backdrop"
+        animate.leave="anim-overlay-out"
+        (click)="cancel()"
+        aria-hidden="true"
+      ></div>
+      <div
+        class="tf-modal"
+        animate.leave="anim-overlay-out"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Verificación 2FA"
+      >
         <div class="tf-head">
           <span class="material-symbols-outlined text-[20px] text-primary-container">
             verified_user
@@ -77,7 +88,13 @@ import { TwoFactorService } from '../../services/two-factor.service';
         inset: 0;
         background: rgba(15, 23, 42, 0.5);
         z-index: 100;
+        transition: opacity 200ms ease-out;
+        @starting-style {
+          opacity: 0;
+        }
       }
+      /* No usa .anim-panel global: el centrado vive en transform, así que
+         la entrada compone scale sobre el translate propio. */
       .tf-modal {
         position: fixed;
         top: 50%;
@@ -90,6 +107,18 @@ import { TwoFactorService } from '../../services/two-factor.service';
         box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
         z-index: 101;
         padding: 18px;
+        transition:
+          opacity 200ms var(--ease-out-strong),
+          transform 200ms var(--ease-out-strong);
+        @starting-style {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.97);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .tf-modal {
+          transition-property: opacity;
+        }
       }
       .tf-head {
         display: flex;

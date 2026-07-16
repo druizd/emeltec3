@@ -55,7 +55,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
           @if (status().msg) {
             <div
               [class]="
-                'p-4 rounded-xl mb-6 flex items-start gap-3 transition-all ' +
+                'anim-banner p-4 rounded-xl mb-6 flex items-start gap-3 ' +
                 (status().type === 'success'
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-red-50 text-red-700 border border-red-200')

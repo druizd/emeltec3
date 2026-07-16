@@ -776,35 +776,16 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   private readonly cdr = inject(ChangeDetectorRef);
 
   /**
-   * Sites filtrados a sub-empresa (lo que vienen del parent). El setter los
-   * expande a TODOS los sitios de la EMPRESA del cliente, filtrados al mismo
-   * subset de tipos para mantener consistencia con el módulo activo (Agua /
-   * Eléctrico / etc). El operador entra con una sub-empresa pero la Vista
-   * General quiere mostrar el panorama completo del cliente.
+   * Sites de la SUB-EMPRESA seleccionada (lo que viene del parent), sin
+   * expandir. La Vista General respeta la selección del árbol: elegir
+   * Cervecera muestra Cervecera, no todo el grupo CCU. (Antes el setter
+   * expandía a toda la empresa y filtraba KPIs/mapa/chart con sitios de
+   * sub-empresas hermanas.) Los fetch por empresa_id de eventos/incidencias
+   * ya se acotan client-side con `this.sites`, así que heredan este scope.
    */
   @Input() set sites(value: any[]) {
-    const filtered = value || [];
-    const empresaId = filtered[0]?.empresa_id;
-    if (empresaId) {
-      const allInEmpresa =
-        this.companyService
-          .visibleHierarchy()
-          .find((c) => c.id === empresaId)
-          ?.subCompanies?.flatMap((sc) => sc.sites ?? []) ?? [];
-      // Conservar solo los tipos presentes en el segmento activo (ej. al estar
-      // en módulo Agua mantenemos pozo+vertiente+canal pero excluimos
-      // eléctrico/proceso que no aplican a este chart).
-      const tiposVisibles = new Set(filtered.map((s) => s.tipo_sitio));
-      const expanded =
-        tiposVisibles.size > 0
-          ? allInEmpresa.filter((s) => tiposVisibles.has(s.tipo_sitio))
-          : allInEmpresa;
-      this._sites = expanded;
-      this._sitesSignal.set(expanded);
-    } else {
-      this._sites = filtered;
-      this._sitesSignal.set(filtered);
-    }
+    this._sites = value || [];
+    this._sitesSignal.set(value || []);
   }
   get sites(): any[] {
     return this._sites;

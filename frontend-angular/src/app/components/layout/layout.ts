@@ -37,7 +37,8 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
       @if (ui.mobileNavOpen()) {
         <div
           (click)="ui.closeMobileNav()"
-          class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
+          class="anim-backdrop fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[1px] lg:hidden"
+          animate.leave="anim-overlay-out"
           aria-hidden="true"
         ></div>
       }
@@ -64,6 +65,7 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
            a diferencia del offset right:-356px hardcoded para 400px. -->
       <div
         class="fixed bottom-[110px] right-3 z-50 w-[min(400px,calc(100vw-1.5rem))] sm:right-6"
+        animate.leave="anim-overlay-out"
         style="transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);"
         [style.transform]="chatDocked() ? 'translateX(calc(100% - 44px))' : 'none'"
       >
@@ -80,9 +82,10 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
           </button>
         }
 
-        <!-- Panel principal -->
+        <!-- Panel principal. Escala desde abajo-derecha: ahí vive el bubble
+             que lo abre (consistencia espacial). -->
         <div
-          class="flex flex-col overflow-hidden rounded-2xl bg-white"
+          class="anim-panel flex origin-bottom-right flex-col overflow-hidden rounded-2xl bg-white"
           style="box-shadow: 0 0 0 1px rgba(13,175,189,0.15), 0 24px 64px rgba(15,23,42,0.14), 0 8px 24px rgba(13,175,189,0.10);"
         >
           <!-- Header -->

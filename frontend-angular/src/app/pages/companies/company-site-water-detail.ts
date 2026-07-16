@@ -5,10 +5,12 @@ import {
   Component,
   HostListener,
   computed,
+  effect,
   inject,
   OnDestroy,
   OnInit,
   signal,
+  untracked,
 } from '@angular/core';
 import { InlineErrorComponent } from '../../components/ui/inline-error';
 import { WellDiagramSkeletonComponent } from '../../components/ui/well-diagram-skeleton';
@@ -215,7 +217,7 @@ type OperationMode = 'realtime' | 'turnos';
       @if (loading() && !siteContext()) {
         <app-companies-site-detail-skeleton />
       } @else if (siteContext(); as context) {
-        <div class="mx-auto max-w-[1360px] space-y-3">
+        <div class="anim-content-in mx-auto max-w-[1360px] space-y-3">
           <section
             class="rounded-xl border border-slate-200 bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
           >
@@ -1295,8 +1297,8 @@ type OperationMode = 'realtime' | 'turnos';
                           >
                             <div class="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
                               <div
-                                class="h-full rounded-full bg-gradient-to-r from-primary-container to-emerald-500"
-                                [style.width.%]="wellFillStylePercent()"
+                                class="h-full w-full origin-left rounded-full bg-gradient-to-r from-primary-container to-emerald-500 transition-transform duration-500 ease-in-out-strong motion-reduce:transition-none"
+                                [style.transform]="'scaleX(' + wellFillStylePercent() / 100 + ')'"
                               ></div>
                             </div>
                           </app-well-stat-card>
@@ -2827,6 +2829,35 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   wellFillStylePercent = computed(() => this.wellFillPercentage() ?? 0);
   wellWaterColumnHeightPx = computed(() => Math.round(238 * (this.wellFillStylePercent() / 100)));
 
+  /** Nivel freático ANIMADO (m). Se tweenea el VALOR — no los rects — para
+   * que agua, olas, shimmer y markers del SVG se muevan como un solo cuerpo
+   * (el `d` de las olas no es transicionable por CSS). Los textos siguen
+   * mostrando el dato real al instante: solo la geometría se desplaza.
+   * Primer dato y prefers-reduced-motion: salto directo, sin tween. */
+  private readonly wellLevelAnim = signal<number | null>(null);
+  private wellLevelRafId = 0;
+  private readonly wellLevelTween = effect(() => {
+    const target = this.wellNivelFreatico();
+    const from = untracked(this.wellLevelAnim);
+    cancelAnimationFrame(this.wellLevelRafId);
+    const reduce =
+      typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (target === null || from === null || from === target || reduce) {
+      this.wellLevelAnim.set(target);
+      return;
+    }
+    const start = performance.now();
+    const durationMs = 500;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      // easeInOutCubic ≈ --ease-in-out-strong
+      const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      this.wellLevelAnim.set(from + (target - from) * e);
+      if (t < 1) this.wellLevelRafId = requestAnimationFrame(tick);
+    };
+    this.wellLevelRafId = requestAnimationFrame(tick);
+  });
+
   // SVG Well Diagram — dimensions & layout
   readonly svgW = 300;
   readonly svgH = 476;
@@ -2843,7 +2874,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   // nivelFreatico = profundidad desde superficie → waterY = top + (nivel/totalDepth)*H
   get svgWaterY(): number {
     const d = this.wellTotalDepth() ?? 18;
-    const f = this.wellNivelFreatico() ?? 0;
+    const f = this.wellLevelAnim() ?? this.wellNivelFreatico() ?? 0;
     const safe = d > 0 ? d : 18;
     return Math.round(this.svgWellTop + Math.min(1, Math.max(0, f / safe)) * this.svgWellH);
   }
@@ -3397,6 +3428,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.dashboardPollingSub?.unsubscribe();
     this.historyPollingSub?.unsubscribe();
     this.monthlyCountersSub?.unsubscribe();
+    cancelAnimationFrame(this.wellLevelRafId);
   }
 
   getSiteName(context: SiteContext): string {
