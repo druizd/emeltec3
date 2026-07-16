@@ -88,7 +88,7 @@ export class ColdRoomAuditService {
     const siteId = this.currentSiteId;
     // Optimistic local insert.
     const u = this.auth.user();
-    const actor = u ? `${u.nombre} ${u.apellido}`.trim() || u.email : 'operador';
+    const actor = u ? `${u.nombre} ${u.apellido}`.trim() || u.email || 'operador' : 'operador';
     // Preferir cargo (rol funcional) sobre tipo (rol sistema). Backend hace lo mismo.
     const actorRole = u?.cargo || u?.tipo;
     const entry: ColdRoomAuditEntry = {

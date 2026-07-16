@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, ElementRef, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { AuthMode, UpdateUserProfilePayload, User } from '@emeltec/shared';
-import { AuthService } from '../../services/auth.service';
+import { AuthService, type AuthUser } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { formatRutInput } from '../../shared/rut';
 
@@ -901,7 +901,9 @@ export class ProfileComponent implements OnInit {
   );
 
   readonly activeTab = signal<AccountTab>('profile');
-  readonly profile = signal<User | null>(null);
+  // AuthUser: hasta hidratar desde /api/users/me, la sesión restaurada solo
+  // trae la proyección mínima (sin email/RUT/teléfono).
+  readonly profile = signal<AuthUser | null>(null);
   readonly users = signal<User[]>([]);
   readonly userSearch = signal('');
   readonly usersPage = signal(1);
@@ -1295,7 +1297,7 @@ export class ProfileComponent implements OnInit {
     return value !== edit.currentValue.trim();
   }
 
-  canSavePassword(user: User): boolean {
+  canSavePassword(user: AuthUser): boolean {
     if (this.newPassword().length < 8) return false;
     if (this.profilePasswordStrength() < 2) return false;
     if (this.newPassword() !== this.confirmPassword()) return false;
@@ -1344,7 +1346,7 @@ export class ProfileComponent implements OnInit {
       .trim();
   }
 
-  private getPasswordValidationMessage(user: User): string {
+  private getPasswordValidationMessage(user: AuthUser): string {
     if (user.has_password && !this.currentPassword()) return 'Ingresa tu contraseña actual.';
     if (this.newPassword().length < 8)
       return 'La nueva contraseña debe tener al menos 8 caracteres.';

@@ -1,8 +1,40 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import type { User, UserRole } from '@emeltec/shared';
+import type { ApiResponse, User, UserRole } from '@emeltec/shared';
 
 export type { User, UserRole };
+
+/**
+ * Proyección de User que se persiste en localStorage (Ley 21.719 —
+ * minimización de datos): solo lo que la UI necesita renderizar de forma
+ * síncrona al restaurar sesión (iniciales, rol/cargo, alcance empresa).
+ * Email, RUT y teléfono NUNCA se persisten en el cliente: localStorage es
+ * legible por cualquier script (XSS = fuga de datos personales).
+ */
+export type SessionUser = Pick<
+  User,
+  'id' | 'nombre' | 'apellido' | 'tipo' | 'cargo' | 'empresa_id' | 'sub_empresa_id'
+>;
+
+/**
+ * Usuario en memoria: el mínimo garantizado tras restaurar sesión, más el
+ * resto del perfil una vez hidratado desde `/api/users/me`. Los campos no
+ * persistidos (email, teléfono, etc.) son `undefined` hasta la hidratación.
+ */
+export type AuthUser = SessionUser & Partial<User>;
+
+function toSessionUser(user: AuthUser): SessionUser {
+  return {
+    id: user.id,
+    nombre: user.nombre,
+    apellido: user.apellido,
+    tipo: user.tipo,
+    cargo: user.cargo ?? null,
+    empresa_id: user.empresa_id ?? null,
+    sub_empresa_id: user.sub_empresa_id ?? null,
+  };
+}
 
 const VIEW_AS_STORAGE_KEY = 'view_as_role';
 
@@ -20,7 +52,7 @@ export interface ViewAsContext {
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private userSignal = signal<User | null>(null);
+  private userSignal = signal<AuthUser | null>(null);
   private tokenSignal = signal<string | null>(null);
   private loadingSignal = signal<boolean>(true);
   private viewAsContextSignal = signal<ViewAsContext | null>(null);
@@ -117,9 +149,46 @@ export class AuthService {
   /** Segundos restantes hasta el auto-logout (null si el aviso no está activo). */
   readonly secondsUntilLogout = this.secondsUntilLogoutSignal.asReadonly();
 
+  private http = inject(HttpClient);
+
   constructor(private router: Router) {
     this.initFromStorage();
     this.installExpiryGuards();
+  }
+
+  /** Parsea `user_data` de localStorage; null si falta, corrupto o sin id. */
+  private parseStoredUser(raw: string | null): AuthUser | null {
+    if (!raw) return null;
+    try {
+      const parsed = JSON.parse(raw) as AuthUser;
+      return parsed?.id ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * localStorage solo guarda la proyección mínima (`SessionUser`); el resto
+   * del perfil se rehidrata desde el backend al restaurar sesión.
+   * `queueMicrotask` difiere la petición fuera del constructor: el
+   * authInterceptor hace `inject(AuthService)` y dispararía un ciclo DI
+   * (NG0200) si el GET saliera mientras AuthService aún se construye.
+   */
+  private hydrateUserFromApi(): void {
+    queueMicrotask(() => {
+      this.http.get<ApiResponse<User>>('/api/users/me').subscribe({
+        next: (res) => {
+          // Solo pisar el signal si sigue siendo la misma sesión/usuario.
+          if (res.ok && this.tokenSignal() && this.userSignal()?.id === res.data.id) {
+            this.userSignal.set(res.data);
+          }
+        },
+        error: () => {
+          // La sesión mínima sigue operativa; un 401 real termina en logout
+          // por el flujo estándar (expiry guards / interceptor).
+        },
+      });
+    });
   }
 
   private initFromStorage(): void {
@@ -129,14 +198,20 @@ export class AuthService {
     // token viejo en localStorage (p.ej. tras apagar el PC y volver al día
     // siguiente) restauraba una sesión "zombie": app dentro de la cuenta pero
     // con todos los XHR fallando → usuario debía cerrar sesión a mano.
-    if (storedToken && storedUser && !this.isTokenExpired(storedToken)) {
+    const restoredUser = this.parseStoredUser(storedUser);
+    if (storedToken && restoredUser && !this.isTokenExpired(storedToken)) {
       this.tokenSignal.set(storedToken);
-      this.userSignal.set(JSON.parse(storedUser));
+      // Re-persistir la proyección mínima: purga sesiones anteriores a la
+      // minimización que guardaban el perfil completo (email/RUT/teléfono).
+      const sessionUser = toSessionUser(restoredUser);
+      localStorage.setItem('user_data', JSON.stringify(sessionUser));
+      this.userSignal.set(sessionUser);
       const storedViewAs = this.parseStoredViewAs(sessionStorage.getItem(VIEW_AS_STORAGE_KEY));
       if (storedViewAs && this.realRole() === 'SuperAdmin') {
         this.viewAsContextSignal.set(storedViewAs);
       }
       this.scheduleAutoLogout(storedToken);
+      this.hydrateUserFromApi();
     } else if (storedToken) {
       // Token presente pero expirado/corrupto: limpiar para no dejar basura.
       this.clearSession();
@@ -146,7 +221,8 @@ export class AuthService {
 
   login(tokenStr: string, userData: User): void {
     localStorage.setItem('jwt_token', tokenStr);
-    localStorage.setItem('user_data', JSON.stringify(userData));
+    // En disco solo la proyección mínima; el perfil completo vive en memoria.
+    localStorage.setItem('user_data', JSON.stringify(toSessionUser(userData)));
     sessionStorage.removeItem(VIEW_AS_STORAGE_KEY);
     this.tokenSignal.set(tokenStr);
     this.userSignal.set(userData);
@@ -281,7 +357,7 @@ export class AuthService {
     if (!current) return;
 
     const next = { ...current, ...userData };
-    localStorage.setItem('user_data', JSON.stringify(next));
+    localStorage.setItem('user_data', JSON.stringify(toSessionUser(next)));
     this.userSignal.set(next);
   }
 
