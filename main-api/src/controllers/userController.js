@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { formatRutForStorage } = require('../utils/rut');
 const emailService = require('../services/emailService');
+const { query: dbHelperQuery } = require('../config/dbHelpers');
 
 const WELCOME_OTP_MINUTES = 60 * 24; // 24h para activar la cuenta
 
@@ -660,6 +661,45 @@ exports.resetUserPassword = async (req, res, next) => {
       .catch((e) => console.error('[resetUserPassword] email fallo:', e.message));
     res.json({ ok: true, message: 'Se reenvió un código de acceso al usuario.' });
   } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /api/users/:id/suprimir
+ * Supresión ARCO+ (Ley 21.719): anonimiza PII del usuario y sus audit_log.
+ * Autorizado: el propio titular O un SuperAdmin (sobre cualquier cuenta).
+ */
+exports.suprimirUsuario = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const actor = req.user;
+
+    // Importación dinámica del módulo TS compilado
+    let suprimirFn;
+    try {
+      const path = require('path');
+      const workerPath = path.join(__dirname, '..', '..', 'dist', 'modules', 'retention', 'supresion');
+      suprimirFn = require(workerPath).suprimirUsuario;
+    } catch (_e) {
+      // En desarrollo: importar directamente desde fuente TS via ts-node/vitest
+      suprimirFn = require('../modules/retention/supresion').suprimirUsuario;
+    }
+
+    await suprimirFn({
+      actorId: actor.id,
+      actorEmail: actor.email,
+      actorTipo: actor.tipo,
+      targetId: id,
+      req,
+      dbQuery: (sql, params) => dbHelperQuery(sql, params),
+    });
+
+    res.json({ ok: true, message: 'Cuenta suprimida. Los datos personales han sido anonimizados.' });
+  } catch (err) {
+    if (err && err.statusCode) {
+      return res.status(err.statusCode).json({ ok: false, error: err.message });
+    }
     next(err);
   }
 };
