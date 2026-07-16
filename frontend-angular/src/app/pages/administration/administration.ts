@@ -41,6 +41,7 @@ import { AdminTableToolbarComponent } from './components/admin-table-toolbar';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-section';
+import { EquiposSectionComponent } from './components/equipos-section';
 import { DEFAULT_SITE_TYPE_CATALOG } from './site-type-catalog';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
@@ -165,6 +166,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
     SkeletonComponent,
     TableSkeletonComponent,
     EquipoEmeltecSectionComponent,
+    EquiposSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -901,99 +903,10 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
               }
 
               @if (activeSection() === 'equipos') {
-                <app-admin-section-shell title="Equipos detectados">
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Equipos detectados"
-                      [countLabel]="
-                        filteredDevices().length + ' de ' + detectedDevices().length + ' visibles'
-                      "
-                      [searchValue]="deviceSearch()"
-                      placeholder="Buscar serial, sitio o empresa"
-                      (searchChange)="updateDeviceSearch($event)"
-                    >
-                      <button type="button" (click)="loadDashboard()" class="secondary-button">
-                        <span class="material-symbols-outlined text-[18px]">sync</span>
-                        Actualizar
-                      </button>
-                    </app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[1080px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Registro</th>
-                            <th class="px-4 py-3">Desfase</th>
-                            <th class="px-4 py-3 text-right">Cantidad de datos</th>
-                            <th class="px-4 py-3">Sitio</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (device of paginatedDevices(); track device.id_serial) {
-                            <tr class="bg-white transition-colors hover:bg-slate-50">
-                              <td
-                                class="px-4 py-3 font-mono text-caption font-bold text-slate-700"
-                                data-label="Serial"
-                              >
-                                {{ device.id_serial }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Registro">
-                                <div class="device-time-stack">
-                                  <div class="device-time-row">
-                                    <span class="device-time-label">Medición</span>
-                                    <span class="device-time-value">{{
-                                      deviceMeasurementLabel(device)
-                                    }}</span>
-                                  </div>
-                                  <div class="device-time-row">
-                                    <span class="device-time-label">Llegada BD</span>
-                                    <span class="device-time-value">{{
-                                      deviceArrivalLabel(device)
-                                    }}</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td class="px-4 py-3" data-label="Desfase">
-                                <span
-                                  [class]="deviceClockSkewBadgeClass(device)"
-                                  [title]="deviceClockSkewTitle(device)"
-                                >
-                                  <span class="material-symbols-outlined text-[15px]">{{
-                                    deviceClockSkewIcon(device)
-                                  }}</span>
-                                  {{ deviceClockSkewLabel(device) }}
-                                </span>
-                              </td>
-                              <td
-                                class="px-4 py-3 text-right font-bold text-slate-700"
-                                data-label="Cantidad de datos"
-                              >
-                                {{ deviceDataCountLabel(device) }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Sitio">
-                                <span
-                                  [class]="
-                                    statusBadgeClass(device.sitio_id ? 'success' : 'warning')
-                                  "
-                                >
-                                  {{ device.sitio_descripcion || 'Sin asignar' }}
-                                </span>
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredDevices().length"
-                      [page]="devicePage()"
-                      (pageChange)="setPage('equipos', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-equipos-section
+                  [devices]="detectedDevices()"
+                  (refresh)="loadDashboard()"
+                />
               }
 
               @if (activeSection() === 'equipo-emeltec') {
@@ -1323,11 +1236,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   companySearch = signal('');
   subCompanySearch = signal('');
   siteSearch = signal('');
-  deviceSearch = signal('');
   companyPage = signal(1);
   subCompanyPage = signal(1);
   sitePage = signal(1);
-  devicePage = signal(1);
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
     site: this.emptySite(),
@@ -1416,26 +1327,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     ),
   );
 
-  filteredDevices = computed<DetectedDevice[]>(() =>
-    this.detectedDevices().filter((device) =>
-      this.matchesSearch(this.deviceSearch(), [
-        device.id_serial,
-        device.ultimo_registro,
-        device.ultimo_registro_local || '',
-        device.ultima_medicion || '',
-        device.ultima_medicion_local || '',
-        device.ultima_llegada || '',
-        device.ultima_llegada_local || '',
-        this.deviceClockSkewLabel(device),
-        String(this.deviceDataCount(device)),
-        String(device.total_registros),
-        device.sitio_descripcion || '',
-        device.empresa_nombre || '',
-        device.sub_empresa_nombre || '',
-      ]),
-    ),
-  );
-
   paginatedCompanies = computed<CompanyNode[]>(() =>
     this.paginate(this.filteredCompanies(), this.companyPage()),
   );
@@ -1446,10 +1337,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
 
   paginatedSites = computed<SiteOption[]>(() =>
     this.paginate(this.filteredSites(), this.sitePage()),
-  );
-
-  paginatedDevices = computed<DetectedDevice[]>(() =>
-    this.paginate(this.filteredDevices(), this.devicePage()),
   );
 
   selectedCompany = computed<CompanyNode | undefined>(() =>
@@ -1569,18 +1456,12 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.sitePage.set(1);
   }
 
-  updateDeviceSearch(value: string): void {
-    this.deviceSearch.set(value);
-    this.devicePage.set(1);
-  }
-
   setPage(section: SectionId, page: number): void {
     const totalItems = this.sectionTotal(section);
     const nextPage = this.clampPage(page, totalItems);
     if (section === 'empresas') this.companyPage.set(nextPage);
     if (section === 'subempresas') this.subCompanyPage.set(nextPage);
     if (section === 'sitios') this.sitePage.set(nextPage);
-    if (section === 'equipos') this.devicePage.set(nextPage);
   }
 
   cancelConfirmDialog(): void {
@@ -2429,157 +2310,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return `${base} bg-primary-tint-10 text-primary-container`;
   }
 
-  deviceDataCount(device: DetectedDevice): number {
-    return Number(device.total_datos ?? 0);
-  }
-
-  deviceDataCountLabel(device: DetectedDevice): string {
-    if (device.total_datos === undefined || device.total_datos === null) return 'No disponible';
-    const count = this.deviceDataCount(device);
-    return `${count} ${count === 1 ? 'dato' : 'datos'}`;
-  }
-
-  deviceMeasurementLabel(device: DetectedDevice): string {
-    return (
-      this.deviceDateLabel(device.ultima_medicion_local, device.ultima_medicion) ||
-      this.deviceLastSeenLabel(device)
-    );
-  }
-
-  deviceArrivalLabel(device: DetectedDevice): string {
-    return (
-      this.deviceDateLabel(device.ultima_llegada_local, device.ultima_llegada) ||
-      this.deviceLastSeenLabel(device)
-    );
-  }
-
-  deviceClockSkewLabel(device: DetectedDevice): string {
-    const seconds = this.deviceClockSkewSeconds(device);
-    if (seconds === null) return 'Sin llegada';
-    if (seconds === 0) return 'Sin desfase';
-
-    const absLabel = this.formatDurationLabel(Math.abs(seconds));
-    if (seconds > 0) return `Adelantado ${absLabel}`;
-    if (Math.abs(seconds) >= 86400) return 'Carga histórica';
-    return `Llegada +${absLabel}`;
-  }
-
-  deviceClockSkewTitle(device: DetectedDevice): string {
-    return [
-      `Medición: ${this.deviceMeasurementLabel(device)}`,
-      `Llegada BD: ${this.deviceArrivalLabel(device)}`,
-      `Estado: ${this.deviceClockSkewLabel(device)}`,
-    ].join(' | ');
-  }
-
-  deviceClockSkewIcon(device: DetectedDevice): string {
-    const tone = this.deviceClockSkewTone(device);
-    if (tone === 'danger') return 'error';
-    if (tone === 'warning') return 'schedule';
-    if (tone === 'ok') return 'check_circle';
-    return 'history';
-  }
-
-  deviceClockSkewBadgeClass(device: DetectedDevice): string {
-    return `device-skew-badge device-skew-${this.deviceClockSkewTone(device)}`;
-  }
-
-  deviceLastSeenLabel(device: DetectedDevice): string {
-    if (device.ultimo_registro_local)
-      return this.readableDeviceDateTime(device.ultimo_registro_local);
-
-    const date = new Date(device.ultimo_registro);
-    if (Number.isNaN(date.getTime())) return device.ultimo_registro || 'Sin registro';
-
-    return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'Etc/GMT+4',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-      .format(date)
-      .replace(',', '');
-  }
-
-  private deviceClockSkewSeconds(device: DetectedDevice): number | null {
-    if (device.desfase_segundos !== undefined && device.desfase_segundos !== null) {
-      const direct = Number(device.desfase_segundos);
-      if (Number.isFinite(direct)) return Math.round(direct);
-    }
-
-    const measuredMs = this.deviceTimestampMs(device.ultima_medicion);
-    const receivedMs = this.deviceTimestampMs(device.ultima_llegada);
-    if (measuredMs === null || receivedMs === null) return null;
-    return Math.round((measuredMs - receivedMs) / 1000);
-  }
-
-  private deviceClockSkewTone(device: DetectedDevice): 'ok' | 'warning' | 'danger' | 'neutral' {
-    const seconds = this.deviceClockSkewSeconds(device);
-    if (seconds === null) return 'neutral';
-    if (seconds < -86400) return 'neutral';
-    if (seconds > 120) return 'danger';
-    if (seconds > 30 || seconds < -600) return 'warning';
-    return 'ok';
-  }
-
-  private deviceDateLabel(localValue?: string | null, utcValue?: string | null): string | null {
-    if (localValue) return this.readableDeviceDateTime(localValue);
-
-    const date = utcValue ? new Date(utcValue) : null;
-    if (!date || Number.isNaN(date.getTime())) return null;
-
-    return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'Etc/GMT+4',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-      .format(date)
-      .replace(',', '');
-  }
-
-  private deviceTimestampMs(value?: string | null): number | null {
-    if (!value) return null;
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  private formatDurationLabel(totalSeconds: number): string {
-    const seconds = Math.max(0, Math.round(totalSeconds));
-    if (seconds < 60) return `${seconds}s`;
-
-    const minutes = Math.floor(seconds / 60);
-    const restSeconds = seconds % 60;
-    if (minutes < 60) {
-      return restSeconds ? `${minutes}m ${restSeconds}s` : `${minutes}m`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-    const restMinutes = minutes % 60;
-    if (hours < 24) {
-      return restMinutes ? `${hours}h ${restMinutes}m` : `${hours}h`;
-    }
-
-    const days = Math.floor(hours / 24);
-    const restHours = hours % 24;
-    return restHours ? `${days}d ${restHours}h` : `${days}d`;
-  }
-
-  private readableDeviceDateTime(value: string): string {
-    const cleaned = value.trim();
-    const isoLike = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)/);
-    if (isoLike) return `${isoLike[3]}-${isoLike[2]}-${isoLike[1]} ${isoLike[4]}`;
-    return cleaned.replace(',', '');
-  }
-
   sectionButtonClass(section: SectionId): string {
     const base = `section-tab-button section-tab-${section}`;
     return this.activeSection() === section ? `${base} section-tab-active` : base;
@@ -2614,8 +2344,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   private sectionTotal(section: SectionId): number {
     if (section === 'empresas') return this.filteredCompanies().length;
     if (section === 'subempresas') return this.filteredSubCompanies().length;
-    if (section === 'sitios') return this.filteredSites().length;
-    return this.filteredDevices().length;
+    return this.filteredSites().length;
   }
 
   private clampAllPages(): void {
@@ -2624,7 +2353,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
       this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length),
     );
     this.sitePage.set(this.clampPage(this.sitePage(), this.filteredSites().length));
-    this.devicePage.set(this.clampPage(this.devicePage(), this.filteredDevices().length));
   }
 
   private setHierarchy(hierarchy: CompanyNode[]): void {
