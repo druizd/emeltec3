@@ -5,7 +5,6 @@ import {
   Component,
   HostListener,
   computed,
-  effect,
   inject,
   OnDestroy,
   OnInit,
@@ -19,7 +18,7 @@ import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
+import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import {
   CompanyService,
   type ContadorMensualPoint,
@@ -94,11 +93,6 @@ interface MonthlyFlowPoint {
   proyeccion?: number | null;
 }
 
-interface RealtimeMetric {
-  label: string;
-  value: string;
-  unit: string;
-}
 
 interface RealtimeChartPoint {
   index: number;
