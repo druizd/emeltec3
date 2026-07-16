@@ -30,9 +30,13 @@ proporcionalidad.
 **Anonimización**: eliminación irreversible de los identificadores que permiten
 vincular el registro con una persona natural. El registro resultante deja de
 ser dato personal y puede conservarse indefinidamente. Para el audit log,
-esto implica sustituir IP y correo electrónico del actor por valores
-pseudónimos no reversibles (hash sin sal fija, o sustitución por valor
-constante como `[ANONIMIZADO]`).
+esto implica sustituir IP y correo electrónico del actor por un valor
+constante (`[ANONIMIZADO]`). Un hash simple del correo **no** constituye
+anonimización: el espacio de correos es enumerable y el hash se revierte por
+ataque de diccionario (seguiría siendo dato personal seudonimizado). Si la
+investigación forense exige correlacionar acciones de un mismo actor ya
+anonimizado, usar HMAC con llave efímera destruida al cierre del período de
+retención.
 
 **Supresión**: eliminación completa del registro de los sistemas de
 producción, copias de seguridad incluidas (en el ciclo de rotación de
