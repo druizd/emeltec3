@@ -1,6 +1,6 @@
 /**
  * Repositorio para las tablas materializadas de contadores daily + jornada.
- * Creadas por migration 007_site_contador_daily_jornada.js.
+ * Creadas por migration 009_site_contador_daily_jornada.js.
  */
 import { query } from '../../config/dbHelpers';
 import type { ContadorDiarioPoint, ContadorJornadaPoint } from './types';

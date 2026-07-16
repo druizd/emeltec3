@@ -10,7 +10,7 @@
  *
  * Kill switch: ENABLE_CONTADORES_DAILY_WORKER (default: false).
  * No activo por defecto para no interferir con el worker mensual existente
- * ni con despliegues que aún no tienen la migration 007 ejecutada.
+ * ni con despliegues que aún no tienen la migration 009 ejecutada.
  *
  * Patrón idéntico al worker mensual (src/modules/contadores/worker.ts).
  */
