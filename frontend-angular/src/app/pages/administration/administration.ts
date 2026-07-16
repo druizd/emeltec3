@@ -43,6 +43,7 @@ import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-section';
 import { EquiposSectionComponent } from './components/equipos-section';
 import { EmpresasSectionComponent } from './components/empresas-section';
+import { SubempresasSectionComponent } from './components/subempresas-section';
 import { DEFAULT_SITE_TYPE_CATALOG } from './site-type-catalog';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
@@ -169,6 +170,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
     EquipoEmeltecSectionComponent,
     EquiposSectionComponent,
     EmpresasSectionComponent,
+    SubempresasSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -366,142 +368,25 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
               }
 
               @if (activeSection() === 'subempresas') {
-                <app-admin-section-shell title="Subempresas">
-                  <form
-                    (submit)="submitSubCompany($event)"
-                    class="editor-panel grid gap-4 lg:grid-cols-3"
-                  >
-                    <div class="lg:col-span-3">
-                      <app-admin-section-header
-                        [selected]="!!selectedSubCompanyId()"
-                        selectedLabel="Subempresa seleccionada"
-                        newLabel="Nueva subempresa"
-                        selectedHint="Presiona editar datos para habilitar cambios."
-                        newHint="Completa los datos para crear una subempresa."
-                        (createNew)="startCreateSubCompany()"
-                      ></app-admin-section-header>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Empresa padre</label
-                      >
-                      <select
-                        required
-                        [disabled]="subCompanyFormDisabled()"
-                        name="sub-company-parent"
-                        [ngModel]="subCompanyForm().empresa_id"
-                        (ngModelChange)="updateSubCompanyForm('empresa_id', $event)"
-                        class="field-control"
-                      >
-                        <option value="" disabled>Selecciona empresa</option>
-                        @for (company of hierarchy(); track company.id) {
-                          <option [value]="company.id">{{ company.nombre }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Nombre</label>
-                      <input
-                        required
-                        [disabled]="subCompanyFormDisabled()"
-                        name="sub-company-name"
-                        [ngModel]="subCompanyForm().nombre"
-                        (ngModelChange)="updateSubCompanyForm('nombre', $event)"
-                        class="field-control"
-                        placeholder="Subempresa o faena"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">RUT</label>
-                      <input
-                        required
-                        [disabled]="subCompanyFormDisabled()"
-                        name="sub-company-rut"
-                        [ngModel]="subCompanyForm().rut"
-                        (ngModelChange)="updateSubCompanyForm('rut', $event)"
-                        inputmode="text"
-                        maxlength="12"
-                        class="field-control"
-                        placeholder="76.000.000-0"
-                      />
-                    </div>
-                    <div class="flex flex-wrap gap-2 lg:col-span-3">
-                      <app-admin-form-actions
-                        [selected]="!!selectedSubCompanyId()"
-                        [editMode]="subCompanyEditMode()"
-                        [busy]="busyAction()"
-                        createKey="subcompany"
-                        updateKey="subcompany-update"
-                        deleteKey="subcompany-delete"
-                        createLabel="Crear subempresa"
-                        createIcon="add_business"
-                        entityLabel="subempresa"
-                        (enableEdit)="enableSubCompanyEdit()"
-                        (cancelEdit)="cancelSubCompanyEdit()"
-                        (remove)="deleteSelectedSubCompany()"
-                      ></app-admin-form-actions>
-                    </div>
-                  </form>
-
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Subempresas registradas"
-                      [countLabel]="
-                        filteredSubCompanies().length +
-                        ' de ' +
-                        allSubCompanies().length +
-                        ' visibles'
-                      "
-                      [searchValue]="subCompanySearch()"
-                      placeholder="Buscar subempresa, empresa o RUT"
-                      (searchChange)="updateSubCompanySearch($event)"
-                    ></app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[760px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">Empresa</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (sub of paginatedSubCompanies(); track sub.id) {
-                            <tr
-                              (click)="selectSubCompany(sub.id)"
-                              [class]="rowClass(selectedSubCompanyId() === sub.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
-                                {{ sub.nombre }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="Empresa">
-                                {{ sub.companyName }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="RUT">
-                                {{ sub.rut }}
-                              </td>
-                              <td
-                                class="px-4 py-3 text-right font-bold text-slate-600"
-                                data-label="Sitios"
-                              >
-                                {{ sub.sites.length }}
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredSubCompanies().length"
-                      [page]="subCompanyPage()"
-                      (pageChange)="setPage('subempresas', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-subempresas-section
+                  [subCompanies]="allSubCompanies()"
+                  [companies]="hierarchy()"
+                  [selectedId]="selectedSubCompanyId()"
+                  [editMode]="subCompanyEditMode()"
+                  [busyAction]="busyAction()"
+                  [empresaId]="subCompanyForm().empresa_id"
+                  [nombre]="subCompanyForm().nombre"
+                  [rut]="subCompanyForm().rut"
+                  (submit)="submitSubCompany($event)"
+                  (select)="selectSubCompany($event)"
+                  (enableEdit)="enableSubCompanyEdit()"
+                  (cancelEdit)="cancelSubCompanyEdit()"
+                  (remove)="deleteSelectedSubCompany()"
+                  (createNew)="startCreateSubCompany()"
+                  (empresaIdChange)="updateSubCompanyForm('empresa_id', $event)"
+                  (nombreChange)="updateSubCompanyForm('nombre', $event)"
+                  (rutChange)="updateSubCompanyForm('rut', $event)"
+                />
               }
 
               @if (activeSection() === 'sitios') {
@@ -1120,9 +1005,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   companyEditMode = signal(false);
   subCompanyEditMode = signal(false);
   siteEditMode = signal(false);
-  subCompanySearch = signal('');
   siteSearch = signal('');
-  subCompanyPage = signal(1);
   sitePage = signal(1);
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
@@ -1175,17 +1058,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     ),
   );
 
-  filteredSubCompanies = computed<SubCompanyOption[]>(() =>
-    this.allSubCompanies().filter((subCompany) =>
-      this.matchesSearch(this.subCompanySearch(), [
-        subCompany.nombre,
-        subCompany.rut,
-        subCompany.companyName,
-        String(subCompany.sites.length),
-      ]),
-    ),
-  );
-
   filteredSites = computed<SiteOption[]>(() =>
     this.allSites().filter((site) =>
       this.matchesSearch(this.siteSearch(), [
@@ -1199,10 +1071,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         site.activo ? 'activo' : 'inactivo',
       ]),
     ),
-  );
-
-  paginatedSubCompanies = computed<SubCompanyOption[]>(() =>
-    this.paginate(this.filteredSubCompanies(), this.subCompanyPage()),
   );
 
   paginatedSites = computed<SiteOption[]>(() =>
@@ -1311,11 +1179,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.siteForm.update((form) => ({ ...form, es_maleta_piloto: value === 'true' }));
   }
 
-  updateSubCompanySearch(value: string): void {
-    this.subCompanySearch.set(value);
-    this.subCompanyPage.set(1);
-  }
-
   updateSiteSearch(value: string): void {
     this.siteSearch.set(value);
     this.sitePage.set(1);
@@ -1324,7 +1187,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   setPage(section: SectionId, page: number): void {
     const totalItems = this.sectionTotal(section);
     const nextPage = this.clampPage(page, totalItems);
-    if (section === 'subempresas') this.subCompanyPage.set(nextPage);
     if (section === 'sitios') this.sitePage.set(nextPage);
   }
 
@@ -1348,10 +1210,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
 
   private totalPages(totalItems: number): number {
     return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
-  }
-
-  subCompanyFormDisabled(): boolean {
-    return !!this.selectedSubCompanyId() && !this.subCompanyEditMode();
   }
 
   siteFormDisabled(): boolean {
@@ -2188,15 +2046,11 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private sectionTotal(section: SectionId): number {
-    if (section === 'subempresas') return this.filteredSubCompanies().length;
+  private sectionTotal(_section: SectionId): number {
     return this.filteredSites().length;
   }
 
   private clampAllPages(): void {
-    this.subCompanyPage.set(
-      this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length),
-    );
     this.sitePage.set(this.clampPage(this.sitePage(), this.filteredSites().length));
   }
 
