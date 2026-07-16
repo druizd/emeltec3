@@ -3,7 +3,6 @@ const path = require('path');
 const router = express.Router();
 const companyController = require('../controllers/companyController');
 const pasteurizadorController = require('../controllers/pasteurizadorController');
-const incidenciaController = require('../controllers/incidenciaController');
 const { protect } = require('../middlewares/authMiddleware');
 const { requireSiteAccess } = require('../middlewares/coldRoomAccess');
 
@@ -109,20 +108,5 @@ router.patch('/sites/:siteId/variables/:mapId', companyController.updateSiteVari
 router.delete('/sites/:siteId/variables/:mapId', companyController.deleteSiteVariableMap);
 
 router.get('/:id/sites', companyController.getCompanySites);
-
-// ── Incidencias por sitio ────────────────────────────────────────────────────
-// Proxy al controller de incidencias que ya soporta filtro por sitio_id.
-// requireSiteAccess('siteId') garantiza que el usuario tiene acceso al sitio
-// antes de delegar al controller (que aplica adicionalmente los filtros por empresa).
-// Query params soportados: desde, hasta, estado, categoria, gravedad, page, limit.
-router.get(
-  '/sites/:siteId/incidencias',
-  requireSiteAccess('siteId'),
-  (req, res, next) => {
-    // Inyecta el siteId del path como query param para que listarIncidencias lo filtre.
-    req.query.sitio_id = req.params.siteId;
-    incidenciaController.listarIncidencias(req, res, next);
-  },
-);
 
 module.exports = router;
