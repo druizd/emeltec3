@@ -126,10 +126,10 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: Art. 14 sexies — reportar a la Agencia "sin dilaciones indebidas" (sin plazo fijo en horas, a diferencia del RGPD) cuando haya riesgo razonable para titulares. A los titulares solo si la brecha afecta datos sensibles, menores de 14 años o datos económicos/financieros. Exige además **registro interno** de las vulneraciones. Omitir reporte: grave (10.000 UTM); omitirlo deliberadamente: gravísima (20.000 UTM). Detalle: `LEY-21719-SEGURIDAD.md`.
 
-- [ ] B4.1 Redactar procedimiento escrito de respuesta a brechas (quién detecta, quién decide, quién notifica, plazos)
+- [x] B4.1 Redactar procedimiento escrito de respuesta a brechas → `RESPUESTA-BRECHAS.md` (5 fases, plazos internos ≤24 h evaluación / ≤72 h notificación)
 - [ ] B4.2 Alertas automáticas sobre audit log: logins anómalos, exportaciones masivas, cambios de permisos
-- [ ] B4.3 Definir plantilla de notificación a la Agencia y a titulares
-- [ ] B4.4 Crear registro interno de vulneraciones (naturaleza, efectos, categorías de datos, nº titulares afectados, medidas adoptadas) — obligatorio Art. 14 sexies inc. 2°
+- [x] B4.3 Definir plantilla de notificación a la Agencia y a titulares → `RESPUESTA-BRECHAS.md` §3
+- [x] B4.4 Crear registro interno de vulneraciones — formato y proceso en `RESPUESTA-BRECHAS.md` §4 (archivo vivo se crea con la primera entrada)
 
 ### B5. Política de retención de datos 🔴 crítico
 
@@ -143,8 +143,8 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: documento interno (no código). Por cada tratamiento: qué datos, finalidad, base legal, plazo, destinatarios. El envío del RUT del informante a la DGA es transferencia a organismo público — base legal: obligación legal, documentarla.
 
-- [ ] B6.1 Levantar inventario de tratamientos (usuarios, contactos operacionales, audit log, DGA)
-- [ ] B6.2 Redactar registro con base legal y plazo por tratamiento
+- [x] B6.1 Levantar inventario de tratamientos → `GOBERNANZA-DATOS.md` §4 (T1–T6)
+- [x] B6.2 Redactar registro con base legal y plazo por tratamiento → `GOBERNANZA-DATOS.md` §4 (plazos propuestos, confirmar con B5.1; base legal del envío a DGA en T5)
 
 ### B7. Consentimiento y deber de información 🟡 medio
 
@@ -167,7 +167,7 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: no obligatorio para todos, pero el modelo de prevención certificado ante la Agencia actúa como atenuante de responsabilidad. Para un SaaS que procesa datos regulados (DGA), vale la pena evaluarlo. Reglamento del modelo: D.S. 662/2025 Hacienda, vigente junto con la ley (01-12-2026).
 
-- [ ] B9.1 Evaluar designación de delegado de protección de datos
+- [x] B9.1 Evaluar designación de delegado de protección de datos → designado: D. Ruiz (Desarrollador de Sistemas), `GOBERNANZA-DATOS.md` §2.1 — pendiente formalizar por correo del representante legal
 - [ ] B9.2 Evaluar adopción de modelo de prevención de infracciones certificable
 
 ### B10. Medidas de seguridad del Art. 14 quinquies 🔴 crítico
