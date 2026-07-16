@@ -236,15 +236,24 @@ Spec: Manual Técnico DGA 1/2025, Res. Exenta 2.170 (04-jul-2025).
 Slots `requires_review` requieren decisión manual de SuperAdmin/Admin:
 
 1. `GET /api/v2/dga/review-queue` — lista slots con warnings.
-2. Admin pide OTP: `POST /api/v2/dga/2fa/request` (email al usuario
-   solicitante, expira 5 min).
-3. `POST /api/v2/dga/review-queue/action` (header `X-DGA-2FA-Code`):
+2. `POST /api/v2/dga/review-queue/action`:
    - **accept** — opcionalmente con valor corregido (ej. último totalizador
      válido sugerido) → slot pasa a `pendiente` (entra a cola de envío).
    - **discard** → slot pasa a `rechazado`.
 
-2FA email-OTP también aplica a: cambio de `clave_informante`, activar
-`dga_transport='rest'`, eliminar informante.
+**2FA unificado** (desde 2026-07): un solo sistema email-OTP para toda la
+plataforma (`shared/email-otp.ts`) — endpoint `POST /api/2fa/request`, header
+`X-2FA-Code`, códigos de error `TWOFA_REQUIRED`/`TWOFA_INVALID`. En el
+frontend lo orquesta el `twoFactorInterceptor` global (diálogo automático al
+recibir el 403). Código de 6 dígitos, TTL 5 min, single-use, **máx 5 intentos
+fallidos** (anti fuerza bruta). Aplica a acciones DGA (accept/discard,
+cambio de `clave_informante`, activar `dga_transport='rest'` o
+`dga_gcs_export`, eliminar informante, reconocer sensor defectuoso) y al
+resto de acciones sensibles (user CRUD, alarmas, cold rooms).
+
+**Config del pozo (modal)**: los controles editan un borrador local — nada se
+persiste hasta "Guardar cambios" (valida formato de obra, caudal, campos
+requeridos por `dga_activo`/`rest` y manda UN solo PATCH con lo modificado).
 
 ---
 

@@ -38,7 +38,7 @@ export type UpsertInformantePayload = z.infer<typeof UpsertInformantePayload>;
 
 /**
  * Patch parcial de los campos DGA del pozo. Todos opcionales.
- * `dga_transport='rest'` requiere 2FA en el endpoint (header X-DGA-2FA-Code).
+ * `dga_transport='rest'` requiere 2FA en el endpoint (header X-2FA-Code).
  */
 export const PatchPozoDgaConfigPayload = z
   .object({

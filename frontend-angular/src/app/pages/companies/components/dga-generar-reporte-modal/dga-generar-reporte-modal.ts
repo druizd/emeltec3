@@ -2,12 +2,14 @@
  * Modal "Configurar reporte DGA" — modelo redesign 2026-05-17.
  *
  * Toda la config DGA del pozo en un solo modal:
- *   1. Sección Activación (siempre visible): toggle activo, transport
- *      (off/shadow/rest), código de obra, caudal_max_lps, periodicidad,
- *      fecha+hora inicio. Cada control se persiste inmediato al cambiar.
- *      Pasar transport→'rest' dispara 2FA inline (input código + confirm).
- *   2. Sección Informante: dropdown del pool global + alta/rotación de
- *      credenciales (RUT + clave). Rotación de clave exige 2FA.
+ *   1. Sección Activación: los controles editan un BORRADOR local — nada se
+ *      persiste hasta presionar "Guardar cambios" (valida antes de enviar y
+ *      manda UN solo PATCH con los campos modificados). Pasar transport→'rest'
+ *      o activar GCS exige 2FA: lo orquesta el interceptor global
+ *      (twoFactorInterceptor) con el diálogo estándar.
+ *   2. Sección Informante: dropdown del pool global (parte del borrador) +
+ *      alta/rotación de credenciales (RUT + clave, botón propio). Rotación de
+ *      clave exige 2FA — también vía interceptor.
  *   3. Sección Datos en vivo: GET live-preview cada N seg → muestra los
  *      valores formateados tal como se enviarían a SNIA con la última
  *      lectura del pozo.
@@ -42,10 +44,26 @@ import { formatRutDgaInput } from '../../../../shared/rut';
 
 const LIVE_REFRESH_MS = 10_000;
 
+/** Mismo formato que exige el backend (Res 2170 §5.2, CODIGO_OBRA_REGEX). */
+const CODIGO_OBRA_REGEX = /^O[BR]-\d{4}-\d+$/;
+
 interface PeriodicidadOption {
   value: DgaPeriodicidad;
   label: string;
   cadencia: string;
+}
+
+/** Borrador editable de la config — se persiste solo al Guardar. */
+interface ConfigDraft {
+  dga_activo: boolean;
+  dga_gcs_export: boolean;
+  dga_transport: DgaTransport;
+  obra_dga: string;
+  dga_caudal_max_lps: string; // texto del input; se valida/convierte al guardar
+  dga_periodicidad: DgaPeriodicidad | '';
+  dga_fecha_inicio: string;
+  dga_hora_inicio: string;
+  dga_informante_rut: string;
 }
 
 @Component({
@@ -95,7 +113,7 @@ interface PeriodicidadOption {
 
           <!-- Body -->
           <div class="space-y-5 px-6 py-5">
-            <!-- ====== Activación DGA (siempre visible) ====== -->
+            <!-- ====== Activación DGA (borrador; se aplica al Guardar) ====== -->
             <section
               class="space-y-3 rounded-lg border border-primary-tint-25 bg-primary-tint-08/40 px-4 py-3"
             >
@@ -112,36 +130,30 @@ interface PeriodicidadOption {
                 <label class="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    [checked]="pozo()?.dga_activo ?? false"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeField('dga_activo', $any($event.target).checked)"
+                    [checked]="draft().dga_activo"
+                    [disabled]="saving()"
+                    (change)="setDraft('dga_activo', $any($event.target).checked)"
                     class="h-4 w-4 rounded border-slate-300 text-primary-container focus:ring-[rgba(13,175,189,0.45)]"
                   />
                   <span class="text-[12px] font-semibold text-slate-700">DGA activo</span>
-                  @if (pozoSaving() === 'dga_activo') {
-                    <span class="text-[10px] italic text-primary-container">Guardando…</span>
-                  }
                 </label>
 
                 <!-- Toggle Export GCS (desarrollo a medida CCU_Central; activar exige 2FA) -->
                 <label class="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    [checked]="pozo()?.dga_gcs_export ?? false"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeField('dga_gcs_export', $any($event.target).checked)"
+                    [checked]="draft().dga_gcs_export"
+                    [disabled]="saving()"
+                    (change)="setDraft('dga_gcs_export', $any($event.target).checked)"
                     class="h-4 w-4 rounded border-slate-300 text-primary-container focus:ring-[rgba(13,175,189,0.45)]"
                   />
                   <span class="text-[12px] font-semibold text-slate-700">Copia a GCS</span>
                   <span
                     class="material-symbols-outlined cursor-help text-[12px] leading-none text-slate-400 hover:text-primary-container"
-                    title="Copia cada envío DGA con respuesta de SNIA (enviado o rechazado) a Google Cloud Storage en formato Parquet. Desarrollo a medida solicitado por CCU_Central — usar SOLO en instalaciones de CCU. Activarlo exige verificación 2FA (2 pasos)."
+                    title="Copia cada envío DGA con respuesta de SNIA (enviado o rechazado) a Google Cloud Storage en formato Parquet. Desarrollo a medida solicitado por CCU_Central — usar SOLO en instalaciones de CCU. Activarlo exige verificación 2FA al guardar."
                     aria-label="Ayuda: Copia a GCS"
                     >help</span
                   >
-                  @if (pozoSaving() === 'dga_gcs_export') {
-                    <span class="text-[10px] italic text-primary-container">Guardando…</span>
-                  }
                 </label>
 
                 <!-- Modo envío -->
@@ -150,9 +162,9 @@ interface PeriodicidadOption {
                 >
                   Modo envío
                   <select
-                    [value]="pozo()?.dga_transport ?? 'off'"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeTransport($any($event.target).value)"
+                    [value]="draft().dga_transport"
+                    [disabled]="saving()"
+                    (change)="setDraft('dga_transport', $any($event.target).value)"
                     class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-semibold text-slate-700 outline-none focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
                   >
                     <option value="off">Off (no envía)</option>
@@ -162,29 +174,19 @@ interface PeriodicidadOption {
                 </label>
 
                 <!-- Código de obra -->
-                <div
+                <label
                   class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
                 >
                   Código de obra
-                  <div class="flex gap-2">
-                    <input
-                      type="text"
-                      [ngModel]="obraDga()"
-                      (ngModelChange)="obraDga.set($event)"
-                      placeholder="OB-XXXX-XXX"
-                      [disabled]="obraDgaSaving()"
-                      class="flex-1 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono uppercase tracking-wider text-slate-700 outline-none focus:border-primary-tint-35"
-                    />
-                    <button
-                      type="button"
-                      (click)="saveObraDga()"
-                      [disabled]="obraDgaSaving() || obraDga().trim() === obraDgaInitial()"
-                      class="rounded bg-primary px-2 py-1 text-[10px] font-bold text-white hover:bg-primary-container disabled:opacity-40"
-                    >
-                      OK
-                    </button>
-                  </div>
-                </div>
+                  <input
+                    type="text"
+                    [ngModel]="draft().obra_dga"
+                    (ngModelChange)="setDraft('obra_dga', $event)"
+                    placeholder="OB-XXXX-XXX"
+                    [disabled]="saving()"
+                    class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono uppercase tracking-wider text-slate-700 outline-none focus:border-primary-tint-35"
+                  />
+                </label>
 
                 <!-- Caudal max -->
                 <label
@@ -195,9 +197,9 @@ interface PeriodicidadOption {
                     type="number"
                     step="0.01"
                     min="0"
-                    [value]="pozo()?.dga_caudal_max_lps ?? ''"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeCaudalMax($any($event.target).value)"
+                    [ngModel]="draft().dga_caudal_max_lps"
+                    (ngModelChange)="setDraft('dga_caudal_max_lps', $event)"
+                    [disabled]="saving()"
                     placeholder="sin cargar (fallback 1000)"
                     class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
                   />
@@ -209,9 +211,9 @@ interface PeriodicidadOption {
                 >
                   Periodicidad
                   <select
-                    [value]="pozo()?.dga_periodicidad ?? ''"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeField('dga_periodicidad', $any($event.target).value || null)"
+                    [value]="draft().dga_periodicidad"
+                    [disabled]="saving()"
+                    (change)="setDraft('dga_periodicidad', $any($event.target).value)"
                     class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] outline-none focus:border-primary-tint-35"
                   >
                     <option value="">— elegir —</option>
@@ -229,9 +231,9 @@ interface PeriodicidadOption {
                   <input
                     type="date"
                     min="2020-01-01"
-                    [value]="pozo()?.dga_fecha_inicio ?? ''"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeField('dga_fecha_inicio', $any($event.target).value || null)"
+                    [value]="draft().dga_fecha_inicio"
+                    [disabled]="saving()"
+                    (change)="setDraft('dga_fecha_inicio', $any($event.target).value)"
                     class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
                   />
                 </label>
@@ -244,9 +246,9 @@ interface PeriodicidadOption {
                   <input
                     type="time"
                     step="60"
-                    [value]="horaInicioForInput()"
-                    [disabled]="pozoSaving() !== ''"
-                    (change)="changeField('dga_hora_inicio', $any($event.target).value || null)"
+                    [value]="draft().dga_hora_inicio"
+                    [disabled]="saving()"
+                    (change)="setDraft('dga_hora_inicio', $any($event.target).value)"
                     class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
                   />
                 </label>
@@ -262,8 +264,10 @@ interface PeriodicidadOption {
               }
 
               <p class="text-[10px] text-slate-500">
-                Pasar a <strong>REST</strong> envía a SNIA en producción. Verifica que el sistema
-                legacy esté apagado para esta obra antes (Res 2170 §6.3). Requiere código 2FA.
+                Los cambios se aplican al presionar <strong>Guardar cambios</strong>. Pasar a
+                <strong>REST</strong> envía a SNIA en producción — verifica que el sistema legacy
+                esté apagado para esta obra antes (Res 2170 §6.3). Activar REST o GCS pide
+                verificación 2FA al guardar.
               </p>
             </section>
 
@@ -286,15 +290,15 @@ interface PeriodicidadOption {
                 </button>
               </div>
 
-              <!-- Selector pool -->
+              <!-- Selector pool (parte del borrador de config) -->
               <label
                 class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
               >
                 Asociar informante (RUT)
                 <select
-                  [value]="pozo()?.dga_informante_rut ?? ''"
-                  [disabled]="pozoSaving() !== '' || informantesLoading()"
-                  (change)="changeField('dga_informante_rut', $any($event.target).value || null)"
+                  [value]="draft().dga_informante_rut"
+                  [disabled]="saving() || informantesLoading()"
+                  (change)="setDraft('dga_informante_rut', $any($event.target).value)"
                   class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-accent/30"
                 >
                   <option value="">— ninguno —</option>
@@ -305,7 +309,7 @@ interface PeriodicidadOption {
                   }
                 </select>
                 <span class="text-[10px] text-slate-500">
-                  Un mismo RUT puede asociarse a varios pozos.
+                  Un mismo RUT puede asociarse a varios pozos. Se aplica al Guardar.
                 </span>
               </label>
 
@@ -356,8 +360,8 @@ interface PeriodicidadOption {
                 </div>
               }
               <p class="text-[10px] text-slate-500">
-                Solo RUT es obligatorio. La clave solo se exige al crear nuevo o rotar (requiere
-                2FA). Referencia es etiqueta libre interna.
+                Solo RUT es obligatorio. La clave solo se exige al crear nuevo o rotar (pide 2FA).
+                Referencia es etiqueta libre interna.
               </p>
             </section>
 
@@ -423,90 +427,36 @@ interface PeriodicidadOption {
 
           <!-- Footer -->
           <div
-            class="flex items-center justify-end gap-2 border-t border-slate-200 bg-slate-50/60 px-6 py-4"
+            class="flex items-center justify-between gap-2 border-t border-slate-200 bg-slate-50/60 px-6 py-4"
           >
-            <button
-              type="button"
-              (click)="cerrar()"
-              class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-100"
-            >
-              Cerrar
-            </button>
+            <span class="text-[11px] text-slate-500">
+              @if (isDirty()) {
+                <span class="flex items-center gap-1 font-semibold text-amber-700">
+                  <span class="material-symbols-outlined text-[14px]">edit</span>
+                  Cambios sin guardar
+                </span>
+              }
+            </span>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                (click)="cerrar()"
+                class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-100"
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                (click)="guardarConfig()"
+                [disabled]="!isDirty() || saving()"
+                class="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white hover:bg-primary-container disabled:opacity-40"
+              >
+                {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- ====== Modal 2FA inline ====== -->
-      @if (twoFactorPrompt()) {
-        <div
-          class="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/80 px-4 backdrop-blur-md"
-        >
-          <section class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div class="flex items-center gap-2 border-b border-amber-100 bg-amber-50 px-5 py-3">
-              <span class="material-symbols-outlined text-[20px] text-amber-700"
-                >verified_user</span
-              >
-              <h3 class="text-body-sm font-semibold uppercase tracking-wide text-amber-900">
-                Verificación 2FA
-              </h3>
-            </div>
-            <div class="space-y-3 px-5 py-4 text-[13px] text-slate-700">
-              <p>{{ twoFactorPrompt() }}</p>
-              <p
-                class="rounded-lg border border-amber-200 bg-amber-50 p-2 text-[12px] text-amber-800"
-              >
-                Verifica que el sistema legacy esté apagado para esta obra antes de activar REST
-                (Res 2170 §6.3).
-              </p>
-              <div class="flex items-center gap-2">
-                <button
-                  type="button"
-                  (click)="requestTwoFactorCode()"
-                  [disabled]="twoFactorRequesting()"
-                  class="rounded-lg bg-amber-600 px-3 py-1.5 text-[12px] font-bold text-white hover:bg-amber-700 disabled:opacity-50"
-                >
-                  {{ twoFactorRequesting() ? 'Enviando…' : 'Solicitar código' }}
-                </button>
-                <span class="text-[11px] text-amber-700">Se envía al email admin.</span>
-              </div>
-              <label
-                class="grid gap-1 text-[10px] uppercase tracking-wider font-semibold text-slate-500"
-              >
-                Código (6 dígitos)
-                <input
-                  type="text"
-                  inputmode="numeric"
-                  maxlength="6"
-                  [value]="twoFactorCode()"
-                  (input)="twoFactorCode.set($any($event.target).value.replace(/\\D/g, ''))"
-                  placeholder="000000"
-                  class="h-9 w-32 rounded-lg border border-amber-300 bg-white px-2 text-center font-mono text-[14px] font-bold tracking-widest text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-                />
-              </label>
-              @if (twoFactorError()) {
-                <div class="text-[11px] text-red-700">{{ twoFactorError() }}</div>
-              }
-            </div>
-            <div class="flex items-center justify-end gap-2 border-t border-slate-100 px-5 py-3">
-              <button
-                type="button"
-                (click)="cancelTwoFactor()"
-                class="rounded-lg px-3 py-1.5 text-body-sm font-semibold text-slate-500 hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                (click)="confirmTwoFactor()"
-                [disabled]="twoFactorCode().length !== 6 || twoFactorBusy()"
-                class="rounded-lg bg-amber-600 px-4 py-1.5 text-body-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
-              >
-                {{ twoFactorBusy() ? 'Confirmando…' : 'Confirmar' }}
-              </button>
-            </div>
-          </section>
-        </div>
-      }
     }
   `,
 })
@@ -528,16 +478,11 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
     { value: 'mes', label: 'Mes', cadencia: 'cada 30 días' },
   ];
 
-  // Pozo DGA config
+  // Pozo DGA config (baseline del servidor) + borrador local
   readonly pozo = signal<PozoDgaConfig | null>(null);
-  /** Campo cuyo PATCH está en vuelo. '' cuando idle. */
-  readonly pozoSaving = signal<string>('');
+  readonly draft = signal<ConfigDraft>(DgaGenerarReporteModalComponent.emptyDraft());
+  readonly saving = signal<boolean>(false);
   readonly pozoError = signal<string>('');
-
-  // Obra DGA (input separado con botón porque es texto libre)
-  readonly obraDga = signal<string>('');
-  readonly obraDgaInitial = signal<string>('');
-  readonly obraDgaSaving = signal<boolean>(false);
 
   // Informantes
   readonly informantes = signal<DgaInformantePublic[]>([]);
@@ -552,24 +497,43 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
   readonly preview = signal<DgaLivePreview | null>(null);
   private livePollHandle: ReturnType<typeof setInterval> | null = null;
 
-  // 2FA
-  /** Mensaje a mostrar en el modal de 2FA. '' cuando cerrado. */
-  readonly twoFactorPrompt = signal<string>('');
-  readonly twoFactorCode = signal<string>('');
-  readonly twoFactorRequesting = signal<boolean>(false);
-  readonly twoFactorBusy = signal<boolean>(false);
-  readonly twoFactorError = signal<string>('');
-  /**
-   * Acción pendiente a ejecutar con el código 2FA. Se resuelve cuando el
-   * usuario confirma.
-   */
-  private twoFactorPendingAction: ((code: string) => Promise<void>) | null = null;
-
-  readonly horaInicioForInput = computed<string>(() => {
-    const v = this.pozo()?.dga_hora_inicio;
-    if (!v) return '';
-    return v.length >= 5 ? v.slice(0, 5) : v;
+  /** true cuando el borrador difiere de lo guardado en el servidor. */
+  readonly isDirty = computed<boolean>(() => {
+    const base = DgaGenerarReporteModalComponent.draftFrom(this.pozo());
+    const d = this.draft();
+    return (Object.keys(d) as (keyof ConfigDraft)[]).some((k) => d[k] !== base[k]);
   });
+
+  private static emptyDraft(): ConfigDraft {
+    return {
+      dga_activo: false,
+      dga_gcs_export: false,
+      dga_transport: 'off',
+      obra_dga: '',
+      dga_caudal_max_lps: '',
+      dga_periodicidad: '',
+      dga_fecha_inicio: '',
+      dga_hora_inicio: '',
+      dga_informante_rut: '',
+    };
+  }
+
+  /** Proyecta la config del servidor al shape del borrador (strings de input). */
+  private static draftFrom(cfg: PozoDgaConfig | null): ConfigDraft {
+    if (!cfg) return DgaGenerarReporteModalComponent.emptyDraft();
+    const hora = cfg.dga_hora_inicio ?? '';
+    return {
+      dga_activo: cfg.dga_activo,
+      dga_gcs_export: cfg.dga_gcs_export,
+      dga_transport: cfg.dga_transport,
+      obra_dga: cfg.obra_dga ?? '',
+      dga_caudal_max_lps: cfg.dga_caudal_max_lps != null ? String(cfg.dga_caudal_max_lps) : '',
+      dga_periodicidad: cfg.dga_periodicidad ?? '',
+      dga_fecha_inicio: cfg.dga_fecha_inicio ?? '',
+      dga_hora_inicio: hora.length >= 5 ? hora.slice(0, 5) : hora,
+      dga_informante_rut: cfg.dga_informante_rut ?? '',
+    };
+  }
 
   // ============ Lifecycle ============
 
@@ -591,6 +555,9 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
   }
 
   cerrar(): void {
+    if (this.isDirty() && !confirm('Hay cambios sin guardar. ¿Cerrar y descartarlos?')) {
+      return;
+    }
     this.closed.emit();
   }
 
@@ -609,8 +576,7 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
     this.dgaService.getPozoDgaConfig(this.siteId).subscribe({
       next: (cfg) => {
         this.pozo.set(cfg);
-        this.obraDga.set(cfg?.obra_dga ?? '');
-        this.obraDgaInitial.set(cfg?.obra_dga ?? '');
+        this.draft.set(DgaGenerarReporteModalComponent.draftFrom(cfg));
       },
       error: (err: HttpErrorResponse) => {
         this.pozoError.set(
@@ -658,105 +624,127 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
     }
   }
 
-  // ============ Patch pozo config ============
+  // ============ Borrador + Guardar ============
+
+  setDraft<K extends keyof ConfigDraft>(field: K, value: ConfigDraft[K]): void {
+    this.draft.update((d) => ({ ...d, [field]: value }));
+  }
 
   /**
-   * Aplica un PATCH parcial al pozo_config. Si la respuesta exige 2FA,
-   * lanza el modal de 2FA y reintenta con el código.
+   * Valida el borrador completo. Devuelve el mensaje del primer problema o
+   * null si todo OK. La validación corre ANTES de tocar el backend — ese es
+   * el punto del botón Guardar.
    */
-  private patchPozo(
-    fieldLabel: string,
-    payload: PatchPozoDgaConfigPayload,
-    twoFactorCode?: string,
-  ): Promise<boolean> {
-    return new Promise((resolve) => {
-      this.pozoSaving.set(fieldLabel);
-      this.pozoError.set('');
-      this.dgaService.patchPozoDgaConfig(this.siteId, payload, twoFactorCode).subscribe({
-        next: (updated) => {
-          this.pozo.set(updated);
-          this.obraDga.set(updated.obra_dga ?? '');
-          this.obraDgaInitial.set(updated.obra_dga ?? '');
-          this.pozoSaving.set('');
-          this.configChanged.emit();
-          resolve(true);
-        },
-        error: (err: HttpErrorResponse) => {
-          this.pozoSaving.set('');
-          const code = err.error?.error?.code;
-          if (code === 'DGA_2FA_REQUIRED' || code === 'DGA_2FA_INVALID') {
-            // Activar prompt de 2FA y reintento.
-            this.promptTwoFactor(
-              'Esta acción exige verificación 2FA (2 pasos).',
-              async (twoCode) => {
-                const ok = await this.patchPozo(fieldLabel, payload, twoCode);
-                if (!ok) throw new Error('reintento falló');
-              },
-            );
-            resolve(false);
-          } else {
-            this.pozoError.set(err.error?.error?.message ?? err.message ?? 'Error desconocido');
-            resolve(false);
-          }
-        },
-      });
-    });
+  private validateDraft(d: ConfigDraft): string | null {
+    const obra = d.obra_dga.trim().toUpperCase();
+    if (obra && !CODIGO_OBRA_REGEX.test(obra)) {
+      return 'Código de obra inválido. Formato: OB-NNNN-N u OR-NNNN-N (ej. OB-0602-7).';
+    }
+    if (d.dga_caudal_max_lps.trim() !== '') {
+      const n = Number(d.dga_caudal_max_lps);
+      if (!Number.isFinite(n) || n < 0) return 'Caudal máx inválido (número ≥ 0).';
+    }
+    if (d.dga_activo) {
+      if (!d.dga_periodicidad) return 'Para activar DGA elige una periodicidad.';
+      if (!d.dga_fecha_inicio || !d.dga_hora_inicio) {
+        return 'Para activar DGA completa fecha y hora de inicio.';
+      }
+    }
+    if (d.dga_transport === 'rest') {
+      if (!obra) return 'Para modo REST el código de obra es obligatorio.';
+      if (!d.dga_informante_rut) return 'Para modo REST asocia un informante.';
+    }
+    return null;
   }
 
-  /** Wrapper genérico para cambios atómicos (un solo campo). */
-  changeField<K extends keyof PatchPozoDgaConfigPayload>(
-    field: K,
-    value: PatchPozoDgaConfigPayload[K],
-  ): void {
-    const payload = { [field]: value } as PatchPozoDgaConfigPayload;
-    void this.patchPozo(String(field), payload);
-  }
+  /**
+   * Aplica el borrador: valida, arma UN PATCH con solo los campos que
+   * cambiaron y lo envía. obra_dga viaja por su endpoint propio
+   * (companies/sites). Si el cambio exige 2FA (REST/GCS), el interceptor
+   * global abre el diálogo y reintenta solo.
+   */
+  guardarConfig(): void {
+    const d = this.draft();
+    const base = DgaGenerarReporteModalComponent.draftFrom(this.pozo());
 
-  changeTransport(value: DgaTransport): void {
-    // Backend exige 2FA si pasa a 'rest'. El patchPozo detecta el error
-    // DGA_2FA_REQUIRED y abre el prompt automáticamente.
-    this.changeField('dga_transport', value);
-  }
+    const validationError = this.validateDraft(d);
+    if (validationError) {
+      this.pozoError.set(validationError);
+      return;
+    }
 
-  changeCaudalMax(raw: string): void {
-    const trimmed = (raw ?? '').trim();
-    let value: number | null;
-    if (trimmed === '') {
-      value = null;
-    } else {
-      const n = Number(trimmed);
-      if (!Number.isFinite(n) || n < 0) {
-        this.pozoError.set('Caudal máx inválido (número ≥ 0).');
+    const payload: PatchPozoDgaConfigPayload = {};
+    if (d.dga_activo !== base.dga_activo) payload.dga_activo = d.dga_activo;
+    if (d.dga_gcs_export !== base.dga_gcs_export) payload.dga_gcs_export = d.dga_gcs_export;
+    if (d.dga_transport !== base.dga_transport) payload.dga_transport = d.dga_transport;
+    if (d.dga_caudal_max_lps !== base.dga_caudal_max_lps) {
+      payload.dga_caudal_max_lps =
+        d.dga_caudal_max_lps.trim() === '' ? null : Number(d.dga_caudal_max_lps);
+    }
+    if (d.dga_periodicidad !== base.dga_periodicidad) {
+      payload.dga_periodicidad = d.dga_periodicidad === '' ? null : d.dga_periodicidad;
+    }
+    if (d.dga_fecha_inicio !== base.dga_fecha_inicio) {
+      payload.dga_fecha_inicio = d.dga_fecha_inicio || null;
+    }
+    if (d.dga_hora_inicio !== base.dga_hora_inicio) {
+      payload.dga_hora_inicio = d.dga_hora_inicio || null;
+    }
+    if (d.dga_informante_rut !== base.dga_informante_rut) {
+      payload.dga_informante_rut = d.dga_informante_rut || null;
+    }
+    const obraChanged = d.obra_dga.trim().toUpperCase() !== base.obra_dga;
+
+    this.saving.set(true);
+    this.pozoError.set('');
+
+    const patchConfig = () => {
+      if (Object.keys(payload).length === 0) {
+        this.saving.set(false);
+        this.loadPozo();
+        this.configChanged.emit();
         return;
       }
-      value = n;
-    }
-    this.changeField('dga_caudal_max_lps', value);
-  }
-
-  saveObraDga(): void {
-    const value = this.obraDga().trim();
-    if (value === this.obraDgaInitial()) return;
-    this.obraDgaSaving.set(true);
-    this.http
-      .patch<{ ok: boolean }>(`/api/companies/sites/${encodeURIComponent(this.siteId)}`, {
-        pozo_config: { obra_dga: value || null },
-      })
-      .subscribe({
-        next: () => {
-          this.obraDgaSaving.set(false);
-          this.obraDgaInitial.set(value);
-          // Refresca pozo_config para que obra_dga refleje el cambio.
-          this.loadPozo();
+      this.dgaService.patchPozoDgaConfig(this.siteId, payload).subscribe({
+        next: (updated) => {
+          this.pozo.set(updated);
+          this.draft.set(DgaGenerarReporteModalComponent.draftFrom(updated));
+          this.saving.set(false);
           this.configChanged.emit();
         },
         error: (err: HttpErrorResponse) => {
-          this.obraDgaSaving.set(false);
-          this.pozoError.set(
-            err.error?.error?.message ?? err.message ?? 'Error al guardar código de obra',
-          );
+          this.saving.set(false);
+          this.pozoError.set(this.friendlySaveError(err));
         },
       });
+    };
+
+    if (obraChanged) {
+      const obra = d.obra_dga.trim().toUpperCase();
+      this.http
+        .patch<{ ok: boolean }>(`/api/companies/sites/${encodeURIComponent(this.siteId)}`, {
+          pozo_config: { obra_dga: obra || null },
+        })
+        .subscribe({
+          next: () => patchConfig(),
+          error: (err: HttpErrorResponse) => {
+            this.saving.set(false);
+            this.pozoError.set(
+              err.error?.error?.message ?? err.message ?? 'Error al guardar código de obra',
+            );
+          },
+        });
+    } else {
+      patchConfig();
+    }
+  }
+
+  private friendlySaveError(err: HttpErrorResponse): string {
+    const code = err.error?.code ?? err.error?.error?.code;
+    if (err.status === 403 && (code === 'TWOFA_REQUIRED' || code === 'TWOFA_INVALID')) {
+      return 'Verificación 2FA cancelada. Los cambios no se guardaron.';
+    }
+    return err.error?.error?.message ?? err.message ?? 'Error desconocido';
   }
 
   // ============ Informante ============
@@ -781,102 +769,36 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    // Si pasa clave → 2FA. Si solo referencia (RUT ya existe) → directo.
-    if (clave) {
-      this.promptTwoFactor(
-        `Rotar/establecer clave SNIA para ${rut} exige verificación 2FA.`,
-        async (code) => {
-          await this.doSaveInformante({ rut, clave_informante: clave, referencia }, code);
-        },
-      );
-      return;
-    }
-    void this.doSaveInformante({ rut, referencia }, undefined);
-  }
-
-  private async doSaveInformante(
-    payload: { rut: string; clave_informante?: string; referencia?: string | null },
-    twoFactorCode: string | undefined,
-  ): Promise<void> {
+    // Con clave el backend exige 2FA — el interceptor global abre el diálogo.
+    const payload = clave ? { rut, clave_informante: clave, referencia } : { rut, referencia };
     this.informanteSaving.set(true);
     this.informanteError.set('');
-    return new Promise<void>((resolve) => {
-      this.dgaService.upsertInformante(payload, twoFactorCode).subscribe({
-        next: () => {
-          this.informanteSaving.set(false);
-          this.newInfClave.set('');
-          this.loadInformantes();
-          resolve();
-        },
-        error: (err: HttpErrorResponse) => {
-          this.informanteSaving.set(false);
-          // Extrae el message del envelope tipo {ok:false, error:{code,message}}
-          // o fallback al string genérico de Angular.
-          const apiMsg =
-            err.error?.error?.message ??
-            err.error?.message ??
-            (typeof err.error === 'string' ? err.error : null) ??
-            err.message ??
-            'Error desconocido';
-          const apiCode = err.error?.error?.code;
-          const detalle = apiCode ? ` [${apiCode}]` : '';
-          this.informanteError.set(`No se pudo guardar${detalle}: ${apiMsg}`);
-          resolve();
-        },
-      });
-    });
-  }
-
-  // ============ 2FA flow ============
-
-  private promptTwoFactor(message: string, action: (code: string) => Promise<void>): void {
-    this.twoFactorPrompt.set(message);
-    this.twoFactorCode.set('');
-    this.twoFactorError.set('');
-    this.twoFactorPendingAction = action;
-  }
-
-  requestTwoFactorCode(): void {
-    this.twoFactorRequesting.set(true);
-    this.twoFactorError.set('');
-    this.dgaService.request2faCode().subscribe({
+    this.dgaService.upsertInformante(payload).subscribe({
       next: () => {
-        this.twoFactorRequesting.set(false);
-        this.twoFactorError.set('Código enviado al email admin. Vence en 5 min.');
+        this.informanteSaving.set(false);
+        this.newInfClave.set('');
+        this.loadInformantes();
       },
       error: (err: HttpErrorResponse) => {
-        this.twoFactorRequesting.set(false);
-        this.twoFactorError.set(
-          'No se pudo enviar código: ' + (err.error?.error?.message ?? err.message),
-        );
+        this.informanteSaving.set(false);
+        const code = err.error?.code ?? err.error?.error?.code;
+        if (err.status === 403 && (code === 'TWOFA_REQUIRED' || code === 'TWOFA_INVALID')) {
+          this.informanteError.set('Verificación 2FA cancelada. El informante no se guardó.');
+          return;
+        }
+        // Extrae el message del envelope tipo {ok:false, error:{code,message}}
+        // o fallback al string genérico de Angular.
+        const apiMsg =
+          err.error?.error?.message ??
+          err.error?.message ??
+          (typeof err.error === 'string' ? err.error : null) ??
+          err.message ??
+          'Error desconocido';
+        const apiCode = err.error?.error?.code;
+        const detalle = apiCode ? ` [${apiCode}]` : '';
+        this.informanteError.set(`No se pudo guardar${detalle}: ${apiMsg}`);
       },
     });
-  }
-
-  cancelTwoFactor(): void {
-    this.twoFactorPendingAction = null;
-    this.twoFactorPrompt.set('');
-    this.twoFactorCode.set('');
-    this.twoFactorError.set('');
-  }
-
-  async confirmTwoFactor(): Promise<void> {
-    const code = this.twoFactorCode();
-    const action = this.twoFactorPendingAction;
-    if (code.length !== 6 || !action) return;
-    this.twoFactorBusy.set(true);
-    this.twoFactorError.set('');
-    try {
-      await action(code);
-      this.cancelTwoFactor();
-    } catch (err) {
-      const e = err as HttpErrorResponse;
-      this.twoFactorError.set(
-        'Acción falló: ' + (e.error?.error?.message ?? e.message ?? 'error desconocido'),
-      );
-    } finally {
-      this.twoFactorBusy.set(false);
-    }
   }
 
   formatAge(seconds: number): string {

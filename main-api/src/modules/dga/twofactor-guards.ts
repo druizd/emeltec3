@@ -4,7 +4,7 @@
  * arrastra demasiadas dependencias para un unit test).
  */
 import type { Request, Response, NextFunction } from 'express';
-import { requireDgaTwoFactor } from './twofactor';
+import { require2fa } from '../../shared/email-otp';
 
 /**
  * Exige 2FA para cambios sensibles del PATCH pozo-config:
@@ -15,7 +15,7 @@ import { requireDgaTwoFactor } from './twofactor';
  */
 export function require2faIfSensitiveChange(req: Request, res: Response, next: NextFunction): void {
   if (req.body?.dga_transport === 'rest' || req.body?.dga_gcs_export === true) {
-    return requireDgaTwoFactor(req, res, next);
+    return require2fa(req, res, next);
   }
   next();
 }

@@ -77,28 +77,3 @@ export async function sendDgaAdminAlert(input: { subject: string; body: string }
     );
   }
 }
-
-/**
- * Envía un email DGA a un destinatario explícito (2FA al solicitante).
- * A diferencia de `sendDgaAdminAlert`, lanza error si no se puede entregar —
- * un código 2FA sin destinatario no tiene sentido y el handler debe
- * propagar el fallo al cliente en vez de mentir con 200.
- */
-export async function sendDgaUserEmail(input: {
-  to: string;
-  subject: string;
-  body: string;
-}): Promise<void> {
-  if (!input.to) {
-    throw new Error('Destinatario vacío');
-  }
-  const mail = loadMailService();
-  if (!mail) {
-    throw new Error('emailService no disponible');
-  }
-  await mail.sendAdminPlainEmail({
-    to: input.to,
-    subject: input.subject,
-    text: input.body,
-  });
-}
