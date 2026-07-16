@@ -1,7 +1,8 @@
 ﻿import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import type { CompanyNode, SiteDashboardData, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import type { CompanyNode, SiteDashboardData } from '@emeltec/shared';
+import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 import { CompanyService, type TelemetryHistoryRow } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
@@ -11,12 +12,6 @@ import {
   TelemetryLineChartCardComponent,
   type TelemetryLineChart,
 } from './components/telemetry-line-chart-card';
-
-interface SiteContext {
-  company: CompanyNode;
-  subCompany: SubCompanyNode;
-  site: SiteRecord;
-}
 
 interface ElectricKpi {
   label: string;
@@ -607,14 +602,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
-    for (const company of tree) {
-      for (const subCompany of company.subCompanies || []) {
-        const site = (subCompany.sites || []).find((item) => item.id === siteId);
-        if (site) return { company, subCompany, site };
-      }
-    }
-
-    return null;
+    return findAccessibleSite(tree, siteId);
   }
 
   private toDateInputValue(value: Date): string {

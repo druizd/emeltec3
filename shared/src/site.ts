@@ -32,6 +32,8 @@ export interface PozoConfig {
   nivel_estatico_manual_m?: number | null;
   obra_dga?: string | null;
   slug?: string | null;
+  /** Caudal máximo DGA en litros por segundo. Usado para calcular % de caudal. */
+  dga_caudal_max_lps?: number | null;
   created_at?: string;
   updated_at?: string;
 }

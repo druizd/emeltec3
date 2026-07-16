@@ -1,17 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import type { CompanyNode } from '@emeltec/shared';
+import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 import { CompanyService } from '../../services/company.service';
 import { getSiteTypeUi, normalizeSiteType } from '../../shared/site-type-ui';
 import { SiteVariableSettingsPanelComponent } from './components/site-variable-settings-panel';
 import { SkeletonComponent } from '../../components/ui/skeleton';
-
-interface SiteContext {
-  company: CompanyNode;
-  subCompany: SubCompanyNode;
-  site: SiteRecord;
-}
 
 @Component({
   selector: 'app-company-site-coming-soon-detail',
@@ -200,13 +195,6 @@ export class CompanySiteComingSoonDetailComponent implements OnInit {
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
-    for (const company of tree) {
-      for (const subCompany of company.subCompanies || []) {
-        const site = (subCompany.sites || []).find((item) => item.id === siteId);
-        if (site) return { company, subCompany, site };
-      }
-    }
-
-    return null;
+    return findAccessibleSite(tree, siteId);
   }
 }

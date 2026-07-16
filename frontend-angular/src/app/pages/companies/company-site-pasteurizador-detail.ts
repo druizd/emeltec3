@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import type { CompanyNode } from '@emeltec/shared';
+import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { AuthService } from '../../services/auth.service';
@@ -30,12 +31,6 @@ import { PasteurizadorProcessDiagramComponent } from './components/pasteurizador
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
 import { WaterDetailAnalisisComponent } from './components/water-detail-analisis/water-detail-analisis';
 import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
-
-interface SiteContext {
-  company: CompanyNode;
-  subCompany: SubCompanyNode;
-  site: SiteRecord;
-}
 
 type PasteurSection = 'monitoring' | 'operation' | 'alerts' | 'log' | 'analysis';
 type PasteurOperationView = 'trends' | 'diagram' | 'history';
@@ -2012,13 +2007,6 @@ export class CompanySitePasteurizadorDetailComponent implements OnInit, OnDestro
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
-    for (const company of tree) {
-      for (const subCompany of company.subCompanies || []) {
-        const site = (subCompany.sites || []).find((item) => item.id === siteId);
-        if (site) return { company, subCompany, site };
-      }
-    }
-
-    return null;
+    return findAccessibleSite(tree, siteId);
   }
 }

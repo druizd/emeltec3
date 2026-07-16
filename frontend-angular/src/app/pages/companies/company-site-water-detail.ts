@@ -38,7 +38,8 @@ import { SiteVariableSettingsPanelComponent } from './components/site-variable-s
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
-import type { ApiResponse, CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
+import type { ApiResponse, CompanyNode, SiteRecord } from '@emeltec/shared';
+import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 
 /**
  * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
@@ -54,12 +55,6 @@ function chileToday(): string {
 function chileMonthStart(): string {
   const d = new Date(Date.now() - 4 * 60 * 60 * 1000);
   return d.toISOString().slice(0, 8) + '01';
-}
-
-interface SiteContext {
-  company: CompanyNode;
-  subCompany: SubCompanyNode;
-  site: SiteRecord;
 }
 
 interface HistoricalTelemetryValue {
@@ -4985,16 +4980,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
-    for (const company of tree || []) {
-      for (const subCompany of company.subCompanies || []) {
-        const site = (subCompany.sites || []).find((item: SiteRecord) => item.id === siteId);
-        if (site) {
-          return { company, subCompany, site };
-        }
-      }
-    }
-
-    return null;
+    return findAccessibleSite(tree, siteId);
   }
 
   private extractNivelFreatico(data: SiteDashboardData | null): number | null {
