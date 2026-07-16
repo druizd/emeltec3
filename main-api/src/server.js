@@ -175,6 +175,25 @@ const httpServer = app.listen(config.port, () => {
     }
   }
 
+  // Retention worker TS (retención ARCO+ B5.2 + alertas audit B4.2).
+  // Default OFF — requiere ENABLE_RETENTION_WORKER=true y/o ENABLE_AUDIT_ALERTS_WORKER=true.
+  try {
+    const retentionWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'retention',
+      'worker',
+    );
+    const { startRetentionWorker } = require(retentionWorkerPath);
+    startRetentionWorker();
+  } catch (err) {
+    if (err && err.code !== 'MODULE_NOT_FOUND') {
+      console.warn('[main-api] No se pudo iniciar retention worker:', err.message);
+    }
+  }
+
   // Cache warmer TS (precalienta dashboard-history en Redis cada 50s).
   try {
     const cacheWarmerPath = require('path').join(
@@ -209,6 +228,14 @@ function shutdown(signal) {
   console.log(`[main-api] Cerrando servicios por ${signal}`);
 
   alertaService.stop();
+
+  try {
+    const retentionWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'retention', 'worker');
+    const { stopRetentionWorker } = require(retentionWorkerPath);
+    stopRetentionWorker();
+  } catch (_err) {
+    // worker no estaba activo
+  }
 
   try {
     const dgaWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'dga', 'worker');
