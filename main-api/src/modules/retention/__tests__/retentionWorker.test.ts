@@ -116,8 +116,8 @@ describe('retentionWorker — enviarAvisosInactividad()', () => {
 
     await enviarAvisosInactividad(dbQ, mockSendAviso);
 
-    const updateCall = dbQ.mock.calls.find(([sql]: [string]) =>
-      sql.includes('UPDATE usuario') && sql.includes('aviso_inactividad_enviado_at'),
+    const updateCall = dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('UPDATE usuario') && String(call[0]).includes('aviso_inactividad_enviado_at'),
     );
     expect(updateCall).toBeDefined();
     const [, params] = updateCall! as [string, unknown[]];

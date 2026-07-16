@@ -48,8 +48,8 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
 
     await detectarLoginsFallidos(dbQ);
 
-    const selectCall = dbQ.mock.calls.find(([sql]: [string]) =>
-      sql.includes('audit_log') && sql.includes('user.login.failed'),
+    const selectCall = dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('audit_log') && String(call[0]).includes('user.login.failed'),
     );
     expect(selectCall).toBeDefined();
     const [sql] = selectCall! as [string];
@@ -110,8 +110,8 @@ describe('auditAlerts — detectarCambiosRol()', () => {
 
     await detectarCambiosRol(dbQ);
 
-    const selectCall = dbQ.mock.calls.find(([sql]: [string]) =>
-      sql.includes('audit_log') && (sql.includes('user.') || sql.includes('patch')),
+    const selectCall = dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('audit_log') && (String(call[0]).includes('user.') || String(call[0]).includes('patch')),
     );
     expect(selectCall).toBeDefined();
     const [sql] = selectCall! as [string];

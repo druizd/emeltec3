@@ -57,9 +57,10 @@ export async function suprimirUsuario(params: SuprimirParams): Promise<void> {
     auditRecord = defaultAuditRecord,
   } = params;
 
-  // Verificar autorización: solo SuperAdmin o el propio titular
+  // Verificar autorización: solo SuperAdmin o el propio titular.
+  // Coerción a String: el id del JWT y el param de ruta pueden diferir en tipo.
   const esSuperAdmin = actorTipo === 'SuperAdmin';
-  const esTitular = actorId === targetId;
+  const esTitular = String(actorId) === String(targetId);
 
   if (!esSuperAdmin && !esTitular) {
     throw new AppError('No autorizado para ejecutar supresión de cuenta', 403);
@@ -97,25 +98,20 @@ export async function suprimirUsuario(params: SuprimirParams): Promise<void> {
     metadata: { supresion: true },
   });
 
-  // Anonimizar datos personales del usuario
+  // Anonimizar datos personales del usuario. Campos NOT NULL visibles en UI
+  // reciben el tombstone constante; los opcionales van a NULL (evita mostrar
+  // '[ANONIMIZADO]' donde la UI ya maneja el vacío con 'No registrado').
   await dbQuery(
     `UPDATE usuario
      SET email       = $1,
          nombre      = $2,
          apellido    = $3,
-         rut_usuario = $4,
-         telefono    = $5,
-         activo      = $6
-     WHERE id = $7`,
-    [
-      `anonimizado+${targetId}@eliminado.invalid`,
-      '[ANONIMIZADO]',
-      '[ANONIMIZADO]',
-      '[ANONIMIZADO]',
-      '[ANONIMIZADO]',
-      false,
-      targetId,
-    ],
+         rut_usuario = NULL,
+         telefono    = NULL,
+         cargo       = NULL,
+         activo      = $4
+     WHERE id = $5`,
+    [`anonimizado+${targetId}@eliminado.invalid`, '[ANONIMIZADO]', '[ANONIMIZADO]', false, targetId],
   );
 
   // Anonimizar actor_email e ip en audit_log histórico de ese usuario
