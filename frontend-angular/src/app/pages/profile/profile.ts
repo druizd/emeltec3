@@ -68,7 +68,7 @@ interface EditState {
 
       @if (errorMsg()) {
         <div
-          class="mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-body-sm font-semibold text-amber-800"
+          class="anim-banner mb-4 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-body-sm font-semibold text-amber-800"
           role="status"
         >
           <span class="material-symbols-outlined text-[18px]">warning</span>
@@ -115,7 +115,7 @@ interface EditState {
 
           @if (deleteError()) {
             <div
-              class="mx-5 mt-4 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+              class="anim-banner mx-5 mt-4 flex items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
               role="alert"
             >
               <span class="material-symbols-outlined text-[17px]">error</span>
@@ -310,7 +310,7 @@ interface EditState {
               </p>
               @if (deleteError()) {
                 <p
-                  class="mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+                  class="anim-banner mt-4 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
                 >
                   {{ deleteError() }}
                 </p>
@@ -516,7 +516,7 @@ interface EditState {
               </p>
             </div>
             @if (passwordMsg()) {
-              <div class="border-b border-emerald-100 bg-emerald-50 px-4 py-2">
+              <div class="anim-banner border-b border-emerald-100 bg-emerald-50 px-4 py-2">
                 <p class="flex items-center gap-2 text-caption font-bold text-emerald-700">
                   <span class="material-symbols-outlined text-[17px]">check_circle</span>
                   {{ passwordMsg() }}
@@ -658,7 +658,7 @@ interface EditState {
 
               @if (passwordError()) {
                 <p
-                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-caption font-bold text-rose-700"
+                  class="anim-banner rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-caption font-bold text-rose-700"
                 >
                   {{ passwordError() }}
                 </p>
@@ -765,14 +765,14 @@ interface EditState {
 
             @if (securityMsg()) {
               <p
-                class="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700"
+                class="anim-banner mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700"
               >
                 {{ securityMsg() }}
               </p>
             }
             @if (securityError()) {
               <p
-                class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-caption font-bold text-rose-700"
+                class="anim-banner mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-caption font-bold text-rose-700"
               >
                 {{ securityError() }}
               </p>
@@ -851,7 +851,7 @@ interface EditState {
 
               @if (editError()) {
                 <div
-                  class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-semibold text-rose-700"
+                  class="anim-banner rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-semibold text-rose-700"
                   role="alert"
                 >
                   {{ editError() }}

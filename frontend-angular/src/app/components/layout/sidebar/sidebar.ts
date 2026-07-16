@@ -159,7 +159,7 @@ const MODULES = SITE_MODULES;
             <button
               type="button"
               (click)="onModuleClick(mod.key)"
-              class="flex w-full cursor-pointer select-none items-center rounded-lg transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex w-full cursor-pointer select-none items-center rounded-lg transition duration-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               [style.justify-content]="collapsed() ? 'center' : 'space-between'"
               [style.padding]="collapsed() ? '8px' : '6px 7px'"
               [style.gap]="collapsed() ? '0' : '7px'"
@@ -201,7 +201,7 @@ const MODULES = SITE_MODULES;
                   <button
                     type="button"
                     (click)="toggleCompany(company.id)"
-                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-on-surface-muted transition-colors hover:bg-surface-subtle hover:text-on-surface-variant focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-on-surface-muted transition duration-100 hover:bg-surface-subtle hover:text-on-surface-variant active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     [attr.aria-expanded]="isCompanyOpen(company.id)"
                   >
                     <span class="material-symbols-outlined text-[11px] opacity-50">domain</span>
@@ -217,7 +217,7 @@ const MODULES = SITE_MODULES;
                         <button
                           type="button"
                           (click)="selectSubCompany($event, mod.key, company.id, site.id)"
-                          class="relative mb-px block w-full cursor-pointer rounded-md py-[3px] pl-2 pr-1.5 text-left text-[10.5px] transition-all duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          class="relative mb-px block w-full cursor-pointer rounded-md py-[3px] pl-2 pr-1.5 text-left text-[10.5px] transition duration-100 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                           [style.color]="activeSiteId() === site.id ? '#0899a5' : '#64748b'"
                           [style.font-weight]="activeSiteId() === site.id ? '600' : '400'"
                           [style.background]="

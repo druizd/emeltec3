@@ -135,6 +135,14 @@
   --text-h4--line-height: 1.875rem;
   --text-h3: 1.75rem;
   --text-h3--line-height: 2.125rem;
+
+  /* ─── Motion ───
+     Curvas custom: las easings built-in de CSS son débiles para UI.
+     strong out → entradas (empieza rápido, se siente responsivo).
+     strong in-out → movimiento en pantalla (nivel de agua, morphs).
+     Presupuesto: UI < 300ms; solo data-viz física puede ir a 500ms. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 @layer base {
@@ -152,6 +160,69 @@
 }
 
 @layer components {
+  /* ── Motion: entradas de superficies ──────────────────────────────────
+     Clases compartidas para elementos que montan vía @if. @starting-style
+     anima la ENTRADA sin JS (transitions → interrumpibles). La SALIDA usa
+     animate.leave (Angular 21) con .anim-overlay-out — exit más rápido que
+     enter, a propósito. Nunca scale(0): nada real aparece de la nada. */
+
+  /* Backdrop de modales/drawers: solo opacity. */
+  .anim-backdrop {
+    transition: opacity 200ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  /* Panel de modal/diálogo centrado: fade + scale sutil, origin center. */
+  .anim-panel {
+    transition:
+      opacity 200ms var(--ease-out-strong),
+      transform 200ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+  }
+  /* Popover/menú anclado a un trigger: más rápido que un modal. El
+     componente debe fijar transform-origin hacia su trigger (p. ej.
+     origin-top-right), nunca center. */
+  .anim-popover {
+    transition:
+      opacity 150ms var(--ease-out-strong),
+      transform 150ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  }
+  /* Banners de estado (éxito / error / aviso): fade + caída de 4px. */
+  .anim-banner {
+    transition:
+      opacity 200ms var(--ease-out-strong),
+      transform 200ms var(--ease-out-strong);
+    @starting-style {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+  /* Contenido que reemplaza un skeleton: fade corto, sin movimiento.
+     Se ve decenas de veces al día → casi imperceptible a propósito. */
+  .anim-content-in {
+    transition: opacity 150ms ease-out;
+    @starting-style {
+      opacity: 0;
+    }
+  }
+  /* Salida de overlays — uso: animate.leave="anim-overlay-out". */
+  .anim-overlay-out {
+    animation: anim-overlay-out 150ms var(--ease-out-strong) forwards;
+  }
+  @keyframes anim-overlay-out {
+    to {
+      opacity: 0;
+    }
+  }
+
   /* DGA / data table header + cell utilities. Replaces per-cell inline styles. */
   .dga-table-header {
     font-family: var(--font-josefin);
@@ -174,6 +245,20 @@
   .animate-spin,
   .animate-ping {
     animation: none !important;
+  }
+  /* Motion compartido: el fade (opacity) queda porque ayuda a comprender
+     el cambio; el MOVIMIENTO (scale/translate) muere. Reduced motion es
+     "más suave", no "cero". */
+  .anim-panel,
+  .anim-popover,
+  .anim-banner {
+    transition-property: opacity;
+  }
+  /* Press feedback (active:scale-*) también es movimiento. El selector de
+     atributo matchea la clase Tailwind literal sin enumerar cada sitio.
+     Solo :active — no pisa transforms posicionales fuera del press. */
+  [class*='active:scale']:active {
+    transform: none;
   }
 }
 
