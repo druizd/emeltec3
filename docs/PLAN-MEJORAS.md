@@ -1,8 +1,8 @@
 # Plan de Mejoras — Emeltec Cloud
 
 > Documento de trabajo. Marcar tareas con `[x]` al completarlas.
-> Origen: auditoría del frontend Angular (julio 2026).
-> Dos ejes: **(A) Deuda técnica** y **(B) Cumplimiento Ley 21.719** (protección de datos personales, Chile).
+> Origen: auditoría del frontend Angular (julio 2026) + pendientes de performance de mayo 2026.
+> Tres ejes: **(A) Deuda técnica**, **(B) Cumplimiento Ley 21.719** (protección de datos personales, Chile) y **(C) Performance / infra**.
 
 ---
 
@@ -197,6 +197,30 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 ---
 
+## C. Performance / Infra
+
+> Origen: pendientes al cierre de la sesión de performance de mayo 2026
+> (`optimizaciones-2026-05.md`, documento histórico). Vigencia verificada
+> el 16-07-2026: ninguno se ha implementado aún.
+
+### C1. Datos de Operación pozo 🟡 prioridad media
+
+**Contexto**: el cold path de contadores daily/jornada sigue en ~1 s (query on-demand sobre caggs). La tabla de incidencias del Resumen por Período es el último mock de la vista.
+
+- [ ] C1.1 Materializar contadores daily + jornada (worker + tablas `site_contador_diario` / `site_contador_jornada`) — cold path ~1 s → ~30 ms
+- [ ] C1.2 Endpoint de incidencias por sitio (`GET /sites/:id/incidencias?desde&hasta`) y conectar `mockIncidencias` en `operacion-resumen-periodo.ts`
+
+### C2. Entrega frontend 🟢 prioridad baja
+
+**Contexto**: mejoras incrementales sobre la base ya optimizada en mayo (cache immutable, gzip, fuentes reducidas).
+
+- [ ] C2.1 Brotli en nginx (hoy solo gzip; el comentario del conf menciona brotli pero no está activo) — +10-15 % de compresión
+- [ ] C2.2 `<link rel="modulepreload">` de chunks críticos en `index.html`
+- [ ] C2.3 Tunear split de chunks en `angular.json` (vendor split, commonChunk)
+- [ ] C2.4 Evaluar SSR + Transfer State para primer paint — solo si C2.1–C2.3 no bastan; costo de mantención alto
+
+---
+
 ## Calendario sugerido (deadline: 1-dic-2026)
 
 | Mes          | Foco                                                                                   |
@@ -205,6 +229,6 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 | Ago–Sep 2026 | B1 (supresión real) + B8 (`/privacidad`) + B10.1 (política de seguridad pública)       |
 | Sep–Oct 2026 | B3 (ARCO+ en perfil) + B6 (registro de tratamientos) + B10.2/B10.3 (cifrado + backups) |
 | Oct–Nov 2026 | B4 (brechas + registro interno + alertas) + B7 (consentimiento) + B11 (encargados)     |
-| Continuo     | A1–A4 en paralelo; B12.2 (monitoreo Agencia) trimestral                                |
+| Continuo     | A1–A4 y C1–C2 en paralelo; B12.2 (monitoreo Agencia) trimestral                        |
 
 **Referencia legal detallada**: `docs/LEY-21719-SEGURIDAD.md` (texto literal de artículos, sanciones, mapa exigencia→acción).
