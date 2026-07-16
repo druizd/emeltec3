@@ -31,7 +31,7 @@ import {
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
-import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
+import { dashboardRouteForSite } from '../../shared/site-type-ui';
 import { formatRutInput } from '../../shared/rut';
 import { AdminPaginationComponent } from './components/admin-pagination';
 import { AdminFormActionsComponent } from './components/admin-form-actions';
@@ -44,6 +44,7 @@ import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-secti
 import { EquiposSectionComponent } from './components/equipos-section';
 import { EmpresasSectionComponent } from './components/empresas-section';
 import { SubempresasSectionComponent } from './components/subempresas-section';
+import { SitiosSectionComponent } from './components/sitios-section';
 import { DEFAULT_SITE_TYPE_CATALOG } from './site-type-catalog';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
@@ -171,6 +172,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
     EquiposSectionComponent,
     EmpresasSectionComponent,
     SubempresasSectionComponent,
+    SitiosSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -390,288 +392,44 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
               }
 
               @if (activeSection() === 'sitios') {
-                <app-admin-section-shell title="Sitios">
-                  <form
-                    (submit)="submitSite($event)"
-                    class="editor-panel grid gap-4 lg:grid-cols-4"
-                  >
-                    <div class="lg:col-span-4">
-                      <app-admin-section-header
-                        [selected]="!!selectedSiteId()"
-                        selectedLabel="Sitio seleccionado"
-                        newLabel="Nuevo sitio"
-                        selectedHint="Selecciona editar datos para modificar este sitio."
-                        newHint="Completa los datos para crear un sitio."
-                        buttonLabel="Nuevo"
-                        (createNew)="startCreateSite()"
-                      ></app-admin-section-header>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Empresa padre</label
-                      >
-                      <select
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-company"
-                        [ngModel]="siteForm().empresa_id"
-                        (ngModelChange)="selectCompanyForSite($event)"
-                        class="field-control"
-                      >
-                        <option value="" disabled>Selecciona empresa</option>
-                        @for (company of hierarchy(); track company.id) {
-                          <option [value]="company.id">{{ company.nombre }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Subempresa</label
-                      >
-                      <select
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-subcompany"
-                        [ngModel]="siteForm().sub_empresa_id"
-                        (ngModelChange)="updateSiteForm('sub_empresa_id', $event)"
-                        class="field-control"
-                      >
-                        <option value="" disabled>Selecciona subempresa</option>
-                        @for (sub of subCompaniesForSiteForm(); track sub.id) {
-                          <option [value]="sub.id">{{ sub.nombre }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Tipo de instalacion</label
-                      >
-                      <select
-                        name="site-type"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().tipo_sitio"
-                        (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
-                        class="field-control"
-                      >
-                        @for (type of siteTypeOptions(); track type.id) {
-                          <option [value]="type.id">{{ type.label }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Estado</label>
-                      <select
-                        name="site-active"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().activo ? 'true' : 'false'"
-                        (ngModelChange)="updateSiteActive($event)"
-                        class="field-control"
-                      >
-                        <option value="true">Activo</option>
-                        <option value="false">Inactivo</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Maleta Piloto</label
-                      >
-                      <select
-                        name="site-maleta-piloto"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().es_maleta_piloto ? 'true' : 'false'"
-                        (ngModelChange)="updateSiteMaletaPiloto($event)"
-                        class="field-control"
-                      >
-                        <option value="false">No</option>
-                        <option value="true">Sí — mostrar en Maletas Pilotos</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Nombre del sitio</label
-                      >
-                      <input
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-description"
-                        [ngModel]="siteForm().descripcion"
-                        (ngModelChange)="updateSiteForm('descripcion', $event)"
-                        class="field-control"
-                        placeholder="Pozo, vertiente, canal o instalacion"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Serial del equipo</label
-                      >
-                      <input
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-serial"
-                        [ngModel]="siteForm().id_serial"
-                        (ngModelChange)="updateSiteForm('id_serial', $event)"
-                        class="field-control"
-                        placeholder="151.20.43.6"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Ubicación</label
-                      >
-                      <input
-                        name="site-location"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().ubicacion"
-                        (ngModelChange)="updateSiteForm('ubicacion', $event)"
-                        class="field-control"
-                        placeholder="Ciudad, faena o referencia"
-                      />
-                    </div>
-                    <!-- Coordenadas UTM. Se convierten a lat/lng en el
-                         frontend (proj4) para plotear en el mapa satelital
-                         de la vista general. Chile usa huso 18/19/20. -->
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Coord. Norte (UTM)</label
-                      >
-                      <input
-                        name="site-coord-norte"
-                        type="number"
-                        step="0.01"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().coord_norte"
-                        (ngModelChange)="updateSiteForm('coord_norte', $event)"
-                        class="field-control font-mono"
-                        placeholder="6.689.234,50"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Coord. Este (UTM)</label
-                      >
-                      <input
-                        name="site-coord-este"
-                        type="number"
-                        step="0.01"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().coord_este"
-                        (ngModelChange)="updateSiteForm('coord_este', $event)"
-                        class="field-control font-mono"
-                        placeholder="345.678,90"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Huso UTM</label
-                      >
-                      <select
-                        name="site-huso"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().huso"
-                        (ngModelChange)="updateSiteForm('huso', $event)"
-                        class="field-control"
-                      >
-                        <option value="">—</option>
-                        <option value="18">18 (Norte Chile)</option>
-                        <option value="19">19 (Centro Chile)</option>
-                        <option value="20">20 (Sur Chile)</option>
-                      </select>
-                    </div>
-                    <div class="lg:col-span-4 flex flex-wrap gap-2">
-                      <app-admin-form-actions
-                        [selected]="!!selectedSiteId()"
-                        [editMode]="siteEditMode()"
-                        [busy]="busyAction()"
-                        createKey="site"
-                        updateKey="site-update"
-                        deleteKey="site-delete"
-                        createLabel="Crear sitio"
-                        createIcon="add_location_alt"
-                        entityLabel="sitio"
-                        (enableEdit)="enableSiteEdit()"
-                        (cancelEdit)="cancelSiteEdit()"
-                        (remove)="deleteSelectedSite()"
-                      ></app-admin-form-actions>
-                    </div>
-                    @if (selectedSiteId() && !siteEditMode()) {
-                      <div
-                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-caption text-slate-500 lg:col-span-4"
-                      >
-                        {{
-                          selectedSite()?.ubicacion
-                            ? 'Ubicación: ' + selectedSite()?.ubicacion
-                            : 'Sin ubicación registrada'
-                        }}
-                      </div>
-                    }
-                  </form>
-
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Sitios registrados"
-                      [countLabel]="
-                        filteredSites().length + ' de ' + allSites().length + ' visibles'
-                      "
-                      [searchValue]="siteSearch()"
-                      placeholder="Buscar sitio, serial, empresa o estado"
-                      (searchChange)="updateSiteSearch($event)"
-                    ></app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[680px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Sitio</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Subempresa</th>
-                            <th class="px-4 py-3">Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (site of paginatedSites(); track site.id) {
-                            <tr
-                              (click)="selectSite(site.id)"
-                              [class]="rowClass(selectedSiteId() === site.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Sitio">
-                                {{ site.descripcion }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Tipo">
-                                <span [class]="siteTypeBadgeClass(site.tipo_sitio)">{{
-                                  siteTypeLabel(site.tipo_sitio)
-                                }}</span>
-                              </td>
-                              <td
-                                class="px-4 py-3 font-mono text-caption text-slate-600"
-                                data-label="Serial"
-                              >
-                                {{ site.id_serial }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="Subempresa">
-                                {{ site.subCompanyName }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Estado">
-                                <span
-                                  [class]="statusBadgeClass(site.activo ? 'success' : 'neutral')"
-                                >
-                                  {{ site.activo ? 'Activo' : 'Inactivo' }}
-                                </span>
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredSites().length"
-                      [page]="sitePage()"
-                      (pageChange)="setPage('sitios', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-sitios-section
+                  [sites]="allSites()"
+                  [companies]="hierarchy()"
+                  [subCompaniesForForm]="subCompaniesForSiteForm()"
+                  [siteTypeOptions]="siteTypeOptions()"
+                  [selectedId]="selectedSiteId()"
+                  [editMode]="siteEditMode()"
+                  [busyAction]="busyAction()"
+                  [selectedSiteUbicacion]="selectedSite()?.ubicacion"
+                  [empresaId]="siteForm().empresa_id"
+                  [subEmpresaId]="siteForm().sub_empresa_id"
+                  [tipoSitio]="siteForm().tipo_sitio"
+                  [activo]="siteForm().activo"
+                  [esMaletaPiloto]="siteForm().es_maleta_piloto"
+                  [descripcion]="siteForm().descripcion"
+                  [idSerial]="siteForm().id_serial"
+                  [ubicacion]="siteForm().ubicacion"
+                  [coordNorte]="siteForm().coord_norte"
+                  [coordEste]="siteForm().coord_este"
+                  [huso]="siteForm().huso"
+                  (submit)="submitSite($event)"
+                  (select)="selectSite($event)"
+                  (enableEdit)="enableSiteEdit()"
+                  (cancelEdit)="cancelSiteEdit()"
+                  (remove)="deleteSelectedSite()"
+                  (createNew)="startCreateSite()"
+                  (empresaIdChange)="selectCompanyForSite($event)"
+                  (subEmpresaIdChange)="updateSiteForm('sub_empresa_id', $event)"
+                  (tipoSitioChange)="updateSiteForm('tipo_sitio', $event)"
+                  (activoChange)="updateSiteActive($event)"
+                  (esMaletaPilotoChange)="updateSiteMaletaPiloto($event)"
+                  (descripcionChange)="updateSiteForm('descripcion', $event)"
+                  (idSerialChange)="updateSiteForm('id_serial', $event)"
+                  (ubicacionChange)="updateSiteForm('ubicacion', $event)"
+                  (coordNorteChange)="updateSiteForm('coord_norte', $event)"
+                  (coordEsteChange)="updateSiteForm('coord_este', $event)"
+                  (husoChange)="updateSiteForm('huso', $event)"
+                />
               }
 
               @if (activeSection() === 'equipos') {
@@ -1005,8 +763,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   companyEditMode = signal(false);
   subCompanyEditMode = signal(false);
   siteEditMode = signal(false);
-  siteSearch = signal('');
-  sitePage = signal(1);
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
     site: this.emptySite(),
@@ -1056,25 +812,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         })),
       ),
     ),
-  );
-
-  filteredSites = computed<SiteOption[]>(() =>
-    this.allSites().filter((site) =>
-      this.matchesSearch(this.siteSearch(), [
-        site.descripcion,
-        site.id_serial,
-        site.tipo_sitio,
-        this.siteTypeLabel(site.tipo_sitio),
-        site.companyName,
-        site.subCompanyName,
-        site.ubicacion || '',
-        site.activo ? 'activo' : 'inactivo',
-      ]),
-    ),
-  );
-
-  paginatedSites = computed<SiteOption[]>(() =>
-    this.paginate(this.filteredSites(), this.sitePage()),
   );
 
   selectedCompany = computed<CompanyNode | undefined>(() =>
@@ -1179,17 +916,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.siteForm.update((form) => ({ ...form, es_maleta_piloto: value === 'true' }));
   }
 
-  updateSiteSearch(value: string): void {
-    this.siteSearch.set(value);
-    this.sitePage.set(1);
-  }
-
-  setPage(section: SectionId, page: number): void {
-    const totalItems = this.sectionTotal(section);
-    const nextPage = this.clampPage(page, totalItems);
-    if (section === 'sitios') this.sitePage.set(nextPage);
-  }
-
   cancelConfirmDialog(): void {
     if (this.busyAction()) return;
     this.confirmDialog.set(null);
@@ -1210,10 +936,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
 
   private totalPages(totalItems: number): number {
     return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
-  }
-
-  siteFormDisabled(): boolean {
-    return !!this.selectedSiteId() && !this.siteEditMode();
   }
 
   updateVariableForm(field: keyof VariableForm, value: string): void {
@@ -1997,34 +1719,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return String(value);
   }
 
-  siteTypeLabel(type: string): string {
-    return getSiteTypeUi(type).label;
-  }
-
-  siteTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-caption font-bold';
-    return `${base} ${getSiteTypeUi(type).badgeClass}`;
-  }
-
-  statusBadgeClass(tone: 'success' | 'warning' | 'neutral'): string {
-    const base = 'rounded-md px-2 py-1 text-caption font-bold';
-    if (tone === 'success') return `${base} bg-emerald-50 text-emerald-700`;
-    if (tone === 'warning') return `${base} bg-amber-50 text-amber-700`;
-    return `${base} bg-slate-100 text-slate-500`;
-  }
-
-
-
   sectionButtonClass(section: SectionId): string {
     const base = `section-tab-button section-tab-${section}`;
     return this.activeSection() === section ? `${base} section-tab-active` : base;
-  }
-
-  rowClass(selected: boolean): string {
-    const base = 'cursor-pointer transition-colors';
-    return selected
-      ? `${base} bg-primary-tint-08 shadow-[inset_3px_0_0_var(--color-primary)]`
-      : `${base} bg-white hover:bg-surface-subtle`;
   }
 
   statusClass(): string {
@@ -2046,12 +1743,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private sectionTotal(_section: SectionId): number {
-    return this.filteredSites().length;
-  }
-
+  // Paginación de sitios delegada al hijo SitiosSectionComponent.
   private clampAllPages(): void {
-    this.sitePage.set(this.clampPage(this.sitePage(), this.filteredSites().length));
+    // No-op: cada sección hija maneja su propia paginación.
   }
 
   private setHierarchy(hierarchy: CompanyNode[]): void {
