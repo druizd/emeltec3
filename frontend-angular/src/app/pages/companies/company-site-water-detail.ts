@@ -24,12 +24,12 @@ import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from '
 import {
   CompanyService,
   type ContadorMensualPoint,
-  type HistoryGranularity,
 } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
 import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
 import { WaterDetailBitacoraComponent } from './components/water-detail-bitacora/water-detail-bitacora';
+import { WaterDetailDescargaComponent } from './components/water-detail-descarga/water-detail-descarga';
 import { WaterDetailAnalisisComponent } from './components/water-detail-analisis/water-detail-analisis';
 import { CHILE_TIME_ZONE } from '../../shared/timezone';
 import { getSiteTypeUi, siteTypesForModule } from '../../shared/site-type-ui';
@@ -208,6 +208,7 @@ type OperationMode = 'realtime' | 'turnos';
     WaterDetailAlertasComponent,
     WaterDetailBitacoraComponent,
     WaterDetailAnalisisComponent,
+    WaterDetailDescargaComponent,
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
     InlineErrorComponent,
@@ -1910,278 +1911,12 @@ type OperationMode = 'realtime' | 'turnos';
       }
 
       @if (downloadModalOpen()) {
-        <div
-          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]"
-          (click)="closeDownloadModal()"
-        >
-          <section
-            class="w-full max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-2xl"
-            (click)="$event.stopPropagation()"
-            role="dialog"
-            cdkTrapFocus
-            cdkTrapFocusAutoCapture
-            aria-modal="true"
-            aria-labelledby="download-modal-title"
-          >
-            <!-- Modal header -->
-            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-              <div class="flex items-center gap-3">
-                <span
-                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"
-                >
-                  <span class="material-symbols-outlined text-[20px]">download</span>
-                </span>
-                <div>
-                  <h2 id="download-modal-title" class="text-h6 font-semibold text-slate-800">
-                    Exportar Datos
-                  </h2>
-                  @if (siteContext(); as ctx) {
-                    <p class="text-caption font-semibold text-slate-500">
-                      {{ getSiteName(ctx) }}
-                    </p>
-                  }
-                </div>
-              </div>
-              <button
-                type="button"
-                (click)="closeDownloadModal()"
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
-                aria-label="Cerrar"
-              >
-                <span class="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <div class="grid gap-0 md:grid-cols-[220px_minmax(0,1fr)]">
-              <!-- Left panel: presets + month selector -->
-              <div class="border-b border-slate-100 px-5 py-5 md:border-b-0 md:border-r">
-                <p
-                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
-                  Períodos rápidos
-                </p>
-                <div class="grid gap-0.5">
-                  @for (preset of downloadPresets; track preset.id) {
-                    <button
-                      type="button"
-                      (click)="applyDownloadPreset(preset.id)"
-                      [class]="
-                        downloadSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
-                      "
-                    >
-                      @if (downloadSelectedPreset() === preset.id) {
-                        <span class="h-1.5 w-1.5 rounded-full bg-primary/10 flex-shrink-0"></span>
-                      }
-                      {{ preset.label }}
-                    </button>
-                  }
-                </div>
-
-                <p
-                  class="mb-2 mt-5 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
-                  Meses {{ 'de ' + (downloadDateFrom() || '2026').slice(0, 4) }}
-                </p>
-                <div class="grid grid-cols-3 gap-1.5">
-                  @for (month of downloadMonthNames; track month; let i = $index) {
-                    <button
-                      type="button"
-                      (click)="applyDownloadMonth(i)"
-                      [class]="
-                        !downloadMonthHasData(i)
-                          ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
-                          : downloadSelectedMonths().includes(i)
-                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
-                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
-                      "
-                    >
-                      {{ month.slice(0, 3) }}
-                    </button>
-                  }
-                </div>
-                <p class="mt-2 text-caption-xs font-semibold text-slate-300">
-                  Verde = datos disponibles
-                </p>
-              </div>
-
-              <!-- Right panel: date range + data types + format -->
-              <div class="px-6 py-5">
-                <!-- Selected range pill -->
-                <div
-                  class="mb-5 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-4 py-3"
-                >
-                  <div>
-                    <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
-                      Rango seleccionado
-                    </p>
-                    <p class="mt-0.5 text-body-sm font-semibold text-slate-700">
-                      {{ downloadRangeLabel() }}
-                    </p>
-                  </div>
-                  <span
-                    class="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-caption-xs font-bold text-slate-500"
-                  >
-                    {{ downloadDaysCount() > 0 ? downloadDaysCount() + ' días' : '—' }}
-                  </span>
-                </div>
-
-                <!-- Custom date range -->
-                <div class="mb-5 grid gap-3 sm:grid-cols-2">
-                  <label class="grid gap-1.5 text-caption font-bold text-slate-600">
-                    Desde
-                    <input
-                      type="date"
-                      min="2020-01-01"
-                      [value]="downloadDateFrom()"
-                      (input)="
-                        downloadDateFrom.set($any($event.target).value);
-                        downloadSelectedPreset.set('custom');
-                        downloadSelectedMonths.set([])
-                      "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
-                    />
-                  </label>
-                  <label class="grid gap-1.5 text-caption font-bold text-slate-600">
-                    Hasta
-                    <input
-                      type="date"
-                      min="2020-01-01"
-                      [value]="downloadDateTo()"
-                      (input)="
-                        downloadDateTo.set($any($event.target).value);
-                        downloadSelectedPreset.set('custom');
-                        downloadSelectedMonths.set([])
-                      "
-                      class="h-10 rounded-xl border border-slate-200 bg-white px-3 text-slate-700 outline-none transition-colors focus:border-primary-tint-35 focus:ring-2 focus:ring-primary-tint-20"
-                    />
-                  </label>
-                </div>
-
-                <!-- Data types -->
-                <p
-                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
-                  Datos a incluir
-                </p>
-                <div class="mb-5 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
-                  @for (dtype of downloadDataTypeOptions; track dtype.id) {
-                    <button
-                      type="button"
-                      (click)="toggleDownloadDataType(dtype.id)"
-                      [class]="
-                        isDownloadTypeSelected(dtype.id)
-                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-body-sm font-bold text-primary-container transition-all'
-                          : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-body-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
-                      "
-                    >
-                      {{ dtype.label }}
-                    </button>
-                  }
-                </div>
-
-                <!-- Granularity -->
-                <p
-                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
-                  Granularidad
-                </p>
-                <div class="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-                  @for (gran of downloadGranularityOptions; track gran.id) {
-                    <button
-                      type="button"
-                      (click)="downloadGranularity.set(gran.id)"
-                      [title]="gran.hint"
-                      [class]="
-                        downloadGranularity() === gran.id
-                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-2 py-2 text-center text-caption font-bold text-primary-container transition-all'
-                          : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
-                      "
-                    >
-                      {{ gran.label }}
-                    </button>
-                  }
-                </div>
-                <div
-                  class="mb-5 mt-3 flex items-start gap-2 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2.5 text-caption font-semibold text-primary-container"
-                >
-                  <span class="material-symbols-outlined mt-0.5 text-[16px]">schedule</span>
-                  <span>{{ downloadWorkloadLabel() }}</span>
-                </div>
-
-                <!-- Format -->
-                <p
-                  class="mb-2 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                >
-                  Formato de archivo
-                </p>
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    (click)="downloadFormat.set('csv')"
-                    [class]="
-                      downloadFormat() === 'csv'
-                        ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-body-sm font-bold text-emerald-700'
-                        : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
-                    "
-                  >
-                    <span class="material-symbols-outlined text-[16px]">csv</span>
-                    CSV
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Modal footer -->
-            <div
-              class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-6 py-4"
-            >
-              @if (downloadError()) {
-                <p class="basis-full text-caption font-semibold text-rose-500">
-                  {{ downloadError() }}
-                </p>
-              }
-              <p
-                class="text-caption font-semibold"
-                [class]="downloadError() ? 'text-rose-500' : 'text-slate-500'"
-              >
-                {{
-                  downloadSelectedTypes().length === 0
-                    ? 'Selecciona al menos un dato'
-                    : downloadSelectedTypes().length +
-                      ' variable' +
-                      (downloadSelectedTypes().length > 1 ? 's' : '') +
-                      ' · ' +
-                      downloadFormat().toUpperCase()
-                }}
-              </p>
-              <div class="flex items-center gap-3">
-                <button
-                  type="button"
-                  (click)="closeDownloadModal()"
-                  class="rounded-lg px-4 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  (click)="executeDownload()"
-                  [disabled]="
-                    downloadBusy() ||
-                    downloadSelectedTypes().length === 0 ||
-                    !downloadDateFrom() ||
-                    !downloadDateTo()
-                  "
-                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span class="material-symbols-outlined text-[17px]">download</span>
-                  {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
+        <app-water-detail-descarga
+          [siteId]="siteContext()?.site?.id ?? ''"
+          [siteName]="siteContext() ? getSiteName(siteContext()!) : ''"
+          [monthlyFlowMonths]="monthlyFlowMonths()"
+          (closed)="downloadModalOpen.set(false)"
+        />
       }
 
       @if (dgaReportModalOpen()) {
@@ -2723,15 +2458,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   dgaRowsPerPage = signal(10);
   dgaPage = signal(1);
   downloadModalOpen = signal(false);
-  downloadSelectedPreset = signal<string | null>('last30');
-  downloadSelectedMonths = signal<number[]>([]);
-  downloadDateFrom = signal('');
-  downloadDateTo = signal('');
-  downloadFormat = signal<'xlsx' | 'csv'>('csv');
-  downloadSelectedTypes = signal<string[]>(['caudal', 'nivel', 'totalizador', 'nivel_freatico']);
-  downloadGranularity = signal<HistoryGranularity>('1m');
-  downloadBusy = signal(false);
-  downloadError = signal('');
   dgaSelectedPreset = signal<string | null>(null);
   dgaSelectedMonths = signal<number[]>([]);
   dgaReportModalOpen = signal(false);
@@ -2960,28 +2686,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       month: 'short',
       year: 'numeric',
     }).format(parsed);
-  });
-  downloadRangeLabel = computed(() => {
-    const from = this.downloadDateFrom();
-    const to = this.downloadDateTo();
-    if (!from && !to) return 'Sin rango seleccionado';
-    const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : '—');
-    return `${fmt(from)} — ${fmt(to)}`;
-  });
-  downloadDaysCount = computed(() => {
-    const f = this.downloadDateFrom();
-    const t = this.downloadDateTo();
-    if (!f || !t) return 0;
-    return Math.round((+new Date(t) - +new Date(f)) / 86400000) + 1;
-  });
-  downloadWorkloadLabel = computed(() => {
-    if (this.downloadBusy()) {
-      return 'Generando archivo. Si el rango es largo, puede tardar unos minutos.';
-    }
-    if (this.downloadGranularity() !== '1m' || this.downloadDaysCount() < 30) {
-      return 'Exportación directa desde datos procesados.';
-    }
-    return 'Rangos largos minuto a minuto pueden tardar unos minutos. Mantén esta pestaña abierta.';
   });
   dgaModalDaysCount = computed(() => {
     const f = this.dgaDateFrom();
@@ -3265,38 +2969,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     'Noviembre',
     'Diciembre',
   ];
-  readonly downloadMonthShort = [
-    'Ene',
-    'Feb',
-    'Mar',
-    'Abr',
-    'May',
-    'Jun',
-    'Jul',
-    'Ago',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dic',
-  ];
-
-  readonly downloadDataTypeOptions = [
-    { id: 'caudal', label: 'Caudal', unit: 'L/s' },
-    { id: 'nivel', label: 'Nivel', unit: 'm' },
-    { id: 'totalizador', label: 'Totalizador', unit: 'm³' },
-    { id: 'nivel_freatico', label: 'Nivel Freático', unit: 'm' },
-  ];
-
-  readonly downloadGranularityOptions: {
-    id: HistoryGranularity;
-    label: string;
-    hint: string;
-  }[] = [
-    { id: '1m', label: '1 minuto', hint: 'Detalle máximo' },
-    { id: '1h', label: '1 hora', hint: 'Resumen por hora' },
-    { id: '1d', label: '1 día', hint: 'Resumen diario' },
-  ];
-
   readonly historyMockRows: HistoricalTelemetryRow[] = [
     {
       id: 'mock-2026-04-01-06-00',
@@ -3985,162 +3657,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   openDownloadModal(): void {
-    this.downloadSelectedMonths.set([]);
-    this.downloadError.set('');
-    this.downloadFormat.set('csv');
-    this.downloadGranularity.set('1m');
-    this.applyDownloadPreset('last30');
     this.downloadModalOpen.set(true);
   }
 
   closeDownloadModal(): void {
     this.downloadModalOpen.set(false);
-  }
-
-  applyDownloadPreset(presetId: string): void {
-    this.downloadSelectedMonths.set([]);
-    const now = new Date();
-    const y = now.getFullYear();
-    let from: Date, to: Date;
-    switch (presetId) {
-      case 'last7':
-        from = new Date(now);
-        from.setDate(from.getDate() - 6);
-        to = now;
-        break;
-      case 'last30':
-        from = new Date(now);
-        from.setDate(from.getDate() - 29);
-        to = now;
-        break;
-      case 'last90':
-        from = new Date(now);
-        from.setDate(from.getDate() - 89);
-        to = now;
-        break;
-      case 'thisYear':
-        from = new Date(y, 0, 1);
-        to = now;
-        break;
-      case 'lastYear':
-        from = new Date(y - 1, 0, 1);
-        to = new Date(y - 1, 11, 31);
-        break;
-      default:
-        return;
-    }
-    this.downloadDateFrom.set(this.toDateInputValue(from));
-    this.downloadDateTo.set(this.toDateInputValue(to));
-    this.downloadSelectedPreset.set(presetId);
-  }
-
-  applyDownloadMonth(monthIndex: number): void {
-    if (!this.downloadMonthHasData(monthIndex)) return;
-    const current = this.downloadSelectedMonths();
-    const next = current.includes(monthIndex)
-      ? current.filter((m) => m !== monthIndex)
-      : [...current, monthIndex].sort((a, b) => a - b);
-    this.downloadSelectedMonths.set(next);
-    this.downloadSelectedPreset.set(null);
-    if (next.length === 0) return;
-    const year = new Date().getFullYear();
-    const from = new Date(year, Math.min(...next), 1);
-    const to = new Date(year, Math.max(...next) + 1, 0);
-    this.downloadDateFrom.set(this.toDateInputValue(from));
-    this.downloadDateTo.set(this.toDateInputValue(to));
-  }
-
-  downloadMonthHasData(monthIndex: number): boolean {
-    const year = new Date().getFullYear();
-    const shortMonth = this.downloadMonthShort[monthIndex];
-    const shortYear = String(year).slice(2);
-    const match = this.monthlyFlowMonths().find((m) =>
-      m.label.startsWith(`${shortMonth} '${shortYear}`),
-    );
-    return match ? match.value > 0 : false;
-  }
-
-  toggleDownloadDataType(typeId: string): void {
-    const current = this.downloadSelectedTypes();
-    if (current.includes(typeId)) {
-      this.downloadSelectedTypes.set(current.filter((t) => t !== typeId));
-    } else {
-      this.downloadSelectedTypes.set([...current, typeId]);
-    }
-  }
-
-  isDownloadTypeSelected(typeId: string): boolean {
-    return this.downloadSelectedTypes().includes(typeId);
-  }
-
-  executeDownload(): void {
-    const siteId = this.currentSiteId();
-    const from = this.downloadDateFrom();
-    const to = this.downloadDateTo();
-    const fields = this.downloadSelectedTypes();
-
-    if (!siteId) {
-      this.downloadError.set('No se encontró el sitio actual.');
-      return;
-    }
-
-    if (!from || !to || fields.length === 0) {
-      this.downloadError.set('Selecciona rango y datos para exportar.');
-      return;
-    }
-
-    this.downloadBusy.set(true);
-    this.downloadError.set('');
-
-    this.companyService
-      .downloadSiteDashboardHistory(siteId, {
-        from,
-        to,
-        fields,
-        format: 'csv',
-        granularity: this.downloadGranularity(),
-      })
-      .subscribe({
-        next: (response) => {
-          const blob = response.body;
-          if (!blob) {
-            this.downloadBusy.set(false);
-            this.downloadError.set('No se recibio el archivo.');
-            return;
-          }
-
-          const filename =
-            this.filenameFromContentDisposition(response.headers.get('content-disposition')) ||
-            `historico_${siteId}_${from}_${to}.csv`;
-          this.saveBlob(blob, filename);
-          this.downloadBusy.set(false);
-          this.closeDownloadModal();
-        },
-        error: (err: unknown) => {
-          this.downloadBusy.set(false);
-          this.downloadError.set(
-            this.errorMessage(err, 'No fue posible descargar los datos historicos.'),
-          );
-        },
-      });
-  }
-
-  private filenameFromContentDisposition(value: string | null): string | null {
-    if (!value) return null;
-    const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(value);
-    return match?.[1] ? decodeURIComponent(match[1].replace(/"/g, '')) : null;
-  }
-
-  private saveBlob(blob: Blob, filename: string): void {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.rel = 'noopener';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   openDgaReportModal(): void {
