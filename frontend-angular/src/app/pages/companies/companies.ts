@@ -73,10 +73,20 @@ export class CompaniesComponent implements OnInit {
 
     effect(() => {
       const selectedId = this.companyService.selectedSubCompanyId();
+      const overviewId = this.companyService.selectedEmpresaOverviewId();
       const moduleKey = this.companyService.selectedSiteModuleKey();
       const typeFilter = this.companyService.selectedSiteTypeFilter();
+      const tree = this.companyService.visibleHierarchy();
       if (selectedId) {
+        // Subempresa manda: una selección nueva desactiva el modo overview.
+        if (overviewId) {
+          this.companyService.selectedEmpresaOverviewId.set(null);
+        }
+        this.lastOverviewId = null;
         this.loadSubCompanyData(selectedId, moduleKey, typeFilter);
+      } else if (overviewId) {
+        // tree tracked: el overview se puebla cuando llega la jerarquía.
+        this.loadEmpresaOverview(overviewId, tree);
       }
     });
   }
@@ -85,7 +95,11 @@ export class CompaniesComponent implements OnInit {
     this.companyService.fetchHierarchy().subscribe((res: ApiResponse<CompanyNode[]>) => {
       if (res.ok) {
         const tree = this.companyService.visibleHierarchy();
-        if (tree.length > 0 && !this.companyService.selectedSubCompanyId()) {
+        if (
+          tree.length > 0 &&
+          !this.companyService.selectedSubCompanyId() &&
+          !this.companyService.selectedEmpresaOverviewId()
+        ) {
           const firstMatch = this.findFirstSubCompanyWithSite(tree);
           if (firstMatch) {
             const moduleKey = getSiteTypeUi(firstMatch.site.tipo_sitio).moduleKey;
@@ -129,6 +143,36 @@ export class CompaniesComponent implements OnInit {
       },
       error: () => this.loading.set(false),
     });
+  }
+
+  /** Último overview cargado — fuerza el tab General solo al ENTRAR al modo,
+   * no en cada rerun del effect (refetch de jerarquía, etc.). */
+  private lastOverviewId: string | null = null;
+
+  /** Vista general de EMPRESA: todas las subempresas, todos los tipos.
+   * Los sitios salen de la jerarquía ya cargada (no hay endpoint por
+   * empresa); el selectedSubCompany sintético alimenta headers/subtítulos
+   * de las vistas sin tocarlas. */
+  private loadEmpresaOverview(id: string, tree: CompanyNode[]): void {
+    const company = tree.find((c) => c.id === id);
+    if (!company) {
+      return; // jerarquía aún no cargada; el effect reintenta al llegar.
+    }
+
+    const allSites = (company.subCompanies || []).flatMap((sub) => sub.sites || []);
+    this.selectedSubCompany.set({
+      id: `overview:${company.id}`,
+      nombre: company.nombre,
+      empresa_id: company.id,
+      sites: allSites,
+    } as SubCompanyNode);
+    this.sites.set(allSites);
+    this.loading.set(false);
+
+    if (this.lastOverviewId !== id) {
+      this.lastOverviewId = id;
+      this.setActiveTab('general');
+    }
   }
 
   setActiveTab(tab: string): void {

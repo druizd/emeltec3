@@ -198,15 +198,33 @@ const MODULES = SITE_MODULES;
             @if (!collapsed() && openModule() === mod.key && mod.companies.length > 0) {
               <div class="mb-0.5 pl-2.5">
                 @for (company of mod.companies; track company.id) {
-                  <button
-                    type="button"
-                    (click)="toggleCompany(company.id)"
-                    class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-on-surface-muted transition duration-100 hover:bg-surface-subtle hover:text-on-surface-variant active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    [attr.aria-expanded]="isCompanyOpen(company.id)"
-                  >
-                    <span class="material-symbols-outlined text-[11px] opacity-50">domain</span>
-                    <span class="truncate">{{ company.name }}</span>
-                  </button>
+                  <div class="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      (click)="toggleCompany(company.id)"
+                      class="flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-1.5 py-[4px] text-left text-caption-xs font-bold uppercase tracking-[0.07em] text-on-surface-muted transition duration-100 hover:bg-surface-subtle hover:text-on-surface-variant active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      [attr.aria-expanded]="isCompanyOpen(company.id)"
+                    >
+                      <span class="material-symbols-outlined text-[11px] opacity-50">domain</span>
+                      <span class="truncate">{{ company.name }}</span>
+                    </button>
+                    @if (canSeeEmpresaOverview() && isCompanyOpen(company.id)) {
+                      <button
+                        type="button"
+                        (click)="selectEmpresaOverview($event, company.id)"
+                        class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded transition duration-100 hover:bg-primary-tint-08 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        [style.color]="
+                          companyService.selectedEmpresaOverviewId() === company.id
+                            ? '#0899a5'
+                            : '#cbd5e1'
+                        "
+                        [attr.aria-label]="'Vista general de ' + company.name"
+                        [title]="'Vista general de ' + company.name + ': todas las instalaciones'"
+                      >
+                        <span class="material-symbols-outlined text-[13px]">info</span>
+                      </button>
+                    }
+                  </div>
 
                   @if (isCompanyOpen(company.id)) {
                     <div class="relative ml-2.5 pl-2.5">
@@ -345,6 +363,10 @@ export class SidebarComponent implements OnInit {
     return this.auth.canReviewDga();
   });
 
+  /** ⓘ de vista general de empresa: Admin (su jerarquía visible ya está
+   * acotada a su empresa) y SuperAdmin. Gerente/Cliente no. */
+  canSeeEmpresaOverview = computed(() => this.auth.isSuperAdmin() || this.auth.isAdmin());
+
   hasSearchResults = computed(() => {
     if (!this.searchTerm().trim()) {
       return true;
@@ -396,10 +418,25 @@ export class SidebarComponent implements OnInit {
 
   selectSubCompany(event: Event, moduleKey: string, companyId: string, subCompanyId: string): void {
     event.stopPropagation();
+    this.companyService.selectedEmpresaOverviewId.set(null);
     this.companyService.selectedSubCompanyId.set(subCompanyId);
     this.companyService.selectedSiteModuleKey.set(moduleKey);
     this.companyService.selectedSiteTypeFilter.set(siteTypesForModule(moduleKey));
     this.openModule.set(moduleKey);
+    this.expandCompany(companyId);
+
+    this.router.navigate(['/companies']);
+  }
+
+  /** Vista general de la EMPRESA completa: todas las subempresas y todos los
+   * tipos de sitio. Limpia la selección de subempresa/módulo — el modo lo
+   * resuelve companies.ts leyendo selectedEmpresaOverviewId. */
+  selectEmpresaOverview(event: Event, companyId: string): void {
+    event.stopPropagation();
+    this.companyService.selectedSubCompanyId.set(null);
+    this.companyService.selectedSiteModuleKey.set(null);
+    this.companyService.selectedSiteTypeFilter.set(null);
+    this.companyService.selectedEmpresaOverviewId.set(companyId);
     this.expandCompany(companyId);
 
     this.router.navigate(['/companies']);
@@ -452,6 +489,12 @@ export class SidebarComponent implements OnInit {
   }
 
   private initializeSelection(): void {
+    // Modo vista-general de empresa persistido: no pisar con la selección
+    // default de primera subempresa.
+    if (this.companyService.selectedEmpresaOverviewId()) {
+      return;
+    }
+
     if (this.openActivePath()) {
       return;
     }
