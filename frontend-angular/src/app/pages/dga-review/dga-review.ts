@@ -3,11 +3,9 @@
  *
  * Solo SuperAdmin/Admin acceden (gateado por route + backend authorizeRoles).
  * Acciones destructivas (aceptar/descartar slot) requieren 2FA email-OTP:
- *   1. Botón "Solicitar código" → backend manda OTP al admin email.
- *   2. Admin pega el código en el input + ejecuta acción.
- *   3. Backend valida y, si OK, aplica la acción.
- *
- * El código es single-use y vence en 5 min. Si vence o falla, repetir flujo.
+ * el twoFactorInterceptor global captura el 403 TWOFA_REQUIRED, abre el
+ * diálogo estándar y reintenta con el header X-2FA-Code. Este componente no
+ * orquesta nada del 2FA.
  */
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
@@ -66,43 +64,15 @@ const WARNING_LABELS: Record<string, string> = {
         </button>
       </header>
 
-      <!-- 2FA panel -->
-      <section
-        class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 space-y-2"
-      >
-        <div class="flex items-center gap-2 text-body-sm font-bold">
-          <span class="material-symbols-outlined text-[18px]">verified_user</span>
-          Verificación 2FA (requerida para aceptar/descartar)
+      <!-- Mensajes informativos (resultado de acciones) -->
+      @if (codeMessage()) {
+        <div
+          class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-body-sm text-emerald-800"
+        >
+          <span class="material-symbols-outlined text-[18px]">check_circle</span>
+          <span>{{ codeMessage() }}</span>
         </div>
-        <div class="flex flex-wrap items-center gap-2 text-body-sm">
-          <button
-            type="button"
-            (click)="requestCode()"
-            [disabled]="requestingCode()"
-            class="rounded-lg bg-amber-600 px-3 py-1.5 text-caption font-bold text-white hover:bg-amber-700 disabled:opacity-50"
-          >
-            {{ requestingCode() ? 'Enviando…' : 'Solicitar código' }}
-          </button>
-          <span class="text-caption-xs text-amber-700">
-            Se enviará al email admin (MONITOR_PRIMARY_EMAIL). Vence en 5 min.
-          </span>
-          <label class="ml-auto flex items-center gap-2 text-caption">
-            Código:
-            <input
-              type="text"
-              inputmode="numeric"
-              maxlength="6"
-              [value]="twoFactorCode()"
-              (input)="twoFactorCode.set($any($event.target).value.replace(/\\D/g, ''))"
-              placeholder="000000"
-              class="h-9 w-24 rounded-lg border border-amber-300 bg-white px-2 font-mono text-center text-body font-bold tracking-widest text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-200"
-            />
-          </label>
-        </div>
-        @if (codeMessage()) {
-          <div class="text-caption-xs text-amber-800">{{ codeMessage() }}</div>
-        }
-      </section>
+      }
 
       <!-- Ayuda -->
       <details class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
@@ -143,7 +113,8 @@ const WARNING_LABELS: Record<string, string> = {
           <p>
             La <strong>nota admin</strong> es obligatoria y queda registrada de forma permanente en
             la medición junto con <strong>quién ejecutó la acción y cuándo</strong>: es el respaldo
-            auditable de la decisión. Ambas acciones requieren el código 2FA.
+            auditable de la decisión. Al confirmar cualquiera de las acciones se pedirá una
+            verificación 2FA (código de 6 dígitos enviado a tu email, vence en 5 minutos).
           </p>
         </div>
       </details>
@@ -306,9 +277,8 @@ export class DgaReviewComponent {
   slots = signal<DgaReviewSlot[]>([]);
   loading = signal<boolean>(false);
   error = signal<string>('');
-  requestingCode = signal<boolean>(false);
+  /** Mensaje informativo post-acción (ej. resultado de reconocer sensor). */
   codeMessage = signal<string>('');
-  twoFactorCode = signal<string>('');
   /** key del slot cuya acción está en vuelo (deshabilita botones). */
   acting = signal<string>('');
 
@@ -424,21 +394,6 @@ export class DgaReviewComponent {
     });
   }
 
-  requestCode(): void {
-    this.requestingCode.set(true);
-    this.codeMessage.set('');
-    this.dga.request2faCode().subscribe({
-      next: () => {
-        this.requestingCode.set(false);
-        this.codeMessage.set('Código enviado al email admin. Vence en 5 min.');
-      },
-      error: (err) => {
-        this.requestingCode.set(false);
-        this.codeMessage.set(this.friendlyError(err, 'No se pudo enviar el código.'));
-      },
-    });
-  }
-
   /**
    * Maps backend errors to Spanish copy. Recognises common HTTP statuses;
    * falls back to the API-provided message only when it is a complete sentence
@@ -453,8 +408,13 @@ export class DgaReviewComponent {
     };
     const apiMessage = e?.error?.error?.message;
     const status = e?.status;
+    const errCode = (e as { error?: { code?: string } })?.error?.code;
     if (status === 0) return 'Sin conexión con el servidor. Revisa tu red y vuelve a intentar.';
     if (status === 401) return 'Sesión expirada. Inicia sesión nuevamente.';
+    // 403 TWOFA_*: el interceptor ya orquestó el diálogo; llegar aquí = canceló.
+    if (status === 403 && (errCode === 'TWOFA_REQUIRED' || errCode === 'TWOFA_INVALID')) {
+      return 'Verificación 2FA cancelada. La acción no se aplicó.';
+    }
     if (status === 403) return 'No tienes permisos para esta acción.';
     if (status === 404) return 'El recurso solicitado no existe.';
     if (status === 429) return 'Demasiados intentos. Espera unos segundos y vuelve a intentar.';
@@ -471,7 +431,6 @@ export class DgaReviewComponent {
   }
 
   accept(s: DgaReviewSlot): void {
-    if (!this.requireCode()) return;
     const e = this.edit(s);
     if (!e.note.trim()) {
       this.error.set('Nota admin requerida para aceptar.');
@@ -510,7 +469,6 @@ export class DgaReviewComponent {
    * sensor, en la incidencia de bitácora y en los slots aceptados).
    */
   reconocerSensor(s: DgaReviewSlot): void {
-    if (!this.requireCode()) return;
     const nota = this.edit(s).note.trim();
     if (nota.length < 5) {
       this.error.set(
@@ -521,9 +479,8 @@ export class DgaReviewComponent {
     const key = this.slotKey(s);
     this.acting.set(key);
     this.error.set('');
-    this.dga.reconocerSensorDefectuoso(s.site_id, nota, this.twoFactorCode()).subscribe({
+    this.dga.reconocerSensorDefectuoso(s.site_id, nota).subscribe({
       next: (r) => {
-        this.twoFactorCode.set('');
         this.acting.set('');
         this.codeMessage.set(
           `Sensor reconocido: ${r.slots_aceptados} medición(es) aceptada(s) y enviándose; ` +
@@ -534,19 +491,12 @@ export class DgaReviewComponent {
       },
       error: (err) => {
         this.acting.set('');
-        const code = err?.error?.error?.code;
-        if (code === 'DGA_2FA_INVALID' || code === 'DGA_2FA_REQUIRED') {
-          this.error.set('Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.');
-          this.twoFactorCode.set('');
-        } else {
-          this.error.set(this.friendlyError(err, 'No se pudo reconocer el sensor.'));
-        }
+        this.error.set(this.friendlyError(err, 'No se pudo reconocer el sensor.'));
       },
     });
   }
 
   discard(s: DgaReviewSlot): void {
-    if (!this.requireCode()) return;
     const e = this.edit(s);
     if (!e.note.trim()) {
       this.error.set('Nota admin requerida para descartar.');
@@ -561,22 +511,12 @@ export class DgaReviewComponent {
     this.executeAction(s, payload);
   }
 
-  private requireCode(): boolean {
-    if (this.twoFactorCode().length !== 6) {
-      this.error.set('Ingresa el código 2FA de 6 dígitos.');
-      return false;
-    }
-    return true;
-  }
-
   private executeAction(s: DgaReviewSlot, payload: DgaReviewActionPayload): void {
     const key = this.slotKey(s);
     this.acting.set(key);
     this.error.set('');
-    this.dga.applyReviewDecision(payload, this.twoFactorCode()).subscribe({
+    this.dga.applyReviewDecision(payload).subscribe({
       next: () => {
-        // Single-use: el código quedó consumido en backend.
-        this.twoFactorCode.set('');
         // Quita el slot de la lista localmente y limpia su edit.
         this.slots.update((list) => list.filter((x) => this.slotKey(x) !== key));
         this.edits.update((m) => {
@@ -588,13 +528,7 @@ export class DgaReviewComponent {
       },
       error: (err) => {
         this.acting.set('');
-        const code = err?.error?.error?.code;
-        if (code === 'DGA_2FA_INVALID' || code === 'DGA_2FA_REQUIRED') {
-          this.error.set('Código 2FA inválido o expirado. Solicita uno nuevo y vuelve a intentar.');
-          this.twoFactorCode.set('');
-        } else {
-          this.error.set(this.friendlyError(err, 'No se pudo aplicar la acción.'));
-        }
+        this.error.set(this.friendlyError(err, 'No se pudo aplicar la acción.'));
       },
     });
   }
