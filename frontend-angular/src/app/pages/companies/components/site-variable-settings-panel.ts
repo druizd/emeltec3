@@ -254,9 +254,11 @@ function emptyVariables(): SiteVariablesPayload {
                   </div>
                 </div>
 
+                <!-- flex-col + label grow: los labels envuelven a distinto número de
+                     líneas según el ancho — sin esto los inputs quedan desalineados. -->
                 <div class="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                  <div class="flex flex-col">
+                    <label class="mb-1 grow text-caption font-bold text-slate-500"
                       >Profundidad total del pozo (m)</label
                     >
                     <input
@@ -269,8 +271,8 @@ function emptyVariables(): SiteVariablesPayload {
                       placeholder="Ej: 80"
                     />
                   </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                  <div class="flex flex-col">
+                    <label class="mb-1 grow text-caption font-bold text-slate-500"
                       >Distancia del sensor desde superficie (m)</label
                     >
                     <input

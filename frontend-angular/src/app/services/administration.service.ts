@@ -44,7 +44,8 @@ export class AdministrationService {
   private http = inject(HttpClient);
 
   getHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
-    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/companies/tree?t=${Date.now()}`);
+    // v2: incluye last_seen_at por sitio (v1 no lo trae).
+    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`);
   }
 
   getDetectedDevices(limit = 100): Observable<ApiResponse<DetectedDevice[]>> {

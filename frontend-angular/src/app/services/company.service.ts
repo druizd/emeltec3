@@ -280,7 +280,9 @@ export class CompanyService {
 
   fetchHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
     this.loading.set(true);
-    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/companies/tree?t=${Date.now()}`).pipe(
+    // v2: mismo shape que el árbol v1 + last_seen_at y pozo_config por sitio.
+    // Sin last_seen_at el dashboard pinta todo "Sin datos" (status pending).
+    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`).pipe(
       tap((res) => {
         if (res.ok) {
           this.hierarchy.set(res.data);

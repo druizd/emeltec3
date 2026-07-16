@@ -5,7 +5,7 @@ import { query } from '../../config/dbHelpers';
 import type { Company, HierarchySite, SubCompany } from './types';
 
 const SITE_COLUMNS =
-  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo';
+  'id, descripcion, empresa_id, sub_empresa_id, id_serial, ubicacion, coord_norte, coord_este, huso, tipo_sitio, activo, es_maleta_piloto';
 
 export async function listCompanies(empresaIds: string[] | null): Promise<Company[]> {
   if (empresaIds === null) {
@@ -101,12 +101,18 @@ export async function attachPozoConfigsToSites<T extends { id: string }>(
 }
 
 /**
- * Anexa `last_seen_at` = MAX(equipo.time) por id_serial del sitio. Usado
- * por las tarjetas de la página "Instalaciones" para colorear el estado
- * según frescura del dato (En vivo <1h / Con datos <24h / Sin datos ≥24h).
+ * Anexa `last_seen_at` = última lectura por id_serial del sitio. Usado por
+ * dashboard y tarjetas de "Instalaciones" para colorear el estado según
+ * frescura (En vivo <1h / Con datos <24h / Sin datos ≥24h).
  *
- * Aprovecha idx_equipo_serial_time (existe en init-db). Una sola query
- * agrupada — eficiente incluso con N sitios.
+ * Lee del cagg `equipo_1min` (NO de la hypertable `equipo` cruda):
+ * MAX(time) GROUP BY sobre la hypertable agregaba chunk por chunk y
+ * reventaba el statement timeout en prod (~12s, incidente 2026-07-16).
+ * El cagg es órdenes de magnitud más chico, tiene índice garantizado por
+ * migración (idx_equipo_1min_serial_bucket) y es la MISMA fuente de
+ * frescura que usan dashboard-data y el fill DGA. LATERAL LIMIT 1 por
+ * serial = un index scan de 1 fila por sitio. Lag del cagg ≤ ~3 min —
+ * irrelevante contra el umbral de 60 min.
  */
 export async function attachLastSeenToSites<T extends { id_serial?: string | null }>(
   sites: T[],
@@ -118,10 +124,15 @@ export async function attachLastSeenToSites<T extends { id_serial?: string | nul
   if (serials.length === 0) return sites.map((s) => ({ ...s, last_seen_at: null }));
 
   const r = await query<{ id_serial: string; last_seen: string }>(
-    `SELECT id_serial, MAX(time)::text AS last_seen
-       FROM equipo
-      WHERE id_serial = ANY($1::text[])
-      GROUP BY id_serial`,
+    `SELECT s.id_serial, e.bucket::text AS last_seen
+       FROM unnest($1::text[]) AS s(id_serial)
+       JOIN LATERAL (
+         SELECT bucket
+           FROM equipo_1min
+          WHERE id_serial = s.id_serial
+          ORDER BY bucket DESC
+          LIMIT 1
+       ) e ON true`,
     [serials],
     { name: 'companies__last_seen_per_serial' },
   );
