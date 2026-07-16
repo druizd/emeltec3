@@ -42,6 +42,7 @@ import { SkeletonComponent } from '../../components/ui/skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-section';
 import { EquiposSectionComponent } from './components/equipos-section';
+import { EmpresasSectionComponent } from './components/empresas-section';
 import { DEFAULT_SITE_TYPE_CATALOG } from './site-type-catalog';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
@@ -167,6 +168,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
     TableSkeletonComponent,
     EquipoEmeltecSectionComponent,
     EquiposSectionComponent,
+    EmpresasSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -343,139 +345,24 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
               </section>
             } @else {
               @if (activeSection() === 'empresas') {
-                <app-admin-section-shell title="Empresas padre">
-                  <form
-                    (submit)="submitCompany($event)"
-                    class="editor-panel grid gap-4 lg:grid-cols-3"
-                  >
-                    <div class="lg:col-span-3">
-                      <app-admin-section-header
-                        [selected]="!!selectedCompanyId()"
-                        selectedLabel="Empresa seleccionada"
-                        newLabel="Nueva empresa"
-                        selectedHint="Presiona editar datos para habilitar cambios."
-                        newHint="Completa los datos para crear una empresa."
-                        (createNew)="startCreateCompany()"
-                      ></app-admin-section-header>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Nombre</label>
-                      <input
-                        required
-                        [disabled]="companyFormDisabled()"
-                        name="company-name"
-                        [ngModel]="companyForm().nombre"
-                        (ngModelChange)="updateCompanyForm('nombre', $event)"
-                        class="field-control"
-                        placeholder="Empresa padre"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >RUT (opcional)</label
-                      >
-                      <input
-                        [disabled]="companyFormDisabled()"
-                        name="company-rut"
-                        [ngModel]="companyForm().rut"
-                        (ngModelChange)="updateCompanyForm('rut', $event)"
-                        inputmode="text"
-                        maxlength="12"
-                        class="field-control"
-                        placeholder="76.000.000-0"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Tipo</label>
-                      <select
-                        name="company-type"
-                        [disabled]="companyFormDisabled()"
-                        [ngModel]="companyForm().tipo_empresa"
-                        (ngModelChange)="updateCompanyForm('tipo_empresa', $event)"
-                        class="field-control"
-                      >
-                        <option value="Agua">Agua</option>
-                        <option value="Eléctrico">Eléctrico</option>
-                        <option value="Industrial">Industrial</option>
-                        <option value="Cliente">Cliente</option>
-                      </select>
-                    </div>
-                    <div class="flex flex-wrap gap-2 lg:col-span-3">
-                      <app-admin-form-actions
-                        [selected]="!!selectedCompanyId()"
-                        [editMode]="companyEditMode()"
-                        [busy]="busyAction()"
-                        createKey="company"
-                        updateKey="company-update"
-                        deleteKey="company-delete"
-                        createLabel="Crear empresa"
-                        createIcon="domain_add"
-                        entityLabel="empresa"
-                        (enableEdit)="enableCompanyEdit()"
-                        (cancelEdit)="cancelCompanyEdit()"
-                        (remove)="deleteSelectedCompany()"
-                      ></app-admin-form-actions>
-                    </div>
-                  </form>
-
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Empresas registradas"
-                      [countLabel]="
-                        filteredCompanies().length + ' de ' + hierarchy().length + ' visibles'
-                      "
-                      [searchValue]="companySearch()"
-                      placeholder="Buscar empresa, RUT o tipo"
-                      (searchChange)="updateCompanySearch($event)"
-                    ></app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[680px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (company of paginatedCompanies(); track company.id) {
-                            <tr
-                              (click)="selectCompany(company.id)"
-                              [class]="rowClass(selectedCompanyId() === company.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
-                                {{ company.nombre }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="RUT">
-                                {{ company.rut }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Tipo">
-                                <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
-                                  company.tipo_empresa
-                                }}</span>
-                              </td>
-                              <td
-                                class="px-4 py-3 text-right font-bold text-slate-600"
-                                data-label="Sitios"
-                              >
-                                {{ countCompanySites(company) }}
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredCompanies().length"
-                      [page]="companyPage()"
-                      (pageChange)="setPage('empresas', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-empresas-section
+                  [companies]="hierarchy()"
+                  [selectedId]="selectedCompanyId()"
+                  [editMode]="companyEditMode()"
+                  [busyAction]="busyAction()"
+                  [nombre]="companyForm().nombre"
+                  [rut]="companyForm().rut"
+                  [tipoEmpresa]="companyForm().tipo_empresa"
+                  (submit)="submitCompany($event)"
+                  (select)="selectCompany($event)"
+                  (enableEdit)="enableCompanyEdit()"
+                  (cancelEdit)="cancelCompanyEdit()"
+                  (remove)="deleteSelectedCompany()"
+                  (createNew)="startCreateCompany()"
+                  (nombreChange)="updateCompanyForm('nombre', $event)"
+                  (rutChange)="updateCompanyForm('rut', $event)"
+                  (tipoEmpresaChange)="updateCompanyForm('tipo_empresa', $event)"
+                />
               }
 
               @if (activeSection() === 'subempresas') {
@@ -1233,10 +1120,8 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   companyEditMode = signal(false);
   subCompanyEditMode = signal(false);
   siteEditMode = signal(false);
-  companySearch = signal('');
   subCompanySearch = signal('');
   siteSearch = signal('');
-  companyPage = signal(1);
   subCompanyPage = signal(1);
   sitePage = signal(1);
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
@@ -1290,17 +1175,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     ),
   );
 
-  filteredCompanies = computed<CompanyNode[]>(() =>
-    this.hierarchy().filter((company) =>
-      this.matchesSearch(this.companySearch(), [
-        company.nombre,
-        company.rut,
-        company.tipo_empresa,
-        String(this.countCompanySites(company)),
-      ]),
-    ),
-  );
-
   filteredSubCompanies = computed<SubCompanyOption[]>(() =>
     this.allSubCompanies().filter((subCompany) =>
       this.matchesSearch(this.subCompanySearch(), [
@@ -1325,10 +1199,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         site.activo ? 'activo' : 'inactivo',
       ]),
     ),
-  );
-
-  paginatedCompanies = computed<CompanyNode[]>(() =>
-    this.paginate(this.filteredCompanies(), this.companyPage()),
   );
 
   paginatedSubCompanies = computed<SubCompanyOption[]>(() =>
@@ -1441,11 +1311,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.siteForm.update((form) => ({ ...form, es_maleta_piloto: value === 'true' }));
   }
 
-  updateCompanySearch(value: string): void {
-    this.companySearch.set(value);
-    this.companyPage.set(1);
-  }
-
   updateSubCompanySearch(value: string): void {
     this.subCompanySearch.set(value);
     this.subCompanyPage.set(1);
@@ -1459,7 +1324,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   setPage(section: SectionId, page: number): void {
     const totalItems = this.sectionTotal(section);
     const nextPage = this.clampPage(page, totalItems);
-    if (section === 'empresas') this.companyPage.set(nextPage);
     if (section === 'subempresas') this.subCompanyPage.set(nextPage);
     if (section === 'sitios') this.sitePage.set(nextPage);
   }
@@ -1484,10 +1348,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
 
   private totalPages(totalItems: number): number {
     return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
-  }
-
-  companyFormDisabled(): boolean {
-    return !!this.selectedCompanyId() && !this.companyEditMode();
   }
 
   subCompanyFormDisabled(): boolean {
@@ -2274,10 +2134,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.router.navigate(dashboardRouteForSite(site));
   }
 
-  countCompanySites(company: CompanyNode): number {
-    return company.subCompanies.reduce((total, subCompany) => total + subCompany.sites.length, 0);
-  }
-
   displayValue(value: SiteVariable['valor_dato']): string {
     if (value === null || value === undefined) return '-';
     return String(value);
@@ -2299,16 +2155,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return `${base} bg-slate-100 text-slate-500`;
   }
 
-  companyTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-caption font-semibold';
-    const normalized = this.normalizeSearchText(type);
-    if (normalized.includes('electrico')) return `${base} bg-amber-50 text-amber-700`;
-    if (normalized.includes('industrial')) return `${base} bg-indigo-50 text-indigo-700`;
-    if (normalized.includes('riles')) return `${base} bg-emerald-50 text-emerald-700`;
-    if (normalized.includes('proceso')) return `${base} bg-accent/10 text-accent-container`;
-    if (normalized.includes('cliente')) return `${base} bg-slate-100 text-slate-600`;
-    return `${base} bg-primary-tint-10 text-primary-container`;
-  }
+
 
   sectionButtonClass(section: SectionId): string {
     const base = `section-tab-button section-tab-${section}`;
@@ -2342,13 +2189,11 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   }
 
   private sectionTotal(section: SectionId): number {
-    if (section === 'empresas') return this.filteredCompanies().length;
     if (section === 'subempresas') return this.filteredSubCompanies().length;
     return this.filteredSites().length;
   }
 
   private clampAllPages(): void {
-    this.companyPage.set(this.clampPage(this.companyPage(), this.filteredCompanies().length));
     this.subCompanyPage.set(
       this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length),
     );
