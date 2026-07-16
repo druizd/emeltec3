@@ -21,6 +21,13 @@ router.get(
   userController.getEquipoEmeltec,
 );
 
+// Exportación de datos personales ARCO (Ley 21.719 — B3.2).
+// Debe ir ANTES de /me para que Express no confunda /me/export con /:id/...
+router.get('/me/export', userController.exportDatosUsuario);
+
+// Aceptación de política de privacidad (Ley 21.719 — B7.2). Idempotente.
+router.post('/me/aceptar-politica', userController.aceptarPolitica);
+
 // Perfil del usuario autenticado
 router.get('/me', userController.getCurrentUser);
 router.patch('/me', userController.updateCurrentUser);

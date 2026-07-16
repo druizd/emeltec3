@@ -24,6 +24,7 @@ const USER_PROFILE_SELECT = `
          u.auth_mode,
          u.password_set_at,
          (u.password_hash IS NOT NULL) AS has_password,
+         u.politica_aceptada_at,
          e.nombre AS empresa_nombre,
          se.nombre AS sub_empresa_nombre
   FROM usuario u
@@ -661,6 +662,78 @@ exports.resetUserPassword = async (req, res, next) => {
       .catch((e) => console.error('[resetUserPassword] email fallo:', e.message));
     res.json({ ok: true, message: 'Se reenvió un código de acceso al usuario.' });
   } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/users/me/export
+ * Exportación ARCO (Ley 21.719 — B3.2): devuelve el perfil completo y el
+ * historial de acciones del titular en audit_log (máx. 500 entradas).
+ */
+exports.exportDatosUsuario = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
+    }
+
+    let exportarFn;
+    try {
+      const path = require('path');
+      const workerPath = path.join(__dirname, '..', '..', 'dist', 'modules', 'arco', 'exportacion');
+      exportarFn = require(workerPath).exportarDatos;
+    } catch (_e) {
+      exportarFn = require('../modules/arco/exportacion').exportarDatos;
+    }
+
+    const result = await exportarFn({
+      userId,
+      req,
+      dbQuery: (sql, params) => dbHelperQuery(sql, params),
+    });
+
+    res.json({ ok: true, data: result });
+  } catch (err) {
+    if (err && err.statusCode) {
+      return res.status(err.statusCode).json({ ok: false, error: err.message });
+    }
+    next(err);
+  }
+};
+
+/**
+ * POST /api/users/me/aceptar-politica
+ * Registro de aceptación de política de privacidad (Ley 21.719 — B7.2).
+ * Idempotente: si ya tiene fecha no la sobreescribe.
+ */
+exports.aceptarPolitica = async (req, res, next) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'Usuario no autenticado' });
+    }
+
+    let aceptarFn;
+    try {
+      const path = require('path');
+      const workerPath = path.join(__dirname, '..', '..', 'dist', 'modules', 'arco', 'politica');
+      aceptarFn = require(workerPath).aceptarPolitica;
+    } catch (_e) {
+      aceptarFn = require('../modules/arco/politica').aceptarPolitica;
+    }
+
+    const result = await aceptarFn({
+      userId,
+      req,
+      dbQuery: (sql, params) => dbHelperQuery(sql, params),
+    });
+
+    res.json({ ok: true, data: result.perfil });
+  } catch (err) {
+    if (err && err.statusCode) {
+      return res.status(err.statusCode).json({ ok: false, error: err.message });
+    }
     next(err);
   }
 };
