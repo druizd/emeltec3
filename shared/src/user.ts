@@ -20,6 +20,7 @@ export interface User {
   auth_mode?: AuthMode | null;
   password_set_at?: string | null;
   activo?: boolean;
+  politica_aceptada_at?: string | null;
 }
 
 export interface CreateUserPayload {
