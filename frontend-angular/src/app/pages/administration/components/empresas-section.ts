@@ -301,10 +301,7 @@ export class EmpresasSectionComponent {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private matchesSearch(
-    query: string,
-    values: (string | number | null | undefined)[],
-  ): boolean {
+  private matchesSearch(query: string, values: (string | number | null | undefined)[]): boolean {
     const nq = this.normalizeText(query);
     if (!nq) return true;
     const haystack = this.normalizeText(...values.map((v) => String(v ?? '')));

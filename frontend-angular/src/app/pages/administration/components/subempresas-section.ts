@@ -129,10 +129,7 @@ export interface SubCompanyOption extends SubCompanyNode {
             </thead>
             <tbody class="divide-y divide-slate-100">
               @for (sub of paginatedSubCompanies(); track sub.id) {
-                <tr
-                  (click)="selectItem.emit(sub.id)"
-                  [class]="rowClass(selectedId() === sub.id)"
-                >
+                <tr (click)="selectItem.emit(sub.id)" [class]="rowClass(selectedId() === sub.id)">
                   <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
                     {{ sub.nombre }}
                   </td>
@@ -292,10 +289,7 @@ export class SubempresasSectionComponent {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private matchesSearch(
-    query: string,
-    values: (string | number | null | undefined)[],
-  ): boolean {
+  private matchesSearch(query: string, values: (string | number | null | undefined)[]): boolean {
     const nq = this.normalizeText(query);
     if (!nq) return true;
     const haystack = this.normalizeText(...values.map((v) => String(v ?? '')));

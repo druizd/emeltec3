@@ -435,10 +435,7 @@ export class EquiposSectionComponent {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private matchesSearch(
-    query: string,
-    values: (string | number | null | undefined)[],
-  ): boolean {
+  private matchesSearch(query: string, values: (string | number | null | undefined)[]): boolean {
     const normalizedQuery = this.normalizeSearchText(query);
     if (!normalizedQuery) return true;
     const haystack = this.normalizeSearchText(...values.map((v) => String(v ?? '')));

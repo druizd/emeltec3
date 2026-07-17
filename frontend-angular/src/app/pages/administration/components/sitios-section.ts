@@ -144,9 +144,7 @@ export type { SubCompanyOption };
           />
         </div>
         <div>
-          <label class="mb-1 block text-caption font-bold text-slate-500"
-            >Serial del equipo</label
-          >
+          <label class="mb-1 block text-caption font-bold text-slate-500">Serial del equipo</label>
           <input
             required
             [disabled]="formDisabled()"
@@ -172,9 +170,7 @@ export type { SubCompanyOption };
              frontend (proj4) para plotear en el mapa satelital
              de la vista general. Chile usa huso 18/19/20. -->
         <div>
-          <label class="mb-1 block text-caption font-bold text-slate-500"
-            >Coord. Norte (UTM)</label
-          >
+          <label class="mb-1 block text-caption font-bold text-slate-500">Coord. Norte (UTM)</label>
           <input
             name="site-coord-norte"
             type="number"
@@ -187,9 +183,7 @@ export type { SubCompanyOption };
           />
         </div>
         <div>
-          <label class="mb-1 block text-caption font-bold text-slate-500"
-            >Coord. Este (UTM)</label
-          >
+          <label class="mb-1 block text-caption font-bold text-slate-500">Coord. Este (UTM)</label>
           <input
             name="site-coord-este"
             type="number"
@@ -475,10 +469,7 @@ export class SitiosSectionComponent {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private matchesSearch(
-    query: string,
-    values: (string | number | null | undefined)[],
-  ): boolean {
+  private matchesSearch(query: string, values: (string | number | null | undefined)[]): boolean {
     const nq = this.normalizeText(query);
     if (!nq) return true;
     const haystack = this.normalizeText(...values.map((v) => String(v ?? '')));

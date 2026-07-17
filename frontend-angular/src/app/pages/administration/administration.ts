@@ -148,7 +148,6 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   sandboxRaw: '',
 };
 
-
 @Component({
   selector: 'app-administration',
   standalone: true,
@@ -425,10 +424,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
               }
 
               @if (activeSection() === 'equipos') {
-                <app-equipos-section
-                  [devices]="detectedDevices()"
-                  (refresh)="loadDashboard()"
-                />
+                <app-equipos-section [devices]="detectedDevices()" (refresh)="loadDashboard()" />
               }
 
               @if (activeSection() === 'equipo-emeltec') {
