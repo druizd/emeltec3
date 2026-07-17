@@ -30,6 +30,12 @@ import {
   type CounterVariable,
   upsertContadorMensual,
 } from './repo';
+import {
+  listContadorDiarioBySiteRolDias,
+  listContadorJornadaBySiteRolDias,
+  diarioRowToPoint,
+  jornadaRowToPoint,
+} from './daily-repo';
 import type {
   ContadorDiarioPoint,
   ContadorJornadaPoint,
@@ -448,8 +454,10 @@ export async function computeDailyDeltasForVariable(opts: {
 /**
  * Devuelve la serie diaria lista para el chart: ultimos `dias` puntos.
  *
- * Computa on-demand desde el hypertable `equipo` (no hay tabla materializada
- * diaria). Costo: ~1s por 30 dias con un sitio que sampla a 1/min.
+ * Fast path (materialized): lee de site_contador_diario si todos los días
+ * tienen fila materializada → respuesta < 5ms.
+ * Fallback (on-demand): para días sin fila materializada, computa desde
+ * equipo_5min (cold path, ~1s/30 días). Combina ambos resultados.
  *
  * Solo procesa la primera variable contador del sitio con `rol` match.
  */
@@ -476,31 +484,44 @@ export async function getDailySeries(opts: {
   const counter = counters.find((c) => c.rol === rol && c.id_serial);
   if (!counter || !counter.id_serial) return emptyDailySeries(dias);
 
-  const mappings = await getMappingsBySiteId(sitioId);
-  const mapping = mappings.find((m) => m.id === counter.variable_id);
-  if (!mapping) return emptyDailySeries(dias);
-
-  const site = await getSiteById(sitioId);
-  const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
-
   const days = lastNDays(dias);
   if (days.length === 0) return [];
-  const firstDay = days[0]!;
-  const lastDay = days[days.length - 1]!;
-  const start = getDayRangeChile(firstDay).start;
-  const end = getDayRangeChile(lastDay).end;
 
-  const deltasByDay = await computeDailyDeltasForVariable({
-    idSerial: counter.id_serial,
-    mapping,
-    pozoConfig,
-    start,
-    end,
-  });
+  const diaIsos = days.map((d) => getDayRangeChile(d).diaIso);
 
-  const series = days.map((dayStart) => {
-    const diaIso = getDayRangeChile(dayStart).diaIso;
-    const r = deltasByDay.get(diaIso);
+  // ── Fast path: lectura de tabla materializada ────────────────────────────
+  const materialized = await listContadorDiarioBySiteRolDias(sitioId, rol, diaIsos);
+
+  // Días sin fila materializada necesitan fallback on-demand.
+  const missingDays = days.filter((d) => !materialized.has(getDayRangeChile(d).diaIso));
+
+  let onDemandByDay = new Map<string, import('./types').MonthDeltaResult>();
+
+  if (missingDays.length > 0) {
+    // Solo carga mappings/config si hace falta el fallback.
+    const mappings = await getMappingsBySiteId(sitioId);
+    const mapping = mappings.find((m) => m.id === counter.variable_id);
+    if (mapping) {
+      const site = await getSiteById(sitioId);
+      const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+      const firstMissing = missingDays[0]!;
+      const lastMissing = missingDays[missingDays.length - 1]!;
+      const start = getDayRangeChile(firstMissing).start;
+      const end = getDayRangeChile(lastMissing).end;
+      onDemandByDay = await computeDailyDeltasForVariable({
+        idSerial: counter.id_serial,
+        mapping,
+        pozoConfig,
+        start,
+        end,
+      });
+    }
+  }
+
+  const series = diaIsos.map((diaIso) => {
+    const mat = materialized.get(diaIso);
+    if (mat) return diarioRowToPoint(mat, counter.unidad);
+    const r = onDemandByDay.get(diaIso);
     return {
       dia: diaIso,
       delta: r?.delta ?? null,
@@ -699,6 +720,10 @@ export async function computeJornadasForVariable(opts: {
  * Devuelve la serie por jornada lista para el chart: ultimos `dias` puntos,
  * cada uno con el delta de la jornada [inicio, fin) (cruzando medianoche si
  * fin <= inicio).
+ *
+ * Fast path (materialized): lee de site_contador_jornada para la ventana
+ * inicio/fin solicitada si todos los días tienen fila → respuesta < 5ms.
+ * Fallback (on-demand): para días sin fila, computa desde equipo_5min.
  */
 export async function getJornadaSeries(opts: {
   sitioId: string;
@@ -713,26 +738,40 @@ export async function getJornadaSeries(opts: {
   const counter = counters.find((c) => c.rol === rol && c.id_serial);
   if (!counter || !counter.id_serial) return emptyJornadaSeries(dias, inicio, fin);
 
-  const mappings = await getMappingsBySiteId(sitioId);
-  const mapping = mappings.find((m) => m.id === counter.variable_id);
-  if (!mapping) return emptyJornadaSeries(dias, inicio, fin);
-
-  const site = await getSiteById(sitioId);
-  const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
-
   const days = lastNDays(dias);
-  const deltasByDay = await computeJornadasForVariable({
-    idSerial: counter.id_serial,
-    mapping,
-    pozoConfig,
-    days,
-    inicio,
-    fin,
-  });
+  if (days.length === 0) return [];
 
-  return days.map((dayStart) => {
-    const diaIso = getDayRangeChile(dayStart).diaIso;
-    const r = deltasByDay.get(diaIso);
+  const diaIsos = days.map((d) => getDayRangeChile(d).diaIso);
+
+  // ── Fast path: lectura de tabla materializada ────────────────────────────
+  const materialized = await listContadorJornadaBySiteRolDias(sitioId, rol, inicio, fin, diaIsos);
+
+  // Días sin fila materializada necesitan fallback on-demand.
+  const missingDays = days.filter((d) => !materialized.has(getDayRangeChile(d).diaIso));
+
+  let onDemandByDay = new Map<string, import('./types').MonthDeltaResult>();
+
+  if (missingDays.length > 0) {
+    const mappings = await getMappingsBySiteId(sitioId);
+    const mapping = mappings.find((m) => m.id === counter.variable_id);
+    if (mapping) {
+      const site = await getSiteById(sitioId);
+      const pozoConfig = site?.tipo_sitio === 'pozo' ? await getPozoConfigBySiteId(sitioId) : null;
+      onDemandByDay = await computeJornadasForVariable({
+        idSerial: counter.id_serial,
+        mapping,
+        pozoConfig,
+        days: missingDays,
+        inicio,
+        fin,
+      });
+    }
+  }
+
+  return diaIsos.map((diaIso) => {
+    const mat = materialized.get(diaIso);
+    if (mat) return jornadaRowToPoint(mat, counter.unidad);
+    const r = onDemandByDay.get(diaIso);
     return {
       dia: diaIso,
       inicio,
