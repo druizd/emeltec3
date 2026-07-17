@@ -735,3 +735,133 @@ exports.sendHealthDigest = async ({
     console.error('[emailService] Error enviando health digest:', error.message);
   }
 };
+
+/**
+ * Aviso de inactividad próxima a anonimización (B5.2 — Retención ARCO+).
+ * Se envía ~30 días antes de que la cuenta sea anonimizada por inactividad.
+ *
+ * @param {string} emailDestino
+ * @param {string} nombre
+ * @param {number} diasRestantes
+ */
+exports.sendAvisoInactividad = async (emailDestino, nombre, diasRestantes) => {
+  try {
+    const nombreSafe = escapeHtml((nombre || '').trim() || 'usuario');
+    const dias = Math.max(1, Math.round(diasRestantes));
+
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#d97706;font-weight:700;">Aviso de privacidad — Ley 21.719</p>
+              <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#1E293B;font-weight:600;">Hola ${nombreSafe},</h1>
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:#475569;">Tu cuenta en <strong style="color:#1E293B;">Emeltec Cloud</strong> no ha sido utilizada en más de 23 meses.</p>
+              <p style="margin:0;font-size:15px;line-height:1.55;color:#475569;">De acuerdo a nuestra política de retención de datos (Ley 21.719 de Protección de Datos Personales), en <strong style="color:#1E293B;">${dias} días</strong> procederemos a <strong style="color:#dc2626;">anonimizar los datos personales</strong> asociados a tu cuenta.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:24px 40px 4px;">
+              <div style="background-color:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:18px 20px;">
+                <p style="margin:0 0 8px;font-size:13px;font-weight:600;color:#92400E;">¿Qué significa esto?</p>
+                <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.6;color:#78350F;">
+                  <li>Tu nombre, email, RUT y teléfono serán reemplazados por valores neutros.</li>
+                  <li>Tu cuenta quedará inactiva y no podrás ingresar a la plataforma.</li>
+                  <li>Historial de auditoría y métricas industriales <strong>no</strong> serán eliminados.</li>
+                </ul>
+              </div>
+            </td>
+          </tr>
+${ctaButtonHtml(ACCESS_URL, 'Ingresar y mantener mi cuenta activa', '#0DAFBD')}
+${securityNoteHtml('Si ya no usas esta plataforma, no es necesario que hagas nada. Si tienes preguntas, responde este correo o contacta a soporte@emeltec.cl.')}`;
+
+    const html = renderShell({
+      title: 'Aviso de inactividad · Emeltec Cloud',
+      preheader: `Tu cuenta será anonimizada en ${dias} días por inactividad.`,
+      accentColor: '#d97706',
+      accentGradient: 'linear-gradient(90deg,#d97706 0%,#92400e 100%)',
+      contentHtml,
+    });
+
+    await enviar({
+      to: emailDestino,
+      subject: `Aviso: tu cuenta en Emeltec Cloud será anonimizada en ${dias} días`,
+      text: [
+        `Hola ${(nombre || '').trim() || 'usuario'},`,
+        '',
+        `Tu cuenta en Emeltec Cloud no ha sido utilizada en más de 23 meses.`,
+        `En ${dias} días, tus datos personales serán anonimizados (Ley 21.719).`,
+        '',
+        `Si deseas mantener tu cuenta activa, ingresa a: ${ACCESS_URL}`,
+        '',
+        'Si tienes preguntas, contacta a soporte@emeltec.cl.',
+      ].join('\n'),
+      html,
+    });
+  } catch (error) {
+    console.error('[emailService] Error enviando aviso de inactividad:', error.message);
+  }
+};
+
+/**
+ * Alerta de seguridad para SuperAdmins (B4.2 — Alertas automáticas audit log).
+ *
+ * @param {string} to - email del SuperAdmin destinatario
+ * @param {string} tipo - 'logins_fallidos' | 'cambio_rol'
+ * @param {object} detalles - información adicional de la alerta
+ */
+exports.sendAlertaSeguridad = async (to, tipo, detalles) => {
+  try {
+    const tipoLabel =
+      tipo === 'logins_fallidos' ? 'Intentos de acceso fallidos' : 'Cambio de rol detectado';
+    const tipoColor = tipo === 'logins_fallidos' ? '#dc2626' : '#d97706';
+    const tipoGradient =
+      tipo === 'logins_fallidos'
+        ? 'linear-gradient(90deg,#dc2626 0%,#7f1d1d 100%)'
+        : 'linear-gradient(90deg,#d97706 0%,#92400e 100%)';
+
+    const detallesRows = Object.entries(detalles || {})
+      .map(
+        ([k, v]) =>
+          `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(k)}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`,
+      )
+      .join('');
+
+    const contentHtml = `          <tr>
+            <td style="padding:36px 40px 4px;">
+              <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:${tipoColor};font-weight:700;">Alerta de seguridad</p>
+              <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25;color:#1E293B;font-weight:600;">${escapeHtml(tipoLabel)}</h1>
+              <p style="margin:0;font-size:14px;line-height:1.55;color:#475569;">Se detectó una condición de seguridad que requiere tu revisión en Emeltec Cloud.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 40px 4px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#FFFFFF;border:1px solid #E2E8F0;border-radius:10px;border-left:3px solid ${tipoColor};overflow:hidden;">
+                ${detallesRows}
+              </table>
+            </td>
+          </tr>
+${ctaButtonHtml(ACCESS_URL, 'Revisar en la plataforma', tipoColor)}
+${securityNoteHtml('Esta alerta fue generada automáticamente por el sistema de monitoreo de Emeltec Cloud. Si no reconoces esta actividad, revisa los registros de auditoría de inmediato.')}`;
+
+    const html = renderShell({
+      title: `Alerta: ${tipoLabel} · Emeltec Cloud`,
+      preheader: `Alerta de seguridad: ${tipoLabel}`,
+      accentColor: tipoColor,
+      accentGradient: tipoGradient,
+      contentHtml,
+    });
+
+    await enviar({
+      to,
+      subject: `[ALERTA] ${tipoLabel} — Emeltec Cloud`,
+      text: [
+        `ALERTA DE SEGURIDAD: ${tipoLabel}`,
+        '',
+        ...Object.entries(detalles || {}).map(([k, v]) => `${k}: ${v}`),
+        '',
+        `Revisa en: ${ACCESS_URL}`,
+      ].join('\n'),
+      html,
+    });
+  } catch (error) {
+    console.error('[emailService] Error enviando alerta de seguridad:', error.message);
+  }
+};

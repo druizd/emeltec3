@@ -98,6 +98,47 @@ const Schema = z.object({
   DGA_GCS_PROVEEDOR: z.string().min(1).default('EMELTEC'),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+
+  // ── Retención de datos (B5.2) ─────────────────────────────────────────────
+  // Kill switch global del worker de retención. Default OFF.
+  ENABLE_RETENTION_WORKER: z
+    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
+  // Meses de retención de audit_log general (no-DGA). Default 12.
+  RETENTION_AUDIT_MONTHS: z.coerce.number().int().positive().default(12),
+
+  // Meses de retención de acciones DGA en audit_log. Default 36.
+  RETENTION_DGA_MONTHS: z.coerce.number().int().positive().default(36),
+
+  // Meses de inactividad antes de anonimizar la cuenta. Default 24.
+  RETENTION_INACTIVITY_MONTHS: z.coerce.number().int().positive().default(24),
+
+  // Días de anticipación del aviso antes de anonimizar. Default 30.
+  RETENTION_NOTICE_DAYS: z.coerce.number().int().positive().default(30),
+
+  // Intervalo del ciclo del worker en ms. Default 24 horas.
+  RETENTION_POLL_MS: z.coerce.number().int().positive().default(86_400_000),
+
+  // ── Alertas automáticas de audit log (B4.2) ──────────────────────────────
+  // Kill switch global del worker de alertas de audit. Default OFF.
+  ENABLE_AUDIT_ALERTS_WORKER: z
+    .union([z.literal('true'), z.literal('false'), z.literal('1'), z.literal('0')])
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
+
+  // Ventana de tiempo (minutos) para detección de logins fallidos.
+  AUDIT_ALERT_LOGIN_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
+
+  // Número mínimo de intentos fallidos para disparar alerta.
+  AUDIT_ALERT_LOGIN_THRESHOLD: z.coerce.number().int().positive().default(5),
+
+  // Cooldown en minutos entre alertas del mismo tipo. Default 60.
+  AUDIT_ALERT_COOLDOWN_MINUTES: z.coerce.number().int().positive().default(60),
+
+  // Intervalo del ciclo de alertas en ms. Default 5 minutos.
+  AUDIT_ALERTS_POLL_MS: z.coerce.number().int().positive().default(300_000),
 });
 
 export type Env = z.infer<typeof Schema>;
@@ -158,6 +199,21 @@ export const config = {
   workers: {
     alerts: env.ENABLE_ALERTS_WORKER,
     healthDigest: env.ENABLE_HEALTH_DIGEST_WORKER,
+    retention: env.ENABLE_RETENTION_WORKER,
+    auditAlerts: env.ENABLE_AUDIT_ALERTS_WORKER,
+  },
+  retention: {
+    auditMonths: env.RETENTION_AUDIT_MONTHS,
+    dgaMonths: env.RETENTION_DGA_MONTHS,
+    inactivityMonths: env.RETENTION_INACTIVITY_MONTHS,
+    noticeDays: env.RETENTION_NOTICE_DAYS,
+    pollMs: env.RETENTION_POLL_MS,
+  },
+  auditAlerts: {
+    loginWindowMinutes: env.AUDIT_ALERT_LOGIN_WINDOW_MINUTES,
+    loginThreshold: env.AUDIT_ALERT_LOGIN_THRESHOLD,
+    cooldownMinutes: env.AUDIT_ALERT_COOLDOWN_MINUTES,
+    pollMs: env.AUDIT_ALERTS_POLL_MS,
   },
   monitor: {
     primaryEmail: env.MONITOR_PRIMARY_EMAIL,

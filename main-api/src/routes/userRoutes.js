@@ -62,4 +62,10 @@ router.delete(
   userController.deleteUser,
 );
 
+// Supresión ARCO+ (Ley 21.719): anonimiza PII. El titular puede ejecutarlo sobre
+// sí mismo; un SuperAdmin puede ejecutarlo sobre cualquier cuenta.
+// La lógica de autorización "SuperAdmin O titular" vive en el controller.
+// Irreversible — exige 2FA igual que DELETE /:id (el soft-delete reversible).
+router.post('/:id/suprimir', require2fa, userController.suprimirUsuario);
+
 module.exports = router;
