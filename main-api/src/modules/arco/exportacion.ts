@@ -68,10 +68,7 @@ export async function exportarDatos(params: ExportarDatosParams): Promise<Export
   const { userId, dbQuery, auditRecord = defaultAuditRecord, req } = params;
 
   // 1. Obtener perfil completo del usuario
-  const { rows: perfilRows } = await dbQuery(
-    `${USER_PROFILE_SELECT} WHERE u.id = $1`,
-    [userId],
-  );
+  const { rows: perfilRows } = await dbQuery(`${USER_PROFILE_SELECT} WHERE u.id = $1`, [userId]);
 
   if (perfilRows.length === 0) {
     throw new AppError(`Usuario ${userId} no encontrado`, 404);

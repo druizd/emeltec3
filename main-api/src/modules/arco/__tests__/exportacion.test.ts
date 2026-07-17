@@ -12,8 +12,24 @@ const mockPerfil = {
 };
 
 const mockAuditRows = [
-  { id: 1, action: 'user.login', target_type: null, target_id: null, status_code: 200, ts: '2025-01-01T00:00:00Z', metadata: null },
-  { id: 2, action: 'user.update', target_type: 'usuario', target_id: 'USR01', status_code: 200, ts: '2025-01-02T00:00:00Z', metadata: null },
+  {
+    id: 1,
+    action: 'user.login',
+    target_type: null,
+    target_id: null,
+    status_code: 200,
+    ts: '2025-01-01T00:00:00Z',
+    metadata: null,
+  },
+  {
+    id: 2,
+    action: 'user.update',
+    target_type: 'usuario',
+    target_id: 'USR01',
+    status_code: 200,
+    ts: '2025-01-02T00:00:00Z',
+    metadata: null,
+  },
 ];
 
 const mockAuditRecord = vi.fn().mockResolvedValue(undefined);
@@ -31,8 +47,9 @@ describe('exportarDatos()', () => {
   });
 
   it('1. Devuelve { perfil, audit, exportado_at } con los datos del usuario', async () => {
-    const dbQuery = vi.fn()
-      .mockResolvedValueOnce({ rows: [mockPerfil] })   // SELECT perfil
+    const dbQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [mockPerfil] }) // SELECT perfil
       .mockResolvedValueOnce({ rows: mockAuditRows }); // SELECT audit_log
 
     const result = await exportarDatos({ ...baseParams, dbQuery });
@@ -43,7 +60,8 @@ describe('exportarDatos()', () => {
   });
 
   it('2. Llama auditRecord con action "user.export_datos"', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [mockPerfil] })
       .mockResolvedValueOnce({ rows: mockAuditRows });
 
@@ -58,13 +76,14 @@ describe('exportarDatos()', () => {
   it('3. Si el usuario no existe → lanza error 404', async () => {
     const dbQuery = vi.fn().mockResolvedValueOnce({ rows: [] });
 
-    await expect(
-      exportarDatos({ ...baseParams, dbQuery }),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(exportarDatos({ ...baseParams, dbQuery })).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 
   it('4. Limita audit a max 500 entradas (verifica LIMIT 500 en SQL)', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [mockPerfil] })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -76,7 +95,8 @@ describe('exportarDatos()', () => {
   });
 
   it('5. exportado_at es una ISO string válida', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [mockPerfil] })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -87,7 +107,8 @@ describe('exportarDatos()', () => {
   });
 
   it('6. Consulta audit_log filtrando por actor_id del usuario', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [mockPerfil] })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -101,7 +122,8 @@ describe('exportarDatos()', () => {
   });
 
   it('7. Devuelve array vacío de audit si no hay entradas', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [mockPerfil] })
       .mockResolvedValueOnce({ rows: [] });
 

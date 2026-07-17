@@ -792,7 +792,6 @@ interface EditState {
 
       @if (activeTab() === 'datos' && displayUser(); as user) {
         <div class="space-y-4">
-
           <!-- Card: Datos que almacenamos -->
           <section
             class="rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
@@ -805,7 +804,6 @@ interface EditState {
             </div>
 
             <div class="divide-y divide-surface-container">
-
               <!-- Identificación -->
               <div class="px-5 py-4">
                 <p
@@ -888,7 +886,9 @@ interface EditState {
                       >
                         Cargo
                       </p>
-                      <p class="mt-1 text-body-sm font-semibold text-on-surface">{{ user.cargo }}</p>
+                      <p class="mt-1 text-body-sm font-semibold text-on-surface">
+                        {{ user.cargo }}
+                      </p>
                     </div>
                   }
                   @if (user.empresa_nombre) {
@@ -964,7 +964,6 @@ interface EditState {
                   durante 12 meses por obligación legal.
                 </p>
               </div>
-
             </div>
 
             <div
@@ -1034,7 +1033,6 @@ interface EditState {
               </button>
             </div>
           </section>
-
         </div>
       }
 
@@ -1069,8 +1067,8 @@ interface EditState {
             <div class="px-5 py-5 space-y-3">
               <p class="text-body-sm text-on-surface-variant">
                 Al confirmar, tu cuenta quedará en proceso de supresión durante
-                <strong>hasta 30 días</strong>. Tus datos personales serán anonimizados según la
-                Ley 21.719. No podrás reactivar la cuenta una vez iniciado el proceso.
+                <strong>hasta 30 días</strong>. Tus datos personales serán anonimizados según la Ley
+                21.719. No podrás reactivar la cuenta una vez iniciado el proceso.
               </p>
               <p class="text-body-sm text-on-surface-variant">
                 El sistema podría solicitarte verificación adicional (2FA) antes de procesar la

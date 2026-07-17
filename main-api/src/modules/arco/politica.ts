@@ -60,7 +60,9 @@ const USER_PROFILE_SELECT = `
   LEFT JOIN sub_empresa se ON se.id = u.sub_empresa_id
 `;
 
-export async function aceptarPolitica(params: AceptarPoliticaParams): Promise<AceptarPoliticaResult> {
+export async function aceptarPolitica(
+  params: AceptarPoliticaParams,
+): Promise<AceptarPoliticaResult> {
   const { userId, dbQuery, auditRecord = defaultAuditRecord, req } = params;
 
   // Solo marca si no está ya marcado (idempotente — no sobreescribe si ya tiene fecha)
@@ -74,10 +76,7 @@ export async function aceptarPolitica(params: AceptarPoliticaParams): Promise<Ac
   );
 
   // Obtener perfil actualizado
-  const { rows } = await dbQuery(
-    `${USER_PROFILE_SELECT} WHERE u.id = $1`,
-    [userId],
-  );
+  const { rows } = await dbQuery(`${USER_PROFILE_SELECT} WHERE u.id = $1`, [userId]);
 
   if (rows.length === 0) {
     throw new AppError(`Usuario ${userId} no encontrado`, 404);

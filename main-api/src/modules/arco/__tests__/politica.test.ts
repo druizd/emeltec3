@@ -30,8 +30,9 @@ describe('aceptarPolitica()', () => {
   });
 
   it('1. Si politica_aceptada_at es NULL → hace UPDATE y devuelve perfil actualizado', async () => {
-    const dbQuery = vi.fn()
-      .mockResolvedValueOnce({ rows: [] })               // UPDATE (0 o 1 filas afectadas)
+    const dbQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE (0 o 1 filas afectadas)
       .mockResolvedValueOnce({ rows: [mockPerfilAceptado] }); // SELECT perfil
 
     const result = await aceptarPolitica({ ...baseParams, dbQuery });
@@ -46,8 +47,9 @@ describe('aceptarPolitica()', () => {
   });
 
   it('2. Si ya tiene fecha → no sobreescribe (idempotente), igual devuelve perfil', async () => {
-    const dbQuery = vi.fn()
-      .mockResolvedValueOnce({ rows: [] })               // UPDATE afecta 0 filas (ya tenía fecha)
+    const dbQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE afecta 0 filas (ya tenía fecha)
       .mockResolvedValueOnce({ rows: [mockPerfilAceptado] }); // SELECT perfil devuelve la fecha previa
 
     const result = await aceptarPolitica({ ...baseParams, dbQuery });
@@ -59,17 +61,19 @@ describe('aceptarPolitica()', () => {
   });
 
   it('3. Usuario no encontrado → lanza error 404', async () => {
-    const dbQuery = vi.fn()
-      .mockResolvedValueOnce({ rows: [] })  // UPDATE
+    const dbQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [] }) // UPDATE
       .mockResolvedValueOnce({ rows: [] }); // SELECT vacío → no existe
 
-    await expect(
-      aceptarPolitica({ ...baseParams, dbQuery }),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(aceptarPolitica({ ...baseParams, dbQuery })).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 
   it('4. Registra en audit_log la aceptación', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [mockPerfilAceptado] });
 
@@ -82,7 +86,8 @@ describe('aceptarPolitica()', () => {
   });
 
   it('5. El UPDATE usa WHERE id = $1 AND politica_aceptada_at IS NULL', async () => {
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [mockPerfilAceptado] });
 

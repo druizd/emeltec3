@@ -223,7 +223,9 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   Al registrar este usuario, la plataforma recopilará: nombre, apellido, email, RUT,
                   teléfono, cargo y empresa. Esta información se utiliza para la operación del
                   servicio (base legal: ejecución de contrato B2B, Art. 13 Ley 21.719).
-                  <a href="/privacidad" class="underline font-semibold">Ver política de privacidad</a>.
+                  <a href="/privacidad" class="underline font-semibold"
+                    >Ver política de privacidad</a
+                  >.
                 </p>
               </div>
             }
