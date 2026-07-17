@@ -1733,21 +1733,21 @@ export class ProfileComponent implements OnInit {
     ];
   }
 
-  hasLoggedIn(user: User): boolean {
+  hasLoggedIn(user: AuthUser): boolean {
     return Boolean(user.activated_at);
   }
 
-  fullName(user: User): string {
+  fullName(user: AuthUser): string {
     return [user.nombre, user.apellido].filter(Boolean).join(' ').trim() || 'Usuario';
   }
 
-  initials(user: User): string {
+  initials(user: AuthUser): string {
     const first = user.nombre?.charAt(0) ?? '';
     const last = user.apellido?.charAt(0) ?? '';
     return `${first}${last}`.trim().toUpperCase() || this.fullName(user).slice(0, 2).toUpperCase();
   }
 
-  companyLine(user: User): string {
+  companyLine(user: AuthUser): string {
     return [user.empresa_nombre, user.sub_empresa_nombre].filter(Boolean).join(' · ');
   }
 
