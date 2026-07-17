@@ -108,10 +108,11 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: `user_data` (email, RUT, teléfono) se guarda en localStorage en texto plano — legible por cualquier script (XSS = fuga). Las medidas de seguridad son obligación del responsable. Cifrar localStorage con crypto-js es teatro (la llave vive en el mismo JS); la solución correcta es **minimización**.
 
-- [ ] B2.1 Reducir `user_data` en localStorage a lo mínimo para la UI: `{id, nombre, rol}`
-- [ ] B2.2 Hidratar el resto del perfil desde `/api/users/me` al restaurar sesión
+- [x] B2.1 Reducir `user_data` en localStorage a lo mínimo para la UI → proyección `SessionUser` `{id, nombre, apellido, tipo, cargo, empresa_id, sub_empresa_id}` en `auth.service.ts` (apellido/cargo: iniciales y actor de bitácora; empresa/sub_empresa_id: jerarquía `canManage`). Fuera: email, RUT, teléfono. Sesiones legacy se purgan al restaurar.
+- [x] B2.2 Hidratar el resto del perfil desde `/api/users/me` al restaurar sesión → `hydrateUserFromApi()` en `auth.service.ts`
 - [ ] B2.3 (Ideal, requiere backend) Migrar JWT a cookie `httpOnly` + `Secure` + `SameSite=Strict` — elimina la clase de ataque completa
-- [ ] B2.4 Verificar que las credenciales DGA nunca transiten ni se guarden en el cliente (hay TODO en `dga-generar-reporte-modal.ts`); solo backend, cifradas en reposo
+- [x] B2.4 Verificado (16-07-2026): la clave SNIA solo vive en un signal transitorio del modal, viaja una vez en el POST/PATCH de alta/rotación (HTTPS + 2FA) y se limpia; el backend nunca la devuelve (`DgaInformantePublic` solo expone rut/referencia/fechas). Ningún storage del cliente guarda credenciales. El TODO citado ya no existe en `dga-generar-reporte-modal.ts`. Cifrado en reposo en BD → B10.2.
+- [ ] B2.5 (Hallazgo 16-07-2026) Servicios cold-room (`cold-room-audit/defrost/deviations/thresholds.service.ts`) persisten bitácora con nombre del actor en localStorage — evaluar si migrar a backend o minimizar actor
 
 ### B3. Canal de derechos ARCO+ en la app 🔴 crítico
 

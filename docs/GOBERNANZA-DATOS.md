@@ -17,14 +17,14 @@ La ley radica la responsabilidad en la **persona jurídica**, no en un
 empleado. El "responsable" es la empresa; las personas designadas abajo
 ejecutan, pero la multa le llega a la empresa.
 
-| Campo | Valor |
-| --- | --- |
-| Responsable del tratamiento | 【Razón social exacta, ej. Emeltec SpA】 |
-| RUT | 【RUT empresa】 |
-| Domicilio | 【Dirección】 |
-| Representante legal | 【Nombre】 |
+| Campo                                     | Valor                                                                        |
+| ----------------------------------------- | ---------------------------------------------------------------------------- |
+| Responsable del tratamiento               | 【Razón social exacta, ej. Emeltec SpA】                                     |
+| RUT                                       | 【RUT empresa】                                                              |
+| Domicilio                                 | 【Dirección】                                                                |
+| Representante legal                       | 【Nombre】                                                                   |
 | Correo de contacto para titulares (ARCO+) | `datos@emeltec.cl` — 【PENDIENTE: crear grupo; solicitado a Cristian Salas】 |
-| Plataforma | Emeltec Cloud (`cloud.emeltec.cl`) |
+| Plataforma                                | Emeltec Cloud (`cloud.emeltec.cl`)                                           |
 
 Este bloque alimenta directamente B8.1 (página `/privacidad`).
 
@@ -36,11 +36,11 @@ Para un SaaS que procesa datos regulados (DGA) conviene designarlo: es
 evidencia de diligencia (Art. 14 quinquies, carga de prueba invertida) y
 atenuante ante la Agencia.
 
-| Campo | Valor |
-| --- | --- |
+| Campo                  | Valor                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
 | Delegado/a designado/a | 【Nombre legal completo】 Ruiz — Desarrollador de Sistemas, Emeltec (`druiz@emeltec.cl`) |
-| Suplente | 【Nombre】 |
-| Fecha de designación | 【dd-mm-aaaa】 |
+| Suplente               | 【Nombre】                                                                               |
+| Fecha de designación   | 【dd-mm-aaaa】                                                                           |
 
 **Formalización**: la ley no exige forma específica. Sirve CUALQUIER
 constancia escrita, fechada y verificable, emitida por quien tenga poder de
@@ -63,10 +63,10 @@ no protegía los datos", en el mundo normal esa persona tendría que
 demostrarlo.
 
 El Art. 14 quinquies (inciso final) de la ley **invierte esa regla** para
-los incidentes de seguridad. Texto legal: *"Ante la ocurrencia de un
+los incidentes de seguridad. Texto legal: _"Ante la ocurrencia de un
 incidente de seguridad, y en caso de controversia judicial o
 administrativa, **corresponderá al responsable acreditar** la existencia y
-el funcionamiento de las medidas de seguridad adoptadas"*.
+el funcionamiento de las medidas de seguridad adoptadas"_.
 
 Traducción: si mañana hay una filtración y la Agencia fiscaliza (o un
 titular demanda), **no es la Agencia la que debe probar que Emeltec lo hizo
@@ -76,12 +76,12 @@ fechados ANTERIORES al incidente.
 Consecuencia práctica, y la razón de ser de todos estos papeles: **la
 medida que no está documentada con fecha, legalmente no existe**.
 
-| Sin papel | Con papel |
-| --- | --- |
-| "Teníamos a alguien a cargo" (dicho en la audiencia) | Acta de designación firmada el 【fecha】 |
-| "Sabíamos qué datos tratamos" | Registro de tratamientos §4, versionado en git |
-| "Teníamos un plan para brechas" | `RESPUESTA-BRECHAS.md` + acta del simulacro anual |
-| "Borrábamos lo que no se usa" | Política de retención con plazos y justificación (§4 T3) |
+| Sin papel                                            | Con papel                                                |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| "Teníamos a alguien a cargo" (dicho en la audiencia) | Acta de designación firmada el 【fecha】                 |
+| "Sabíamos qué datos tratamos"                        | Registro de tratamientos §4, versionado en git           |
+| "Teníamos un plan para brechas"                      | `RESPUESTA-BRECHAS.md` + acta del simulacro anual        |
+| "Borrábamos lo que no se usa"                        | Política de retención con plazos y justificación (§4 T3) |
 
 Multa por infringir el 14 quinquies: **grave, hasta 10.000 UTM** — y el
 agravante del Art. 36 c) aplica si se puso en riesgo a los titulares.
@@ -100,8 +100,7 @@ agravante del Art. 36 c) aplica si se puso en riesgo a los titulares.
 **Funciones diferenciadoras** (no exigidas por la ley — posicionan a Emeltec
 frente a clientes B2B que pronto van a exigir esto a sus proveedores):
 
-1. **Responder ARCO+ en ≤10 días hábiles** como estándar interno (la ley da
-   30) — argumento de venta verificable con el registro de solicitudes.
+1. **Responder ARCO+ en ≤10 días hábiles** como estándar interno (la ley da 30) — argumento de venta verificable con el registro de solicitudes.
 2. **Página de confianza** pública (`/privacidad` + política de seguridad
    B10.1 + estado de cumplimiento): un cliente que audita proveedores
    encuentra todo publicado en vez de pedirlo por correo.
@@ -125,14 +124,14 @@ empresa lo justifica.
 
 ### 2.3 Matriz de decisión ante brecha (resumen; procedimiento completo en `RESPUESTA-BRECHAS.md`)
 
-| Paso | Quién | Plazo |
-| --- | --- | --- |
-| Detecta (alerta, reporte de cliente, aviso de encargado como Resend/Azure) | Cualquiera del equipo → avisa al delegado por el canal más rápido | Inmediato |
-| Contiene (revocar tokens, aislar, cortar acceso) | Responsable técnico de turno, sin esperar aprobación | Inmediato |
-| Evalúa riesgo para titulares y clasifica | Delegado + responsable técnico | ≤24 h desde detección |
-| Decide notificar a la Agencia | Delegado con el representante legal | "Sin dilaciones indebidas" — estándar interno: ≤72 h |
-| Ejecuta notificación y registro interno | Delegado | Junto a la decisión |
-| Post-mortem y medidas correctivas | Delegado + equipo técnico | ≤10 días hábiles |
+| Paso                                                                       | Quién                                                             | Plazo                                                |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------- |
+| Detecta (alerta, reporte de cliente, aviso de encargado como Resend/Azure) | Cualquiera del equipo → avisa al delegado por el canal más rápido | Inmediato                                            |
+| Contiene (revocar tokens, aislar, cortar acceso)                           | Responsable técnico de turno, sin esperar aprobación              | Inmediato                                            |
+| Evalúa riesgo para titulares y clasifica                                   | Delegado + responsable técnico                                    | ≤24 h desde detección                                |
+| Decide notificar a la Agencia                                              | Delegado con el representante legal                               | "Sin dilaciones indebidas" — estándar interno: ≤72 h |
+| Ejecuta notificación y registro interno                                    | Delegado                                                          | Junto a la decisión                                  |
+| Post-mortem y medidas correctivas                                          | Delegado + equipo técnico                                         | ≤10 días hábiles                                     |
 
 ### 2.4 ¿Emeltec es PYME para efectos de la ley?
 
@@ -171,15 +170,15 @@ infracción **grave** (10.000 UTM); sobre datos sensibles, **gravísima**.
 
 ### 3.1 Estado actual del SaaS vs cada regla — plan de acción
 
-| # | Regla | Estado hoy | Acción | Tarea |
-| --- | --- | --- | --- | --- |
-| 1 | Mínimo privilegio | ✅ roles + guards implementados | Revisión anual de accesos (función diferenciadora 3) | — |
-| 2 | Deber de secreto | ⚠️ Sin NDAs formales verificados | Firmar acuerdos de confidencialidad con equipo/contratistas | B11.3 |
-| 3 | View-as auditado | ✅ audit log registra; ⚠️ sin regla escrita de uso | Este documento la formaliza; comunicarla al equipo | — |
-| 4 | Sin exportaciones | ⚠️ Sin control técnico; depende de disciplina | Alerta sobre audit log ante exportaciones masivas | B4.2 |
-| 5 | Credenciales DGA solo backend | ⚠️ Verificar cifrado en reposo + TODO en `dga-generar-reporte-modal.ts` | Cerrar verificación | B2.4, B10.2 |
-| 6 | Sin datos productivos en dev | ⚠️ Sin verificación formal | Revisar seeds/fixtures; documentar | nueva |
-| 7 | Canales corporativos | ⚠️ Regla nueva | Comunicar al equipo junto con la 3 | — |
+| #   | Regla                         | Estado hoy                                                              | Acción                                                      | Tarea       |
+| --- | ----------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------- | ----------- |
+| 1   | Mínimo privilegio             | ✅ roles + guards implementados                                         | Revisión anual de accesos (función diferenciadora 3)        | —           |
+| 2   | Deber de secreto              | ⚠️ Sin NDAs formales verificados                                        | Firmar acuerdos de confidencialidad con equipo/contratistas | B11.3       |
+| 3   | View-as auditado              | ✅ audit log registra; ⚠️ sin regla escrita de uso                      | Este documento la formaliza; comunicarla al equipo          | —           |
+| 4   | Sin exportaciones             | ⚠️ Sin control técnico; depende de disciplina                           | Alerta sobre audit log ante exportaciones masivas           | B4.2        |
+| 5   | Credenciales DGA solo backend | ⚠️ Verificar cifrado en reposo + TODO en `dga-generar-reporte-modal.ts` | Cerrar verificación                                         | B2.4, B10.2 |
+| 6   | Sin datos productivos en dev  | ⚠️ Sin verificación formal                                              | Revisar seeds/fixtures; documentar                          | nueva       |
+| 7   | Canales corporativos          | ⚠️ Regla nueva                                                          | Comunicar al equipo junto con la 3                          | —           |
 
 **Cierre del plan**: comunicar estas reglas al equipo por escrito (correo o
 reunión con acta) — sin comunicación no hay cumplimiento acreditable.
@@ -191,36 +190,36 @@ Inventario de tratamientos con datos personales. Las mediciones IIoT
 
 ### T1 — Cuentas de usuario de la plataforma
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | Nombre, apellido, email, RUT, teléfono, cargo, rol, contraseña (hash), flags 2FA |
-| Titulares | Usuarios de clientes B2B y personal Emeltec |
-| Finalidad | Autenticación, autorización por rol, operación del servicio |
-| Base legal | Ejecución de contrato (servicio SaaS B2B) |
-| Plazo | Vigencia de la cuenta + **6 meses** tras baja → supresión/anonimización (propuesta B5.1, confirmar) |
-| Destinatarios | Solo Emeltec; sin terceros ni transferencias |
-| Sistemas | `auth-api` (BD usuarios), frontend (sesión) |
+| Aspecto       | Detalle                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------- |
+| Datos         | Nombre, apellido, email, RUT, teléfono, cargo, rol, contraseña (hash), flags 2FA                    |
+| Titulares     | Usuarios de clientes B2B y personal Emeltec                                                         |
+| Finalidad     | Autenticación, autorización por rol, operación del servicio                                         |
+| Base legal    | Ejecución de contrato (servicio SaaS B2B)                                                           |
+| Plazo         | Vigencia de la cuenta + **6 meses** tras baja → supresión/anonimización (propuesta B5.1, confirmar) |
+| Destinatarios | Solo Emeltec; sin terceros ni transferencias                                                        |
+| Sistemas      | `auth-api` (BD usuarios), frontend (sesión)                                                         |
 
 ### T2 — Contactos operacionales de clientes
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | Nombre, cargo, email, teléfono |
-| Titulares | Personal designado por el cliente para recibir alertas |
-| Finalidad | Notificación de alarmas y eventos operacionales |
-| Base legal | Ejecución de contrato / interés legítimo del cliente |
-| Plazo | Mientras el cliente los mantenga configurados; revisar en baja de cliente |
-| Destinatarios | **Resend** (envío de correo) → encargado de tratamiento, ver T6 |
+| Aspecto       | Detalle                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
+| Datos         | Nombre, cargo, email, teléfono                                            |
+| Titulares     | Personal designado por el cliente para recibir alertas                    |
+| Finalidad     | Notificación de alarmas y eventos operacionales                           |
+| Base legal    | Ejecución de contrato / interés legítimo del cliente                      |
+| Plazo         | Mientras el cliente los mantenga configurados; revisar en baja de cliente |
+| Destinatarios | **Resend** (envío de correo) → encargado de tratamiento, ver T6           |
 
 ### T3 — Audit log
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | IP, identificador/email del actor, acción, timestamp |
-| Titulares | Usuarios de la plataforma |
-| Finalidad | Seguridad, trazabilidad, detección de accesos no autorizados |
-| Base legal | Interés legítimo (seguridad) / obligación de medidas del 14 quinquies |
-| Plazo | **Retención diferenciada por tipo de acción** (ver justificación abajo). General: **12 meses** identificable → anonimizar. Acciones que afectan la integridad de datos reportados a la DGA: **36 meses**. La fila nunca se borra: acción + timestamp + rol se conservan; solo caen IP y email. **Legal hold**: si un registro está vinculado a incidente o disputa en curso, se retiene identificable hasta el cierre (documentado por el delegado). Propuesta B5.1, confirmar. |
+| Aspecto    | Detalle                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Datos      | IP, identificador/email del actor, acción, timestamp                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Titulares  | Usuarios de la plataforma                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Finalidad  | Seguridad, trazabilidad, detección de accesos no autorizados                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Base legal | Interés legítimo (seguridad) / obligación de medidas del 14 quinquies                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Plazo      | **Retención diferenciada por tipo de acción** (ver justificación abajo). General: **12 meses** identificable → anonimizar. Acciones que afectan la integridad de datos reportados a la DGA: **36 meses**. La fila nunca se borra: acción + timestamp + rol se conservan; solo caen IP y email. **Legal hold**: si un registro está vinculado a incidente o disputa en curso, se retiene identificable hasta el cierre (documentado por el delegado). Propuesta B5.1, confirmar. |
 
 **Justificación del plazo de 36 meses (documentada aquí a propósito — esto
 es lo que se muestra ante fiscalización):** los registros que el cliente
@@ -242,33 +241,33 @@ necesita.
 
 ### T4 — Credenciales DGA del informante
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | RUT y contraseña del informante ante DGA |
-| Titulares | Informante designado por el cliente |
-| Finalidad | Envío obligatorio de mediciones a la DGA (MEE) |
-| Base legal | Obligación legal (normativa DGA) + contrato |
-| Plazo | Vigencia del servicio de reporte DGA del sitio |
-| Medidas | Cifradas en reposo, solo backend (B2.4/B10.2) |
+| Aspecto    | Detalle                                        |
+| ---------- | ---------------------------------------------- |
+| Datos      | RUT y contraseña del informante ante DGA       |
+| Titulares  | Informante designado por el cliente            |
+| Finalidad  | Envío obligatorio de mediciones a la DGA (MEE) |
+| Base legal | Obligación legal (normativa DGA) + contrato    |
+| Plazo      | Vigencia del servicio de reporte DGA del sitio |
+| Medidas    | Cifradas en reposo, solo backend (B2.4/B10.2)  |
 
 ### T5 — Transferencia a la DGA (organismo público)
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | RUT informante + mediciones asociadas a la obra |
-| Finalidad | Cumplimiento normativo del cliente ante DGA |
-| Base legal | **Obligación legal** — documentada aquí (cierra la nota de B6) |
-| Destinatario | Dirección General de Aguas (organismo público, Chile) |
+| Aspecto      | Detalle                                                        |
+| ------------ | -------------------------------------------------------------- |
+| Datos        | RUT informante + mediciones asociadas a la obra                |
+| Finalidad    | Cumplimiento normativo del cliente ante DGA                    |
+| Base legal   | **Obligación legal** — documentada aquí (cierra la nota de B6) |
+| Destinatario | Dirección General de Aguas (organismo público, Chile)          |
 
 ### T6 — Encargados de tratamiento (terceros — tarea B11.1)
 
-| Tercero | Qué dato personal ve | Estado contrato |
-| --- | --- | --- |
-| Microsoft Azure (VM hosting) | Todo lo alojado (BD, logs) | 【Verificar DPA estándar Microsoft — B11.2】 |
-| **Resend** (correo 2FA + notificaciones) | Email del destinatario, asunto/cuerpo (código OTP) | 【Aceptar/archivar DPA de Resend (resend.com/legal/dpa); anotar subprocesadores (AWS)】 |
-| GitHub (repos/CI) | No debería ver datos personales | 【Verificar que logs de CI no filtren emails/IPs】 |
-| **Buk** (RRHH SaaS: asistencia, documentos informativos, **firma de liquidaciones de sueldo**) | Legajo de empleados y contenido de liquidaciones (remuneraciones); potencialmente salud (SENSIBLE). No procesa el pago — pero VER la liquidación ya es tratar el dato | 【Revisar contrato/DPA de Buk — prioridad 1 de B11.2 por datos sensibles】 |
-| **Disofi** (partner que administra Softland — ERP: ventas, OC, facturación) | Contactos de clientes/proveedores; personas naturales facturadas | 【Revisar contrato con Disofi (el encargado es Disofi, no Softland). Si Disofi usa a su vez infraestructura de Softland cloud u otro tercero → **subdelegación**: requiere autorización escrita de Emeltec (Art. 15 bis)】 |
+| Tercero                                                                                        | Qué dato personal ve                                                                                                                                                  | Estado contrato                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Microsoft Azure (VM hosting)                                                                   | Todo lo alojado (BD, logs)                                                                                                                                            | 【Verificar DPA estándar Microsoft — B11.2】                                                                                                                                                                               |
+| **Resend** (correo 2FA + notificaciones)                                                       | Email del destinatario, asunto/cuerpo (código OTP)                                                                                                                    | 【Aceptar/archivar DPA de Resend (resend.com/legal/dpa); anotar subprocesadores (AWS)】                                                                                                                                    |
+| GitHub (repos/CI)                                                                              | No debería ver datos personales                                                                                                                                       | 【Verificar que logs de CI no filtren emails/IPs】                                                                                                                                                                         |
+| **Buk** (RRHH SaaS: asistencia, documentos informativos, **firma de liquidaciones de sueldo**) | Legajo de empleados y contenido de liquidaciones (remuneraciones); potencialmente salud (SENSIBLE). No procesa el pago — pero VER la liquidación ya es tratar el dato | 【Revisar contrato/DPA de Buk — prioridad 1 de B11.2 por datos sensibles】                                                                                                                                                 |
+| **Disofi** (partner que administra Softland — ERP: ventas, OC, facturación)                    | Contactos de clientes/proveedores; personas naturales facturadas                                                                                                      | 【Revisar contrato con Disofi (el encargado es Disofi, no Softland). Si Disofi usa a su vez infraestructura de Softland cloud u otro tercero → **subdelegación**: requiere autorización escrita de Emeltec (Art. 15 bis)】 |
 
 Nota: **ACHS no va en esta tabla** — no es encargado sino responsable
 independiente (ver T7).
@@ -281,27 +280,27 @@ mueve. Mitigación adicional barata: que el correo del OTP contenga el mínimo
 
 ### T7 — Gestión de personas (RRHH) ⚠️ incluye datos sensibles
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | Identificación, contrato, asistencia, liquidaciones de sueldo, previsión; **licencias médicas y salud ocupacional (dato SENSIBLE, Art. 2° g)** |
-| Titulares | Empleados y ex-empleados de Emeltec |
-| Finalidad | Relación laboral, pago de remuneraciones, obligaciones previsionales y de seguridad laboral |
-| Base legal | Contrato de trabajo + obligación legal (Código del Trabajo, Ley 16.744, normativa previsional) |
-| Plazo | Los plazos laborales/tributarios mandan (superiores a los de esta política); ex-empleados: revisar caso a caso |
-| Encargado | **Buk** — asistencia, documentos informativos y firma de liquidaciones (ve el contenido de las remuneraciones aunque no procese el pago); contrato 15 bis, ver T6 |
-| Comunicación a terceros | **ACHS**: responsable independiente por mandato de la Ley 16.744 (administra el seguro de accidentes) — base legal: obligación legal. No es encargado. |
-| Medidas | Acceso restringido al legajo; datos de salud NUNCA por canales abiertos (correo masivo, WhatsApp) |
+| Aspecto                 | Detalle                                                                                                                                                           |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Datos                   | Identificación, contrato, asistencia, liquidaciones de sueldo, previsión; **licencias médicas y salud ocupacional (dato SENSIBLE, Art. 2° g)**                    |
+| Titulares               | Empleados y ex-empleados de Emeltec                                                                                                                               |
+| Finalidad               | Relación laboral, pago de remuneraciones, obligaciones previsionales y de seguridad laboral                                                                       |
+| Base legal              | Contrato de trabajo + obligación legal (Código del Trabajo, Ley 16.744, normativa previsional)                                                                    |
+| Plazo                   | Los plazos laborales/tributarios mandan (superiores a los de esta política); ex-empleados: revisar caso a caso                                                    |
+| Encargado               | **Buk** — asistencia, documentos informativos y firma de liquidaciones (ve el contenido de las remuneraciones aunque no procese el pago); contrato 15 bis, ver T6 |
+| Comunicación a terceros | **ACHS**: responsable independiente por mandato de la Ley 16.744 (administra el seguro de accidentes) — base legal: obligación legal. No es encargado.            |
+| Medidas                 | Acceso restringido al legajo; datos de salud NUNCA por canales abiertos (correo masivo, WhatsApp)                                                                 |
 
 ### T8 — Gestión comercial (ventas, compras, facturación)
 
-| Aspecto | Detalle |
-| --- | --- |
-| Datos | Nombre, cargo, email, teléfono de contactos de clientes y proveedores; RUT/dirección de clientes persona natural (dato económico si hay deuda) |
-| Titulares | Personas de contacto en empresas cliente/proveedor; clientes persona natural |
-| Finalidad | Gestión de la relación comercial: cotizaciones, OC, facturación, cobranza |
-| Base legal | Ejecución de contrato / interés legítimo (relación comercial B2B) |
-| Plazo | Vigencia de la relación + plazos tributarios para documentos; prospectos fríos: 【12 meses】 sin interacción → depurar |
-| Sistemas | **Softland**, administrado por **Disofi** (encargado — ver T6), correo corporativo |
+| Aspecto    | Detalle                                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Datos      | Nombre, cargo, email, teléfono de contactos de clientes y proveedores; RUT/dirección de clientes persona natural (dato económico si hay deuda) |
+| Titulares  | Personas de contacto en empresas cliente/proveedor; clientes persona natural                                                                   |
+| Finalidad  | Gestión de la relación comercial: cotizaciones, OC, facturación, cobranza                                                                      |
+| Base legal | Ejecución de contrato / interés legítimo (relación comercial B2B)                                                                              |
+| Plazo      | Vigencia de la relación + plazos tributarios para documentos; prospectos fríos: 【12 meses】 sin interacción → depurar                         |
+| Sistemas   | **Softland**, administrado por **Disofi** (encargado — ver T6), correo corporativo                                                             |
 
 ## 5. Derechos de los titulares (resumen operativo)
 
@@ -313,13 +312,13 @@ datos: **A**cceso (ver qué datos tenemos de ella), **R**ectificación
 tratamiento mientras se resuelve una solicitud). El "titular" es la persona
 dueña de los datos — en nuestro caso, cada usuario de la plataforma.
 
-| Derecho | Cómo se ejerce hoy | Pendiente |
-| --- | --- | --- |
-| Rectificación | Perfil editable en `/profile` | — |
-| Acceso | — | B3.1 sección "Mis datos" |
-| Portabilidad | — | B3.2 export JSON/CSV |
-| Supresión | — | B3.3 + flujo backend B1 |
-| Oposición / bloqueo | Vía casilla ARCO+ (§1) | Documentar respuesta |
+| Derecho             | Cómo se ejerce hoy            | Pendiente                |
+| ------------------- | ----------------------------- | ------------------------ |
+| Rectificación       | Perfil editable en `/profile` | —                        |
+| Acceso              | —                             | B3.1 sección "Mis datos" |
+| Portabilidad        | —                             | B3.2 export JSON/CSV     |
+| Supresión           | —                             | B3.3 + flujo backend B1  |
+| Oposición / bloqueo | Vía casilla ARCO+ (§1)        | Documentar respuesta     |
 
 Plazo de respuesta: **30 días** desde la solicitud. Toda solicitud se
 registra con timestamp (B3.4).
