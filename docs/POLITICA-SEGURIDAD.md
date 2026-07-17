@@ -15,12 +15,12 @@
 
 ## 1. Identificación del responsable
 
-| Campo | Valor |
-| --- | --- |
-| Responsable del tratamiento | 【Razón social exacta, ej. Emeltec SpA】 |
-| RUT | 【RUT empresa】 |
-| Plataforma | Emeltec Cloud (`cloud.emeltec.cl`) |
-| Contacto del delegado de protección de datos | `datos@emeltec.cl` |
+| Campo                                        | Valor                                    |
+| -------------------------------------------- | ---------------------------------------- |
+| Responsable del tratamiento                  | 【Razón social exacta, ej. Emeltec SpA】 |
+| RUT                                          | 【RUT empresa】                          |
+| Plataforma                                   | Emeltec Cloud (`cloud.emeltec.cl`)       |
+| Contacto del delegado de protección de datos | `datos@emeltec.cl`                       |
 
 ---
 
@@ -168,11 +168,11 @@ titulares afectados en lenguaje claro, conforme al Art. 14 sexies.
 
 ## 6. Responsabilidades
 
-| Rol | Responsabilidad principal |
-| --- | --- |
+| Rol                                   | Responsabilidad principal                                                                                                                           |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Delegado de protección de datos (DPO) | Punto de contacto para titulares y para la Agencia; supervisión de esta política; gestión de solicitudes ARCO+; decisión de notificación de brechas |
-| Responsable técnico | Implementación y mantenimiento de las medidas de seguridad; respuesta técnica ante incidentes |
-| Personal y contratistas | Cumplimiento de las reglas de uso interno de datos (deber de secreto, Art. 14 bis); reporte inmediato de incidentes detectados |
+| Responsable técnico                   | Implementación y mantenimiento de las medidas de seguridad; respuesta técnica ante incidentes                                                       |
+| Personal y contratistas               | Cumplimiento de las reglas de uso interno de datos (deber de secreto, Art. 14 bis); reporte inmediato de incidentes detectados                      |
 
 ---
 
@@ -214,11 +214,11 @@ Esta política entra en vigor el 【fecha de aprobación】 y reemplaza cualquie
 versión anterior. El responsable del tratamiento y su representante legal
 aprueban este documento.
 
-| Campo | Valor |
-| --- | --- |
-| Versión | 1.0 |
-| Fecha de elaboración | 16-07-2026 |
-| Elaborado por | D. Ruiz — DPO designado |
-| Fecha de aprobación | 【dd-mm-aaaa】 |
-| Aprobado por | 【Representante legal / Gerencia】 |
-| Próxima revisión | 【dd-mm-aaaa】 (máx. 12 meses desde aprobación) |
+| Campo                | Valor                                           |
+| -------------------- | ----------------------------------------------- |
+| Versión              | 1.0                                             |
+| Fecha de elaboración | 16-07-2026                                      |
+| Elaborado por        | D. Ruiz — DPO designado                         |
+| Fecha de aprobación  | 【dd-mm-aaaa】                                  |
+| Aprobado por         | 【Representante legal / Gerencia】              |
+| Próxima revisión     | 【dd-mm-aaaa】 (máx. 12 meses desde aprobación) |

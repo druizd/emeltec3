@@ -20,11 +20,11 @@ previo obligatorio cuando un tratamiento de datos personales pueda generar
 ter de la Ley 19.628 (modificada por Ley 21.719) establece los tres supuestos
 que la hacen obligatoria de manera inexcusable:
 
-| Supuesto legal | Texto del artículo |
-| --- | --- |
+| Supuesto legal                                                       | Texto del artículo                                                                                                                                                                                               |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **a)** Decisiones automatizadas con efectos jurídicos significativos | "...tratamiento [...] que incluya decisiones automatizadas respecto del titular, incluida la elaboración de perfiles, que produzcan efectos jurídicos en él o que le afecten significativamente de modo similar" |
-| **b)** Tratamiento masivo o a gran escala | "...tratamiento a gran escala de datos personales" |
-| **c)** Datos sensibles fuera de las excepciones al consentimiento | "...tratamiento de datos [...] a que se refieren los artículos 9° bis y 9° ter" (datos sensibles sin hipótesis de excepción al consentimiento) |
+| **b)** Tratamiento masivo o a gran escala                            | "...tratamiento a gran escala de datos personales"                                                                                                                                                               |
+| **c)** Datos sensibles fuera de las excepciones al consentimiento    | "...tratamiento de datos [...] a que se refieren los artículos 9° bis y 9° ter" (datos sensibles sin hipótesis de excepción al consentimiento)                                                                   |
 
 La Agencia de Protección de Datos publicará una lista orientativa de
 operaciones que requieren EIPD (Art. 15 ter inc. 2°). A la fecha de esta
@@ -129,15 +129,15 @@ hipótesis de excepción al consentimiento de los artículos 9° bis y 9° ter
 
 **Análisis detallado de cada dato personal tratado por la plataforma**:
 
-| Dato personal | Descripción | ¿Dato sensible? | Fundamento |
-| --- | --- | --- | --- |
-| **Correo electrónico** | Dirección de contacto corporativa del usuario | No | Identificador de contacto; no revela categoría protegida del Art. 2° g |
-| **RUT** | Rol Único Tributario del usuario y del informante DGA | No | Identificador civil/tributario chileno; no encuadra en ninguna categoría del Art. 2° g |
-| **Teléfono** | Número de contacto corporativo para alertas | No | Dato de contacto; no revela categoría protegida |
-| **Nombre y apellido** | Identificación nominal del usuario | No | Dato de identificación básica; no sensible por sí mismo |
-| **Cargo** | Posición funcional del usuario en la empresa cliente | No | Descriptor funcional; no revela situación socioeconómica individual en los términos del Art. 2° g (véase nota 1 abajo) |
-| **IP (audit log)** | Dirección IP del dispositivo de acceso del usuario | No | Dato técnico de acceso y seguridad; no es categoría sensible, aunque sí dato personal sujeto al principio de proporcionalidad (tarea B5) |
-| **Credenciales DGA del informante** | RUT y contraseña del informante ante la Dirección General de Aguas | No | Credenciales de acceso a un sistema regulatorio; no categoría sensible del Art. 2° g |
+| Dato personal                       | Descripción                                                        | ¿Dato sensible? | Fundamento                                                                                                                               |
+| ----------------------------------- | ------------------------------------------------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Correo electrónico**              | Dirección de contacto corporativa del usuario                      | No              | Identificador de contacto; no revela categoría protegida del Art. 2° g                                                                   |
+| **RUT**                             | Rol Único Tributario del usuario y del informante DGA              | No              | Identificador civil/tributario chileno; no encuadra en ninguna categoría del Art. 2° g                                                   |
+| **Teléfono**                        | Número de contacto corporativo para alertas                        | No              | Dato de contacto; no revela categoría protegida                                                                                          |
+| **Nombre y apellido**               | Identificación nominal del usuario                                 | No              | Dato de identificación básica; no sensible por sí mismo                                                                                  |
+| **Cargo**                           | Posición funcional del usuario en la empresa cliente               | No              | Descriptor funcional; no revela situación socioeconómica individual en los términos del Art. 2° g (véase nota 1 abajo)                   |
+| **IP (audit log)**                  | Dirección IP del dispositivo de acceso del usuario                 | No              | Dato técnico de acceso y seguridad; no es categoría sensible, aunque sí dato personal sujeto al principio de proporcionalidad (tarea B5) |
+| **Credenciales DGA del informante** | RUT y contraseña del informante ante la Dirección General de Aguas | No              | Credenciales de acceso a un sistema regulatorio; no categoría sensible del Art. 2° g                                                     |
 
 **Nota 1 — Cargo y situación socioeconómica**: la norma menciona "situación
 socioeconómica" como dato sensible. El cargo laboral no revela de por sí la
@@ -188,17 +188,17 @@ La conclusión anterior dejará de ser válida y deberá realizarse una nueva
 evaluación ANTES de implementar cualquiera de los siguientes cambios de
 producto o negocio:
 
-| Gatillo | Supuesto que activa |
-| --- | --- |
-| Incorporación de funciones de perfilado de usuarios (segmentación por comportamiento, scoring, recomendaciones automatizadas con base en el perfil del titular) | a) |
-| Decisiones automatizadas que afecten el acceso al servicio, estado de la cuenta o consecuencias regulatorias para el titular | a) |
-| Expansión de la base de usuarios a un volumen masivo (consumo general, plataforma pública, decenas de miles de titulares) | b) |
-| Incorporación de datos biométricos (reconocimiento facial, huella dactilar) para cualquier finalidad | b) y c) |
-| Incorporación de datos de salud, vida u orientación sexual de titulares del SaaS | c) |
-| Incorporación de datos de geolocalización en tiempo real de personas | c) y b) |
-| Expansión del servicio a personas naturales como clientes directos (B2C) | b) |
-| Publicación de la lista orientativa de operaciones por la Agencia de Protección de Datos (Art. 15 ter inc. 2°) | Todos |
-| Dictación de instrucciones generales de la Agencia (Art. 14 septies) con criterios que afecten esta evaluación | Todos |
+| Gatillo                                                                                                                                                         | Supuesto que activa |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Incorporación de funciones de perfilado de usuarios (segmentación por comportamiento, scoring, recomendaciones automatizadas con base en el perfil del titular) | a)                  |
+| Decisiones automatizadas que afecten el acceso al servicio, estado de la cuenta o consecuencias regulatorias para el titular                                    | a)                  |
+| Expansión de la base de usuarios a un volumen masivo (consumo general, plataforma pública, decenas de miles de titulares)                                       | b)                  |
+| Incorporación de datos biométricos (reconocimiento facial, huella dactilar) para cualquier finalidad                                                            | b) y c)             |
+| Incorporación de datos de salud, vida u orientación sexual de titulares del SaaS                                                                                | c)                  |
+| Incorporación de datos de geolocalización en tiempo real de personas                                                                                            | c) y b)             |
+| Expansión del servicio a personas naturales como clientes directos (B2C)                                                                                        | b)                  |
+| Publicación de la lista orientativa de operaciones por la Agencia de Protección de Datos (Art. 15 ter inc. 2°)                                                  | Todos               |
+| Dictación de instrucciones generales de la Agencia (Art. 14 septies) con criterios que afecten esta evaluación                                                  | Todos               |
 
 Adicionalmente, esta evaluación debe ser revisada en el ciclo trimestral de
 monitoreo normativo (tarea B12.2 de `PLAN-MEJORAS.md`).
@@ -207,11 +207,11 @@ monitoreo normativo (tarea B12.2 de `PLAN-MEJORAS.md`).
 
 ## 5. Ficha de evaluación
 
-| Campo | Valor |
-| --- | --- |
-| Fecha de evaluación | 16-07-2026 |
-| Evaluador | D. Ruiz — Desarrollador de Sistemas, DPO designado (`druiz@emeltec.cl`) |
-| Versión del documento | 1.0 |
-| Próxima revisión programada | 16-10-2026 (ciclo trimestral B12.2) o ante gatillo de la Sección 4 |
-| Resultado | EIPD NO obligatoria en el estado actual de la plataforma |
-| Documentos de referencia | `PLAN-MEJORAS.md` §B12, `LEY-21719-SEGURIDAD.md`, `GOBERNANZA-DATOS.md` §4 |
+| Campo                       | Valor                                                                      |
+| --------------------------- | -------------------------------------------------------------------------- |
+| Fecha de evaluación         | 16-07-2026                                                                 |
+| Evaluador                   | D. Ruiz — Desarrollador de Sistemas, DPO designado (`druiz@emeltec.cl`)    |
+| Versión del documento       | 1.0                                                                        |
+| Próxima revisión programada | 16-10-2026 (ciclo trimestral B12.2) o ante gatillo de la Sección 4         |
+| Resultado                   | EIPD NO obligatoria en el estado actual de la plataforma                   |
+| Documentos de referencia    | `PLAN-MEJORAS.md` §B12, `LEY-21719-SEGURIDAD.md`, `GOBERNANZA-DATOS.md` §4 |
