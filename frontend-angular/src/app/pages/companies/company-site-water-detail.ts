@@ -4655,7 +4655,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         const res = rawRes as unknown as ApiResponse<HistoryApiData>;
         const apiRows = this.extractHistoryApiRows(res);
         const paginatedData = !Array.isArray(res?.data) ? res?.data : null;
-        const totalRows = Number((paginatedData as { pagination?: { total?: number } } | null)?.pagination?.total);
+        const totalRows = Number(
+          (paginatedData as { pagination?: { total?: number } } | null)?.pagination?.total,
+        );
         const mappedRows = apiRows
           .map((row, index) => this.mapHistoryApiRow(row, index))
           .filter((row): row is HistoricalTelemetryRow => row !== null);
