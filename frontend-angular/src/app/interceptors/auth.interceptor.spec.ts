@@ -53,7 +53,7 @@ describe('authInterceptor', () => {
   it('respuesta 401 en endpoint normal → llama auth.logout()', () => {
     localStorage.setItem('jwt_token', 'test-token');
 
-    http.get('/api/protected').subscribe({ error: () => {} });
+    http.get('/api/protected').subscribe({ error: () => undefined });
 
     const req = httpMock.expectOne('/api/protected');
     req.flush({ message: 'Unauthorized' }, { status: 401, statusText: 'Unauthorized' });
@@ -64,7 +64,7 @@ describe('authInterceptor', () => {
   it('respuesta 401 en /api/auth/login → NO llama auth.logout()', () => {
     localStorage.setItem('jwt_token', 'test-token');
 
-    http.post('/api/auth/login', {}).subscribe({ error: () => {} });
+    http.post('/api/auth/login', {}).subscribe({ error: () => undefined });
 
     const req = httpMock.expectOne('/api/auth/login');
     req.flush({ message: 'Bad credentials' }, { status: 401, statusText: 'Unauthorized' });
@@ -75,7 +75,7 @@ describe('authInterceptor', () => {
   it('respuesta 403 → NO llama auth.logout() (solo 401)', () => {
     localStorage.setItem('jwt_token', 'test-token');
 
-    http.get('/api/admin').subscribe({ error: () => {} });
+    http.get('/api/admin').subscribe({ error: () => undefined });
 
     const req = httpMock.expectOne('/api/admin');
     req.flush({ message: 'Forbidden' }, { status: 403, statusText: 'Forbidden' });

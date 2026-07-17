@@ -57,10 +57,7 @@ describe('twoFactorInterceptor', () => {
 
     // Primera petición falla con TWOFA_REQUIRED
     const firstReq = httpMock.expectOne('/api/action');
-    firstReq.flush(
-      { code: 'TWOFA_REQUIRED' },
-      { status: 403, statusText: 'Forbidden' },
-    );
+    firstReq.flush({ code: 'TWOFA_REQUIRED' }, { status: 403, statusText: 'Forbidden' });
 
     // Esperar que el interceptor procese el begin() promise
     await Promise.resolve();
@@ -73,9 +70,10 @@ describe('twoFactorInterceptor', () => {
     expect(secondReq.request.headers.get('X-2FA-Code')).toBe('123456');
     secondReq.flush({ data: 'success' });
 
-    // close() debe haberse llamado al recibir 200
+    // close() debe haberse llamado al recibir 200 y la respuesta llegar al suscriptor
     await Promise.resolve();
     expect(mockTf.close).toHaveBeenCalled();
+    expect(responseData).toEqual({ data: 'success' });
   });
 
   it('403 con código TWOFA_INVALID → llama tf.again() (no begin)', async () => {
@@ -84,7 +82,7 @@ describe('twoFactorInterceptor', () => {
     mockTf.begin.mockResolvedValueOnce('wrong-code');
     mockTf.again.mockResolvedValueOnce('correct-code');
 
-    http.get('/api/action').subscribe({ error: () => {} });
+    http.get('/api/action').subscribe({ error: () => undefined });
 
     // Primera falla: TWOFA_REQUIRED
     const firstReq = httpMock.expectOne('/api/action');
@@ -130,7 +128,7 @@ describe('twoFactorInterceptor', () => {
   });
 
   it('error no-403 → propaga sin tocar TwoFactorService', () => {
-    http.get('/api/data').subscribe({ error: () => {} });
+    http.get('/api/data').subscribe({ error: () => undefined });
 
     const req = httpMock.expectOne('/api/data');
     req.flush({ message: 'Server Error' }, { status: 500, statusText: 'Internal Server Error' });
@@ -141,7 +139,7 @@ describe('twoFactorInterceptor', () => {
   });
 
   it('403 con código distinto (FORBIDDEN) → propaga sin step-up', () => {
-    http.get('/api/data').subscribe({ error: () => {} });
+    http.get('/api/data').subscribe({ error: () => undefined });
 
     const req = httpMock.expectOne('/api/data');
     req.flush({ code: 'FORBIDDEN' }, { status: 403, statusText: 'Forbidden' });

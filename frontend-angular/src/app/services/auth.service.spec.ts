@@ -57,11 +57,7 @@ describe('AuthService', () => {
     sessionStorage.clear();
 
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        provideRouter([]),
-      ],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
     });
 
     service = TestBed.inject(AuthService);
@@ -130,11 +126,7 @@ describe('AuthService', () => {
       // Re-crear el servicio para que ejecute initFromStorage()
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
       const hm = TestBed.inject(HttpTestingController);
@@ -159,11 +151,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
       const hm = TestBed.inject(HttpTestingController);
@@ -187,11 +175,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
 
@@ -207,11 +191,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
 
@@ -226,11 +206,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
 
@@ -247,11 +223,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
       const hm = TestBed.inject(HttpTestingController);
@@ -277,13 +249,9 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
-      const svc = TestBed.inject(AuthService);
+      TestBed.inject(AuthService); // construye el servicio: dispara initFromStorage + hidratación
       const hm = TestBed.inject(HttpTestingController);
 
       // Drenar la microtask queue
@@ -302,11 +270,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
       const hm = TestBed.inject(HttpTestingController);
@@ -326,11 +290,7 @@ describe('AuthService', () => {
 
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
       const hm = TestBed.inject(HttpTestingController);
@@ -498,11 +458,7 @@ describe('AuthService', () => {
       // Crear un servicio para Admin normal
       TestBed.resetTestingModule();
       TestBed.configureTestingModule({
-        providers: [
-          provideHttpClient(),
-          provideHttpClientTesting(),
-          provideRouter([]),
-        ],
+        providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])],
       });
       const svc = TestBed.inject(AuthService);
       const hm = TestBed.inject(HttpTestingController);

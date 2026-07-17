@@ -22,10 +22,7 @@ function makeAuthMock(
 
 function setupTestBed(authMock: ReturnType<typeof makeAuthMock>) {
   TestBed.configureTestingModule({
-    providers: [
-      provideRouter([]),
-      { provide: AuthService, useValue: authMock },
-    ],
+    providers: [provideRouter([]), { provide: AuthService, useValue: authMock }],
   });
   return TestBed.inject(Router);
 }
