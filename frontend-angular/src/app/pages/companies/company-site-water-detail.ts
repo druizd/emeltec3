@@ -38,6 +38,8 @@ import { SiteVariableSettingsPanelComponent } from './components/site-variable-s
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
+import type { ApiResponse, CompanyNode, SiteRecord } from '@emeltec/shared';
+import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 
 /**
  * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
@@ -53,12 +55,6 @@ function chileToday(): string {
 function chileMonthStart(): string {
   const d = new Date(Date.now() - 4 * 60 * 60 * 1000);
   return d.toISOString().slice(0, 8) + '01';
-}
-
-interface SiteContext {
-  company: any;
-  subCompany: any;
-  site: any;
 }
 
 interface HistoricalTelemetryValue {
@@ -135,6 +131,15 @@ interface RealtimeChartData {
   xTicks: RealtimeChartTick[];
   tooltip: RealtimeChartTooltip | null;
 }
+
+/**
+ * Forma real que devuelve el endpoint de historial: el backend puede
+ * responder con data paginada `{ rows, pagination }` o directamente con
+ * el array de filas. `extractHistoryApiRows` normaliza ambas formas.
+ */
+type HistoryApiData =
+  | { rows: HistoricalTelemetryApiRow[]; pagination?: { total?: number } }
+  | HistoricalTelemetryApiRow[];
 
 interface DgaReportRow {
   id: string;
@@ -3392,7 +3397,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.startMonthlyCountersPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res: ApiResponse<CompanyNode[]>) => {
         if (!res.ok) {
           this.router.navigate(['/companies']);
           return;
@@ -4490,8 +4495,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private refreshDashboardSnapshot(siteId: string): void {
     this.companyService.getSiteDashboardData(siteId).subscribe({
-      next: (res: any) => {
-        const payload = res?.ok === false ? null : res?.data || res || null;
+      next: (res: ApiResponse<SiteDashboardData>) => {
+        const payload = res?.ok === false ? null : res?.data || null;
         if (!payload) return;
         this.syncServerClock(payload.server_time);
         this.dashboardData.set(payload);
@@ -4507,7 +4512,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (!siteId) return;
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res: ApiResponse<CompanyNode[]>) => {
         if (!res.ok) return;
         const match = this.findAccessibleSite(res.data, siteId);
         if (!match) return;
@@ -4546,9 +4551,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
   private loadHydratedSite(match: SiteContext): void {
     this.companyService.getSites(match.subCompany.id).subscribe({
-      next: (json: any) => {
+      next: (json: ApiResponse<SiteRecord[]>) => {
         const hydratedSite = json.ok
-          ? (json.data || []).find((site: any) => site.id === match.site.id)
+          ? (json.data || []).find((site: SiteRecord) => site.id === match.site.id)
           : null;
 
         this.siteContext.set({
@@ -4584,10 +4589,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
           ),
         ),
       )
-      .subscribe((res: any) => {
+      .subscribe((res: ApiResponse<SiteDashboardData> | null) => {
         if (!res) return;
 
-        const payload = res?.ok === false ? null : res?.data || res || null;
+        const payload = res?.ok === false ? null : res?.data || null;
         this.syncServerClock(payload?.server_time);
         this.dashboardData.set(payload);
         this.dashboardLastLoadedAt.set(new Date());
@@ -4643,11 +4648,16 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
             );
         }),
       )
-      .subscribe((res: any) => {
-        if (!res) return;
-
+      .subscribe((rawRes) => {
+        if (!rawRes) return;
+        // El endpoint puede devolver { rows, pagination } o directamente el array;
+        // la firma del servicio no captura esta dualidad, así que casteamos aquí.
+        const res = rawRes as unknown as ApiResponse<HistoryApiData>;
         const apiRows = this.extractHistoryApiRows(res);
-        const totalRows = Number(res?.data?.pagination?.total);
+        const paginatedData = !Array.isArray(res?.data) ? res?.data : null;
+        const totalRows = Number(
+          (paginatedData as { pagination?: { total?: number } } | null)?.pagination?.total,
+        );
         const mappedRows = apiRows
           .map((row, index) => this.mapHistoryApiRow(row, index))
           .filter((row): row is HistoricalTelemetryRow => row !== null);
@@ -4663,9 +4673,12 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  private extractHistoryApiRows(res: any): HistoricalTelemetryApiRow[] {
+  private extractHistoryApiRows(res: ApiResponse<HistoryApiData>): HistoricalTelemetryApiRow[] {
     if (res?.ok === false) return [];
-    const rows = res?.data?.rows || res?.data || [];
+    const data = res?.data;
+    if (!data) return [];
+    if (Array.isArray(data)) return data;
+    const rows = (data as { rows?: HistoricalTelemetryApiRow[] }).rows;
     return Array.isArray(rows) ? rows : [];
   }
 
@@ -4968,17 +4981,8 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return `${get('year')}-${get('month')}-${get('day')}`;
   }
 
-  private findAccessibleSite(tree: any[], siteId: string): SiteContext | null {
-    for (const company of tree || []) {
-      for (const subCompany of company.subCompanies || []) {
-        const site = (subCompany.sites || []).find((item: any) => item.id === siteId);
-        if (site) {
-          return { company, subCompany, site };
-        }
-      }
-    }
-
-    return null;
+  private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
+    return findAccessibleSite(tree, siteId);
   }
 
   private extractNivelFreatico(data: SiteDashboardData | null): number | null {
@@ -5032,7 +5036,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     if (dataValue !== null) return dataValue;
 
     const site = this.siteContext()?.site;
-    return this.toNumber(site?.pozo_config?.[key]) ?? this.toNumber(site?.[key]);
+    // Fallback: sitios legacy pueden traer la clave directamente en el objeto
+    // de sitio además de dentro de pozo_config.
+    const siteAsRecord = site as Record<string, unknown> | undefined;
+    return this.toNumber(site?.pozo_config?.[key]) ?? this.toNumber(siteAsRecord?.[key]);
   }
 
   private toNumber(value: unknown): number | null {
