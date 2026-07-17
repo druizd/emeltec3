@@ -21,7 +21,6 @@ import { WellStatCardComponent } from '../../../../components/ui/well-stat-card'
 import { type ContadorMensualPoint, CompanyService } from '../../../../services/company.service';
 import { DatoDgaRow, DgaService } from '../../../../services/dga.service';
 import { CHILE_TIME_ZONE } from '../../../../shared/timezone';
-import { WaterDetailDgaReporteComponent } from '../water-detail-dga-reporte/water-detail-dga-reporte';
 
 /**
  * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
@@ -100,7 +99,6 @@ interface SiteDashboardData {
     ChartSkeletonComponent,
     TableSkeletonComponent,
     WellStatCardComponent,
-    WaterDetailDgaReporteComponent,
   ],
   template: `
     <ng-container>
@@ -1464,8 +1462,11 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
   latestDeviceDateLabel = input<string>('—');
   latestDeviceTimestampLabel = input<string>('—');
 
-  // Outputs
-  openDgaReporteModal = output<void>();
+  // Outputs — el padre es dueño de los tres overlays (historial, descarga,
+  // reporte DGA oficial); el tab solo emite la intención.
+  openDgaReportModal = output<void>();
+  openHistoryPanel = output<void>();
+  openDownloadPanel = output<void>();
 
   // DGA signals
   dgaDateFilterOpen = signal(false);
@@ -2119,7 +2120,15 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
     openDga?: boolean;
   }): void {
     if (action.openDgaReport) {
-      this.openDgaReporteModal.emit();
+      this.openDgaReportModal.emit();
+      return;
+    }
+    if (action.openHistory) {
+      this.openHistoryPanel.emit();
+      return;
+    }
+    if (action.openDownload) {
+      this.openDownloadPanel.emit();
       return;
     }
     if (action.openDga) {
@@ -2130,10 +2139,7 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
         '_blank',
         'noopener,noreferrer',
       );
-      return;
     }
-    // openHistory and openDownload are handled by the parent via output events if needed
-    // For now these are no-ops since the parent keeps those panels
   }
 
   quickActionDisabled(action: { openDga?: boolean }): boolean {

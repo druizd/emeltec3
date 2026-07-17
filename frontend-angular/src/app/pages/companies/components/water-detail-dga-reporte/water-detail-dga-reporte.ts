@@ -428,6 +428,12 @@ export class WaterDetailDgaReporteComponent {
   dgaReportError = signal<string>('');
   selectedDgaReport = signal<DgaReportRow | null>(null);
 
+  constructor() {
+    // Paridad con el opener original del padre: el modal nacía con el preset
+    // "Últimos 30 días" APLICADO (fechas llenas), no solo resaltado.
+    this.applyDgaReportPreset('last30');
+  }
+
   dgaReportDaysCount = computed(() => {
     const f = this.dgaReportDateFrom();
     const t = this.dgaReportDateTo();

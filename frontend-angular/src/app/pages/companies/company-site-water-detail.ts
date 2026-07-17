@@ -600,7 +600,9 @@ type OperationMode = 'realtime' | 'turnos';
               [latestDeviceTimeLabel]="latestDeviceTimeLabel()"
               [latestDeviceDateLabel]="latestDeviceDateLabel()"
               [latestDeviceTimestampLabel]="latestDeviceTimestampLabel()"
-              (openDgaReporteModal)="abrirDgaReporteModal()"
+              (openDgaReportModal)="openDgaReportModal()"
+              (openHistoryPanel)="openHistoryView()"
+              (openDownloadPanel)="openDownloadModal()"
             />
           } @else if (activeDetailTab() === 'alertas') {
             <div role="tabpanel" id="tabpanel-alertas" aria-labelledby="tab-alertas">
