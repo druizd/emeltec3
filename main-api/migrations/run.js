@@ -49,8 +49,7 @@ async function main() {
       '005_account_auth_preferences.js',
       '006_cold_room_haccp.js',
     ];
-    const vacia =
-      (await db.query('SELECT 1 FROM schema_migrations LIMIT 1')).rows.length === 0;
+    const vacia = (await db.query('SELECT 1 FROM schema_migrations LIMIT 1')).rows.length === 0;
     const instalacionExistente =
       (await db.query("SELECT to_regclass('public.usuario') AS t")).rows[0]?.t !== null;
     if (vacia && instalacionExistente) {
