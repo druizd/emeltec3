@@ -159,6 +159,87 @@ import {
   `,
   styles: [
     `
+      /* Drawer shell — estilos scoped: cada drawer extraído lleva su copia
+         (el padre ya no los define para estos hijos). */
+      .vs-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.42);
+        z-index: 40;
+        animation: vsFadeIn 0.18s ease;
+      }
+      .vs-drawer {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(540px, 96vw);
+        background: #ffffff;
+        border-left: 1px solid #e2e8f0;
+        box-shadow: -10px 0 30px rgba(15, 23, 42, 0.1);
+        z-index: 41;
+        display: flex;
+        flex-direction: column;
+        animation: vsSlideIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      @keyframes vsFadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes vsSlideIn {
+        from {
+          transform: translateX(24px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      .vs-drawer--wide {
+        width: min(720px, 96vw);
+      }
+      .vs-drawer-head {
+        padding: 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .vs-drawer-title {
+        font-family: var(--font-josefin);
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        letter-spacing: 0.02em;
+      }
+      .vs-drawer-sub {
+        font-family: var(--font-dm);
+        font-size: 11.5px;
+        color: #64748b;
+        margin-top: 2px;
+      }
+      .vs-drawer-close {
+        margin-left: auto;
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        color: #64748b;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
+      .vs-drawer-close:hover {
+        color: #1e293b;
+        background: #f1f5f9;
+      }
+
       .vs-audit-body {
         padding: 14px;
         display: flex;
