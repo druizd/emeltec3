@@ -3,7 +3,7 @@
 > Documento de trabajo. Marcar tareas con `[x]` al completarlas.
 > Origen: auditoría del frontend Angular (julio 2026) + pendientes de performance de mayo 2026.
 > Tres ejes: **(A) Deuda técnica**, **(B) Cumplimiento Ley 21.719** (protección de datos personales, Chile) y **(C) Performance / infra**.
-> **Estado 16-07-2026**: ejecución masiva vía PRs #144–#153 (pendientes de merge; #148 apilado sobre #146, #150 sobre #147).
+> **Estado 16-07-2026**: ejecución masiva vía PRs #144–#153 (pendientes de merge; #148 apilado sobre #146, #150→#155 sobre #147).
 
 ---
 
@@ -52,8 +52,8 @@
 
 Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora, operación, config DGA…). Un PR por extracción, sin cambios funcionales.
 
-- [x] A1.1 Mapear secciones internas de `company-site-water-detail.ts` (tabs, paneles, modales) y definir plan de extracción → PR #150 (5.057→2.142 líneas; history panel pendiente)
-- [x] A1.2 Extraer sub-componentes de `company-site-water-detail.ts` (uno por PR) → PR #150 (5.057→2.142 líneas; history panel pendiente)
+- [x] A1.1 Mapear secciones internas de `company-site-water-detail.ts` (tabs, paneles, modales) y definir plan de extracción → PR #150/#155 (5.057→2.142 líneas; history panel pendiente)
+- [x] A1.2 Extraer sub-componentes de `company-site-water-detail.ts` (uno por PR) → PR #150/#155 (5.057→2.142 líneas; history panel pendiente)
 - [x] A1.3 Mapear secciones de `ventisqueros.ts` y definir plan de extracción → PR #151 (6.648→4.609; tabs con computeds compartidos pendientes)
 - [x] A1.4 Extraer sub-componentes de `ventisqueros.ts` → PR #151 (6.648→4.609; tabs con computeds compartidos pendientes)
 - [x] A1.5 Mapear secciones de `administration.ts` y definir plan de extracción → PR #152 (3.315→1.956; panel variables de sitio pendiente)
