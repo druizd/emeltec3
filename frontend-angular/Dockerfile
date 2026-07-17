@@ -38,4 +38,6 @@ FROM fholzer/nginx-brotli:v1.28.3
 COPY --from=build /app/frontend-angular/dist/frontend-angular/browser /usr/share/nginx/html
 COPY frontend-angular/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# SIN CMD propio: la imagen fholzer trae ENTRYPOINT nginx con sus argumentos.
+# Redefinir CMD ["nginx", ...] producía `nginx nginx -g ...` → crash-loop
+# (incidente 17-07-2026).
