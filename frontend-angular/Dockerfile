@@ -34,7 +34,7 @@ RUN apk add --no-cache brotli \
 # y ngx_http_brotli_static_module compilados. Imagen basada en nginx:mainline-alpine,
 # tamaño ~30 MB (+0 MB respecto a nginx:alpine que es ~25 MB).
 # Impacto: cambio de imagen base; no afecta el proceso de build ni puertos.
-FROM fholzer/nginx-brotli:v1.27.4
+FROM fholzer/nginx-brotli:v1.28.3
 COPY --from=build /app/frontend-angular/dist/frontend-angular/browser /usr/share/nginx/html
 COPY frontend-angular/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
