@@ -26,7 +26,6 @@ import { RouterLink } from '@angular/router';
       <p class="mb-8 text-[12px] text-slate-400">Última actualización: 16 de julio de 2026</p>
 
       <section class="space-y-8 text-[14px] leading-relaxed">
-
         <!-- ── 1. Responsable del tratamiento ──────────────────────────── -->
         <div
           class="rounded-[10px] border border-[#E2E8F0] bg-white p-6"
@@ -284,7 +283,9 @@ import { RouterLink } from '@angular/router';
                 >
                   Datos
                 </p>
-                <p class="text-slate-700">RUT y contraseña del informante designado por el cliente ante la DGA.</p>
+                <p class="text-slate-700">
+                  RUT y contraseña del informante designado por el cliente ante la DGA.
+                </p>
               </div>
               <div>
                 <p
@@ -304,7 +305,9 @@ import { RouterLink } from '@angular/router';
                 >
                   Base legal
                 </p>
-                <p class="text-slate-700">Obligación legal (normativa DGA) + ejecución de contrato.</p>
+                <p class="text-slate-700">
+                  Obligación legal (normativa DGA) + ejecución de contrato.
+                </p>
               </div>
             </div>
           </div>
@@ -328,7 +331,9 @@ import { RouterLink } from '@angular/router';
                 >
                   Datos
                 </p>
-                <p class="text-slate-700">RUT del informante + mediciones asociadas a la obra hídrica.</p>
+                <p class="text-slate-700">
+                  RUT del informante + mediciones asociadas a la obra hídrica.
+                </p>
               </div>
               <div>
                 <p
@@ -337,7 +342,9 @@ import { RouterLink } from '@angular/router';
                 >
                   Finalidad
                 </p>
-                <p class="text-slate-700">Cumplimiento regulatorio del cliente ante la Dirección General de Aguas.</p>
+                <p class="text-slate-700">
+                  Cumplimiento regulatorio del cliente ante la Dirección General de Aguas.
+                </p>
               </div>
               <div>
                 <p
@@ -504,8 +511,7 @@ import { RouterLink } from '@angular/router';
               <p class="text-[13px] text-slate-600">
                 Recibir tus datos personales en formato estructurado para trasladarlos a otro
                 proveedor. Disponible en <strong>"Mis datos"</strong> del perfil (exportación
-                JSON/CSV)
-                <span class="text-slate-400">(funcionalidad en despliegue)</span>.
+                JSON/CSV) <span class="text-slate-400">(funcionalidad en despliegue)</span>.
               </p>
             </div>
 
@@ -548,9 +554,9 @@ import { RouterLink } from '@angular/router';
             5. Seguridad
           </h2>
           <p class="mb-4 text-[13px] text-slate-600">
-            Aplicamos medidas técnicas y organizativas orientadas a garantizar la
-            confidencialidad, integridad, disponibilidad y resiliencia de los sistemas de
-            tratamiento, conforme al Art. 14 quinquies de la Ley 21.719:
+            Aplicamos medidas técnicas y organizativas orientadas a garantizar la confidencialidad,
+            integridad, disponibilidad y resiliencia de los sistemas de tratamiento, conforme al
+            Art. 14 quinquies de la Ley 21.719:
           </p>
           <ul class="space-y-2 text-[13px] text-slate-700">
             <li class="flex items-start gap-2">
@@ -598,9 +604,9 @@ import { RouterLink } from '@angular/router';
             </li>
           </ul>
           <p class="mt-4 text-[13px] text-slate-600">
-            Existe una política de seguridad pública disponible en esta plataforma, conforme al
-            Art. 14 ter e) de la Ley 21.719. Para reportar vulnerabilidades o incidentes, utiliza
-            el canal
+            Existe una política de seguridad pública disponible en esta plataforma, conforme al Art.
+            14 ter e) de la Ley 21.719. Para reportar vulnerabilidades o incidentes, utiliza el
+            canal
             <a class="text-primary-container underline" href="/.well-known/security.txt"
               >security.txt</a
             >
@@ -638,7 +644,6 @@ import { RouterLink } from '@angular/router';
           sustantivos se comunicarán por correo electrónico a los usuarios activos con antelación
           razonable. La versión vigente siempre estará disponible en esta página.
         </p>
-
       </section>
     </main>
   `,
