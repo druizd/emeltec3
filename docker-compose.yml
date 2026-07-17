@@ -85,6 +85,12 @@ services:
       FTPCONSUMER_HOST: ftpconsumer
       FTPCONSUMER_PORT: 50061
       AUTH_API_URL: http://auth-api:3001
+      # Workers aprobados 17-07-2026 (retención Ley 21.719, alertas de audit
+      # log, contadores materializados). Apagables por .env del host sin
+      # tocar este archivo.
+      ENABLE_RETENTION_WORKER: ${ENABLE_RETENTION_WORKER:-true}
+      ENABLE_AUDIT_ALERTS_WORKER: ${ENABLE_AUDIT_ALERTS_WORKER:-true}
+      ENABLE_CONTADORES_DAILY_WORKER: ${ENABLE_CONTADORES_DAILY_WORKER:-true}
     depends_on:
       timescaledb:
         condition: service_healthy
