@@ -31,10 +31,7 @@ import {
   ColdRoomAlarmRulesService,
   type AlarmEvent,
 } from '../../services/cold-room-alarm-rules.service';
-import {
-  ColdRoomService,
-  type ColdRoomSensor,
-} from '../../services/cold-room.service';
+import { ColdRoomService, type ColdRoomSensor } from '../../services/cold-room.service';
 import {
   ColdRoomThresholdsService,
   type SalaThreshold,

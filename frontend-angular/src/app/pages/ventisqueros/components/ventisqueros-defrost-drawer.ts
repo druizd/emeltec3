@@ -33,8 +33,8 @@ import type { SalaAggregate } from '../ventisqueros';
           <div class="min-w-0">
             <div class="vs-drawer-title">Ventanas defrost</div>
             <div class="vs-drawer-sub">
-              Programá ciclos de descongelado por sala. Desviaciones dentro de la ventana se
-              marcan como esperadas (no cuentan como crítico HACCP).
+              Programá ciclos de descongelado por sala. Desviaciones dentro de la ventana se marcan
+              como esperadas (no cuentan como crítico HACCP).
             </div>
           </div>
           <button
@@ -122,9 +122,7 @@ import type { SalaAggregate } from '../ventisqueros';
                           step="1"
                           class="vs-defrost-input vs-defrost-input--num"
                           [value]="w.durationMin"
-                          (change)="
-                            updateDefrostWindowField(ds.area, w.id, 'durationMin', $event)
-                          "
+                          (change)="updateDefrostWindowField(ds.area, w.id, 'durationMin', $event)"
                         />
                       </div>
                     </div>

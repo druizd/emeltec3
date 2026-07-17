@@ -1,11 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  input,
-  model,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, model } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -361,9 +354,9 @@ export class VentisquerosUmbralesDrawerComponent {
     this.thresholdsSvc.thresholds();
     const stored = this.thresholdsSvc.list();
     const storedSlugs = new Set(stored.map((t) => slugifyArea(t.area)));
-    const liveAreas = Array.from(
-      new Set(this.sensors().map((s) => (s.area || '').trim())),
-    ).filter((a) => a && !storedSlugs.has(slugifyArea(a)));
+    const liveAreas = Array.from(new Set(this.sensors().map((s) => (s.area || '').trim()))).filter(
+      (a) => a && !storedSlugs.has(slugifyArea(a)),
+    );
     const extras: SalaThreshold[] = liveAreas.map((area) => ({
       area,
       tMax: NaN,

@@ -30,12 +30,7 @@ import type { SiteRecord } from '@emeltec/shared';
       <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
         <header class="vs-hx-head">
           <div class="vs-hx-title">Descargar historial</div>
-          <button
-            type="button"
-            class="vs-hx-close"
-            (click)="open.set(false)"
-            aria-label="Cerrar"
-          >
+          <button type="button" class="vs-hx-close" (click)="open.set(false)" aria-label="Cerrar">
             <span class="material-symbols-outlined text-[18px]">close</span>
           </button>
         </header>
@@ -63,8 +58,8 @@ import type { SiteRecord } from '@emeltec/shared';
               </label>
             </div>
             <div class="vs-hx-hint">
-              La resolución base se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h
-              (≤30d), 1d (resto).
+              La resolución base se elige automático según rango: 1min (≤2d), 5min (≤7d), 1h (≤30d),
+              1d (resto).
             </div>
           </div>
 
@@ -84,8 +79,8 @@ import type { SiteRecord } from '@emeltec/shared';
               }
             </div>
             <div class="vs-hx-hint">
-              Cada fila trae promedio, mínimo y máximo por intervalo. "Auto" usa la resolución
-              base. No puede ser más fino que la base disponible para el rango.
+              Cada fila trae promedio, mínimo y máximo por intervalo. "Auto" usa la resolución base.
+              No puede ser más fino que la base disponible para el rango.
             </div>
           </div>
 
@@ -115,11 +110,7 @@ import type { SiteRecord } from '@emeltec/shared';
                   {{ historyExportSelectedSalas().size }} / {{ salaAggregates().length }}
                 </span>
               </div>
-              <button
-                type="button"
-                class="vs-hx-toggle-all"
-                (click)="toggleExportSelectAllSalas()"
-              >
+              <button type="button" class="vs-hx-toggle-all" (click)="toggleExportSelectAllSalas()">
                 {{
                   historyExportSelectedSalas().size === salaAggregates().length
                     ? 'Quitar todas'
