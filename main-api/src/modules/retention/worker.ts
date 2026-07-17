@@ -80,14 +80,14 @@ export async function enviarAvisosInactividad(
   const { inactivityMonths, noticeDays } = config.retention;
   const warningMonths = inactivityMonths - 1; // 23 meses
 
-  const { rows } = await dbQ(
+  const { rows } = (await dbQ(
     `SELECT id, email, nombre
      FROM usuario
      WHERE activo = true
        AND last_login_at IS NOT NULL
        AND last_login_at < NOW() - INTERVAL '${warningMonths} month'
        AND aviso_inactividad_enviado_at IS NULL`,
-  ) as { rows: Array<{ id: string; email: string; nombre: string }> };
+  )) as { rows: Array<{ id: string; email: string; nombre: string }> };
 
   if (rows.length === 0) return;
 
@@ -126,7 +126,7 @@ export async function anonimizarCuentasInactivas(
 ): Promise<void> {
   const { inactivityMonths, noticeDays } = config.retention;
 
-  const { rows } = await dbQ(
+  const { rows } = (await dbQ(
     `SELECT id, email, nombre, apellido, tipo
      FROM usuario
      WHERE activo = true
@@ -134,7 +134,9 @@ export async function anonimizarCuentasInactivas(
        AND last_login_at < NOW() - INTERVAL '${inactivityMonths} month'
        AND aviso_inactividad_enviado_at IS NOT NULL
        AND aviso_inactividad_enviado_at < NOW() - INTERVAL '${noticeDays} day'`,
-  ) as { rows: Array<{ id: string; email: string; nombre: string; apellido: string; tipo: string }> };
+  )) as {
+    rows: Array<{ id: string; email: string; nombre: string; apellido: string; tipo: string }>;
+  };
 
   if (rows.length === 0) return;
 
@@ -186,11 +188,16 @@ export function startRetentionWorker(): void {
 
   // Alertas de audit log (intervalo independiente, más frecuente que retención)
   if (!config.workers.auditAlerts) {
-    logger.info('[retention] Worker de alertas audit deshabilitado (ENABLE_AUDIT_ALERTS_WORKER=false)');
+    logger.info(
+      '[retention] Worker de alertas audit deshabilitado (ENABLE_AUDIT_ALERTS_WORKER=false)',
+    );
     return;
   }
   if (!alertsIntervalHandle) {
-    logger.info({ pollMs: config.auditAlerts.pollMs }, '[retention] Iniciando worker de alertas audit');
+    logger.info(
+      { pollMs: config.auditAlerts.pollMs },
+      '[retention] Iniciando worker de alertas audit',
+    );
     void runAuditAlertsCycle();
     alertsIntervalHandle = setInterval(() => void runAuditAlertsCycle(), config.auditAlerts.pollMs);
   }

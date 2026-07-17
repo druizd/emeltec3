@@ -679,7 +679,15 @@ exports.suprimirUsuario = async (req, res, next) => {
     let suprimirFn;
     try {
       const path = require('path');
-      const workerPath = path.join(__dirname, '..', '..', 'dist', 'modules', 'retention', 'supresion');
+      const workerPath = path.join(
+        __dirname,
+        '..',
+        '..',
+        'dist',
+        'modules',
+        'retention',
+        'supresion',
+      );
       suprimirFn = require(workerPath).suprimirUsuario;
     } catch (_e) {
       // En desarrollo: importar directamente desde fuente TS via ts-node/vitest
@@ -695,7 +703,10 @@ exports.suprimirUsuario = async (req, res, next) => {
       dbQuery: (sql, params) => dbHelperQuery(sql, params),
     });
 
-    res.json({ ok: true, message: 'Cuenta suprimida. Los datos personales han sido anonimizados.' });
+    res.json({
+      ok: true,
+      message: 'Cuenta suprimida. Los datos personales han sido anonimizados.',
+    });
   } catch (err) {
     if (err && err.statusCode) {
       return res.status(err.statusCode).json({ ok: false, error: err.message });

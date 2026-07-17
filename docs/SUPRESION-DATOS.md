@@ -14,13 +14,13 @@ Plazo legal de respuesta: **30 días corridos** desde la solicitud.
 
 Al ejecutarse la supresión de una cuenta de usuario, los siguientes campos se reemplazan con valores neutros que impiden re-identificar a la persona:
 
-| Campo | Valor tras supresión |
-|---|---|
-| `email` | `anonimizado+{user_id}@eliminado.invalid` |
-| `nombre` | `[ANONIMIZADO]` |
-| `apellido` | `[ANONIMIZADO]` |
-| `rut_usuario` | `[ANONIMIZADO]` |
-| `telefono` | `[ANONIMIZADO]` |
+| Campo         | Valor tras supresión                      |
+| ------------- | ----------------------------------------- |
+| `email`       | `anonimizado+{user_id}@eliminado.invalid` |
+| `nombre`      | `[ANONIMIZADO]`                           |
+| `apellido`    | `[ANONIMIZADO]`                           |
+| `rut_usuario` | `[ANONIMIZADO]`                           |
+| `telefono`    | `[ANONIMIZADO]`                           |
 
 El dominio `.invalid` es un TLD reservado por RFC 2606 que no puede resolver en DNS, lo que garantiza que el email anonimizado no pertenece a nadie.
 
@@ -30,11 +30,11 @@ El dominio `.invalid` es un TLD reservado por RFC 2606 que no puede resolver en 
 
 Los siguientes campos se conservan porque su eliminación comprometería la integridad referencial del sistema de auditoría o porque existe una obligación legal vigente:
 
-| Campo / tabla | Base legal para retener |
-|---|---|
-| `id` (usuario) | Integridad referencial: `audit_log` referencia este ID. Eliminar el registro rompería la trazabilidad de acciones históricas. |
-| `tipo`, `empresa_id`, `sub_empresa_id` | Necesario para mantener coherencia del modelo de datos y cumplimiento de contratos activos. |
-| `activo = false` | Permite distinguir cuentas activas de suprimidas sin exponer PII. |
+| Campo / tabla                                                         | Base legal para retener                                                                                                                                                                        |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id` (usuario)                                                        | Integridad referencial: `audit_log` referencia este ID. Eliminar el registro rompería la trazabilidad de acciones históricas.                                                                  |
+| `tipo`, `empresa_id`, `sub_empresa_id`                                | Necesario para mantener coherencia del modelo de datos y cumplimiento de contratos activos.                                                                                                    |
+| `activo = false`                                                      | Permite distinguir cuentas activas de suprimidas sin exponer PII.                                                                                                                              |
 | `last_login_at`, `activated_at`, `password_set_at` y otros timestamps | **Obligación legal** (Ley 19.628 en vigor, contratos de servicio) e **interés legítimo** para auditorías de seguridad y trazabilidad de accesos. Los timestamps no contienen PII por sí solos. |
 
 ---
@@ -44,9 +44,9 @@ Los siguientes campos se conservan porque su eliminación comprometería la inte
 Los registros históricos de `audit_log` atribuidos al usuario suprimido también se anonomizan para eliminar la asociación a su identidad:
 
 | Columna en audit_log | Valor tras supresión |
-|---|---|
-| `actor_email` | `[ANONIMIZADO]` |
-| `ip` | `[ANONIMIZADO]` |
+| -------------------- | -------------------- |
+| `actor_email`        | `[ANONIMIZADO]`      |
+| `ip`                 | `[ANONIMIZADO]`      |
 
 La columna `actor_id` se **conserva** (valor original) porque es necesaria para mantener la trazabilidad de qué cuenta realizó qué acción, sin que eso implique re-identificación del titular (el ID no contiene PII directa).
 
@@ -54,11 +54,11 @@ La columna `actor_id` se **conserva** (valor original) porque es necesaria para 
 
 ## Quién puede ejecutar la supresión
 
-| Actor | Condición |
-|---|---|
-| **El propio titular** | Puede suprimir su propia cuenta (`req.user.id === target_id`). |
-| **SuperAdmin** | Puede suprimir cualquier cuenta de cualquier empresa. |
-| Otros roles (Admin, Gerente, Cliente, Vendedor) | **No permitido** — retorna 403 Forbidden. |
+| Actor                                           | Condición                                                      |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| **El propio titular**                           | Puede suprimir su propia cuenta (`req.user.id === target_id`). |
+| **SuperAdmin**                                  | Puede suprimir cualquier cuenta de cualquier empresa.          |
+| Otros roles (Admin, Gerente, Cliente, Vendedor) | **No permitido** — retorna 403 Forbidden.                      |
 
 ### Restricciones de seguridad
 

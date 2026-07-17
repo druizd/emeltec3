@@ -809,14 +809,19 @@ ${securityNoteHtml('Si ya no usas esta plataforma, no es necesario que hagas nad
  */
 exports.sendAlertaSeguridad = async (to, tipo, detalles) => {
   try {
-    const tipoLabel = tipo === 'logins_fallidos' ? 'Intentos de acceso fallidos' : 'Cambio de rol detectado';
+    const tipoLabel =
+      tipo === 'logins_fallidos' ? 'Intentos de acceso fallidos' : 'Cambio de rol detectado';
     const tipoColor = tipo === 'logins_fallidos' ? '#dc2626' : '#d97706';
-    const tipoGradient = tipo === 'logins_fallidos'
-      ? 'linear-gradient(90deg,#dc2626 0%,#7f1d1d 100%)'
-      : 'linear-gradient(90deg,#d97706 0%,#92400e 100%)';
+    const tipoGradient =
+      tipo === 'logins_fallidos'
+        ? 'linear-gradient(90deg,#dc2626 0%,#7f1d1d 100%)'
+        : 'linear-gradient(90deg,#d97706 0%,#92400e 100%)';
 
     const detallesRows = Object.entries(detalles || {})
-      .map(([k, v]) => `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(k)}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`)
+      .map(
+        ([k, v]) =>
+          `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(k)}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`,
+      )
       .join('');
 
     const contentHtml = `          <tr>
