@@ -63,22 +63,27 @@ export async function detectarLoginsFallidos(
   const _sendAlerta = sendAlerta ?? getEmailService().sendAlertaSeguridad;
   const { loginWindowMinutes, loginThreshold } = config.auditAlerts;
 
+  // Contrato con el productor: auth-api/src/controllers/authController.js
+  // escribe 'login.failure' (credencial inválida o email desconocido) y
+  // 'login.locked' (umbral de lockout alcanzado). Se agrupa por actor_email
+  // porque en fallos con email desconocido actor_id es NULL.
   const { rows } = (await dbQ(
-    `SELECT actor_id, actor_email, COUNT(*) AS intentos
+    `SELECT actor_email, MAX(actor_id::text) AS actor_id, COUNT(*) AS intentos
      FROM audit_log
-     WHERE action = 'user.login.failed'
+     WHERE action IN ('login.failure', 'login.locked')
        AND ts > NOW() - INTERVAL '${loginWindowMinutes} minute'
-       AND actor_id IS NOT NULL
-     GROUP BY actor_id, actor_email
+       AND actor_email IS NOT NULL
+     GROUP BY actor_email
      HAVING COUNT(*) >= ${loginThreshold}`,
-  )) as { rows: Array<{ actor_id: string; actor_email: string; intentos: string }> };
+  )) as { rows: Array<{ actor_id: string | null; actor_email: string; intentos: string }> };
 
   if (rows.length === 0) return;
 
   const admins = await getSuperAdminEmails(dbQ);
 
   for (const row of rows) {
-    const alertKey = `logins_fallidos:${row.actor_id}`;
+    // Cooldown por email: es la clave de agrupación (actor_id puede ser NULL).
+    const alertKey = `logins_fallidos:${row.actor_email}`;
     const enCooldown = await estaEnCooldown(alertKey, dbQ);
     if (enCooldown) continue;
 

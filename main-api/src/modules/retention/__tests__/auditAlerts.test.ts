@@ -43,17 +43,23 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
     vi.clearAllMocks();
   });
 
-  it("1. Busca en audit_log por action='user.login.failed' en ventana de 15 min agrupado por actor_id", async () => {
+  it('1. Busca en audit_log las acciones REALES del productor (auth-api: login.failure / login.locked) en ventana de 15 min agrupado por actor', async () => {
     const dbQ = vi.fn().mockResolvedValue({ rows: [] });
 
     await detectarLoginsFallidos(dbQ);
 
+    // Contrato productor→consumidor: auth-api/src/controllers/authController.js
+    // escribe 'login.failure' y 'login.locked'. El detector DEBE consultar esos
+    // strings exactos — 'user.login.failed' no lo escribe nadie (bug de la
+    // auditoría fiscalizadora 17-07-2026: las alertas nunca disparaban).
     const selectCall = dbQ.mock.calls.find(
       (call: unknown[]) =>
-        String(call[0]).includes('audit_log') && String(call[0]).includes('user.login.failed'),
+        String(call[0]).includes('audit_log') && String(call[0]).includes('login.failure'),
     );
     expect(selectCall).toBeDefined();
     const [sql] = selectCall! as [string];
+    expect(sql).toContain('login.locked');
+    expect(sql).not.toContain('user.login.failed');
     expect(sql).toContain('15');
     expect(sql).toContain('GROUP BY');
   });

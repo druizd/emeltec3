@@ -91,6 +91,9 @@ services:
       ENABLE_RETENTION_WORKER: ${ENABLE_RETENTION_WORKER:-true}
       ENABLE_AUDIT_ALERTS_WORKER: ${ENABLE_AUDIT_ALERTS_WORKER:-true}
       ENABLE_CONTADORES_DAILY_WORKER: ${ENABLE_CONTADORES_DAILY_WORKER:-true}
+      # Hops de proxy confiables (nginx host + nginx contenedor) para que
+      # req.ip sea la IP real del cliente en el audit_log.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-1}
     depends_on:
       timescaledb:
         condition: service_healthy
