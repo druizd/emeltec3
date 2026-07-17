@@ -162,8 +162,12 @@ import { getMappingsBySiteId } from '../repo';
 
 function makeCounter() {
   return {
-    sitio_id: 'S1', id_serial: '10.0.0.1', variable_id: 'V1',
-    alias: 'vol', rol: 'totalizador', unidad: 'm3',
+    sitio_id: 'S1',
+    id_serial: '10.0.0.1',
+    variable_id: 'V1',
+    alias: 'vol',
+    rol: 'totalizador',
+    unidad: 'm3',
   };
 }
 
@@ -178,11 +182,23 @@ describe('getDailySeries — fast path: todos los días materializados', () => {
     const days = lastNDays(2);
     const diaIsos = days.map((d) => getDayRangeChile(d).diaIso);
     const matMap = new Map(
-      diaIsos.map((iso) => [iso, {
-        sitio_id: 'S1', variable_id: 'V1', rol: 'totalizador', dia: iso,
-        valor_inicio: 0, valor_fin: 100, delta: 100, unidad: 'm3',
-        muestras: 288, resets_detectados: 0, ultimo_dato: null, actualizado_at: '',
-      }]),
+      diaIsos.map((iso) => [
+        iso,
+        {
+          sitio_id: 'S1',
+          variable_id: 'V1',
+          rol: 'totalizador',
+          dia: iso,
+          valor_inicio: 0,
+          valor_fin: 100,
+          delta: 100,
+          unidad: 'm3',
+          muestras: 288,
+          resets_detectados: 0,
+          ultimo_dato: null,
+          actualizado_at: '',
+        },
+      ]),
     );
     vi.mocked(listContadorDiarioBySiteRolDias).mockResolvedValue(matMap);
 
@@ -234,15 +250,35 @@ describe('getJornadaSeries — fast path: todos los días materializados', () =>
     const days = lastNDays(2);
     const diaIsos = days.map((d) => getDayRangeChile(d).diaIso);
     const matMap = new Map(
-      diaIsos.map((iso) => [iso, {
-        sitio_id: 'S1', variable_id: 'V1', rol: 'totalizador', dia: iso,
-        inicio: '07:00', fin: '19:00', valor_inicio: 0, valor_fin: 80, delta: 80, unidad: 'm3',
-        muestras: 144, resets_detectados: 0, ultimo_dato: null, actualizado_at: '',
-      }]),
+      diaIsos.map((iso) => [
+        iso,
+        {
+          sitio_id: 'S1',
+          variable_id: 'V1',
+          rol: 'totalizador',
+          dia: iso,
+          inicio: '07:00',
+          fin: '19:00',
+          valor_inicio: 0,
+          valor_fin: 80,
+          delta: 80,
+          unidad: 'm3',
+          muestras: 144,
+          resets_detectados: 0,
+          ultimo_dato: null,
+          actualizado_at: '',
+        },
+      ]),
     );
     vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue(matMap);
 
-    const series = await getJornadaSeries({ sitioId: 'S1', rol: 'totalizador', dias: 2, inicio: '07:00', fin: '19:00' });
+    const series = await getJornadaSeries({
+      sitioId: 'S1',
+      rol: 'totalizador',
+      dias: 2,
+      inicio: '07:00',
+      fin: '19:00',
+    });
 
     expect(getMappingsBySiteId).not.toHaveBeenCalled();
     expect(series).toHaveLength(2);
@@ -256,7 +292,13 @@ describe('getJornadaSeries — fallback: sin filas materializadas', () => {
     vi.mocked(listContadorJornadaBySiteRolDias).mockResolvedValue(new Map());
     vi.mocked(getMappingsBySiteId).mockResolvedValue([]);
 
-    const series = await getJornadaSeries({ sitioId: 'S1', rol: 'totalizador', dias: 2, inicio: '07:00', fin: '19:00' });
+    const series = await getJornadaSeries({
+      sitioId: 'S1',
+      rol: 'totalizador',
+      dias: 2,
+      inicio: '07:00',
+      fin: '19:00',
+    });
 
     expect(getMappingsBySiteId).toHaveBeenCalledTimes(1);
     expect(series).toHaveLength(2);
@@ -268,7 +310,13 @@ describe('getJornadaSeries — sin contador', () => {
   it('devuelve serie vacía sin consultar nada más', async () => {
     vi.mocked(listCounterVariablesForSite).mockResolvedValue([]);
 
-    const series = await getJornadaSeries({ sitioId: 'S1', rol: 'totalizador', dias: 2, inicio: '07:00', fin: '19:00' });
+    const series = await getJornadaSeries({
+      sitioId: 'S1',
+      rol: 'totalizador',
+      dias: 2,
+      inicio: '07:00',
+      fin: '19:00',
+    });
 
     expect(listContadorJornadaBySiteRolDias).not.toHaveBeenCalled();
     expect(series).toHaveLength(2);

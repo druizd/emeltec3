@@ -64,11 +64,7 @@ import { listCounterVariables, getMappingsBySiteId, getSiteById } from '../repo'
 import { computeDailyDeltasForVariable, computeJornadasForVariable } from '../service';
 import { upsertContadorDiario, upsertContadorJornada } from '../daily-repo';
 import { findSiteOperacionConfig } from '../../siteOperacionConfig/repo';
-import {
-  runCycle,
-  startContadoresDailyWorker,
-  stopContadoresDailyWorker,
-} from '../daily-worker';
+import { runCycle, startContadoresDailyWorker, stopContadoresDailyWorker } from '../daily-worker';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -129,7 +125,14 @@ describe('runCycle — sin contadores', () => {
 describe('runCycle — contador sin id_serial', () => {
   it('omite silenciosamente variables sin id_serial', async () => {
     vi.mocked(listCounterVariables).mockResolvedValue([
-      { sitio_id: 'S1', id_serial: null, variable_id: 'V1', alias: 'vol', rol: 'volumen', unidad: 'm3' },
+      {
+        sitio_id: 'S1',
+        id_serial: null,
+        variable_id: 'V1',
+        alias: 'vol',
+        rol: 'volumen',
+        unidad: 'm3',
+      },
     ]);
 
     await runCycle();
@@ -147,21 +150,58 @@ describe('runCycle — contador sin id_serial', () => {
 describe('runCycle — contador válido, sin jornada', () => {
   it('materializa diarios pero no jornada cuando no hay config de jornada', async () => {
     vi.mocked(listCounterVariables).mockResolvedValue([
-      { sitio_id: 'S1', id_serial: '10.0.0.1', variable_id: 'V1', alias: 'vol', rol: 'totalizador', unidad: 'm3' },
+      {
+        sitio_id: 'S1',
+        id_serial: '10.0.0.1',
+        variable_id: 'V1',
+        alias: 'vol',
+        rol: 'totalizador',
+        unidad: 'm3',
+      },
     ]);
     vi.mocked(getMappingsBySiteId).mockResolvedValue([
-      { id: 'V1', alias: 'vol', d1: 'r1', d2: null, tipo_dato: 'uint32', unidad: 'm3',
-        rol_dashboard: 'totalizador', transformacion: 'raw', parametros: {}, sitio_id: 'S1',
-        created_at: '', updated_at: '' },
+      {
+        id: 'V1',
+        alias: 'vol',
+        d1: 'r1',
+        d2: null,
+        tipo_dato: 'uint32',
+        unidad: 'm3',
+        rol_dashboard: 'totalizador',
+        transformacion: 'raw',
+        parametros: {},
+        sitio_id: 'S1',
+        created_at: '',
+        updated_at: '',
+      },
     ]);
     vi.mocked(getSiteById).mockResolvedValue({
-      id: 'S1', descripcion: 'Sitio 1', empresa_id: 'E1', sub_empresa_id: null,
-      id_serial: '10.0.0.1', ubicacion: null, coord_norte: null, coord_este: null,
-      huso: null, tipo_sitio: 'generico' as SiteType, activo: true,
+      id: 'S1',
+      descripcion: 'Sitio 1',
+      empresa_id: 'E1',
+      sub_empresa_id: null,
+      id_serial: '10.0.0.1',
+      ubicacion: null,
+      coord_norte: null,
+      coord_este: null,
+      huso: null,
+      tipo_sitio: 'generico' as SiteType,
+      activo: true,
     });
     vi.mocked(computeDailyDeltasForVariable).mockResolvedValue(
-      new Map([['2026-07-16', { valor_inicio: 1000, valor_fin: 1100, delta: 100,
-        muestras: 288, resets_detectados: 0, ultimo_dato: '2026-07-16T23:55:00Z' }]]),
+      new Map([
+        [
+          '2026-07-16',
+          {
+            valor_inicio: 1000,
+            valor_fin: 1100,
+            delta: 100,
+            muestras: 288,
+            resets_detectados: 0,
+            ultimo_dato: '2026-07-16T23:55:00Z',
+          },
+        ],
+      ]),
     );
     vi.mocked(findSiteOperacionConfig).mockResolvedValue(null);
 
@@ -186,29 +226,81 @@ describe('runCycle — contador válido, sin jornada', () => {
 describe('runCycle — contador válido, con jornada', () => {
   it('materializa diarios y jornada cuando hay config de jornada', async () => {
     vi.mocked(listCounterVariables).mockResolvedValue([
-      { sitio_id: 'S2', id_serial: '10.0.0.2', variable_id: 'V2', alias: 'ene', rol: 'energia', unidad: 'kWh' },
+      {
+        sitio_id: 'S2',
+        id_serial: '10.0.0.2',
+        variable_id: 'V2',
+        alias: 'ene',
+        rol: 'energia',
+        unidad: 'kWh',
+      },
     ]);
     vi.mocked(getMappingsBySiteId).mockResolvedValue([
-      { id: 'V2', alias: 'ene', d1: 'r1', d2: null, tipo_dato: 'float', unidad: 'kWh',
-        rol_dashboard: 'energia', transformacion: 'raw', parametros: {}, sitio_id: 'S2',
-        created_at: '', updated_at: '' },
+      {
+        id: 'V2',
+        alias: 'ene',
+        d1: 'r1',
+        d2: null,
+        tipo_dato: 'float',
+        unidad: 'kWh',
+        rol_dashboard: 'energia',
+        transformacion: 'raw',
+        parametros: {},
+        sitio_id: 'S2',
+        created_at: '',
+        updated_at: '',
+      },
     ]);
     vi.mocked(getSiteById).mockResolvedValue({
-      id: 'S2', descripcion: 'Sitio 2', empresa_id: 'E2', sub_empresa_id: null,
-      id_serial: '10.0.0.2', ubicacion: null, coord_norte: null, coord_este: null,
-      huso: null, tipo_sitio: 'electrico' as SiteType, activo: true,
+      id: 'S2',
+      descripcion: 'Sitio 2',
+      empresa_id: 'E2',
+      sub_empresa_id: null,
+      id_serial: '10.0.0.2',
+      ubicacion: null,
+      coord_norte: null,
+      coord_este: null,
+      huso: null,
+      tipo_sitio: 'electrico' as SiteType,
+      activo: true,
     });
     vi.mocked(computeDailyDeltasForVariable).mockResolvedValue(
-      new Map([['2026-07-16', { valor_inicio: 500, valor_fin: 600, delta: 100,
-        muestras: 288, resets_detectados: 0, ultimo_dato: null }]]),
+      new Map([
+        [
+          '2026-07-16',
+          {
+            valor_inicio: 500,
+            valor_fin: 600,
+            delta: 100,
+            muestras: 288,
+            resets_detectados: 0,
+            ultimo_dato: null,
+          },
+        ],
+      ]),
     );
     vi.mocked(findSiteOperacionConfig).mockResolvedValue({
-      sitio_id: 'S2', num_turnos: 2, turnos: [],
-      jornada_inicio: '07:00', jornada_fin: '19:00', updated_at: '',
+      sitio_id: 'S2',
+      num_turnos: 2,
+      turnos: [],
+      jornada_inicio: '07:00',
+      jornada_fin: '19:00',
+      updated_at: '',
     });
     vi.mocked(computeJornadasForVariable).mockResolvedValue(
-      new Map([['2026-07-16', { valor_inicio: 500, valor_fin: 580, delta: 80,
-        muestras: 144, resets_detectados: 0, ultimo_dato: null }]]),
+      new Map([
+        [
+          '2026-07-16',
+          {
+            valor_inicio: 500,
+            valor_fin: 580,
+            delta: 80,
+            muestras: 144,
+            resets_detectados: 0,
+            ultimo_dato: null,
+          },
+        ],
+      ]),
     );
 
     await runCycle();
@@ -233,27 +325,74 @@ describe('runCycle — contador válido, con jornada', () => {
 describe('runCycle — error en variable', () => {
   it('registra error y continúa con otras variables sin abortar', async () => {
     vi.mocked(listCounterVariables).mockResolvedValue([
-      { sitio_id: 'S3', id_serial: '10.0.0.3', variable_id: 'V3', alias: 'x', rol: 'volumen', unidad: 'm3' },
-      { sitio_id: 'S4', id_serial: '10.0.0.4', variable_id: 'V4', alias: 'y', rol: 'volumen', unidad: 'm3' },
+      {
+        sitio_id: 'S3',
+        id_serial: '10.0.0.3',
+        variable_id: 'V3',
+        alias: 'x',
+        rol: 'volumen',
+        unidad: 'm3',
+      },
+      {
+        sitio_id: 'S4',
+        id_serial: '10.0.0.4',
+        variable_id: 'V4',
+        alias: 'y',
+        rol: 'volumen',
+        unidad: 'm3',
+      },
     ]);
     vi.mocked(getMappingsBySiteId)
       .mockResolvedValueOnce([
-        { id: 'V3', alias: 'x', d1: 'r1', d2: null, tipo_dato: 'uint32', unidad: 'm3',
-          rol_dashboard: 'volumen', transformacion: 'raw', parametros: {}, sitio_id: 'S3',
-          created_at: '', updated_at: '' },
+        {
+          id: 'V3',
+          alias: 'x',
+          d1: 'r1',
+          d2: null,
+          tipo_dato: 'uint32',
+          unidad: 'm3',
+          rol_dashboard: 'volumen',
+          transformacion: 'raw',
+          parametros: {},
+          sitio_id: 'S3',
+          created_at: '',
+          updated_at: '',
+        },
       ])
       .mockResolvedValueOnce([
-        { id: 'V4', alias: 'y', d1: 'r1', d2: null, tipo_dato: 'uint32', unidad: 'm3',
-          rol_dashboard: 'volumen', transformacion: 'raw', parametros: {}, sitio_id: 'S4',
-          created_at: '', updated_at: '' },
+        {
+          id: 'V4',
+          alias: 'y',
+          d1: 'r1',
+          d2: null,
+          tipo_dato: 'uint32',
+          unidad: 'm3',
+          rol_dashboard: 'volumen',
+          transformacion: 'raw',
+          parametros: {},
+          sitio_id: 'S4',
+          created_at: '',
+          updated_at: '',
+        },
       ]);
     vi.mocked(getSiteById).mockResolvedValue(null);
     // Primera variable explota.
     vi.mocked(computeDailyDeltasForVariable)
       .mockRejectedValueOnce(new Error('DB timeout'))
       .mockResolvedValueOnce(
-        new Map([['2026-07-16', { valor_inicio: 0, valor_fin: 50, delta: 50,
-          muestras: 100, resets_detectados: 0, ultimo_dato: null }]]),
+        new Map([
+          [
+            '2026-07-16',
+            {
+              valor_inicio: 0,
+              valor_fin: 50,
+              delta: 50,
+              muestras: 100,
+              resets_detectados: 0,
+              ultimo_dato: null,
+            },
+          ],
+        ]),
       );
     vi.mocked(findSiteOperacionConfig).mockResolvedValue(null);
 
@@ -276,12 +415,30 @@ describe('runCycle — error en variable', () => {
 describe('runCycle — día sin datos en cagg', () => {
   it('cuando computeDailyDeltasForVariable no retorna fila para el día, upserta delta=null', async () => {
     vi.mocked(listCounterVariables).mockResolvedValue([
-      { sitio_id: 'S5', id_serial: '10.0.0.5', variable_id: 'V5', alias: 'z', rol: 'totalizador', unidad: 'm3' },
+      {
+        sitio_id: 'S5',
+        id_serial: '10.0.0.5',
+        variable_id: 'V5',
+        alias: 'z',
+        rol: 'totalizador',
+        unidad: 'm3',
+      },
     ]);
     vi.mocked(getMappingsBySiteId).mockResolvedValue([
-      { id: 'V5', alias: 'z', d1: 'r1', d2: null, tipo_dato: 'uint32', unidad: 'm3',
-        rol_dashboard: 'totalizador', transformacion: 'raw', parametros: {}, sitio_id: 'S5',
-        created_at: '', updated_at: '' },
+      {
+        id: 'V5',
+        alias: 'z',
+        d1: 'r1',
+        d2: null,
+        tipo_dato: 'uint32',
+        unidad: 'm3',
+        rol_dashboard: 'totalizador',
+        transformacion: 'raw',
+        parametros: {},
+        sitio_id: 'S5',
+        created_at: '',
+        updated_at: '',
+      },
     ]);
     vi.mocked(getSiteById).mockResolvedValue(null);
     // Sin datos para ningún día.

@@ -216,9 +216,7 @@ export async function runCycle(): Promise<void> {
 export function startContadoresDailyWorker(): void {
   if (intervalHandle) return;
   if (!WORKER_ENABLED) {
-    logger.info(
-      'contadores-daily worker deshabilitado (ENABLE_CONTADORES_DAILY_WORKER=false)',
-    );
+    logger.info('contadores-daily worker deshabilitado (ENABLE_CONTADORES_DAILY_WORKER=false)');
     return;
   }
   logger.info({ intervalMs: POLL_INTERVAL_MS }, 'contadores-daily worker iniciado');
