@@ -37,6 +37,9 @@ RUN apk add --no-cache brotli \
 FROM fholzer/nginx-brotli:v1.28.3
 COPY --from=build /app/frontend-angular/dist/frontend-angular/browser /usr/share/nginx/html
 COPY frontend-angular/nginx.conf /etc/nginx/conf.d/default.conf
+# Snippet de security headers: nginx.conf lo incluye en el server block y en
+# cada location con add_header propio (la herencia de add_header no acumula).
+COPY frontend-angular/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 EXPOSE 80
 # SIN CMD propio: la imagen fholzer trae ENTRYPOINT nginx con sus argumentos.
 # Redefinir CMD ["nginx", ...] producía `nginx nginx -g ...` → crash-loop
