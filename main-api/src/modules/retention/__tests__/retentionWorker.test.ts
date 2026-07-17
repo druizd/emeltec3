@@ -97,9 +97,10 @@ describe('retentionWorker — enviarAvisosInactividad()', () => {
       { id: 'U001', email: 'jose@empresa.cl', nombre: 'José' },
       { id: 'U002', email: 'maria@empresa.cl', nombre: 'María' },
     ];
-    const dbQ = vi.fn()
-      .mockResolvedValueOnce({ rows: fakeUsers })     // SELECT usuarios
-      .mockResolvedValue({ rows: [] });                // UPDATE avisos
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: fakeUsers }) // SELECT usuarios
+      .mockResolvedValue({ rows: [] }); // UPDATE avisos
 
     await enviarAvisosInactividad(dbQ, mockSendAviso);
 
@@ -110,14 +111,14 @@ describe('retentionWorker — enviarAvisosInactividad()', () => {
 
   it('5. Marca aviso_inactividad_enviado_at = NOW() tras enviar', async () => {
     const fakeUsers = [{ id: 'U001', email: 'jose@empresa.cl', nombre: 'José' }];
-    const dbQ = vi.fn()
-      .mockResolvedValueOnce({ rows: fakeUsers })
-      .mockResolvedValue({ rows: [] });
+    const dbQ = vi.fn().mockResolvedValueOnce({ rows: fakeUsers }).mockResolvedValue({ rows: [] });
 
     await enviarAvisosInactividad(dbQ, mockSendAviso);
 
-    const updateCall = dbQ.mock.calls.find((call: unknown[]) =>
-      String(call[0]).includes('UPDATE usuario') && String(call[0]).includes('aviso_inactividad_enviado_at'),
+    const updateCall = dbQ.mock.calls.find(
+      (call: unknown[]) =>
+        String(call[0]).includes('UPDATE usuario') &&
+        String(call[0]).includes('aviso_inactividad_enviado_at'),
     );
     expect(updateCall).toBeDefined();
     const [, params] = updateCall! as [string, unknown[]];

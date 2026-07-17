@@ -111,7 +111,13 @@ export async function suprimirUsuario(params: SuprimirParams): Promise<void> {
          cargo       = NULL,
          activo      = $4
      WHERE id = $5`,
-    [`anonimizado+${targetId}@eliminado.invalid`, '[ANONIMIZADO]', '[ANONIMIZADO]', false, targetId],
+    [
+      `anonimizado+${targetId}@eliminado.invalid`,
+      '[ANONIMIZADO]',
+      '[ANONIMIZADO]',
+      false,
+      targetId,
+    ],
   );
 
   // Anonimizar actor_email e ip en audit_log histórico de ese usuario

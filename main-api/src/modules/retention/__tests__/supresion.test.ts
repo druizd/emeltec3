@@ -30,7 +30,8 @@ describe('suprimirUsuario()', () => {
       apellido: 'González',
       tipo: 'Cliente',
     };
-    const dbQuery = vi.fn()
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -41,8 +42,15 @@ describe('suprimirUsuario()', () => {
   });
 
   it('2. Titular puede suprimirse a sí mismo', async () => {
-    const targetRow = { id: 'USR01', email: 'jose@empresa.cl', nombre: 'José', apellido: 'G', tipo: 'Cliente' };
-    const dbQuery = vi.fn()
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'G',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -93,14 +101,21 @@ describe('suprimirUsuario()', () => {
   it('5. Usuario target no existe → lanza error 404', async () => {
     const dbQuery = vi.fn().mockResolvedValueOnce({ rows: [] }); // SELECT vacío
 
-    await expect(
-      suprimirUsuario({ ...baseParams, dbQuery }),
-    ).rejects.toMatchObject({ statusCode: 404 });
+    await expect(suprimirUsuario({ ...baseParams, dbQuery })).rejects.toMatchObject({
+      statusCode: 404,
+    });
   });
 
   it('6. Anonimiza email/nombre/apellido y anula rut_usuario, telefono y cargo', async () => {
-    const targetRow = { id: 'USR01', email: 'jose@empresa.cl', nombre: 'José', apellido: 'González', tipo: 'Cliente' };
-    const dbQuery = vi.fn()
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'González',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -122,8 +137,15 @@ describe('suprimirUsuario()', () => {
   });
 
   it('6b. Titular autorizado aunque actorId y targetId difieran en tipo (number vs string)', async () => {
-    const targetRow = { id: '42', email: 'ana@empresa.cl', nombre: 'Ana', apellido: 'Rojas', tipo: 'Cliente' };
-    const dbQuery = vi.fn()
+    const targetRow = {
+      id: '42',
+      email: 'ana@empresa.cl',
+      nombre: 'Ana',
+      apellido: 'Rojas',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -141,8 +163,15 @@ describe('suprimirUsuario()', () => {
   });
 
   it('7. Email queda como anonimizado+{user_id}@eliminado.invalid', async () => {
-    const targetRow = { id: 'USR01', email: 'jose@empresa.cl', nombre: 'José', apellido: 'G', tipo: 'Cliente' };
-    const dbQuery = vi.fn()
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'G',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -155,8 +184,15 @@ describe('suprimirUsuario()', () => {
   });
 
   it('8. Cuenta queda con activo=false', async () => {
-    const targetRow = { id: 'USR01', email: 'jose@empresa.cl', nombre: 'José', apellido: 'G', tipo: 'Cliente' };
-    const dbQuery = vi.fn()
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'G',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
@@ -169,7 +205,13 @@ describe('suprimirUsuario()', () => {
   });
 
   it('9. Se registra en audit_log ANTES de anonimizar', async () => {
-    const targetRow = { id: 'USR01', email: 'jose@empresa.cl', nombre: 'José', apellido: 'G', tipo: 'Cliente' };
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'G',
+      tipo: 'Cliente',
+    };
     const callOrder: string[] = [];
 
     const dbQuery = vi.fn().mockImplementation(async (sql: string) => {
@@ -192,8 +234,15 @@ describe('suprimirUsuario()', () => {
   });
 
   it('10. Se anonimiza actor_email e ip en audit_log del usuario suprimido', async () => {
-    const targetRow = { id: 'USR01', email: 'jose@empresa.cl', nombre: 'José', apellido: 'G', tipo: 'Cliente' };
-    const dbQuery = vi.fn()
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'G',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });

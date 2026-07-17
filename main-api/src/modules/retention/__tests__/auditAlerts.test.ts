@@ -48,8 +48,9 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
 
     await detectarLoginsFallidos(dbQ);
 
-    const selectCall = dbQ.mock.calls.find((call: unknown[]) =>
-      String(call[0]).includes('audit_log') && String(call[0]).includes('user.login.failed'),
+    const selectCall = dbQ.mock.calls.find(
+      (call: unknown[]) =>
+        String(call[0]).includes('audit_log') && String(call[0]).includes('user.login.failed'),
     );
     expect(selectCall).toBeDefined();
     const [sql] = selectCall! as [string];
@@ -58,14 +59,13 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
   });
 
   it('2. Si hay >= 5 intentos, llama sendAlertaSeguridad con tipo logins_fallidos', async () => {
-    const actoresConAlertas = [
-      { actor_id: 'U001', actor_email: 'malo@empresa.cl', intentos: '7' },
-    ];
-    const dbQ = vi.fn()
-      .mockResolvedValueOnce({ rows: actoresConAlertas, rowCount: 1 })   // SELECT logins fallidos
-      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 })  // SELECT superadmins
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                  // SELECT cooldown
-      .mockResolvedValue({ rows: [], rowCount: 0 });                     // UPSERT cooldown
+    const actoresConAlertas = [{ actor_id: 'U001', actor_email: 'malo@empresa.cl', intentos: '7' }];
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: actoresConAlertas, rowCount: 1 }) // SELECT logins fallidos
+      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 }) // SELECT superadmins
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // SELECT cooldown
+      .mockResolvedValue({ rows: [], rowCount: 0 }); // UPSERT cooldown
 
     const sendAlerta = vi.fn().mockResolvedValue(undefined);
 
@@ -80,16 +80,13 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
   });
 
   it('3. Respeta cooldown: no repite alerta si ya se envió en los últimos 60 min', async () => {
-    const actoresConAlertas = [
-      { actor_id: 'U001', actor_email: 'malo@empresa.cl', intentos: '8' },
-    ];
-    const cooldownActivo = [
-      { alert_key: 'logins_fallidos:U001', last_sent_at: new Date() },
-    ];
-    const dbQ = vi.fn()
-      .mockResolvedValueOnce({ rows: actoresConAlertas, rowCount: 1 })  // SELECT logins fallidos
-      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 })  // SELECT superadmins
-      .mockResolvedValueOnce({ rows: cooldownActivo, rowCount: 1 });    // SELECT cooldown → activo
+    const actoresConAlertas = [{ actor_id: 'U001', actor_email: 'malo@empresa.cl', intentos: '8' }];
+    const cooldownActivo = [{ alert_key: 'logins_fallidos:U001', last_sent_at: new Date() }];
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: actoresConAlertas, rowCount: 1 }) // SELECT logins fallidos
+      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 }) // SELECT superadmins
+      .mockResolvedValueOnce({ rows: cooldownActivo, rowCount: 1 }); // SELECT cooldown → activo
 
     const sendAlerta = vi.fn().mockResolvedValue(undefined);
 
@@ -105,13 +102,15 @@ describe('auditAlerts — detectarCambiosRol()', () => {
     vi.clearAllMocks();
   });
 
-  it("4. Busca action con patrón de patch de usuario que modifica tipo", async () => {
+  it('4. Busca action con patrón de patch de usuario que modifica tipo', async () => {
     const dbQ = vi.fn().mockResolvedValue({ rows: [] });
 
     await detectarCambiosRol(dbQ);
 
-    const selectCall = dbQ.mock.calls.find((call: unknown[]) =>
-      String(call[0]).includes('audit_log') && (String(call[0]).includes('user.') || String(call[0]).includes('patch')),
+    const selectCall = dbQ.mock.calls.find(
+      (call: unknown[]) =>
+        String(call[0]).includes('audit_log') &&
+        (String(call[0]).includes('user.') || String(call[0]).includes('patch')),
     );
     expect(selectCall).toBeDefined();
     const [sql] = selectCall! as [string];
@@ -120,24 +119,26 @@ describe('auditAlerts — detectarCambiosRol()', () => {
 
   it('5. Si detecta cambio de rol, llama sendAlertaSeguridad con tipo cambio_rol', async () => {
     const cambiosDetectados = [
-      { actor_id: 'ADM01', actor_email: 'admin@empresa.cl', target_id: 'USR01', ts: new Date().toISOString() },
+      {
+        actor_id: 'ADM01',
+        actor_email: 'admin@empresa.cl',
+        target_id: 'USR01',
+        ts: new Date().toISOString(),
+      },
     ];
-    const dbQ = vi.fn()
-      .mockResolvedValueOnce({ rows: cambiosDetectados, rowCount: 1 })   // SELECT cambios
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: cambiosDetectados, rowCount: 1 }) // SELECT cambios
       .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 }) // SELECT superadmins
-      .mockResolvedValueOnce({ rows: [], rowCount: 0 })                  // SELECT cooldown
-      .mockResolvedValue({ rows: [], rowCount: 0 });                     // UPSERT cooldown
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // SELECT cooldown
+      .mockResolvedValue({ rows: [], rowCount: 0 }); // UPSERT cooldown
 
     const sendAlerta = vi.fn().mockResolvedValue(undefined);
 
     await detectarCambiosRol(dbQ, sendAlerta);
 
     expect(sendAlerta).toHaveBeenCalled();
-    expect(sendAlerta).toHaveBeenCalledWith(
-      expect.any(String),
-      'cambio_rol',
-      expect.any(Object),
-    );
+    expect(sendAlerta).toHaveBeenCalledWith(expect.any(String), 'cambio_rol', expect.any(Object));
   });
 });
 

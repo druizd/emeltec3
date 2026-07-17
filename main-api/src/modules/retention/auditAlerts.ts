@@ -23,20 +23,20 @@ function getEmailService(): { sendAlertaSeguridad: SendAlertaFn } {
 }
 
 async function getSuperAdminEmails(dbQ: DbQuery): Promise<string[]> {
-  const { rows } = await dbQ(
+  const { rows } = (await dbQ(
     `SELECT email FROM usuario WHERE tipo = 'SuperAdmin' AND activo = true`,
-  ) as { rows: Array<{ email: string }> };
+  )) as { rows: Array<{ email: string }> };
   return rows.map((r) => r.email);
 }
 
 async function estaEnCooldown(alertKey: string, dbQ: DbQuery): Promise<boolean> {
   const { cooldownMinutes } = config.auditAlerts;
-  const { rows } = await dbQ(
+  const { rows } = (await dbQ(
     `SELECT alert_key FROM audit_alert_cooldown
      WHERE alert_key = $1
        AND last_sent_at > NOW() - INTERVAL '${cooldownMinutes} minute'`,
     [alertKey],
-  ) as { rows: unknown[] };
+  )) as { rows: unknown[] };
   return rows.length > 0;
 }
 
@@ -63,7 +63,7 @@ export async function detectarLoginsFallidos(
   const _sendAlerta = sendAlerta ?? getEmailService().sendAlertaSeguridad;
   const { loginWindowMinutes, loginThreshold } = config.auditAlerts;
 
-  const { rows } = await dbQ(
+  const { rows } = (await dbQ(
     `SELECT actor_id, actor_email, COUNT(*) AS intentos
      FROM audit_log
      WHERE action = 'user.login.failed'
@@ -71,7 +71,7 @@ export async function detectarLoginsFallidos(
        AND actor_id IS NOT NULL
      GROUP BY actor_id, actor_email
      HAVING COUNT(*) >= ${loginThreshold}`,
-  ) as { rows: Array<{ actor_id: string; actor_email: string; intentos: string }> };
+  )) as { rows: Array<{ actor_id: string; actor_email: string; intentos: string }> };
 
   if (rows.length === 0) return;
 
@@ -114,7 +114,7 @@ export async function detectarCambiosRol(
   // donde el payload incluía el campo 'tipo' (cambio de rol).
   // La acción registrada por auditMutations es el verbo del resolver,
   // en userRoutes se usa action 'user.patch' o similar.
-  const { rows } = await dbQ(
+  const { rows } = (await dbQ(
     `SELECT actor_id, actor_email, target_id, ts
      FROM audit_log
      WHERE action LIKE 'user.%.patch'
@@ -122,7 +122,7 @@ export async function detectarCambiosRol(
         OR action = 'user.update'
      ORDER BY ts DESC
      LIMIT 100`,
-  ) as { rows: Array<{ actor_id: string; actor_email: string; target_id: string; ts: string }> };
+  )) as { rows: Array<{ actor_id: string; actor_email: string; target_id: string; ts: string }> };
 
   if (rows.length === 0) return;
 

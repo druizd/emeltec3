@@ -230,7 +230,14 @@ function shutdown(signal) {
   alertaService.stop();
 
   try {
-    const retentionWorkerPath = require('path').join(__dirname, '..', 'dist', 'modules', 'retention', 'worker');
+    const retentionWorkerPath = require('path').join(
+      __dirname,
+      '..',
+      'dist',
+      'modules',
+      'retention',
+      'worker',
+    );
     const { stopRetentionWorker } = require(retentionWorkerPath);
     stopRetentionWorker();
   } catch (_err) {
