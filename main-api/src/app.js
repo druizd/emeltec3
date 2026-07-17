@@ -27,13 +27,14 @@ const { auditMutations } = require('./services/auditLog');
 
 const app = express();
 
-// Detrás del nginx de borde de la VM (proxy directo a 127.0.0.1:3000 — ver
-// EMT-H03 en docker-compose). Para que req.ip sea la IP real del cliente el
-// borde DEBE enviar `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
-// — sin ese header, req.ip cae a la IP del propio borde ("la del servidor",
-// bug del audit_log detectado 17-07-2026). Hops ajustables por env si la
-// topología cambia (p. ej. si /api pasara por el nginx del contenedor: 2).
-app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
+// Topología verificada en la VM (17-07-2026, /etc/nginx/sites-available/
+// emeltec-sites): cliente → nginx de borde → nginx del contenedor frontend
+// (TODO pasa por :5173, incluido /api) → esta API. DOS hops confiables;
+// ambos envían X-Forwarded-For. Con 1 hop, req.ip devolvía la IP del borde
+// ("la del servidor") y el audit_log perdía la IP real del cliente.
+// Nota: los comentarios EMT-H03 del compose describen proxy directo a
+// 127.0.0.1:3000/3001 — esa ruta NO existe en el borde real.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 2));
 
 // Capa basica de seguridad HTTP.
 app.use(helmet());
