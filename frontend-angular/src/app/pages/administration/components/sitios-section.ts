@@ -6,6 +6,7 @@ import type {
   SiteRecord,
   SiteTypeCatalogItem,
 } from '../../../services/administration.service';
+import type { SubCompanyOption } from './subempresas-section';
 import { AdminSectionShellComponent } from './admin-section-shell';
 import { AdminSectionHeaderComponent } from './admin-section-header';
 import { AdminFormActionsComponent } from './admin-form-actions';
@@ -21,15 +22,7 @@ export interface SiteOption extends SiteRecord {
   subCompanyName: string;
 }
 
-/** SubCompanyNode con nombre de empresa padre. */
-export interface SubCompanyOption {
-  id: string;
-  empresa_id: string;
-  nombre: string;
-  rut: string;
-  sites: SiteRecord[];
-  companyName: string;
-}
+export type { SubCompanyOption };
 
 /**
  * Sección "Sitios" de /administration.
@@ -52,7 +45,7 @@ export interface SubCompanyOption {
   ],
   template: `
     <app-admin-section-shell title="Sitios">
-      <form (submit)="submit.emit($event)" class="editor-panel grid gap-4 lg:grid-cols-4">
+      <form (submit)="formSubmit.emit($event)" class="editor-panel grid gap-4 lg:grid-cols-4">
         <div class="lg:col-span-4">
           <app-admin-section-header
             [selected]="!!selectedId()"
@@ -274,7 +267,7 @@ export interface SubCompanyOption {
             </thead>
             <tbody class="divide-y divide-slate-100">
               @for (site of paginatedSites(); track site.id) {
-                <tr (click)="select.emit(site.id)" [class]="rowClass(selectedId() === site.id)">
+                <tr (click)="selectItem.emit(site.id)" [class]="rowClass(selectedId() === site.id)">
                   <td class="px-4 py-3 font-bold text-slate-800" data-label="Sitio">
                     {{ site.descripcion }}
                   </td>
@@ -390,8 +383,8 @@ export class SitiosSectionComponent {
   readonly huso = input.required<string>();
 
   // ── Outputs hacia el padre ───────────────────────────────────────────────
-  readonly submit = output<Event>();
-  readonly select = output<string>();
+  readonly formSubmit = output<Event>();
+  readonly selectItem = output<string>();
   readonly enableEdit = output<void>();
   readonly cancelEdit = output<void>();
   readonly remove = output<void>();

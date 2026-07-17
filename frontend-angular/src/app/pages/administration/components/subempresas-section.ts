@@ -35,7 +35,7 @@ export interface SubCompanyOption extends SubCompanyNode {
   ],
   template: `
     <app-admin-section-shell title="Subempresas">
-      <form (submit)="submit.emit($event)" class="editor-panel grid gap-4 lg:grid-cols-3">
+      <form (submit)="formSubmit.emit($event)" class="editor-panel grid gap-4 lg:grid-cols-3">
         <div class="lg:col-span-3">
           <app-admin-section-header
             [selected]="!!selectedId()"
@@ -130,7 +130,7 @@ export interface SubCompanyOption extends SubCompanyNode {
             <tbody class="divide-y divide-slate-100">
               @for (sub of paginatedSubCompanies(); track sub.id) {
                 <tr
-                  (click)="select.emit(sub.id)"
+                  (click)="selectItem.emit(sub.id)"
                   [class]="rowClass(selectedId() === sub.id)"
                 >
                   <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
@@ -228,8 +228,8 @@ export class SubempresasSectionComponent {
   readonly rut = input.required<string>();
 
   // ── Outputs hacia el padre ───────────────────────────────────────────────
-  readonly submit = output<Event>();
-  readonly select = output<string>();
+  readonly formSubmit = output<Event>();
+  readonly selectItem = output<string>();
   readonly enableEdit = output<void>();
   readonly cancelEdit = output<void>();
   readonly remove = output<void>();

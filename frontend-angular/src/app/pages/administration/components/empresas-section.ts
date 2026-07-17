@@ -32,7 +32,7 @@ const PAGE_SIZE = 10;
   ],
   template: `
     <app-admin-section-shell title="Empresas padre">
-      <form (submit)="submit.emit($event)" class="editor-panel grid gap-4 lg:grid-cols-3">
+      <form (submit)="formSubmit.emit($event)" class="editor-panel grid gap-4 lg:grid-cols-3">
         <div class="lg:col-span-3">
           <app-admin-section-header
             [selected]="!!selectedId()"
@@ -123,7 +123,7 @@ const PAGE_SIZE = 10;
             <tbody class="divide-y divide-slate-100">
               @for (company of paginatedCompanies(); track company.id) {
                 <tr
-                  (click)="select.emit(company.id)"
+                  (click)="selectItem.emit(company.id)"
                   [class]="rowClass(selectedId() === company.id)"
                 >
                   <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
@@ -222,8 +222,8 @@ export class EmpresasSectionComponent {
   readonly tipoEmpresa = input.required<string>();
 
   // ── Outputs hacia el padre ───────────────────────────────────────────────
-  readonly submit = output<Event>();
-  readonly select = output<string>();
+  readonly formSubmit = output<Event>();
+  readonly selectItem = output<string>();
   readonly enableEdit = output<void>();
   readonly cancelEdit = output<void>();
   readonly remove = output<void>();

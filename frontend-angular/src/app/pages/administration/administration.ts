@@ -33,11 +33,7 @@ import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
 import { dashboardRouteForSite } from '../../shared/site-type-ui';
 import { formatRutInput } from '../../shared/rut';
-import { AdminPaginationComponent } from './components/admin-pagination';
-import { AdminFormActionsComponent } from './components/admin-form-actions';
 import { AdminSectionShellComponent } from './components/admin-section-shell';
-import { AdminSectionHeaderComponent } from './components/admin-section-header';
-import { AdminTableToolbarComponent } from './components/admin-table-toolbar';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-section';
@@ -161,11 +157,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
     FormsModule,
     A11yModule,
     KpiCardComponent,
-    AdminPaginationComponent,
-    AdminFormActionsComponent,
     AdminSectionShellComponent,
-    AdminSectionHeaderComponent,
-    AdminTableToolbarComponent,
     SkeletonComponent,
     TableSkeletonComponent,
     EquipoEmeltecSectionComponent,
@@ -357,8 +349,8 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                   [nombre]="companyForm().nombre"
                   [rut]="companyForm().rut"
                   [tipoEmpresa]="companyForm().tipo_empresa"
-                  (submit)="submitCompany($event)"
-                  (select)="selectCompany($event)"
+                  (formSubmit)="submitCompany($event)"
+                  (selectItem)="selectCompany($event)"
                   (enableEdit)="enableCompanyEdit()"
                   (cancelEdit)="cancelCompanyEdit()"
                   (remove)="deleteSelectedCompany()"
@@ -379,8 +371,8 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                   [empresaId]="subCompanyForm().empresa_id"
                   [nombre]="subCompanyForm().nombre"
                   [rut]="subCompanyForm().rut"
-                  (submit)="submitSubCompany($event)"
-                  (select)="selectSubCompany($event)"
+                  (formSubmit)="submitSubCompany($event)"
+                  (selectItem)="selectSubCompany($event)"
                   (enableEdit)="enableSubCompanyEdit()"
                   (cancelEdit)="cancelSubCompanyEdit()"
                   (remove)="deleteSelectedSubCompany()"
@@ -412,8 +404,8 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                   [coordNorte]="siteForm().coord_norte"
                   [coordEste]="siteForm().coord_este"
                   [huso]="siteForm().huso"
-                  (submit)="submitSite($event)"
-                  (select)="selectSite($event)"
+                  (formSubmit)="submitSite($event)"
+                  (selectItem)="selectSite($event)"
                   (enableEdit)="enableSiteEdit()"
                   (cancelEdit)="cancelSiteEdit()"
                   (remove)="deleteSelectedSite()"
