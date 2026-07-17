@@ -34,11 +34,12 @@ describe('suprimirUsuario()', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     await suprimirUsuario({ ...baseParams, dbQuery });
 
-    expect(dbQuery).toHaveBeenCalledTimes(3);
+    expect(dbQuery).toHaveBeenCalledTimes(4);
   });
 
   it('2. Titular puede suprimirse a sí mismo', async () => {
@@ -53,6 +54,7 @@ describe('suprimirUsuario()', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     // actorId === targetId → titular
@@ -65,7 +67,7 @@ describe('suprimirUsuario()', () => {
       dbQuery,
     });
 
-    expect(dbQuery).toHaveBeenCalledTimes(3);
+    expect(dbQuery).toHaveBeenCalledTimes(4);
   });
 
   it('3. Admin NO puede suprimir a otro usuario — lanza error 403', async () => {
@@ -118,6 +120,7 @@ describe('suprimirUsuario()', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     await suprimirUsuario({ ...baseParams, dbQuery });
@@ -134,6 +137,38 @@ describe('suprimirUsuario()', () => {
     expect(sql).toMatch(/rut_usuario\s*=\s*NULL/);
     expect(sql).toMatch(/telefono\s*=\s*NULL/);
     expect(sql).toMatch(/cargo\s*=\s*NULL/);
+    // Credenciales derivadas del titular: sin base legal para retenerlas en
+    // una cuenta que jamás volverá a autenticar (auditoría 17-07-2026).
+    expect(sql).toMatch(/password_hash\s*=\s*NULL/);
+    expect(sql).toMatch(/otp_hash\s*=\s*NULL/);
+    expect(sql).toMatch(/otp_expires_at\s*=\s*NULL/);
+  });
+
+  it('6c. Suprime los contactos operacionales que usan el email del titular', async () => {
+    const targetRow = {
+      id: 'USR01',
+      email: 'jose@empresa.cl',
+      nombre: 'José',
+      apellido: 'González',
+      tipo: 'Cliente',
+    };
+    const dbQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [targetRow] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    await suprimirUsuario({ ...baseParams, dbQuery });
+
+    // Tercera llamada: DELETE de contacto_operativo por email (T2 —
+    // el titular suprimido no debe seguir recibiendo alertas por correo).
+    const deleteCall = dbQuery.mock.calls[2]!;
+    const sql: string = deleteCall[0];
+    expect(sql).toContain('DELETE FROM contacto_operativo');
+    expect(sql).toMatch(/LOWER\(email\)/);
+    const params: unknown[] = deleteCall[1];
+    expect(params).toContain('jose@empresa.cl');
   });
 
   it('6b. Titular autorizado aunque actorId y targetId difieran en tipo (number vs string)', async () => {
@@ -147,6 +182,7 @@ describe('suprimirUsuario()', () => {
     const dbQuery = vi
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -174,6 +210,7 @@ describe('suprimirUsuario()', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     await suprimirUsuario({ ...baseParams, dbQuery });
@@ -194,6 +231,7 @@ describe('suprimirUsuario()', () => {
     const dbQuery = vi
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
@@ -245,12 +283,13 @@ describe('suprimirUsuario()', () => {
       .fn()
       .mockResolvedValueOnce({ rows: [targetRow] })
       .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] });
 
     await suprimirUsuario({ ...baseParams, dbQuery });
 
     // Tercera llamada es el UPDATE de audit_log
-    const auditUpdateCall = dbQuery.mock.calls[2]!;
+    const auditUpdateCall = dbQuery.mock.calls[3]!;
     const sql: string = auditUpdateCall[0];
     expect(sql).toContain('UPDATE audit_log');
     expect(sql).toContain('actor_email');

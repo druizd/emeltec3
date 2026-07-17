@@ -14,15 +14,21 @@ Plazo legal de respuesta: **30 días corridos** desde la solicitud.
 
 Al ejecutarse la supresión de una cuenta de usuario, los siguientes campos se reemplazan con valores neutros que impiden re-identificar a la persona:
 
-| Campo         | Valor tras supresión                      |
-| ------------- | ----------------------------------------- |
-| `email`       | `anonimizado+{user_id}@eliminado.invalid` |
-| `nombre`      | `[ANONIMIZADO]`                           |
-| `apellido`    | `[ANONIMIZADO]`                           |
-| `rut_usuario` | `[ANONIMIZADO]`                           |
-| `telefono`    | `[ANONIMIZADO]`                           |
+| Campo            | Valor tras supresión                                                    |
+| ---------------- | ----------------------------------------------------------------------- |
+| `email`          | `anonimizado+{user_id}@eliminado.invalid`                               |
+| `nombre`         | `[ANONIMIZADO]`                                                         |
+| `apellido`       | `[ANONIMIZADO]`                                                         |
+| `rut_usuario`    | `NULL`                                                                  |
+| `telefono`       | `NULL`                                                                  |
+| `cargo`          | `NULL`                                                                  |
+| `password_hash`  | `NULL` — dato derivado del titular; la cuenta jamás vuelve a autenticar |
+| `otp_hash`       | `NULL` — ídem                                                           |
+| `otp_expires_at` | `NULL` — ídem                                                           |
 
 El dominio `.invalid` es un TLD reservado por RFC 2606 que no puede resolver en DNS, lo que garantiza que el email anonimizado no pertenece a nadie.
+
+Adicionalmente se **suprimen** (DELETE) los registros de `contacto_operativo` cuyo email coincide con el del titular: sin esto, la persona suprimida seguiría recibiendo correos de alertas con su nombre, y el derecho de supresión se ejercería a medias (hallazgo de auditoría 17-07-2026).
 
 ---
 
@@ -36,6 +42,8 @@ Los siguientes campos se conservan porque su eliminación comprometería la inte
 | `tipo`, `empresa_id`, `sub_empresa_id`                                | Necesario para mantener coherencia del modelo de datos y cumplimiento de contratos activos.                                                                                                    |
 | `activo = false`                                                      | Permite distinguir cuentas activas de suprimidas sin exponer PII.                                                                                                                              |
 | `last_login_at`, `activated_at`, `password_set_at` y otros timestamps | **Obligación legal** (Ley 19.628 en vigor, contratos de servicio) e **interés legítimo** para auditorías de seguridad y trazabilidad de accesos. Los timestamps no contienen PII por sí solos. |
+| `politica_aceptada_at`                                                | **Prueba del deber de información cumplido** (Art. 14 ter): acredita que el titular fue informado y aceptó la política mientras la cuenta estuvo activa. No contiene PII.                      |
+| Asignaciones en `incidencia_tecnicos`                                 | **Trazabilidad operacional**: qué incidencias atendió la cuenta. El JOIN con `usuario` ya devuelve `[ANONIMIZADO]`, por lo que ningún dato personal se expone a través de la relación.         |
 
 ---
 

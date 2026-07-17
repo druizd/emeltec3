@@ -27,9 +27,13 @@ const { auditMutations } = require('./services/auditLog');
 
 const app = express();
 
-// Detrás de reverse proxy (nginx). Para que req.ip sea el origen real
-// (audit_log con IP del cliente) habilitamos confianza en 1 hop.
-app.set('trust proxy', 1);
+// Detrás del nginx de borde de la VM (proxy directo a 127.0.0.1:3000 — ver
+// EMT-H03 en docker-compose). Para que req.ip sea la IP real del cliente el
+// borde DEBE enviar `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
+// — sin ese header, req.ip cae a la IP del propio borde ("la del servidor",
+// bug del audit_log detectado 17-07-2026). Hops ajustables por env si la
+// topología cambia (p. ej. si /api pasara por el nginx del contenedor: 2).
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
 
 // Capa basica de seguridad HTTP.
 app.use(helmet());

@@ -98,18 +98,26 @@ export async function suprimirUsuario(params: SuprimirParams): Promise<void> {
     metadata: { supresion: true },
   });
 
+  const emailOriginal = (rows[0] as { email?: string | null })?.email ?? null;
+
   // Anonimizar datos personales del usuario. Campos NOT NULL visibles en UI
   // reciben el tombstone constante; los opcionales van a NULL (evita mostrar
   // '[ANONIMIZADO]' donde la UI ya maneja el vacío con 'No registrado').
+  // password_hash/otp_hash/otp_expires_at también a NULL: son datos derivados
+  // del titular y una cuenta suprimida jamás vuelve a autenticar — no existe
+  // base legal para retenerlos (auditoría 17-07-2026).
   await dbQuery(
     `UPDATE usuario
-     SET email       = $1,
-         nombre      = $2,
-         apellido    = $3,
-         rut_usuario = NULL,
-         telefono    = NULL,
-         cargo       = NULL,
-         activo      = $4
+     SET email           = $1,
+         nombre          = $2,
+         apellido        = $3,
+         rut_usuario     = NULL,
+         telefono        = NULL,
+         cargo           = NULL,
+         password_hash   = NULL,
+         otp_hash        = NULL,
+         otp_expires_at  = NULL,
+         activo          = $4
      WHERE id = $5`,
     [
       `anonimizado+${targetId}@eliminado.invalid`,
@@ -119,6 +127,14 @@ export async function suprimirUsuario(params: SuprimirParams): Promise<void> {
       targetId,
     ],
   );
+
+  // Suprimir contactos operacionales que usan el email del titular (T2 de
+  // GOBERNANZA-DATOS): sin esto, la persona suprimida seguiría recibiendo
+  // correos de alertas vía Resend con su nombre — el derecho de supresión
+  // se ejercería a medias (auditoría 17-07-2026).
+  if (emailOriginal) {
+    await dbQuery(`DELETE FROM contacto_operativo WHERE LOWER(email) = LOWER($1)`, [emailOriginal]);
+  }
 
   // Anonimizar actor_email e ip en audit_log histórico de ese usuario
   await dbQuery(
