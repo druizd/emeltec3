@@ -262,6 +262,18 @@ function emptyDraft(): DraftMiembro {
                     @if (m.activo) {
                       <button
                         type="button"
+                        (click)="pedirReenvio(m)"
+                        [disabled]="saving()"
+                        [attr.aria-label]="'Reenviar código de acceso a ' + m.nombre"
+                        title="Reenviar código de acceso"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">lock_reset</span>
+                      </button>
+                    }
+                    @if (m.activo) {
+                      <button
+                        type="button"
                         (click)="pedirDesactivar(m)"
                         [disabled]="esYo(m) || saving()"
                         [attr.aria-label]="'Desactivar a ' + m.nombre"
@@ -476,6 +488,36 @@ export class EquipoEmeltecSectionComponent {
       confirmText: 'Desactivar',
       tone: 'danger',
       icon: 'person_off',
+    });
+  }
+
+  pedirReenvio(m: MiembroEquipo): void {
+    this.pendingConfirm = () => this.reenviarCodigo(m);
+    this.confirmData.set({
+      title: 'Reenviar código de acceso',
+      message:
+        `¿Reenviar el código de acceso a ${m.nombre} ${m.apellido} (${m.email})? ` +
+        `Recibirá un correo para volver a ingresar. Requiere tu código 2FA.`,
+      confirmText: 'Reenviar',
+      tone: 'primary',
+      icon: 'lock_reset',
+    });
+  }
+
+  private reenviarCodigo(m: MiembroEquipo): void {
+    this.saving.set(true);
+    this.error.set('');
+    // El backend exige 2FA (require2fa); el twoFactorInterceptor global abre
+    // el diálogo del código y reintenta la petición automáticamente.
+    this.userService.resetUserPassword(m.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.aviso.set(`Código de acceso reenviado a ${m.email}.`);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(err?.error?.error || 'No se pudo reenviar el código de acceso.');
+      },
     });
   }
 
