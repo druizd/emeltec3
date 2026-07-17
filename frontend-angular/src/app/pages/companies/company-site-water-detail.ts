@@ -19,10 +19,7 @@ import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
-import {
-  CompanyService,
-  type ContadorMensualPoint,
-} from '../../services/company.service';
+import { CompanyService, type ContadorMensualPoint } from '../../services/company.service';
 import { CompaniesSiteDetailSkeletonComponent } from './components/companies-site-detail-skeleton';
 import { WaterDetailOperacionComponent } from './components/water-detail-operacion/water-detail-operacion';
 import { WaterDetailAlertasComponent } from './components/water-detail-alertas/water-detail-alertas';
@@ -92,7 +89,6 @@ interface MonthlyFlowPoint {
   value: number;
   proyeccion?: number | null;
 }
-
 
 interface RealtimeChartPoint {
   index: number;
@@ -642,7 +638,6 @@ type OperationMode = 'realtime' | 'turnos';
         />
       }
 
-
       @if (downloadModalOpen()) {
         <app-water-detail-descarga
           [siteId]="siteContext()?.site?.id ?? ''"
@@ -1180,7 +1175,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     return obra ? `${name} · ${obra}` : name;
   }
 
-
   formatPercent(value: number | null): string {
     return value === null ? '--%' : `${value}%`;
   }
@@ -1339,7 +1333,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
 
     return utcGuess - (chileAsUtc - utcGuess);
   }
-
 
   /** Empty-state recovery: navigate back to the installations list. */
   volverAListado(): void {
@@ -1565,7 +1558,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     const siteId = this.currentSiteId();
     if (siteId) this.startHistoryPolling(siteId);
   }
-
 
   /**
    * Closes whichever modal/panel is currently open when the user presses
@@ -1793,7 +1785,9 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
         const res = rawRes as unknown as ApiResponse<HistoryApiData>;
         const apiRows = this.extractHistoryApiRows(res);
         const paginatedData = !Array.isArray(res?.data) ? res?.data : null;
-        const totalRows = Number((paginatedData as { pagination?: { total?: number } } | null)?.pagination?.total);
+        const totalRows = Number(
+          (paginatedData as { pagination?: { total?: number } } | null)?.pagination?.total,
+        );
         const mappedRows = apiRows
           .map((row, index) => this.mapHistoryApiRow(row, index))
           .filter((row): row is HistoricalTelemetryRow => row !== null);
@@ -2120,7 +2114,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
     return findAccessibleSite(tree, siteId);
   }
-
 
   private toNumber(value: unknown): number | null {
     if (value === null || value === undefined || value === '') return null;

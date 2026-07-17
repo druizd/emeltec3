@@ -1,13 +1,6 @@
 import { A11yModule } from '@angular/cdk/a11y';
 import { HttpClient } from '@angular/common/http';
-import {
-  Component,
-  computed,
-  inject,
-  input,
-  output,
-  signal,
-} from '@angular/core';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import { DgaService } from '../../../../services/dga.service';
 
 interface DgaReportRow {
@@ -216,9 +209,7 @@ interface DgaReportRow {
           </p>
 
           <!-- Footer: rango + acción -->
-          <div
-            class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4"
-          >
+          <div class="flex items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
             <div>
               <p class="text-caption font-semibold text-slate-700">
                 {{ dgaReportRangeLabel() }}

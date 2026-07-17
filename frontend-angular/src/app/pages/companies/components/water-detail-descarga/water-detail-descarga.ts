@@ -288,9 +288,9 @@ export class WaterDetailDescargaComponent {
 
   readonly siteId = input.required<string>();
   readonly siteName = input<string>('');
-  readonly monthlyFlowMonths = input<{ label: string; value: number; proyeccion?: number | null }[]>(
-    [],
-  );
+  readonly monthlyFlowMonths = input<
+    { label: string; value: number; proyeccion?: number | null }[]
+  >([]);
 
   readonly closed = output<void>();
 

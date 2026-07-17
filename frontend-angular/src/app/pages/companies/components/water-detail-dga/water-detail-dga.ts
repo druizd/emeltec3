@@ -112,17 +112,13 @@ interface SiteDashboardData {
             <article
               class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm"
             >
-              <p
-                class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600"
-              >
+              <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
                 Enviados
               </p>
               <p class="mt-1 text-h3 font-semibold leading-none text-emerald-600">
                 {{ dgaCountEnviados() }}
               </p>
-              <p class="mt-1 text-caption font-semibold text-emerald-500">
-                en rango filtrado
-              </p>
+              <p class="mt-1 text-caption font-semibold text-emerald-500">en rango filtrado</p>
             </article>
 
             <!-- Último envío: ABSOLUTE, no afectado por filtro. Card entero clickeable -->
@@ -171,18 +167,14 @@ interface SiteDashboardData {
                   >
                     {{ dgaUltimoEnvioFecha() }}
                   </p>
-                  <span class="truncate font-mono text-caption-xs text-slate-500">{{
-                    comp
-                  }}</span>
+                  <span class="truncate font-mono text-caption-xs text-slate-500">{{ comp }}</span>
                 </article>
               }
             } @else {
               <article
                 class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center shadow-sm"
               >
-                <p
-                  class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400"
-                >
+                <p class="text-caption-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                   Último envío aceptado
                 </p>
                 <p class="font-mono text-h4 font-semibold leading-tight text-slate-400">—</p>
@@ -223,8 +215,8 @@ interface SiteDashboardData {
                   >
                     <p class="mb-2 font-semibold text-slate-700">Cómo se calcula</p>
                     <p class="mb-3 text-slate-500">
-                      enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan
-                      slots dentro del rango filtrado.
+                      enviados ÷ (enviados + rechazados + fallidos) × 100. Solo se cuentan slots
+                      dentro del rango filtrado.
                     </p>
                     <p class="mb-2 font-semibold text-slate-700">Umbrales</p>
                     <ul class="space-y-1.5 text-slate-600">
@@ -256,11 +248,7 @@ interface SiteDashboardData {
                   </div>
                 </details>
               </div>
-              <p
-                [class]="
-                  'mt-1 text-h3 font-semibold leading-none ' + dgaTasaExitoColors().text
-                "
-              >
+              <p [class]="'mt-1 text-h3 font-semibold leading-none ' + dgaTasaExitoColors().text">
                 {{ dgaTasaExito() === null ? '—' : dgaTasaExito() + '%' }}
               </p>
               <p
@@ -279,9 +267,7 @@ interface SiteDashboardData {
               class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
               title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
             >
-              <p
-                class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700"
-              >
+              <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
                 Rechazados
               </p>
               <p class="mt-1 text-h3 font-semibold leading-none text-rose-600">
@@ -294,9 +280,7 @@ interface SiteDashboardData {
           </section>
         }
 
-        <section
-          class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch"
-        >
+        <section class="grid grid-cols-1 gap-5 xl:grid-cols-[520px_minmax(0,1fr)] xl:items-stretch">
           <div class="flex flex-col gap-5 xl:h-full">
             <article
               class="flex flex-1 flex-col rounded-xl border border-primary-tint-25 bg-white p-3 shadow-[0_0_0_1px_rgba(8,145,178,0.04),0_12px_30px_rgba(15,23,42,0.06)]"
@@ -674,12 +658,7 @@ interface SiteDashboardData {
 
                       <!-- RIGHT BRACKET: Superficie → Nivel Freático (dynamic) -->
                       <!-- Superficie circle (at ground level) -->
-                      <circle
-                        [attr.cx]="svgAnnotX"
-                        [attr.cy]="svgWellTop"
-                        r="3"
-                        fill="#64748B"
-                      />
+                      <circle [attr.cx]="svgAnnotX" [attr.cy]="svgWellTop" r="3" fill="#64748B" />
                       <!-- Superficie label: left-center, higher above line -->
                       <text
                         x="124"
@@ -705,12 +684,7 @@ interface SiteDashboardData {
                       />
 
                       <!-- Nivel Freático circle + horizontal line into well -->
-                      <circle
-                        [attr.cx]="svgAnnotX"
-                        [attr.cy]="svgWaterY"
-                        r="3"
-                        fill="#0DAFBD"
-                      />
+                      <circle [attr.cx]="svgAnnotX" [attr.cy]="svgWaterY" r="3" fill="#0DAFBD" />
                       <line
                         [attr.x1]="svgAnnotX"
                         [attr.y1]="svgWaterY"
@@ -897,9 +871,7 @@ interface SiteDashboardData {
                       class="absolute inset-x-2 bottom-0 top-0 flex items-end justify-between gap-2"
                     >
                       @for (month of monthlyFlowMonths(); track $index) {
-                        <div
-                          class="group relative flex h-full min-w-0 flex-1 flex-col justify-end"
-                        >
+                        <div class="group relative flex h-full min-w-0 flex-1 flex-col justify-end">
                           <div
                             class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-slate-800 px-2 py-1.5 text-caption-xs font-semibold text-white shadow-lg group-hover:block"
                           >
@@ -1092,8 +1064,7 @@ interface SiteDashboardData {
                               >
                             </button>
                             @if (
-                              report.estado === 'Enviado' &&
-                                comprobanteUrl(report.comprobante);
+                              report.estado === 'Enviado' && comprobanteUrl(report.comprobante);
                               as snia
                             ) {
                               <a
@@ -1155,9 +1126,7 @@ interface SiteDashboardData {
                 }
               </select>
             </label>
-            <span
-              >{{ dgaRangeStart() }} - {{ dgaRangeEnd() }} de {{ dgaDisplayedTotal() }}</span
-            >
+            <span>{{ dgaRangeStart() }} - {{ dgaRangeEnd() }} de {{ dgaDisplayedTotal() }}</span>
             <div class="flex items-center gap-2">
               <button
                 type="button"
@@ -1355,7 +1324,7 @@ interface SiteDashboardData {
                 >
                   Aplicar filtro
                 </button>
-                </div>
+              </div>
             </div>
           </section>
         </div>
@@ -1633,8 +1602,18 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
 
   // Monthly flow computed
   private readonly monthShortNames = [
-    'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-    'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    'Ene',
+    'Feb',
+    'Mar',
+    'Abr',
+    'May',
+    'Jun',
+    'Jul',
+    'Ago',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dic',
   ];
 
   monthlyFlowMonths = computed<MonthlyFlowPoint[]>(() => {
@@ -1792,8 +1771,18 @@ export class WaterDetailDgaComponent implements OnInit, OnDestroy {
   ];
 
   readonly downloadMonthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+    'Enero',
+    'Febrero',
+    'Marzo',
+    'Abril',
+    'Mayo',
+    'Junio',
+    'Julio',
+    'Agosto',
+    'Septiembre',
+    'Octubre',
+    'Noviembre',
+    'Diciembre',
   ];
 
   readonly dgaRowsPerPageOptions = [10, 25, 50];
