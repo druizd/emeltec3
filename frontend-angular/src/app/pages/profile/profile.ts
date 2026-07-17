@@ -7,7 +7,7 @@ import { AuthService, type AuthUser } from '../../services/auth.service';
 import { UserService } from '../../services/user.service';
 import { formatRutInput } from '../../shared/rut';
 
-type AccountTab = 'users' | 'profile' | 'password';
+type AccountTab = 'users' | 'profile' | 'password' | 'datos';
 type SecurityMode = AuthMode;
 type EditableProfileField = 'nombre' | 'apellido' | 'rut_usuario' | 'telefono' | 'cargo';
 const USERS_PAGE_SIZE = 20;
@@ -790,6 +790,400 @@ interface EditState {
         </div>
       }
 
+      @if (activeTab() === 'datos' && displayUser(); as user) {
+        <div class="space-y-4">
+          <!-- Card: Datos que almacenamos -->
+          <section
+            class="rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+          >
+            <div class="border-b border-surface-container px-5 py-4">
+              <h2 class="text-body font-bold text-on-surface">Datos que almacenamos</h2>
+              <p class="mt-0.5 text-caption text-on-surface-muted">
+                Información personal que la plataforma mantiene asociada a tu cuenta.
+              </p>
+            </div>
+
+            <div class="divide-y divide-surface-container">
+              <!-- Identificación -->
+              <div class="px-5 py-4">
+                <p
+                  class="mb-3 text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
+                  Identificación
+                </p>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <p
+                      class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                    >
+                      Correo electrónico
+                    </p>
+                    <p class="mt-1 text-body-sm font-semibold text-on-surface">{{ user.email }}</p>
+                  </div>
+                  <div>
+                    <p
+                      class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                    >
+                      Nombre completo
+                    </p>
+                    <p class="mt-1 text-body-sm font-semibold text-on-surface">
+                      {{ fullName(user) }}
+                    </p>
+                  </div>
+                  @if (user.rut_usuario) {
+                    <div>
+                      <p
+                        class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                      >
+                        RUT
+                      </p>
+                      <p
+                        class="mt-1 font-['JetBrains_Mono'] text-body-sm font-semibold text-on-surface"
+                      >
+                        {{ user.rut_usuario }}
+                      </p>
+                    </div>
+                  }
+                  @if (user.telefono) {
+                    <div>
+                      <p
+                        class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                      >
+                        Teléfono
+                      </p>
+                      <p
+                        class="mt-1 font-['JetBrains_Mono'] text-body-sm font-semibold text-on-surface"
+                      >
+                        {{ user.telefono }}
+                      </p>
+                    </div>
+                  }
+                </div>
+                <div class="mt-3 rounded-lg border border-surface-container bg-[#F8FAFC] px-4 py-3">
+                  <p class="text-caption text-on-surface-muted">
+                    <span class="font-bold text-on-surface-variant">Finalidad:</span>
+                    Identificación del usuario en la plataforma.
+                  </p>
+                  <p class="mt-1 text-caption text-on-surface-muted">
+                    <span class="font-bold text-on-surface-variant">Base legal:</span>
+                    Ejecución de contrato B2B (Art. 13 Ley 21.719).
+                  </p>
+                </div>
+              </div>
+
+              <!-- Cuenta -->
+              <div class="px-5 py-4">
+                <p
+                  class="mb-3 text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
+                  Cuenta
+                </p>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  @if (user.cargo) {
+                    <div>
+                      <p
+                        class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                      >
+                        Cargo
+                      </p>
+                      <p class="mt-1 text-body-sm font-semibold text-on-surface">
+                        {{ user.cargo }}
+                      </p>
+                    </div>
+                  }
+                  @if (user.empresa_nombre) {
+                    <div>
+                      <p
+                        class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                      >
+                        Empresa
+                      </p>
+                      <p class="mt-1 text-body-sm font-semibold text-on-surface">
+                        {{ user.empresa_nombre }}
+                      </p>
+                    </div>
+                  }
+                  @if (user.sub_empresa_nombre) {
+                    <div>
+                      <p
+                        class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                      >
+                        Sub empresa
+                      </p>
+                      <p class="mt-1 text-body-sm font-semibold text-on-surface">
+                        {{ user.sub_empresa_nombre }}
+                      </p>
+                    </div>
+                  }
+                  <div>
+                    <p
+                      class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                    >
+                      Fecha de activación
+                    </p>
+                    <p
+                      class="mt-1 font-['JetBrains_Mono'] text-body-sm font-semibold text-on-surface"
+                    >
+                      {{ formatFecha(user.activated_at) }}
+                    </p>
+                  </div>
+                  <div>
+                    <p
+                      class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                    >
+                      Último acceso
+                    </p>
+                    <p
+                      class="mt-1 font-['JetBrains_Mono'] text-body-sm font-semibold text-on-surface"
+                    >
+                      {{ formatFecha(user.last_login_at) }}
+                    </p>
+                  </div>
+                </div>
+                <div class="mt-3 rounded-lg border border-surface-container bg-[#F8FAFC] px-4 py-3">
+                  <p class="text-caption text-on-surface-muted">
+                    <span class="font-bold text-on-surface-variant">Finalidad:</span>
+                    Gestión de acceso y auditoría de uso.
+                  </p>
+                  <p class="mt-1 text-caption text-on-surface-muted">
+                    <span class="font-bold text-on-surface-variant">Base legal:</span>
+                    Ejecución de contrato B2B (Art. 13 Ley 21.719).
+                  </p>
+                </div>
+              </div>
+
+              <!-- Actividad -->
+              <div class="px-5 py-4">
+                <p
+                  class="mb-3 text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
+                  Actividad
+                </p>
+                <p class="text-body-sm text-on-surface-variant">
+                  Registramos acciones en la plataforma (inicios de sesión, cambios de datos)
+                  durante 12 meses por obligación legal.
+                </p>
+              </div>
+            </div>
+
+            <div
+              class="flex items-center justify-between border-t border-surface-container px-5 py-4"
+            >
+              <a href="/privacidad" class="text-body-sm font-semibold text-primary underline">
+                Ver política de privacidad
+              </a>
+            </div>
+          </section>
+
+          <!-- Card: Portabilidad de datos -->
+          <section
+            class="rounded-xl border border-surface-container bg-white shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+          >
+            <div class="border-b border-surface-container px-5 py-4">
+              <h2 class="text-body font-bold text-on-surface">Portabilidad de datos</h2>
+              <p class="mt-0.5 text-caption text-on-surface-muted">
+                Descarga una copia de tus datos personales almacenados en la plataforma.
+              </p>
+            </div>
+            <div class="flex flex-wrap gap-3 px-5 py-4">
+              <button
+                type="button"
+                (click)="exportarJSON()"
+                [disabled]="exportando()"
+                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined text-[17px]">download</span>
+                {{ exportando() ? 'Exportando...' : 'Exportar JSON' }}
+              </button>
+              <button
+                type="button"
+                (click)="exportarCSV()"
+                [disabled]="exportando()"
+                class="inline-flex items-center gap-2 rounded-lg border border-surface-container bg-white px-4 py-2 text-body-sm font-semibold text-on-surface hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined text-[17px]">table_view</span>
+                {{ exportando() ? 'Exportando...' : 'Exportar CSV' }}
+              </button>
+            </div>
+          </section>
+
+          <!-- Card: Supresión de cuenta (zona de riesgo) -->
+          <section
+            class="rounded-xl border border-rose-200 bg-rose-50/40 shadow-[0_1px_4px_rgba(15,23,42,0.05)]"
+          >
+            <div class="border-b border-rose-200 px-5 py-4">
+              <h2 class="text-body font-bold text-rose-700">Supresión de cuenta</h2>
+              <p class="mt-0.5 text-caption text-rose-600">
+                Esta acción es irreversible. Los datos quedarán anonimizados en los sistemas.
+              </p>
+            </div>
+            <div class="px-5 py-4">
+              <p class="text-body-sm text-on-surface-variant">
+                Puedes solicitar la supresión de tu cuenta y todos tus datos personales. El proceso
+                tarda hasta 30 días según la Ley 21.719. Durante ese plazo podrías recibir
+                comunicaciones de cierre.
+              </p>
+              <button
+                type="button"
+                (click)="abrirSupresion()"
+                class="mt-4 inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-4 py-2 text-body-sm font-semibold text-rose-700 hover:bg-rose-50"
+              >
+                <span class="material-symbols-outlined text-[17px]">delete_forever</span>
+                Solicitar supresión de cuenta
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+
+      <!-- Modal: Confirmación supresión de cuenta (B3.3) -->
+      @if (supresionModalOpen()) {
+        <div
+          class="fixed inset-0 z-[130] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="supresion-titulo"
+        >
+          <section
+            class="w-full max-w-md overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0_24px_80px_rgba(15,23,42,0.28)]"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="border-b border-surface-container px-5 py-4">
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-50 text-rose-600"
+                >
+                  <span class="material-symbols-outlined text-[21px]">delete_forever</span>
+                </span>
+                <div>
+                  <h2 id="supresion-titulo" class="text-body font-bold text-on-surface">
+                    Solicitar supresión de cuenta
+                  </h2>
+                  <p class="text-caption text-on-surface-muted">Esta acción es irreversible.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="px-5 py-5 space-y-3">
+              <p class="text-body-sm text-on-surface-variant">
+                Al confirmar, tu cuenta quedará en proceso de supresión durante
+                <strong>hasta 30 días</strong>. Tus datos personales serán anonimizados según la Ley
+                21.719. No podrás reactivar la cuenta una vez iniciado el proceso.
+              </p>
+              <p class="text-body-sm text-on-surface-variant">
+                El sistema podría solicitarte verificación adicional (2FA) antes de procesar la
+                solicitud.
+              </p>
+              <label class="grid gap-1.5">
+                <span
+                  class="text-caption-xs font-bold uppercase tracking-[0.14em] text-on-surface-muted"
+                >
+                  Escribe SUPRIMIR para confirmar
+                </span>
+                <input
+                  type="text"
+                  [ngModel]="supresionTexto()"
+                  (ngModelChange)="supresionTexto.set($event)"
+                  name="supresionTexto"
+                  placeholder="SUPRIMIR"
+                  class="h-10 rounded-lg border border-[#cbd5e1] bg-white px-3 font-['JetBrains_Mono'] text-body-sm font-semibold text-on-surface outline-none transition-colors focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                />
+              </label>
+              @if (supresionError()) {
+                <p
+                  class="anim-banner rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-caption font-bold text-rose-700"
+                  role="alert"
+                >
+                  {{ supresionError() }}
+                </p>
+              }
+            </div>
+
+            <div
+              class="flex items-center justify-end gap-2 border-t border-surface-container bg-slate-50 px-5 py-4"
+            >
+              <button
+                type="button"
+                (click)="cerrarSupresion()"
+                [disabled]="supresionGuardando()"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                (click)="confirmarSupresion()"
+                [disabled]="supresionGuardando() || supresionTexto() !== 'SUPRIMIR'"
+                class="h-9 rounded-lg bg-rose-600 px-4 text-body-sm font-bold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {{ supresionGuardando() ? 'Procesando...' : 'Confirmar supresión' }}
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+
+      <!-- Modal: Política de privacidad bloqueante suave (B7.2) -->
+      @if (privacidadModalOpen()) {
+        <div
+          class="fixed inset-0 z-[140] flex items-center justify-center bg-slate-950/60 px-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="privacidad-titulo"
+        >
+          <section
+            class="w-full max-w-lg overflow-hidden rounded-2xl border border-surface-container bg-white shadow-[0_24px_80px_rgba(15,23,42,0.30)]"
+            (click)="$event.stopPropagation()"
+          >
+            <div class="border-b border-surface-container px-5 py-4">
+              <div class="flex items-center gap-3">
+                <div
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-tint-10 text-primary"
+                >
+                  <span class="material-symbols-outlined text-[22px]">shield</span>
+                </div>
+                <div>
+                  <h2 id="privacidad-titulo" class="text-body font-bold text-on-surface">
+                    Política de privacidad
+                  </h2>
+                  <p class="text-caption text-on-surface-muted">Actualización Ley 21.719.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="px-5 py-5 space-y-3">
+              <p class="text-body-sm text-on-surface-variant">
+                Emeltec Cloud almacena y trata tus datos personales para la prestación del servicio.
+                Los datos recopilados incluyen: nombre, apellido, correo, RUT, teléfono, cargo y
+                empresa. La base legal es la ejecución del contrato B2B (Art. 13, Ley 21.719).
+              </p>
+              <p class="text-body-sm text-on-surface-variant">
+                Tienes derecho a acceder, rectificar y solicitar la supresión de tus datos. Puedes
+                ejercer estos derechos desde la pestaña
+                <strong class="font-semibold text-on-surface">Mis datos</strong> en esta misma
+                sección.
+              </p>
+              <a href="/privacidad" class="text-body-sm font-semibold text-primary underline">
+                Ver política de privacidad completa
+              </a>
+            </div>
+
+            <div
+              class="flex items-center justify-end border-t border-surface-container bg-slate-50 px-5 py-4"
+            >
+              <button
+                type="button"
+                (click)="aceptarPolitica()"
+                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-dark"
+              >
+                <span class="material-symbols-outlined text-[17px]">check</span>
+                Aceptar política
+              </button>
+            </div>
+          </section>
+        </div>
+      }
+
       @if (editState(); as edit) {
         <div
           class="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
@@ -893,6 +1287,7 @@ export class ProfileComponent implements OnInit {
   readonly tabs: { key: AccountTab; label: string; icon: string }[] = [
     { key: 'profile', label: 'Mi perfil', icon: 'person' },
     { key: 'password', label: 'Contraseña', icon: 'shield_lock' },
+    { key: 'datos', label: 'Mis datos', icon: 'admin_panel_settings' },
     { key: 'users', label: 'Usuarios', icon: 'groups' },
   ];
 
@@ -935,6 +1330,18 @@ export class ProfileComponent implements OnInit {
   readonly securitySaving = signal(false);
   readonly securityMsg = signal('');
   readonly securityError = signal('');
+
+  // B3.2 — Exportar datos
+  readonly exportando = signal(false);
+
+  // B3.3 — Supresión de cuenta
+  readonly supresionModalOpen = signal(false);
+  readonly supresionTexto = signal('');
+  readonly supresionGuardando = signal(false);
+  readonly supresionError = signal('');
+
+  // B7.2 — Modal política de privacidad
+  readonly privacidadModalOpen = signal(false);
 
   readonly displayUser = computed(() => this.profile() ?? this.auth.user());
 
@@ -1054,7 +1461,16 @@ export class ProfileComponent implements OnInit {
 
     this.userService.getCurrentUser().subscribe({
       next: (res) => {
-        if (res.ok) this.setProfile(res.data);
+        if (res.ok) {
+          this.setProfile(res.data);
+          // B7.2: mostrar modal bloqueante suave si no ha aceptado la política (una vez por sesión)
+          if (res.data.politica_aceptada_at == null) {
+            if (!sessionStorage.getItem('privacidad_shown')) {
+              this.privacidadModalOpen.set(true);
+              sessionStorage.setItem('privacidad_shown', '1');
+            }
+          }
+        }
         this.loading.set(false);
       },
       error: (err: HttpErrorResponse) => {
@@ -1379,5 +1795,117 @@ export class ProfileComponent implements OnInit {
     const user = this.displayUser();
     if (!user) return '';
     return this.displayValue(user[field], '');
+  }
+
+  formatFecha(isoString: string | null | undefined): string {
+    if (!isoString) return 'No informado';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return 'No informado';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const min = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
+  }
+
+  // B3.2 — Exportar datos
+  exportarJSON(): void {
+    if (this.exportando()) return;
+    this.exportando.set(true);
+    this.userService.exportarDatos().subscribe({
+      next: (res) => {
+        if (res.ok) {
+          const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `mis-datos-emeltec-${new Date().toISOString().slice(0, 10)}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        this.exportando.set(false);
+      },
+      error: () => this.exportando.set(false),
+    });
+  }
+
+  exportarCSV(): void {
+    if (this.exportando()) return;
+    this.exportando.set(true);
+    this.userService.exportarDatos().subscribe({
+      next: (res) => {
+        if (res.ok) {
+          const perfil = res.data.perfil;
+          const headers = Object.keys(perfil).join(',');
+          const values = Object.values(perfil)
+            .map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`)
+            .join(',');
+          const csv = `${headers}\n${values}\n`;
+          const blob = new Blob([csv], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `mis-datos-emeltec-${new Date().toISOString().slice(0, 10)}.csv`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+        this.exportando.set(false);
+      },
+      error: () => this.exportando.set(false),
+    });
+  }
+
+  // B3.3 — Supresión de cuenta
+  abrirSupresion(): void {
+    this.supresionTexto.set('');
+    this.supresionError.set('');
+    this.supresionModalOpen.set(true);
+  }
+
+  cerrarSupresion(): void {
+    if (this.supresionGuardando()) return;
+    this.supresionModalOpen.set(false);
+    this.supresionTexto.set('');
+    this.supresionError.set('');
+  }
+
+  confirmarSupresion(): void {
+    const user = this.displayUser();
+    if (!user || this.supresionTexto() !== 'SUPRIMIR') return;
+
+    this.supresionGuardando.set(true);
+    this.supresionError.set('');
+
+    this.userService.suprimirCuenta(user.id).subscribe({
+      next: () => {
+        this.supresionGuardando.set(false);
+        this.supresionModalOpen.set(false);
+        this.auth.logout();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.supresionGuardando.set(false);
+        if (err.status === 403) {
+          this.supresionError.set(
+            'No se puede ejecutar la supresión de esta cuenta. Contacta al soporte.',
+          );
+        } else {
+          this.supresionError.set(err.error?.error ?? 'Error inesperado');
+        }
+      },
+    });
+  }
+
+  // B7.2 — Aceptar política de privacidad
+  aceptarPolitica(): void {
+    this.userService.aceptarPolitica().subscribe({
+      next: (res) => {
+        if (res.ok) this.setProfile(res.data);
+        this.privacidadModalOpen.set(false);
+      },
+      error: () => {
+        this.privacidadModalOpen.set(false);
+      },
+    });
   }
 }

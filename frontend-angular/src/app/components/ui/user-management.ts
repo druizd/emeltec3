@@ -214,6 +214,22 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               </div>
             </div>
 
+            @if (!editingId()) {
+              <div
+                class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-body-sm text-blue-800"
+              >
+                <p class="font-bold">Información sobre el tratamiento de datos</p>
+                <p class="mt-1">
+                  Al registrar este usuario, la plataforma recopilará: nombre, apellido, email, RUT,
+                  teléfono, cargo y empresa. Esta información se utiliza para la operación del
+                  servicio (base legal: ejecución de contrato B2B, Art. 13 Ley 21.719).
+                  <a href="/privacidad" class="underline font-semibold"
+                    >Ver política de privacidad</a
+                  >.
+                </p>
+              </div>
+            }
+
             <div class="pt-6 border-t border-slate-100 flex justify-end">
               <button
                 type="submit"
