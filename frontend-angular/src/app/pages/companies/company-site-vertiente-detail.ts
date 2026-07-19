@@ -2126,7 +2126,9 @@ type OperationMode = 'realtime' | 'turnos';
 })
 export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
   readonly installationType = 'vertiente' as const;
-  get dgaEnabled(): boolean { return this.authService.canSeeDga(); }
+  get dgaEnabled(): boolean {
+    return this.authService.canSeeDga();
+  }
   readonly dgaUnavailableMessage = '';
 
   private readonly route = inject(ActivatedRoute);

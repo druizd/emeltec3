@@ -30,10 +30,10 @@ empresa
 
 ## Hypertables (TimescaleDB)
 
-| Tabla | Descripción | PK / dimensión temporal |
-|-------|-------------|------------------------|
-| `equipo` | Raw telemetría de dispositivos | `time` |
-| `dato_dga` | Slots de reporte DGA | `(site_id, ts)` |
+| Tabla      | Descripción                    | PK / dimensión temporal |
+| ---------- | ------------------------------ | ----------------------- |
+| `equipo`   | Raw telemetría de dispositivos | `time`                  |
+| `dato_dga` | Slots de reporte DGA           | `(site_id, ts)`         |
 
 TimescaleDB parte cada hypertable en **chunks** por rango de tiempo (carpetas `_timescaledb_internal._hyper_N_M_chunk`). `equipo` tiene ~1000+ chunks activos. Nunca interactuar con chunks directamente.
 
@@ -46,10 +46,10 @@ CALL refresh_continuous_aggregate('equipo_1min', '2026-01-01', '2026-01-08');
 CALL refresh_continuous_aggregate('equipo_5min', '2026-01-01', '2026-01-08');
 ```
 
-| Vista | Granularidad | Uso |
-|-------|-------------|-----|
-| `equipo_1min` | 1 minuto | Gráficos día/semana, DGA worker |
-| `equipo_5min` | 5 minutos | Gráficos mes/año |
+| Vista         | Granularidad | Uso                             |
+| ------------- | ------------ | ------------------------------- |
+| `equipo_1min` | 1 minuto     | Gráficos día/semana, DGA worker |
+| `equipo_5min` | 5 minutos    | Gráficos mes/año                |
 
 ---
 

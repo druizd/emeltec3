@@ -32,6 +32,7 @@ dato_dga.estatus = 'enviado' | 'rechazado' | 'fallido'
 ### `startDgaPreseedWorker` — `modules/dga/preseed.ts`
 
 Crea los slots `vacio` en `dato_dga` para cada pozo activo.
+
 - Itera pozos con `pozo_config.dga_activo = true`
 - Calcula el rango de timestamps según `dga_periodicidad` y `dga_fecha_inicio`
 - INSERT de slots `vacio` (ON CONFLICT DO NOTHING)
@@ -41,6 +42,7 @@ Crea los slots `vacio` en `dato_dga` para cada pozo activo.
 Fill worker. El más importante del pipeline.
 
 **Ciclo (cada `DGA_WORKER_POLL_MS`, default 60s):**
+
 1. Lista pozos con `dga_activo = true` (incluye `transport='off'/'shadow'`)
 2. Por cada pozo: lista hasta `DGA_WORKER_MAX_SLOTS` (default 24) slots `vacio`
 3. Por cada slot:
@@ -52,20 +54,21 @@ Fill worker. El más importante del pipeline.
 
 **Reglas de validación** (`modules/dga/validation.ts`):
 
-| Código | Condición | Resultado |
-|--------|-----------|-----------|
-| `sensor_defective` | `sensor_known_defective=true` en reg_map | → `requires_review` |
-| `totalizador_zero` | totalizador = 0 o NULL | → `requires_review` con sugerencia del último válido |
-| `caudal_negativo` | caudal < 0 | → `requires_review` |
-| `caudal_spike` | caudal > `caudal_max × tolerance` (fallback: > 1000 L/s) | → `requires_review` |
-| `all_null` | todos los valores son NULL | → `requires_review` |
-| ok | ninguna regla falla | → `pendiente` |
+| Código             | Condición                                                | Resultado                                            |
+| ------------------ | -------------------------------------------------------- | ---------------------------------------------------- |
+| `sensor_defective` | `sensor_known_defective=true` en reg_map                 | → `requires_review`                                  |
+| `totalizador_zero` | totalizador = 0 o NULL                                   | → `requires_review` con sugerencia del último válido |
+| `caudal_negativo`  | caudal < 0                                               | → `requires_review`                                  |
+| `caudal_spike`     | caudal > `caudal_max × tolerance` (fallback: > 1000 L/s) | → `requires_review`                                  |
+| `all_null`         | todos los valores son NULL                               | → `requires_review`                                  |
+| ok                 | ninguna regla falla                                      | → `pendiente`                                        |
 
 Constantes: `FROZEN_WINDOW_DEFAULT_N = 4`, `FLOW_HARDCODE_LIMIT_LPS = 1000`
 
 ### `startDgaSubmissionWorker` — `modules/dga/submission.ts`
 
 Envía slots `pendiente` a SNIA.
+
 - **Deshabilitado por defecto** — requiere `ENABLE_DGA_SUBMISSION_WORKER=true`
 - Solo envía pozos con `dga_transport = 'rest'`
 - Llama a `modules/dga/snia-client.ts` (cliente REST SNIA)
@@ -76,12 +79,14 @@ Envía slots `pendiente` a SNIA.
 ### `startDgaReconcilerWorker` — `modules/dga/reconciler.ts`
 
 Corrige estados inconsistentes:
+
 - Slots `enviando` que llevan demasiado tiempo → `rechazado`
 - Slots `rechazado` con `next_retry_at` pasado → `pendiente`
 
 ### `startDgaGcsExporter` — `modules/dga/gcs-exporter.ts`
 
 Exporta datos DGA a Google Cloud Storage en formato Parquet.
+
 - Se activa por sitio con `pozo_config.dga_gcs_export = true`
 - Requiere `DGA_GCS_EMPRESA_ID` + `GOOGLE_APPLICATION_CREDENTIALS` en env
 - Log en tabla `dga_gcs_export_log`
@@ -92,11 +97,11 @@ Exporta datos DGA a Google Cloud Storage en formato Parquet.
 
 Pool global de credenciales SNIA. Un informante puede firmar múltiples pozos.
 
-| Columna | Descripción |
-|---------|-------------|
-| `rut` | PK — RUT del informante |
+| Columna            | Descripción                                            |
+| ------------------ | ------------------------------------------------------ |
+| `rut`              | PK — RUT del informante                                |
 | `clave_informante` | Clave SNIA (cifrada en DB con `modules/dga/crypto.ts`) |
-| `referencia` | Nota libre |
+| `referencia`       | Nota libre                                             |
 
 FK desde `pozo_config.dga_informante_rut → dga_informante.rut`
 

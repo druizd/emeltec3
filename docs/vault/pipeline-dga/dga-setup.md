@@ -57,10 +57,12 @@ graph LR
 ## Estado actual de los pozos
 
 > [!warning] REGADIO (S131) — pocas filas en `dato_dga`
+>
 > - `sitio.id = S131` · `id_serial = 25120112`
 > - `obra_dga` = configurada ✓
 > - `dato_dga` = **solo 3 rows** — probablemente `dga_activo=false` o config incompleta
 > - Verificar con SQL:
+>
 > ```sql
 > SELECT dga_activo, dga_transport, dga_periodicidad,
 >        dga_fecha_inicio, dga_hora_inicio, dga_informante_rut
@@ -68,6 +70,7 @@ graph LR
 > ```
 
 > [!danger] CASINO — sin `obra_dga`, sin slots DGA
+>
 > - `id_serial = 25120225` · `sitio.id` desconocido
 > - `obra_dga` = **NO asignada** — bloqueo total hasta obtener código de DGA
 > - `dato_dga` = **0 rows**
@@ -100,6 +103,7 @@ FROM dato_dga GROUP BY site_id, estatus ORDER BY site_id;
 ## SQL — configurar nuevo sitio (template CASINO)
 
 > [!example] Template paso a paso
+>
 > ```sql
 > -- Paso 1: verificar que sitio existe
 > SELECT id, descripcion FROM sitio WHERE id_serial = '25120225';
@@ -127,6 +131,7 @@ FROM dato_dga GROUP BY site_id, estatus ORDER BY site_id;
 > [!warning] Informante DGA
 > La `clave_informante` debe ser cifrada por la app con `DGA_ENCRYPTION_KEY` (AES-256-GCM).
 > **Nunca insertarla en texto plano.** Usar endpoint:
+>
 > ```
 > POST /api/v2/dga/informantes
 > ```
@@ -149,12 +154,14 @@ FROM dato_dga GROUP BY site_id, estatus ORDER BY site_id;
 ## Workers DGA — verificar que corren
 
 > [!tip] Ver logs en VM
+>
 > ```bash
 > cd ~/emeltec3
 > docker compose logs main-api --since 30m | grep -iE "dga|preseed|fill|submission|reconcil"
 > ```
 >
 > Logs esperados:
+>
 > ```
 > DGA preseed worker iniciado
 > DGA preseed: slots creados | site_id=S131 slots=720
@@ -173,9 +180,9 @@ FROM dato_dga GROUP BY site_id, estatus ORDER BY site_id;
 > [!info] Endpoint
 > `POST https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`
 >
-> | Campo | Formato | Ejemplo |
-> |---|---|---|
-> | `caudal` | string, 2 dec, L/s | `"5.23"` |
-> | `totalizador` | string entero, m³ | `"4915200"` |
-> | `nivelFreaticoDelPozo` | string, 2 dec, m | `"17.30"` |
-> | `fechaMedicion` / `horaMedicion` | hora local Chile | UTC-4 fijo |
+> | Campo                            | Formato            | Ejemplo     |
+> | -------------------------------- | ------------------ | ----------- |
+> | `caudal`                         | string, 2 dec, L/s | `"5.23"`    |
+> | `totalizador`                    | string entero, m³  | `"4915200"` |
+> | `nivelFreaticoDelPozo`           | string, 2 dec, m   | `"17.30"`   |
+> | `fechaMedicion` / `horaMedicion` | hora local Chile   | UTC-4 fijo  |

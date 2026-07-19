@@ -37,6 +37,7 @@ graph LR
 ## Dispositivos registrados
 
 > [!info] REGADIO — `25120112`
+>
 > ```
 > sitio.id     = S131
 > id_serial    = 25120112
@@ -45,12 +46,14 @@ graph LR
 > ```
 
 > [!warning] CASINO — `25120225`
+>
 > ```
 > sitio.id     = desconocido (verificar en DB)
 > id_serial    = 25120225
 > obra_dga     = NO asignada ✗ — esperar código DGA de empresa
 > Sensores     = Flujo Insta · Totalizado · Nivel Freat · FREESPACE
 > ```
+>
 > FREESPACE siempre filtrado por `shouldSkipName()` en `parser.go`.
 
 ---
@@ -58,12 +61,14 @@ graph LR
 ## Formato CSV raw
 
 > [!example] Ejemplo de archivo FTP
+>
 > ```csv
 > fecha;hora;nombre_sensor;valor;unidad;quality
 > 06-05-2026;11:26:00;Flujo Insta;0,0;l/s;G
 > 06-05-2026;11:26:00;Totalizado;4915200;M3;G
 > 06-05-2026;11:26:00;Nivel Freat;17,3;m;G
 > ```
+>
 > - Separador: `;` · Decimal: `,` · Fecha: `DD-MM-YYYY`
 > - `parser.go` convierte America/Santiago → UTC antes de insertar
 
@@ -82,10 +87,12 @@ graph LR
 
 > [!danger] El archivo DEBE tener `_log_` en el nombre
 > `SerialFromFilename` extrae el serial buscando el prefijo antes de `_log_`.
+>
 > ```
 > ✅ REGADIO_log_20260501_20260531.csv   → serial = REGADIO → resuelve a 25120112
 > ❌ REGADIO_mayo2026.csv               → serial = REGADIO_mayo2026 → no resuelve
 > ```
+>
 > Sin `_log_`: el `id_serial` queda mal en DB, el dato DGA nunca se asocia al sitio.
 
 ---
@@ -124,6 +131,7 @@ graph LR
 ## Procedimiento — carga histórica
 
 > [!tip] Pasos para cargar un CSV
+>
 > ```powershell
 > # 1. Filtrar mes específico (Windows local)
 > .\filter-ftp-month.ps1 `
@@ -139,6 +147,7 @@ graph LR
 > ```
 
 > [!tip] Verificar inserción en Linux
+>
 > ```bash
 > docker exec emeltec-db psql -U postgres -d telemetry_platform \
 >   -c "SELECT COUNT(*), MIN(time), MAX(time) FROM equipo WHERE id_serial = '25120112' AND time >= '2026-05-01' AND time < '2026-06-01';"
@@ -159,8 +168,10 @@ graph LR
 > Para verificar carga reciente, siempre consultar `equipo` directamente.
 
 > [!info] Var de entorno ftpprocessor
+>
 > ```
 > DEVICE_ALIASES=REGADIO:25120112,CASINO:25120225
 > ```
+>
 > Esto es lo que permite resolver el nombre del archivo al `id_serial` correcto.
 > El container receptor en Linux es `ftpconsumer` — ver [[servicios#Tabla de containers]].

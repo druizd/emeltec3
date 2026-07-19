@@ -271,15 +271,15 @@ type OperationMode = 'realtime' | 'turnos';
                 aria-controls="tabpanel-dga"
                 [attr.tabindex]="activeDetailTab() === 'dga' ? 0 : -1"
               >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
-                  DGA
-                  @if (activeDetailTab() === 'dga') {
-                    <span
-                      class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
-                      aria-hidden="true"
-                    ></span>
-                  }
-                </button>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">layers</span>
+                DGA
+                @if (activeDetailTab() === 'dga') {
+                  <span
+                    class="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary"
+                    aria-hidden="true"
+                  ></span>
+                }
+              </button>
               <button
                 type="button"
                 role="tab"

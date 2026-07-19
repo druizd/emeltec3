@@ -18,11 +18,11 @@ Cada 60 minutos (configurable), el worker:
 
 ## Archivos
 
-| Archivo | Rol |
-|---|---|
-| `main-api/src/modules/dga/gcs-repo.ts` | Query a la DB — trae envíos DGA OK con JOIN a sitio, sub_empresa y pozo_config |
-| `main-api/src/modules/dga/gcs-exporter.ts` | Worker principal — cron, build Parquet, upload GCS |
-| `main-api/src/server.js` | Arranca el worker al iniciar la API |
+| Archivo                                    | Rol                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------ |
+| `main-api/src/modules/dga/gcs-repo.ts`     | Query a la DB — trae envíos DGA OK con JOIN a sitio, sub_empresa y pozo_config |
+| `main-api/src/modules/dga/gcs-exporter.ts` | Worker principal — cron, build Parquet, upload GCS                             |
+| `main-api/src/server.js`                   | Arranca el worker al iniciar la API                                            |
 
 ---
 
@@ -30,20 +30,20 @@ Cada 60 minutos (configurable), el worker:
 
 Cada fila = una variable de una medición DGA enviada con éxito.
 
-| Columna | Fuente DB | Notas |
-|---|---|---|
-| `NOMBRE_PROVEEDOR` | hardcoded | `"EMELTEC"` |
-| `PLANTA` | `sub_empresa.nombre` | sanitizado (sin tildes, ñ→n) |
-| `NOMBRE_SENSOR` | `site_id` (temporal) | **TODO: reemplazar con nombre real del sensor** |
-| `CENTRO_DE_OBRA` | `pozo_config.obra_dga` | Código DGA oficial, ej: `OB-0601-292` |
-| `FECHA_MEDICION_SENSOR` | `dga_send_audit.ts` | ISO 8601 |
-| `VARIABLE` | calculado | `CAUDAL` / `TOTALIZADOR` / `NIVEL_FREATICO` |
-| `VALOR` | `dato_dga.caudal_instantaneo` etc | string, puede ser null |
-| `FECHA_REPORTE_DGA` | `dga_send_audit.sent_at` | ISO 8601 |
-| `STATUS_DGA` | `dga_send_audit.dga_status_code` | `"00"` = exitoso |
-| `COMPROBANTE` | `dga_send_audit.api_n_comprobante` | número comprobante DGA |
-| `MENSAJE_DGA` | `dga_send_audit.dga_message` | sanitizado |
-| `FECHA_HORA_CARGA` | timestamp al momento de correr el ciclo | ISO 8601 |
+| Columna                 | Fuente DB                               | Notas                                           |
+| ----------------------- | --------------------------------------- | ----------------------------------------------- |
+| `NOMBRE_PROVEEDOR`      | hardcoded                               | `"EMELTEC"`                                     |
+| `PLANTA`                | `sub_empresa.nombre`                    | sanitizado (sin tildes, ñ→n)                    |
+| `NOMBRE_SENSOR`         | `site_id` (temporal)                    | **TODO: reemplazar con nombre real del sensor** |
+| `CENTRO_DE_OBRA`        | `pozo_config.obra_dga`                  | Código DGA oficial, ej: `OB-0601-292`           |
+| `FECHA_MEDICION_SENSOR` | `dga_send_audit.ts`                     | ISO 8601                                        |
+| `VARIABLE`              | calculado                               | `CAUDAL` / `TOTALIZADOR` / `NIVEL_FREATICO`     |
+| `VALOR`                 | `dato_dga.caudal_instantaneo` etc       | string, puede ser null                          |
+| `FECHA_REPORTE_DGA`     | `dga_send_audit.sent_at`                | ISO 8601                                        |
+| `STATUS_DGA`            | `dga_send_audit.dga_status_code`        | `"00"` = exitoso                                |
+| `COMPROBANTE`           | `dga_send_audit.api_n_comprobante`      | número comprobante DGA                          |
+| `MENSAJE_DGA`           | `dga_send_audit.dga_message`            | sanitizado                                      |
+| `FECHA_HORA_CARGA`      | timestamp al momento de correr el ciclo | ISO 8601                                        |
 
 ---
 
@@ -54,6 +54,7 @@ Cada fila = una variable de una medición DGA enviada con éxito.
 ```
 
 Ejemplo:
+
 ```
 raw-reg-ind-tc-ext-emeltec-prod/ccu_aguas_andinas/fecha_carga=2026-06-24/S042_20260624120000.parquet
 ```
@@ -125,6 +126,7 @@ ORDER BY a.site_id, a.sent_at
 ```
 
 Tablas involucradas:
+
 - `dga_send_audit` — historial de envíos a la API DGA
 - `dato_dga` — valores medidos (caudal, flujo, nivel)
 - `sitio` — descripción del punto de medición

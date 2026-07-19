@@ -6,15 +6,15 @@
 
 Definidos en `shared/src/user.ts` (frontend) y `main-api/src/shared/permissions.ts` (backend).
 
-| Rol | Acceso |
-|-----|--------|
-| `SuperAdmin` | Todo. Sin filtro de empresa |
-| `Admin` | Su empresa completa. Puede crear usuarios en su empresa |
-| `Gerente` | Su empresa. Si tiene `sub_empresa_id` → solo esa sub_empresa |
-| `Cliente` | Su empresa (lectura). Sin gestión de usuarios |
-| `Vendedor` | Su empresa (lectura). Sin gestión de usuarios |
-| `Empresa` | Solo backend: acceso a empresa completa (sinónimo de Admin en algunos contextos) |
-| `SubEmpresa` | Solo backend: acceso limitado a su sub_empresa |
+| Rol          | Acceso                                                                           |
+| ------------ | -------------------------------------------------------------------------------- |
+| `SuperAdmin` | Todo. Sin filtro de empresa                                                      |
+| `Admin`      | Su empresa completa. Puede crear usuarios en su empresa                          |
+| `Gerente`    | Su empresa. Si tiene `sub_empresa_id` → solo esa sub_empresa                     |
+| `Cliente`    | Su empresa (lectura). Sin gestión de usuarios                                    |
+| `Vendedor`   | Su empresa (lectura). Sin gestión de usuarios                                    |
+| `Empresa`    | Solo backend: acceso a empresa completa (sinónimo de Admin en algunos contextos) |
+| `SubEmpresa` | Solo backend: acceso limitado a su sub_empresa                                   |
 
 > **Nota:** `Empresa` y `SubEmpresa` están en `permissions.ts` pero NO en `shared/user.ts`. Divergencia histórica.
 
@@ -22,10 +22,10 @@ Definidos en `shared/src/user.ts` (frontend) y `main-api/src/shared/permissions.
 
 ## Modos de autenticación (`auth_mode`)
 
-| Modo | Descripción |
-|------|-------------|
-| `password` | Solo contraseña |
-| `otp` | Solo OTP por email |
+| Modo           | Descripción                     |
+| -------------- | ------------------------------- |
+| `password`     | Solo contraseña                 |
+| `otp`          | Solo OTP por email              |
 | `password_otp` | Contraseña + OTP (2FA completo) |
 
 ---
@@ -63,7 +63,7 @@ Gerente / Cliente / Vendedor / SubEmpresa:
     O (user.sub_empresa_id = sitio.sub_empresa_id)
 ```
 
-> *Decisión jun-2026: usuario sin sub_empresa asignada ve toda la empresa.
+> \*Decisión jun-2026: usuario sin sub_empresa asignada ve toda la empresa.
 
 ---
 
@@ -79,6 +79,7 @@ Usado en queries para filtrar por tenant sin repetir la lógica en cada controla
 ## Step-up 2FA (acciones sensibles)
 
 Algunas acciones requieren verificación adicional independiente del `auth_mode`:
+
 - Cambiar `dga_transport` a `'rest'`
 - Reset de contraseña de otro usuario
 
@@ -90,32 +91,32 @@ Implementación: `shared/stepUp2fa.js` + `routes/twoFactorRoutes.js` + `modules/
 
 ## Gestión de usuarios (`userController.js`)
 
-| Acción | Quién puede |
-|--------|-------------|
-| Crear usuario | Admin (en su empresa), Gerente (en su sub_empresa), SuperAdmin (en cualquier parte) |
-| Editar usuario | Misma jerarquía — no puede elevar rol propio ni de igual jerarquía |
-| Eliminar usuario | Soft-delete (`activo=false`). No puede autoeliminarse |
-| Reset password | Genera OTP 24h + email de bienvenida |
-| Ver todos los usuarios | SuperAdmin y Admin. Clientes → 403 |
+| Acción                 | Quién puede                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------- |
+| Crear usuario          | Admin (en su empresa), Gerente (en su sub_empresa), SuperAdmin (en cualquier parte) |
+| Editar usuario         | Misma jerarquía — no puede elevar rol propio ni de igual jerarquía                  |
+| Eliminar usuario       | Soft-delete (`activo=false`). No puede autoeliminarse                               |
+| Reset password         | Genera OTP 24h + email de bienvenida                                                |
+| Ver todos los usuarios | SuperAdmin y Admin. Clientes → 403                                                  |
 
 ---
 
 ## Tabla `usuario`
 
-| Columna | Descripción |
-|---------|-------------|
-| `id` | varchar(10) PK generado como `U{hex}` |
-| `nombre`, `apellido` | |
-| `email` | UNIQUE, login |
-| `rut_usuario` | RUT (opcional) |
-| `tipo` | Rol (ver tabla arriba) |
-| `empresa_id` | FK → empresa |
-| `sub_empresa_id` | FK → sub_empresa (opcional) |
-| `auth_mode` | `password` / `otp` / `password_otp` |
-| `password_hash` | bcrypt |
-| `activo` | Soft-delete |
-| `last_login_at` | |
-| `activated_at` | Cuando activó la cuenta |
+| Columna              | Descripción                           |
+| -------------------- | ------------------------------------- |
+| `id`                 | varchar(10) PK generado como `U{hex}` |
+| `nombre`, `apellido` |                                       |
+| `email`              | UNIQUE, login                         |
+| `rut_usuario`        | RUT (opcional)                        |
+| `tipo`               | Rol (ver tabla arriba)                |
+| `empresa_id`         | FK → empresa                          |
+| `sub_empresa_id`     | FK → sub_empresa (opcional)           |
+| `auth_mode`          | `password` / `otp` / `password_otp`   |
+| `password_hash`      | bcrypt                                |
+| `activo`             | Soft-delete                           |
+| `last_login_at`      |                                       |
+| `activated_at`       | Cuando activó la cuenta               |
 
 ---
 

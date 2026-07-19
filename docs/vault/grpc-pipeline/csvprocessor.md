@@ -25,15 +25,15 @@ Servicio Windows que captura telemetría de dispositivos Modbus/IP y la envía a
 
 Tabla `telemetry_records`:
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `local_id` | integer PK autoincrement | |
-| `id_serial` | text | ID del dispositivo |
-| `fecha` | text | Fecha del registro (`YYYY-MM-DD`) |
-| `hora` | text | Hora del registro (`HH:MM:SS`) |
-| `data` | text | JSON con valores del sensor |
-| `sync_status` | text | `pending` / `synced` / `failed` |
-| `synced_at` | text | Timestamp de sincronización exitosa |
+| Columna       | Tipo                     | Descripción                         |
+| ------------- | ------------------------ | ----------------------------------- |
+| `local_id`    | integer PK autoincrement |                                     |
+| `id_serial`   | text                     | ID del dispositivo                  |
+| `fecha`       | text                     | Fecha del registro (`YYYY-MM-DD`)   |
+| `hora`        | text                     | Hora del registro (`HH:MM:SS`)      |
+| `data`        | text                     | JSON con valores del sensor         |
+| `sync_status` | text                     | `pending` / `synced` / `failed`     |
+| `synced_at`   | text                     | Timestamp de sincronización exitosa |
 
 ### Proto — mensaje gRPC
 
@@ -79,11 +79,11 @@ Mueve CSV a raw_backup/
 
 ## Estados de `sync_status`
 
-| Estado | Significado |
-|--------|-------------|
-| `pending` | Guardado en SQLite, aún no enviado por gRPC |
-| `synced` | gRPC devolvió ACK (NO garantiza que esté en PostgreSQL — ver gotcha) |
-| `failed` | Varios reintentos fallidos (sin red, etc.) |
+| Estado    | Significado                                                          |
+| --------- | -------------------------------------------------------------------- |
+| `pending` | Guardado en SQLite, aún no enviado por gRPC                          |
+| `synced`  | gRPC devolvió ACK (NO garantiza que esté en PostgreSQL — ver gotcha) |
+| `failed`  | Varios reintentos fallidos (sin red, etc.)                           |
 
 > ⚠️ **Gotcha crítico:** `synced` significa que csvconsumer recibió el dato y respondió ACK. NO significa que el dato llegó a PostgreSQL. csvconsumer puede fallar el INSERT después del ACK (ver [[../infraestructura/incidente-2026-07-13-csvconsumer-reconexion]]).
 

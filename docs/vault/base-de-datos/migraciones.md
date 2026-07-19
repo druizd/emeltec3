@@ -42,11 +42,13 @@ timeline
 > Crea tablas DGA iniciales. Primera versión del pipeline regulatorio.
 
 > [!info] `2026-05-16-dga-pipeline-refactor.sql`
+>
 > - Extiende `dato_dga` con estados granulares (`vacio`, `pendiente`, `enviando`, `enviado`, `rechazado`, `fallido`)
 > - Crea tabla `dga_send_audit` (append-only, audit trail)
 
 > [!danger] `2026-05-17-dga-pozo-config-redesign.sql` — MIGRACIÓN MAYOR
 > Cambios que rompieron compatibilidad con `dga-api/` (código muerto):
+>
 > - `DROP TABLE dga_user` → reemplazada por `pozo_config.dga_*` + `dga_informante`
 > - `dato_dga` PK cambia de `(id_dgauser, ts)` a `(site_id, ts)`
 > - Todo código que referencie `dga_user` está **roto**

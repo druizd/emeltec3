@@ -28,13 +28,13 @@ empresa
 
 Empresa cliente (ej. CCU, ENAP, Codelco).
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `id` | varchar(10) PK | Código corto (ej. "CCU") |
-| `nombre` | varchar(150) | Nombre completo |
-| `rut` | varchar(20) UNIQUE | RUT empresa |
-| `tipo_empresa` | varchar(50) | `'Agua'` / `'Riles'` / `'Proceso'` / `'Eléctrico'` — controla módulo en sidebar |
-| `sitios` | integer | Contador de sitios activos |
+| Columna        | Tipo               | Descripción                                                                     |
+| -------------- | ------------------ | ------------------------------------------------------------------------------- |
+| `id`           | varchar(10) PK     | Código corto (ej. "CCU")                                                        |
+| `nombre`       | varchar(150)       | Nombre completo                                                                 |
+| `rut`          | varchar(20) UNIQUE | RUT empresa                                                                     |
+| `tipo_empresa` | varchar(50)        | `'Agua'` / `'Riles'` / `'Proceso'` / `'Eléctrico'` — controla módulo en sidebar |
+| `sitios`       | integer            | Contador de sitios activos                                                      |
 
 ### `sub_empresa`
 
@@ -46,18 +46,18 @@ FK: `empresa_id → empresa.id`
 
 Instalación monitoreada — pozo, medidor, sala fría, etc.
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `id` | varchar(10) PK | Código corto |
-| `descripcion` | varchar(255) | Nombre legible |
-| `id_serial` | varchar(50) | **Clave de enlace con `equipo`** — identifica el dispositivo Windows |
-| `empresa_id` | FK → empresa | |
-| `sub_empresa_id` | FK → sub_empresa | |
-| `tipo_sitio` | varchar(30) | `'pozo'` (default), `'medidor'`, etc. |
-| `activo` | boolean | Si aparece en sidebar/dashboard |
-| `coord_norte/este` | numeric(12,2) | Coordenadas UTM WGS84 |
-| `huso` | smallint | Zona UTM (Chile: 18/19/20) |
-| `es_maleta_piloto` | boolean | Override visual: agrupa bajo "Maletas Piloto" sin alterar lógica |
+| Columna            | Tipo             | Descripción                                                          |
+| ------------------ | ---------------- | -------------------------------------------------------------------- |
+| `id`               | varchar(10) PK   | Código corto                                                         |
+| `descripcion`      | varchar(255)     | Nombre legible                                                       |
+| `id_serial`        | varchar(50)      | **Clave de enlace con `equipo`** — identifica el dispositivo Windows |
+| `empresa_id`       | FK → empresa     |                                                                      |
+| `sub_empresa_id`   | FK → sub_empresa |                                                                      |
+| `tipo_sitio`       | varchar(30)      | `'pozo'` (default), `'medidor'`, etc.                                |
+| `activo`           | boolean          | Si aparece en sidebar/dashboard                                      |
+| `coord_norte/este` | numeric(12,2)    | Coordenadas UTM WGS84                                                |
+| `huso`             | smallint         | Zona UTM (Chile: 18/19/20)                                           |
+| `es_maleta_piloto` | boolean          | Override visual: agrupa bajo "Maletas Piloto" sin alterar lógica     |
 
 ---
 
@@ -69,14 +69,15 @@ Tabla raw de telemetría. **Cada fila = una lectura de un dispositivo en un time
 
 TimescaleDB la parte automáticamente en chunks por tiempo (`_hyper_1_N_chunk`). Hay ~1000+ chunks activos. No interactuar con chunks directamente — siempre usar `equipo`.
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `time` | timestamptz NOT NULL | Timestamp de la lectura (UTC) |
-| `id_serial` | varchar(50) NOT NULL | Identifica el dispositivo (= `sitio.id_serial`) |
-| `data` | jsonb NOT NULL | Valores del sensor en JSON. Claves = registros Modbus (ej. `{"D1": 1234, "D2": 567}`) |
-| `received_at` | timestamptz | Cuando csvconsumer recibió el dato |
+| Columna       | Tipo                 | Descripción                                                                           |
+| ------------- | -------------------- | ------------------------------------------------------------------------------------- |
+| `time`        | timestamptz NOT NULL | Timestamp de la lectura (UTC)                                                         |
+| `id_serial`   | varchar(50) NOT NULL | Identifica el dispositivo (= `sitio.id_serial`)                                       |
+| `data`        | jsonb NOT NULL       | Valores del sensor en JSON. Claves = registros Modbus (ej. `{"D1": 1234, "D2": 567}`) |
+| `received_at` | timestamptz          | Cuando csvconsumer recibió el dato                                                    |
 
 **Índices:**
+
 - `equipo_time_idx` — btree en `time DESC` (queries por rango de fecha)
 - `idx_equipo_serial_time` — btree en `(id_serial, time DESC)` (queries por dispositivo)
 - `idx_equipo_data_gin` — GIN en `data` (búsqueda dentro del JSONB)
@@ -88,12 +89,13 @@ Previene duplicados exactos `(id_serial, time, data)`. Si llega el mismo dato do
 
 Vistas pre-calculadas sobre `equipo`. Se actualizan automáticamente para datos nuevos. Para datos históricos insertados tarde → `CALL refresh_continuous_aggregate(...)`.
 
-| Vista | Granularidad | Uso |
-|-------|-------------|-----|
-| `equipo_1min` | 1 minuto | Gráficos de día/semana, DGA worker |
-| `equipo_5min` | 5 minutos | Gráficos de mes/año |
+| Vista         | Granularidad | Uso                                |
+| ------------- | ------------ | ---------------------------------- |
+| `equipo_1min` | 1 minuto     | Gráficos de día/semana, DGA worker |
+| `equipo_5min` | 5 minutos    | Gráficos de mes/año                |
 
 **Refresh manual (datos históricos):**
+
 ```sql
 CALL refresh_continuous_aggregate('equipo_1min', '2026-01-01', '2026-01-08');
 CALL refresh_continuous_aggregate('equipo_5min', '2026-01-01', '2026-01-08');
@@ -107,20 +109,21 @@ CALL refresh_continuous_aggregate('equipo_5min', '2026-01-01', '2026-01-08');
 
 Define cómo interpretar cada campo de `equipo.data` para un sitio.
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `id` | varchar(20) PK | |
-| `alias` | varchar(100) | Nombre legible del registro |
-| `d1` | varchar(20) | Clave primaria en el JSONB de `equipo.data` |
-| `d2` | varchar(20) | Clave secundaria (para registros de 32bit = dos palabras) |
-| `tipo_dato` | varchar(20) | Tipo de valor (`int`, `float`, etc.) |
-| `unidad` | varchar(20) | Unidad física (`L/s`, `m`, `m³`, etc.) |
-| `rol_dashboard` | varchar(40) | Rol semántico: `caudal`, `totalizador`, `nivel_freatico`, `generico` |
-| `transformacion` | varchar(40) | `directo`, `word_swap`, `scale`, etc. |
-| `parametros` | jsonb | Config de transformación (ver abajo) |
-| `sitio_id` | FK → sitio | |
+| Columna          | Tipo           | Descripción                                                          |
+| ---------------- | -------------- | -------------------------------------------------------------------- |
+| `id`             | varchar(20) PK |                                                                      |
+| `alias`          | varchar(100)   | Nombre legible del registro                                          |
+| `d1`             | varchar(20)    | Clave primaria en el JSONB de `equipo.data`                          |
+| `d2`             | varchar(20)    | Clave secundaria (para registros de 32bit = dos palabras)            |
+| `tipo_dato`      | varchar(20)    | Tipo de valor (`int`, `float`, etc.)                                 |
+| `unidad`         | varchar(20)    | Unidad física (`L/s`, `m`, `m³`, etc.)                               |
+| `rol_dashboard`  | varchar(40)    | Rol semántico: `caudal`, `totalizador`, `nivel_freatico`, `generico` |
+| `transformacion` | varchar(40)    | `directo`, `word_swap`, `scale`, etc.                                |
+| `parametros`     | jsonb          | Config de transformación (ver abajo)                                 |
+| `sitio_id`       | FK → sitio     |                                                                      |
 
 **Parámetros JSONB comunes:**
+
 ```json
 {
   "scale_factor": 10,
@@ -139,47 +142,48 @@ Define cómo interpretar cada campo de `equipo.data` para un sitio.
 
 Configuración de pozos con reporte DGA. 1:1 con `sitio` (PK = sitio_id).
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `sitio_id` | varchar(10) PK FK | |
-| `profundidad_pozo_m` | numeric | Profundidad total del pozo |
-| `profundidad_sensor_m` | numeric | Profundidad del sensor |
-| `nivel_estatico_manual_m` | numeric | Nivel estático ingresado manualmente |
-| `obra_dga` | varchar(80) | Código de obra DGA en SNIA |
-| `dga_activo` | boolean | **Switch maestro.** FALSE = no pre-seedea, no rellena, no envía |
-| `dga_transport` | varchar(10) | `off` = pausado / `shadow` = rellena sin enviar / `rest` = envía a SNIA |
-| `dga_caudal_max_lps` | numeric(10,2) | Caudal máximo declarado (L/s) |
-| `dga_caudal_tolerance_pct` | numeric(5,2) | % tolerancia sobre caudal máximo (default 20%) |
-| `dga_periodicidad` | varchar(10) | `hora` / `dia` / `semana` / `mes` |
-| `dga_fecha_inicio` | date | Inicio del periodo de reporte |
-| `dga_informante_rut` | FK → dga_informante | RUT del responsable que firma envíos |
-| `dga_max_retry_attempts` | smallint | Reintentos máximos antes de `fallido` (default 7) |
-| `dga_last_run_at` | timestamptz | Último ciclo de fill exitoso |
-| `dga_gcs_export` | boolean | Si exporta a Google Cloud Storage (Parquet) |
-| `ficha_critica` | jsonb | Datos críticos del sitio: `{pin_critico, contactos[], acreditaciones[], riesgos[]}` |
+| Columna                    | Tipo                | Descripción                                                                         |
+| -------------------------- | ------------------- | ----------------------------------------------------------------------------------- |
+| `sitio_id`                 | varchar(10) PK FK   |                                                                                     |
+| `profundidad_pozo_m`       | numeric             | Profundidad total del pozo                                                          |
+| `profundidad_sensor_m`     | numeric             | Profundidad del sensor                                                              |
+| `nivel_estatico_manual_m`  | numeric             | Nivel estático ingresado manualmente                                                |
+| `obra_dga`                 | varchar(80)         | Código de obra DGA en SNIA                                                          |
+| `dga_activo`               | boolean             | **Switch maestro.** FALSE = no pre-seedea, no rellena, no envía                     |
+| `dga_transport`            | varchar(10)         | `off` = pausado / `shadow` = rellena sin enviar / `rest` = envía a SNIA             |
+| `dga_caudal_max_lps`       | numeric(10,2)       | Caudal máximo declarado (L/s)                                                       |
+| `dga_caudal_tolerance_pct` | numeric(5,2)        | % tolerancia sobre caudal máximo (default 20%)                                      |
+| `dga_periodicidad`         | varchar(10)         | `hora` / `dia` / `semana` / `mes`                                                   |
+| `dga_fecha_inicio`         | date                | Inicio del periodo de reporte                                                       |
+| `dga_informante_rut`       | FK → dga_informante | RUT del responsable que firma envíos                                                |
+| `dga_max_retry_attempts`   | smallint            | Reintentos máximos antes de `fallido` (default 7)                                   |
+| `dga_last_run_at`          | timestamptz         | Último ciclo de fill exitoso                                                        |
+| `dga_gcs_export`           | boolean             | Si exporta a Google Cloud Storage (Parquet)                                         |
+| `ficha_critica`            | jsonb               | Datos críticos del sitio: `{pin_critico, contactos[], acreditaciones[], riesgos[]}` |
 
 ### `dato_dga` — hypertable
 
 Un **slot** = un período de reporte DGA (generalmente 1 hora).
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `site_id` | varchar(10) FK → sitio | |
-| `ts` | timestamptz NOT NULL | Timestamp UTC del período |
-| `fecha` | date (generada) | `ts` en hora Chile (UTC-4) |
-| `hora` | time (generada) | `ts` en hora Chile (UTC-4) |
-| `obra` | varchar(150) | Código obra DGA |
-| `caudal_instantaneo` | numeric(12,3) | L/s |
-| `flujo_acumulado` | numeric(14,3) | m³ acumulado (entero truncado) |
-| `nivel_freatico` | numeric(8,3) | metros |
-| `estatus` | varchar(20) | Estado del slot (ver flujo abajo) |
-| `comprobante` | text | Número de comprobante SNIA |
-| `intentos` | smallint | Cantidad de intentos de envío |
-| `next_retry_at` | timestamptz | Próximo reintento (NULL = inmediato) |
-| `fail_reason` | text | Último mensaje de error |
-| `validation_warnings` | jsonb | Array de anomalías detectadas: `[{code, raw, suggested?, reason}]` |
+| Columna               | Tipo                   | Descripción                                                        |
+| --------------------- | ---------------------- | ------------------------------------------------------------------ |
+| `site_id`             | varchar(10) FK → sitio |                                                                    |
+| `ts`                  | timestamptz NOT NULL   | Timestamp UTC del período                                          |
+| `fecha`               | date (generada)        | `ts` en hora Chile (UTC-4)                                         |
+| `hora`                | time (generada)        | `ts` en hora Chile (UTC-4)                                         |
+| `obra`                | varchar(150)           | Código obra DGA                                                    |
+| `caudal_instantaneo`  | numeric(12,3)          | L/s                                                                |
+| `flujo_acumulado`     | numeric(14,3)          | m³ acumulado (entero truncado)                                     |
+| `nivel_freatico`      | numeric(8,3)           | metros                                                             |
+| `estatus`             | varchar(20)            | Estado del slot (ver flujo abajo)                                  |
+| `comprobante`         | text                   | Número de comprobante SNIA                                         |
+| `intentos`            | smallint               | Cantidad de intentos de envío                                      |
+| `next_retry_at`       | timestamptz            | Próximo reintento (NULL = inmediato)                               |
+| `fail_reason`         | text                   | Último mensaje de error                                            |
+| `validation_warnings` | jsonb                  | Array de anomalías detectadas: `[{code, raw, suggested?, reason}]` |
 
 **Flujo de estado (`estatus`):**
+
 ```
 vacio → pendiente → enviando → enviado
           ↓
@@ -222,6 +226,7 @@ Log de exportaciones a Google Cloud Storage (Parquet).
 ### Salas frías (`cold_room_*`)
 
 Módulo específico para monitoreo de temperatura en cámaras frigoríficas:
+
 - `cold_room_alarm_rule` — reglas de alarma
 - `cold_room_alarm_event` — eventos
 - `cold_room_threshold` — umbrales

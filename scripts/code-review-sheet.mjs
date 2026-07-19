@@ -1,26 +1,26 @@
 #!/usr/bin/env node
 // Adds a "Revisión de Código" sheet with manual code-review findings to an existing xlsx.
 // Usage: node scripts/code-review-sheet.mjs <input.xlsx> <output.xlsx>
-import { createRequire } from 'module'
-const require = createRequire(import.meta.url)
-const ExcelJS = require('exceljs')
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const ExcelJS = require('exceljs');
 
-const [, , inputPath, outputPath] = process.argv
+const [, , inputPath, outputPath] = process.argv;
 if (!inputPath || !outputPath) {
-  console.error('Usage: node code-review-sheet.mjs <input.xlsx> <output.xlsx>')
-  process.exit(1)
+  console.error('Usage: node code-review-sheet.mjs <input.xlsx> <output.xlsx>');
+  process.exit(1);
 }
 
 const SEVERITY_COLORS = {
-  HIGH:   'FFFF4444',
+  HIGH: 'FFFF4444',
   MEDIUM: 'FFFFA500',
-  LOW:    'FFFFD700',
-}
+  LOW: 'FFFFD700',
+};
 const SEVERITY_BG = {
-  HIGH:   'FFFFF5F5',
+  HIGH: 'FFFFF5F5',
   MEDIUM: 'FFFFF9F0',
-  LOW:    'FFFFFFF0',
-}
+  LOW: 'FFFFFFF0',
+};
 
 // ── Code-review findings (manual analysis, branch moises-super) ───────
 const FINDINGS = [
@@ -157,93 +157,106 @@ const FINDINGS = [
       'This eliminates the vulnerability class by construction rather than by discipline.',
     owasp: 'A07:2021 — Identification and Authentication Failures',
   },
-]
+];
 
 // ── Build workbook ────────────────────────────────────────────────────
-const wb = new ExcelJS.Workbook()
-await wb.xlsx.readFile(inputPath)
+const wb = new ExcelJS.Workbook();
+await wb.xlsx.readFile(inputPath);
 
 // Remove existing sheet if re-running
-const existing = wb.getWorksheet('Revisión de Código')
-if (existing) wb.removeWorksheet(existing.id)
+const existing = wb.getWorksheet('Revisión de Código');
+if (existing) wb.removeWorksheet(existing.id);
 
-const ws = wb.addWorksheet('Revisión de Código', { tabColor: { argb: 'FFFF4444' } })
-ws.views = [{ state: 'frozen', ySplit: 1 }]
+const ws = wb.addWorksheet('Revisión de Código', { tabColor: { argb: 'FFFF4444' } });
+ws.views = [{ state: 'frozen', ySplit: 1 }];
 
 ws.columns = [
-  { header: 'ID',               key: 'id',              width: 8  },
-  { header: 'Servicio',         key: 'service',         width: 18 },
-  { header: 'Severidad',        key: 'severity',        width: 12 },
-  { header: 'Confianza',        key: 'confidence',      width: 11 },
-  { header: 'Categoría',        key: 'category',        width: 24 },
-  { header: 'Título',           key: 'title',           width: 42 },
-  { header: 'Descripción',      key: 'description',     width: 55 },
-  { header: 'Ubicación',        key: 'location',        width: 44 },
-  { header: 'Escenario',        key: 'exploitScenario', width: 55 },
-  { header: 'Recomendación',    key: 'recommendation',  width: 55 },
-  { header: 'OWASP',            key: 'owasp',           width: 38 },
-]
+  { header: 'ID', key: 'id', width: 8 },
+  { header: 'Servicio', key: 'service', width: 18 },
+  { header: 'Severidad', key: 'severity', width: 12 },
+  { header: 'Confianza', key: 'confidence', width: 11 },
+  { header: 'Categoría', key: 'category', width: 24 },
+  { header: 'Título', key: 'title', width: 42 },
+  { header: 'Descripción', key: 'description', width: 55 },
+  { header: 'Ubicación', key: 'location', width: 44 },
+  { header: 'Escenario', key: 'exploitScenario', width: 55 },
+  { header: 'Recomendación', key: 'recommendation', width: 55 },
+  { header: 'OWASP', key: 'owasp', width: 38 },
+];
 
 // Header styling
-const headerRow = ws.getRow(1)
-headerRow.eachCell(cell => {
-  cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
-  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7B0000' } }
-  cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
-  cell.border = { bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } } }
-})
-headerRow.height = 28
+const headerRow = ws.getRow(1);
+headerRow.eachCell((cell) => {
+  cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7B0000' } };
+  cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+  cell.border = { bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } } };
+});
+headerRow.height = 28;
 
 // Auto-filter
-ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 11 } }
+ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: 11 } };
 
 for (const f of FINDINGS) {
-  const row = ws.addRow(f)
-  const sev = f.severity
-  const color = SEVERITY_COLORS[sev] || 'FF888888'
-  const bg    = SEVERITY_BG[sev]    || 'FFFFFFFF'
+  const row = ws.addRow(f);
+  const sev = f.severity;
+  const color = SEVERITY_COLORS[sev] || 'FF888888';
+  const bg = SEVERITY_BG[sev] || 'FFFFFFFF';
 
-  const sevCell = row.getCell('severity')
-  sevCell.font = { bold: true, color: { argb: color } }
-  sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } }
-  sevCell.alignment = { horizontal: 'center', vertical: 'middle' }
+  const sevCell = row.getCell('severity');
+  sevCell.font = { bold: true, color: { argb: color } };
+  sevCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+  sevCell.alignment = { horizontal: 'center', vertical: 'middle' };
 
-  const confCell = row.getCell('confidence')
-  confCell.alignment = { horizontal: 'center', vertical: 'middle' }
-  const confColor = f.confidence >= 9 ? 'FFFF4444' : f.confidence >= 8 ? 'FFFFA500' : 'FF888888'
-  confCell.font = { bold: true, color: { argb: confColor } }
+  const confCell = row.getCell('confidence');
+  confCell.alignment = { horizontal: 'center', vertical: 'middle' };
+  const confColor = f.confidence >= 9 ? 'FFFF4444' : f.confidence >= 8 ? 'FFFFA500' : 'FF888888';
+  confCell.font = { bold: true, color: { argb: confColor } };
+  [
+    'id',
+    'service',
+    'category',
+    'title',
+    'description',
+    'location',
+    'exploitScenario',
+    'recommendation',
+    'owasp',
+  ].forEach((key) => {
+    const cell = row.getCell(key);
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
+    cell.alignment = { vertical: 'top', wrapText: true };
+  });
 
-  ;['id','service','category','title','description','location',
-    'exploitScenario','recommendation','owasp'].forEach(key => {
-    const cell = row.getCell(key)
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } }
-    cell.alignment = { vertical: 'top', wrapText: true }
-  })
-
-  row.getCell('id').alignment = { horizontal: 'center', vertical: 'top' }
-  row.height = 70
+  row.getCell('id').alignment = { horizontal: 'center', vertical: 'top' };
+  row.height = 70;
 }
 
 // ── Resumen tab: add code-review row (positional, keys lost on read) ─
-const resumen = wb.getWorksheet('Resumen')
+const resumen = wb.getWorksheet('Resumen');
 if (resumen) {
-  const highCount   = FINDINGS.filter(f => f.severity === 'HIGH').length
-  const mediumCount = FINDINGS.filter(f => f.severity === 'MEDIUM').length
-  const lowCount    = FINDINGS.filter(f => f.severity === 'LOW').length
+  const highCount = FINDINGS.filter((f) => f.severity === 'HIGH').length;
+  const mediumCount = FINDINGS.filter((f) => f.severity === 'MEDIUM').length;
+  const lowCount = FINDINGS.filter((f) => f.severity === 'LOW').length;
 
   // Columns: Servicio, Crítico, Alto, Medio, Bajo, Info, Total (1-based)
   const crRow = resumen.addRow([
     'Revisión de Código (manual)',
-    0, highCount, mediumCount, lowCount, 0, FINDINGS.length,
-  ])
-  crRow.getCell(3).font = { bold: true, color: { argb: 'FFFF4444' } }
-  crRow.getCell(4).font = { bold: true, color: { argb: 'FFFFA500' } }
-  crRow.height = 20
+    0,
+    highCount,
+    mediumCount,
+    lowCount,
+    0,
+    FINDINGS.length,
+  ]);
+  crRow.getCell(3).font = { bold: true, color: { argb: 'FFFF4444' } };
+  crRow.getCell(4).font = { bold: true, color: { argb: 'FFFFA500' } };
+  crRow.height = 20;
 }
 
-await wb.xlsx.writeFile(outputPath)
-console.log(`\nCode review sheet added — ${FINDINGS.length} findings`)
-console.log(`  HIGH   : ${FINDINGS.filter(f=>f.severity==='HIGH').length}`)
-console.log(`  MEDIUM : ${FINDINGS.filter(f=>f.severity==='MEDIUM').length}`)
-console.log(`  LOW    : ${FINDINGS.filter(f=>f.severity==='LOW').length}`)
-console.log(`  Output : ${outputPath}`)
+await wb.xlsx.writeFile(outputPath);
+console.log(`\nCode review sheet added — ${FINDINGS.length} findings`);
+console.log(`  HIGH   : ${FINDINGS.filter((f) => f.severity === 'HIGH').length}`);
+console.log(`  MEDIUM : ${FINDINGS.filter((f) => f.severity === 'MEDIUM').length}`);
+console.log(`  LOW    : ${FINDINGS.filter((f) => f.severity === 'LOW').length}`);
+console.log(`  Output : ${outputPath}`);

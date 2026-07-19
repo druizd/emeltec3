@@ -17,6 +17,7 @@
 ## Causa raíz
 
 `tokio_postgres::connect()` devuelve **dos objetos**:
+
 - `Client` — ejecuta queries
 - `Connection` — tarea de fondo que mantiene el socket TCP vivo
 
@@ -26,12 +27,12 @@ El código original de csvconsumer no tenía lógica de reconexión. Resultado: 
 
 ## Cronología
 
-| Hora | Evento |
-|------|--------|
-| ~desconocida | DB/red interrumpe Connection task |
-| loop | `flush error: connection closed` repetido |
-| 2026-07-13 | Detectado al verificar que la plataforma no mostraba datos |
-| 2026-07-13 | `docker restart emeltec-csvconsumer` → datos fluyeron de nuevo |
+| Hora         | Evento                                                         |
+| ------------ | -------------------------------------------------------------- |
+| ~desconocida | DB/red interrumpe Connection task                              |
+| loop         | `flush error: connection closed` repetido                      |
+| 2026-07-13   | Detectado al verificar que la plataforma no mostraba datos     |
+| 2026-07-13   | `docker restart emeltec-csvconsumer` → datos fluyeron de nuevo |
 
 > No hubo pérdida de datos: la cola en memoria mantuvo los registros y los insertó en batch al reiniciar.
 
@@ -47,6 +48,7 @@ docker restart emeltec-csvconsumer
 Archivo: `grpc-pipeline/csvconsumer-rust/src/main.rs`
 
 Cambios:
+
 - `type SharedClient = Arc<Mutex<Arc<Client>>>` — cliente compartido con capacidad de reemplazo
 - En `flush_task`: cuando `insert_batch` devuelve `e.is_closed()`:
   1. Re-encola el batch en orden usando `push_front` (para no perder datos)
@@ -55,6 +57,7 @@ Cambios:
   4. Sale del inner loop — el ticker retoma el flush en el siguiente ciclo
 
 Para deployar:
+
 ```bash
 # push al repo → CI build → en Linux:
 docker restart emeltec-csvconsumer

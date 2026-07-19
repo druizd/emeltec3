@@ -36,12 +36,15 @@ graph LR
 > **Qué hace:** genera slots `dato_dga` con `estatus='vacio'` para todos los pozos con `dga_activo=true`.
 >
 > **Lógica de anchor:**
+>
 > ```sql
 > GREATEST(inicio_mes_actual, dga_fecha_inicio)
 > ```
+>
 > Timezone: `Etc/GMT+4` (UTC-4 fijo, hora Chile sin DST).
 >
 > **Falla silenciosa si falta:**
+>
 > - `pozo_config.dga_activo = false`
 > - `pozo_config.dga_periodicidad` NULL
 > - `pozo_config.dga_fecha_inicio` NULL
@@ -59,6 +62,7 @@ graph LR
 > **Fuente de datos:** `equipo_1min` (continuous aggregate — delay ~2min).
 >
 > **Validaciones:**
+>
 > - `caudal > dga_caudal_max_lps * (1 + tolerance/100)` → `requires_review`
 > - Nivel freático fuera de rango físico → `requires_review`
 > - Sin datos en la ventana → slot permanece `vacio` (alert del reconciler si >6h)
@@ -75,6 +79,7 @@ graph LR
 > Endpoint SNIA: `POST https://apimee.mop.gob.cl/api/v1/mediciones/subterraneas`
 >
 > **Para activar (cuando gerencia autorice):**
+>
 > 1. Verificar `dga_transport='rest'` en cada pozo
 > 2. Cambiar flag en `~/emeltec3/.env`
 > 3. Redeploy
@@ -88,13 +93,13 @@ graph LR
 > [!info] Cadencia: cada hora | Flag: `ENABLE_DGA_RECONCILER=true`
 > **5 checks que realiza:**
 >
-> | Check | Condición | Acción |
-> |---|---|---|
-> | A | Slot `enviando` > 15min | Revertir a `pendiente` |
-> | B | Audit OK pero estado drift | Corregir en DB |
-> | C | `enviado` sin audit trail | Alert solo (no corrige) |
-> | D | Doble submission | Alert solo |
-> | E | `vacio` stale > 6h | Alert digest por email |
+> | Check | Condición                  | Acción                  |
+> | ----- | -------------------------- | ----------------------- |
+> | A     | Slot `enviando` > 15min    | Revertir a `pendiente`  |
+> | B     | Audit OK pero estado drift | Corregir en DB          |
+> | C     | `enviado` sin audit trail  | Alert solo (no corrige) |
+> | D     | Doble submission           | Alert solo              |
+> | E     | `vacio` stale > 6h         | Alert digest por email  |
 >
 > Log limpio: `DGA reconciler: ciclo OK sin hallazgos`
 

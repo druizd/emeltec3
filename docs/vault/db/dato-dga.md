@@ -6,24 +6,24 @@ Un **slot** = un período de reporte DGA (generalmente 1 hora por `dga_periodici
 
 ## Schema
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `site_id` | `varchar(10) NOT NULL FK → sitio` | Sitio al que pertenece |
-| `ts` | `timestamptz NOT NULL` | Timestamp UTC del período — dimensión temporal del hypertable |
-| `fecha` | `date` (generada) | `ts` convertido a hora Chile (UTC-4) |
-| `hora` | `time` (generada) | `ts` convertido a hora Chile (UTC-4) |
-| `obra` | `varchar(150) NOT NULL` | Código obra DGA en SNIA |
-| `caudal_instantaneo` | `numeric(12,3)` | L/s |
-| `flujo_acumulado` | `numeric(14,3)` | m³ acumulado, **entero truncado** |
-| `nivel_freatico` | `numeric(8,3)` | metros |
-| `estatus` | `varchar(20) DEFAULT 'vacio'` | Estado del slot (ver flujo abajo) |
-| `comprobante` | `text` | Número de comprobante SNIA (solo `estatus='enviado'`) |
-| `intentos` | `smallint DEFAULT 0` | Cantidad de intentos de envío a SNIA |
-| `next_retry_at` | `timestamptz` | Próximo reintento. NULL = inmediato en el siguiente tick |
-| `ultimo_intento_at` | `timestamptz` | Timestamp del último intento |
-| `fail_reason` | `text` | Último mensaje de error de SNIA o red |
-| `validation_warnings` | `jsonb DEFAULT '[]'` | Anomalías de validación: `[{code, raw, suggested?, reason}]` |
-| `totalizator_raw_legacy` | `numeric(14,3)` | Totalizador original con decimales (solo migración histórica) |
+| Columna                  | Tipo                              | Descripción                                                   |
+| ------------------------ | --------------------------------- | ------------------------------------------------------------- |
+| `site_id`                | `varchar(10) NOT NULL FK → sitio` | Sitio al que pertenece                                        |
+| `ts`                     | `timestamptz NOT NULL`            | Timestamp UTC del período — dimensión temporal del hypertable |
+| `fecha`                  | `date` (generada)                 | `ts` convertido a hora Chile (UTC-4)                          |
+| `hora`                   | `time` (generada)                 | `ts` convertido a hora Chile (UTC-4)                          |
+| `obra`                   | `varchar(150) NOT NULL`           | Código obra DGA en SNIA                                       |
+| `caudal_instantaneo`     | `numeric(12,3)`                   | L/s                                                           |
+| `flujo_acumulado`        | `numeric(14,3)`                   | m³ acumulado, **entero truncado**                             |
+| `nivel_freatico`         | `numeric(8,3)`                    | metros                                                        |
+| `estatus`                | `varchar(20) DEFAULT 'vacio'`     | Estado del slot (ver flujo abajo)                             |
+| `comprobante`            | `text`                            | Número de comprobante SNIA (solo `estatus='enviado'`)         |
+| `intentos`               | `smallint DEFAULT 0`              | Cantidad de intentos de envío a SNIA                          |
+| `next_retry_at`          | `timestamptz`                     | Próximo reintento. NULL = inmediato en el siguiente tick      |
+| `ultimo_intento_at`      | `timestamptz`                     | Timestamp del último intento                                  |
+| `fail_reason`            | `text`                            | Último mensaje de error de SNIA o red                         |
+| `validation_warnings`    | `jsonb DEFAULT '[]'`              | Anomalías de validación: `[{code, raw, suggested?, reason}]`  |
+| `totalizator_raw_legacy` | `numeric(14,3)`                   | Totalizador original con decimales (solo migración histórica) |
 
 **PK:** `(site_id, ts)` — un único slot por sitio por período.
 
@@ -50,25 +50,25 @@ vacio → pendiente → enviando → enviado              │ (comprobante SNIA 
 
 El DGA fill worker (`modules/dga/worker.ts`) valida antes de mover de `vacio` a `pendiente`. Si falla → `requires_review`:
 
-| Código | Condición | Acción |
-|--------|-----------|--------|
-| `sensor_defective` | `sensor_known_defective = true` en reg_map | → requires_review |
-| `totalizador_zero` | totalizador = 0 o NULL | → requires_review con sugerencia |
-| `caudal_negativo` | caudal < 0 | → requires_review |
-| `caudal_spike` | caudal > caudal_max × tolerancia (o > 1000 L/s hardcode) | → requires_review |
-| `all_null` | todos los valores null | → requires_review |
+| Código             | Condición                                                | Acción                           |
+| ------------------ | -------------------------------------------------------- | -------------------------------- |
+| `sensor_defective` | `sensor_known_defective = true` en reg_map               | → requires_review                |
+| `totalizador_zero` | totalizador = 0 o NULL                                   | → requires_review con sugerencia |
+| `caudal_negativo`  | caudal < 0                                               | → requires_review                |
+| `caudal_spike`     | caudal > caudal_max × tolerancia (o > 1000 L/s hardcode) | → requires_review                |
+| `all_null`         | todos los valores null                                   | → requires_review                |
 
 ---
 
 ## Índices
 
-| Índice | Columnas | Uso |
-|--------|----------|-----|
-| `dato_dga_pkey` | `(site_id, ts)` | Lookup por sitio+período |
-| `dato_dga_ts_idx` | `ts DESC` | Queries por rango temporal |
-| `idx_dato_dga_fecha` | `fecha DESC` | Queries por fecha Chile |
-| `idx_dato_dga_pending_retry` | `(next_retry_at, site_id)` WHERE `estatus='pendiente'` | Cola de submission worker |
-| `idx_dato_dga_review_queue` | `(site_id, ts DESC)` WHERE `estatus='requires_review'` | UI de revisión manual |
+| Índice                       | Columnas                                               | Uso                        |
+| ---------------------------- | ------------------------------------------------------ | -------------------------- |
+| `dato_dga_pkey`              | `(site_id, ts)`                                        | Lookup por sitio+período   |
+| `dato_dga_ts_idx`            | `ts DESC`                                              | Queries por rango temporal |
+| `idx_dato_dga_fecha`         | `fecha DESC`                                           | Queries por fecha Chile    |
+| `idx_dato_dga_pending_retry` | `(next_retry_at, site_id)` WHERE `estatus='pendiente'` | Cola de submission worker  |
+| `idx_dato_dga_review_queue`  | `(site_id, ts DESC)` WHERE `estatus='requires_review'` | UI de revisión manual      |
 
 ---
 

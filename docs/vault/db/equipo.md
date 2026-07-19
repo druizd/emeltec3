@@ -6,22 +6,22 @@ Tabla principal de datos. **Una fila = una lectura de un dispositivo en un times
 
 ## Schema
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| `time` | `timestamptz NOT NULL` | Timestamp de la lectura (UTC) — dimensión temporal del hypertable |
-| `id_serial` | `varchar(50) NOT NULL` | ID del dispositivo Windows. Enlaza con `sitio.id_serial` |
-| `data` | `jsonb NOT NULL` | Valores del sensor. Claves = registros Modbus (ej. `{"D1": 1234, "D2": 0}`) |
-| `received_at` | `timestamptz DEFAULT now()` | Cuando csvconsumer insertó el dato |
+| Columna       | Tipo                        | Descripción                                                                 |
+| ------------- | --------------------------- | --------------------------------------------------------------------------- |
+| `time`        | `timestamptz NOT NULL`      | Timestamp de la lectura (UTC) — dimensión temporal del hypertable           |
+| `id_serial`   | `varchar(50) NOT NULL`      | ID del dispositivo Windows. Enlaza con `sitio.id_serial`                    |
+| `data`        | `jsonb NOT NULL`            | Valores del sensor. Claves = registros Modbus (ej. `{"D1": 1234, "D2": 0}`) |
+| `received_at` | `timestamptz DEFAULT now()` | Cuando csvconsumer insertó el dato                                          |
 
 ---
 
 ## Índices
 
-| Índice | Tipo | Columnas | Uso |
-|--------|------|----------|-----|
-| `equipo_time_idx` | btree | `time DESC` | Queries por rango de fecha |
+| Índice                   | Tipo  | Columnas                 | Uso                             |
+| ------------------------ | ----- | ------------------------ | ------------------------------- |
+| `equipo_time_idx`        | btree | `time DESC`              | Queries por rango de fecha      |
 | `idx_equipo_serial_time` | btree | `(id_serial, time DESC)` | Queries por dispositivo + fecha |
-| `idx_equipo_data_gin` | GIN | `data` | Búsqueda dentro del JSONB |
+| `idx_equipo_data_gin`    | GIN   | `data`                   | Búsqueda dentro del JSONB       |
 
 ---
 
@@ -57,9 +57,9 @@ csvprocessor (Windows)
 
 ## Continuous aggregates derivadas
 
-| Vista | Granularidad |
-|-------|-------------|
-| `equipo_1min` | 1 minuto por `id_serial` |
+| Vista         | Granularidad              |
+| ------------- | ------------------------- |
+| `equipo_1min` | 1 minuto por `id_serial`  |
 | `equipo_5min` | 5 minutos por `id_serial` |
 
 Los gráficos del frontend leen de estas vistas, no de `equipo` directo.

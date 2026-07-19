@@ -12,14 +12,17 @@ tags: [vault/infrastructure]
 ## Deploy estándar
 
 > [!tip] Deploy manual en VM Linux
+>
 > ```bash
 > ssh -i ~/Downloads/key.pem azureuser@145.190.8.19
 > cd ~/emeltec3
 > bash scripts/deploy-production.sh
 > ```
+>
 > El script hace: `git pull` → build → restart containers → health check.
 
 > [!tip] Health check post-deploy
+>
 > ```bash
 > curl -s http://localhost:3000/api/v2/health/live
 > docker compose ps
@@ -30,6 +33,7 @@ tags: [vault/infrastructure]
 ## Aplicar migración SQL manualmente
 
 > [!example] Template
+>
 > ```bash
 > docker compose exec -T timescaledb psql -U postgres -d telemetry_platform \
 >   < ~/emeltec3/infra-db/migrations/NOMBRE.sql
@@ -43,10 +47,13 @@ tags: [vault/infrastructure]
 ## Logs post-deploy
 
 > [!info] Verificar workers DGA arrancaron
+>
 > ```bash
 > docker compose logs main-api --since 5m | grep -iE "worker|iniciado|preseed|dga"
 > ```
+>
 > Esperado:
+>
 > ```
 > DGA preseed worker iniciado
 > DGA fill worker iniciado
@@ -62,6 +69,7 @@ tags: [vault/infrastructure]
 ## Rollback
 
 > [!warning] Si el deploy falla
+>
 > ```bash
 > cd ~/emeltec3
 > git log --oneline -5          # ver commits recientes

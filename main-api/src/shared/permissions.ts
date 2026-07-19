@@ -52,9 +52,13 @@ export function canReadSite(
 ): boolean {
   if (!user || !site) return false;
   if (user.tipo === 'SuperAdmin') return true;
-  if (user.tipo === 'Admin' || user.tipo === 'Empresa')
-    return user.empresa_id === site.empresa_id;
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa' || user.tipo === 'Vendedor') {
+  if (user.tipo === 'Admin' || user.tipo === 'Empresa') return user.empresa_id === site.empresa_id;
+  if (
+    user.tipo === 'Gerente' ||
+    user.tipo === 'Cliente' ||
+    user.tipo === 'SubEmpresa' ||
+    user.tipo === 'Vendedor'
+  ) {
     if (user.empresa_id !== site.empresa_id) return false;
     // Sin sub-empresa asignada → acceso a toda la empresa (decisión jun-2026,
     // alineado con services/dataAccess.canAccessSite).
@@ -90,7 +94,12 @@ export function scopeByTenant(user: AuthUser | undefined): TenantScope {
       subEmpresaIds: null,
     };
   }
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa' || user.tipo === 'Vendedor') {
+  if (
+    user.tipo === 'Gerente' ||
+    user.tipo === 'Cliente' ||
+    user.tipo === 'SubEmpresa' ||
+    user.tipo === 'Vendedor'
+  ) {
     return {
       empresaIds: user.empresa_id ? [user.empresa_id] : [],
       subEmpresaIds: user.sub_empresa_id ? [user.sub_empresa_id] : [],

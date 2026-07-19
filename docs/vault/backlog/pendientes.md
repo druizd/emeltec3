@@ -43,6 +43,7 @@ graph LR
 > **Archivo:** `POZO REGADIO TD_log_20241008_20241022.csv` (~41,285 filas quality G)
 > **Path local:** `C:\Users\cidm3\Downloads\datos`
 > **Procedimiento:** [[ftp-dispositivos#Procedimiento — carga histórica]]
+>
 > ```powershell
 > .\filter-ftp-month.ps1 -InputFile "POZO REGADIO TD_log_20241008_20241022.csv" `
 >   -OutputFile "REGADIO_log_20241001_20241031.csv" `
@@ -56,6 +57,7 @@ graph LR
 > [!todo] Cargar jun 2026 — REGADIO
 > **Archivo:** `REGADIO_log_20260506_20260609.csv` (cubre hasta 9 jun)
 > **Nota:** abarca también inicio de mayo — verificar solapamiento con datos ya cargados.
+>
 > ```sql
 > SELECT MIN(time), MAX(time) FROM equipo
 > WHERE id_serial = '25120112' AND time >= '2026-05-01';
@@ -75,6 +77,7 @@ graph LR
 > [!danger] Configurar CASINO para DGA — bloqueado
 > **Bloqueo:** sin código `obra_dga` (`OB-XXXX-XXX`) no se puede reportar a SNIA.
 > **Pasos cuando llegue el código:**
+>
 > 1. Verificar que existe `sitio` con `id_serial='25120225'`
 > 2. Verificar que existe `pozo_config` para ese sitio
 > 3. Ejecutar SQL de [[dga-setup#SQL — configurar nuevo sitio (template CASINO)]]
@@ -82,16 +85,19 @@ graph LR
 
 > [!warning] Investigar REGADIO (S131) — solo 3 rows en `dato_dga`
 > Probablemente `dga_activo=false` o config incompleta.
+>
 > ```sql
 > SELECT dga_activo, dga_transport, dga_periodicidad,
 >        dga_fecha_inicio, dga_hora_inicio, dga_informante_rut
 > FROM pozo_config WHERE sitio_id = 'S131';
 > ```
+>
 > Si `dga_activo=false`: cambiar a `true` y esperar ciclo de preseed (6h) o reiniciar worker.
 
 > [!danger] Cutover DGA — deshabilitado hasta autorización
 > `ENABLE_DGA_SUBMISSION_WORKER=false` en `~/emeltec3/.env` en prod.
 > Cuando gerencia autorice:
+>
 > 1. Verificar `dga_transport='rest'` por pozo
 > 2. Cambiar flag en `.env`
 > 3. Redeploy: `bash scripts/deploy-production.sh`
@@ -103,6 +109,7 @@ graph LR
 > [!bug] Quality B entra a DB — fix en `parser.go`
 > **Impacto:** datos malos pueden llegar a slots DGA → `requires_review` en cascada.
 > **Fix:** `ftp-pipeline/ftpprocessor/internal/parser/parser.go`
+>
 > ```go
 > // En BuildTelemetryRecords, antes de agrupar:
 > if row.Quality == "B" {

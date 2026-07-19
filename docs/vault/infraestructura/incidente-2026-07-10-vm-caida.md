@@ -11,16 +11,16 @@
 
 ## Cronología
 
-| Hora  | Evento |
-|-------|--------|
-| ~14:36 | Primeros errores gRPC `Unavailable` — "closed network connection" |
-| ~14:36 | Alertas a main-api fallan por timeout |
-| ~14:36 | Errores cambian a `DeadlineExceeded` (servidor parcialmente vivo o reiniciando) |
-| ~14:37 | Algunos archivos logran enviarse en intento 3/3 (23s de latencia) |
-| ~14:3x | VM completamente inaccesible (ping 100% pérdida) |
-| ~14:46 | Error cambia a `actively refused it` — VM reiniciando o containers bajados |
-| **14:55:38** | **gRPC `:50051` vuelve** — VM arriba, csvprocessor empieza a enviar ok |
-| 14:55:38+ | main-api `:3000` sigue con `context deadline exceeded` — container no levantó |
+| Hora         | Evento                                                                          |
+| ------------ | ------------------------------------------------------------------------------- |
+| ~14:36       | Primeros errores gRPC `Unavailable` — "closed network connection"               |
+| ~14:36       | Alertas a main-api fallan por timeout                                           |
+| ~14:36       | Errores cambian a `DeadlineExceeded` (servidor parcialmente vivo o reiniciando) |
+| ~14:37       | Algunos archivos logran enviarse en intento 3/3 (23s de latencia)               |
+| ~14:3x       | VM completamente inaccesible (ping 100% pérdida)                                |
+| ~14:46       | Error cambia a `actively refused it` — VM reiniciando o containers bajados      |
+| **14:55:38** | **gRPC `:50051` vuelve** — VM arriba, csvprocessor empieza a enviar ok          |
+| 14:55:38+    | main-api `:3000` sigue con `context deadline exceeded` — container no levantó   |
 
 ## Causa raíz
 

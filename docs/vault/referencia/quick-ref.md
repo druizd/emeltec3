@@ -12,12 +12,14 @@ tags: [vault/reference]
 ## Conexión al servidor
 
 > [!tip] SSH Linux
+>
 > ```bash
 > ssh -i ~/Downloads/key.pem azureuser@145.190.8.19
 > # Repo en VM: ~/emeltec3
 > ```
 
 > [!tip] DB directa (desde VM)
+>
 > ```bash
 > # Consola interactiva
 > docker exec emeltec-db psql -U postgres -d telemetry_platform
@@ -109,6 +111,7 @@ ORDER BY ts DESC;
 ## Logs en la VM
 
 > [!info] Comandos de logs
+>
 > ```bash
 > cd ~/emeltec3
 >
@@ -134,6 +137,7 @@ ORDER BY ts DESC;
 ## ftpprocessor (Windows Server)
 
 > [!info] Carga de datos históricos
+>
 > ```powershell
 > # 1. Filtrar CSV local
 > .\filter-ftp-month.ps1 `
@@ -150,6 +154,7 @@ ORDER BY ts DESC;
 
 > [!warning] Regla del nombre de archivo
 > El archivo DEBE tener `_log_` en el nombre o el id_serial se extrae mal.
+>
 > ```
 > ✅ REGADIO_log_20260501_20260531.csv  → serial = 25120112
 > ❌ REGADIO_mayo2026.csv              → serial = REGADIO_mayo2026 (no resuelve)
@@ -160,12 +165,14 @@ ORDER BY ts DESC;
 ## Deploy
 
 > [!tip] Deploy manual
+>
 > ```bash
 > cd ~/emeltec3
 > bash scripts/deploy-production.sh
 > ```
 
 > [!tip] Aplicar migración SQL manualmente
+>
 > ```bash
 > docker compose exec -T timescaledb psql -U postgres -d telemetry_platform \
 >   < ~/emeltec3/infra-db/migrations/NOMBRE.sql
@@ -175,14 +182,14 @@ ORDER BY ts DESC;
 
 ## Variables de entorno críticas (`~/emeltec3/.env`)
 
-| Variable | Función |
-|---|---|
-| `POSTGRES_USER/DB/PASSWORD` | Credenciales DB |
-| `JWT_SECRET` | Firma JWT (compartido main-api + auth-api) |
-| `INTERNAL_API_KEY` | Service-to-service (linux-db-api) |
-| `DGA_ENCRYPTION_KEY` | AES-256 para claves informante SNIA |
-| `DGA_RUT_EMPRESA` | RUT Centro de Control Emeltec |
-| `ENABLE_DGA_SUBMISSION_WORKER` | **Default `false`** — no tocar sin autorización |
-| `RESEND_API_KEY` | OTP 2FA por email |
-| `MONITOR_PRIMARY_EMAIL` | Destino alertas reconciler |
-| `DEVICE_ALIASES` (ftpprocessor) | `REGADIO:25120112,CASINO:25120225` |
+| Variable                        | Función                                         |
+| ------------------------------- | ----------------------------------------------- |
+| `POSTGRES_USER/DB/PASSWORD`     | Credenciales DB                                 |
+| `JWT_SECRET`                    | Firma JWT (compartido main-api + auth-api)      |
+| `INTERNAL_API_KEY`              | Service-to-service (linux-db-api)               |
+| `DGA_ENCRYPTION_KEY`            | AES-256 para claves informante SNIA             |
+| `DGA_RUT_EMPRESA`               | RUT Centro de Control Emeltec                   |
+| `ENABLE_DGA_SUBMISSION_WORKER`  | **Default `false`** — no tocar sin autorización |
+| `RESEND_API_KEY`                | OTP 2FA por email                               |
+| `MONITOR_PRIMARY_EMAIL`         | Destino alertas reconciler                      |
+| `DEVICE_ALIASES` (ftpprocessor) | `REGADIO:25120112,CASINO:25120225`              |

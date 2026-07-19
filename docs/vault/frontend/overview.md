@@ -47,26 +47,26 @@ frontend-angular/src/app/
 
 El módulo central de la app. Muestra el detalle de un sitio. El tipo de sitio determina el componente de detalle:
 
-| Componente | `tipo_sitio` / módulo | Descripción |
-|------------|----------------------|-------------|
-| `company-site-water-detail` | Agua (pozo) | Dashboard pozo: telemetría, DGA, alertas, análisis, bitácora |
-| `company-site-vertiente-detail` | Agua (vertiente) | Similar a water-detail para sitios de vertiente |
-| `company-site-electric-detail` | Eléctrico | Consumo eléctrico |
-| `company-site-riles-detail` | Riles | Generación de riles |
-| `company-site-canal-detail` | Canal | Medición en canales |
-| `company-site-pasteurizador-detail` | Proceso/Pasteurizador | Variables de pasteurización |
-| `company-site-coming-soon-detail` | Otros | Placeholder |
+| Componente                          | `tipo_sitio` / módulo | Descripción                                                  |
+| ----------------------------------- | --------------------- | ------------------------------------------------------------ |
+| `company-site-water-detail`         | Agua (pozo)           | Dashboard pozo: telemetría, DGA, alertas, análisis, bitácora |
+| `company-site-vertiente-detail`     | Agua (vertiente)      | Similar a water-detail para sitios de vertiente              |
+| `company-site-electric-detail`      | Eléctrico             | Consumo eléctrico                                            |
+| `company-site-riles-detail`         | Riles                 | Generación de riles                                          |
+| `company-site-canal-detail`         | Canal                 | Medición en canales                                          |
+| `company-site-pasteurizador-detail` | Proceso/Pasteurizador | Variables de pasteurización                                  |
+| `company-site-coming-soon-detail`   | Otros                 | Placeholder                                                  |
 
 ### Tabs dentro de `company-site-water-detail`
 
-| Tab | Componentes |
-|-----|-------------|
-| Monitor | Gráficos en tiempo real, diagrama de pozo, KPIs |
-| DGA | Tabla de slots `dato_dga`, estado de envíos |
-| Alertas | `water-detail-alertas/` — bandeja, configuración, histórico |
-| Análisis | `water-detail-analisis/` — calendario, métricas, predictivo |
+| Tab       | Componentes                                                      |
+| --------- | ---------------------------------------------------------------- |
+| Monitor   | Gráficos en tiempo real, diagrama de pozo, KPIs                  |
+| DGA       | Tabla de slots `dato_dga`, estado de envíos                      |
+| Alertas   | `water-detail-alertas/` — bandeja, configuración, histórico      |
+| Análisis  | `water-detail-analisis/` — calendario, métricas, predictivo      |
 | Operación | `water-detail-operacion/` — gráficos históricos, resumen período |
-| Bitácora | `water-detail-bitacora/` — incidencias, documentos, ficha sitio |
+| Bitácora  | `water-detail-bitacora/` — incidencias, documentos, ficha sitio  |
 
 ---
 
@@ -74,33 +74,33 @@ El módulo central de la app. Muestra el detalle de un sitio. El tipo de sitio d
 
 La página `companies/` tiene vistas separadas por rol:
 
-| Vista | Rol | Descripción |
-|-------|-----|-------------|
-| `companies-superadmin-view` | SuperAdmin | Ve todas las empresas |
-| `companies-admin-view` | Admin | Ve su empresa |
-| `companies-gerente-view` | Gerente | Ve su empresa o sub_empresa |
-| `companies-cliente-view` | Cliente | Vista de solo lectura |
+| Vista                       | Rol        | Descripción                 |
+| --------------------------- | ---------- | --------------------------- |
+| `companies-superadmin-view` | SuperAdmin | Ve todas las empresas       |
+| `companies-admin-view`      | Admin      | Ve su empresa               |
+| `companies-gerente-view`    | Gerente    | Ve su empresa o sub_empresa |
+| `companies-cliente-view`    | Cliente    | Vista de solo lectura       |
 
 ---
 
 ## Servicios HTTP (`services/`)
 
-| Servicio | Descripción |
-|----------|-------------|
-| `auth.service.ts` | Login, logout, OTP, refresh, JWT storage |
-| `company.service.ts` | Empresas, sub_empresas, sitios |
-| `dga.service.ts` | Slots DGA, revisión, pozo config |
-| `alerta.service.ts` | Alertas, eventos |
-| `analisis.service.ts` | Análisis predictivo y de salud |
-| `bitacora-sitio.service.ts` | Bitácora de sitio |
-| `incidencia.service.ts` | Incidencias |
-| `documento.service.ts` | Documentos adjuntos |
-| `user.service.ts` | CRUD de usuarios |
-| `administration.service.ts` | Administración (usuarios, empresas) |
-| `cold-room.service.ts` | Salas frías |
-| `two-factor.service.ts` | Step-up 2FA |
-| `audit-log.service.ts` | Log de auditoría |
-| `shortcut.service.ts` | Paleta de shortcuts |
+| Servicio                    | Descripción                              |
+| --------------------------- | ---------------------------------------- |
+| `auth.service.ts`           | Login, logout, OTP, refresh, JWT storage |
+| `company.service.ts`        | Empresas, sub_empresas, sitios           |
+| `dga.service.ts`            | Slots DGA, revisión, pozo config         |
+| `alerta.service.ts`         | Alertas, eventos                         |
+| `analisis.service.ts`       | Análisis predictivo y de salud           |
+| `bitacora-sitio.service.ts` | Bitácora de sitio                        |
+| `incidencia.service.ts`     | Incidencias                              |
+| `documento.service.ts`      | Documentos adjuntos                      |
+| `user.service.ts`           | CRUD de usuarios                         |
+| `administration.service.ts` | Administración (usuarios, empresas)      |
+| `cold-room.service.ts`      | Salas frías                              |
+| `two-factor.service.ts`     | Step-up 2FA                              |
+| `audit-log.service.ts`      | Log de auditoría                         |
+| `shortcut.service.ts`       | Paleta de shortcuts                      |
 
 ---
 
@@ -108,15 +108,16 @@ La página `companies/` tiene vistas separadas por rol:
 
 Ver `AGENTS.md` para especificación completa. Resumen:
 
-| Token | Valor | Uso |
-|-------|-------|-----|
-| `--teal-400` | `#0DAFBD` | Color primario, activos |
-| `--bg-body` | `#F0F2F5` | Fondo de la app |
-| `--bg-surface` | `#FFFFFF` | Cards, panels |
-| `--text-primary` | `#1E293B` | Títulos |
-| `--text-secondary` | `#64748B` | Texto de apoyo |
+| Token              | Valor     | Uso                     |
+| ------------------ | --------- | ----------------------- |
+| `--teal-400`       | `#0DAFBD` | Color primario, activos |
+| `--bg-body`        | `#F0F2F5` | Fondo de la app         |
+| `--bg-surface`     | `#FFFFFF` | Cards, panels           |
+| `--text-primary`   | `#1E293B` | Títulos                 |
+| `--text-secondary` | `#64748B` | Texto de apoyo          |
 
 **Tipografía:**
+
 - Josefin Sans — headings, labels uppercase
 - DM Sans — body text
 - JetBrains Mono — valores numéricos, datos
@@ -125,17 +126,17 @@ Ver `AGENTS.md` para especificación completa. Resumen:
 
 ## Componentes UI reutilizables
 
-| Componente | Descripción |
-|------------|-------------|
-| `kpi-card` | Tarjeta de KPI con valor teal + JetBrains Mono |
-| `chart-card` | Wrapper de Chart.js con skeleton |
-| `site-card` | Card de sitio en el dashboard |
-| `well-stat-card` | Estadística de pozo |
-| `confirm-dialog` | Dialog de confirmación |
-| `two-factor-dialog` | Dialog de 2FA inline |
-| `session-expiry-warning` | Aviso de expiración de sesión |
-| `shortcut-palette` | Paleta de atajos de teclado |
-| `skeleton` / `*-skeleton` | Estados de carga |
+| Componente                | Descripción                                    |
+| ------------------------- | ---------------------------------------------- |
+| `kpi-card`                | Tarjeta de KPI con valor teal + JetBrains Mono |
+| `chart-card`              | Wrapper de Chart.js con skeleton               |
+| `site-card`               | Card de sitio en el dashboard                  |
+| `well-stat-card`          | Estadística de pozo                            |
+| `confirm-dialog`          | Dialog de confirmación                         |
+| `two-factor-dialog`       | Dialog de 2FA inline                           |
+| `session-expiry-warning`  | Aviso de expiración de sesión                  |
+| `shortcut-palette`        | Paleta de atajos de teclado                    |
+| `skeleton` / `*-skeleton` | Estados de carga                               |
 
 ---
 

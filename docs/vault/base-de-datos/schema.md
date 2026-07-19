@@ -33,6 +33,7 @@ erDiagram
 ## Grupo: Entidades base
 
 > [!info] `empresa`
+>
 > ```sql
 > id           VARCHAR(10) PK
 > nombre       VARCHAR(150)
@@ -41,6 +42,7 @@ erDiagram
 > ```
 
 > [!info] `sub_empresa`
+>
 > ```sql
 > id         VARCHAR(10) PK
 > nombre     VARCHAR(150)
@@ -48,6 +50,7 @@ erDiagram
 > ```
 
 > [!info] `sitio`
+>
 > ```sql
 > id          VARCHAR(10) PK    -- ej. 'S131', 'S225'
 > descripcion VARCHAR(255)
@@ -58,6 +61,7 @@ erDiagram
 > ```
 
 > [!info] `usuario`
+>
 > ```sql
 > id        VARCHAR(10) PK
 > email     VARCHAR(150) UNIQUE
@@ -72,6 +76,7 @@ erDiagram
 ## Grupo: Configuración de pozos
 
 > [!example] `pozo_config`
+>
 > ```sql
 > sitio_id               VARCHAR(10) PK FK → sitio
 > profundidad_pozo_m     NUMERIC
@@ -94,6 +99,7 @@ erDiagram
 > ```
 
 > [!example] `reg_map`
+>
 > ```sql
 > id            VARCHAR(20) PK
 > alias         VARCHAR(100)     -- nombre legible
@@ -110,23 +116,25 @@ erDiagram
 ## Grupo: Telemetría (series temporales)
 
 > [!tip] `equipo` — hypertable principal
+>
 > ```sql
 > time        TIMESTAMPTZ NOT NULL   -- columna partición (chunks 1 día)
 > id_serial   VARCHAR(50)            -- device serial  ej. '25120112'
 > data        JSONB                  -- {"Flujo Insta": 0.0, "Totalizado": 4915200, ...}
 > received_at TIMESTAMPTZ
 > ```
+>
 > - Compresión automática tras **7 días** (`compress_segmentby = 'id_serial'`)
 > - Index: `(id_serial, time DESC)` + GIN en `data`
 
 ### Continuous Aggregates
 
-| Vista | Bucket | end_offset | Uso principal |
-|---|---|---|---|
-| `equipo_1min` | 1 min | 2 min | DGA fill worker, dashboard history |
-| `equipo_5min` | 5 min | 10 min | Contadores delta, gap analysis |
-| `equipo_hourly` | 1 hora | 1 hora | Vistas medias, DGA horario |
-| `equipo_daily` | 1 día | 1 día | Exports largos (meses/años) |
+| Vista           | Bucket | end_offset | Uso principal                      |
+| --------------- | ------ | ---------- | ---------------------------------- |
+| `equipo_1min`   | 1 min  | 2 min      | DGA fill worker, dashboard history |
+| `equipo_5min`   | 5 min  | 10 min     | Contadores delta, gap analysis     |
+| `equipo_hourly` | 1 hora | 1 hora     | Vistas medias, DGA horario         |
+| `equipo_daily`  | 1 día  | 1 día      | Exports largos (meses/años)        |
 
 > [!warning] Las continuous aggregates NO son real-time
 > Datos recién insertados en `equipo` **no aparecen** en `equipo_1min` hasta ~2 min después.
@@ -137,6 +145,7 @@ erDiagram
 ## Grupo: DGA regulatorio
 
 > [!example] `dato_dga`
+>
 > ```sql
 > site_id             VARCHAR(10) PK FK → sitio   -- parte clave primaria
 > ts                  TIMESTAMPTZ PK               -- parte clave primaria
@@ -171,6 +180,7 @@ stateDiagram-v2
 ```
 
 > [!info] `dga_informante`
+>
 > ```sql
 > rut              VARCHAR(20) PK   -- RUT informante SNIA
 > clave_informante TEXT             -- AES-256-GCM (DGA_ENCRYPTION_KEY)
@@ -178,6 +188,7 @@ stateDiagram-v2
 > ```
 
 > [!info] `dga_send_audit` (append-only)
+>
 > ```sql
 > id                  BIGSERIAL PK
 > site_id             VARCHAR(10)
@@ -198,6 +209,7 @@ stateDiagram-v2
 ## Grupo: Alertas e incidencias
 
 > [!info] `alertas`
+>
 > ```sql
 > sitio_id     FK → sitio
 > variable_key VARCHAR(50)   -- campo en data JSON o 'dga_atrasado'
@@ -207,6 +219,7 @@ stateDiagram-v2
 > ```
 
 > [!info] `incidencias`
+>
 > ```sql
 > sitio_id  FK → sitio
 > estado    VARCHAR  -- 'abierta'|'en_progreso'|'resuelta'|'cerrada'
@@ -215,6 +228,7 @@ stateDiagram-v2
 > ```
 
 > [!info] `plc_commands` (desde linux-db-api)
+>
 > ```sql
 > command_id   VARCHAR PK
 > id_serial    VARCHAR(50)
@@ -229,12 +243,12 @@ stateDiagram-v2
 
 > Ver queries SQL frecuentes en [[quick-ref]] · tareas pendientes de deuda técnica en [[pendientes]].
 
-| Migración | Cambio importante |
-|---|---|
-| `2026-05-12-dga-reporte.sql` | Crea tablas DGA iniciales |
-| `2026-05-16-dga-pipeline-refactor.sql` | Extiende `dga_user`, `dato_dga` con estados granulares, crea `dga_send_audit` |
-| **`2026-05-17-dga-pozo-config-redesign.sql`** | **MAYOR**: mueve config DGA a `pozo_config.dga_*`, crea `dga_informante`, dropea `dga_user`, cambia PK `dato_dga` a `(site_id, ts)` |
-| `2026-05-22-equipo-data-caggs.sql` | Continuous aggregates con `data` y `samples` |
-| `2026-06-01-plc-commands.sql` | Cola PLC commands |
-| `2026-06-07-equipo-dedupe.sql` | Deduplicación hypertable |
-| `2026-06-11-drop-dga-auto-accept-fallback.sql` | Elimina auto-accept (decisión seguridad) |
+| Migración                                      | Cambio importante                                                                                                                   |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `2026-05-12-dga-reporte.sql`                   | Crea tablas DGA iniciales                                                                                                           |
+| `2026-05-16-dga-pipeline-refactor.sql`         | Extiende `dga_user`, `dato_dga` con estados granulares, crea `dga_send_audit`                                                       |
+| **`2026-05-17-dga-pozo-config-redesign.sql`**  | **MAYOR**: mueve config DGA a `pozo_config.dga_*`, crea `dga_informante`, dropea `dga_user`, cambia PK `dato_dga` a `(site_id, ts)` |
+| `2026-05-22-equipo-data-caggs.sql`             | Continuous aggregates con `data` y `samples`                                                                                        |
+| `2026-06-01-plc-commands.sql`                  | Cola PLC commands                                                                                                                   |
+| `2026-06-07-equipo-dedupe.sql`                 | Deduplicación hypertable                                                                                                            |
+| `2026-06-11-drop-dga-auto-accept-fallback.sql` | Elimina auto-accept (decisión seguridad)                                                                                            |

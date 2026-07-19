@@ -71,11 +71,11 @@ Ahora si el proceso muere entre 4 y 5, al reiniciar carga los registros con `don
 
 El ACK se envía **después** de escribir el WAL, **antes** de insertar en PostgreSQL.
 
-| Escenario | Resultado |
-|-----------|-----------|
-| csvconsumer se reinicia después del ACK | WAL tiene `done=0` → se recuperan solos al arrancar |
-| PostgreSQL se cae después del ACK | Lote reencola + reconexión con backoff → inserta cuando vuelve |
-| csvconsumer se reinicia antes del ACK | csvprocessor no recibió ACK → reintenta → WAL puede tener duplicado → PostgreSQL descarta con `ON CONFLICT` |
+| Escenario                               | Resultado                                                                                                   |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| csvconsumer se reinicia después del ACK | WAL tiene `done=0` → se recuperan solos al arrancar                                                         |
+| PostgreSQL se cae después del ACK       | Lote reencola + reconexión con backoff → inserta cuando vuelve                                              |
+| csvconsumer se reinicia antes del ACK   | csvprocessor no recibió ACK → reintenta → WAL puede tener duplicado → PostgreSQL descarta con `ON CONFLICT` |
 
 **Sin el WAL**, el hueco entre ACK y INSERT en PostgreSQL fue la causa de la pérdida de datos del 10–14 de julio 2026.
 
@@ -110,12 +110,13 @@ Registros en RAM esperando flush a PostgreSQL. Se pierde si el proceso muere, pe
 
 Tick cada 3 segundos. Dos modos:
 
-| Condición | Tamaño de lote |
-|-----------|----------------|
+| Condición       | Tamaño de lote            |
+| --------------- | ------------------------- |
 | Cola ≤ 10 items | 3 registros (modo normal) |
 | Cola > 10 items | 100 registros (modo bulk) |
 
 Si el INSERT falla:
+
 1. Reencola el lote en el frente de la cola
 2. Si el error es `is_closed()` → backoff exponencial: 2s → 4s → 8s … → 60s máx
 3. Rompe el inner loop; el ticker maneja el próximo intento
@@ -123,6 +124,7 @@ Si el INSERT falla:
 ### Servidor gRPC — tonic
 
 Puerto `50051`. Dos endpoints:
+
 - `Ping` — healthcheck
 - `SendRecords` — recibe lote, valida campos, persiste WAL, encola, ACK
 
@@ -130,15 +132,15 @@ Puerto `50051`. Dos endpoints:
 
 ## Variables de entorno
 
-| Variable | Default | Descripción |
-|----------|---------|-------------|
-| `GRPC_PORT` | `50051` | Puerto gRPC del servidor |
-| `WAL_DB_PATH` | `/data/csvconsumer-wal.db` | Ruta del SQLite WAL |
-| `DB_HOST` | `timescaledb` | Host PostgreSQL (nombre servicio Docker) |
-| `DB_PORT` | `5432` | Puerto PostgreSQL interno |
-| `DB_NAME` | `db_infra` | Nombre de la base de datos |
-| `DB_USER` | `admin_infra` | Usuario PostgreSQL |
-| `DB_PASSWORD` | _(vacío)_ | Password PostgreSQL (obligatorio en producción) |
+| Variable      | Default                    | Descripción                                     |
+| ------------- | -------------------------- | ----------------------------------------------- |
+| `GRPC_PORT`   | `50051`                    | Puerto gRPC del servidor                        |
+| `WAL_DB_PATH` | `/data/csvconsumer-wal.db` | Ruta del SQLite WAL                             |
+| `DB_HOST`     | `timescaledb`              | Host PostgreSQL (nombre servicio Docker)        |
+| `DB_PORT`     | `5432`                     | Puerto PostgreSQL interno                       |
+| `DB_NAME`     | `db_infra`                 | Nombre de la base de datos                      |
+| `DB_USER`     | `admin_infra`              | Usuario PostgreSQL                              |
+| `DB_PASSWORD` | _(vacío)_                  | Password PostgreSQL (obligatorio en producción) |
 
 En producción se inyectan desde el bloque `x-db-env` del `docker-compose.yml` + `.env` raíz.
 
@@ -274,9 +276,9 @@ csvprocessor (Windows, Go)              csvconsumer (Linux, Rust)
 ─────────────────────────────           ──────────────────────────────────────
 archivo CSV detectado
   │
-  ├─ copia raw_backup/                  
-  ├─ parsea registros protobuf          
-  ├─ SQLite local → pending             
+  ├─ copia raw_backup/
+  ├─ parsea registros protobuf
+  ├─ SQLite local → pending
   └─ gRPC SendRecords ────────────────► recibe lote
                                           │
                                           ├─ valida campos (id_serial, fecha, hora, data)
@@ -297,11 +299,11 @@ archivo CSV detectado
 
 ## Archivos relevantes
 
-| Archivo | Descripción |
-|---------|-------------|
-| `grpc-pipeline/csvconsumer-rust/src/main.rs` | Código fuente completo del servicio |
-| `grpc-pipeline/csvconsumer-rust/Cargo.toml` | Dependencias Rust |
-| `grpc-pipeline/csvconsumer-rust.Dockerfile` | Imagen Docker (build + runtime) |
-| `grpc-pipeline/proto/` | Definición protobuf del contrato gRPC |
+| Archivo                                       | Descripción                               |
+| --------------------------------------------- | ----------------------------------------- |
+| `grpc-pipeline/csvconsumer-rust/src/main.rs`  | Código fuente completo del servicio       |
+| `grpc-pipeline/csvconsumer-rust/Cargo.toml`   | Dependencias Rust                         |
+| `grpc-pipeline/csvconsumer-rust.Dockerfile`   | Imagen Docker (build + runtime)           |
+| `grpc-pipeline/proto/`                        | Definición protobuf del contrato gRPC     |
 | `docker-compose.yml` → servicio `csvconsumer` | Variables de entorno, volumen WAL, puerto |
-| `.env` (raíz, gitignored) | Credenciales PostgreSQL en producción |
+| `.env` (raíz, gitignored)                     | Credenciales PostgreSQL en producción     |

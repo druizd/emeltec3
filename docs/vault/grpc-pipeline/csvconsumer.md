@@ -36,6 +36,7 @@ gRPC handler (Tonic)
 ## Estado del cliente PostgreSQL
 
 Usa `tokio_postgres`. La conexión devuelve **dos objetos**:
+
 - `Client` — ejecuta queries
 - `Connection` — tarea de background que mantiene el socket TCP vivo
 
@@ -46,6 +47,7 @@ Usa `tokio_postgres`. La conexión devuelve **dos objetos**:
 `type SharedClient = Arc<Mutex<Arc<Client>>>`
 
 En `flush_task`, cuando el insert devuelve `e.is_closed()`:
+
 1. Re-encola el batch con `push_front` (no se pierden datos)
 2. Reconecta con backoff exponencial: `2s → 4s → 8s → ... → 60s máx`
 3. Reemplaza cliente: `*shared_client.lock().await = new_client`
@@ -63,12 +65,12 @@ docker logs emeltec-csvconsumer --tail=50
 
 **Líneas importantes:**
 
-| Log | Significado |
-|-----|-------------|
-| `lote encolado [...] cola=N modo=bulk` | Lote recibido y encolado. N = tamaño total de la cola |
-| `flush: 100 registros insertados` | Batch insertado en PostgreSQL |
-| `flush: 0 registros insertados` | Batch rechazado por trigger anti-duplicado (ya existía) |
-| `flush error: connection closed` | **Alerta:** conexión PostgreSQL rota — requiere restart |
+| Log                                    | Significado                                             |
+| -------------------------------------- | ------------------------------------------------------- |
+| `lote encolado [...] cola=N modo=bulk` | Lote recibido y encolado. N = tamaño total de la cola   |
+| `flush: 100 registros insertados`      | Batch insertado en PostgreSQL                           |
+| `flush: 0 registros insertados`        | Batch rechazado por trigger anti-duplicado (ya existía) |
+| `flush error: connection closed`       | **Alerta:** conexión PostgreSQL rota — requiere restart |
 
 ---
 

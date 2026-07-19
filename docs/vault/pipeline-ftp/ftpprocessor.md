@@ -29,23 +29,25 @@ graph TD
 
 ## Archivos clave
 
-| Archivo | Función |
-|---|---|
-| `internal/parser/parser.go` | Parsea CSV, extrae serial, filtra sentinels |
-| `internal/ftpreader/reader.go` | Lee CSV 6 columnas semicolón |
-| `internal/grpc/client.go` | Envía batch a ftpconsumer Linux |
-| `data/incoming_ftp/` | Drop zone — watcher monitorea esta carpeta |
+| Archivo                        | Función                                     |
+| ------------------------------ | ------------------------------------------- |
+| `internal/parser/parser.go`    | Parsea CSV, extrae serial, filtra sentinels |
+| `internal/ftpreader/reader.go` | Lee CSV 6 columnas semicolón                |
+| `internal/grpc/client.go`      | Envía batch a ftpconsumer Linux             |
+| `data/incoming_ftp/`           | Drop zone — watcher monitorea esta carpeta  |
 
 ---
 
 ## `SerialFromFilename` — regla crítica
 
 > [!danger] El nombre del archivo determina el `id_serial`
+>
 > ```go
 > // Busca el prefijo antes de "_log_"
 > // "REGADIO_log_20260501.csv" → "REGADIO" → resuelve via DEVICE_ALIASES → "25120112"
 > // "REGADIO_mayo.csv" → "REGADIO_mayo" → no resuelve → id_serial incorrecto en DB
 > ```
+>
 > **Sin `_log_` en el nombre: el dato queda huérfano.**
 
 ---
