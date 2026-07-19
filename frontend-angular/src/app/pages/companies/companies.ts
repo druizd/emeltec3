@@ -129,6 +129,19 @@ export class CompaniesComponent implements OnInit {
       const sub = comp.subCompanies?.find((s) => s.id === id);
       if (sub) {
         this.selectedSubCompany.set({ ...sub, empresa_id: comp.id });
+        // Siembra inmediata desde la jerarquía ya cargada: la pestaña
+        // "instalaciones" deriva su label/icono de los tipos de sitio, así que
+        // sin esto se ve un flash "Instalaciones"/factory → "Pozos"/water_drop
+        // mientras getSites resuelve. getSites lo sobrescribe con datos frescos.
+        if (sub.sites?.length) {
+          this.sites.set(
+            this.filterSitesBySelection(
+              this.filterSitesByPreviewScope(id, sub.sites),
+              moduleKey,
+              typeFilter,
+            ),
+          );
+        }
         break;
       }
     }

@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
 import { UserService } from '../../services/user.service';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
@@ -18,41 +19,62 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, A11yModule],
   template: `
     <div class="space-y-6 animate-in fade-in duration-300">
       <!-- ═══════════════════════════════════════════════════ -->
       <!-- Formulario de registro: solo si NO es readOnly -->
       <!-- ═══════════════════════════════════════════════════ -->
-      @if (!readOnly) {
-        <div class="bg-white border border-slate-200 rounded-3xl shadow-sm p-8">
-          <div class="flex items-center gap-3 mb-8">
-            <div class="w-10 h-10 bg-primary-tint-10 rounded-xl flex items-center justify-center">
-              <span class="material-symbols-outlined text-primary-container">{{
-                editingId() ? 'manage_accounts' : 'person_add'
-              }}</span>
-            </div>
-            <div class="flex-1">
-              <h2 class="text-h6 font-bold text-slate-800">
-                {{ editingId() ? 'Editar miembro' : 'Registrar nuevo miembro' }}
-              </h2>
-              <p class="text-[10px] text-slate-400 font-semibold uppercase tracking-widest mt-1">
-                Jerarquía Real: {{ companyName() }} / {{ subName() }}
-              </p>
-            </div>
-            @if (editingId()) {
+      @if (!readOnly && formOpen()) {
+        <div
+          class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+          animate.leave="anim-overlay-out"
+          role="dialog"
+          cdkTrapFocus
+          cdkTrapFocusAutoCapture
+          aria-modal="true"
+          aria-labelledby="user-form-title"
+          (click)="onBackdrop($event)"
+          (keydown.escape)="cancelEdit()"
+        >
+          <div
+            class="anim-panel relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            (click)="$event.stopPropagation()"
+          >
+            <!-- Header -->
+            <div
+              class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-6 py-4"
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-10 text-primary-container"
+                >
+                  <span class="material-symbols-outlined" aria-hidden="true">{{
+                    editingId() ? 'manage_accounts' : 'person_add'
+                  }}</span>
+                </span>
+                <div>
+                  <h2 id="user-form-title" class="text-h6 font-bold text-slate-800">
+                    {{ editingId() ? 'Editar miembro' : 'Registrar nuevo miembro' }}
+                  </h2>
+                  <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                    {{ companyName() }} / {{ subName() }}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
                 (click)="cancelEdit()"
-                class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-caption font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:text-slate-700"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+                aria-label="Cerrar"
               >
-                <span class="material-symbols-outlined text-base">close</span>
-                Cancelar edición
+                <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
-            }
-          </div>
+            </div>
 
-          @if (status().msg) {
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto px-6 py-5">
+              @if (status().type === 'error') {
             <div
               [class]="
                 'anim-banner p-4 rounded-xl mb-6 flex items-start gap-3 ' +
@@ -63,7 +85,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               role="status"
               [attr.aria-live]="status().type === 'error' ? 'assertive' : 'polite'"
             >
-              <span class="material-symbols-outlined mt-0.5">{{
+              <span class="material-symbols-outlined mt-0.5" aria-hidden="true">{{
                 status().type === 'success' ? 'check_circle' : 'error'
               }}</span>
               <div class="flex-1 min-w-0">
@@ -84,7 +106,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               <button
                 type="button"
                 (click)="dismissStatus()"
-                class="shrink-0 rounded-md p-1 text-current/70 hover:bg-black/5 transition-colors"
+                class="shrink-0 rounded-md p-1 text-current/70 hover:bg-black/5 transition-colors active:scale-95"
                 aria-label="Cerrar mensaje"
               >
                 <span class="material-symbols-outlined text-base">close</span>
@@ -102,7 +124,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   required
                   [(ngModel)]="newUser.tipo"
                   name="tipo"
-                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm font-semibold text-primary"
+                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm font-semibold text-primary"
                 >
                   @if (auth.isAdmin() || auth.isSuperAdmin()) {
                     <option value="Admin">Administrador (Control Total {{ companyName() }})</option>
@@ -120,7 +142,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   <div
                     class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
                   >
-                    <span class="material-symbols-outlined text-primary-container text-sm"
+                    <span class="material-symbols-outlined text-primary-container text-sm" aria-hidden="true"
                       >domain</span
                     >
                     {{ companyName() }}
@@ -136,7 +158,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                     [class.text-slate-400]="newUser.tipo === 'Admin'"
                     [class.text-primary-container]="newUser.tipo !== 'Admin'"
                   >
-                    <span class="material-symbols-outlined text-sm">factory</span>
+                    <span class="material-symbols-outlined text-sm" aria-hidden="true">factory</span>
                     {{ newUser.tipo === 'Admin' ? 'Toda la Empresa' : subName() }}
                   </div>
                 </div>
@@ -153,7 +175,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   required
                   [(ngModel)]="newUser.nombre"
                   name="nombre"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
                   placeholder="Ej. Roberto"
                 />
               </div>
@@ -165,7 +187,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   required
                   [(ngModel)]="newUser.apellido"
                   name="apellido"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
                   placeholder="Ej. Sánchez"
                 />
               </div>
@@ -177,7 +199,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   required
                   [(ngModel)]="newUser.telefono"
                   name="telefono"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
                   placeholder="+56 9 ..."
                 />
               </div>
@@ -191,7 +213,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   [(ngModel)]="newUser.email"
                   name="email"
                   [disabled]="!!editingId()"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
                   placeholder="usuario@correo.com"
                 />
                 @if (editingId()) {
@@ -208,7 +230,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   required
                   [(ngModel)]="newUser.cargo"
                   name="cargo"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition-all text-body-sm"
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
                   placeholder="Ej. Encargado de sector de aguas"
                 />
               </div>
@@ -230,19 +252,51 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               </div>
             }
 
-            <div class="pt-6 border-t border-slate-100 flex justify-end">
+            <div class="flex justify-end gap-3 border-t border-slate-100 pt-6">
+              <button
+                type="button"
+                (click)="cancelEdit()"
+                class="rounded-xl border border-slate-200 px-6 py-4 text-caption font-semibold uppercase tracking-widest text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+              >
+                Cancelar
+              </button>
               <button
                 type="submit"
                 [disabled]="loading()"
-                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition-all shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
+                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
               >
-                <span class="material-symbols-outlined text-lg">{{
+                <span class="material-symbols-outlined text-lg" aria-hidden="true">{{
                   editingId() ? 'save' : 'person_add'
                 }}</span>
                 {{ loading() ? 'Guardando...' : editingId() ? 'Guardar cambios' : 'Crear usuario' }}
               </button>
             </div>
           </form>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Banner de éxito (visible tras cerrar el modal) -->
+      @if (status().type === 'success') {
+        <div
+          class="anim-banner flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-700"
+          role="status"
+          aria-live="polite"
+        >
+          <span class="material-symbols-outlined mt-0.5" aria-hidden="true">check_circle</span>
+          <div class="min-w-0 flex-1">
+            <p class="text-caption font-bold uppercase tracking-widest">Listo</p>
+            <p class="mt-1 text-body-sm font-semibold break-words">{{ status().msg }}</p>
+          </div>
+          <button
+            type="button"
+            (click)="dismissStatus()"
+            class="shrink-0 rounded-md p-1 text-current/70 transition-colors hover:bg-black/5 active:scale-95"
+            aria-label="Cerrar mensaje"
+          >
+            <span class="material-symbols-outlined text-base">close</span>
+          </button>
         </div>
       }
 
@@ -262,6 +316,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               <span class="relative block">
                 <span
                   class="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-slate-300"
+                  aria-hidden="true"
                   >search</span
                 >
                 <input
@@ -269,15 +324,27 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   [ngModel]="userSearch()"
                   (ngModelChange)="setUserSearch($event)"
                   placeholder="Buscar nombre, correo o empresa..."
-                  class="h-9 w-full rounded-lg border border-surface-container bg-white pl-9 pr-3 text-caption font-semibold text-on-surface outline-none transition-colors placeholder:text-slate-400 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-9 w-full rounded-lg border border-surface-container bg-white pl-9 pr-3 text-caption font-semibold text-on-surface outline-none transition-colors placeholder:text-slate-500 focus:border-primary-tint-40 focus:ring-2 focus:ring-primary-tint-20"
                 />
               </span>
             </label>
           </div>
-          <span
-            class="shrink-0 rounded-full bg-primary-tint-14 px-3 py-1 text-[10px] font-semibold text-primary-container"
-            >{{ filteredUsers().length }} Usuarios</span
-          >
+          <div class="flex shrink-0 items-center gap-3">
+            <span
+              class="rounded-full bg-primary-tint-14 px-3 py-1 text-[10px] font-semibold text-primary-container"
+              >{{ filteredUsers().length }} Usuarios</span
+            >
+            @if (!readOnly) {
+              <button
+                type="button"
+                (click)="openCreate()"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary-container px-4 py-2 text-caption font-bold text-white transition-colors hover:opacity-90 active:scale-95"
+              >
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">person_add</span>
+                Crear usuario
+              </button>
+            }
+          </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full min-w-[760px] text-left text-body-sm">
@@ -367,7 +434,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                             type="button"
                             (click)="startEdit(user)"
                             [disabled]="rowBusyId() === user.id"
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-tint-10 hover:text-primary-container disabled:opacity-40"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-tint-10 hover:text-primary-container active:scale-95 disabled:opacity-40"
                             title="Editar"
                             aria-label="Editar usuario"
                           >
@@ -377,7 +444,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                             type="button"
                             (click)="resetPassword(user)"
                             [disabled]="rowBusyId() === user.id"
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600 disabled:opacity-40"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600 active:scale-95 disabled:opacity-40"
                             title="Reenviar código de acceso"
                             aria-label="Reenviar código de acceso"
                           >
@@ -388,7 +455,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                               type="button"
                               (click)="reactivate(user)"
                               [disabled]="rowBusyId() === user.id"
-                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40"
+                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 active:scale-95 disabled:opacity-40"
                               title="Reactivar"
                               aria-label="Reactivar usuario"
                             >
@@ -399,7 +466,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                               type="button"
                               (click)="deactivate(user)"
                               [disabled]="rowBusyId() === user.id"
-                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
+                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 active:scale-95 disabled:opacity-40"
                               title="Desactivar"
                               aria-label="Desactivar usuario"
                             >
@@ -418,7 +485,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               @if (filteredUsers().length === 0) {
                 <tr>
                   <td [attr.colspan]="readOnly ? 4 : 6" class="px-6 py-10 text-center">
-                    <span class="material-symbols-outlined text-slate-300 text-4xl mb-2"
+                    <span class="material-symbols-outlined text-slate-300 text-4xl mb-2" aria-hidden="true"
                       >group_off</span
                     >
                     <p class="text-slate-500 font-bold text-body-sm">Sin usuarios registrados</p>
@@ -441,7 +508,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                 type="button"
                 (click)="previousUserPage()"
                 [disabled]="userPage() === 1"
-                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-40 hover:text-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-40 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Pagina anterior"
               >
                 <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -453,7 +520,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                 type="button"
                 (click)="nextUserPage()"
                 [disabled]="userPage() === totalUserPages()"
-                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-40 hover:text-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-40 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Pagina siguiente"
               >
                 <span class="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -483,6 +550,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
   loading = signal(false);
   status = signal({ type: '', msg: '' });
   editingId = signal<string | null>(null);
+  formOpen = signal(false);
   rowBusyId = signal<string | null>(null);
   readonly pageSize = 10;
 
@@ -555,6 +623,8 @@ export class UserManagementComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges) {
     if (changes['subEmpresaId'] || changes['empresaId']) {
       this.updateInputs();
+      this.editingId.set(null);
+      this.formOpen.set(false);
       this.resetForm();
       this.userSearch.set('');
       this.userPage.set(1);
@@ -632,6 +702,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       next: (res: ApiResponse<User>) => {
         if (res.ok) {
           this.clearForm();
+          this.formOpen.set(false);
           this.status.set({
             type: 'success',
             msg: `Usuario creado correctamente para ${submittedEmail}.`,
@@ -688,6 +759,18 @@ export class UserManagementComponent implements OnInit, OnChanges {
     return false;
   }
 
+  /** Abre el modal en modo creación (form limpio). */
+  openCreate() {
+    this.resetForm();
+    this.editingId.set(null);
+    this.formOpen.set(true);
+  }
+
+  /** Cierra el modal solo si el click cae en el backdrop, no en el panel. */
+  onBackdrop(event: MouseEvent) {
+    if (event.target === event.currentTarget) this.cancelEdit();
+  }
+
   startEdit(user: User) {
     if (!this.canManage(user)) return;
     this.editingId.set(user.id);
@@ -703,15 +786,15 @@ export class UserManagementComponent implements OnInit, OnChanges {
       empresa_id: user.empresa_id ?? this.empresaId,
       sub_empresa_id: user.sub_empresa_id ?? this.subEmpresaId,
     };
-    if (typeof document !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    this.formOpen.set(true);
   }
 
+  /** Cierra el modal (cancelar / X / backdrop / Esc) y limpia el borrador. */
   cancelEdit() {
     this.editingId.set(null);
     this.clearForm();
     this.status.set({ type: '', msg: '' });
+    this.formOpen.set(false);
   }
 
   private updateUser() {
