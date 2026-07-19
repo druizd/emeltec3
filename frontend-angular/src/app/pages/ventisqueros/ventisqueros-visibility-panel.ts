@@ -24,19 +24,19 @@ import { Sensor, TapKey, fmtTemp } from './ventisqueros-data';
           <button
             (click)="showAll()"
             [disabled]="hidden().size === 0"
-            class="vs-visibility-btn flex items-center gap-1"
+            class="vs-visibility-btn flex items-center gap-1 active:scale-95"
             [style.opacity]="hidden().size === 0 ? 0.5 : 1"
           >
-            <span class="material-symbols-outlined text-[12px]">visibility</span>
+            <span class="material-symbols-outlined text-[12px]" aria-hidden="true">visibility</span>
             Mostrar todos
           </button>
           <button
             (click)="hideAll()"
             [disabled]="hidden().size === sensors().length"
-            class="vs-visibility-btn flex items-center gap-1"
+            class="vs-visibility-btn flex items-center gap-1 active:scale-95"
             [style.opacity]="hidden().size === sensors().length ? 0.5 : 1"
           >
-            <span class="material-symbols-outlined text-[12px]">visibility_off</span>
+            <span class="material-symbols-outlined text-[12px]" aria-hidden="true">visibility_off</span>
             Ocultar todos
           </button>
         </div>
@@ -48,7 +48,8 @@ import { Sensor, TapKey, fmtTemp } from './ventisqueros-data';
             <div class="vs-tap-card-wrap">
               <button
                 (click)="toggleTap(tap)"
-                class="vs-tap-card-head flex w-full items-center justify-between gap-2"
+                [attr.aria-pressed]="!isTapHidden(tap)"
+                class="vs-tap-card-head flex w-full items-center justify-between gap-2 active:scale-[0.98]"
               >
                 <div class="flex items-center gap-2">
                   <span
@@ -64,6 +65,7 @@ import { Sensor, TapKey, fmtTemp } from './ventisqueros-data';
                 <span class="vs-tap-card-toggle flex items-center gap-1">
                   <span
                     class="material-symbols-outlined text-[16px]"
+                    aria-hidden="true"
                     [style.color]="
                       isTapHidden(tap)
                         ? '#94A3B8'

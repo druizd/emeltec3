@@ -32,6 +32,7 @@ import { AuthService } from '../../services/auth.service';
           <div class="flex gap-4 border-b border-slate-100 px-5 py-5">
             <span
               class="material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-50 text-[24px] text-amber-600"
+              aria-hidden="true"
               >schedule</span
             >
             <div class="min-w-0">
@@ -49,16 +50,16 @@ import { AuthService } from '../../services/auth.service';
             <button
               type="button"
               (click)="auth.logout()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
             >
               Cerrar sesión ahora
             </button>
             <button
               type="button"
               (click)="auth.dismissExpiryWarning()"
-              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container"
+              class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98]"
             >
-              <span class="material-symbols-outlined text-[16px]">check</span>
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">check</span>
               Entendido
             </button>
           </div>

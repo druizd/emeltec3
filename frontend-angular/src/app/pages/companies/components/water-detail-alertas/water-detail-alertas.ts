@@ -67,8 +67,8 @@ interface AlertasTabItem {
       <nav class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="hidden flex-wrap items-center gap-1 px-2 py-2 md:flex">
           @for (tab of tabs(); track tab.key) {
-            <button type="button" (click)="setSection(tab.key)" [class]="tabClass(tab.key)">
-              <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
+            <button type="button" (click)="setSection(tab.key)" [attr.aria-current]="activeSection() === tab.key ? 'page' : null" [class]="tabClass(tab.key) + ' active:scale-95'">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{ tab.icon }}</span>
               <span>{{ tab.label }}</span>
             </button>
           }
@@ -144,7 +144,7 @@ export class WaterDetailAlertasComponent {
   tabClass(key: AlertasSection): string {
     const active = this.activeSection() === key;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition',
       active
         ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

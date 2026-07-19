@@ -79,7 +79,7 @@ interface SortState {
         [style.borderBottomColor]="tapColor()"
       >
         <button type="button" (click)="goBack()" class="cr-icon-btn" aria-label="Volver">
-          <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">arrow_back</span>
         </button>
         <div
           class="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg"
@@ -118,7 +118,10 @@ interface SortState {
           title="Actualizar (R)"
           aria-label="Actualizar"
         >
-          <span class="material-symbols-outlined text-[16px]" [class.cr-spin]="isLoading()"
+          <span
+            class="material-symbols-outlined text-[16px]"
+            [class.cr-spin]="isLoading()"
+            aria-hidden="true"
             >sync</span
           >
         </button>
@@ -131,8 +134,9 @@ interface SortState {
             (click)="toggleMap()"
             title="Plano (M)"
             aria-label="Plano"
+            [attr.aria-pressed]="showMap()"
           >
-            <span class="material-symbols-outlined text-[16px]">map</span>
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">map</span>
           </button>
 
           <button
@@ -142,7 +146,7 @@ interface SortState {
             (click)="exportCsv()"
             title="Descargar CSV"
           >
-            <span class="material-symbols-outlined text-[16px]">{{
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
               exporting() ? 'hourglass_top' : 'download'
             }}</span>
             CSV
@@ -154,7 +158,7 @@ interface SortState {
             (click)="exportPng()"
             title="Descargar PNG"
           >
-            <span class="material-symbols-outlined text-[16px]">image</span>
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">image</span>
             PNG
           </button>
         }
@@ -166,7 +170,7 @@ interface SortState {
           (click)="tab.set(tab() === 'configuracion' ? 'resumen' : 'configuracion')"
           [attr.aria-pressed]="tab() === 'configuracion'"
         >
-          <span class="material-symbols-outlined text-[16px]">{{
+          <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
             tab() === 'configuracion' ? 'arrow_back' : 'tune'
           }}</span>
           {{ tab() === 'configuracion' ? 'Resumen' : 'Configurar' }}
@@ -505,7 +509,9 @@ interface SortState {
                       (click)="query.set('')"
                       aria-label="Limpiar"
                     >
-                      <span class="material-symbols-outlined text-[14px]">close</span>
+                      <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                        >close</span
+                      >
                     </button>
                   }
                 </div>
@@ -516,20 +522,28 @@ interface SortState {
                     role="tab"
                     class="view-toggle-btn"
                     [class.view-toggle-btn--active]="viewMode() === 'table'"
+                    [attr.aria-selected]="viewMode() === 'table'"
                     (click)="setViewMode('table')"
                     title="Vista tabla"
+                    aria-label="Vista tabla"
                   >
-                    <span class="material-symbols-outlined text-[16px]">table_rows</span>
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                      >table_rows</span
+                    >
                   </button>
                   <button
                     type="button"
                     role="tab"
                     class="view-toggle-btn"
                     [class.view-toggle-btn--active]="viewMode() === 'grid'"
+                    [attr.aria-selected]="viewMode() === 'grid'"
                     (click)="setViewMode('grid')"
                     title="Vista grid"
+                    aria-label="Vista grid"
                   >
-                    <span class="material-symbols-outlined text-[16px]">grid_view</span>
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                      >grid_view</span
+                    >
                   </button>
                 </div>
 
@@ -540,9 +554,13 @@ interface SortState {
                     (click)="clearCompare()"
                     title="Vaciar selección de comparación"
                   >
-                    <span class="material-symbols-outlined text-[14px]">compare_arrows</span>
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >compare_arrows</span
+                    >
                     Comparando {{ compareSet().size }}
-                    <span class="material-symbols-outlined text-[14px]">close</span>
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >close</span
+                    >
                   </button>
                 }
               </div>
@@ -553,7 +571,9 @@ interface SortState {
               @if (pinnedSensors().length > 0) {
                 <div class="pinned-strip mb-3">
                   <span class="pinned-lbl">
-                    <span class="material-symbols-outlined text-[14px]">push_pin</span>
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >push_pin</span
+                    >
                     Fijados
                   </span>
                   @for (s of pinnedSensors(); track s.id) {
@@ -648,7 +668,9 @@ interface SortState {
                           pinnedSet().has(s.id) ? 'Quitar fijo ' + s.id : 'Fijar ' + s.id
                         "
                       >
-                        <span class="material-symbols-outlined text-[15px]">push_pin</span>
+                        <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
+                          >push_pin</span
+                        >
                       </button>
                     </div>
                   }
@@ -689,8 +711,13 @@ interface SortState {
                             class="row-pin"
                             [class.row-pin--on]="pinnedSet().has(s.id)"
                             (click)="togglePin(s.id, $event)"
+                            [attr.aria-label]="
+                              pinnedSet().has(s.id) ? 'Quitar fijo ' + s.id : 'Fijar ' + s.id
+                            "
                           >
-                            <span class="material-symbols-outlined text-[15px]">push_pin</span>
+                            <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
+                              >push_pin</span
+                            >
                           </button>
                         </div>
                       </header>
@@ -831,6 +858,7 @@ interface SortState {
                             role="tab"
                             class="range-pill"
                             [class.range-pill--active]="range() === r"
+                            [attr.aria-selected]="range() === r"
                             (click)="setRange(r)"
                           >
                             {{ r }}
@@ -904,7 +932,7 @@ interface SortState {
               (click)="closeDrilldown()"
               aria-label="Cerrar"
             >
-              <span class="material-symbols-outlined text-[18px]">close</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
             </button>
           </header>
           <div class="drawer-body">
@@ -936,6 +964,7 @@ interface SortState {
                     role="tab"
                     class="range-pill"
                     [class.range-pill--active]="drilldownRange() === r"
+                    [attr.aria-selected]="drilldownRange() === r"
                     (click)="setDrilldownRange(r)"
                   >
                     {{ r }}

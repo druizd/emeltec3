@@ -68,9 +68,9 @@ export interface AlarmHistoryItem {
             type="button"
             (click)="exportXlsx()"
             [disabled]="exporting()"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-caption font-semibold text-slate-600 transition-colors hover:border-primary-tint-35 hover:text-primary-container disabled:opacity-50"
+            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-caption font-semibold text-slate-600 transition-colors hover:border-primary-tint-35 hover:text-primary-container active:scale-95 disabled:opacity-50"
           >
-            <span class="material-symbols-outlined text-[16px]">download</span>
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>
             {{ exporting() ? 'Generando…' : 'Exportar Excel' }}
           </button>
         </div>
@@ -160,9 +160,10 @@ export interface AlarmHistoryItem {
                 [routerLink]="it.link"
                 [queryParams]="it.linkQuery || {}"
                 [title]="it.linkTitle || 'Ver detalle'"
+                [attr.aria-label]="it.linkTitle || 'Ver detalle'"
                 class="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-tint-35 hover:text-primary-container"
               >
-                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
               </a>
             }
           </article>

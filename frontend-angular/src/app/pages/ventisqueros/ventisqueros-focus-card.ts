@@ -25,12 +25,13 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
           </div>
           @if (salaLink(); as link) {
             <button
-              class="vs-focus-open-btn flex"
+              class="vs-focus-open-btn flex active:scale-95"
               [routerLink]="link"
               [queryParams]="salaQuery()"
               title="Ver sala"
+              aria-label="Ver sala"
             >
-              <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+              <span class="material-symbols-outlined text-[13px]" aria-hidden="true">open_in_new</span>
             </button>
           }
         </div>
@@ -96,7 +97,7 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
 
         <div class="vs-focus-footer mt-2.5 flex items-center justify-between pt-2.5">
           <span class="flex items-center gap-1">
-            <span class="material-symbols-outlined text-[11px]">schedule</span>
+            <span class="material-symbols-outlined text-[11px]" aria-hidden="true">schedule</span>
             hace 32 s
           </span>
           <span class="vs-focus-base">HR {{ fmtHumValue(f.h) }}%</span>

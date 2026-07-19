@@ -37,7 +37,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
         <button
           type="button"
           (click)="action.emit()"
-          class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 sm:h-8"
+          class="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-caption-xs font-semibold text-rose-700 transition-colors hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 active:scale-95 sm:h-8"
         >
           <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
             actionIcon

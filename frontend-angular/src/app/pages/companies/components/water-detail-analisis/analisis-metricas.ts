@@ -35,7 +35,7 @@ function dateToUtcIsoEnd(date: string): string {
         class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
       >
         <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-accent">leaderboard</span>
+          <span class="material-symbols-outlined text-accent" aria-hidden="true">leaderboard</span>
           <div>
             <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
               Rango
@@ -68,7 +68,7 @@ function dateToUtcIsoEnd(date: string): string {
             type="button"
             (click)="reload()"
             [disabled]="loading()"
-            class="rounded-lg bg-accent-container px-3 py-1.5 text-caption font-bold text-white hover:bg-accent-deep disabled:opacity-50"
+            class="rounded-lg bg-accent-container px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-accent-deep active:scale-95 disabled:opacity-50"
           >
             Aplicar
           </button>

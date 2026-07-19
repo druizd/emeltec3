@@ -15,7 +15,9 @@ import { AuthService } from '../../../services/auth.service';
         aria-live="polite"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
-          <span class="material-symbols-outlined shrink-0 text-[16px] text-amber-700"
+          <span
+            class="material-symbols-outlined shrink-0 text-[16px] text-amber-700"
+            aria-hidden="true"
             >visibility</span
           >
           <span class="truncate">
@@ -36,9 +38,9 @@ import { AuthService } from '../../../services/auth.service';
         <button
           type="button"
           (click)="auth.clearViewAs()"
-          class="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-700/40 bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-amber-900 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600"
+          class="flex shrink-0 items-center gap-1.5 rounded-md border border-amber-700/40 bg-white/60 px-2.5 py-1 text-[11px] font-semibold text-amber-900 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 active:scale-95"
         >
-          <span class="material-symbols-outlined text-[14px]">undo</span>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">undo</span>
           Volver a {{ auth.realRole() }}
         </button>
       </div>

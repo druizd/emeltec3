@@ -89,6 +89,7 @@ function emptyDraft(): DraftIncidencia {
             <button
               type="button"
               (click)="filtroOrigen.set(f.key)"
+              [attr.aria-pressed]="filtroOrigen() === f.key"
               [class]="filtroOrigenClass(f.key)"
             >
               <span class="material-symbols-outlined text-[14px]">{{ f.icon }}</span>
@@ -102,6 +103,7 @@ function emptyDraft(): DraftIncidencia {
             <button
               type="button"
               (click)="filtroEstado.set(f.key)"
+              [attr.aria-pressed]="filtroEstado() === f.key"
               [class]="filtroEstadoClass(f.key)"
             >
               {{ f.label }}
@@ -114,7 +116,8 @@ function emptyDraft(): DraftIncidencia {
         <button
           type="button"
           (click)="toggleNueva()"
-          class="inline-flex items-center gap-1 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-primary-tint-14"
+          [attr.aria-pressed]="mostrandoNueva()"
+          class="inline-flex items-center gap-1 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
         >
           <span class="material-symbols-outlined text-[14px]">{{
             mostrandoNueva() ? 'close' : 'add'
@@ -139,7 +142,7 @@ function emptyDraft(): DraftIncidencia {
             <button
               type="button"
               (click)="toggleNueva()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-95"
             >
               Cancelar
             </button>
@@ -147,7 +150,7 @@ function emptyDraft(): DraftIncidencia {
               type="button"
               [disabled]="saving() || !puedeGuardar(nuevaDraft)"
               (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
               Crear
@@ -164,7 +167,7 @@ function emptyDraft(): DraftIncidencia {
       <div class="space-y-2">
         @for (inc of incidenciasFiltradas(); track inc.id) {
           <article
-            class="group rounded-2xl border bg-white shadow-sm transition-all"
+            class="group rounded-2xl border bg-white shadow-sm transition"
             [class]="tarjetaClass(inc)"
           >
             <div class="flex items-start gap-3 p-4">
@@ -263,7 +266,7 @@ function emptyDraft(): DraftIncidencia {
                       <button
                         type="button"
                         (click)="cancelarEdicion(inc)"
-                        class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+                        class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-95"
                       >
                         Cancelar
                       </button>
@@ -271,7 +274,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving() || !puedeGuardar(drafts()[inc.id]!)"
                         (click)="guardarEdicion(inc)"
-                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[16px]">check</span>
                         Guardar
@@ -283,7 +286,7 @@ function emptyDraft(): DraftIncidencia {
                     <button
                       type="button"
                       (click)="expandir(inc)"
-                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50"
+                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[14px]">edit</span>
                       Editar
@@ -293,7 +296,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving()"
                         (click)="cerrar(inc)"
-                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 active:scale-95 disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[14px]">check_circle</span>
                         Cerrar
@@ -302,7 +305,7 @@ function emptyDraft(): DraftIncidencia {
                     <button
                       type="button"
                       (click)="eliminar(inc)"
-                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-caption font-bold text-rose-600 hover:bg-rose-50"
+                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-caption font-bold text-rose-600 transition-colors hover:bg-rose-50 active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[14px]">delete</span>
                       Eliminar
@@ -563,7 +566,7 @@ export class BitacoraIncidenciasComponent {
 
   tecnicoChipClass(d: DraftIncidencia, id: string): string {
     const base =
-      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-caption-xs font-semibold transition-colors ';
+      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-caption-xs font-semibold transition-colors active:scale-95 ';
     return this.tecnicoSeleccionado(d, id)
       ? base + 'border-primary-tint-35 bg-primary-tint-14 text-primary-container'
       : base + 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50';
@@ -809,7 +812,7 @@ export class BitacoraIncidenciasComponent {
   filtroOrigenClass(key: IncidenciaOrigen | 'todos'): string {
     const active = this.filtroOrigen() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition active:scale-95',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
@@ -819,7 +822,7 @@ export class BitacoraIncidenciasComponent {
   filtroEstadoClass(key: IncidenciaEstado | 'todos'): string {
     const active = this.filtroEstado() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition active:scale-95',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

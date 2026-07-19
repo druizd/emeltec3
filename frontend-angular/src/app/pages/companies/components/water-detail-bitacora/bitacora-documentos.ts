@@ -68,6 +68,8 @@ const TIPOS: DocumentoTipo[] = [
               type="button"
               (click)="filtroActivo.set(tipo.key)"
               [class]="filtroClass(tipo.key)"
+              [attr.aria-current]="filtroActivo() === tipo.key ? 'page' : null"
+              class="active:scale-95"
             >
               {{ tipo.label }}
               <span
@@ -82,9 +84,10 @@ const TIPOS: DocumentoTipo[] = [
         <button
           type="button"
           (click)="toggleSubida()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
+          [attr.aria-pressed]="mostrandoSubida()"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
         >
-          <span class="material-symbols-outlined text-[16px]">{{
+          <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
             mostrandoSubida() ? 'close' : 'upload_file'
           }}</span>
           {{ mostrandoSubida() ? 'Cancelar' : 'Subir documento' }}
@@ -188,7 +191,7 @@ const TIPOS: DocumentoTipo[] = [
               <button
                 type="button"
                 (click)="toggleSubida()"
-                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-95"
               >
                 Cancelar
               </button>
@@ -196,9 +199,11 @@ const TIPOS: DocumentoTipo[] = [
                 type="button"
                 [disabled]="uploading() || !puedeSubir()"
                 (click)="subir()"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-50"
               >
-                <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  >cloud_upload</span
+                >
                 {{ uploading() ? 'Subiendo…' : 'Subir' }}
               </button>
             </div>
@@ -258,7 +263,7 @@ const TIPOS: DocumentoTipo[] = [
                           [class]="tipoIconClass(doc.tipo)"
                           class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
                         >
-                          <span class="material-symbols-outlined text-[18px]">{{
+                          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
                             tipoIcon(doc.tipo)
                           }}</span>
                         </span>
@@ -294,18 +299,22 @@ const TIPOS: DocumentoTipo[] = [
                         <button
                           type="button"
                           (click)="descargar(doc)"
-                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-primary-tint-08 hover:text-primary-container"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
                           [attr.aria-label]="'Descargar ' + doc.titulo"
                         >
-                          <span class="material-symbols-outlined text-[18px]">download</span>
+                          <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                            >download</span
+                          >
                         </button>
                         <button
                           type="button"
                           (click)="eliminar(doc)"
-                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-95"
                           [attr.aria-label]="'Eliminar ' + doc.titulo"
                         >
-                          <span class="material-symbols-outlined text-[18px]">delete</span>
+                          <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                            >delete</span
+                          >
                         </button>
                       </div>
                     </td>
@@ -313,7 +322,7 @@ const TIPOS: DocumentoTipo[] = [
                 } @empty {
                   <tr>
                     <td colspan="5" class="px-4 py-10 text-center">
-                      <span class="material-symbols-outlined text-3xl text-slate-300"
+                      <span class="material-symbols-outlined text-3xl text-slate-300" aria-hidden="true"
                         >folder_open</span
                       >
                       <p class="mt-2 text-body-sm font-semibold text-slate-400">
@@ -511,7 +520,7 @@ export class BitacoraDocumentosComponent {
   filtroClass(key: TipoFiltro): string {
     const active = this.filtroActivo() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-caption font-bold transition',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

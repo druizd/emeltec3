@@ -36,7 +36,9 @@ interface AnalisisTabItem {
             <span
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent"
             >
-              <span class="material-symbols-outlined text-[22px]">insights</span>
+              <span class="material-symbols-outlined text-[22px]" aria-hidden="true"
+                >insights</span
+              >
             </span>
             <div class="min-w-0">
               <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
@@ -60,8 +62,15 @@ interface AnalisisTabItem {
       <nav class="rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="hidden flex-wrap items-center gap-1 px-2 py-2 md:flex">
           @for (tab of tabs; track tab.key) {
-            <button type="button" (click)="activeSection.set(tab.key)" [class]="tabClass(tab.key)">
-              <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
+            <button
+              type="button"
+              (click)="activeSection.set(tab.key)"
+              [class]="tabClass(tab.key)"
+              [attr.aria-current]="activeSection() === tab.key ? 'page' : null"
+            >
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
+                tab.icon
+              }}</span>
               <span>{{ tab.label }}</span>
             </button>
           }
@@ -70,6 +79,7 @@ interface AnalisisTabItem {
           <select
             [ngModel]="activeSection()"
             (ngModelChange)="activeSection.set($event)"
+            aria-label="Sección de análisis"
             class="w-full appearance-none rounded-2xl bg-white px-4 py-3 text-body-sm font-bold text-slate-700 focus:outline-none"
           >
             @for (tab of tabs; track tab.key) {
@@ -109,7 +119,7 @@ export class WaterDetailAnalisisComponent {
   tabClass(key: AnalisisSection): string {
     const active = this.activeSection() === key;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-colors active:scale-95',
       active
         ? 'bg-accent/10 text-accent-container ring-1 ring-accent/10'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

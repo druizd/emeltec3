@@ -52,6 +52,7 @@ import { TwoFactorService } from '../../services/two-factor.service';
           maxlength="6"
           autocomplete="one-time-code"
           placeholder="000000"
+          aria-label="Código de verificación de 6 dígitos"
           [ngModel]="code()"
           (ngModelChange)="code.set($event)"
           (keyup.enter)="confirm()"
@@ -61,17 +62,17 @@ import { TwoFactorService } from '../../services/two-factor.service';
         <div class="tf-foot">
           <button
             type="button"
-            class="tf-link"
+            class="tf-link active:scale-95"
             [disabled]="twoFactor.sending()"
             (click)="twoFactor.resend()"
           >
             Reenviar código
           </button>
           <span class="tf-spacer"></span>
-          <button type="button" class="tf-btn" (click)="cancel()">Cancelar</button>
+          <button type="button" class="tf-btn active:scale-95" (click)="cancel()">Cancelar</button>
           <button
             type="button"
-            class="tf-btn tf-btn--primary"
+            class="tf-btn tf-btn--primary active:scale-95"
             [disabled]="code().length < 4 || twoFactor.sending() || twoFactor.validating()"
             (click)="confirm()"
           >

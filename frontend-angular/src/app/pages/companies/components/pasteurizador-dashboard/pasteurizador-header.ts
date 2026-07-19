@@ -6,7 +6,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
   template: `
     <header class="scada-header">
       <div class="site-heading">
-        <span class="site-icon">
+        <span class="site-icon" aria-hidden="true">
           <span class="material-symbols-outlined">factory</span>
         </span>
         <div class="title-block">
@@ -21,7 +21,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
           aria-label="Configurar variables del sitio"
           (click)="settingsClick.emit()"
         >
-          <span class="material-symbols-outlined">settings</span>
+          <span class="material-symbols-outlined" aria-hidden="true">settings</span>
         </button>
       }
     </header>

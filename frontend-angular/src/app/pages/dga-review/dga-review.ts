@@ -58,7 +58,7 @@ const WARNING_LABELS: Record<string, string> = {
           type="button"
           (click)="reload()"
           [disabled]="loading()"
-          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
         >
           Recargar
         </button>
@@ -69,7 +69,7 @@ const WARNING_LABELS: Record<string, string> = {
         <div
           class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-body-sm text-emerald-800"
         >
-          <span class="material-symbols-outlined text-[18px]">check_circle</span>
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>
           <span>{{ codeMessage() }}</span>
         </div>
       }
@@ -79,7 +79,7 @@ const WARNING_LABELS: Record<string, string> = {
         <summary
           class="flex cursor-pointer select-none items-center gap-2 text-body-sm font-semibold"
         >
-          <span class="material-symbols-outlined text-[18px] text-primary">help</span>
+          <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">help</span>
           ¿Cómo funciona esta cola?
         </summary>
         <div class="mt-3 space-y-2 text-caption text-slate-600">
@@ -124,7 +124,7 @@ const WARNING_LABELS: Record<string, string> = {
         <div
           class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-body-sm text-red-800"
         >
-          <span class="material-symbols-outlined text-[18px]">error</span>
+          <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
           <span>{{ error() }}</span>
         </div>
       }
@@ -136,7 +136,7 @@ const WARNING_LABELS: Record<string, string> = {
         <div
           class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-6 text-center text-emerald-800"
         >
-          <span class="material-symbols-outlined text-[24px]">check_circle</span>
+          <span class="material-symbols-outlined text-[24px]" aria-hidden="true">check_circle</span>
           <p class="mt-1 text-body-sm font-semibold">Sin mediciones en revisión.</p>
           <p class="text-caption-xs text-emerald-700">
             Todas las mediciones pasaron validación y siguen su curso a SNIA.

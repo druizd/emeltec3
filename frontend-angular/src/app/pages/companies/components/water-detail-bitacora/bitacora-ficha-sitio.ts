@@ -49,6 +49,7 @@ import {
                 [ngModel]="ficha().pin_critico"
                 (ngModelChange)="updatePin($event)"
                 placeholder="Mensaje crítico (ej. Acceso requiere permiso DGA)"
+                aria-label="Mensaje crítico del sitio"
                 class="mt-0.5 w-full bg-transparent text-body-sm font-semibold text-amber-900 placeholder:text-amber-400 focus:outline-none"
               />
             } @else {
@@ -72,9 +73,10 @@ import {
                 type="button"
                 (click)="addContacto()"
                 title="Agregar contacto manual"
-                class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
+                aria-label="Agregar contacto manual"
+                class="rounded p-1 text-primary-container transition-colors hover:bg-primary-tint-08 active:scale-95"
               >
-                <span class="material-symbols-outlined text-[16px]">add</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
               </button>
             }
           </div>
@@ -131,6 +133,7 @@ import {
                         [ngModel]="c.nombre"
                         (ngModelChange)="updateContacto($index, 'nombre', $event)"
                         placeholder="Nombre"
+                        aria-label="Nombre del contacto"
                         class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <select
@@ -155,6 +158,7 @@ import {
                           [ngModel]="c.telefono"
                           (ngModelChange)="updateTelefono($index, $event)"
                           placeholder="9 1234 5678"
+                          aria-label="Teléfono del contacto"
                           class="w-full px-2 py-1 font-mono outline-none"
                         />
                       </div>
@@ -164,6 +168,7 @@ import {
                         [ngModel]="c.email"
                         (ngModelChange)="updateContacto($index, 'email', $event)"
                         placeholder="Email"
+                        aria-label="Email del contacto"
                         class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                     </div>
@@ -171,7 +176,7 @@ import {
                       <button
                         type="button"
                         (click)="editingContactoIdx.set(null)"
-                        class="inline-flex items-center gap-1 rounded border border-primary-tint-25 bg-primary-tint-08 px-2 py-1 text-caption-xs font-bold text-primary-container hover:bg-primary-tint-14"
+                        class="inline-flex items-center gap-1 rounded border border-primary-tint-25 bg-primary-tint-08 px-2 py-1 text-caption-xs font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
                       >
                         <span class="material-symbols-outlined text-[14px]">check</span>
                         Listo
@@ -189,7 +194,7 @@ import {
                       <button
                         type="button"
                         (click)="pedirEditarContacto($index)"
-                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-primary-container hover:underline"
+                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-primary-container transition-colors hover:underline active:scale-95"
                       >
                         <span class="material-symbols-outlined text-[14px]">edit</span>
                         Editar
@@ -197,7 +202,7 @@ import {
                       <button
                         type="button"
                         (click)="pedirEliminarContacto($index)"
-                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-rose-500 hover:underline"
+                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-rose-500 transition-colors hover:underline active:scale-95"
                       >
                         <span class="material-symbols-outlined text-[14px]">delete</span>
                         Eliminar
@@ -226,9 +231,10 @@ import {
               <button
                 type="button"
                 (click)="addAcreditacion()"
-                class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
+                aria-label="Agregar acreditación"
+                class="rounded p-1 text-primary-container transition-colors hover:bg-primary-tint-08 active:scale-95"
               >
-                <span class="material-symbols-outlined text-[16px]">add</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
               </button>
             }
           </div>
@@ -270,6 +276,7 @@ import {
                           [ngModel]="a.persona"
                           (ngModelChange)="updateAcreditacion($index, 'persona', $event)"
                           placeholder="Persona"
+                          aria-label="Persona acreditada"
                           class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                         />
                       }
@@ -278,6 +285,7 @@ import {
                         [ngModel]="a.tipo"
                         (ngModelChange)="updateAcreditacion($index, 'tipo', $event)"
                         placeholder="Tipo (DGA, etc)"
+                        aria-label="Tipo de acreditación"
                         class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <input
@@ -291,7 +299,7 @@ import {
                     <button
                       type="button"
                       (click)="removeAcreditacion($index)"
-                      class="mt-1 text-caption-xs font-semibold text-rose-500 hover:underline"
+                      class="mt-1 text-caption-xs font-semibold text-rose-500 transition-colors hover:underline active:scale-95"
                     >
                       Eliminar
                     </button>
@@ -338,9 +346,10 @@ import {
                   type="button"
                   (click)="addRiesgo()"
                   title="Agregar riesgo manual"
-                  class="rounded p-1 text-primary-container hover:bg-primary-tint-08"
+                  aria-label="Agregar riesgo manual"
+                  class="rounded p-1 text-primary-container transition-colors hover:bg-primary-tint-08 active:scale-95"
                 >
-                  <span class="material-symbols-outlined text-[16px]">add</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
                 </button>
               </div>
             }
@@ -418,6 +427,7 @@ import {
                         [ngModel]="r.descripcion"
                         (ngModelChange)="updateRiesgo($index, 'descripcion', $event)"
                         placeholder="Descripción del riesgo"
+                        aria-label="Descripción del riesgo"
                         class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <label
@@ -455,6 +465,7 @@ import {
                         [ngModel]="r.mitigacion"
                         (ngModelChange)="updateRiesgo($index, 'mitigacion', $event)"
                         placeholder="Mitigación / control"
+                        aria-label="Mitigación o control del riesgo"
                         class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                       />
                       <span
@@ -475,6 +486,7 @@ import {
                       [ngModel]="r.epp_requerido"
                       (ngModelChange)="updateRiesgo($index, 'epp_requerido', $event)"
                       placeholder="EPP requerido (casco, arnés, guantes…)"
+                      aria-label="EPP requerido"
                       class="mt-2 w-full rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
                     />
                     <div class="mt-2 flex items-center justify-between gap-2">
@@ -492,7 +504,7 @@ import {
                       <button
                         type="button"
                         (click)="removeRiesgo($index)"
-                        class="text-caption-xs font-semibold text-rose-500 hover:underline"
+                        class="text-caption-xs font-semibold text-rose-500 transition-colors hover:underline active:scale-95"
                       >
                         Eliminar
                       </button>
@@ -556,7 +568,7 @@ import {
             type="button"
             (click)="save()"
             [disabled]="saving() || !dirty()"
-            class="rounded-lg bg-primary px-4 py-2 text-body-sm font-bold text-white hover:bg-primary-container disabled:opacity-40"
+            class="rounded-lg bg-primary px-4 py-2 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:opacity-40"
           >
             {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
           </button>

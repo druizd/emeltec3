@@ -53,22 +53,25 @@ interface BitacoraTabItem {
           <label
             class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 transition-colors focus-within:border-primary-tint-35 focus-within:bg-white"
           >
-            <span class="material-symbols-outlined text-[18px] text-slate-400">search</span>
+            <span class="material-symbols-outlined text-[18px] text-slate-400" aria-hidden="true"
+              >search</span
+            >
             <input
               type="text"
               [ngModel]="searchQuery()"
               (ngModelChange)="searchQuery.set($event)"
               placeholder="Buscar en incidencias, documentos, trazabilidad..."
-              class="w-full bg-transparent text-body-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
+              aria-label="Buscar en incidencias, documentos, trazabilidad"
+              class="w-full bg-transparent text-body-sm text-slate-700 placeholder:text-slate-500 focus:outline-none"
             />
             @if (searchQuery()) {
               <button
                 type="button"
                 (click)="searchQuery.set('')"
-                class="flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-slate-700"
+                class="flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:text-slate-700 active:scale-95"
                 aria-label="Limpiar búsqueda"
               >
-                <span class="material-symbols-outlined text-[16px]">close</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">close</span>
               </button>
             }
           </label>
@@ -80,8 +83,15 @@ interface BitacoraTabItem {
         <!-- Desktop tabs -->
         <div class="hidden flex-wrap items-center gap-1 px-2 py-2 md:flex">
           @for (tab of visibleTabs(); track tab.key) {
-            <button type="button" (click)="setSection(tab.key)" [class]="getTabClass(tab.key)">
-              <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
+            <button
+              type="button"
+              (click)="setSection(tab.key)"
+              [class]="getTabClass(tab.key)"
+              [attr.aria-current]="activeSection() === tab.key ? 'page' : null"
+            >
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
+                tab.icon
+              }}</span>
               <span>{{ tab.label }}</span>
             </button>
           }
@@ -159,7 +169,7 @@ export class WaterDetailBitacoraComponent {
   getTabClass(key: BitacoraSection): string {
     const active = this.activeSection() === key;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-colors active:scale-95',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-20'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

@@ -98,7 +98,7 @@
             <div class="mb-4 flex items-center gap-2">
               @for (dot of [1, 2, 3]; track dot) {
                 <span
-                  class="h-1.5 rounded-full transition-all"
+                  class="h-1.5 rounded-full transition-[width]"
                   [class.w-8]="dot === 1 || step() !== 'email'"
                   [class.w-4]="dot !== 1 && step() === 'email'"
                   [ngClass]="
@@ -126,7 +126,7 @@
               role="alert"
               class="anim-banner mb-3 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-600"
             >
-              <span class="material-symbols-outlined text-[18px]">error</span>
+              <span aria-hidden="true" class="material-symbols-outlined text-[18px]">error</span>
               <p>{{ errorMsg() }}</p>
             </div>
           }
@@ -135,7 +135,7 @@
             <div
               class="anim-banner mb-3 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-semibold text-emerald-700"
             >
-              <span class="material-symbols-outlined text-[18px]">check_circle</span>
+              <span aria-hidden="true" class="material-symbols-outlined text-[18px]">check_circle</span>
               <p>{{ successMsg() }}</p>
             </div>
           }
@@ -147,6 +147,7 @@
               </label>
               <div class="relative">
                 <span
+                  aria-hidden="true"
                   class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-primary/70"
                   >mail</span
                 >
@@ -154,7 +155,7 @@
                   type="email"
                   required
                   [readonly]="step() !== 'email'"
-                  class="h-10 w-full rounded-lg border bg-white pl-10 pr-4 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20 read-only:cursor-not-allowed read-only:bg-slate-50 read-only:text-slate-500"
+                  class="h-10 w-full rounded-lg border bg-white pl-10 pr-4 text-[13px] font-semibold text-slate-800 outline-none transition placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-primary-tint-20 read-only:cursor-not-allowed read-only:bg-slate-50 read-only:text-slate-500"
                   style="border-color: rgba(13, 175, 189, 0.2)"
                   placeholder="usuario@correo.com"
                   [ngModel]="email()"
@@ -180,6 +181,7 @@
                 </label>
                 <div class="relative">
                   <span
+                    aria-hidden="true"
                     class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-primary/70"
                     >lock</span
                   >
@@ -187,7 +189,7 @@
                     [type]="showPassword() ? 'text' : 'password'"
                     required
                     minlength="8"
-                    class="h-10 w-full rounded-lg border bg-white pl-10 pr-11 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                    class="h-10 w-full rounded-lg border bg-white pl-10 pr-11 text-[13px] font-semibold text-slate-800 outline-none transition placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                     style="border-color: rgba(13, 175, 189, 0.2)"
                     placeholder="Minimo 8 caracteres"
                     [ngModel]="password()"
@@ -197,7 +199,7 @@
                   <button
                     type="button"
                     (click)="showPassword.set(!showPassword())"
-                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary"
+                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary active:scale-95"
                     [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Ver contrasena'"
                   >
                     <span class="material-symbols-outlined text-[18px]">
@@ -237,6 +239,7 @@
                 </label>
                 <div class="relative">
                   <span
+                    aria-hidden="true"
                     class="material-symbols-outlined pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[18px] text-primary/70"
                     >lock</span
                   >
@@ -244,7 +247,7 @@
                     [type]="showConfirmPassword() ? 'text' : 'password'"
                     required
                     minlength="8"
-                    class="h-10 w-full rounded-lg border bg-white pl-10 pr-11 text-[13px] font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                    class="h-10 w-full rounded-lg border bg-white pl-10 pr-11 text-[13px] font-semibold text-slate-800 outline-none transition placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                     [style.border-color]="
                       confirmPassword() && !passwordsMatch() ? '#fecaca' : 'rgba(13, 175, 189, 0.2)'
                     "
@@ -255,7 +258,7 @@
                   <button
                     type="button"
                     (click)="showConfirmPassword.set(!showConfirmPassword())"
-                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary"
+                    class="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary active:scale-95"
                     [attr.aria-label]="
                       showConfirmPassword() ? 'Ocultar confirmacion' : 'Ver confirmacion'
                     "
@@ -282,7 +285,7 @@
                   type="text"
                   required
                   maxlength="6"
-                  class="h-14 w-full rounded-xl border bg-white pr-4 text-center font-mono text-h4 font-semibold tracking-[0.30em] text-slate-800 outline-none transition-all placeholder:text-slate-200 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
+                  class="h-14 w-full rounded-xl border bg-white pr-4 text-center font-mono text-h4 font-semibold tracking-[0.30em] text-slate-800 outline-none transition placeholder:text-slate-500 focus:bg-white focus:ring-2 focus:ring-primary-tint-20"
                   style="border-color: rgba(13, 175, 189, 0.2)"
                   placeholder="------"
                   [ngModel]="otpCode()"
@@ -295,7 +298,7 @@
             <button
               type="submit"
               [disabled]="!canSubmitCurrentStep()"
-              class="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-lg text-[13px] font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+              class="relative flex h-10 w-full items-center justify-center gap-2 overflow-hidden rounded-lg text-[13px] font-semibold text-white transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
               style="
                 background: linear-gradient(135deg, #0dafbd 0%, #0899a5 60%, #04606a 100%);
                 box-shadow: 0 6px 20px rgba(13, 175, 189, 0.3);
@@ -306,7 +309,7 @@
                   class="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"
                 ></span>
               } @else {
-                <span class="material-symbols-outlined text-[17px]">login</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-[17px]">login</span>
                 {{ primaryText }}
               }
             </button>
@@ -315,13 +318,13 @@
               <button
                 type="button"
                 (click)="goBack()"
-                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold text-slate-400 transition-all hover:text-primary"
+                class="flex h-9 w-full items-center justify-center gap-2 rounded-lg text-[13px] font-semibold text-slate-400 transition-colors hover:text-primary active:scale-95"
                 style="
                   border: 1px solid rgba(13, 175, 189, 0.13);
                   background: rgba(13, 175, 189, 0.03);
                 "
               >
-                <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+                <span aria-hidden="true" class="material-symbols-outlined text-[16px]">arrow_back</span>
                 Volver
               </button>
             }

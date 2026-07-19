@@ -53,14 +53,17 @@ interface EditState {
           <button
             type="button"
             (click)="selectTab(tab.key)"
-            class="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-body-sm font-bold transition-all"
+            [attr.aria-current]="activeTab() === tab.key ? 'page' : null"
+            class="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-body-sm font-bold transition active:scale-95"
             [ngClass]="
               activeTab() === tab.key
                 ? 'border-primary-tint-35 bg-white text-primary shadow-[0_8px_24px_rgba(13,175,189,0.12)]'
                 : 'border-transparent text-[#8b9bb4] hover:bg-white'
             "
           >
-            <span class="material-symbols-outlined text-[21px]">{{ tab.icon }}</span>
+            <span class="material-symbols-outlined text-[21px]" aria-hidden="true">{{
+              tab.icon
+            }}</span>
             {{ tab.label }}
           </button>
         }
@@ -199,7 +202,7 @@ interface EditState {
                           <button
                             type="button"
                             (click)="openDeleteUser(user)"
-                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-muted opacity-0 transition-all hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-200 group-hover:opacity-100"
+                            class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-muted opacity-0 transition hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-rose-200 group-hover:opacity-100 active:scale-95"
                             aria-label="Eliminar usuario"
                             title="Eliminar usuario"
                           >
@@ -237,7 +240,7 @@ interface EditState {
                     type="button"
                     (click)="goToUsersPage(currentUsersPage() - 1)"
                     [disabled]="currentUsersPage() === 1"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-on-surface-variant transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-on-surface-variant transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Pagina anterior"
                   >
                     <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -247,7 +250,7 @@ interface EditState {
                     <button
                       type="button"
                       (click)="goToUsersPage(page)"
-                      class="h-8 min-w-8 rounded-lg border px-2 text-caption font-bold transition-colors"
+                      class="h-8 min-w-8 rounded-lg border px-2 text-caption font-bold transition-colors active:scale-95"
                       [ngClass]="
                         page === currentUsersPage()
                           ? 'border-primary bg-primary text-white'
@@ -262,7 +265,7 @@ interface EditState {
                     type="button"
                     (click)="goToUsersPage(currentUsersPage() + 1)"
                     [disabled]="currentUsersPage() === totalUserPages()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-on-surface-variant transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-[#dbe4ee] text-on-surface-variant transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Pagina siguiente"
                   >
                     <span class="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -324,7 +327,7 @@ interface EditState {
                 type="button"
                 (click)="closeDeleteUser()"
                 [disabled]="deleteSaving()"
-                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -332,7 +335,7 @@ interface EditState {
                 type="button"
                 (click)="confirmDeleteUser()"
                 [disabled]="deleteSaving()"
-                class="h-9 rounded-lg bg-rose-600 px-4 text-body-sm font-bold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg bg-rose-600 px-4 text-body-sm font-bold text-white transition-colors hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ deleteSaving() ? 'Eliminando...' : 'Eliminar' }}
               </button>
@@ -379,7 +382,7 @@ interface EditState {
                 type="button"
                 (click)="closePasswordConfirm()"
                 [disabled]="passwordSaving()"
-                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -387,7 +390,7 @@ interface EditState {
                 type="button"
                 (click)="confirmPasswordChange()"
                 [disabled]="passwordSaving()"
-                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ passwordSaving() ? 'Guardando...' : 'Confirmar' }}
               </button>
@@ -443,7 +446,7 @@ interface EditState {
                   type="button"
                   (click)="openEdit(row)"
                   [disabled]="!row.field"
-                  class="group min-w-0 rounded-lg border border-surface-container bg-white px-4 py-3 text-left transition-all hover:border-primary-tint-35 hover:bg-primary-tint-08/40 hover:shadow-[0_4px_14px_rgba(13,175,189,0.10)] disabled:cursor-default disabled:hover:border-surface-container disabled:hover:bg-white disabled:hover:shadow-none"
+                  class="group min-w-0 rounded-lg border border-surface-container bg-white px-4 py-3 text-left transition hover:border-primary-tint-35 hover:bg-primary-tint-08/40 hover:shadow-[0_4px_14px_rgba(13,175,189,0.10)] active:scale-[0.98] disabled:cursor-default disabled:hover:border-surface-container disabled:hover:bg-white disabled:hover:shadow-none"
                 >
                   <div class="mb-2 flex items-center justify-between gap-2">
                     <p
@@ -546,7 +549,8 @@ interface EditState {
                     <button
                       type="button"
                       (click)="showCurrentPassword.set(!showCurrentPassword())"
-                      class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary"
+                      [attr.aria-pressed]="showCurrentPassword()"
+                      class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary active:scale-95"
                       [attr.aria-label]="
                         showCurrentPassword()
                           ? 'Ocultar contrasena actual'
@@ -582,6 +586,7 @@ interface EditState {
                   <button
                     type="button"
                     (click)="showNewPassword.set(!showNewPassword())"
+                    [attr.aria-pressed]="showNewPassword()"
                     class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary"
                     [attr.aria-label]="
                       showNewPassword() ? 'Ocultar nueva contrasena' : 'Ver nueva contrasena'
@@ -639,6 +644,7 @@ interface EditState {
                   <button
                     type="button"
                     (click)="showConfirmPassword.set(!showConfirmPassword())"
+                    [attr.aria-pressed]="showConfirmPassword()"
                     class="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-primary"
                     [attr.aria-label]="
                       showConfirmPassword() ? 'Ocultar confirmacion' : 'Ver confirmacion'
@@ -667,7 +673,7 @@ interface EditState {
               <button
                 type="submit"
                 [disabled]="passwordSaving() || !canSavePassword(user)"
-                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-45"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {{
                   passwordSaving()
@@ -690,7 +696,7 @@ interface EditState {
 
             <div class="mt-3 grid gap-2.5">
               <label
-                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-all"
+                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition"
                 [ngClass]="
                   securityMode() === 'password'
                     ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
@@ -715,7 +721,7 @@ interface EditState {
               </label>
 
               <label
-                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-all"
+                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition"
                 [ngClass]="
                   securityMode() === 'otp'
                     ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
@@ -738,7 +744,7 @@ interface EditState {
               </label>
 
               <label
-                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-all"
+                class="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2.5 transition"
                 [ngClass]="
                   securityMode() === 'password_otp'
                     ? 'border-primary bg-white shadow-[0_6px_20px_rgba(13,175,189,0.10)]'
@@ -782,7 +788,7 @@ interface EditState {
               type="button"
               (click)="saveSecurity()"
               [disabled]="securitySaving()"
-              class="mt-3 h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-45"
+              class="mt-3 h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
             >
               {{ securitySaving() ? 'Guardando...' : 'Guardar métodos' }}
             </button>
@@ -990,7 +996,7 @@ interface EditState {
                 type="button"
                 (click)="exportarJSON()"
                 [disabled]="exportando()"
-                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-primary-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[17px]">download</span>
                 {{ exportando() ? 'Exportando...' : 'Exportar JSON' }}
@@ -999,7 +1005,7 @@ interface EditState {
                 type="button"
                 (click)="exportarCSV()"
                 [disabled]="exportando()"
-                class="inline-flex items-center gap-2 rounded-lg border border-surface-container bg-white px-4 py-2 text-body-sm font-semibold text-on-surface hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex items-center gap-2 rounded-lg border border-surface-container bg-white px-4 py-2 text-body-sm font-semibold text-on-surface transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[17px]">table_view</span>
                 {{ exportando() ? 'Exportando...' : 'Exportar CSV' }}
@@ -1026,7 +1032,7 @@ interface EditState {
               <button
                 type="button"
                 (click)="abrirSupresion()"
-                class="mt-4 inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-4 py-2 text-body-sm font-semibold text-rose-700 hover:bg-rose-50"
+                class="mt-4 inline-flex items-center gap-2 rounded-lg border border-rose-300 bg-white px-4 py-2 text-body-sm font-semibold text-rose-700 transition-colors hover:bg-rose-50 active:scale-95"
               >
                 <span class="material-symbols-outlined text-[17px]">delete_forever</span>
                 Solicitar supresión de cuenta
@@ -1106,7 +1112,7 @@ interface EditState {
                 type="button"
                 (click)="cerrarSupresion()"
                 [disabled]="supresionGuardando()"
-                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -1114,7 +1120,7 @@ interface EditState {
                 type="button"
                 (click)="confirmarSupresion()"
                 [disabled]="supresionGuardando() || supresionTexto() !== 'SUPRIMIR'"
-                class="h-9 rounded-lg bg-rose-600 px-4 text-body-sm font-bold text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-50"
+                class="h-9 rounded-lg bg-rose-600 px-4 text-body-sm font-bold text-white transition-colors hover:bg-rose-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ supresionGuardando() ? 'Procesando...' : 'Confirmar supresión' }}
               </button>
@@ -1174,7 +1180,7 @@ interface EditState {
               <button
                 type="button"
                 (click)="aceptarPolitica()"
-                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-body-sm font-semibold text-white hover:bg-primary-dark"
+                class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-primary-dark active:scale-95"
               >
                 <span class="material-symbols-outlined text-[17px]">check</span>
                 Aceptar política
@@ -1205,7 +1211,7 @@ interface EditState {
               <button
                 type="button"
                 (click)="closeEdit()"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-[#475569]"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-on-surface-muted transition-colors hover:bg-slate-100 hover:text-[#475569] active:scale-95"
                 aria-label="Cerrar"
               >
                 <span class="material-symbols-outlined text-[18px]">close</span>
@@ -1259,7 +1265,7 @@ interface EditState {
               <button
                 type="button"
                 (click)="closeEdit()"
-                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100"
+                class="h-9 rounded-lg border border-surface-container bg-white px-4 text-body-sm font-semibold text-on-surface-variant transition-colors hover:bg-slate-100 active:scale-95"
               >
                 Cancelar
               </button>
@@ -1267,7 +1273,7 @@ interface EditState {
                 type="button"
                 (click)="saveEdit()"
                 [disabled]="editSaving() || !canSaveEdit(edit)"
-                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-45"
+                class="h-9 rounded-lg bg-primary px-4 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {{ editSaving() ? 'Guardando...' : 'Confirmar' }}
               </button>

@@ -30,9 +30,9 @@ import {
         <button
           type="button"
           (click)="openForm()"
-          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
         >
-          <span class="material-symbols-outlined text-[16px]">add</span>
+          <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
           Registrar equipo
         </button>
       </div>
@@ -127,18 +127,20 @@ import {
                       <button
                         type="button"
                         (click)="openForm(eq)"
-                        class="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                        class="rounded p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
                         title="Editar"
+                        aria-label="Editar"
                       >
-                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>
                       </button>
                       <button
                         type="button"
                         (click)="onDelete(eq)"
-                        class="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        class="rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 active:scale-95"
                         title="Eliminar"
+                        aria-label="Eliminar"
                       >
-                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>
                       </button>
                     </td>
                   </tr>
@@ -173,9 +175,10 @@ import {
             <button
               type="button"
               (click)="cancelForm()"
-              class="rounded-lg p-1 text-slate-400 hover:bg-slate-100"
+              class="rounded-lg p-1 text-slate-400 transition-colors hover:bg-slate-100 active:scale-95"
+              aria-label="Cerrar"
             >
-              <span class="material-symbols-outlined text-[18px]">close</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
             </button>
           </div>
           <div class="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-2">
@@ -283,7 +286,7 @@ import {
             <button
               type="button"
               (click)="cancelForm()"
-              class="rounded px-3 py-1.5 text-body-sm font-semibold text-slate-500 hover:bg-slate-50"
+              class="rounded px-3 py-1.5 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:scale-95"
             >
               Cancelar
             </button>
@@ -291,7 +294,7 @@ import {
               type="button"
               (click)="save()"
               [disabled]="!form().nombre || saving()"
-              class="rounded bg-primary px-4 py-1.5 text-body-sm font-bold text-white hover:bg-primary-container disabled:opacity-40"
+              class="rounded bg-primary px-4 py-1.5 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-40"
             >
               {{ saving() ? 'Guardando…' : 'Guardar' }}
             </button>

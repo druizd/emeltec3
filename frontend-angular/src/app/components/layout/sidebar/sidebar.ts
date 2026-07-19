@@ -50,7 +50,7 @@ const MODULES = SITE_MODULES;
          como siempre. lg:translate-x-0 revierte el ocultamiento mobile en
          desktop sin importar el estado de mobileNavOpen. -->
     <aside
-      class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col overflow-hidden bg-white transition-all duration-200 lg:relative lg:z-auto lg:translate-x-0"
+      class="fixed inset-y-0 left-0 z-50 flex h-full shrink-0 flex-col overflow-hidden bg-white transition duration-200 lg:relative lg:z-auto lg:translate-x-0"
       [class.-translate-x-full]="!ui.mobileNavOpen()"
       style="border-right: 1px solid #E2E8F0; box-shadow: 1px 0 4px rgba(15, 23, 42, 0.04);"
       [style.width]="collapsed() ? '60px' : '248px'"
@@ -76,7 +76,7 @@ const MODULES = SITE_MODULES;
         <button
           type="button"
           (click)="collapsed.update((v) => !v)"
-          class="hidden h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-on-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
+          class="hidden h-5 w-5 items-center justify-center rounded-md text-[#cbd5e1] transition-colors hover:text-on-surface-muted active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:flex"
           [class.ml-auto]="!collapsed()"
           [class.mx-auto]="collapsed()"
           [attr.aria-label]="collapsed() ? 'Expandir barra lateral' : 'Contraer barra lateral'"
@@ -90,7 +90,7 @@ const MODULES = SITE_MODULES;
         <button
           type="button"
           (click)="ui.closeMobileNav()"
-          class="ml-auto flex h-11 w-11 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+          class="ml-auto flex h-11 w-11 items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           aria-label="Cerrar menú"
         >
           <span class="material-symbols-outlined text-[18px]">close</span>
@@ -135,13 +135,14 @@ const MODULES = SITE_MODULES;
                 [value]="searchTerm()"
                 (input)="onSearchInput($event)"
                 placeholder="Buscar..."
-                class="h-8 w-full rounded-lg border border-surface-container bg-white pl-7 pr-7 text-caption-xs font-medium text-[#334155] outline-none transition-colors placeholder:text-[#a8b5c7] focus:border-primary-tint-40 focus:bg-white"
+                aria-label="Buscar empresas o instalaciones"
+                class="h-8 w-full rounded-lg border border-surface-container bg-white pl-7 pr-7 text-caption-xs font-medium text-[#334155] outline-none transition-colors placeholder:text-slate-500 focus:border-primary-tint-40 focus:bg-white"
               />
               @if (searchTerm()) {
                 <button
                   type="button"
                   (click)="clearSearch()"
-                  class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-on-surface-variant"
+                  class="absolute right-1.5 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-on-surface-variant active:scale-95"
                   aria-label="Limpiar búsqueda"
                 >
                   <span class="material-symbols-outlined text-[13px]">close</span>
@@ -273,7 +274,7 @@ const MODULES = SITE_MODULES;
           <button
             type="button"
             (click)="router.navigate(['/dga-review'])"
-            class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-on-surface-variant transition-colors hover:bg-[#f0fdfa] hover:text-primary-container"
+            class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-on-surface-variant transition-colors hover:bg-[#f0fdfa] hover:text-primary-container active:scale-95"
             [class.justify-center]="collapsed()"
             [class.gap-1.5]="!collapsed()"
             [title]="collapsed() ? 'Revisión DGA (admin)' : ''"
@@ -291,7 +292,7 @@ const MODULES = SITE_MODULES;
         <button
           type="button"
           (click)="auth.logout()"
-          class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-on-surface-muted transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626]"
+          class="flex w-full items-center rounded-lg border-0 bg-transparent px-2 py-1.5 text-on-surface-muted transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626] active:scale-95"
           [class.justify-center]="collapsed()"
           [class.gap-1.5]="!collapsed()"
           [title]="collapsed() ? 'Cerrar sesión' : ''"

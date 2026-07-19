@@ -32,7 +32,7 @@ const PAGE_SIZE = 10;
           (searchChange)="onSearchChange($event)"
         >
           <button type="button" (click)="refresh.emit()" class="secondary-button">
-            <span class="material-symbols-outlined text-[18px]">sync</span>
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">sync</span>
             Actualizar
           </button>
         </app-admin-table-toolbar>
@@ -74,7 +74,7 @@ const PAGE_SIZE = 10;
                       [class]="deviceClockSkewBadgeClass(device)"
                       [title]="deviceClockSkewTitle(device)"
                     >
-                      <span class="material-symbols-outlined text-[15px]">{{
+                      <span class="material-symbols-outlined text-[15px]" aria-hidden="true">{{
                         deviceClockSkewIcon(device)
                       }}</span>
                       {{ deviceClockSkewLabel(device) }}

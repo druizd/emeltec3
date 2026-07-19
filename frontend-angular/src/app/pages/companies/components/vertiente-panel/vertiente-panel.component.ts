@@ -116,7 +116,7 @@ export class VertientePanelComponent implements OnChanges {
     @keyframes drop{0%{transform:translateY(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(46px);opacity:0}}
     @keyframes surface{0%,100%{transform:translateX(0)}50%{transform:translateX(-14px)}}
     .flow-stream{stroke-dasharray:5 7;animation:flow 1s linear infinite}
-    .drop{animation:drop 1.4s ease-in infinite}
+    .drop{animation:drop 1.4s ease-out infinite}
     .surface{animation:surface 4.5s ease-in-out infinite}
   </style>
   <defs>

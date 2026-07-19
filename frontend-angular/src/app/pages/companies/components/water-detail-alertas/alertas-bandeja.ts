@@ -55,7 +55,12 @@ type FiltroEstado = EventoEstado | 'todos';
       <!-- Filtro por estado -->
       <div class="flex flex-wrap gap-1.5">
         @for (f of filtros; track f.key) {
-          <button type="button" (click)="filtroActivo.set(f.key)" [class]="filtroClass(f.key)">
+          <button
+            type="button"
+            (click)="filtroActivo.set(f.key)"
+            [class]="filtroClass(f.key)"
+            [attr.aria-pressed]="filtroActivo() === f.key"
+          >
             {{ f.label }}
           </button>
         }
@@ -146,6 +151,7 @@ type FiltroEstado = EventoEstado | 'todos';
                     >
                       <select
                         [(ngModel)]="asignadoSeleccionado"
+                        aria-label="Selecciona usuario"
                         class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-caption text-slate-700"
                       >
                         <option value="">Selecciona usuario…</option>
@@ -157,14 +163,14 @@ type FiltroEstado = EventoEstado | 'todos';
                         type="button"
                         (click)="confirmarAsignar(ev)"
                         [disabled]="!asignadoSeleccionado || actuando()"
-                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-50"
                       >
                         Confirmar
                       </button>
                       <button
                         type="button"
                         (click)="cancelarAsignar()"
-                        class="text-caption font-bold text-slate-500 hover:text-slate-700"
+                        class="text-caption font-bold text-slate-500 transition-colors hover:text-slate-700 active:scale-95"
                       >
                         Cancelar
                       </button>
@@ -179,9 +185,9 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="reconocer(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-primary-tint-14 disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95 disabled:opacity-50"
                         >
-                          <span class="material-symbols-outlined text-[14px]">visibility</span>
+                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">visibility</span>
                           Reconocer
                         </button>
                       }
@@ -190,9 +196,9 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="iniciarAsignar(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                         >
-                          <span class="material-symbols-outlined text-[14px]">person_add</span>
+                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">person_add</span>
                           Asignar
                         </button>
                       }
@@ -200,9 +206,9 @@ type FiltroEstado = EventoEstado | 'todos';
                         type="button"
                         [disabled]="actuando()"
                         (click)="resolver(ev)"
-                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 active:scale-95 disabled:opacity-50"
                       >
-                        <span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check_circle</span>
                         Resolver
                       </button>
                       @if (!ev.incidencia_id) {
@@ -210,9 +216,9 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="vincularIncidencia(ev)"
-                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                          class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                         >
-                          <span class="material-symbols-outlined text-[14px]">link</span>
+                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">link</span>
                           Vincular incidencia
                         </button>
                       }
@@ -508,7 +514,7 @@ export class AlertasBandejaComponent {
   filtroClass(key: FiltroEstado): string {
     const active = this.filtroActivo() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition-colors active:scale-95',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

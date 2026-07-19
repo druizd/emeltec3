@@ -118,7 +118,7 @@ function chileMonthStart(): string {
                   (click)="closeSettingsPanel()"
                   aria-label="Volver al detalle del sitio"
                 >
-                  <span class="material-symbols-outlined">arrow_back</span>
+                  <span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>
                 </button>
                 <p>Volver al detalle del sitio</p>
               </div>
@@ -155,7 +155,9 @@ function chileMonthStart(): string {
                 aria-controls="pasteur-monitoring"
                 (click)="setActiveSection('monitoring')"
               >
-                <span class="material-symbols-outlined text-[20px]">monitoring</span>
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                  >monitoring</span
+                >
                 Monitoreo
               </button>
               <button
@@ -167,7 +169,9 @@ function chileMonthStart(): string {
                 aria-controls="pasteur-operation"
                 (click)="setActiveSection('operation')"
               >
-                <span class="material-symbols-outlined text-[20px]">query_stats</span>
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                  >query_stats</span
+                >
                 Operacion
               </button>
               <button
@@ -179,7 +183,9 @@ function chileMonthStart(): string {
                 aria-controls="pasteur-alerts"
                 (click)="setActiveSection('alerts')"
               >
-                <span class="material-symbols-outlined text-[20px]">notifications_active</span>
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                  >notifications_active</span
+                >
                 Alertas
               </button>
               <button
@@ -191,7 +197,9 @@ function chileMonthStart(): string {
                 aria-controls="pasteur-log"
                 (click)="setActiveSection('log')"
               >
-                <span class="material-symbols-outlined text-[20px]">menu_book</span>
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                  >menu_book</span
+                >
                 Bitacora
               </button>
               @if (isSuperAdmin()) {
@@ -204,7 +212,9 @@ function chileMonthStart(): string {
                   aria-controls="pasteur-analysis"
                   (click)="setActiveSection('analysis')"
                 >
-                  <span class="material-symbols-outlined text-[20px]">insights</span>
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                    >insights</span
+                  >
                   Analisis
                   <span class="analysis-badge" title="Solo SuperAdmin" aria-label="Solo SuperAdmin">
                     !
@@ -225,9 +235,11 @@ function chileMonthStart(): string {
                           (click)="closeHistoryView()"
                           aria-label="Volver al dashboard de monitoreo"
                         >
-                          <span class="material-symbols-outlined">arrow_back</span>
+                          <span class="material-symbols-outlined" aria-hidden="true"
+                            >arrow_back</span
+                          >
                         </button>
-                        <span class="history-title-icon">
+                        <span class="history-title-icon" aria-hidden="true">
                           <span class="material-symbols-outlined">database</span>
                         </span>
                         <div>
@@ -237,7 +249,7 @@ function chileMonthStart(): string {
                       </div>
 
                       <button type="button" class="history-download" (click)="downloadHistoryCsv()">
-                        <span class="material-symbols-outlined">download</span>
+                        <span class="material-symbols-outlined" aria-hidden="true">download</span>
                         Descargar
                       </button>
                     </div>
@@ -337,7 +349,7 @@ function chileMonthStart(): string {
                         >
                           <button
                             type="button"
-                            class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:opacity-40"
+                            class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:opacity-40 active:scale-95"
                             (click)="previousHistoryPage()"
                             [disabled]="historyPage() === 1 || historyLoading()"
                             aria-label="Pagina anterior"
@@ -349,7 +361,7 @@ function chileMonthStart(): string {
                           >
                           <button
                             type="button"
-                            class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:opacity-40"
+                            class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 disabled:opacity-40 active:scale-95"
                             (click)="nextHistoryPage()"
                             [disabled]="historyPage() === historyTotalPages() || historyLoading()"
                             aria-label="Pagina siguiente"
@@ -379,7 +391,7 @@ function chileMonthStart(): string {
                       />
                       <article class="history-actions-card">
                         <div class="history-actions-head">
-                          <span class="history-actions-icon">
+                          <span class="history-actions-icon" aria-hidden="true">
                             <span class="material-symbols-outlined">database</span>
                           </span>
                           <div>
@@ -395,7 +407,7 @@ function chileMonthStart(): string {
 
                         <div class="history-actions-buttons">
                           <button type="button" class="history-primary" (click)="openHistoryView()">
-                            <span class="material-symbols-outlined">history</span>
+                            <span class="material-symbols-outlined" aria-hidden="true">history</span>
                             Datos historicos
                           </button>
                           <button
@@ -403,7 +415,9 @@ function chileMonthStart(): string {
                             class="history-secondary"
                             (click)="downloadHistoryCsv()"
                           >
-                            <span class="material-symbols-outlined">download</span>
+                            <span class="material-symbols-outlined" aria-hidden="true"
+                              >download</span
+                            >
                             Descargar
                           </button>
                         </div>
@@ -423,17 +437,19 @@ function chileMonthStart(): string {
                   <button
                     type="button"
                     [class.is-active]="activeOperationView() === 'trends'"
+                    [attr.aria-current]="activeOperationView() === 'trends' ? 'page' : null"
                     (click)="setActiveOperationView('trends')"
                   >
-                    <span class="material-symbols-outlined">show_chart</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">show_chart</span>
                     Tendencias
                   </button>
                   <button
                     type="button"
                     [class.is-active]="activeOperationView() === 'diagram'"
+                    [attr.aria-current]="activeOperationView() === 'diagram' ? 'page' : null"
                     (click)="setActiveOperationView('diagram')"
                   >
-                    <span class="material-symbols-outlined">account_tree</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">account_tree</span>
                     Diagrama de proceso
                   </button>
                 </nav>
