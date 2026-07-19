@@ -39,6 +39,8 @@ import {
 } from '../../modules/dga/controller';
 import { require2fa } from '../../shared/email-otp';
 import { require2faIfSensitiveChange } from '../../modules/dga/twofactor-guards';
+import { ForbiddenError } from '../../shared/errors';
+import type { AuthUser } from '../../shared/permissions';
 
 // auditLog es CJS legacy: bitácora append-only para mutaciones (Ley 21.663 §32).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -105,9 +107,9 @@ const auditDgaMutations = auditMutations((req) => {
   return { action: `dga.${req.method.toLowerCase()}.unknown` };
 });
 
-/** Bloquea acceso DGA a usuarios Vendedor (empresas tipo Demo). */
+/** Bloquea acceso DGA de escritura a usuarios Vendedor (empresas tipo Demo). */
 function blockDemoAccess(req: Request, res: Response, next: NextFunction): void {
-  const user = getUser(req);
+  const user = (req as Request & { user?: AuthUser }).user;
   if (user?.tipo === 'Vendedor') {
     return next(new ForbiddenError('Acceso DGA no disponible en modo demo.'));
   }
