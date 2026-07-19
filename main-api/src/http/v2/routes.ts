@@ -109,6 +109,15 @@ const auditDgaMutations = auditMutations((req) => {
   return { action: `dga.${req.method.toLowerCase()}.unknown` };
 });
 
+/** Bloquea acceso DGA a usuarios Vendedor (empresas tipo Demo). */
+function blockDemoAccess(req: Request, res: Response, next: NextFunction): void {
+  const user = getUser(req);
+  if (user?.tipo === 'Vendedor') {
+    return next(new ForbiddenError('Acceso DGA no disponible en modo demo.'));
+  }
+  next();
+}
+
 /**
  * Middleware: 2FA siempre para rotación de clave de informante.
  */
@@ -185,6 +194,7 @@ router.get(
 router.patch(
   '/dga/sites/:siteId/pozo-config',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   require2faIfSensitiveChange,
   auditDgaMutations,
@@ -246,11 +256,11 @@ router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
 
 // Mediciones (Detalle de Registros + CSV)
 router.get('/dga/dato', protect, queryDatoDgaHandler);
-router.get('/dga/dato/export.csv', protect, exportDatoDgaCsvHandler);
-router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
+router.get('/dga/dato/export.csv', protect, blockDemoAccess, exportDatoDgaCsvHandler);
+router.get('/dga/export-directo.csv', protect, blockDemoAccess, exportDgaDirectoCsvHandler);
 
 // 2FA email-OTP — el código se manda al email del usuario solicitante.
-router.post('/dga/2fa/request', protect, auditDgaMutations, request2faCodeHandler);
+router.post('/dga/2fa/request', protect, blockDemoAccess, auditDgaMutations, request2faCodeHandler);
 
 // Review queue: solo Admin/SuperAdmin + scope por sitio en el handler.
 router.get(

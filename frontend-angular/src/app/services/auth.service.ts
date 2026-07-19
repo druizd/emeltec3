@@ -69,11 +69,11 @@ export class AuthService {
     return tipo === 'SuperAdmin' || tipo === 'Admin';
   });
 
-  readonly canSeeDga = computed(() => this.effectiveRole() !== 'Vendedor');
+  readonly canSeeDga = computed(() => true);
 
   readonly canEditSiteSettings = computed(() => {
     const tipo = this.effectiveRole();
-    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Vendedor';
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
   });
 
   readonly canManageAlerts = computed(() => {
@@ -95,10 +95,10 @@ export class AuthService {
     return tipo === 'SuperAdmin';
   });
 
-  /** SuperAdmin, Admin y Vendedor (en sus sitios demo) pueden crear/editar/eliminar */
+  /** SuperAdmin y Admin pueden crear/editar/eliminar. Vendedor es solo lectura. */
   readonly canEdit = computed(() => {
     const tipo = this.effectiveRole();
-    return tipo === 'SuperAdmin' || tipo === 'Admin' || tipo === 'Vendedor';
+    return tipo === 'SuperAdmin' || tipo === 'Admin';
   });
 
   /** Aviso final: 31s deja 1s de margen para que el usuario vea al menos 00:30. */

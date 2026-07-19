@@ -691,6 +691,10 @@ export class CompanyService {
       return context.companyId ? tree.filter((company) => company.id === context.companyId) : tree;
     }
 
+    if (context.role === 'Vendedor') {
+      return context.companyId ? tree.filter((company) => company.id === context.companyId) : tree;
+    }
+
     if (context.role === 'Gerente') {
       return this.scopeToSubCompany(tree, context.subCompanyId);
     }

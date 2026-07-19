@@ -210,6 +210,11 @@ services:
     environment:
       <<: *db-env
       GRPC_PORT: 50051
+      WAL_DB_PATH: /data/csvconsumer-wal.db
+    volumes:
+      # WAL SQLite: persiste registros pendientes entre reinicios del contenedor.
+      # Sin este volumen, los datos en cola in-memory se pierden al reiniciar.
+      - csvconsumer_wal:/data
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -238,3 +243,4 @@ services:
 volumes:
   timescale_data:
   redis_data:
+  csvconsumer_wal:
