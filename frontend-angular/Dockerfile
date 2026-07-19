@@ -21,9 +21,26 @@ COPY frontend-angular/ ./frontend-angular/
 WORKDIR /app/frontend-angular
 RUN pnpm run build
 
-# Production stage: nginx sirve el bundle
-FROM nginx:alpine
+# Pre-compress: genera .br y .gz paralelos para brotli_static + gzip_static.
+# find/gzip ya vienen en alpine; brotli se instala solo en el stage de build.
+RUN apk add --no-cache brotli \
+ && find /app/frontend-angular/dist/frontend-angular/browser \
+         -type f \
+         -regex '.*\.\(js\|css\|html\|json\|svg\|woff2\|woff\|ttf\|otf\)$' \
+         -exec brotli --best --keep {} \; \
+         -exec gzip  --best --keep {} \;
+
+# Production stage: fholzer/nginx-brotli incluye ngx_http_brotli_filter_module
+# y ngx_http_brotli_static_module compilados. Imagen basada en nginx:mainline-alpine,
+# tamaño ~30 MB (+0 MB respecto a nginx:alpine que es ~25 MB).
+# Impacto: cambio de imagen base; no afecta el proceso de build ni puertos.
+FROM fholzer/nginx-brotli:v1.28.3
 COPY --from=build /app/frontend-angular/dist/frontend-angular/browser /usr/share/nginx/html
 COPY frontend-angular/nginx.conf /etc/nginx/conf.d/default.conf
+# Snippet de security headers: nginx.conf lo incluye en el server block y en
+# cada location con add_header propio (la herencia de add_header no acumula).
+COPY frontend-angular/nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+# SIN CMD propio: la imagen fholzer trae ENTRYPOINT nginx con sus argumentos.
+# Redefinir CMD ["nginx", ...] producía `nginx nginx -g ...` → crash-loop
+# (incidente 17-07-2026).

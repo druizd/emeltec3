@@ -36,6 +36,8 @@ import { SiteVariableSettingsPanelComponent } from './components/site-variable-s
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
+import type { CompanyNode } from '@emeltec/shared';
+import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 
 /**
  * Devuelve "YYYY-MM-DD" para hoy en zona Chile (UTC-4, fijo sin DST).
@@ -51,12 +53,6 @@ function chileToday(): string {
 function chileMonthStart(): string {
   const d = new Date(Date.now() - 4 * 60 * 60 * 1000);
   return d.toISOString().slice(0, 8) + '01';
-}
-
-interface SiteContext {
-  company: any;
-  subCompany: any;
-  site: any;
 }
 
 interface HistoricalTelemetryValue {
@@ -4945,17 +4941,8 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
     return `${get('year')}-${get('month')}-${get('day')}`;
   }
 
-  private findAccessibleSite(tree: any[], siteId: string): SiteContext | null {
-    for (const company of tree || []) {
-      for (const subCompany of company.subCompanies || []) {
-        const site = (subCompany.sites || []).find((item: any) => item.id === siteId);
-        if (site) {
-          return { company, subCompany, site };
-        }
-      }
-    }
-
-    return null;
+  private findAccessibleSite(tree: CompanyNode[], siteId: string): SiteContext | null {
+    return findAccessibleSite(tree, siteId);
   }
 
   private extractNivelFreatico(data: SiteDashboardData | null): number | null {
@@ -5009,7 +4996,10 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
     if (dataValue !== null) return dataValue;
 
     const site = this.siteContext()?.site;
-    return this.toNumber(site?.pozo_config?.[key]) ?? this.toNumber(site?.[key]);
+    // Fallback: sitios legacy pueden traer la clave directamente en el objeto
+    // de sitio además de dentro de pozo_config.
+    const siteAsRecord = site as Record<string, unknown> | undefined;
+    return this.toNumber(site?.pozo_config?.[key]) ?? this.toNumber(siteAsRecord?.[key]);
   }
 
   private toNumber(value: unknown): number | null {

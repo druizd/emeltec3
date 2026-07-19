@@ -55,7 +55,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
           @if (status().msg) {
             <div
               [class]="
-                'p-4 rounded-xl mb-6 flex items-start gap-3 transition-all ' +
+                'anim-banner p-4 rounded-xl mb-6 flex items-start gap-3 ' +
                 (status().type === 'success'
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-red-50 text-red-700 border border-red-200')
@@ -214,6 +214,22 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                 />
               </div>
             </div>
+
+            @if (!editingId()) {
+              <div
+                class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-body-sm text-blue-800"
+              >
+                <p class="font-bold">Información sobre el tratamiento de datos</p>
+                <p class="mt-1">
+                  Al registrar este usuario, la plataforma recopilará: nombre, apellido, email, RUT,
+                  teléfono, cargo y empresa. Esta información se utiliza para la operación del
+                  servicio (base legal: ejecución de contrato B2B, Art. 13 Ley 21.719).
+                  <a href="/privacidad" class="underline font-semibold"
+                    >Ver política de privacidad</a
+                  >.
+                </p>
+              </div>
+            }
 
             <div class="pt-6 border-t border-slate-100 flex justify-end">
               <button

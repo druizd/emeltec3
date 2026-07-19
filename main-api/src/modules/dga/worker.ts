@@ -31,8 +31,20 @@ import type { PozoConfig, RegMap, Site } from '../sites/types';
 const POLL_INTERVAL_MS = Number(process.env.DGA_WORKER_POLL_MS ?? 60_000);
 const MAX_SLOTS_PER_POZO = Number(process.env.DGA_WORKER_MAX_SLOTS ?? 24);
 const WORKER_ENABLED = String(process.env.ENABLE_DGA_WORKER ?? 'true').toLowerCase() !== 'false';
+// Slot vacio sin dato más viejo que esto → requires_review ('no_data_stale').
+// Evita starvation: listVacioSlotsForSite toma los N más antiguos; un hueco de
+// datos irrecuperable (ej. corte 2026-07-10) dejaba al worker reintentando por
+// siempre los mismos slots sin alcanzar los nuevos. 0 o negativo = desactivado.
+const STALE_SLOT_HOURS = Number(process.env.DGA_STALE_SLOT_HOURS ?? 48);
+// Pozo cuyo ciclo produce solo no_data con slots más viejos que esto → warn.
+// Sin esto la condición es invisible en logs (el fill solo loguea con avance).
+const NO_DATA_WARN_HOURS = Number(process.env.DGA_NO_DATA_WARN_HOURS ?? 3);
 
 let intervalHandle: NodeJS.Timeout | null = null;
+
+export function slotAgeHours(slotTs: string, nowMs: number): number {
+  return (nowMs - new Date(slotTs).getTime()) / 3_600_000;
+}
 
 function numericOrNull(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -145,7 +157,29 @@ async function fillSlot(
   return updated ? 'requires_review' : 'skipped';
 }
 
-async function processPozo(pozoDga: PozoDgaConfigRow): Promise<void> {
+/**
+ * Slot sin dato más viejo que STALE_SLOT_HOURS → requires_review con
+ * 'no_data_stale'. Lo saca de la ventana del fill (que toma los N slots más
+ * antiguos) y lo deja visible en la cola de revisión admin.
+ */
+async function releaseStaleSlot(siteId: string, slot: VacioSlotRow): Promise<boolean> {
+  return transitionSlotToRequiresReview({
+    site_id: siteId,
+    ts: slot.ts,
+    caudal_instantaneo: null,
+    flujo_acumulado: null,
+    nivel_freatico: null,
+    validation_warnings: [
+      {
+        code: 'no_data_stale',
+        reason: `sin bucket exacto en equipo_1min tras ${STALE_SLOT_HOURS}h; liberado para revisión manual`,
+      },
+    ],
+    fail_reason: 'no_data_stale',
+  });
+}
+
+export async function processPozo(pozoDga: PozoDgaConfigRow): Promise<void> {
   const bundle = await loadSiteBundle(pozoDga.sitio_id);
   if (!bundle) {
     logger.warn({ site_id: pozoDga.sitio_id }, 'DGA fill: sitio no encontrado');
@@ -158,19 +192,32 @@ async function processPozo(pozoDga: PozoDgaConfigRow): Promise<void> {
   let pendiente = 0;
   let requiresReview = 0;
   let noData = 0;
+  let staleToReview = 0;
 
   for (const slot of slots) {
     try {
       const outcome = await fillSlot(pozoDga, bundle, slot);
       if (outcome === 'pendiente') pendiente++;
       else if (outcome === 'requires_review') requiresReview++;
-      else if (outcome === 'no_data') noData++;
+      else if (outcome === 'no_data') {
+        noData++;
+        if (STALE_SLOT_HOURS > 0 && slotAgeHours(slot.ts, Date.now()) >= STALE_SLOT_HOURS) {
+          if (await releaseStaleSlot(pozoDga.sitio_id, slot)) staleToReview++;
+        }
+      }
     } catch (err) {
       logger.error(
         { site_id: pozoDga.sitio_id, ts: slot.ts, err: (err as Error).message },
         'DGA fill: fallo en slot',
       );
     }
+  }
+
+  if (staleToReview > 0) {
+    logger.info(
+      { site_id: pozoDga.sitio_id, stale_to_review: staleToReview, umbral_horas: STALE_SLOT_HOURS },
+      'DGA fill: slots vacios antiguos liberados a requires_review',
+    );
   }
 
   if (pendiente > 0 || requiresReview > 0) {
@@ -181,10 +228,26 @@ async function processPozo(pozoDga: PozoDgaConfigRow): Promise<void> {
         pendiente,
         requires_review: requiresReview,
         no_data: noData,
+        stale_to_review: staleToReview,
         slots_total: slots.length,
       },
       'DGA fill: pozo procesado',
     );
+  } else if (noData > 0) {
+    // slots viene ORDER BY ts ASC → [0] es el más antiguo.
+    const oldest = slots[0];
+    const oldestAgeH = oldest ? slotAgeHours(oldest.ts, Date.now()) : 0;
+    if (oldest && oldestAgeH >= NO_DATA_WARN_HOURS) {
+      logger.warn(
+        {
+          site_id: pozoDga.sitio_id,
+          no_data: noData,
+          oldest_slot: oldest.ts,
+          oldest_age_h: Math.round(oldestAgeH * 10) / 10,
+        },
+        'DGA fill: pozo estancado sin datos para slots atrasados',
+      );
+    }
   }
 }
 

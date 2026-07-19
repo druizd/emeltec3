@@ -100,6 +100,14 @@ export class ChartCardComponent implements OnChanges, AfterViewInit {
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        // Default de Chart.js son ~750ms de draw-in: demasiado para datos
+        // funcionales que el usuario quiere leer. 300ms mantiene continuidad
+        // sin estorbar; reduced-motion lo elimina.
+        animation:
+          typeof matchMedia !== 'undefined' &&
+          matchMedia('(prefers-reduced-motion: reduce)').matches
+            ? false
+            : { duration: 300, easing: 'easeOutQuart' },
         plugins: {
           legend: { display: false },
           tooltip: {

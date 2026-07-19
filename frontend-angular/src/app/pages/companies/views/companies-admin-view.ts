@@ -7,7 +7,7 @@ import { CompaniesGeneralPanelComponent } from '../components/companies-general-
 import { CompaniesInstallationsPanelComponent } from '../components/companies-installations-panel';
 import { CompaniesPageHeaderComponent } from '../components/companies-page-header';
 import { CompaniesTabItem, CompaniesTabNavComponent } from '../components/companies-tab-nav';
-import { normalizeSiteType } from '../../../shared/site-type-ui';
+import { installationsTabUi, normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
 @Component({
@@ -109,12 +109,10 @@ export class CompaniesAdminViewComponent {
   });
 
   readonly tabsComputed = computed<CompaniesTabItem[]>(() => {
-    const cold = this.isColdRoom();
+    const inst = installationsTabUi(this._sites());
     return [
       { key: 'general', label: 'General', icon: 'grid_view' },
-      cold
-        ? { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' }
-        : { key: 'instalaciones', label: 'Salas', icon: 'space_dashboard' },
+      { key: 'instalaciones', label: inst.label, icon: inst.icon },
       { key: 'eventos', label: 'Configurar alarmas', icon: 'notifications' },
       { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
       { key: 'usuarios', label: 'Gestión Usuarios', icon: 'person_add' },
@@ -122,7 +120,7 @@ export class CompaniesAdminViewComponent {
   });
 
   headerTitle(): string {
-    if (this.activeTab === 'instalaciones') return this.isColdRoom() ? 'Salas' : 'Salas';
+    if (this.activeTab === 'instalaciones') return installationsTabUi(this.sites).label;
     const map: Record<string, string> = {
       general: 'General',
       eventos: 'Eventos',

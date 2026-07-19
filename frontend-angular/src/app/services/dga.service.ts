@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import type { ApiResponse } from '@emeltec/shared';
 
@@ -169,10 +169,8 @@ export interface DgaReviewActionPayload {
 export class DgaService {
   private readonly http = inject(HttpClient);
 
-  /** Headers con X-DGA-2FA-Code para endpoints que lo exigen. */
-  private headers2fa(code: string): HttpHeaders {
-    return new HttpHeaders({ 'X-DGA-2FA-Code': code });
-  }
+  // 2FA: manejado globalmente por twoFactorInterceptor (403 TWOFA_REQUIRED →
+  // diálogo → reintento con X-2FA-Code). Los métodos NO reciben códigos.
 
   // -------- Informantes (pool global) --------
 
@@ -184,27 +182,19 @@ export class DgaService {
 
   /**
    * Crea o actualiza un informante. Si `clave_informante` está presente,
-   * exige 2FA (header X-DGA-2FA-Code). Otros campos (referencia) sin 2FA.
+   * el backend exige 2FA — lo resuelve el interceptor global.
    */
-  upsertInformante(
-    payload: UpsertInformantePayload,
-    twoFactorCode?: string,
-  ): Observable<DgaInformantePublic> {
-    const opts = twoFactorCode ? { headers: this.headers2fa(twoFactorCode) } : {};
+  upsertInformante(payload: UpsertInformantePayload): Observable<DgaInformantePublic> {
     const url = `/api/v2/dga/informantes${payload.rut ? `/${encodeURIComponent(payload.rut)}` : ''}`;
-    const method = payload.rut ? 'patch' : 'post';
-    const obs =
-      method === 'patch'
-        ? this.http.patch<ApiResponse<DgaInformantePublic>>(url, payload, opts)
-        : this.http.post<ApiResponse<DgaInformantePublic>>(url, payload, opts);
+    const obs = payload.rut
+      ? this.http.patch<ApiResponse<DgaInformantePublic>>(url, payload)
+      : this.http.post<ApiResponse<DgaInformantePublic>>(url, payload);
     return obs.pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
-  deleteInformante(rut: string, twoFactorCode: string): Observable<void> {
+  deleteInformante(rut: string): Observable<void> {
     return this.http
-      .delete<
-        ApiResponse<{ deleted: true }>
-      >(`/api/v2/dga/informantes/${encodeURIComponent(rut)}`, { headers: this.headers2fa(twoFactorCode) })
+      .delete<ApiResponse<{ deleted: true }>>(`/api/v2/dga/informantes/${encodeURIComponent(rut)}`)
       .pipe(map(() => void 0));
   }
 
@@ -220,18 +210,16 @@ export class DgaService {
 
   /**
    * Patch parcial. Si payload contiene `dga_transport: 'rest'`, el backend
-   * exige 2FA (header X-DGA-2FA-Code).
+   * exige 2FA — lo resuelve el interceptor global.
    */
   patchPozoDgaConfig(
     siteId: string,
     payload: PatchPozoDgaConfigPayload,
-    twoFactorCode?: string,
   ): Observable<PozoDgaConfig> {
-    const opts = twoFactorCode ? { headers: this.headers2fa(twoFactorCode) } : {};
     return this.http
       .patch<
         ApiResponse<PozoDgaConfig>
-      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/pozo-config`, payload, opts)
+      >(`/api/v2/dga/sites/${encodeURIComponent(siteId)}/pozo-config`, payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
@@ -311,14 +299,6 @@ export class DgaService {
     return `/api/v2/dga/export-directo.csv?${qs}`;
   }
 
-  // -------- 2FA --------
-
-  request2faCode(): Observable<void> {
-    return this.http
-      .post<ApiResponse<{ sent: true }>>('/api/v2/dga/2fa/request', {})
-      .pipe(map(() => void 0));
-  }
-
   // -------- Review queue --------
 
   listReviewQueue(siteId?: string, limit = 100): Observable<DgaReviewSlot[]> {
@@ -329,14 +309,9 @@ export class DgaService {
       .pipe(map((r) => (r.ok ? r.data : [])));
   }
 
-  applyReviewDecision(
-    payload: DgaReviewActionPayload,
-    twoFactorCode: string,
-  ): Observable<{ ok: true }> {
+  applyReviewDecision(payload: DgaReviewActionPayload): Observable<{ ok: true }> {
     return this.http
-      .post<ApiResponse<{ ok: true }>>('/api/v2/dga/review-queue/action', payload, {
-        headers: this.headers2fa(twoFactorCode),
-      })
+      .post<ApiResponse<{ ok: true }>>('/api/v2/dga/review-queue/action', payload)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
@@ -349,12 +324,11 @@ export class DgaService {
   reconocerSensorDefectuoso(
     siteId: string,
     nota: string,
-    twoFactorCode: string,
   ): Observable<{ incidencia_id: number; slots_aceptados: number }> {
     return this.http
       .post<
         ApiResponse<{ incidencia_id: number; slots_aceptados: number }>
-      >(`/api/v2/dga/sites/${siteId}/reconocer-sensor-defectuoso`, { nota }, { headers: this.headers2fa(twoFactorCode) })
+      >(`/api/v2/dga/sites/${siteId}/reconocer-sensor-defectuoso`, { nota })
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 }

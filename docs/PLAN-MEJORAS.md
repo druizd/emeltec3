@@ -1,8 +1,9 @@
 # Plan de Mejoras — Emeltec Cloud
 
 > Documento de trabajo. Marcar tareas con `[x]` al completarlas.
-> Origen: auditoría del frontend Angular (julio 2026).
-> Dos ejes: **(A) Deuda técnica** y **(B) Cumplimiento Ley 21.719** (protección de datos personales, Chile).
+> Origen: auditoría del frontend Angular (julio 2026) + pendientes de performance de mayo 2026.
+> Tres ejes: **(A) Deuda técnica**, **(B) Cumplimiento Ley 21.719** (protección de datos personales, Chile) y **(C) Performance / infra**.
+> **Estado 16-07-2026**: ejecución masiva vía PRs #144–#153 (pendientes de merge; #148 apilado sobre #146, #150→#155 sobre #147).
 
 ---
 
@@ -24,16 +25,16 @@
 
 **Archivos clave:**
 
-| Archivo | Rol |
-| --- | --- |
-| `frontend-angular/src/app/services/auth.service.ts` | Tokens, localStorage, sesión |
-| `frontend-angular/src/app/services/user.service.ts` | CRUD usuarios (datos personales) |
-| `frontend-angular/src/app/services/audit-log.service.ts` | Consulta de auditoría |
-| `frontend-angular/src/app/interceptors/auth.interceptor.ts` | Inyección JWT |
-| `frontend-angular/src/app/interceptors/two-factor.interceptor.ts` | Orquestación 2FA |
-| `frontend-angular/src/app/guards/auth.guard.ts` | authGuard, publicGuard, roleGuard |
-| `frontend-angular/src/app/pages/profile/profile.ts` | Edición de datos del usuario |
-| `frontend-angular/nginx.conf` | Headers de seguridad, CSP |
+| Archivo                                                           | Rol                               |
+| ----------------------------------------------------------------- | --------------------------------- |
+| `frontend-angular/src/app/services/auth.service.ts`               | Tokens, localStorage, sesión      |
+| `frontend-angular/src/app/services/user.service.ts`               | CRUD usuarios (datos personales)  |
+| `frontend-angular/src/app/services/audit-log.service.ts`          | Consulta de auditoría             |
+| `frontend-angular/src/app/interceptors/auth.interceptor.ts`       | Inyección JWT                     |
+| `frontend-angular/src/app/interceptors/two-factor.interceptor.ts` | Orquestación 2FA                  |
+| `frontend-angular/src/app/guards/auth.guard.ts`                   | authGuard, publicGuard, roleGuard |
+| `frontend-angular/src/app/pages/profile/profile.ts`               | Edición de datos del usuario      |
+| `frontend-angular/nginx.conf`                                     | Headers de seguridad, CSP         |
 
 ---
 
@@ -43,45 +44,45 @@
 
 **Contexto**: tres componentes concentran la mayor parte de la lógica de la app. Bloqueador nº 1 de mantenibilidad: cada cambio toca archivos de miles de líneas, imposibles de testear o revisar.
 
-| Componente | Líneas |
-| --- | --- |
-| `pages/ventisqueros/ventisqueros.ts` | ~6.648 |
+| Componente                                     | Líneas |
+| ---------------------------------------------- | ------ |
+| `pages/ventisqueros/ventisqueros.ts`           | ~6.648 |
 | `pages/companies/company-site-water-detail.ts` | ~4.997 |
-| `pages/administration/administration.ts` | ~3.306 |
+| `pages/administration/administration.ts`       | ~3.306 |
 
 Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora, operación, config DGA…). Un PR por extracción, sin cambios funcionales.
 
-- [ ] A1.1 Mapear secciones internas de `company-site-water-detail.ts` (tabs, paneles, modales) y definir plan de extracción
-- [ ] A1.2 Extraer sub-componentes de `company-site-water-detail.ts` (uno por PR)
-- [ ] A1.3 Mapear secciones de `ventisqueros.ts` y definir plan de extracción
-- [ ] A1.4 Extraer sub-componentes de `ventisqueros.ts`
-- [ ] A1.5 Mapear secciones de `administration.ts` y definir plan de extracción
-- [ ] A1.6 Extraer sub-componentes de `administration.ts`
+- [x] A1.1 Mapear secciones internas de `company-site-water-detail.ts` (tabs, paneles, modales) y definir plan de extracción → PR #150/#155 (5.057→2.142 líneas; history panel pendiente)
+- [x] A1.2 Extraer sub-componentes de `company-site-water-detail.ts` (uno por PR) → PR #150/#155 (5.057→2.142 líneas; history panel pendiente)
+- [x] A1.3 Mapear secciones de `ventisqueros.ts` y definir plan de extracción → PR #151 (6.648→4.609; tabs con computeds compartidos pendientes)
+- [x] A1.4 Extraer sub-componentes de `ventisqueros.ts` → PR #151 (6.648→4.609; tabs con computeds compartidos pendientes)
+- [x] A1.5 Mapear secciones de `administration.ts` y definir plan de extracción → PR #152 (3.315→1.956; panel variables de sitio pendiente)
+- [x] A1.6 Extraer sub-componentes de `administration.ts` → PR #152 (3.315→1.956; panel variables de sitio pendiente)
 
 ### A2. Tests de autenticación 🔴 prioridad alta
 
 **Contexto**: cero archivos `.spec.ts` en el frontend. El CI solo testea backend. Empezar por auth: es el código más crítico y el más testeable. Meta: cubrir auth completo, no perseguir % global.
 
-- [ ] A2.1 Configurar runner de tests frontend (vitest) e integrarlo al job de CI
-- [ ] A2.2 Tests de `auth.service.ts`: login, logout, expiración de token, restauración de sesión, view-as
-- [ ] A2.3 Tests de guards (`auth.guard.ts`): authGuard, publicGuard, roleGuard por rol
-- [ ] A2.4 Tests de `auth.interceptor.ts`: inyección Bearer, manejo 401/403
-- [ ] A2.5 Tests de `two-factor.interceptor.ts`: flujo TWOFA_REQUIRED / TWOFA_INVALID
+- [x] A2.1 Configurar runner de tests frontend (vitest) e integrarlo al job de CI → PR #144
+- [x] A2.2 Tests de `auth.service.ts`: login, logout, expiración de token, restauración de sesión, view-as → PR #144
+- [x] A2.3 Tests de guards (`auth.guard.ts`): authGuard, publicGuard, roleGuard por rol → PR #144
+- [x] A2.4 Tests de `auth.interceptor.ts`: inyección Bearer, manejo 401/403 → PR #144
+- [x] A2.5 Tests de `two-factor.interceptor.ts`: flujo TWOFA_REQUIRED / TWOFA_INVALID → PR #144
 
 ### A3. Eliminar `any` en water-detail 🟡 prioridad media
 
 **Contexto**: ~65 usos de `any` en `company-site-water-detail.ts` (ej. `company: any; subCompany: any; site: any`). Conviene hacerlo junto con A1.2 (extraer + tipar en el mismo paso).
 
-- [ ] A3.1 Crear interfaces compartidas `Company`, `SubCompany`, `Site` en `shared/` o `models/`
-- [ ] A3.2 Reemplazar `any` en `company-site-water-detail.ts` por las interfaces
-- [ ] A3.3 Activar regla ESLint `@typescript-eslint/no-explicit-any` (warning primero, error después)
+- [x] A3.1 Crear interfaces compartidas `Company`, `SubCompany`, `Site` en `shared/` o `models/` → ya existían en shared/src/company.ts (PR #147)
+- [x] A3.2 Reemplazar `any` en `company-site-water-detail.ts` por las interfaces → PR #147
+- [x] A3.3 Activar regla ESLint `@typescript-eslint/no-explicit-any` (warning primero, error después) → PR #147
 
 ### A4. Reducir duplicación 🟡 prioridad media
 
 **Contexto**: interfaces `ContactForm` repetidas en varios componentes; panel de alertas/reglas clonado entre vistas.
 
-- [ ] A4.1 Unificar `ContactForm` en un tipo compartido único
-- [ ] A4.2 Extraer panel de alertas/reglas a componente compartido y reutilizarlo
+- [x] A4.1 Unificar `ContactForm` en un tipo compartido único → sin duplicación real: ContactForm existe solo en companies-contacts-panel (PR #147)
+- [x] A4.2 Extraer panel de alertas/reglas a componente compartido y reutilizarlo → paneles ya extraídos; duplicación real era SiteContext/findAccessibleSite ×7 → shared/site-context.ts (PR #147)
 
 ---
 
@@ -99,82 +100,83 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: el backend hace soft-delete (`activo = false`). La ley exige supresión efectiva cuando el titular la ejerce y no existe base legal para retener. El audit log puede conservarse **anonimizado** (base: obligación legal / interés legítimo — documentarla).
 
-- [ ] B1.1 Diseñar flujo de supresión: qué se borra (hard-delete), qué se anonimiza (email → hash, RUT → null), qué se retiene y con qué base legal
-- [ ] B1.2 Implementar endpoint de supresión/anonimización en backend
-- [ ] B1.3 Anonimizar referencias al usuario en audit log al suprimir cuenta
-- [ ] B1.4 Documentar el flujo (plazo legal de respuesta: 30 días)
+- [x] B1.1 Diseñar flujo de supresión: qué se borra (hard-delete), qué se anonimiza (email → hash, RUT → null), qué se retiene y con qué base legal → PR #146 (docs/SUPRESION-DATOS.md)
+- [x] B1.2 Implementar endpoint de supresión/anonimización en backend → PR #146 (docs/SUPRESION-DATOS.md)
+- [x] B1.3 Anonimizar referencias al usuario en audit log al suprimir cuenta → PR #146 (docs/SUPRESION-DATOS.md)
+- [x] B1.4 Documentar el flujo (plazo legal de respuesta: 30 días) → PR #146 (docs/SUPRESION-DATOS.md)
 
 ### B2. Minimizar datos personales en localStorage 🔴 crítico
 
 **Contexto**: `user_data` (email, RUT, teléfono) se guarda en localStorage en texto plano — legible por cualquier script (XSS = fuga). Las medidas de seguridad son obligación del responsable. Cifrar localStorage con crypto-js es teatro (la llave vive en el mismo JS); la solución correcta es **minimización**.
 
-- [ ] B2.1 Reducir `user_data` en localStorage a lo mínimo para la UI: `{id, nombre, rol}`
-- [ ] B2.2 Hidratar el resto del perfil desde `/api/users/me` al restaurar sesión
+- [x] B2.1 Reducir `user_data` en localStorage a lo mínimo para la UI → proyección `SessionUser` `{id, nombre, apellido, tipo, cargo, empresa_id, sub_empresa_id}` en `auth.service.ts` (apellido/cargo: iniciales y actor de bitácora; empresa/sub_empresa_id: jerarquía `canManage`). Fuera: email, RUT, teléfono. Sesiones legacy se purgan al restaurar.
+- [x] B2.2 Hidratar el resto del perfil desde `/api/users/me` al restaurar sesión → `hydrateUserFromApi()` en `auth.service.ts`
 - [ ] B2.3 (Ideal, requiere backend) Migrar JWT a cookie `httpOnly` + `Secure` + `SameSite=Strict` — elimina la clase de ataque completa
-- [ ] B2.4 Verificar que las credenciales DGA nunca transiten ni se guarden en el cliente (hay TODO en `dga-generar-reporte-modal.ts`); solo backend, cifradas en reposo
+- [x] B2.4 Verificado (16-07-2026): la clave SNIA solo vive en un signal transitorio del modal, viaja una vez en el POST/PATCH de alta/rotación (HTTPS + 2FA) y se limpia; el backend nunca la devuelve (`DgaInformantePublic` solo expone rut/referencia/fechas). Ningún storage del cliente guarda credenciales. El TODO citado ya no existe en `dga-generar-reporte-modal.ts`. Cifrado en reposo en BD → B10.2.
+- [ ] B2.5 (Hallazgo 16-07-2026) Servicios cold-room (`cold-room-audit/defrost/deviations/thresholds.service.ts`) persisten bitácora con nombre del actor en localStorage — evaluar si migrar a backend o minimizar actor
 
 ### B3. Canal de derechos ARCO+ en la app 🔴 crítico
 
 **Contexto**: rectificación ya existe (perfil editable). Faltan acceso, portabilidad y supresión como funciones visibles para el titular.
 
-- [ ] B3.1 Sección "Mis datos" en `/profile`: mostrar todo lo que se almacena del titular
-- [ ] B3.2 Exportar datos propios en JSON/CSV (portabilidad)
-- [ ] B3.3 Solicitud de supresión de cuenta desde el perfil, conectada al flujo B1
-- [ ] B3.4 Registrar cada solicitud ARCO+ con timestamp (prueba de cumplimiento de plazos)
+- [x] B3.1 Sección "Mis datos" en `/profile`: mostrar todo lo que se almacena del titular → PR #148
+- [x] B3.2 Exportar datos propios en JSON/CSV (portabilidad) → PR #148
+- [x] B3.3 Solicitud de supresión de cuenta desde el perfil, conectada al flujo B1 → PR #148
+- [x] B3.4 Registrar cada solicitud ARCO+ con timestamp (prueba de cumplimiento de plazos) → PR #148
 
 ### B4. Procedimiento de notificación de brechas 🔴 crítico
 
 **Contexto**: Art. 14 sexies — reportar a la Agencia "sin dilaciones indebidas" (sin plazo fijo en horas, a diferencia del RGPD) cuando haya riesgo razonable para titulares. A los titulares solo si la brecha afecta datos sensibles, menores de 14 años o datos económicos/financieros. Exige además **registro interno** de las vulneraciones. Omitir reporte: grave (10.000 UTM); omitirlo deliberadamente: gravísima (20.000 UTM). Detalle: `LEY-21719-SEGURIDAD.md`.
 
-- [ ] B4.1 Redactar procedimiento escrito de respuesta a brechas (quién detecta, quién decide, quién notifica, plazos)
-- [ ] B4.2 Alertas automáticas sobre audit log: logins anómalos, exportaciones masivas, cambios de permisos
-- [ ] B4.3 Definir plantilla de notificación a la Agencia y a titulares
-- [ ] B4.4 Crear registro interno de vulneraciones (naturaleza, efectos, categorías de datos, nº titulares afectados, medidas adoptadas) — obligatorio Art. 14 sexies inc. 2°
+- [x] B4.1 Redactar procedimiento escrito de respuesta a brechas → `RESPUESTA-BRECHAS.md` (5 fases, plazos internos ≤24 h evaluación / ≤72 h notificación)
+- [x] B4.2 Alertas automáticas sobre audit log: logins anómalos, exportaciones masivas, cambios de permisos → PR #146 (logins fallidos y cambios de rol; exportaciones NO auditadas — brecha documentada)
+- [x] B4.3 Definir plantilla de notificación a la Agencia y a titulares → `RESPUESTA-BRECHAS.md` §3
+- [x] B4.4 Crear registro interno de vulneraciones — formato y proceso en `RESPUESTA-BRECHAS.md` §4 (archivo vivo se crea con la primera entrada)
 
 ### B5. Política de retención de datos 🔴 crítico
 
 **Contexto**: IP + email en audit log se conservan indefinidamente — infringe el principio de proporcionalidad. Las mediciones IIoT sin datos personales pueden quedarse.
 
-- [ ] B5.1 Definir plazos de retención por tipo de dato (audit log: N meses → anonimizar; cuentas inactivas: definir)
-- [ ] B5.2 Implementar job de anonimización periódica del audit log
-- [ ] B5.3 Publicar plazos en `/privacidad`
+- [x] B5.1 Definir plazos de retención por tipo de dato (audit log: N meses → anonimizar; cuentas inactivas: definir) → PR #145 (docs/RETENCION-DATOS.md: 12/36 meses audit, 24 cuentas)
+- [x] B5.2 Implementar job de anonimización periódica del audit log → PR #146 (kill switch OFF por defecto)
+- [x] B5.3 Publicar plazos en `/privacidad` → PR #149
 
 ### B6. Registro de actividades de tratamiento 🟡 medio
 
 **Contexto**: documento interno (no código). Por cada tratamiento: qué datos, finalidad, base legal, plazo, destinatarios. El envío del RUT del informante a la DGA es transferencia a organismo público — base legal: obligación legal, documentarla.
 
-- [ ] B6.1 Levantar inventario de tratamientos (usuarios, contactos operacionales, audit log, DGA)
-- [ ] B6.2 Redactar registro con base legal y plazo por tratamiento
+- [x] B6.1 Levantar inventario de tratamientos → `GOBERNANZA-DATOS.md` §4 (T1–T6)
+- [x] B6.2 Redactar registro con base legal y plazo por tratamiento → `GOBERNANZA-DATOS.md` §4 (plazos propuestos, confirmar con B5.1; base legal del envío a DGA en T5)
 
 ### B7. Consentimiento y deber de información 🟡 medio
 
 **Contexto**: B2B con base contractual cubre lo esencial, pero falta prueba del deber de información al crear usuarios.
 
-- [ ] B7.1 Aviso en creación/registro de usuario: qué datos se tratan, finalidad, base legal
-- [ ] B7.2 Checkbox de aceptación de política de privacidad con timestamp persistido en backend
+- [x] B7.1 Aviso en creación/registro de usuario: qué datos se tratan, finalidad, base legal → PR #148 (migración 008)
+- [x] B7.2 Checkbox de aceptación de política de privacidad con timestamp persistido en backend → PR #148 (migración 008)
 
 ### B8. Actualizar página `/privacidad` 🟡 medio
 
 **Contexto**: adecuar el texto al lenguaje de la 21.719.
 
-- [ ] B8.1 Identificar responsable del tratamiento y datos de contacto
-- [ ] B8.2 Detallar base legal por cada tratamiento
-- [ ] B8.3 Incluir plazos de retención (de B5)
-- [ ] B8.4 Explicar derechos ARCO+ y cómo ejercerlos en la app
-- [ ] B8.5 Mencionar a la Agencia de Protección de Datos como autoridad de reclamo
+- [x] B8.1 Identificar responsable del tratamiento y datos de contacto → PR #149 (razón social/RUT/domicilio [PENDIENTE] — completa gerencia)
+- [x] B8.2 Detallar base legal por cada tratamiento → PR #149
+- [x] B8.3 Incluir plazos de retención (de B5) → PR #149
+- [x] B8.4 Explicar derechos ARCO+ y cómo ejercerlos en la app → PR #149
+- [x] B8.5 Mencionar a la Agencia de Protección de Datos como autoridad de reclamo → PR #149
 
 ### B9. Evaluar DPO / modelo de prevención de infracciones 🟢 opcional
 
 **Contexto**: no obligatorio para todos, pero el modelo de prevención certificado ante la Agencia actúa como atenuante de responsabilidad. Para un SaaS que procesa datos regulados (DGA), vale la pena evaluarlo. Reglamento del modelo: D.S. 662/2025 Hacienda, vigente junto con la ley (01-12-2026).
 
-- [ ] B9.1 Evaluar designación de delegado de protección de datos
+- [x] B9.1 Evaluar designación de delegado de protección de datos → designado: D. Ruiz (Desarrollador de Sistemas), `GOBERNANZA-DATOS.md` §2.1 — pendiente formalizar por correo del representante legal
 - [ ] B9.2 Evaluar adopción de modelo de prevención de infracciones certificable
 
 ### B10. Medidas de seguridad del Art. 14 quinquies 🔴 crítico
 
 **Contexto**: el artículo central de seguridad (detalle completo en `LEY-21719-SEGURIDAD.md`). Exige confidencialidad, integridad, disponibilidad y **resiliencia**; nombra seudonimización y cifrado como medidas ejemplares; exige capacidad de **restauración rápida** (backups) y **verificación periódica de eficacia**. Carga de la prueba invertida: ante incidente, el responsable debe acreditar sus medidas. Infracción grave: 10.000 UTM. Además, Art. 14 ter e) exige que la **política de seguridad sea pública**.
 
-- [ ] B10.1 Redactar y publicar política de seguridad (Art. 14 ter e) — nivel política, sin detalles explotables; enlazar desde `/privacidad`
+- [x] B10.1 Redactar y publicar política de seguridad (Art. 14 ter e) — nivel política, sin detalles explotables; enlazar desde `/privacidad` → PR #145 (docs/POLITICA-SEGURIDAD.md)
 - [ ] B10.2 Verificar/implementar cifrado en reposo de campos sensibles en BD (credenciales DGA como mínimo)
 - [ ] B10.3 Documentar y probar plan de backup/restauración de datos personales (Art. 14 quinquies c)
 - [ ] B10.4 Establecer calendario de revisión periódica de seguridad documentada (Art. 14 quinquies d): auditoría interna, revisión de dependencias, pentest si presupuesto lo permite
@@ -183,7 +185,7 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: proveedores que tratan datos personales por cuenta nuestra son "encargados" y requieren contrato con contenido mínimo legal; quedan sujetos a los deberes de secreto y seguridad; reportan brechas al responsable. Candidatos: Azure (hosting), servicio de envío de correo/SMS del 2FA, GitHub si hay datos personales en logs. La Agencia publicará contratos modelo.
 
-- [ ] B11.1 Inventariar encargados de tratamiento (qué tercero ve qué dato personal)
+- [x] B11.1 Inventariar encargados de tratamiento (qué tercero ve qué dato personal) → PR #145 (docs/ENCARGADOS-TRATAMIENTO.md; hallazgo: GCS no estaba en T6)
 - [ ] B11.2 Revisar DPAs/contratos existentes (Azure ya ofrece DPA estándar — verificar cobertura) y cerrar brechas contractuales
 - [ ] B11.3 Verificar acuerdos de confidencialidad con empleados/contratistas con acceso a datos (Art. 14 bis)
 
@@ -191,20 +193,44 @@ Estrategia: extraer sub-componentes por tab/panel (alertas, análisis, bitácora
 
 **Contexto**: Art. 15 ter exige evaluación de impacto ante alto riesgo (obligatoria siempre en tratamiento masivo, perfilado con efectos jurídicos, datos sensibles sin consentimiento). Probablemente NO aplica hoy (datos IIoT no son personales; usuarios B2B volumen acotado) — pero la conclusión debe quedar **documentada**: omitir EIPD cuando corresponde es gravísima (20.000 UTM). Los estándares técnicos mínimos vendrán por **instrucción general de la Agencia** (Art. 14 septies), aún no dictada.
 
-- [ ] B12.1 Documentar evaluación de aplicabilidad de EIPD (conclusión y fundamento)
+- [x] B12.1 Documentar evaluación de aplicabilidad de EIPD (conclusión y fundamento) → PR #145 (docs/EIPD-EVALUACION.md)
 - [ ] B12.2 Monitorear instrucciones generales de la Agencia de Protección de Datos (estándares mínimos 14 septies, contratos modelo 15 bis, lista EIPD 15 ter) — revisar trimestralmente
-- [ ] B12.3 Confirmar que la plataforma no trata datos sensibles (definición amplia Art. 2° g incluye situación socioeconómica, salud, biometría) y dejar constancia
+- [x] B12.3 Confirmar que la plataforma no trata datos sensibles (definición amplia Art. 2° g incluye situación socioeconómica, salud, biometría) y dejar constancia → PR #145 (docs/EIPD-EVALUACION.md)
+
+---
+
+## C. Performance / Infra
+
+> Origen: pendientes al cierre de la sesión de performance de mayo 2026
+> (`optimizaciones-2026-05.md`, documento histórico). Vigencia verificada
+> el 16-07-2026: ninguno se ha implementado aún.
+
+### C1. Datos de Operación pozo 🟡 prioridad media
+
+**Contexto**: el cold path de contadores daily/jornada sigue en ~1 s (query on-demand sobre caggs). La tabla de incidencias del Resumen por Período es el último mock de la vista.
+
+- [x] C1.1 Materializar contadores daily + jornada (worker + tablas `site_contador_diario` / `site_contador_jornada`) — cold path ~1 s → ~30 ms → PR #153 (migración 009, kill switch OFF)
+- [x] C1.2 Endpoint de incidencias por sitio (`GET /sites/:id/incidencias?desde&hasta`) y conectar `mockIncidencias` en `operacion-resumen-periodo.ts` → ya resuelto en main (incidenciasReales); mock muerto eliminado en PR #153
+
+### C2. Entrega frontend 🟢 prioridad baja
+
+**Contexto**: mejoras incrementales sobre la base ya optimizada en mayo (cache immutable, gzip, fuentes reducidas).
+
+- [x] C2.1 Brotli en nginx (hoy solo gzip; el comentario del conf menciona brotli pero no está activo) — +10-15 % de compresión → PR #153 (imagen fholzer/nginx-brotli)
+- [x] C2.2 `<link rel="modulepreload">` de chunks críticos en `index.html` → descartado: esbuild ya emite modulepreload (PR #153)
+- [x] C2.3 Tunear split de chunks en `angular.json` (vendor split, commonChunk) → descartado: sin palanca en @angular/build:application (PR #153)
+- [ ] C2.4 Evaluar SSR + Transfer State para primer paint — solo si C2.1–C2.3 no bastan; costo de mantención alto
 
 ---
 
 ## Calendario sugerido (deadline: 1-dic-2026)
 
-| Mes | Foco |
-| --- | --- |
-| Jul–Ago 2026 | B2 (localStorage) + B5 (retención) + B12.1/B12.3 (evaluaciones documentadas, rápidas) |
-| Ago–Sep 2026 | B1 (supresión real) + B8 (`/privacidad`) + B10.1 (política de seguridad pública) |
+| Mes          | Foco                                                                                   |
+| ------------ | -------------------------------------------------------------------------------------- |
+| Jul–Ago 2026 | B2 (localStorage) + B5 (retención) + B12.1/B12.3 (evaluaciones documentadas, rápidas)  |
+| Ago–Sep 2026 | B1 (supresión real) + B8 (`/privacidad`) + B10.1 (política de seguridad pública)       |
 | Sep–Oct 2026 | B3 (ARCO+ en perfil) + B6 (registro de tratamientos) + B10.2/B10.3 (cifrado + backups) |
-| Oct–Nov 2026 | B4 (brechas + registro interno + alertas) + B7 (consentimiento) + B11 (encargados) |
-| Continuo | A1–A4 en paralelo; B12.2 (monitoreo Agencia) trimestral |
+| Oct–Nov 2026 | B4 (brechas + registro interno + alertas) + B7 (consentimiento) + B11 (encargados)     |
+| Continuo     | A1–A4 y C1–C2 en paralelo; B12.2 (monitoreo Agencia) trimestral                        |
 
 **Referencia legal detallada**: `docs/LEY-21719-SEGURIDAD.md` (texto literal de artículos, sanciones, mapa exigencia→acción).

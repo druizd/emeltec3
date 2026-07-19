@@ -31,16 +31,17 @@ import {
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
-import { dashboardRouteForSite, getSiteTypeUi } from '../../shared/site-type-ui';
+import { dashboardRouteForSite } from '../../shared/site-type-ui';
 import { formatRutInput } from '../../shared/rut';
-import { AdminPaginationComponent } from './components/admin-pagination';
-import { AdminFormActionsComponent } from './components/admin-form-actions';
 import { AdminSectionShellComponent } from './components/admin-section-shell';
-import { AdminSectionHeaderComponent } from './components/admin-section-header';
-import { AdminTableToolbarComponent } from './components/admin-table-toolbar';
 import { SkeletonComponent } from '../../components/ui/skeleton';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { EquipoEmeltecSectionComponent } from './components/equipo-emeltec-section';
+import { EquiposSectionComponent } from './components/equipos-section';
+import { EmpresasSectionComponent } from './components/empresas-section';
+import { SubempresasSectionComponent } from './components/subempresas-section';
+import { SitiosSectionComponent } from './components/sitios-section';
+import { DEFAULT_SITE_TYPE_CATALOG } from './site-type-catalog';
 
 type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
 type StatusType = 'success' | 'error' | '';
@@ -147,362 +148,6 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   sandboxRaw: '',
 };
 
-const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
-  pozo: {
-    id: 'pozo',
-    label: 'Pozo',
-    roles: [
-      {
-        id: 'nivel',
-        label: 'Nivel',
-        unitHint: 'm',
-        description: 'Lectura del sensor usada para calcular el nivel freatico del pozo.',
-      },
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      {
-        id: 'totalizador',
-        label: 'Totalizador',
-        unitHint: 'm3',
-        description: 'Volumen acumulado.',
-      },
-      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  vertiente: {
-    id: 'vertiente',
-    label: 'Vertiente',
-    roles: [
-      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Nivel reportado.' },
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      {
-        id: 'totalizador',
-        label: 'Totalizador',
-        unitHint: 'm3',
-        description: 'Volumen acumulado.',
-      },
-      { id: 'seÃ±al', label: 'SeÃ±al', unitHint: '%', description: 'Intensidad de seÃ±al.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  canal: {
-    id: 'canal',
-    label: 'Canal',
-    roles: [
-      { id: 'nivel', label: 'Nivel', unitHint: 'm', description: 'Nivel reportado.' },
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      {
-        id: 'totalizador',
-        label: 'Totalizador',
-        unitHint: 'm3',
-        description: 'Volumen acumulado.',
-      },
-      { id: 'seÃ±al', label: 'SeÃ±al', unitHint: '%', description: 'Intensidad de seÃ±al.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  electrico: {
-    id: 'electrico',
-    label: 'Electrico',
-    roles: [
-      {
-        id: 'energia',
-        label: 'Energia',
-        unitHint: 'kWh',
-        description: 'Energia acumulada o consumida.',
-      },
-      { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
-      {
-        id: 'temperatura',
-        label: 'Temperatura',
-        unitHint: 'C',
-        description: 'Temperatura asociada.',
-      },
-      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  riles: {
-    id: 'riles',
-    label: 'Riles',
-    roles: [
-      { id: 'caudal', label: 'Caudal', unitHint: 'L/s', description: 'Flujo instantaneo.' },
-      {
-        id: 'totalizador',
-        label: 'Totalizador',
-        unitHint: 'm3',
-        description: 'Volumen acumulado.',
-      },
-      { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
-      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  proceso: {
-    id: 'proceso',
-    label: 'Proceso',
-    roles: [
-      { id: 'estado', label: 'Estado', unitHint: '', description: 'Estado operativo.' },
-      {
-        id: 'temperatura',
-        label: 'Temperatura',
-        unitHint: 'C',
-        description: 'Temperatura de proceso.',
-      },
-      { id: 'presion', label: 'Presion', unitHint: 'bar', description: 'Presion de proceso.' },
-      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  pasteurizador: {
-    id: 'pasteurizador',
-    label: 'Pasteurizador',
-    roles: [
-      {
-        id: 'temperatura_pasteurizacion',
-        label: 'Temperatura pasteurizacion',
-        unitHint: 'C',
-        description: 'Temperatura actual del proceso.',
-      },
-      {
-        id: 'temperatura_entrada',
-        label: 'Temperatura entrada',
-        unitHint: 'C',
-        description: 'Temperatura del producto antes de pasteurizar.',
-      },
-      {
-        id: 'salida_producto_tina',
-        label: 'Salida producto a tina',
-        unitHint: 'L',
-        description: 'Litros acumulados enviados a tina.',
-      },
-      {
-        id: 'estado_valvula',
-        label: 'Estado valvula',
-        unitHint: '0/1',
-        description: 'Estado abierto o cerrado de valvula.',
-      },
-      {
-        id: 'cierres_valvula',
-        label: 'Cierres valvula',
-        unitHint: 'N',
-        description: 'Cantidad de cierres de valvula.',
-      },
-      {
-        id: 'errores_criticos',
-        label: 'Errores criticos',
-        unitHint: 'N',
-        description: 'Fallas criticas detectadas durante el batch.',
-      },
-      {
-        id: 'tiempo_batch',
-        label: 'Tiempo batch',
-        unitHint: 'min',
-        description: 'Duracion del lote.',
-      },
-      {
-        id: 'temperatura_promedio_batch',
-        label: 'Temperatura promedio batch',
-        unitHint: 'C',
-        description: 'Promedio de temperatura del batch.',
-      },
-      {
-        id: 'temperatura_ingreso_agua',
-        label: 'Temperatura ingreso agua',
-        unitHint: 'C',
-        description: 'Temperatura del agua o caldera.',
-      },
-      {
-        id: 'presion_vapor',
-        label: 'Presion vapor',
-        unitHint: 'bar',
-        description: 'Presion del sistema de vapor.',
-      },
-      {
-        id: 'temperatura_gases_combustion',
-        label: 'Temperatura gases combustion',
-        unitHint: 'C',
-        description: 'Temperatura de gases de combustion.',
-      },
-      { id: 'señal', label: 'Señal', unitHint: '%', description: 'Intensidad de señal.' },
-      { id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' },
-    ],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-  generico: {
-    id: 'generico',
-    label: 'Generico',
-    roles: [{ id: 'generico', label: 'Generico', unitHint: '', description: 'Variable auxiliar.' }],
-    transforms: [
-      {
-        id: 'directo',
-        label: 'Directo',
-        description: 'Usa el valor entrante sin modificarlo.',
-        enabled: true,
-      },
-      {
-        id: 'lineal',
-        label: 'Lineal',
-        description: 'Aplica valor * factor + offset.',
-        enabled: true,
-      },
-      {
-        id: 'ieee754_32',
-        label: 'IEEE754 32 bits',
-        description: 'Une dos registros Modbus para obtener FLOAT32.',
-        enabled: true,
-        requiresD2: true,
-      },
-    ],
-  },
-};
-
 @Component({
   selector: 'app-administration',
   standalone: true,
@@ -511,14 +156,14 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
     FormsModule,
     A11yModule,
     KpiCardComponent,
-    AdminPaginationComponent,
-    AdminFormActionsComponent,
     AdminSectionShellComponent,
-    AdminSectionHeaderComponent,
-    AdminTableToolbarComponent,
     SkeletonComponent,
     TableSkeletonComponent,
     EquipoEmeltecSectionComponent,
+    EquiposSectionComponent,
+    EmpresasSectionComponent,
+    SubempresasSectionComponent,
+    SitiosSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -695,659 +340,91 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
               </section>
             } @else {
               @if (activeSection() === 'empresas') {
-                <app-admin-section-shell title="Empresas padre">
-                  <form
-                    (submit)="submitCompany($event)"
-                    class="editor-panel grid gap-4 lg:grid-cols-3"
-                  >
-                    <div class="lg:col-span-3">
-                      <app-admin-section-header
-                        [selected]="!!selectedCompanyId()"
-                        selectedLabel="Empresa seleccionada"
-                        newLabel="Nueva empresa"
-                        selectedHint="Presiona editar datos para habilitar cambios."
-                        newHint="Completa los datos para crear una empresa."
-                        (createNew)="startCreateCompany()"
-                      ></app-admin-section-header>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Nombre</label>
-                      <input
-                        required
-                        [disabled]="companyFormDisabled()"
-                        name="company-name"
-                        [ngModel]="companyForm().nombre"
-                        (ngModelChange)="updateCompanyForm('nombre', $event)"
-                        class="field-control"
-                        placeholder="Empresa padre"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >RUT (opcional)</label
-                      >
-                      <input
-                        [disabled]="companyFormDisabled()"
-                        name="company-rut"
-                        [ngModel]="companyForm().rut"
-                        (ngModelChange)="updateCompanyForm('rut', $event)"
-                        inputmode="text"
-                        maxlength="12"
-                        class="field-control"
-                        placeholder="76.000.000-0"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Tipo</label>
-                      <select
-                        name="company-type"
-                        [disabled]="companyFormDisabled()"
-                        [ngModel]="companyForm().tipo_empresa"
-                        (ngModelChange)="updateCompanyForm('tipo_empresa', $event)"
-                        class="field-control"
-                      >
-                        <option value="Agua">Agua</option>
-                        <option value="Eléctrico">Eléctrico</option>
-                        <option value="Industrial">Industrial</option>
-                        <option value="Cliente">Cliente</option>
-                      </select>
-                    </div>
-                    <div class="flex flex-wrap gap-2 lg:col-span-3">
-                      <app-admin-form-actions
-                        [selected]="!!selectedCompanyId()"
-                        [editMode]="companyEditMode()"
-                        [busy]="busyAction()"
-                        createKey="company"
-                        updateKey="company-update"
-                        deleteKey="company-delete"
-                        createLabel="Crear empresa"
-                        createIcon="domain_add"
-                        entityLabel="empresa"
-                        (enableEdit)="enableCompanyEdit()"
-                        (cancelEdit)="cancelCompanyEdit()"
-                        (remove)="deleteSelectedCompany()"
-                      ></app-admin-form-actions>
-                    </div>
-                  </form>
-
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Empresas registradas"
-                      [countLabel]="
-                        filteredCompanies().length + ' de ' + hierarchy().length + ' visibles'
-                      "
-                      [searchValue]="companySearch()"
-                      placeholder="Buscar empresa, RUT o tipo"
-                      (searchChange)="updateCompanySearch($event)"
-                    ></app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[680px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (company of paginatedCompanies(); track company.id) {
-                            <tr
-                              (click)="selectCompany(company.id)"
-                              [class]="rowClass(selectedCompanyId() === company.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
-                                {{ company.nombre }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="RUT">
-                                {{ company.rut }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Tipo">
-                                <span [class]="companyTypeBadgeClass(company.tipo_empresa)">{{
-                                  company.tipo_empresa
-                                }}</span>
-                              </td>
-                              <td
-                                class="px-4 py-3 text-right font-bold text-slate-600"
-                                data-label="Sitios"
-                              >
-                                {{ countCompanySites(company) }}
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredCompanies().length"
-                      [page]="companyPage()"
-                      (pageChange)="setPage('empresas', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-empresas-section
+                  [companies]="hierarchy()"
+                  [selectedId]="selectedCompanyId()"
+                  [editMode]="companyEditMode()"
+                  [busyAction]="busyAction()"
+                  [nombre]="companyForm().nombre"
+                  [rut]="companyForm().rut"
+                  [tipoEmpresa]="companyForm().tipo_empresa"
+                  (formSubmit)="submitCompany($event)"
+                  (selectItem)="selectCompany($event)"
+                  (enableEdit)="enableCompanyEdit()"
+                  (cancelEdit)="cancelCompanyEdit()"
+                  (remove)="deleteSelectedCompany()"
+                  (createNew)="startCreateCompany()"
+                  (nombreChange)="updateCompanyForm('nombre', $event)"
+                  (rutChange)="updateCompanyForm('rut', $event)"
+                  (tipoEmpresaChange)="updateCompanyForm('tipo_empresa', $event)"
+                />
               }
 
               @if (activeSection() === 'subempresas') {
-                <app-admin-section-shell title="Subempresas">
-                  <form
-                    (submit)="submitSubCompany($event)"
-                    class="editor-panel grid gap-4 lg:grid-cols-3"
-                  >
-                    <div class="lg:col-span-3">
-                      <app-admin-section-header
-                        [selected]="!!selectedSubCompanyId()"
-                        selectedLabel="Subempresa seleccionada"
-                        newLabel="Nueva subempresa"
-                        selectedHint="Presiona editar datos para habilitar cambios."
-                        newHint="Completa los datos para crear una subempresa."
-                        (createNew)="startCreateSubCompany()"
-                      ></app-admin-section-header>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Empresa padre</label
-                      >
-                      <select
-                        required
-                        [disabled]="subCompanyFormDisabled()"
-                        name="sub-company-parent"
-                        [ngModel]="subCompanyForm().empresa_id"
-                        (ngModelChange)="updateSubCompanyForm('empresa_id', $event)"
-                        class="field-control"
-                      >
-                        <option value="" disabled>Selecciona empresa</option>
-                        @for (company of hierarchy(); track company.id) {
-                          <option [value]="company.id">{{ company.nombre }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Nombre</label>
-                      <input
-                        required
-                        [disabled]="subCompanyFormDisabled()"
-                        name="sub-company-name"
-                        [ngModel]="subCompanyForm().nombre"
-                        (ngModelChange)="updateSubCompanyForm('nombre', $event)"
-                        class="field-control"
-                        placeholder="Subempresa o faena"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">RUT</label>
-                      <input
-                        required
-                        [disabled]="subCompanyFormDisabled()"
-                        name="sub-company-rut"
-                        [ngModel]="subCompanyForm().rut"
-                        (ngModelChange)="updateSubCompanyForm('rut', $event)"
-                        inputmode="text"
-                        maxlength="12"
-                        class="field-control"
-                        placeholder="76.000.000-0"
-                      />
-                    </div>
-                    <div class="flex flex-wrap gap-2 lg:col-span-3">
-                      <app-admin-form-actions
-                        [selected]="!!selectedSubCompanyId()"
-                        [editMode]="subCompanyEditMode()"
-                        [busy]="busyAction()"
-                        createKey="subcompany"
-                        updateKey="subcompany-update"
-                        deleteKey="subcompany-delete"
-                        createLabel="Crear subempresa"
-                        createIcon="add_business"
-                        entityLabel="subempresa"
-                        (enableEdit)="enableSubCompanyEdit()"
-                        (cancelEdit)="cancelSubCompanyEdit()"
-                        (remove)="deleteSelectedSubCompany()"
-                      ></app-admin-form-actions>
-                    </div>
-                  </form>
-
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Subempresas registradas"
-                      [countLabel]="
-                        filteredSubCompanies().length +
-                        ' de ' +
-                        allSubCompanies().length +
-                        ' visibles'
-                      "
-                      [searchValue]="subCompanySearch()"
-                      placeholder="Buscar subempresa, empresa o RUT"
-                      (searchChange)="updateSubCompanySearch($event)"
-                    ></app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[760px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">Empresa</th>
-                            <th class="px-4 py-3">RUT</th>
-                            <th class="px-4 py-3 text-right">Sitios</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (sub of paginatedSubCompanies(); track sub.id) {
-                            <tr
-                              (click)="selectSubCompany(sub.id)"
-                              [class]="rowClass(selectedSubCompanyId() === sub.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Nombre">
-                                {{ sub.nombre }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="Empresa">
-                                {{ sub.companyName }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="RUT">
-                                {{ sub.rut }}
-                              </td>
-                              <td
-                                class="px-4 py-3 text-right font-bold text-slate-600"
-                                data-label="Sitios"
-                              >
-                                {{ sub.sites.length }}
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredSubCompanies().length"
-                      [page]="subCompanyPage()"
-                      (pageChange)="setPage('subempresas', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-subempresas-section
+                  [subCompanies]="allSubCompanies()"
+                  [companies]="hierarchy()"
+                  [selectedId]="selectedSubCompanyId()"
+                  [editMode]="subCompanyEditMode()"
+                  [busyAction]="busyAction()"
+                  [empresaId]="subCompanyForm().empresa_id"
+                  [nombre]="subCompanyForm().nombre"
+                  [rut]="subCompanyForm().rut"
+                  (formSubmit)="submitSubCompany($event)"
+                  (selectItem)="selectSubCompany($event)"
+                  (enableEdit)="enableSubCompanyEdit()"
+                  (cancelEdit)="cancelSubCompanyEdit()"
+                  (remove)="deleteSelectedSubCompany()"
+                  (createNew)="startCreateSubCompany()"
+                  (empresaIdChange)="updateSubCompanyForm('empresa_id', $event)"
+                  (nombreChange)="updateSubCompanyForm('nombre', $event)"
+                  (rutChange)="updateSubCompanyForm('rut', $event)"
+                />
               }
 
               @if (activeSection() === 'sitios') {
-                <app-admin-section-shell title="Sitios">
-                  <form
-                    (submit)="submitSite($event)"
-                    class="editor-panel grid gap-4 lg:grid-cols-4"
-                  >
-                    <div class="lg:col-span-4">
-                      <app-admin-section-header
-                        [selected]="!!selectedSiteId()"
-                        selectedLabel="Sitio seleccionado"
-                        newLabel="Nuevo sitio"
-                        selectedHint="Selecciona editar datos para modificar este sitio."
-                        newHint="Completa los datos para crear un sitio."
-                        buttonLabel="Nuevo"
-                        (createNew)="startCreateSite()"
-                      ></app-admin-section-header>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Empresa padre</label
-                      >
-                      <select
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-company"
-                        [ngModel]="siteForm().empresa_id"
-                        (ngModelChange)="selectCompanyForSite($event)"
-                        class="field-control"
-                      >
-                        <option value="" disabled>Selecciona empresa</option>
-                        @for (company of hierarchy(); track company.id) {
-                          <option [value]="company.id">{{ company.nombre }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Subempresa</label
-                      >
-                      <select
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-subcompany"
-                        [ngModel]="siteForm().sub_empresa_id"
-                        (ngModelChange)="updateSiteForm('sub_empresa_id', $event)"
-                        class="field-control"
-                      >
-                        <option value="" disabled>Selecciona subempresa</option>
-                        @for (sub of subCompaniesForSiteForm(); track sub.id) {
-                          <option [value]="sub.id">{{ sub.nombre }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Tipo de instalacion</label
-                      >
-                      <select
-                        name="site-type"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().tipo_sitio"
-                        (ngModelChange)="updateSiteForm('tipo_sitio', $event)"
-                        class="field-control"
-                      >
-                        @for (type of siteTypeOptions(); track type.id) {
-                          <option [value]="type.id">{{ type.label }}</option>
-                        }
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500">Estado</label>
-                      <select
-                        name="site-active"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().activo ? 'true' : 'false'"
-                        (ngModelChange)="updateSiteActive($event)"
-                        class="field-control"
-                      >
-                        <option value="true">Activo</option>
-                        <option value="false">Inactivo</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Maleta Piloto</label
-                      >
-                      <select
-                        name="site-maleta-piloto"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().es_maleta_piloto ? 'true' : 'false'"
-                        (ngModelChange)="updateSiteMaletaPiloto($event)"
-                        class="field-control"
-                      >
-                        <option value="false">No</option>
-                        <option value="true">Sí — mostrar en Maletas Pilotos</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Nombre del sitio</label
-                      >
-                      <input
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-description"
-                        [ngModel]="siteForm().descripcion"
-                        (ngModelChange)="updateSiteForm('descripcion', $event)"
-                        class="field-control"
-                        placeholder="Pozo, vertiente, canal o instalacion"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Serial del equipo</label
-                      >
-                      <input
-                        required
-                        [disabled]="siteFormDisabled()"
-                        name="site-serial"
-                        [ngModel]="siteForm().id_serial"
-                        (ngModelChange)="updateSiteForm('id_serial', $event)"
-                        class="field-control"
-                        placeholder="151.20.43.6"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Ubicación</label
-                      >
-                      <input
-                        name="site-location"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().ubicacion"
-                        (ngModelChange)="updateSiteForm('ubicacion', $event)"
-                        class="field-control"
-                        placeholder="Ciudad, faena o referencia"
-                      />
-                    </div>
-                    <!-- Coordenadas UTM. Se convierten a lat/lng en el
-                         frontend (proj4) para plotear en el mapa satelital
-                         de la vista general. Chile usa huso 18/19/20. -->
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Coord. Norte (UTM)</label
-                      >
-                      <input
-                        name="site-coord-norte"
-                        type="number"
-                        step="0.01"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().coord_norte"
-                        (ngModelChange)="updateSiteForm('coord_norte', $event)"
-                        class="field-control font-mono"
-                        placeholder="6.689.234,50"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Coord. Este (UTM)</label
-                      >
-                      <input
-                        name="site-coord-este"
-                        type="number"
-                        step="0.01"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().coord_este"
-                        (ngModelChange)="updateSiteForm('coord_este', $event)"
-                        class="field-control font-mono"
-                        placeholder="345.678,90"
-                      />
-                    </div>
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Huso UTM</label
-                      >
-                      <select
-                        name="site-huso"
-                        [disabled]="siteFormDisabled()"
-                        [ngModel]="siteForm().huso"
-                        (ngModelChange)="updateSiteForm('huso', $event)"
-                        class="field-control"
-                      >
-                        <option value="">—</option>
-                        <option value="18">18 (Norte Chile)</option>
-                        <option value="19">19 (Centro Chile)</option>
-                        <option value="20">20 (Sur Chile)</option>
-                      </select>
-                    </div>
-                    <div class="lg:col-span-4 flex flex-wrap gap-2">
-                      <app-admin-form-actions
-                        [selected]="!!selectedSiteId()"
-                        [editMode]="siteEditMode()"
-                        [busy]="busyAction()"
-                        createKey="site"
-                        updateKey="site-update"
-                        deleteKey="site-delete"
-                        createLabel="Crear sitio"
-                        createIcon="add_location_alt"
-                        entityLabel="sitio"
-                        (enableEdit)="enableSiteEdit()"
-                        (cancelEdit)="cancelSiteEdit()"
-                        (remove)="deleteSelectedSite()"
-                      ></app-admin-form-actions>
-                    </div>
-                    @if (selectedSiteId() && !siteEditMode()) {
-                      <div
-                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-caption text-slate-500 lg:col-span-4"
-                      >
-                        {{
-                          selectedSite()?.ubicacion
-                            ? 'Ubicación: ' + selectedSite()?.ubicacion
-                            : 'Sin ubicación registrada'
-                        }}
-                      </div>
-                    }
-                  </form>
-
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Sitios registrados"
-                      [countLabel]="
-                        filteredSites().length + ' de ' + allSites().length + ' visibles'
-                      "
-                      [searchValue]="siteSearch()"
-                      placeholder="Buscar sitio, serial, empresa o estado"
-                      (searchChange)="updateSiteSearch($event)"
-                    ></app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[680px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Sitio</th>
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Subempresa</th>
-                            <th class="px-4 py-3">Estado</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (site of paginatedSites(); track site.id) {
-                            <tr
-                              (click)="selectSite(site.id)"
-                              [class]="rowClass(selectedSiteId() === site.id)"
-                            >
-                              <td class="px-4 py-3 font-bold text-slate-800" data-label="Sitio">
-                                {{ site.descripcion }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Tipo">
-                                <span [class]="siteTypeBadgeClass(site.tipo_sitio)">{{
-                                  siteTypeLabel(site.tipo_sitio)
-                                }}</span>
-                              </td>
-                              <td
-                                class="px-4 py-3 font-mono text-caption text-slate-600"
-                                data-label="Serial"
-                              >
-                                {{ site.id_serial }}
-                              </td>
-                              <td class="px-4 py-3 text-slate-500" data-label="Subempresa">
-                                {{ site.subCompanyName }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Estado">
-                                <span
-                                  [class]="statusBadgeClass(site.activo ? 'success' : 'neutral')"
-                                >
-                                  {{ site.activo ? 'Activo' : 'Inactivo' }}
-                                </span>
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredSites().length"
-                      [page]="sitePage()"
-                      (pageChange)="setPage('sitios', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-sitios-section
+                  [sites]="allSites()"
+                  [companies]="hierarchy()"
+                  [subCompaniesForForm]="subCompaniesForSiteForm()"
+                  [siteTypeOptions]="siteTypeOptions()"
+                  [selectedId]="selectedSiteId()"
+                  [editMode]="siteEditMode()"
+                  [busyAction]="busyAction()"
+                  [selectedSiteUbicacion]="selectedSite()?.ubicacion"
+                  [empresaId]="siteForm().empresa_id"
+                  [subEmpresaId]="siteForm().sub_empresa_id"
+                  [tipoSitio]="siteForm().tipo_sitio"
+                  [activo]="siteForm().activo"
+                  [esMaletaPiloto]="siteForm().es_maleta_piloto"
+                  [descripcion]="siteForm().descripcion"
+                  [idSerial]="siteForm().id_serial"
+                  [ubicacion]="siteForm().ubicacion"
+                  [coordNorte]="siteForm().coord_norte"
+                  [coordEste]="siteForm().coord_este"
+                  [huso]="siteForm().huso"
+                  (formSubmit)="submitSite($event)"
+                  (selectItem)="selectSite($event)"
+                  (enableEdit)="enableSiteEdit()"
+                  (cancelEdit)="cancelSiteEdit()"
+                  (remove)="deleteSelectedSite()"
+                  (createNew)="startCreateSite()"
+                  (empresaIdChange)="selectCompanyForSite($event)"
+                  (subEmpresaIdChange)="updateSiteForm('sub_empresa_id', $event)"
+                  (tipoSitioChange)="updateSiteForm('tipo_sitio', $event)"
+                  (activoChange)="updateSiteActive($event)"
+                  (esMaletaPilotoChange)="updateSiteMaletaPiloto($event)"
+                  (descripcionChange)="updateSiteForm('descripcion', $event)"
+                  (idSerialChange)="updateSiteForm('id_serial', $event)"
+                  (ubicacionChange)="updateSiteForm('ubicacion', $event)"
+                  (coordNorteChange)="updateSiteForm('coord_norte', $event)"
+                  (coordEsteChange)="updateSiteForm('coord_este', $event)"
+                  (husoChange)="updateSiteForm('huso', $event)"
+                />
               }
 
               @if (activeSection() === 'equipos') {
-                <app-admin-section-shell title="Equipos detectados">
-                  <div class="table-card">
-                    <app-admin-table-toolbar
-                      title="Equipos detectados"
-                      [countLabel]="
-                        filteredDevices().length + ' de ' + detectedDevices().length + ' visibles'
-                      "
-                      [searchValue]="deviceSearch()"
-                      placeholder="Buscar serial, sitio o empresa"
-                      (searchChange)="updateDeviceSearch($event)"
-                    >
-                      <button type="button" (click)="loadDashboard()" class="secondary-button">
-                        <span class="material-symbols-outlined text-[18px]">sync</span>
-                        Actualizar
-                      </button>
-                    </app-admin-table-toolbar>
-
-                    <div class="overflow-x-auto">
-                      <table
-                        class="responsive-table w-full text-left text-body-sm md:min-w-[1080px]"
-                      >
-                        <thead class="table-head">
-                          <tr>
-                            <th class="px-4 py-3">Serial</th>
-                            <th class="px-4 py-3">Registro</th>
-                            <th class="px-4 py-3">Desfase</th>
-                            <th class="px-4 py-3 text-right">Cantidad de datos</th>
-                            <th class="px-4 py-3">Sitio</th>
-                          </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                          @for (device of paginatedDevices(); track device.id_serial) {
-                            <tr class="bg-white transition-colors hover:bg-slate-50">
-                              <td
-                                class="px-4 py-3 font-mono text-caption font-bold text-slate-700"
-                                data-label="Serial"
-                              >
-                                {{ device.id_serial }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Registro">
-                                <div class="device-time-stack">
-                                  <div class="device-time-row">
-                                    <span class="device-time-label">Medición</span>
-                                    <span class="device-time-value">{{
-                                      deviceMeasurementLabel(device)
-                                    }}</span>
-                                  </div>
-                                  <div class="device-time-row">
-                                    <span class="device-time-label">Llegada BD</span>
-                                    <span class="device-time-value">{{
-                                      deviceArrivalLabel(device)
-                                    }}</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td class="px-4 py-3" data-label="Desfase">
-                                <span
-                                  [class]="deviceClockSkewBadgeClass(device)"
-                                  [title]="deviceClockSkewTitle(device)"
-                                >
-                                  <span class="material-symbols-outlined text-[15px]">{{
-                                    deviceClockSkewIcon(device)
-                                  }}</span>
-                                  {{ deviceClockSkewLabel(device) }}
-                                </span>
-                              </td>
-                              <td
-                                class="px-4 py-3 text-right font-bold text-slate-700"
-                                data-label="Cantidad de datos"
-                              >
-                                {{ deviceDataCountLabel(device) }}
-                              </td>
-                              <td class="px-4 py-3" data-label="Sitio">
-                                <span
-                                  [class]="
-                                    statusBadgeClass(device.sitio_id ? 'success' : 'warning')
-                                  "
-                                >
-                                  {{ device.sitio_descripcion || 'Sin asignar' }}
-                                </span>
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
-                    <app-admin-pagination
-                      [total]="filteredDevices().length"
-                      [page]="devicePage()"
-                      (pageChange)="setPage('equipos', $event)"
-                    ></app-admin-pagination>
-                  </div>
-                </app-admin-section-shell>
+                <app-equipos-section [devices]="detectedDevices()" (refresh)="loadDashboard()" />
               }
 
               @if (activeSection() === 'equipo-emeltec') {
@@ -1415,132 +492,6 @@ const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
       .section-tab-active {
         color: var(--color-primary-container);
         border-bottom-color: var(--color-primary);
-      }
-
-      /* Form fields ---------------------------------------------- */
-      .field-control {
-        width: 100%;
-        border-radius: 8px;
-        border: 1px solid var(--color-outline-variant);
-        background: var(--color-surface);
-        padding: 9px 12px;
-        font-family: var(--font-body);
-        font-size: 13px;
-        color: var(--color-on-surface);
-        outline: none;
-        transition:
-          border-color 160ms ease,
-          box-shadow 160ms ease;
-      }
-
-      .field-control:focus {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(13, 175, 189, 0.15);
-      }
-
-      .field-control:disabled {
-        background: var(--color-surface-subtle);
-        color: var(--color-on-surface-variant);
-        cursor: not-allowed;
-      }
-
-      .field-control::placeholder {
-        color: var(--color-on-surface-muted);
-      }
-
-      /* Editor panel --------------------------------------------- */
-      .editor-panel {
-        border-radius: 10px;
-        border: 1px solid var(--color-outline-variant);
-        background: var(--color-surface-subtle);
-        padding: 20px;
-      }
-
-      /* Table card ----------------------------------------------- */
-      .table-card {
-        min-width: 0;
-        overflow: hidden;
-        border-radius: 10px;
-        border: 1px solid var(--color-outline-variant);
-        background: var(--color-surface);
-      }
-
-      /* Table head ----------------------------------------------- */
-      .table-head {
-        background: var(--color-surface-subtle);
-        font-family: var(--font-josefin);
-        font-size: 11px;
-        font-weight: 600;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--color-on-surface-muted);
-      }
-
-      .device-time-stack {
-        display: grid;
-        gap: 4px;
-        min-width: 220px;
-      }
-
-      .device-time-row {
-        display: grid;
-        grid-template-columns: 74px minmax(0, 1fr);
-        align-items: baseline;
-        gap: 10px;
-      }
-
-      .device-time-label {
-        font-family: var(--font-josefin);
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--color-on-surface-muted);
-      }
-
-      .device-time-value {
-        font-family: var(--font-mono);
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-on-surface);
-        white-space: nowrap;
-      }
-
-      .device-skew-badge {
-        display: inline-flex;
-        min-height: 28px;
-        align-items: center;
-        gap: 6px;
-        border-radius: 9999px;
-        border: 1px solid transparent;
-        padding: 4px 9px;
-        font-size: 11px;
-        font-weight: 700;
-        white-space: nowrap;
-      }
-
-      .device-skew-ok {
-        border-color: rgba(34, 197, 94, 0.25);
-        background: rgba(34, 197, 94, 0.1);
-        color: #16a34a;
-      }
-
-      .device-skew-warning {
-        border-color: rgba(251, 191, 36, 0.3);
-        background: rgba(251, 191, 36, 0.12);
-        color: #b45309;
-      }
-
-      .device-skew-danger {
-        border-color: rgba(248, 113, 113, 0.3);
-        background: rgba(248, 113, 113, 0.1);
-        color: #dc2626;
-      }
-
-      .device-skew-neutral {
-        border-color: var(--color-outline-variant);
-        background: var(--color-surface-subtle);
-        color: var(--color-on-surface-variant);
       }
 
       /* Buttons --------------------------------------------------- */
@@ -1674,14 +625,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   companyEditMode = signal(false);
   subCompanyEditMode = signal(false);
   siteEditMode = signal(false);
-  companySearch = signal('');
-  subCompanySearch = signal('');
-  siteSearch = signal('');
-  deviceSearch = signal('');
-  companyPage = signal(1);
-  subCompanyPage = signal(1);
-  sitePage = signal(1);
-  devicePage = signal(1);
   siteTypeCatalog = signal<SiteTypeCatalogResponse>(DEFAULT_SITE_TYPE_CATALOG);
   siteVariables = signal<SiteVariablesPayload>({
     site: this.emptySite(),
@@ -1731,79 +674,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
         })),
       ),
     ),
-  );
-
-  filteredCompanies = computed<CompanyNode[]>(() =>
-    this.hierarchy().filter((company) =>
-      this.matchesSearch(this.companySearch(), [
-        company.nombre,
-        company.rut,
-        company.tipo_empresa,
-        String(this.countCompanySites(company)),
-      ]),
-    ),
-  );
-
-  filteredSubCompanies = computed<SubCompanyOption[]>(() =>
-    this.allSubCompanies().filter((subCompany) =>
-      this.matchesSearch(this.subCompanySearch(), [
-        subCompany.nombre,
-        subCompany.rut,
-        subCompany.companyName,
-        String(subCompany.sites.length),
-      ]),
-    ),
-  );
-
-  filteredSites = computed<SiteOption[]>(() =>
-    this.allSites().filter((site) =>
-      this.matchesSearch(this.siteSearch(), [
-        site.descripcion,
-        site.id_serial,
-        site.tipo_sitio,
-        this.siteTypeLabel(site.tipo_sitio),
-        site.companyName,
-        site.subCompanyName,
-        site.ubicacion || '',
-        site.activo ? 'activo' : 'inactivo',
-      ]),
-    ),
-  );
-
-  filteredDevices = computed<DetectedDevice[]>(() =>
-    this.detectedDevices().filter((device) =>
-      this.matchesSearch(this.deviceSearch(), [
-        device.id_serial,
-        device.ultimo_registro,
-        device.ultimo_registro_local || '',
-        device.ultima_medicion || '',
-        device.ultima_medicion_local || '',
-        device.ultima_llegada || '',
-        device.ultima_llegada_local || '',
-        this.deviceClockSkewLabel(device),
-        String(this.deviceDataCount(device)),
-        String(device.total_registros),
-        device.sitio_descripcion || '',
-        device.empresa_nombre || '',
-        device.sub_empresa_nombre || '',
-      ]),
-    ),
-  );
-
-  paginatedCompanies = computed<CompanyNode[]>(() =>
-    this.paginate(this.filteredCompanies(), this.companyPage()),
-  );
-
-  paginatedSubCompanies = computed<SubCompanyOption[]>(() =>
-    this.paginate(this.filteredSubCompanies(), this.subCompanyPage()),
-  );
-
-  paginatedSites = computed<SiteOption[]>(() =>
-    this.paginate(this.filteredSites(), this.sitePage()),
-  );
-
-  paginatedDevices = computed<DetectedDevice[]>(() =>
-    this.paginate(this.filteredDevices(), this.devicePage()),
   );
 
   selectedCompany = computed<CompanyNode | undefined>(() =>
@@ -1908,35 +778,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.siteForm.update((form) => ({ ...form, es_maleta_piloto: value === 'true' }));
   }
 
-  updateCompanySearch(value: string): void {
-    this.companySearch.set(value);
-    this.companyPage.set(1);
-  }
-
-  updateSubCompanySearch(value: string): void {
-    this.subCompanySearch.set(value);
-    this.subCompanyPage.set(1);
-  }
-
-  updateSiteSearch(value: string): void {
-    this.siteSearch.set(value);
-    this.sitePage.set(1);
-  }
-
-  updateDeviceSearch(value: string): void {
-    this.deviceSearch.set(value);
-    this.devicePage.set(1);
-  }
-
-  setPage(section: SectionId, page: number): void {
-    const totalItems = this.sectionTotal(section);
-    const nextPage = this.clampPage(page, totalItems);
-    if (section === 'empresas') this.companyPage.set(nextPage);
-    if (section === 'subempresas') this.subCompanyPage.set(nextPage);
-    if (section === 'sitios') this.sitePage.set(nextPage);
-    if (section === 'equipos') this.devicePage.set(nextPage);
-  }
-
   cancelConfirmDialog(): void {
     if (this.busyAction()) return;
     this.confirmDialog.set(null);
@@ -1957,18 +798,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
 
   private totalPages(totalItems: number): number {
     return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
-  }
-
-  companyFormDisabled(): boolean {
-    return !!this.selectedCompanyId() && !this.companyEditMode();
-  }
-
-  subCompanyFormDisabled(): boolean {
-    return !!this.selectedSubCompanyId() && !this.subCompanyEditMode();
-  }
-
-  siteFormDisabled(): boolean {
-    return !!this.selectedSiteId() && !this.siteEditMode();
   }
 
   updateVariableForm(field: keyof VariableForm, value: string): void {
@@ -2747,203 +1576,14 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     this.router.navigate(dashboardRouteForSite(site));
   }
 
-  countCompanySites(company: CompanyNode): number {
-    return company.subCompanies.reduce((total, subCompany) => total + subCompany.sites.length, 0);
-  }
-
   displayValue(value: SiteVariable['valor_dato']): string {
     if (value === null || value === undefined) return '-';
     return String(value);
   }
 
-  siteTypeLabel(type: string): string {
-    return getSiteTypeUi(type).label;
-  }
-
-  siteTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-caption font-bold';
-    return `${base} ${getSiteTypeUi(type).badgeClass}`;
-  }
-
-  statusBadgeClass(tone: 'success' | 'warning' | 'neutral'): string {
-    const base = 'rounded-md px-2 py-1 text-caption font-bold';
-    if (tone === 'success') return `${base} bg-emerald-50 text-emerald-700`;
-    if (tone === 'warning') return `${base} bg-amber-50 text-amber-700`;
-    return `${base} bg-slate-100 text-slate-500`;
-  }
-
-  companyTypeBadgeClass(type: string): string {
-    const base = 'rounded-md px-2 py-1 text-caption font-semibold';
-    const normalized = this.normalizeSearchText(type);
-    if (normalized.includes('electrico')) return `${base} bg-amber-50 text-amber-700`;
-    if (normalized.includes('industrial')) return `${base} bg-indigo-50 text-indigo-700`;
-    if (normalized.includes('riles')) return `${base} bg-emerald-50 text-emerald-700`;
-    if (normalized.includes('proceso')) return `${base} bg-accent/10 text-accent-container`;
-    if (normalized.includes('cliente')) return `${base} bg-slate-100 text-slate-600`;
-    return `${base} bg-primary-tint-10 text-primary-container`;
-  }
-
-  deviceDataCount(device: DetectedDevice): number {
-    return Number(device.total_datos ?? 0);
-  }
-
-  deviceDataCountLabel(device: DetectedDevice): string {
-    if (device.total_datos === undefined || device.total_datos === null) return 'No disponible';
-    const count = this.deviceDataCount(device);
-    return `${count} ${count === 1 ? 'dato' : 'datos'}`;
-  }
-
-  deviceMeasurementLabel(device: DetectedDevice): string {
-    return (
-      this.deviceDateLabel(device.ultima_medicion_local, device.ultima_medicion) ||
-      this.deviceLastSeenLabel(device)
-    );
-  }
-
-  deviceArrivalLabel(device: DetectedDevice): string {
-    return (
-      this.deviceDateLabel(device.ultima_llegada_local, device.ultima_llegada) ||
-      this.deviceLastSeenLabel(device)
-    );
-  }
-
-  deviceClockSkewLabel(device: DetectedDevice): string {
-    const seconds = this.deviceClockSkewSeconds(device);
-    if (seconds === null) return 'Sin llegada';
-    if (seconds === 0) return 'Sin desfase';
-
-    const absLabel = this.formatDurationLabel(Math.abs(seconds));
-    if (seconds > 0) return `Adelantado ${absLabel}`;
-    if (Math.abs(seconds) >= 86400) return 'Carga histórica';
-    return `Llegada +${absLabel}`;
-  }
-
-  deviceClockSkewTitle(device: DetectedDevice): string {
-    return [
-      `Medición: ${this.deviceMeasurementLabel(device)}`,
-      `Llegada BD: ${this.deviceArrivalLabel(device)}`,
-      `Estado: ${this.deviceClockSkewLabel(device)}`,
-    ].join(' | ');
-  }
-
-  deviceClockSkewIcon(device: DetectedDevice): string {
-    const tone = this.deviceClockSkewTone(device);
-    if (tone === 'danger') return 'error';
-    if (tone === 'warning') return 'schedule';
-    if (tone === 'ok') return 'check_circle';
-    return 'history';
-  }
-
-  deviceClockSkewBadgeClass(device: DetectedDevice): string {
-    return `device-skew-badge device-skew-${this.deviceClockSkewTone(device)}`;
-  }
-
-  deviceLastSeenLabel(device: DetectedDevice): string {
-    if (device.ultimo_registro_local)
-      return this.readableDeviceDateTime(device.ultimo_registro_local);
-
-    const date = new Date(device.ultimo_registro);
-    if (Number.isNaN(date.getTime())) return device.ultimo_registro || 'Sin registro';
-
-    return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'Etc/GMT+4',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-      .format(date)
-      .replace(',', '');
-  }
-
-  private deviceClockSkewSeconds(device: DetectedDevice): number | null {
-    if (device.desfase_segundos !== undefined && device.desfase_segundos !== null) {
-      const direct = Number(device.desfase_segundos);
-      if (Number.isFinite(direct)) return Math.round(direct);
-    }
-
-    const measuredMs = this.deviceTimestampMs(device.ultima_medicion);
-    const receivedMs = this.deviceTimestampMs(device.ultima_llegada);
-    if (measuredMs === null || receivedMs === null) return null;
-    return Math.round((measuredMs - receivedMs) / 1000);
-  }
-
-  private deviceClockSkewTone(device: DetectedDevice): 'ok' | 'warning' | 'danger' | 'neutral' {
-    const seconds = this.deviceClockSkewSeconds(device);
-    if (seconds === null) return 'neutral';
-    if (seconds < -86400) return 'neutral';
-    if (seconds > 120) return 'danger';
-    if (seconds > 30 || seconds < -600) return 'warning';
-    return 'ok';
-  }
-
-  private deviceDateLabel(localValue?: string | null, utcValue?: string | null): string | null {
-    if (localValue) return this.readableDeviceDateTime(localValue);
-
-    const date = utcValue ? new Date(utcValue) : null;
-    if (!date || Number.isNaN(date.getTime())) return null;
-
-    return new Intl.DateTimeFormat('es-CL', {
-      timeZone: 'Etc/GMT+4',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-      .format(date)
-      .replace(',', '');
-  }
-
-  private deviceTimestampMs(value?: string | null): number | null {
-    if (!value) return null;
-    const parsed = new Date(value).getTime();
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  private formatDurationLabel(totalSeconds: number): string {
-    const seconds = Math.max(0, Math.round(totalSeconds));
-    if (seconds < 60) return `${seconds}s`;
-
-    const minutes = Math.floor(seconds / 60);
-    const restSeconds = seconds % 60;
-    if (minutes < 60) {
-      return restSeconds ? `${minutes}m ${restSeconds}s` : `${minutes}m`;
-    }
-
-    const hours = Math.floor(minutes / 60);
-    const restMinutes = minutes % 60;
-    if (hours < 24) {
-      return restMinutes ? `${hours}h ${restMinutes}m` : `${hours}h`;
-    }
-
-    const days = Math.floor(hours / 24);
-    const restHours = hours % 24;
-    return restHours ? `${days}d ${restHours}h` : `${days}d`;
-  }
-
-  private readableDeviceDateTime(value: string): string {
-    const cleaned = value.trim();
-    const isoLike = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)/);
-    if (isoLike) return `${isoLike[3]}-${isoLike[2]}-${isoLike[1]} ${isoLike[4]}`;
-    return cleaned.replace(',', '');
-  }
-
   sectionButtonClass(section: SectionId): string {
     const base = `section-tab-button section-tab-${section}`;
     return this.activeSection() === section ? `${base} section-tab-active` : base;
-  }
-
-  rowClass(selected: boolean): string {
-    const base = 'cursor-pointer transition-colors';
-    return selected
-      ? `${base} bg-primary-tint-08 shadow-[inset_3px_0_0_var(--color-primary)]`
-      : `${base} bg-white hover:bg-surface-subtle`;
   }
 
   statusClass(): string {
@@ -2965,20 +1605,9 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return Math.min(Math.max(normalized, 1), total);
   }
 
-  private sectionTotal(section: SectionId): number {
-    if (section === 'empresas') return this.filteredCompanies().length;
-    if (section === 'subempresas') return this.filteredSubCompanies().length;
-    if (section === 'sitios') return this.filteredSites().length;
-    return this.filteredDevices().length;
-  }
-
+  // Paginación de sitios delegada al hijo SitiosSectionComponent.
   private clampAllPages(): void {
-    this.companyPage.set(this.clampPage(this.companyPage(), this.filteredCompanies().length));
-    this.subCompanyPage.set(
-      this.clampPage(this.subCompanyPage(), this.filteredSubCompanies().length),
-    );
-    this.sitePage.set(this.clampPage(this.sitePage(), this.filteredSites().length));
-    this.devicePage.set(this.clampPage(this.devicePage(), this.filteredDevices().length));
+    // No-op: cada sección hija maneja su propia paginación.
   }
 
   private setHierarchy(hierarchy: CompanyNode[]): void {

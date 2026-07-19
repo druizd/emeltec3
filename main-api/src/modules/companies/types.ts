@@ -36,5 +36,7 @@ export interface HierarchySite {
   huso?: number | null;
   tipo_sitio: string;
   activo: boolean;
+  /** Sitio marcado como maleta piloto — el sidebar lo agrupa en su módulo propio. */
+  es_maleta_piloto?: boolean;
   pozo_config?: unknown;
 }

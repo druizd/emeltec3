@@ -23,11 +23,12 @@ export interface ConfirmDialogData {
   template: `
     @if (data(); as d) {
       <div
-        class="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+        class="anim-backdrop fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm"
+        animate.leave="anim-overlay-out"
         (click)="dismiss.emit()"
       >
         <section
-          class="w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
+          class="anim-panel w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.28)]"
           role="dialog"
           cdkTrapFocus
           cdkTrapFocusAutoCapture
@@ -55,7 +56,7 @@ export interface ConfirmDialogData {
             <button
               type="button"
               (click)="dismiss.emit()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition duration-100 hover:bg-slate-200 active:scale-[0.98]"
             >
               {{ d.cancelText ?? 'Cancelar' }}
             </button>
@@ -64,8 +65,8 @@ export interface ConfirmDialogData {
               (click)="accept.emit()"
               [class]="
                 (d.tone ?? 'primary') === 'danger'
-                  ? 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-caption font-bold text-white hover:bg-rose-700'
-                  : 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container'
+                  ? 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-caption font-bold text-white transition duration-100 hover:bg-rose-700 active:scale-[0.98]'
+                  : 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition duration-100 hover:bg-primary-container active:scale-[0.98]'
               "
             >
               <span class="material-symbols-outlined text-[16px]">{{

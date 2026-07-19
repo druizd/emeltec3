@@ -14,7 +14,8 @@
  *   - POST   /dga/review-queue/action        (2FA)
  *   - GET    /dga/dato/export.csv
  *   - GET    /dga/export-directo.csv
- *   - POST   /dga/2fa/request
+ *
+ * 2FA: unificado en POST /api/2fa/request (shared/email-otp, header X-2FA-Code).
  */
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
@@ -44,7 +45,6 @@ import {
   upsertInformanteService,
   verifySniaSubmission,
 } from './service';
-import { requestDgaCode } from './twofactor';
 import type { AuthUser } from '../../shared/permissions';
 import { getPozoDgaConfig, reconocerSensorDefectuoso } from './repo';
 import { formatRutForDga } from '../../utils/rut';
@@ -60,26 +60,6 @@ const ExportDirectoParams = z.object({
   bucket: z.enum(['minuto', 'hora', 'dia', 'semana', 'mes']).default('hora'),
   orden: z.enum(['asc', 'desc']).default('asc'),
 });
-
-// ============================================================================
-// 2FA
-// ============================================================================
-
-export async function request2faCodeHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const startedAt = nowHrtime();
-  try {
-    const user = (req as Request & { user?: AuthUser }).user;
-    if (!user) throw new UnauthorizedError('No autenticado');
-    await requestDgaCode(user);
-    res.json(ok({ sent: true }, { durationMs: elapsedMs(startedAt) }));
-  } catch (err) {
-    next(err);
-  }
-}
 
 // ============================================================================
 // Informantes (pool global)

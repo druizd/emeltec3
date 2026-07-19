@@ -111,6 +111,25 @@ export class UserService {
     return this.http.delete<ApiResponse<unknown>>(`/api/users/${id}`);
   }
 
+  /** Exporta todos los datos del usuario autenticado (portabilidad Ley 21.719 art. 16). */
+  exportarDatos(): Observable<
+    ApiResponse<{ perfil: User; audit: unknown[]; exportado_at: string }>
+  > {
+    return this.http.get<ApiResponse<{ perfil: User; audit: unknown[]; exportado_at: string }>>(
+      '/api/users/me/export',
+    );
+  }
+
+  /** Solicita supresión de cuenta (Ley 21.719 art. 17). El backend puede exigir 2FA (425). */
+  suprimirCuenta(id: string): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`/api/users/${id}/suprimir`, {});
+  }
+
+  /** Registra la aceptación de la política de privacidad (Ley 21.719). */
+  aceptarPolitica(): Observable<ApiResponse<User>> {
+    return this.http.post<ApiResponse<User>>('/api/users/me/aceptar-politica', {});
+  }
+
   private buildUsersUrl(filters: UserListFilters): string {
     let url = '/api/users';
     const params = new URLSearchParams();

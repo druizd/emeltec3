@@ -21,7 +21,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
         <button
           type="button"
           (click)="ui.toggleMobileNav()"
-          class="my-auto mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[#475569] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+          class="my-auto mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-[#475569] transition duration-100 hover:bg-[#f1f5f9] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
           aria-label="Abrir menú de navegación"
         >
           <span class="material-symbols-outlined text-[22px]">menu</span>
@@ -57,7 +57,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           <button
             type="button"
             (click)="shortcuts.openPalette()"
-            class="hidden h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex"
+            class="hidden h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition duration-100 hover:bg-[#f1f5f9] hover:text-[#475569] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex"
             aria-label="Atajos de teclado (?)"
             title="Atajos de teclado (?)"
           >
@@ -70,7 +70,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                 (click)="toggleViewAsMenu()"
                 [class.text-amber-600]="auth.isViewingAs()"
                 [class.bg-amber-50]="auth.isViewingAs()"
-                class="flex h-[30px] items-center gap-1 rounded-md px-2 text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                class="flex h-[30px] items-center gap-1 rounded-md px-2 text-on-surface-muted transition duration-100 hover:bg-[#f1f5f9] hover:text-[#475569] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 aria-label="Vista previa de roles"
                 title="Vista previa de roles"
                 [attr.aria-expanded]="viewAsMenuOpen()"
@@ -85,7 +85,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
               @if (viewAsMenuOpen()) {
                 <div
-                  class="absolute right-0 top-full z-50 mt-2 w-[min(390px,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
+                  class="anim-popover absolute right-0 top-full z-50 mt-2 w-[min(390px,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
                 >
                   <div class="border-b border-surface-container px-4 py-3">
                     <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
@@ -236,7 +236,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
             <button
               [hidden]="!auth.canAccessAdministration()"
               (click)="router.navigate(['/administration'])"
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition duration-100 hover:bg-[#f1f5f9] hover:text-[#475569] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Administración"
             >
               <span class="material-symbols-outlined text-[16px]">settings</span>
@@ -244,7 +244,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           } @else if (auth.canAccessAdministration()) {
             <button
               (click)="router.navigate(['/administration'])"
-              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition-colors hover:bg-[#f1f5f9] hover:text-[#475569] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex h-[30px] w-[30px] items-center justify-center rounded-md text-on-surface-muted transition duration-100 hover:bg-[#f1f5f9] hover:text-[#475569] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               aria-label="Administración"
             >
               <span class="material-symbols-outlined text-[16px]">settings</span>
@@ -256,7 +256,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
             <button
               type="button"
               (click)="toggleUserMenu()"
-              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-all hover:ring-primary-tint-30 focus-visible:outline-none focus-visible:ring-primary"
+              class="ml-1 flex h-[30px] w-[30px] items-center justify-center rounded-full bg-primary text-caption-xs font-bold text-white ring-2 ring-transparent transition-[transform,box-shadow] duration-100 hover:ring-primary-tint-30 active:scale-95 focus-visible:outline-none focus-visible:ring-primary"
               aria-label="Menú de usuario"
               [attr.aria-expanded]="userMenuOpen()"
             >
@@ -265,7 +265,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
             @if (userMenuOpen()) {
               <div
-                class="absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
+                class="anim-popover absolute right-0 top-full z-50 mt-1.5 w-52 origin-top-right overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"
               >
                 <!-- User info -->
                 <div class="border-b border-surface-container px-4 py-3">

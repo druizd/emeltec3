@@ -124,7 +124,7 @@
           @if (errorMsg()) {
             <div
               role="alert"
-              class="mb-3 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-600"
+              class="anim-banner mb-3 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-[12px] font-semibold text-red-600"
             >
               <span class="material-symbols-outlined text-[18px]">error</span>
               <p>{{ errorMsg() }}</p>
@@ -133,7 +133,7 @@
 
           @if (successMsg()) {
             <div
-              class="mb-3 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-semibold text-emerald-700"
+              class="anim-banner mb-3 flex items-start gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-[12px] font-semibold text-emerald-700"
             >
               <span class="material-symbols-outlined text-[18px]">check_circle</span>
               <p>{{ successMsg() }}</p>

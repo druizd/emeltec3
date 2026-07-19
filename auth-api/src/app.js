@@ -9,9 +9,12 @@ const errorMiddleware = require('./middlewares/errorMiddleware');
 
 const app = express();
 
-// Detrás de reverse proxy (nginx). Para que req.ip sea el origen real (Ley 21.663
-// requiere bitácora con IP del actor) habilitamos confianza solo en 1 hop.
-app.set('trust proxy', 1);
+// Topología verificada en la VM (17-07-2026): cliente → nginx de borde →
+// nginx del contenedor frontend (TODO pasa por :5173) → esta API. DOS hops
+// confiables que envían X-Forwarded-For. Con 1 hop, req.ip devolvía la IP
+// del borde y la bitácora (Ley 21.663 exige IP del actor) guardaba
+// 172.18.0.1 en vez de la IP real del cliente.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 2));
 
 app.use(helmet());
 

@@ -34,11 +34,10 @@ import {
   patchPozoDgaConfigHandler,
   queryDatoDgaHandler,
   reconocerSensorDefectuosoHandler,
-  request2faCodeHandler,
   reviewSlotActionHandler,
   upsertInformanteHandler,
 } from '../../modules/dga/controller';
-import { requireDgaTwoFactor } from '../../modules/dga/twofactor';
+import { require2fa } from '../../shared/email-otp';
 import { require2faIfSensitiveChange } from '../../modules/dga/twofactor-guards';
 
 // auditLog es CJS legacy: bitácora append-only para mutaciones (Ley 21.663 §32).
@@ -88,9 +87,6 @@ const auditDgaMutations = auditMutations((req) => {
       targetId: infMatch[1] ?? '',
     };
   }
-  if (req.method === 'POST' && path === '/dga/2fa/request') {
-    return { action: 'dga.2fa.request' };
-  }
   if (req.method === 'POST' && path === '/dga/review-queue/action') {
     return {
       action: `dga.review.${req.body?.action ?? 'unknown'}`,
@@ -123,7 +119,7 @@ function blockDemoAccess(req: Request, res: Response, next: NextFunction): void 
  */
 function require2faIfPasswordChange(req: Request, res: Response, next: NextFunction): void {
   if (typeof req.body?.clave_informante === 'string' && req.body.clave_informante.length > 0) {
-    return requireDgaTwoFactor(req, res, next);
+    return require2fa(req, res, next);
   }
   next();
 }
@@ -179,7 +175,7 @@ router.delete(
   '/dga/informantes/:rut',
   protect,
   authorizeRoles('SuperAdmin'),
-  requireDgaTwoFactor,
+  require2fa,
   auditDgaMutations,
   deleteInformanteHandler,
 );
@@ -259,8 +255,8 @@ router.get('/dga/dato', protect, queryDatoDgaHandler);
 router.get('/dga/dato/export.csv', protect, blockDemoAccess, exportDatoDgaCsvHandler);
 router.get('/dga/export-directo.csv', protect, blockDemoAccess, exportDgaDirectoCsvHandler);
 
-// 2FA email-OTP — el código se manda al email del usuario solicitante.
-router.post('/dga/2fa/request', protect, blockDemoAccess, auditDgaMutations, request2faCodeHandler);
+// 2FA: unificado en POST /api/2fa/request (twoFactorRoutes + shared/email-otp).
+// Todas las acciones sensibles — DGA incluido — usan header X-2FA-Code.
 
 // Review queue: solo Admin/SuperAdmin + scope por sitio en el handler.
 router.get(
@@ -273,7 +269,7 @@ router.post(
   '/dga/review-queue/action',
   protect,
   authorizeRoles('SuperAdmin', 'Admin'),
-  requireDgaTwoFactor,
+  require2fa,
   auditDgaMutations,
   reviewSlotActionHandler,
 );
@@ -283,7 +279,7 @@ router.post(
   '/dga/sites/:siteId/reconocer-sensor-defectuoso',
   protect,
   authorizeRoles('SuperAdmin', 'Admin'),
-  requireDgaTwoFactor,
+  require2fa,
   auditDgaMutations,
   reconocerSensorDefectuosoHandler,
 );

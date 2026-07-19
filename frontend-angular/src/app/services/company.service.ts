@@ -214,6 +214,7 @@ export class CompanyService {
     effect(() => this.lsWrite('cs:subCompanyId', this.selectedSubCompanyId()));
     effect(() => this.lsWrite('cs:moduleKey', this.selectedSiteModuleKey()));
     effect(() => this.lsWrite('cs:typeFilter', this.selectedSiteTypeFilter()));
+    effect(() => this.lsWrite('cs:empresaOverviewId', this.selectedEmpresaOverviewId()));
   }
   private auth = inject(AuthService);
 
@@ -234,6 +235,11 @@ export class CompanyService {
   selectedSubCompanyId = signal<string | null>(this.lsRead('cs:subCompanyId'));
   selectedSiteModuleKey = signal<string | null>(this.lsRead('cs:moduleKey'));
   selectedSiteTypeFilter = signal<string[] | null>(this.lsReadArray('cs:typeFilter'));
+  /** Vista general de EMPRESA completa (todas las subempresas, todos los
+   * tipos). Se activa desde la ⓘ de la barra de empresa en el sidebar
+   * (Admin/SuperAdmin). Mutuamente excluyente con selectedSubCompanyId:
+   * seleccionar una subempresa la limpia. */
+  selectedEmpresaOverviewId = signal<string | null>(this.lsRead('cs:empresaOverviewId'));
   loading = signal(false);
 
   private lsRead(key: string): string | null {
@@ -280,7 +286,9 @@ export class CompanyService {
 
   fetchHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
     this.loading.set(true);
-    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/companies/tree?t=${Date.now()}`).pipe(
+    // v2: mismo shape que el árbol v1 + last_seen_at y pozo_config por sitio.
+    // Sin last_seen_at el dashboard pinta todo "Sin datos" (status pending).
+    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`).pipe(
       tap((res) => {
         if (res.ok) {
           this.hierarchy.set(res.data);

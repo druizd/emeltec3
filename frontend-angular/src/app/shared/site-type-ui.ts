@@ -184,6 +184,24 @@ export function normalizeSiteType(value: string | null | undefined): string {
   return normalized;
 }
 
+/**
+ * Etiqueta e icono de la pestaña/título "instalaciones" en las vistas de
+ * companies, según los sitios de la subempresa. Homogéneo: camara_frio →
+ * "Salas" (Ventisqueros), pozo → "Pozos". Mezcla de tipos o cualquier otro
+ * tipo → "Instalaciones" (genérico histórico).
+ */
+export function installationsTabUi(sites: Pick<SiteRecord, 'tipo_sitio'>[]): {
+  label: string;
+  icon: string;
+} {
+  const types = new Set(sites.map((site) => normalizeSiteType(site.tipo_sitio)));
+  if (types.size === 1) {
+    if (types.has('camara_frio')) return { label: 'Salas', icon: 'space_dashboard' };
+    if (types.has('pozo')) return { label: 'Pozos', icon: 'water_drop' };
+  }
+  return { label: 'Instalaciones', icon: 'factory' };
+}
+
 export function getSiteTypeUi(value: string | null | undefined): SiteTypeUi {
   const id = normalizeSiteType(value);
   return SITE_TYPE_UI[id] || { ...SITE_TYPE_UI['generico'], id, label: value || 'Generico' };

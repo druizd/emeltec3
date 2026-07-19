@@ -27,9 +27,14 @@ const { auditMutations } = require('./services/auditLog');
 
 const app = express();
 
-// Detrás de reverse proxy (nginx). Para que req.ip sea el origen real
-// (audit_log con IP del cliente) habilitamos confianza en 1 hop.
-app.set('trust proxy', 1);
+// Topología verificada en la VM (17-07-2026, /etc/nginx/sites-available/
+// emeltec-sites): cliente → nginx de borde → nginx del contenedor frontend
+// (TODO pasa por :5173, incluido /api) → esta API. DOS hops confiables;
+// ambos envían X-Forwarded-For. Con 1 hop, req.ip devolvía la IP del borde
+// ("la del servidor") y el audit_log perdía la IP real del cliente.
+// Nota: los comentarios EMT-H03 del compose describen proxy directo a
+// 127.0.0.1:3000/3001 — esa ruta NO existe en el borde real.
+app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 2));
 
 // Capa basica de seguridad HTTP.
 app.use(helmet());

@@ -26,7 +26,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from 
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
-      class="flex flex-col items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-body-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between"
+      class="anim-banner flex flex-col items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-body-sm text-rose-800 sm:flex-row sm:items-center sm:justify-between"
       role="alert"
     >
       <div class="flex min-w-0 items-center gap-2">

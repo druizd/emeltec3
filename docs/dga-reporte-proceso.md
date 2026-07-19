@@ -124,6 +124,16 @@ para enviar.
      `nivel_freatico` (m).
   4. Valida (§5). OK → `pendiente`. Warnings → `requires_review` con
      `validation_warnings` JSON + `fail_reason`.
+- **Anti-starvation** (post-incidente 2026-07-10): la ventana toma los N slots
+  vacíos **más antiguos**; un hueco de datos irrecuperable (equipos/VPN caídos)
+  puede llenarla completa y congelar el fill para siempre. Mitigación:
+  - Slot `vacio` sin dato más viejo que `DGA_STALE_SLOT_HOURS` (default 48 h,
+    `0` desactiva) → `requires_review` con `fail_reason='no_data_stale'`.
+    Sale de la ventana y queda visible en la cola de revisión admin.
+  - Pozo cuyo ciclo produce **solo** `no_data` con slots atrasados más de
+    `DGA_NO_DATA_WARN_HOURS` (default 3 h) → `logger.warn`
+    (`DGA fill: pozo estancado sin datos para slots atrasados`). Antes esta
+    condición era 100 % silenciosa.
 
 > **Pre-condición**: `pozo_config.dga_hora_inicio` debe estar minuto-alineada
 > (segundos=00). El endpoint `PATCH pozo-config` snapea silenciosamente a
@@ -160,6 +170,13 @@ para enviar.
      `next_retry_at = now() + 24h` (Res 2170 §6.2: reintento al día
      siguiente). Intentos agotados (`dga_max_retry_attempts`) → `fallido`
      (terminal).
+  7. **Duplicado en SNIA** (post-incidente jun-jul 2026): respuesta 400
+     `"Ya existe un registro en esa fecha, hora para la obra. Comprobante: X"`
+     significa que la medición YA fue recibida (típico tras timeout donde el
+     POST sí llegó pero la respuesta se perdió). Se extrae el comprobante del
+     mensaje y el slot pasa a `enviado` — sin reintentos. Si el mensaje viene
+     sin comprobante → `rechazado` con
+     `fail_reason='dga_duplicate_sin_comprobante'` (revisión manual).
 
 ### 4.4 Reconciler (`reconciler.ts`)
 
@@ -219,15 +236,24 @@ Spec: Manual Técnico DGA 1/2025, Res. Exenta 2.170 (04-jul-2025).
 Slots `requires_review` requieren decisión manual de SuperAdmin/Admin:
 
 1. `GET /api/v2/dga/review-queue` — lista slots con warnings.
-2. Admin pide OTP: `POST /api/v2/dga/2fa/request` (email al usuario
-   solicitante, expira 5 min).
-3. `POST /api/v2/dga/review-queue/action` (header `X-DGA-2FA-Code`):
+2. `POST /api/v2/dga/review-queue/action`:
    - **accept** — opcionalmente con valor corregido (ej. último totalizador
      válido sugerido) → slot pasa a `pendiente` (entra a cola de envío).
    - **discard** → slot pasa a `rechazado`.
 
-2FA email-OTP también aplica a: cambio de `clave_informante`, activar
-`dga_transport='rest'`, eliminar informante.
+**2FA unificado** (desde 2026-07): un solo sistema email-OTP para toda la
+plataforma (`shared/email-otp.ts`) — endpoint `POST /api/2fa/request`, header
+`X-2FA-Code`, códigos de error `TWOFA_REQUIRED`/`TWOFA_INVALID`. En el
+frontend lo orquesta el `twoFactorInterceptor` global (diálogo automático al
+recibir el 403). Código de 6 dígitos, TTL 5 min, single-use, **máx 5 intentos
+fallidos** (anti fuerza bruta). Aplica a acciones DGA (accept/discard,
+cambio de `clave_informante`, activar `dga_transport='rest'` o
+`dga_gcs_export`, eliminar informante, reconocer sensor defectuoso) y al
+resto de acciones sensibles (user CRUD, alarmas, cold rooms).
+
+**Config del pozo (modal)**: los controles editan un borrador local — nada se
+persiste hasta "Guardar cambios" (valida formato de obra, caudal, campos
+requeridos por `dga_activo`/`rest` y manda UN solo PATCH con lo modificado).
 
 ---
 
@@ -263,6 +289,8 @@ Alertas relacionadas: trigger `dga_atrasado` (módulo `alerts`) + resumen en
 | `RESEND_API_KEY`                                                                                   | ✅ (2FA)  | —            | OTP email                                                                                        |
 | `DGA_SUBMISSION_POLL_MS` / `DGA_WORKER_POLL_MS` / `DGA_PRESEED_POLL_MS` / `DGA_RECONCILER_POLL_MS` | —         | 5m/60s/6h/1h | Cadencias                                                                                        |
 | `DGA_RECONCILER_STALE_VACIO_HOURS`                                                                 | —         | `6`          | Threshold (horas) para alerta E (slots vacio sin dato). Subir si red intermitente esperada       |
+| `DGA_STALE_SLOT_HOURS`                                                                             | —         | `48`         | Slot `vacio` sin dato más viejo que esto → `requires_review` (`no_data_stale`). `0` desactiva    |
+| `DGA_NO_DATA_WARN_HOURS`                                                                           | —         | `3`          | Warn cuando pozo solo produce `no_data` con slots atrasados más de este umbral                   |
 | `DGA_RECONCILER_STUCK_MIN`                                                                         | —         | `15`         | Minutos antes de revertir slot atascado en `enviando` (check A)                                  |
 | `DGA_SUBMISSION_DELAY_MS`                                                                          | —         | `1000`       | Delay entre cada slot en `runSubmissionCycle`. Evita ráfagas → bloqueo SNIA (Res 2170 §6.1 + §7) |
 

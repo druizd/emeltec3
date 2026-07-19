@@ -288,6 +288,9 @@ quedar stale hasta 30 s.
 
 ## Pendientes / siguiente capa de optimización
 
+> **Migrados a `PLAN-MEJORAS.md` (eje C) el 16-07-2026.** El estado vigente
+> se trackea allá; esta lista queda como registro del snapshot.
+
 - **Materializar daily + jornada counters** (worker + tabla
   `site_contador_diario` / `_jornada`). Hoy cold path ~1 s; con
   materializar bajaría a ~30 ms.

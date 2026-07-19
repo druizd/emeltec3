@@ -85,6 +85,15 @@ services:
       FTPCONSUMER_HOST: ftpconsumer
       FTPCONSUMER_PORT: 50061
       AUTH_API_URL: http://auth-api:3001
+      # Workers aprobados 17-07-2026 (retención Ley 21.719, alertas de audit
+      # log, contadores materializados). Apagables por .env del host sin
+      # tocar este archivo.
+      ENABLE_RETENTION_WORKER: ${ENABLE_RETENTION_WORKER:-true}
+      ENABLE_AUDIT_ALERTS_WORKER: ${ENABLE_AUDIT_ALERTS_WORKER:-true}
+      ENABLE_CONTADORES_DAILY_WORKER: ${ENABLE_CONTADORES_DAILY_WORKER:-true}
+      # Hops de proxy confiables (nginx host + nginx contenedor) para que
+      # req.ip sea la IP real del cliente en el audit_log.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-2}
     depends_on:
       timescaledb:
         condition: service_healthy
@@ -151,6 +160,8 @@ services:
       NODE_ENV: production
       PORT: 3001
       MAIN_API_URL: http://main-api:3000
+      # Dos proxies confiables (borde + contenedor frontend) — ver main-api.
+      TRUST_PROXY_HOPS: ${TRUST_PROXY_HOPS:-2}
     depends_on:
       timescaledb:
         condition: service_healthy

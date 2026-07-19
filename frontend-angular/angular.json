@@ -98,6 +98,13 @@
             "proxyConfig": "proxy.conf.json",
             "allowedHosts": ["nuevacloud.emeltec.cl", "104.46.7.78"]
           }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "tsConfig": "tsconfig.spec.json",
+            "runner": "vitest"
+          }
         }
       }
     }

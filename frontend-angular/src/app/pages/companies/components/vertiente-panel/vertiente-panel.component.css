@@ -55,6 +55,13 @@
     box-shadow: 0 0 0 9px rgba(16, 185, 129, 0);
   }
 }
+/* La regla global de styles.css solo cubre animate-pulse/spin/ping de
+   Tailwind; esta animación local necesita su propio override. */
+@media (prefers-reduced-motion: reduce) {
+  .rt-dot {
+    animation: none;
+  }
+}
 
 .vpanel-screen {
   position: relative;
