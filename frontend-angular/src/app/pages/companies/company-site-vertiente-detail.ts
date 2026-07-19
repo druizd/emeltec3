@@ -255,7 +255,7 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="openSettingsPanel()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
                     aria-label="Configuración del sitio"
                   >
                     <span class="material-symbols-outlined text-[18px]">settings</span>
@@ -404,7 +404,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <button
                   type="button"
                   (click)="closeSettingsPanel()"
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                   aria-label="Volver al detalle del sitio"
                 >
                   <span class="material-symbols-outlined text-[20px]">arrow_back</span>
@@ -429,7 +429,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <button
                       type="button"
                       (click)="closeHistoryView()"
-                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                       aria-label="Volver al detalle del pozo"
                     >
                       <span class="material-symbols-outlined text-[20px]">arrow_back</span>
@@ -453,14 +453,14 @@ type OperationMode = 'realtime' | 'turnos';
                     <button
                       type="button"
                       (click)="openDownloadModal()"
-                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:bg-slate-50"
+                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[16px]">download</span>
                       Descargar
                     </button>
                     <button
                       type="button"
-                      class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50"
+                      class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95"
                       aria-label="Opciones de historico"
                     >
                       <span class="material-symbols-outlined text-[18px]">settings</span>
@@ -494,14 +494,14 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="confirmHistoryDateRange()"
-                    class="h-9 rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-4 text-caption-xs font-semibold uppercase tracking-wide text-primary-container transition-colors hover:bg-primary-tint-15"
+                    class="h-9 rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-4 text-caption-xs font-semibold uppercase tracking-wide text-primary-container transition-colors hover:bg-primary-tint-15 active:scale-95"
                   >
                     Confirmar
                   </button>
                   <button
                     type="button"
                     (click)="clearHistoryFilters()"
-                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-caption-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-caption-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700 active:scale-95"
                   >
                     Limpiar
                   </button>
@@ -591,7 +591,7 @@ type OperationMode = 'realtime' | 'turnos';
                     type="button"
                     (click)="previousHistoryPage()"
                     [disabled]="historyPage() === 1"
-                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     &larr;
                   </button>
@@ -602,7 +602,7 @@ type OperationMode = 'realtime' | 'turnos';
                     type="button"
                     (click)="nextHistoryPage()"
                     [disabled]="historyPage() === historyTotalPages()"
-                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     &rarr;
                   </button>
@@ -645,7 +645,7 @@ type OperationMode = 'realtime' | 'turnos';
                         target="_blank"
                         rel="noopener noreferrer"
                         [title]="'Abrir comprobante en SNIA · ' + comp"
-                        class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
+                        class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition hover:border-emerald-400 hover:shadow-md"
                       >
                         <div class="flex items-center gap-1.5">
                           <span class="material-symbols-outlined text-[14px] text-emerald-600"
@@ -788,19 +788,40 @@ type OperationMode = 'realtime' | 'turnos';
 
                   <!-- Rechazados: cuenta en rango -->
                   <article
-                    class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
+                    [class]="
+                      dgaCountRechazados() > 0
+                        ? 'rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm'
+                        : 'rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm'
+                    "
                     title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
                   >
                     <p
-                      class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700"
+                      [class]="
+                        'text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
+                        (dgaCountRechazados() > 0 ? 'text-rose-700' : 'text-emerald-700')
+                      "
                     >
                       Rechazados
                     </p>
-                    <p class="mt-1 text-h3 font-semibold leading-none text-rose-600">
+                    <p
+                      [class]="
+                        'mt-1 text-h3 font-semibold leading-none ' +
+                        (dgaCountRechazados() > 0 ? 'text-rose-600' : 'text-emerald-600')
+                      "
+                    >
                       {{ dgaCountRechazados() }}
                     </p>
-                    <p class="mt-1 text-caption font-semibold text-rose-700">
-                      Rechazados por SNIA + fallidos antes del envío
+                    <p
+                      [class]="
+                        'mt-1 text-caption font-semibold ' +
+                        (dgaCountRechazados() > 0 ? 'text-rose-700' : 'text-emerald-700')
+                      "
+                    >
+                      {{
+                        dgaCountRechazados() > 0
+                          ? 'Rechazados por SNIA + fallidos antes del envío'
+                          : 'Sin rechazos en el período'
+                      }}
                     </p>
                   </article>
                 </section>
@@ -841,7 +862,7 @@ type OperationMode = 'realtime' | 'turnos';
                         </span>
                         <button
                           type="button"
-                          class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-50"
+                          class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-50 active:scale-95"
                           aria-label="Opciones de grafico"
                         >
                           <span class="material-symbols-outlined text-[18px]">more_vert</span>
@@ -950,7 +971,7 @@ type OperationMode = 'realtime' | 'turnos';
                           [class]="
                             quickActionDisabled(action)
                               ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                              : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
+                              : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
                           "
                         >
                           <span
@@ -1002,7 +1023,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <button
                       type="button"
                       (click)="openDgaDateFilter()"
-                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
+                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                       {{ dgaSelectedRangeLabel() }}
@@ -1055,7 +1076,7 @@ type OperationMode = 'realtime' | 'turnos';
                                   <button
                                     type="button"
                                     (click)="openDgaReportDetail(report)"
-                                    class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
+                                    class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors active:scale-95"
                                     [style.background]="getDgaStatusBg(report.estado)"
                                     [style.border-color]="getDgaStatusBorder(report.estado)"
                                     [style.color]="getDgaStatusColor(report.estado)"
@@ -1141,7 +1162,7 @@ type OperationMode = 'realtime' | 'turnos';
                       type="button"
                       (click)="previousDgaPage()"
                       [disabled]="dgaPage() === 1"
-                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="Pagina anterior"
                     >
                       <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -1150,7 +1171,7 @@ type OperationMode = 'realtime' | 'turnos';
                       type="button"
                       (click)="nextDgaPage()"
                       [disabled]="dgaPage() === dgaTotalPages()"
-                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="Pagina siguiente"
                     >
                       <span class="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -1228,7 +1249,7 @@ type OperationMode = 'realtime' | 'turnos';
               <button
                 type="button"
                 (click)="closeDgaDateFilter()"
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                 aria-label="Cerrar"
               >
                 <span class="material-symbols-outlined text-[20px]">close</span>
@@ -1250,8 +1271,8 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDgaDatePreset(preset.id)"
                       [class]="
                         dgaSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25 active:scale-95'
+                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95'
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
@@ -1276,8 +1297,8 @@ type OperationMode = 'realtime' | 'turnos';
                         !dgaMonthHasData(i)
                           ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
                           : dgaSelectedMonths().includes(i)
-                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
-                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
+                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)] active:scale-95'
+                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95'
                       "
                     >
                       {{ month.slice(0, 3) }}
@@ -1350,7 +1371,7 @@ type OperationMode = 'realtime' | 'turnos';
                 (click)="
                   clearDgaDateFilter(); dgaSelectedPreset.set(null); dgaSelectedMonths.set([])
                 "
-                class="text-slate-500 transition-colors hover:text-slate-800"
+                class="text-slate-500 transition-colors hover:text-slate-800 active:scale-95"
               >
                 Limpiar selección
               </button>
@@ -1358,14 +1379,14 @@ type OperationMode = 'realtime' | 'turnos';
                 <button
                   type="button"
                   (click)="closeDgaDateFilter()"
-                  class="rounded-lg px-4 py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                  class="rounded-lg px-4 py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   (click)="applyDgaDateFilter()"
-                  class="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--color-primary-container)]"
+                  class="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--color-primary-container)] active:scale-95"
                 >
                   Aplicar filtro
                 </button>
@@ -1411,7 +1432,7 @@ type OperationMode = 'realtime' | 'turnos';
               <button
                 type="button"
                 (click)="closeDownloadModal()"
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                 aria-label="Cerrar"
               >
                 <span class="material-symbols-outlined text-[20px]">close</span>
@@ -1433,8 +1454,8 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="applyDownloadPreset(preset.id)"
                       [class]="
                         downloadSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25 active:scale-95'
+                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95'
                       "
                     >
                       @if (downloadSelectedPreset() === preset.id) {
@@ -1459,8 +1480,8 @@ type OperationMode = 'realtime' | 'turnos';
                         !downloadMonthHasData(i)
                           ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
                           : downloadSelectedMonths().includes(i)
-                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
-                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
+                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)] active:scale-95'
+                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95'
                       "
                     >
                       {{ month.slice(0, 3) }}
@@ -1538,8 +1559,8 @@ type OperationMode = 'realtime' | 'turnos';
                       (click)="toggleDownloadDataType(dtype.id)"
                       [class]="
                         isDownloadTypeSelected(dtype.id)
-                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-body-sm font-bold text-primary-container transition-all'
-                          : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-body-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-body-sm font-bold text-primary-container transition active:scale-95'
+                          : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-body-sm font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                       "
                     >
                       {{ dtype.label }}
@@ -1561,8 +1582,8 @@ type OperationMode = 'realtime' | 'turnos';
                       [title]="gran.hint"
                       [class]="
                         downloadGranularity() === gran.id
-                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-2 py-2 text-center text-caption font-bold text-primary-container transition-all'
-                          : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                          ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-2 py-2 text-center text-caption font-bold text-primary-container transition active:scale-95'
+                          : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                       "
                     >
                       {{ gran.label }}
@@ -1588,8 +1609,8 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="downloadFormat.set('csv')"
                     [class]="
                       downloadFormat() === 'csv'
-                        ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-body-sm font-bold text-emerald-700'
-                        : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
+                        ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-body-sm font-bold text-emerald-700 active:scale-95'
+                        : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-body-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95'
                     "
                   >
                     <span class="material-symbols-outlined text-[16px]">csv</span>
@@ -1626,7 +1647,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <button
                   type="button"
                   (click)="closeDownloadModal()"
-                  class="rounded-lg px-4 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                  class="rounded-lg px-4 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
                 >
                   Cancelar
                 </button>
@@ -1639,7 +1660,7 @@ type OperationMode = 'realtime' | 'turnos';
                     !downloadDateFrom() ||
                     !downloadDateTo()
                   "
-                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span class="material-symbols-outlined text-[17px]">download</span>
                   {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
@@ -1684,7 +1705,8 @@ type OperationMode = 'realtime' | 'turnos';
               <button
                 type="button"
                 (click)="closeDgaReportModal()"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
+                aria-label="Cerrar"
               >
                 <span class="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -1704,8 +1726,8 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="applyDgaReportPreset(preset.id)"
                     [class]="
                       dgaReportSelectedPreset() === preset.id
-                        ? 'rounded-lg border border-accent/30 bg-accent/10 px-2 py-2 text-center text-caption-xs font-bold text-accent-deep transition-all'
-                        : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption-xs font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                        ? 'rounded-lg border border-accent/30 bg-accent/10 px-2 py-2 text-center text-caption-xs font-bold text-accent-deep transition active:scale-95'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                     "
                   >
                     {{ preset.label }}
@@ -1730,8 +1752,8 @@ type OperationMode = 'realtime' | 'turnos';
                       !dgaMonthHasData(i)
                         ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed'
                         : dgaReportSelectedMonths().includes(i)
-                          ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-accent-container text-white ring-2 ring-accent/30'
-                          : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
+                          ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-accent-container text-white ring-2 ring-accent/30 active:scale-95'
+                          : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95'
                     "
                   >
                     {{ month.slice(0, 3) }}
@@ -1784,8 +1806,8 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="dgaReportBucket.set(opt.value)"
                     [class]="
                       dgaReportBucket() === opt.value
-                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container'
-                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 hover:border-accent/20 hover:text-accent-container'
+                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
                     "
                   >
                     {{ opt.label }}
@@ -1809,8 +1831,8 @@ type OperationMode = 'realtime' | 'turnos';
                     (click)="dgaReportOrden.set(opt.value)"
                     [class]="
                       dgaReportOrden() === opt.value
-                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container'
-                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 hover:border-accent/20 hover:text-accent-container'
+                        ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
+                        : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
                     "
                   >
                     {{ opt.label }}
@@ -1851,7 +1873,7 @@ type OperationMode = 'realtime' | 'turnos';
                   type="button"
                   (click)="closeDgaReportModal()"
                   [disabled]="dgaReportDownloading()"
-                  class="rounded-lg px-3 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                  class="rounded-lg px-3 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                 >
                   Cancelar
                 </button>
@@ -1859,7 +1881,7 @@ type OperationMode = 'realtime' | 'turnos';
                   type="button"
                   (click)="generateDgaReport()"
                   [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
-                  class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
+                  class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-accent-deep active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   @if (dgaReportDownloading()) {
                     <span class="material-symbols-outlined animate-spin text-[16px]">sync</span>
@@ -1899,7 +1921,7 @@ type OperationMode = 'realtime' | 'turnos';
               <button
                 type="button"
                 (click)="closeDgaReportDetail()"
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                 aria-label="Cerrar seguimiento"
               >
                 <span class="material-symbols-outlined text-[20px]">close</span>
