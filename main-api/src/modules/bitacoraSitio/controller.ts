@@ -6,6 +6,8 @@ import { ok } from '../../shared/httpEnvelope';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import {
+  addContacto,
+  deleteContacto,
   deleteEquipo,
   findEquipoSitioId,
   getFicha,
@@ -13,11 +15,18 @@ import {
   listEquipos,
   patchEquipo,
   patchFicha,
+  updateContacto,
   filterDocumentoIdsDelSitio,
   type FichaContacto,
 } from './repo';
-import { maskFichaForRole } from './mask';
-import { CreateEquipoPayload, FichaPayload, PatchEquipoPayload } from './schema';
+import { maskFicha } from './mask';
+import {
+  CreateContactoPayload,
+  CreateEquipoPayload,
+  FichaPayload,
+  PatchContactoPayload,
+  PatchEquipoPayload,
+} from './schema';
 import { assertSiteAccessById } from '../../middlewares/siteAccess';
 import type { AuthUser } from '../../shared/permissions';
 
@@ -55,7 +64,7 @@ export async function getFichaHandler(
     const siteId = String(req.params.siteId ?? '').trim();
     if (!siteId) throw new ValidationError('siteId requerido');
     const f = await getFicha(siteId);
-    res.json(ok(maskFichaForRole(f, getUser(req)?.tipo), { durationMs: elapsedMs(startedAt) }));
+    res.json(ok(maskFicha(f), { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
@@ -122,13 +131,126 @@ export async function patchFichaHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
+    // Los contactos NO se tocan por esta vía: son PII y se gestionan por sus
+    // endpoints dedicados con 2FA. Preservamos los almacenados para que un
+    // guardado de ficha (pin/acreditaciones/riesgos) con contactos enmascarados
+    // no borre tel/email reales.
+    const stored = await getFicha(siteId);
     const updated = await patchFicha(siteId, {
       pin_critico: parsed.data.pin_critico ?? null,
-      contactos: parsed.data.contactos,
+      contactos: stored.contactos,
       acreditaciones: parsed.data.acreditaciones,
       riesgos: parsed.data.riesgos,
     });
-    res.json(ok(updated, { durationMs: elapsedMs(startedAt) }));
+    res.json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ============================================================================
+// Contactos (PII — endpoints dedicados con 2FA + auditoría)
+// ============================================================================
+
+/** Registra en el audit-log una mutación de contacto (best-effort). */
+async function auditContacto(
+  req: Request,
+  action: string,
+  siteId: string,
+  idx: number | null,
+  c: Pick<FichaContacto, 'nombre' | 'rol'>,
+): Promise<void> {
+  const u = getUser(req);
+  try {
+    await auditRecord({
+      req,
+      action,
+      actorId: u?.id != null ? String(u.id) : null,
+      actorEmail: u?.email ?? null,
+      actorTipo: u?.tipo ?? null,
+      targetType: 'bitacora_contacto',
+      targetId: idx != null ? `${siteId}#${idx}` : siteId,
+      statusCode: 200,
+      metadata: { nombre: c.nombre, rol: c.rol },
+    });
+  } catch (auditErr) {
+    console.error(`[${action}] fallo al auditar:`, auditErr);
+  }
+}
+
+export async function createContactoHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    if (!siteId) throw new ValidationError('siteId requerido');
+    const parsed = CreateContactoPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const updated = await addContacto(siteId, {
+      nombre: parsed.data.nombre,
+      rol: parsed.data.rol,
+      telefono: parsed.data.telefono ?? null,
+      email: parsed.data.email ?? null,
+    });
+    await auditContacto(req, 'bitacora.contacto.create', siteId, null, parsed.data);
+    res.status(201).json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function patchContactoHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    const idx = Number(req.params.idx);
+    if (!siteId) throw new ValidationError('siteId requerido');
+    if (!Number.isFinite(idx) || idx < 0) throw new ValidationError('idx inválido');
+    const parsed = PatchContactoPayload.safeParse(req.body);
+    if (!parsed.success) {
+      throw new ValidationError('Payload inválido', { details: parsed.error.issues });
+    }
+    const updated = await updateContacto(siteId, idx, {
+      ...(parsed.data.nombre !== undefined ? { nombre: parsed.data.nombre } : {}),
+      ...(parsed.data.rol !== undefined ? { rol: parsed.data.rol } : {}),
+      ...(parsed.data.telefono != null ? { telefono: parsed.data.telefono } : {}),
+      ...(parsed.data.email != null ? { email: parsed.data.email } : {}),
+    });
+    if (!updated) throw new NotFoundError('Contacto no encontrado');
+    await auditContacto(req, 'bitacora.contacto.update', siteId, idx, {
+      nombre: parsed.data.nombre ?? '',
+      rol: parsed.data.rol ?? '',
+    });
+    res.json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteContactoHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const startedAt = nowHrtime();
+  try {
+    const siteId = String(req.params.siteId ?? '').trim();
+    const idx = Number(req.params.idx);
+    if (!siteId) throw new ValidationError('siteId requerido');
+    if (!Number.isFinite(idx) || idx < 0) throw new ValidationError('idx inválido');
+    const updated = await deleteContacto(siteId, idx);
+    if (!updated) throw new NotFoundError('Contacto no encontrado');
+    await auditContacto(req, 'bitacora.contacto.delete', siteId, idx, { nombre: '', rol: '' });
+    res.json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }

@@ -85,6 +85,47 @@ export async function patchFicha(siteId: string, ficha: FichaSitio): Promise<Fic
   return normalizeFicha(r.rows[0]?.ficha_critica);
 }
 
+// ---------------------------------------------------------------------------
+// Contactos (viven en ficha_critica.contactos, JSONB). Se mutan server-side
+// sobre el dato REAL para que el enmascarado del read nunca borre PII.
+// Direccionados por índice posicional, igual que el endpoint de reveal.
+// ---------------------------------------------------------------------------
+
+export async function addContacto(siteId: string, c: FichaContacto): Promise<FichaSitio> {
+  const ficha = await getFicha(siteId);
+  ficha.contactos.push(c);
+  return patchFicha(siteId, ficha);
+}
+
+/**
+ * Actualiza un contacto por índice. Si tel/email vienen vacíos/undefined
+ * (p.ej. el cliente envía la vista enmascarada), se PRESERVA el valor real
+ * almacenado — nunca se borra por venir enmascarado.
+ */
+export async function updateContacto(
+  siteId: string,
+  idx: number,
+  partial: Partial<FichaContacto>,
+): Promise<FichaSitio | null> {
+  const ficha = await getFicha(siteId);
+  const cur = ficha.contactos[idx];
+  if (!cur) return null;
+  ficha.contactos[idx] = {
+    nombre: partial.nombre ?? cur.nombre,
+    rol: partial.rol ?? cur.rol,
+    telefono: partial.telefono ? partial.telefono : cur.telefono,
+    email: partial.email ? partial.email : cur.email,
+  };
+  return patchFicha(siteId, ficha);
+}
+
+export async function deleteContacto(siteId: string, idx: number): Promise<FichaSitio | null> {
+  const ficha = await getFicha(siteId);
+  if (!ficha.contactos[idx]) return null;
+  ficha.contactos.splice(idx, 1);
+  return patchFicha(siteId, ficha);
+}
+
 // ============================================================================
 // Equipamiento del sitio
 // ============================================================================

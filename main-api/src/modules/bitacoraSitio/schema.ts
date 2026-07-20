@@ -35,6 +35,19 @@ export const FichaPayload = z.object({
 });
 export type FichaPayload = z.infer<typeof FichaPayload>;
 
+// Alta de contacto (endpoint dedicado con 2FA). tel/email opcionales.
+export const CreateContactoPayload = z.object({
+  nombre: z.string().trim().min(1).max(150),
+  rol: z.string().trim().max(50).default('Responsable'),
+  telefono: z.string().trim().max(50).nullable().optional(),
+  email: z.string().trim().max(150).nullable().optional(),
+});
+export type CreateContactoPayload = z.infer<typeof CreateContactoPayload>;
+
+// Edición parcial: campos ausentes/vacíos preservan lo guardado (ver repo).
+export const PatchContactoPayload = CreateContactoPayload.partial();
+export type PatchContactoPayload = z.infer<typeof PatchContactoPayload>;
+
 export const EquipoEstado = z.enum(['operativo', 'en_mantencion', 'fuera_de_servicio']);
 export type EquipoEstado = z.infer<typeof EquipoEstado>;
 

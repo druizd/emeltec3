@@ -126,6 +126,32 @@ export class BitacoraSitioService {
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 
+  /**
+   * CRUD de contactos (PII): endpoints dedicados que exigen 2FA (el interceptor
+   * global inyecta el código) y quedan auditados. Devuelven la ficha
+   * enmascarada; el tel/email real solo se obtiene vía revealContacto.
+   */
+  private readonly contactoBase = (siteId: string) =>
+    `/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/contacto`;
+
+  createContacto(siteId: string, contacto: FichaContacto): Observable<FichaSitio> {
+    return this.http
+      .post<ApiResponse<FichaSitio>>(this.contactoBase(siteId), contacto)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  patchContacto(siteId: string, idx: number, contacto: FichaContacto): Observable<FichaSitio> {
+    return this.http
+      .patch<ApiResponse<FichaSitio>>(`${this.contactoBase(siteId)}/${idx}`, contacto)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  deleteContacto(siteId: string, idx: number): Observable<FichaSitio> {
+    return this.http
+      .delete<ApiResponse<FichaSitio>>(`${this.contactoBase(siteId)}/${idx}`)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
   // ---------- Equipamiento ----------
 
   listEquipos(siteId: string): Observable<SitioEquipo[]> {

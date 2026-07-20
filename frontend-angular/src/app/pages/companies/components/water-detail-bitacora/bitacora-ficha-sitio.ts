@@ -93,98 +93,77 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
           } @else {
             <ul class="space-y-2">
               @for (c of ficha().contactos; track $index) {
-                <li class="group relative rounded-xl border border-slate-100 bg-slate-50/60">
+                <li
+                  class="group relative flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2"
+                >
+                  <span
+                    class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-caption-xs font-bold text-primary-container"
+                    aria-hidden="true"
+                    >{{ iniciales(c.nombre) }}</span
+                  >
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <p class="truncate text-body-sm font-semibold text-slate-700">
+                        {{ c.nombre || 'Sin nombre' }}
+                      </p>
+                      <span
+                        [class]="
+                          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                          rolBadgeClass(c.rol)
+                        "
+                        >{{ c.rol }}</span
+                      >
+                    </div>
+                    <!-- Datos de contacto: SIEMPRE enmascarados; se revelan con 2FA. -->
+                    @if (revelados()[$index]; as rev) {
+                      <p class="truncate text-caption-xs text-slate-600">
+                        {{ rev.telefono ? '+56 ' + rev.telefono : 'Sin teléfono' }} ·
+                        {{ rev.email || 'Sin email' }}
+                      </p>
+                    } @else if (c.datos_ocultos) {
+                      <div class="mt-0.5 flex items-center gap-2">
+                        <span class="font-mono text-caption-xs tracking-widest text-slate-400"
+                          >•••••• · ••••</span
+                        >
+                        <button
+                          type="button"
+                          (click)="revelar($index)"
+                          [disabled]="revelando() !== null"
+                          class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:opacity-50"
+                        >
+                          <span
+                            class="material-symbols-outlined text-[12px]"
+                            [class.animate-spin]="revelando() === $index"
+                            aria-hidden="true"
+                            >{{ revelando() === $index ? 'progress_activity' : 'lock_open' }}</span
+                          >
+                          Revelar
+                        </button>
+                      </div>
+                    } @else {
+                      <p class="truncate text-caption-xs text-slate-500">Sin datos de contacto</p>
+                    }
+                  </div>
                   @if (isInternal()) {
-                    <button
-                      type="button"
-                      (click)="openContactoModal($index)"
-                      class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-slate-100 active:scale-[0.99]"
-                      [attr.aria-label]="'Editar contacto ' + (c.nombre || '')"
+                    <div
+                      class="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
                     >
-                      <span
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-caption-xs font-bold text-primary-container"
-                        aria-hidden="true"
-                        >{{ iniciales(c.nombre) }}</span
+                      <button
+                        type="button"
+                        (click)="openContactoModal($index)"
+                        class="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-90"
+                        [attr.aria-label]="'Editar contacto ' + (c.nombre || '')"
                       >
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
-                          <p class="truncate text-body-sm font-semibold text-slate-700">
-                            {{ c.nombre || 'Sin nombre' }}
-                          </p>
-                          <span
-                            [class]="
-                              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
-                              rolBadgeClass(c.rol)
-                            "
-                            >{{ c.rol }}</span
-                          >
-                        </div>
-                        <p class="truncate text-caption-xs text-slate-500">
-                          {{ contactoLinea(c) }}
-                        </p>
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      (click)="pedirEliminarContacto($index)"
-                      class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full text-slate-300 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 active:scale-90 group-hover:opacity-100"
-                      aria-label="Eliminar contacto"
-                    >
-                      <span class="material-symbols-outlined text-[14px]">close</span>
-                    </button>
-                  } @else {
-                    <div class="flex items-center gap-3 px-3 py-2">
-                      <span
-                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-caption-xs font-bold text-primary-container"
-                        aria-hidden="true"
-                        >{{ iniciales(c.nombre) }}</span
+                        <span class="material-symbols-outlined text-[14px]">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="pedirEliminarContacto($index)"
+                        class="flex h-6 w-6 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500 active:scale-90"
+                        aria-label="Eliminar contacto"
                       >
-                      <div class="min-w-0 flex-1">
-                        <div class="flex items-center gap-2">
-                          <p class="truncate text-body-sm font-semibold text-slate-700">
-                            {{ c.nombre || 'Sin nombre' }}
-                          </p>
-                          <span
-                            [class]="
-                              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
-                              rolBadgeClass(c.rol)
-                            "
-                            >{{ c.rol }}</span
-                          >
-                        </div>
-                        @if (revelados()[$index]; as rev) {
-                          <p class="truncate text-caption-xs text-slate-600">
-                            {{ rev.telefono ? '+56 ' + rev.telefono : 'Sin teléfono' }} ·
-                            {{ rev.email || 'Sin email' }}
-                          </p>
-                        } @else if (c.datos_ocultos) {
-                          <div class="mt-0.5 flex items-center gap-2">
-                            <span class="font-mono text-caption-xs tracking-widest text-slate-400"
-                              >•••••• · ••••</span
-                            >
-                            <button
-                              type="button"
-                              (click)="revelar($index)"
-                              [disabled]="revelando() !== null"
-                              class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:opacity-50"
-                            >
-                              <span
-                                class="material-symbols-outlined text-[12px]"
-                                [class.animate-spin]="revelando() === $index"
-                                aria-hidden="true"
-                                >{{
-                                  revelando() === $index ? 'progress_activity' : 'lock_open'
-                                }}</span
-                              >
-                              Revelar
-                            </button>
-                          </div>
-                        } @else {
-                          <p class="truncate text-caption-xs text-slate-500">
-                            {{ contactoLinea(c) }}
-                          </p>
-                        }
-                      </div>
+                        <span class="material-symbols-outlined text-[14px]">close</span>
+                      </button>
                     </div>
                   }
                 </li>
@@ -709,16 +688,24 @@ export class BitacoraFichaSitioComponent implements OnInit {
     if (!this.sitioId()) return;
     this.error.set('');
     this.api.getFicha(this.sitioId()).subscribe({
-      next: (f) => {
-        const norm = this.fichaWithLocalPhones(f);
-        this.ficha.set(norm);
-        this.original = JSON.stringify(norm);
-      },
+      next: (f) => this.applyFicha(f),
       error: (err) =>
         this.error.set(
           'No se pudo cargar ficha: ' + (err?.error?.error?.message ?? err?.message ?? ''),
         ),
     });
+  }
+
+  /**
+   * Aplica una ficha (enmascarada) recibida del backend: normaliza teléfonos
+   * a formato local y descarta los reveals en caché (los índices pudieron
+   * cambiar tras un alta/baja de contacto).
+   */
+  private applyFicha(f: FichaSitio): void {
+    const norm = this.fichaWithLocalPhones(f);
+    this.ficha.set(norm);
+    this.original = JSON.stringify(norm);
+    this.revelados.set({});
   }
 
   save(): void {
@@ -747,13 +734,16 @@ export class BitacoraFichaSitioComponent implements OnInit {
     this.ficha.update((f) => ({ ...f, pin_critico: v || null }));
   }
 
-  // -------- Contactos --------
+  // -------- Contactos (endpoints dedicados con 2FA; el read va enmascarado) --------
   removeContacto(idx: number): void {
-    this.ficha.update((f) => ({
-      ...f,
-      contactos: f.contactos.filter((_, i) => i !== idx),
-    }));
-    this.save();
+    this.error.set('');
+    this.api.deleteContacto(this.sitioId(), idx).subscribe({
+      next: (f) => this.applyFicha(f),
+      error: (err) =>
+        this.error.set(
+          'No se pudo eliminar el contacto: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+        ),
+    });
   }
   /** Quita el prefijo +56 y cualquier no-dígito; deja los 9 dígitos locales. */
   private toLocalPhone(tel: string | null | undefined): string {
@@ -825,19 +815,38 @@ export class BitacoraFichaSitioComponent implements OnInit {
     if (built) this.contactoDraft = built;
   }
   saveContactoModal(): void {
-    const draft: FichaContacto = {
-      ...this.contactoDraft,
-      nombre: (this.contactoDraft.nombre || '').trim(),
+    const nombre = (this.contactoDraft.nombre || '').trim();
+    if (!nombre || this.saving()) return;
+    // El teléfono se edita como 9 dígitos locales; al persistir se antepone
+    // +56. Si viene vacío en una EDICIÓN, el backend preserva el guardado
+    // (no se borra por venir enmascarado).
+    const local = this.toLocalPhone(this.contactoDraft.telefono);
+    const payload: FichaContacto = {
+      nombre,
+      rol: this.contactoDraft.rol || 'Responsable',
+      telefono: local ? `+56 ${local}` : '',
+      email: (this.contactoDraft.email || '').trim(),
     };
-    if (!draft.nombre) return;
     const idx = this.contactoEditIdx();
-    this.ficha.update((f) => ({
-      ...f,
-      contactos:
-        idx != null ? f.contactos.map((c, i) => (i === idx ? draft : c)) : [...f.contactos, draft],
-    }));
-    this.contactoModalOpen.set(false);
-    this.save();
+    this.saving.set(true);
+    this.error.set('');
+    const req$ =
+      idx != null
+        ? this.api.patchContacto(this.sitioId(), idx, payload)
+        : this.api.createContacto(this.sitioId(), payload);
+    req$.subscribe({
+      next: (f) => {
+        this.applyFicha(f);
+        this.saving.set(false);
+        this.contactoModalOpen.set(false);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(
+          'No se pudo guardar el contacto: ' + (err?.error?.error?.message ?? err?.message ?? ''),
+        );
+      },
+    });
   }
 
   /** Construye un FichaContacto desde la agenda/usuarios (sin agregarlo). */
@@ -991,11 +1000,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
       },
       error: () => this.revelando.set(null),
     });
-  }
-
-  contactoLinea(c: FichaContacto): string {
-    const tel = c.telefono ? '+56 ' + c.telefono : 'Sin teléfono';
-    return `${tel} · ${c.email || 'Sin email'}`;
   }
 
   /** Responsable se destaca con color de marca; Operador queda neutral. */

@@ -204,10 +204,13 @@ router.get('/dga/sites/:siteId/verify', protect, requireSiteParamAccess(), verif
 // Bitácora del sitio: ficha + equipamiento.
 // =====================================================================
 import {
+  createContactoHandler,
   createEquipoHandler,
+  deleteContactoHandler,
   deleteEquipoHandler,
   getFichaHandler,
   listEquiposHandler,
+  patchContactoHandler,
   patchEquipoHandler,
   patchFichaHandler,
   revealContactoHandler,
@@ -233,6 +236,29 @@ router.post(
   requireSiteParamAccess(),
   require2fa,
   revealContactoHandler,
+);
+// CRUD de contactos: son PII, exigen 2FA y quedan auditados. El read va
+// siempre enmascarado; estos endpoints mutan sobre el dato real server-side.
+router.post(
+  '/sites/:siteId/bitacora/contacto',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  createContactoHandler,
+);
+router.patch(
+  '/sites/:siteId/bitacora/contacto/:idx',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  patchContactoHandler,
+);
+router.delete(
+  '/sites/:siteId/bitacora/contacto/:idx',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  deleteContactoHandler,
 );
 router.get(
   '/sites/:siteId/bitacora/equipos',
