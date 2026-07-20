@@ -96,7 +96,7 @@ import {
                   <tr class="group hover:bg-slate-50/60">
                     <td class="px-3 py-2 font-semibold text-slate-800">
                       {{ eq.nombre }}
-                      @if (eq.documento_ids?.length) {
+                      @if (eq.documento_ids.length) {
                         <span
                           class="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-1.5 py-0.5 align-middle text-caption-xs font-semibold text-slate-500"
                           [title]="eq.documento_ids.length + ' documento(s) vinculado(s)'"
