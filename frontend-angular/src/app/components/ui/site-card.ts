@@ -20,7 +20,9 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             <div
               class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary-tint-20 bg-primary-tint-08 text-primary-container"
             >
-              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{ getSiteIcon() }}</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
+                getSiteIcon()
+              }}</span>
             </div>
 
             <div class="min-w-0">

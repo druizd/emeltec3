@@ -283,14 +283,20 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                     (click)="goToProfile()"
                     class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 active:scale-[0.98]"
                   >
-                    <span class="material-symbols-outlined text-[16px] text-slate-400" aria-hidden="true">person</span>
+                    <span
+                      class="material-symbols-outlined text-[16px] text-slate-400"
+                      aria-hidden="true"
+                      >person</span
+                    >
                     Mi perfil
                   </button>
                   <button
                     type="button"
                     class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 active:scale-[0.98]"
                   >
-                    <span class="material-symbols-outlined text-[16px] text-slate-400" aria-hidden="true"
+                    <span
+                      class="material-symbols-outlined text-[16px] text-slate-400"
+                      aria-hidden="true"
                       >notifications</span
                     >
                     Notificaciones
@@ -302,7 +308,9 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                     (click)="logout()"
                     class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 active:scale-[0.98]"
                   >
-                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true">logout</span>
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                      >logout</span
+                    >
                     Cerrar sesión
                   </button>
                 </div>

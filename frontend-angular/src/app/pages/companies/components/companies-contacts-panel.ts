@@ -121,7 +121,9 @@ const CONTACT_TYPES = [
                   class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 opacity-0 transition duration-150 hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 group-hover:opacity-100 active:scale-95"
                   aria-label="Eliminar contacto"
                 >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >delete</span
+                  >
                 </button>
               }
 
@@ -399,7 +401,8 @@ const CONTACT_TYPES = [
                   ejecución de contrato B2B / interés legítimo, Ley 21.719). Si el contacto es una
                   persona externa, debes informarle de este tratamiento y de sus derechos de acceso,
                   rectificación y supresión.
-                  <a href="/privacidad" class="underline font-semibold">Ver política de privacidad</a
+                  <a href="/privacidad" class="underline font-semibold"
+                    >Ver política de privacidad</a
                   >.
                 </p>
               </div>
@@ -419,7 +422,9 @@ const CONTACT_TYPES = [
                 [disabled]="saving()"
                 class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 active:scale-[0.98]"
               >
-                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add_call</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  >add_call</span
+                >
                 {{ saving() ? 'Guardando...' : 'Guardar contacto' }}
               </button>
             </div>

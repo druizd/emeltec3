@@ -366,7 +366,9 @@ interface RealtimeChartPoint {
                   (click)="turnosSettingsOpen.set(false)"
                   class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95"
                 >
-                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                    >check</span
+                  >
                   Listo
                 </button>
               </div>

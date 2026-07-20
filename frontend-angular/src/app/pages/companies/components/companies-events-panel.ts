@@ -19,7 +19,9 @@ import type { SiteRecord } from '@emeltec/shared';
       <div
         class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white py-20 text-center"
       >
-        <span class="material-symbols-outlined text-5xl text-slate-300" aria-hidden="true">notifications_paused</span>
+        <span class="material-symbols-outlined text-5xl text-slate-300" aria-hidden="true"
+          >notifications_paused</span
+        >
         <h3 class="mt-4 text-body-sm font-semibold text-slate-500">
           Sin cámaras de frío en esta empresa
         </h3>

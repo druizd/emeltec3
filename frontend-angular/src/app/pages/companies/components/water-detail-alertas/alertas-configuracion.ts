@@ -151,7 +151,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             (click)="$event.stopPropagation()"
           >
             <!-- Header -->
-            <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div
+              class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
+            >
               <div class="flex items-center gap-3">
                 <span
                   class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
@@ -261,7 +263,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-95"
                   aria-label="Eliminar regla"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >delete</span
+                  >
                 </button>
               </div>
             }
@@ -310,7 +314,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   (click)="guardarEdicion(regla)"
                   class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">check</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >check</span
+                  >
                   Guardar
                 </button>
               </div>
@@ -495,8 +501,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             >
               <p class="mb-1 font-bold">Escalación automática</p>
               <p>
-                El sistema notifica al cruzar 24h, 48h y 72h sin reporte DGA (severidades media → alta
-                → crítica). No requiere umbral ni variable. Aplica al informante DGA del sitio.
+                El sistema notifica al cruzar 24h, 48h y 72h sin reporte DGA (severidades media →
+                alta → crítica). No requiere umbral ni variable. Aplica al informante DGA del sitio.
               </p>
             </div>
           }

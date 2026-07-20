@@ -101,7 +101,9 @@ import type { SalaAggregate } from '../ventisqueros';
                         (click)="removeDefrostWindow(ds.area, w.id)"
                         aria-label="Quitar ventana"
                       >
-                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true">delete</span>
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >delete</span
+                        >
                       </button>
                     </header>
 

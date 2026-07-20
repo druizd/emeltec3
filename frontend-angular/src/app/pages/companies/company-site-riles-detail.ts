@@ -68,7 +68,9 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
                   aria-label="Volver a instalaciones"
                 >
-                  <span class="material-symbols-outlined text-[24px]" aria-hidden="true">waves</span>
+                  <span class="material-symbols-outlined text-[24px]" aria-hidden="true"
+                    >waves</span
+                  >
                 </a>
                 <div class="min-w-0">
                   <p
@@ -97,7 +99,9 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                   type="button"
                   class="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-700 bg-cyan-700 px-4 text-body-sm font-semibold text-white transition-colors hover:bg-cyan-800 active:scale-[0.98]"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">download</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >download</span
+                  >
                   Descargar mes activo (.xlsx)
                 </button>
                 <button
@@ -107,7 +111,9 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                   aria-label="Configurar variables RILES"
                   [attr.aria-pressed]="activeTab() === 'configurar'"
                 >
-                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true">settings</span>
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                    >settings</span
+                  >
                 </button>
               </div>
             </div>
@@ -125,7 +131,9 @@ const RILES_RECENT_DATA_MS = 24 * 60 * 60 * 1000;
                   role="tab"
                   [attr.aria-selected]="activeTab() === tab.id"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{ tab.icon }}</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
+                    tab.icon
+                  }}</span>
                   {{ tab.label }}
                 </button>
               }

@@ -464,7 +464,9 @@ interface Periodo {
               [attr.aria-pressed]="periodosOpen()"
               class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-100 active:scale-95"
             >
-              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">date_range</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                >date_range</span
+              >
               Escoger períodos
             </button>
           </div>
@@ -586,7 +588,9 @@ interface Periodo {
                   [disabled]="!periodosCustomPendientes()"
                   class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                 >
-                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                    >check</span
+                  >
                   Aplicar
                 </button>
               </div>

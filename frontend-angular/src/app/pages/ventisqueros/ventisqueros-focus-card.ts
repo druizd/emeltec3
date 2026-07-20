@@ -31,7 +31,9 @@ import { Sensor, humColor, tempColor } from './ventisqueros-data';
               title="Ver sala"
               aria-label="Ver sala"
             >
-              <span class="material-symbols-outlined text-[13px]" aria-hidden="true">open_in_new</span>
+              <span class="material-symbols-outlined text-[13px]" aria-hidden="true"
+                >open_in_new</span
+              >
             </button>
           }
         </div>

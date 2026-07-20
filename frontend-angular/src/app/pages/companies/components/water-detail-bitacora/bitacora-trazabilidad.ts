@@ -38,7 +38,9 @@ type RecursoFiltro = AuditTargetType | 'todos';
             [class]="filtroClass(f.key)"
             [attr.aria-pressed]="filtroRecurso() === f.key"
           >
-            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{ f.icon }}</span>
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
+              f.icon
+            }}</span>
             {{ f.label }}
           </button>
         }
@@ -130,7 +132,9 @@ type RecursoFiltro = AuditTargetType | 'todos';
                 } @empty {
                   <tr>
                     <td colspan="5" class="px-4 py-10 text-center">
-                      <span class="material-symbols-outlined text-3xl text-slate-300" aria-hidden="true"
+                      <span
+                        class="material-symbols-outlined text-3xl text-slate-300"
+                        aria-hidden="true"
                         >fact_check</span
                       >
                       <p class="mt-2 text-body-sm font-semibold text-slate-400">

@@ -72,7 +72,9 @@ interface BitacoraTabItem {
                   class="flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:text-slate-700 active:scale-95"
                   aria-label="Limpiar búsqueda"
                 >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">close</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >close</span
+                  >
                 </button>
               }
             </label>

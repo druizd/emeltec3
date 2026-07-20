@@ -112,7 +112,9 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
               class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
               aria-label="Ocultar chat al costado"
             >
-              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">last_page</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                >last_page</span
+              >
             </button>
             <button
               (click)="chatOpen.set(false); chatDocked.set(false)"

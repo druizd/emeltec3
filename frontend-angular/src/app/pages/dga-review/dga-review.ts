@@ -79,7 +79,9 @@ const WARNING_LABELS: Record<string, string> = {
         <summary
           class="flex cursor-pointer select-none items-center gap-2 text-body-sm font-semibold"
         >
-          <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true">help</span>
+          <span class="material-symbols-outlined text-[18px] text-primary" aria-hidden="true"
+            >help</span
+          >
           ¿Cómo funciona esta cola?
         </summary>
         <div class="mt-3 space-y-2 text-caption text-slate-600">

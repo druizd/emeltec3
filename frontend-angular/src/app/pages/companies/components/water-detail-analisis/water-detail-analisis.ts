@@ -36,9 +36,7 @@ interface AnalisisTabItem {
             <span
               class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent"
             >
-              <span class="material-symbols-outlined text-[22px]" aria-hidden="true"
-                >insights</span
-              >
+              <span class="material-symbols-outlined text-[22px]" aria-hidden="true">insights</span>
             </span>
             <div class="min-w-0">
               <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">

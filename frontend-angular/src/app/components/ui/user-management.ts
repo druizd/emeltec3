@@ -57,7 +57,9 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   <h2 id="user-form-title" class="text-h6 font-bold text-slate-800">
                     {{ editingId() ? 'Editar miembro' : 'Registrar nuevo miembro' }}
                   </h2>
-                  <p class="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">
+                  <p
+                    class="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400"
+                  >
                     {{ companyName() }} / {{ subName() }}
                   </p>
                 </div>
@@ -75,203 +77,221 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
             <!-- Body -->
             <div class="flex-1 overflow-y-auto px-6 py-5">
               @if (status().type === 'error') {
-            <div
-              [class]="
-                'anim-banner p-4 rounded-xl mb-6 flex items-start gap-3 ' +
-                (status().type === 'success'
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-red-50 text-red-700 border border-red-200')
-              "
-              role="status"
-              [attr.aria-live]="status().type === 'error' ? 'assertive' : 'polite'"
-            >
-              <span class="material-symbols-outlined mt-0.5" aria-hidden="true">{{
-                status().type === 'success' ? 'check_circle' : 'error'
-              }}</span>
-              <div class="flex-1 min-w-0">
-                <p
-                  class="font-bold text-caption uppercase tracking-widest"
-                  [class.text-emerald-700]="status().type === 'success'"
-                  [class.text-red-700]="status().type === 'error'"
+                <div
+                  [class]="
+                    'anim-banner p-4 rounded-xl mb-6 flex items-start gap-3 ' +
+                    (status().type === 'success'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-red-50 text-red-700 border border-red-200')
+                  "
+                  role="status"
+                  [attr.aria-live]="status().type === 'error' ? 'assertive' : 'polite'"
                 >
-                  {{ status().type === 'success' ? 'Registro confirmado' : 'No se pudo registrar' }}
-                </p>
-                <p class="mt-1 text-body-sm font-semibold break-words">{{ status().msg }}</p>
-                @if (status().type === 'error') {
-                  <p class="mt-1 text-caption text-red-600">
-                    Revisa los datos e intenta nuevamente.
-                  </p>
-                }
-              </div>
-              <button
-                type="button"
-                (click)="dismissStatus()"
-                class="shrink-0 rounded-md p-1 text-current/70 hover:bg-black/5 transition-colors active:scale-95"
-                aria-label="Cerrar mensaje"
-              >
-                <span class="material-symbols-outlined text-base">close</span>
-              </button>
-            </div>
-          }
-
-          <form (submit)="saveUser($event)" class="space-y-8">
-            <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >1. Seleccione el Perfil de Acceso *</label
-                >
-                <select
-                  required
-                  [(ngModel)]="newUser.tipo"
-                  name="tipo"
-                  class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm font-semibold text-primary"
-                >
-                  @if (auth.isAdmin() || auth.isSuperAdmin()) {
-                    <option value="Admin">Administrador (Control Total {{ companyName() }})</option>
-                  }
-                  <option value="Gerente">Gerente (Encargado {{ subName() }})</option>
-                  <option value="Cliente">Cliente (Lectura {{ subName() }})</option>
-                </select>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="space-y-1.5 opacity-80">
-                  <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                    >Empresa Asignada</label
-                  >
-                  <div
-                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
-                  >
-                    <span class="material-symbols-outlined text-primary-container text-sm" aria-hidden="true"
-                      >domain</span
+                  <span class="material-symbols-outlined mt-0.5" aria-hidden="true">{{
+                    status().type === 'success' ? 'check_circle' : 'error'
+                  }}</span>
+                  <div class="flex-1 min-w-0">
+                    <p
+                      class="font-bold text-caption uppercase tracking-widest"
+                      [class.text-emerald-700]="status().type === 'success'"
+                      [class.text-red-700]="status().type === 'error'"
                     >
-                    {{ companyName() }}
+                      {{
+                        status().type === 'success' ? 'Registro confirmado' : 'No se pudo registrar'
+                      }}
+                    </p>
+                    <p class="mt-1 text-body-sm font-semibold break-words">{{ status().msg }}</p>
+                    @if (status().type === 'error') {
+                      <p class="mt-1 text-caption text-red-600">
+                        Revisa los datos e intenta nuevamente.
+                      </p>
+                    }
+                  </div>
+                  <button
+                    type="button"
+                    (click)="dismissStatus()"
+                    class="shrink-0 rounded-md p-1 text-current/70 hover:bg-black/5 transition-colors active:scale-95"
+                    aria-label="Cerrar mensaje"
+                  >
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+              }
+
+              <form (submit)="saveUser($event)" class="space-y-8">
+                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4">
+                  <div class="space-y-1.5">
+                    <label
+                      class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                      >1. Seleccione el Perfil de Acceso *</label
+                    >
+                    <select
+                      required
+                      [(ngModel)]="newUser.tipo"
+                      name="tipo"
+                      class="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm font-semibold text-primary"
+                    >
+                      @if (auth.isAdmin() || auth.isSuperAdmin()) {
+                        <option value="Admin">
+                          Administrador (Control Total {{ companyName() }})
+                        </option>
+                      }
+                      <option value="Gerente">Gerente (Encargado {{ subName() }})</option>
+                      <option value="Cliente">Cliente (Lectura {{ subName() }})</option>
+                    </select>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="space-y-1.5 opacity-80">
+                      <label
+                        class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                        >Empresa Asignada</label
+                      >
+                      <div
+                        class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold text-slate-600 flex items-center gap-2 shadow-sm"
+                      >
+                        <span
+                          class="material-symbols-outlined text-primary-container text-sm"
+                          aria-hidden="true"
+                          >domain</span
+                        >
+                        {{ companyName() }}
+                      </div>
+                    </div>
+
+                    <div class="space-y-1.5" [class.opacity-40]="newUser.tipo === 'Admin'">
+                      <label
+                        class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                        >División Asignada</label
+                      >
+                      <div
+                        class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold flex items-center gap-2 shadow-sm"
+                        [class.text-slate-400]="newUser.tipo === 'Admin'"
+                        [class.text-primary-container]="newUser.tipo !== 'Admin'"
+                      >
+                        <span class="material-symbols-outlined text-sm" aria-hidden="true"
+                          >factory</span
+                        >
+                        {{ newUser.tipo === 'Admin' ? 'Toda la Empresa' : subName() }}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div class="space-y-1.5" [class.opacity-40]="newUser.tipo === 'Admin'">
-                  <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                    >División Asignada</label
-                  >
+                <!-- DATOS PERSONALES -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div class="space-y-1.5">
+                    <label
+                      class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                      >Nombre *</label
+                    >
+                    <input
+                      required
+                      [(ngModel)]="newUser.nombre"
+                      name="nombre"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
+                      placeholder="Ej. Roberto"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label
+                      class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                      >Apellido *</label
+                    >
+                    <input
+                      required
+                      [(ngModel)]="newUser.apellido"
+                      name="apellido"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
+                      placeholder="Ej. Sánchez"
+                    />
+                  </div>
+                  <div class="space-y-1.5">
+                    <label
+                      class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                      >Teléfono *</label
+                    >
+                    <input
+                      required
+                      [(ngModel)]="newUser.telefono"
+                      name="telefono"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
+                      placeholder="+56 9 ..."
+                    />
+                  </div>
+                  <div class="space-y-1.5 md:col-span-2">
+                    <label
+                      class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                      >Correo Electrónico *</label
+                    >
+                    <input
+                      required
+                      type="email"
+                      [(ngModel)]="newUser.email"
+                      name="email"
+                      [disabled]="!!editingId()"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
+                      placeholder="usuario@correo.com"
+                    />
+                    @if (editingId()) {
+                      <p class="text-[10px] text-slate-500 font-semibold">
+                        El correo no se puede modificar.
+                      </p>
+                    }
+                  </div>
+                  <div class="space-y-1.5 md:col-span-2">
+                    <label
+                      class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
+                      >Cargo *</label
+                    >
+                    <input
+                      required
+                      [(ngModel)]="newUser.cargo"
+                      name="cargo"
+                      class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
+                      placeholder="Ej. Encargado de sector de aguas"
+                    />
+                  </div>
+                </div>
+
+                @if (!editingId()) {
                   <div
-                    class="px-4 py-3 bg-white border border-slate-200 rounded-xl text-body-sm font-semibold flex items-center gap-2 shadow-sm"
-                    [class.text-slate-400]="newUser.tipo === 'Admin'"
-                    [class.text-primary-container]="newUser.tipo !== 'Admin'"
+                    class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-body-sm text-blue-800"
                   >
-                    <span class="material-symbols-outlined text-sm" aria-hidden="true">factory</span>
-                    {{ newUser.tipo === 'Admin' ? 'Toda la Empresa' : subName() }}
+                    <p class="font-bold">Información sobre el tratamiento de datos</p>
+                    <p class="mt-1">
+                      Al registrar este usuario, la plataforma recopilará: nombre, apellido, email,
+                      RUT, teléfono, cargo y empresa. Esta información se utiliza para la operación
+                      del servicio (base legal: ejecución de contrato B2B, Art. 13 Ley 21.719).
+                      <a href="/privacidad" class="underline font-semibold"
+                        >Ver política de privacidad</a
+                      >.
+                    </p>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- DATOS PERSONALES -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >Nombre *</label
-                >
-                <input
-                  required
-                  [(ngModel)]="newUser.nombre"
-                  name="nombre"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
-                  placeholder="Ej. Roberto"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >Apellido *</label
-                >
-                <input
-                  required
-                  [(ngModel)]="newUser.apellido"
-                  name="apellido"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
-                  placeholder="Ej. Sánchez"
-                />
-              </div>
-              <div class="space-y-1.5">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >Teléfono *</label
-                >
-                <input
-                  required
-                  [(ngModel)]="newUser.telefono"
-                  name="telefono"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
-                  placeholder="+56 9 ..."
-                />
-              </div>
-              <div class="space-y-1.5 md:col-span-2">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >Correo Electrónico *</label
-                >
-                <input
-                  required
-                  type="email"
-                  [(ngModel)]="newUser.email"
-                  name="email"
-                  [disabled]="!!editingId()"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm font-bold disabled:cursor-not-allowed disabled:opacity-60"
-                  placeholder="usuario@correo.com"
-                />
-                @if (editingId()) {
-                  <p class="text-[10px] text-slate-500 font-semibold">
-                    El correo no se puede modificar.
-                  </p>
                 }
-              </div>
-              <div class="space-y-1.5 md:col-span-2">
-                <label class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                  >Cargo *</label
-                >
-                <input
-                  required
-                  [(ngModel)]="newUser.cargo"
-                  name="cargo"
-                  class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
-                  placeholder="Ej. Encargado de sector de aguas"
-                />
-              </div>
-            </div>
 
-            @if (!editingId()) {
-              <div
-                class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-body-sm text-blue-800"
-              >
-                <p class="font-bold">Información sobre el tratamiento de datos</p>
-                <p class="mt-1">
-                  Al registrar este usuario, la plataforma recopilará: nombre, apellido, email, RUT,
-                  teléfono, cargo y empresa. Esta información se utiliza para la operación del
-                  servicio (base legal: ejecución de contrato B2B, Art. 13 Ley 21.719).
-                  <a href="/privacidad" class="underline font-semibold"
-                    >Ver política de privacidad</a
-                  >.
-                </p>
-              </div>
-            }
-
-            <div class="flex justify-end gap-3 border-t border-slate-100 pt-6">
-              <button
-                type="button"
-                (click)="cancelEdit()"
-                class="rounded-xl border border-slate-200 px-6 py-4 text-caption font-semibold uppercase tracking-widest text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                [disabled]="loading()"
-                class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
-              >
-                <span class="material-symbols-outlined text-lg" aria-hidden="true">{{
-                  editingId() ? 'save' : 'person_add'
-                }}</span>
-                {{ loading() ? 'Guardando...' : editingId() ? 'Guardar cambios' : 'Crear usuario' }}
-              </button>
-            </div>
-          </form>
+                <div class="flex justify-end gap-3 border-t border-slate-100 pt-6">
+                  <button
+                    type="button"
+                    (click)="cancelEdit()"
+                    class="rounded-xl border border-slate-200 px-6 py-4 text-caption font-semibold uppercase tracking-widest text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    [disabled]="loading()"
+                    class="px-8 py-4 bg-primary-container text-white font-semibold rounded-xl transition shadow-primary-cta hover:opacity-90 active:scale-95 disabled:opacity-50 uppercase text-caption tracking-widest flex items-center gap-2"
+                  >
+                    <span class="material-symbols-outlined text-lg" aria-hidden="true">{{
+                      editingId() ? 'save' : 'person_add'
+                    }}</span>
+                    {{
+                      loading() ? 'Guardando...' : editingId() ? 'Guardar cambios' : 'Crear usuario'
+                    }}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
@@ -340,7 +360,9 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                 (click)="openCreate()"
                 class="inline-flex items-center gap-1.5 rounded-xl bg-primary-container px-4 py-2 text-caption font-bold text-white transition-colors hover:opacity-90 active:scale-95"
               >
-                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">person_add</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                  >person_add</span
+                >
                 Crear usuario
               </button>
             }
@@ -485,7 +507,9 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
               @if (filteredUsers().length === 0) {
                 <tr>
                   <td [attr.colspan]="readOnly ? 4 : 6" class="px-6 py-10 text-center">
-                    <span class="material-symbols-outlined text-slate-300 text-4xl mb-2" aria-hidden="true"
+                    <span
+                      class="material-symbols-outlined text-slate-300 text-4xl mb-2"
+                      aria-hidden="true"
                       >group_off</span
                     >
                     <p class="text-slate-500 font-bold text-body-sm">Sin usuarios registrados</p>

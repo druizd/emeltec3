@@ -188,7 +188,9 @@ function emptyVariables(): SiteVariablesPayload {
                 class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 text-caption font-semibold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
                 aria-label="Configurar reporte DGA"
               >
-                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">description</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  >description</span
+                >
                 Configurar reporte DGA
               </button>
             }
@@ -642,7 +644,9 @@ function emptyVariables(): SiteVariablesPayload {
                       (click)="updateVariableTransform(transform.id)"
                       [class]="calculatorButtonClass(transform.id)"
                     >
-                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">functions</span>
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                        >functions</span
+                      >
                       <span>{{ transform.label }}</span>
                     </button>
                   }
@@ -654,7 +658,9 @@ function emptyVariables(): SiteVariablesPayload {
                   Limpiar
                 </button>
                 <button type="submit" [disabled]="busy() === 'variable'" class="primary-button">
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">label</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >label</span
+                  >
                   {{
                     busy() === 'variable'
                       ? 'Guardando'
@@ -727,7 +733,9 @@ function emptyVariables(): SiteVariablesPayload {
                               class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 active:scale-95"
                               aria-label="Eliminar alias"
                             >
-                              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">delete</span>
+                              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                                >delete</span
+                              >
                             </button>
                           } @else {
                             <span

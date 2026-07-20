@@ -110,22 +110,38 @@ const DEFAULT_DRAFT: DraftRule = {
         <div class="ar-templates">
           <div class="ar-templates-title">Plantillas</div>
           <div class="ar-templates-grid">
-            <button type="button" class="ar-template-card active:scale-[0.98]" (click)="useTemplate('temp-alta')">
+            <button
+              type="button"
+              class="ar-template-card active:scale-[0.98]"
+              (click)="useTemplate('temp-alta')"
+            >
               <span class="material-symbols-outlined text-[22px] text-rose-500">thermostat</span>
               <div class="ar-template-name">Temperatura alta</div>
               <div class="ar-template-desc">Sensor supera su umbral máximo.</div>
             </button>
-            <button type="button" class="ar-template-card active:scale-[0.98]" (click)="useTemplate('temp-baja')">
+            <button
+              type="button"
+              class="ar-template-card active:scale-[0.98]"
+              (click)="useTemplate('temp-baja')"
+            >
               <span class="material-symbols-outlined text-[22px] text-sky-500">ac_unit</span>
               <div class="ar-template-name">Temperatura baja</div>
               <div class="ar-template-desc">Riesgo de congelación o sobre-frío.</div>
             </button>
-            <button type="button" class="ar-template-card active:scale-[0.98]" (click)="useTemplate('hr-alta')">
+            <button
+              type="button"
+              class="ar-template-card active:scale-[0.98]"
+              (click)="useTemplate('hr-alta')"
+            >
               <span class="material-symbols-outlined text-[22px] text-blue-500">water_drop</span>
               <div class="ar-template-name">Humedad alta</div>
               <div class="ar-template-desc">HR sobre el límite tolerado.</div>
             </button>
-            <button type="button" class="ar-template-card active:scale-[0.98]" (click)="useTemplate('sin-transmitir')">
+            <button
+              type="button"
+              class="ar-template-card active:scale-[0.98]"
+              (click)="useTemplate('sin-transmitir')"
+            >
               <span class="material-symbols-outlined text-[22px] text-amber-500"
                 >signal_disconnected</span
               >
@@ -197,7 +213,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.metric === 'temperatura'"
                   (click)="setMetric('temperatura')"
                 >
-                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true">thermostat</span>
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                    >thermostat</span
+                  >
                   Temperatura
                 </button>
                 <button
@@ -207,7 +225,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.metric === 'humedad'"
                   (click)="setMetric('humedad')"
                 >
-                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true">water_drop</span>
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                    >water_drop</span
+                  >
                   Humedad
                 </button>
                 <button
@@ -217,7 +237,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.metric === 'transmision'"
                   (click)="setMetric('transmision')"
                 >
-                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true">signal_disconnected</span>
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                    >signal_disconnected</span
+                  >
                   Sin transmitir
                 </button>
               </div>
@@ -287,7 +309,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.targetKind === 'all'"
                   (click)="setTargetKind('all')"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">select_all</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >select_all</span
+                  >
                   Todos los sensores
                 </button>
                 <button
@@ -297,7 +321,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.targetKind === 'sala'"
                   (click)="setTargetKind('sala')"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">meeting_room</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >meeting_room</span
+                  >
                   Una sala
                 </button>
                 <button
@@ -307,12 +333,18 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.targetKind === 'sensor'"
                   (click)="setTargetKind('sensor')"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">sensors</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >sensors</span
+                  >
                   Un sensor
                 </button>
               </div>
               @if (draft.targetKind === 'sala') {
-                <select class="ar-input-big" [(ngModel)]="draft.targetValue" aria-label="Selecciona una sala">
+                <select
+                  class="ar-input-big"
+                  [(ngModel)]="draft.targetValue"
+                  aria-label="Selecciona una sala"
+                >
                   <option value="">Selecciona una sala</option>
                   @for (s of availableSalas(); track s.slug) {
                     <option [value]="s.slug">{{ s.area }} ({{ s.sensorCount }} sensores)</option>
@@ -320,7 +352,11 @@ const DEFAULT_DRAFT: DraftRule = {
                 </select>
               }
               @if (draft.targetKind === 'sensor') {
-                <select class="ar-input-big" [(ngModel)]="draft.targetValue" aria-label="Selecciona un sensor">
+                <select
+                  class="ar-input-big"
+                  [(ngModel)]="draft.targetValue"
+                  aria-label="Selecciona un sensor"
+                >
                   <option value="">Selecciona un sensor</option>
                   @for (s of availableSensors(); track s.id) {
                     <option [value]="s.id">{{ s.id }} · {{ s.area }} · {{ s.tap }}</option>
@@ -355,7 +391,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.severity === 'warn'"
                   (click)="setSeverity('warn')"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">warning</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >warning</span
+                  >
                   Advertencia
                 </button>
                 <button
@@ -365,7 +403,9 @@ const DEFAULT_DRAFT: DraftRule = {
                   [attr.aria-pressed]="draft.severity === 'crit'"
                   (click)="setSeverity('crit')"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >error</span
+                  >
                   Crítica
                 </button>
               </div>
@@ -451,8 +491,14 @@ const DEFAULT_DRAFT: DraftRule = {
           </div>
 
           <div class="ar-form-foot">
-            <button type="button" class="ar-btn active:scale-95" (click)="closeForm()">Cancelar</button>
-            <button type="button" class="ar-btn ar-btn--primary active:scale-95" (click)="saveRule()">
+            <button type="button" class="ar-btn active:scale-95" (click)="closeForm()">
+              Cancelar
+            </button>
+            <button
+              type="button"
+              class="ar-btn ar-btn--primary active:scale-95"
+              (click)="saveRule()"
+            >
               <span class="material-symbols-outlined text-[14px]">check</span>
               {{ editingId() ? 'Guardar cambios' : 'Crear alarma' }}
             </button>
@@ -567,7 +613,9 @@ const DEFAULT_DRAFT: DraftRule = {
                       title="Editar"
                       aria-label="Editar"
                     >
-                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                        >edit</span
+                      >
                     </button>
                     <button
                       type="button"
@@ -576,7 +624,9 @@ const DEFAULT_DRAFT: DraftRule = {
                       title="Eliminar"
                       aria-label="Eliminar"
                     >
-                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                        >delete</span
+                      >
                     </button>
                   </div>
                 }

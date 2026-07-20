@@ -111,7 +111,9 @@ const TIPOS: DocumentoTipo[] = [
             class="anim-panel relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
           >
-            <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div
+              class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
+            >
               <div class="flex items-center gap-3">
                 <span
                   class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
@@ -132,89 +134,90 @@ const TIPOS: DocumentoTipo[] = [
               </button>
             </div>
             <div class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
-            <div>
-              <label
-                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >Archivo (máx 25 MB)</label
-              >
-              <input
-                #fileInput
-                type="file"
-                (change)="onFileChange($event)"
-                class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
-              />
-              @if (archivoSeleccionado()) {
-                <p class="mt-1 text-caption-xs text-slate-500">
-                  {{ archivoSeleccionado()!.name }} ({{ formatBytes(archivoSeleccionado()!.size) }})
-                </p>
-              }
-            </div>
-
-            <div class="grid gap-3 sm:grid-cols-2">
               <div>
                 <label
                   class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >Título</label
+                  >Archivo (máx 25 MB)</label
                 >
                 <input
-                  type="text"
-                  [(ngModel)]="draft.titulo"
-                  placeholder="Ej. Cert. calibración caudalímetro"
+                  #fileInput
+                  type="file"
+                  (change)="onFileChange($event)"
+                  class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
+                />
+                @if (archivoSeleccionado()) {
+                  <p class="mt-1 text-caption-xs text-slate-500">
+                    {{ archivoSeleccionado()!.name }} ({{
+                      formatBytes(archivoSeleccionado()!.size)
+                    }})
+                  </p>
+                }
+              </div>
+
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label
+                    class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >Título</label
+                  >
+                  <input
+                    type="text"
+                    [(ngModel)]="draft.titulo"
+                    placeholder="Ej. Cert. calibración caudalímetro"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >Tipo</label
+                  >
+                  <select
+                    [(ngModel)]="draft.tipo"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
+                  >
+                    @for (t of tipos; track t) {
+                      <option [value]="t">{{ tipoLabel(t) }}</option>
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label
+                    class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >Versión</label
+                  >
+                  <input
+                    type="text"
+                    [(ngModel)]="draft.version"
+                    placeholder="1.0"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700"
+                  />
+                </div>
+                <div>
+                  <label
+                    class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >Vigente hasta (opcional)</label
+                  >
+                  <input
+                    type="date"
+                    min="2020-01-01"
+                    [(ngModel)]="draft.fecha_vigencia"
+                    class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >Descripción (opcional)</label
+                >
+                <textarea
+                  rows="2"
+                  [(ngModel)]="draft.descripcion"
                   class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
-                />
+                ></textarea>
               </div>
-              <div>
-                <label
-                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >Tipo</label
-                >
-                <select
-                  [(ngModel)]="draft.tipo"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700"
-                >
-                  @for (t of tipos; track t) {
-                    <option [value]="t">{{ tipoLabel(t) }}</option>
-                  }
-                </select>
-              </div>
-              <div>
-                <label
-                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >Versión</label
-                >
-                <input
-                  type="text"
-                  [(ngModel)]="draft.version"
-                  placeholder="1.0"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700"
-                />
-              </div>
-              <div>
-                <label
-                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >Vigente hasta (opcional)</label
-                >
-                <input
-                  type="date"
-                  min="2020-01-01"
-                  [(ngModel)]="draft.fecha_vigencia"
-                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label
-                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >Descripción (opcional)</label
-              >
-              <textarea
-                rows="2"
-                [(ngModel)]="draft.descripcion"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700"
-              ></textarea>
-            </div>
-
             </div>
 
             <div
@@ -354,7 +357,9 @@ const TIPOS: DocumentoTipo[] = [
                 } @empty {
                   <tr>
                     <td colspan="5" class="px-4 py-10 text-center">
-                      <span class="material-symbols-outlined text-3xl text-slate-300" aria-hidden="true"
+                      <span
+                        class="material-symbols-outlined text-3xl text-slate-300"
+                        aria-hidden="true"
                         >folder_open</span
                       >
                       <p class="mt-2 text-body-sm font-semibold text-slate-400">

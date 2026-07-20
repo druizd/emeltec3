@@ -163,7 +163,9 @@ export interface AlarmHistoryItem {
                 [attr.aria-label]="it.linkTitle || 'Ver detalle'"
                 class="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-lg border border-slate-200 text-slate-500 transition-colors hover:border-primary-tint-35 hover:text-primary-container"
               >
-                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  >arrow_forward</span
+                >
               </a>
             }
           </article>

@@ -172,7 +172,9 @@ interface IncidenciaPeriodo {
             </p>
             <p class="text-[40px] font-bold leading-none tracking-tight text-slate-800">
               {{ heroNum()
-              }}<span class="ml-1.5 text-[16px] font-semibold text-slate-400">{{ heroUnidad() }}</span>
+              }}<span class="ml-1.5 text-[16px] font-semibold text-slate-400">{{
+                heroUnidad()
+              }}</span>
             </p>
             <p class="text-caption text-slate-500">{{ k.subtext }}</p>
           </article>
@@ -392,97 +394,97 @@ interface IncidenciaPeriodo {
           </button>
         </div>
         @if (tablaDiariaOpen()) {
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[640px] text-left text-body-sm">
-            <thead>
-              <tr class="border-b border-slate-100 bg-slate-50/60">
-                <th
-                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Fecha
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Flujo (m³)
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Caudal peak
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Caudal prom.
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Freático max
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Alertas
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @for (fila of data().tabla; track fila.diaIso) {
-                <tr class="hover:bg-slate-50/60" [class.opacity-60]="(fila.flujo ?? 0) === 0">
-                  <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
-                    {{ fila.fecha }}
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.flujo !== null && fila.flujo > 0) {
-                      {{ formatNumber(fila.flujo, 1) }}
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.caudalPeak !== null) {
-                      {{ formatNumber(fila.caudalPeak, 1) }} L/s
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.caudalProm !== null) {
-                      {{ formatNumber(fila.caudalProm, 1) }} L/s
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.freaticoPeak !== null) {
-                      {{ formatNumber(fila.freaticoPeak, 2) }} m
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right">
-                    @if (fila.alertas > 0) {
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
-                      >
-                        {{ fila.alertas }}
-                      </span>
-                    } @else {
-                      <span class="font-mono text-caption text-slate-300">—</span>
-                    }
-                  </td>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[640px] text-left text-body-sm">
+              <thead>
+                <tr class="border-b border-slate-100 bg-slate-50/60">
+                  <th
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Fecha
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Flujo (m³)
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Caudal peak
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Caudal prom.
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Freático max
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Alertas
+                  </th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        <div class="border-t border-slate-100 px-4 py-2.5">
-          <p class="text-caption-xs text-slate-500">
-            Los datos son provisorios hasta confirmar sincronización con DGA.
-          </p>
-        </div>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (fila of data().tabla; track fila.diaIso) {
+                  <tr class="hover:bg-slate-50/60" [class.opacity-60]="(fila.flujo ?? 0) === 0">
+                    <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
+                      {{ fila.fecha }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.flujo !== null && fila.flujo > 0) {
+                        {{ formatNumber(fila.flujo, 1) }}
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.caudalPeak !== null) {
+                        {{ formatNumber(fila.caudalPeak, 1) }} L/s
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.caudalProm !== null) {
+                        {{ formatNumber(fila.caudalProm, 1) }} L/s
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.freaticoPeak !== null) {
+                        {{ formatNumber(fila.freaticoPeak, 2) }} m
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right">
+                      @if (fila.alertas > 0) {
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
+                        >
+                          {{ fila.alertas }}
+                        </span>
+                      } @else {
+                        <span class="font-mono text-caption text-slate-300">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="border-t border-slate-100 px-4 py-2.5">
+            <p class="text-caption-xs text-slate-500">
+              Los datos son provisorios hasta confirmar sincronización con DGA.
+            </p>
+          </div>
         }
       </section>
 
@@ -558,114 +560,116 @@ interface IncidenciaPeriodo {
           </div>
 
           @if (data().alertas.length === 0) {
-          <div class="flex flex-col items-center gap-2 py-10 text-center">
-            <span class="material-symbols-outlined text-[36px] text-emerald-300">check_circle</span>
-            <p class="text-body-sm font-bold text-slate-500">
-              Sin alertas en el período seleccionado
-            </p>
-          </div>
-        } @else {
-          <ul class="divide-y divide-slate-100">
-            @for (alerta of data().alertas; track alerta.id) {
-              <li class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/60">
-                <!-- Icono severidad -->
-                <span
-                  class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                  [class]="alertaIconClass(alerta.severidad)"
-                >
-                  <span class="material-symbols-outlined text-[15px]">{{
-                    alertaIcon(alerta.severidad)
-                  }}</span>
-                </span>
-                <!-- Contenido -->
-                <div class="min-w-0 flex-1">
-                  <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
-                  <p class="mt-0.5 font-mono text-caption-xs text-slate-500">
-                    {{ alerta.fechaHora }}
-                  </p>
-                </div>
-                <!-- Estado -->
-                <span
-                  class="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
-                  [class]="alertaEstadoClass(alerta.estado)"
-                >
-                  {{ alerta.estado === 'resuelta' ? 'Resuelta' : 'Activa' }}
-                </span>
-              </li>
-            }
-          </ul>
+            <div class="flex flex-col items-center gap-2 py-10 text-center">
+              <span class="material-symbols-outlined text-[36px] text-emerald-300"
+                >check_circle</span
+              >
+              <p class="text-body-sm font-bold text-slate-500">
+                Sin alertas en el período seleccionado
+              </p>
+            </div>
+          } @else {
+            <ul class="divide-y divide-slate-100">
+              @for (alerta of data().alertas; track alerta.id) {
+                <li class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/60">
+                  <!-- Icono severidad -->
+                  <span
+                    class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                    [class]="alertaIconClass(alerta.severidad)"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">{{
+                      alertaIcon(alerta.severidad)
+                    }}</span>
+                  </span>
+                  <!-- Contenido -->
+                  <div class="min-w-0 flex-1">
+                    <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
+                    <p class="mt-0.5 font-mono text-caption-xs text-slate-500">
+                      {{ alerta.fechaHora }}
+                    </p>
+                  </div>
+                  <!-- Estado -->
+                  <span
+                    class="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
+                    [class]="alertaEstadoClass(alerta.estado)"
+                  >
+                    {{ alerta.estado === 'resuelta' ? 'Resuelta' : 'Activa' }}
+                  </span>
+                </li>
+              }
+            </ul>
           }
         } @else {
           @if (data().incidencias.length === 0) {
-          <div class="flex flex-col items-center gap-2 py-10 text-center">
-            <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
-            <p class="text-body-sm font-bold text-slate-500">
-              Sin incidencias registradas en el período
-            </p>
-          </div>
-        } @else {
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[620px] text-left text-body-sm">
-              <thead>
-                <tr class="border-b border-slate-100 bg-slate-50/60">
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Fecha
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Descripción
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Categoría
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Estado
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Técnico
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                @for (inc of data().incidencias; track inc.fecha + inc.descripcion) {
-                  <tr class="hover:bg-slate-50/60">
-                    <td class="px-4 py-2.5 font-mono text-caption-xs font-bold text-slate-500">
-                      {{ inc.fecha }}
-                    </td>
-                    <td class="px-4 py-2.5 text-caption text-slate-700">{{ inc.descripcion }}</td>
-                    <td class="px-4 py-2.5">
-                      <span
-                        class="rounded-md bg-slate-100 px-2 py-0.5 text-caption-xs font-bold text-slate-600"
-                        >{{ inc.categoria }}</span
-                      >
-                    </td>
-                    <td class="px-4 py-2.5">
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
-                        [class]="incEstadoClass(inc.estado)"
-                      >
-                        <span
-                          class="h-1.5 w-1.5 rounded-full"
-                          [class]="incEstadoDot(inc.estado)"
-                        ></span>
-                        {{ incEstadoLabel(inc.estado) }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-2.5 text-caption text-slate-500">{{ inc.tecnico }}</td>
+            <div class="flex flex-col items-center gap-2 py-10 text-center">
+              <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
+              <p class="text-body-sm font-bold text-slate-500">
+                Sin incidencias registradas en el período
+              </p>
+            </div>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[620px] text-left text-body-sm">
+                <thead>
+                  <tr class="border-b border-slate-100 bg-slate-50/60">
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Fecha
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Descripción
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Categoría
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Estado
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Técnico
+                    </th>
                   </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  @for (inc of data().incidencias; track inc.fecha + inc.descripcion) {
+                    <tr class="hover:bg-slate-50/60">
+                      <td class="px-4 py-2.5 font-mono text-caption-xs font-bold text-slate-500">
+                        {{ inc.fecha }}
+                      </td>
+                      <td class="px-4 py-2.5 text-caption text-slate-700">{{ inc.descripcion }}</td>
+                      <td class="px-4 py-2.5">
+                        <span
+                          class="rounded-md bg-slate-100 px-2 py-0.5 text-caption-xs font-bold text-slate-600"
+                          >{{ inc.categoria }}</span
+                        >
+                      </td>
+                      <td class="px-4 py-2.5">
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
+                          [class]="incEstadoClass(inc.estado)"
+                        >
+                          <span
+                            class="h-1.5 w-1.5 rounded-full"
+                            [class]="incEstadoDot(inc.estado)"
+                          ></span>
+                          {{ incEstadoLabel(inc.estado) }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-2.5 text-caption text-slate-500">{{ inc.tecnico }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           }
         }
       </section>
@@ -836,7 +840,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
       'text-slate-700'
     );
   }
-
 
   /**
    * Tabla "Resumen diario" — una fila por día calendario en el rango aplicado.

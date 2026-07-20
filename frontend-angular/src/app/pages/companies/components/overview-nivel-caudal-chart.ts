@@ -136,7 +136,10 @@ const WHITE_BG: Plugin = {
                 [style.background]="hidden().has(s.id) ? 'transparent' : s.color"
                 [style.boxShadow]="'inset 0 0 0 2px ' + s.color"
               ></span>
-              <span [class.text-slate-400]="hidden().has(s.id)" [class.line-through]="hidden().has(s.id)">
+              <span
+                [class.text-slate-400]="hidden().has(s.id)"
+                [class.line-through]="hidden().has(s.id)"
+              >
                 {{ s.nombre }}
               </span>
             </button>
@@ -380,8 +383,7 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     ]);
 
     const reduceMotion =
-      typeof matchMedia !== 'undefined' &&
-      matchMedia('(prefers-reduced-motion: reduce)').matches;
+      typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     return {
       type: 'line',
@@ -510,7 +512,11 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
   private fmtTick(ms: number): string {
     const d = new Date(ms);
     if (this.range() === '24h') {
-      return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      return d.toLocaleTimeString('es-CL', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
     }
     return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
   }

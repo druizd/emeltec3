@@ -29,7 +29,13 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
 @Component({
   selector: 'app-bitacora-ficha-sitio',
   standalone: true,
-  imports: [CommonModule, FormsModule, A11yModule, ConfirmDialogComponent, BitacoraEquipamientoComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    A11yModule,
+    ConfirmDialogComponent,
+    BitacoraEquipamientoComponent,
+  ],
   template: `
     <div class="space-y-3">
       <!-- Pin crítico -->
@@ -113,7 +119,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                             >{{ c.rol }}</span
                           >
                         </div>
-                        <p class="truncate text-caption-xs text-slate-500">{{ contactoLinea(c) }}</p>
+                        <p class="truncate text-caption-xs text-slate-500">
+                          {{ contactoLinea(c) }}
+                        </p>
                       </div>
                     </button>
                     <button
@@ -164,7 +172,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                                 class="material-symbols-outlined text-[12px]"
                                 [class.animate-spin]="revelando() === $index"
                                 aria-hidden="true"
-                                >{{ revelando() === $index ? 'progress_activity' : 'lock_open' }}</span
+                                >{{
+                                  revelando() === $index ? 'progress_activity' : 'lock_open'
+                                }}</span
                               >
                               Revelar
                             </button>
@@ -211,7 +221,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                     [disabled]="!isInternal()"
                     (click)="openAcreModal($index)"
                     class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors enabled:hover:bg-slate-100 enabled:active:scale-[0.99] disabled:cursor-default"
-                    [attr.aria-label]="isInternal() ? 'Editar acreditación de ' + (a.persona || '') : null"
+                    [attr.aria-label]="
+                      isInternal() ? 'Editar acreditación de ' + (a.persona || '') : null
+                    "
                   >
                     <span
                       class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-primary-container"
@@ -230,7 +242,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                         >
                       </div>
                       <p class="truncate text-caption-xs" [class]="vigenciaClass(a.vigencia_hasta)">
-                        {{ a.vigencia_hasta ? 'Vigente hasta ' + a.vigencia_hasta : 'Sin vigencia' }}
+                        {{
+                          a.vigencia_hasta ? 'Vigente hasta ' + a.vigencia_hasta : 'Sin vigencia'
+                        }}
                       </p>
                     </div>
                   </button>
@@ -249,7 +263,6 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
             </ul>
           }
         </section>
-
       </div>
 
       @if (isInternal()) {
@@ -278,7 +291,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
             <span class="material-symbols-outlined text-[14px]" aria-hidden="true">error</span>
             {{ error() }}
           } @else if (saveMsg()) {
-            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check_circle</span>
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+              >check_circle</span
+            >
             {{ saveMsg() }}
           }
         </p>
@@ -301,7 +316,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
           class="anim-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
           (click)="$event.stopPropagation()"
         >
-          <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div
+            class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
+          >
             <h2 id="contacto-modal-title" class="text-h6 font-semibold text-slate-800">
               {{ contactoEditIdx() !== null ? 'Editar contacto' : 'Nuevo contacto' }}
             </h2>
@@ -386,7 +403,8 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
               <div
                 class="flex items-stretch overflow-hidden rounded-xl border border-slate-200 focus-within:border-primary-tint-35"
               >
-                <span class="flex items-center bg-slate-100 px-3 font-mono text-body-sm text-slate-500"
+                <span
+                  class="flex items-center bg-slate-100 px-3 font-mono text-body-sm text-slate-500"
                   >+56</span
                 >
                 <input
@@ -455,7 +473,9 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
           class="anim-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
           (click)="$event.stopPropagation()"
         >
-          <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+          <div
+            class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
+          >
             <h2 id="acre-modal-title" class="text-h6 font-semibold text-slate-800">
               {{ acreEditIdx() !== null ? 'Editar acreditación' : 'Nueva acreditación' }}
             </h2>

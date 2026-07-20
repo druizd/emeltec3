@@ -93,7 +93,9 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
                   [attr.aria-selected]="activeTab() === tab.id"
                   [attr.tabindex]="activeTab() === tab.id ? 0 : -1"
                 >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{ tab.icon }}</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
+                    tab.icon
+                  }}</span>
                   {{ tab.label }}
                   @if (tab.badge) {
                     <span class="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">

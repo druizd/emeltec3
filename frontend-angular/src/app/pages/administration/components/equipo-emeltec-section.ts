@@ -161,7 +161,9 @@ function emptyDraft(): DraftMiembro {
           <div class="flex gap-2">
             <label [class]="rolCardClass('Vendedor')">
               <input type="radio" name="tipo" value="Vendedor" [(ngModel)]="draft.tipo" hidden />
-              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">storefront</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                >storefront</span
+              >
               <span>
                 <span class="block text-body-sm font-bold">Vendedor</span>
                 <span class="block text-caption-xs"
@@ -171,7 +173,9 @@ function emptyDraft(): DraftMiembro {
             </label>
             <label [class]="rolCardClass('SuperAdmin')">
               <input type="radio" name="tipo" value="SuperAdmin" [(ngModel)]="draft.tipo" hidden />
-              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">shield_person</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                >shield_person</span
+              >
               <span>
                 <span class="block text-body-sm font-bold">SuperAdmin</span>
                 <span class="block text-caption-xs">Toda la plataforma</span>
@@ -269,7 +273,9 @@ function emptyDraft(): DraftMiembro {
                         title="Reenviar código de acceso"
                         class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">lock_reset</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >lock_reset</span
+                        >
                       </button>
                     }
                     @if (m.activo) {
@@ -281,7 +287,9 @@ function emptyDraft(): DraftMiembro {
                         [title]="esYo(m) ? 'No puedes desactivar tu propia cuenta' : 'Desactivar'"
                         class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">person_off</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >person_off</span
+                        >
                       </button>
                     } @else {
                       <button
@@ -292,7 +300,9 @@ function emptyDraft(): DraftMiembro {
                         title="Reactivar"
                         class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 active:scale-95 disabled:opacity-40"
                       >
-                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">person_check</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >person_check</span
+                        >
                       </button>
                     }
                   </div>
@@ -375,7 +385,9 @@ function emptyDraft(): DraftMiembro {
                             [disabled]="saving() || !editValido()"
                             class="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:opacity-50"
                           >
-                            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
+                            <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                              >check</span
+                            >
                             {{ saving() ? 'Guardando…' : 'Guardar' }}
                           </button>
                         </div>

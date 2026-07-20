@@ -187,7 +187,9 @@ type FiltroEstado = EventoEstado | 'todos';
                           (click)="reconocer(ev)"
                           class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95 disabled:opacity-50"
                         >
-                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">visibility</span>
+                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                            >visibility</span
+                          >
                           Reconocer
                         </button>
                       }
@@ -198,7 +200,9 @@ type FiltroEstado = EventoEstado | 'todos';
                           (click)="iniciarAsignar(ev)"
                           class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                         >
-                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">person_add</span>
+                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                            >person_add</span
+                          >
                           Asignar
                         </button>
                       }
@@ -208,7 +212,9 @@ type FiltroEstado = EventoEstado | 'todos';
                         (click)="resolver(ev)"
                         class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 active:scale-95 disabled:opacity-50"
                       >
-                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check_circle</span>
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >check_circle</span
+                        >
                         Resolver
                       </button>
                       @if (!ev.incidencia_id) {
@@ -218,7 +224,9 @@ type FiltroEstado = EventoEstado | 'todos';
                           (click)="vincularIncidencia(ev)"
                           class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                         >
-                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">link</span>
+                          <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                            >link</span
+                          >
                           Vincular incidencia
                         </button>
                       }

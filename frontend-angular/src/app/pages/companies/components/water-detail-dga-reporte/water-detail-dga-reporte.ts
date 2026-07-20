@@ -239,7 +239,9 @@ interface DgaReportRow {
                 class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-accent-deep active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 @if (dgaReportDownloading()) {
-                  <span class="material-symbols-outlined animate-spin text-[16px]" aria-hidden="true"
+                  <span
+                    class="material-symbols-outlined animate-spin text-[16px]"
+                    aria-hidden="true"
                     >sync</span
                   >
                   Descargando
@@ -364,7 +366,9 @@ interface DgaReportRow {
                       estadoBadgeClass(report.estado)
                     "
                   >
-                    <span [class]="'h-1.5 w-1.5 rounded-full ' + estadoDotClass(report.estado)"></span>
+                    <span
+                      [class]="'h-1.5 w-1.5 rounded-full ' + estadoDotClass(report.estado)"
+                    ></span>
                     {{ report.estado || 'Sin estado' }}
                   </span>
                 </div>

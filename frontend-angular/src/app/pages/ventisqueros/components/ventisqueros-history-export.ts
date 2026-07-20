@@ -30,7 +30,12 @@ import type { SiteRecord } from '@emeltec/shared';
       <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
         <header class="vs-hx-head">
           <div class="vs-hx-title">Descargar historial</div>
-          <button type="button" class="vs-hx-close active:scale-95" (click)="open.set(false)" aria-label="Cerrar">
+          <button
+            type="button"
+            class="vs-hx-close active:scale-95"
+            (click)="open.set(false)"
+            aria-label="Cerrar"
+          >
             <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
           </button>
         </header>
@@ -112,7 +117,11 @@ import type { SiteRecord } from '@emeltec/shared';
                   {{ historyExportSelectedSalas().size }} / {{ salaAggregates().length }}
                 </span>
               </div>
-              <button type="button" class="vs-hx-toggle-all active:scale-95" (click)="toggleExportSelectAllSalas()">
+              <button
+                type="button"
+                class="vs-hx-toggle-all active:scale-95"
+                (click)="toggleExportSelectAllSalas()"
+              >
                 {{
                   historyExportSelectedSalas().size === salaAggregates().length
                     ? 'Quitar todas'
@@ -191,7 +200,9 @@ import type { SiteRecord } from '@emeltec/shared';
         </div>
 
         <footer class="vs-hx-foot">
-          <button type="button" class="vs-hx-btn active:scale-95" (click)="open.set(false)">Cancelar</button>
+          <button type="button" class="vs-hx-btn active:scale-95" (click)="open.set(false)">
+            Cancelar
+          </button>
           <button
             type="button"
             class="vs-hx-btn vs-hx-btn--primary active:scale-95"

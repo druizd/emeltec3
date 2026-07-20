@@ -285,7 +285,9 @@ const ZOOM_STEP = 1.25;
           title="Restablecer zoom (0)"
           aria-label="Restablecer zoom"
         >
-          <span class="material-symbols-outlined text-[15px]" aria-hidden="true">center_focus_strong</span>
+          <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
+            >center_focus_strong</span
+          >
         </button>
         <button
           type="button"

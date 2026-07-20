@@ -407,7 +407,9 @@ function chileMonthStart(): string {
 
                         <div class="history-actions-buttons">
                           <button type="button" class="history-primary" (click)="openHistoryView()">
-                            <span class="material-symbols-outlined" aria-hidden="true">history</span>
+                            <span class="material-symbols-outlined" aria-hidden="true"
+                              >history</span
+                            >
                             Datos historicos
                           </button>
                           <button

@@ -11,10 +11,7 @@ import {
   type EquipoEstado,
   type SitioEquipo,
 } from '../../../../services/bitacora-sitio.service';
-import {
-  DocumentoService,
-  type DocumentoRow,
-} from '../../../../services/documento.service';
+import { DocumentoService, type DocumentoRow } from '../../../../services/documento.service';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 import {
   ConfirmDialogComponent,
@@ -148,7 +145,9 @@ import {
                         title="Editar"
                         aria-label="Editar"
                       >
-                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">edit</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >edit</span
+                        >
                       </button>
                       <button
                         type="button"
@@ -157,7 +156,9 @@ import {
                         title="Eliminar"
                         aria-label="Eliminar"
                       >
-                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >delete</span
+                        >
                       </button>
                     </td>
                   </tr>
@@ -345,7 +346,9 @@ import {
                           (click)="addDoc(doc)"
                           class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-sm font-normal normal-case tracking-normal text-slate-700 transition-colors hover:bg-slate-50"
                         >
-                          <span class="material-symbols-outlined text-[15px] text-slate-400" aria-hidden="true"
+                          <span
+                            class="material-symbols-outlined text-[15px] text-slate-400"
+                            aria-hidden="true"
                             >description</span
                           >
                           {{ doc.titulo }}
@@ -355,7 +358,9 @@ import {
                   </ul>
                 }
                 @if (docSearch() && !docSuggestions().length) {
-                  <p class="mt-1 text-caption-xs font-normal normal-case tracking-normal text-slate-400">
+                  <p
+                    class="mt-1 text-caption-xs font-normal normal-case tracking-normal text-slate-400"
+                  >
                     Sin documentos que coincidan.
                   </p>
                 }

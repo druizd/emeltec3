@@ -58,7 +58,9 @@ import type { Sensor } from '../ventisqueros-data';
                     aria-label="Quitar umbral"
                     [disabled]="isNaN(t.tMax)"
                   >
-                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true">delete</span>
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >delete</span
+                    >
                   </button>
                 </header>
 
@@ -108,7 +110,9 @@ import type { Sensor } from '../ventisqueros-data';
               (click)="resetThresholds()"
               title="Restaurar valores por defecto del cliente"
             >
-              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">restart_alt</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                >restart_alt</span
+              >
               Restaurar defaults cliente
             </button>
             <span class="vs-thresholds-hint"> Cambios se guardan automáticamente (local). </span>

@@ -36,7 +36,9 @@ import { Sensor, TapKey, fmtTemp } from './ventisqueros-data';
             class="vs-visibility-btn flex items-center gap-1 active:scale-95"
             [style.opacity]="hidden().size === sensors().length ? 0.5 : 1"
           >
-            <span class="material-symbols-outlined text-[12px]" aria-hidden="true">visibility_off</span>
+            <span class="material-symbols-outlined text-[12px]" aria-hidden="true"
+              >visibility_off</span
+            >
             Ocultar todos
           </button>
         </div>

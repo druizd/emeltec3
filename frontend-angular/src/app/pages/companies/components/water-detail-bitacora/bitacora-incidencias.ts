@@ -144,7 +144,9 @@ function emptyDraft(): DraftIncidencia {
             class="anim-panel relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
             (click)="$event.stopPropagation()"
           >
-            <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+            <div
+              class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
+            >
               <div class="flex items-center gap-3">
                 <span
                   class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
