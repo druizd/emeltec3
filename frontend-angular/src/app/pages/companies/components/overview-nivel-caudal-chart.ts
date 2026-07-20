@@ -263,10 +263,13 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
   private rangeConfig(range: RangeKey): RangeConfig {
     switch (range) {
       case '24h':
-        return { limit: 500 };
+        // 1 min (equipo_1min); 1500 cubre 24h a 1 punto/min.
+        return { limit: 1500, granularity: '1m' };
       case '7d':
+        // 1 hora (equipo_hourly): 168 buckets.
         return { limit: 2000, granularity: '1h' };
       case '30d':
+        // 1 día (equipo_daily): 30 buckets.
         return { limit: 2000, granularity: '1d' };
     }
   }
@@ -282,9 +285,13 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     const to = new Date();
     const from = new Date(to.getTime() - RANGE_MS[this.range()]);
     const cfg = this.rangeConfig(this.range());
+    // El backend valida from/to con formato SOLO-fecha (YYYY-MM-DD). Con ISO los
+    // descartaba y caía al path sin-rango (escaneo crudo de 48h, lento). En
+    // fecha activa el path con rango, servido por el cagg de la granularidad.
+    const dateOnly = (d: Date) => d.toISOString().slice(0, 10);
     const opts = {
-      from: from.toISOString(),
-      to: to.toISOString(),
+      from: dateOnly(from),
+      to: dateOnly(to),
       ...(cfg.granularity ? { granularity: cfg.granularity } : {}),
     };
 
