@@ -11,11 +11,14 @@ import {
   signal,
 } from '@angular/core';
 import { Chart, ChartConfiguration, Plugin, registerables } from 'chart.js';
-import { forkJoin, of, catchError } from 'rxjs';
+import { from as fromArray, of, catchError, map, mergeMap, toArray } from 'rxjs';
 import { CompanyService, HistoryGranularity } from '../../../services/company.service';
 import type { SiteRecord } from '@emeltec/shared';
 
 Chart.register(...registerables);
+
+/** Máx. de requests de historial en vuelo a la vez (protege el pool de la DB). */
+const OVERVIEW_HISTORY_CONCURRENCY = 4;
 
 type RangeKey = '24h' | '7d' | '30d';
 
@@ -25,6 +28,12 @@ interface SiteSeries {
   color: string;
   nivel: { x: number; y: number }[];
   caudal: { x: number; y: number }[];
+}
+
+/** Resultado por pozo del fetch de historial (res puede ser null si falló). */
+interface PozoHistResult {
+  site: SiteRecord;
+  res: unknown;
 }
 
 interface RangeConfig {
@@ -282,40 +291,54 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     this.loading.set(true);
     this.errorMsg.set('');
 
-    forkJoin(
-      // catchError por sitio: un pozo sin acceso (403) o que falle no debe
-      // tumbar todo el gráfico. forkJoin es fail-fast, así que aislamos cada uno.
-      sites.map((s) =>
-        this.companyService
-          .getSiteDashboardHistory(s.id, cfg.limit, opts)
-          .pipe(catchError(() => of(null))),
-      ),
-    ).subscribe({
-      next: (results) => {
-        const built: SiteSeries[] = [];
-        sites.forEach((site, i) => {
-          const res = results[i];
-          const { nivel, caudal } = this.extractSeries(res?.ok ? res : null);
-          if (nivel.length === 0 && caudal.length === 0) return;
-          built.push({
-            id: site.id,
-            nombre: site.descripcion || site.id,
-            color: PALETTE[built.length % PALETTE.length],
-            nivel,
-            caudal,
-          });
-        });
-        this.series.set(built);
-        this.loading.set(false);
-        this.renderChart();
-      },
-      error: () => {
-        this.series.set([]);
-        this.loading.set(false);
-        this.errorMsg.set('No se pudo cargar el historial de los pozos.');
-        this.renderChart();
-      },
-    });
+    // Concurrencia limitada: el overview pide historial de N pozos, cada uno con
+    // varias queries pesadas. Dispararlas TODAS en paralelo (forkJoin) agota el
+    // pool de conexiones de la DB con empresas de muchos pozos → 500. mergeMap
+    // con tope las procesa en tandas. catchError por pozo: uno que falle se
+    // saltea, no tumba el gráfico.
+    fromArray(sites)
+      .pipe(
+        mergeMap(
+          (site: SiteRecord) =>
+            this.companyService.getSiteDashboardHistory(site.id, cfg.limit, opts).pipe(
+              catchError(() => of(null)),
+              map((res): PozoHistResult => ({ site, res })),
+            ),
+          OVERVIEW_HISTORY_CONCURRENCY,
+        ),
+        toArray(),
+      )
+      .subscribe({
+        next: (results: PozoHistResult[]) => {
+          const built: SiteSeries[] = [];
+          // Orden estable por nombre para que el color de cada pozo no cambie
+          // entre recargas (mergeMap devuelve en orden de finalización).
+          results.sort((a, b) =>
+            (a.site.descripcion || a.site.id).localeCompare(b.site.descripcion || b.site.id),
+          );
+          for (const { site, res } of results) {
+            const ok = res && (res as { ok?: boolean }).ok;
+            const { nivel, caudal } = this.extractSeries(ok ? res : null);
+            if (nivel.length === 0 && caudal.length === 0) continue;
+            built.push({
+              id: site.id,
+              nombre: site.descripcion || site.id,
+              color: PALETTE[built.length % PALETTE.length],
+              nivel,
+              caudal,
+            });
+          }
+          this.series.set(built);
+          this.loading.set(false);
+          this.renderChart();
+        },
+        error: () => {
+          this.series.set([]);
+          this.loading.set(false);
+          this.errorMsg.set('No se pudo cargar el historial de los pozos.');
+          this.renderChart();
+        },
+      });
   }
 
   /**
