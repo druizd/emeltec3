@@ -219,8 +219,12 @@ import {
 // Reveal de PII de contactos operativos (agenda). El listado va enmascarado;
 // esto revela con 2FA + auditoría, con el mismo scoping por rol.
 import { revealOperationalContactHandler } from '../../modules/contactos/controller';
+import { revealUserPhoneHandler } from '../../modules/usuarios/controller';
 
 router.post('/companies/contacts/:id/reveal', protect, require2fa, revealOperationalContactHandler);
+
+// Reveal del teléfono de un usuario (listados van enmascarados). 2FA + audit.
+router.post('/users/:id/reveal', protect, require2fa, revealUserPhoneHandler);
 
 // Análisis del sitio (salud, métricas).
 import { getMetricasHandler, getSaludHandler } from '../../modules/analisis/controller';

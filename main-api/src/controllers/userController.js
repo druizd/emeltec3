@@ -103,6 +103,14 @@ exports.getTecnicos = async (req, res, next) => {
  * miembros (SuperAdmin + Vendedor) con perfil completo + la empresa interna
  * Emeltec (resuelta por nombre) a la que se asocian las altas nuevas.
  */
+// Minimización PII (Ley 21.719): el teléfono NO sale en los listados de
+// usuarios para ningún rol. Se revela puntualmente con 2FA vía
+// POST /api/v2/users/:id/reveal. telefono_oculto marca que hay dato revelable.
+// El perfil propio (/me) NO se enmascara.
+function maskUserPhones(rows) {
+  return rows.map((u) => ({ ...u, telefono: null, telefono_oculto: Boolean(u.telefono) }));
+}
+
 exports.getEquipoEmeltec = async (req, res, next) => {
   try {
     if (req.user.tipo !== 'SuperAdmin') {
@@ -123,7 +131,7 @@ exports.getEquipoEmeltec = async (req, res, next) => {
       ok: true,
       data: {
         empresa_emeltec: empresas[0] ?? null,
-        miembros,
+        miembros: maskUserPhones(miembros),
       },
     });
   } catch (err) {
@@ -195,7 +203,7 @@ exports.getAllUsers = async (req, res, next) => {
     query += ' ORDER BY u.nombre ASC';
 
     const { rows } = await db.query(query, params);
-    res.json({ ok: true, data: rows });
+    res.json({ ok: true, data: maskUserPhones(rows) });
   } catch (err) {
     next(err);
   }
@@ -579,7 +587,9 @@ exports.updateUser = async (req, res, next) => {
     const allowed = {
       nombre: b.nombre,
       apellido: b.apellido,
-      telefono: b.telefono,
+      // Telefono viene enmascarado al listar: si llega vacío es porque no se
+      // editó → se preserva (undefined = no tocar). Un valor real sí actualiza.
+      telefono: b.telefono === '' ? undefined : b.telefono,
       cargo: b.cargo,
       rut_usuario: b.rut_usuario === undefined ? undefined : formatRutForStorage(b.rut_usuario),
       tipo: b.tipo,
@@ -604,7 +614,7 @@ exports.updateUser = async (req, res, next) => {
       params,
     );
     const updated = await getUserProfileById(id);
-    res.json({ ok: true, data: updated });
+    res.json({ ok: true, data: maskUserPhones([updated])[0] });
   } catch (err) {
     if (err.code === '23505') {
       return res.status(409).json({ ok: false, error: 'Dato duplicado' });

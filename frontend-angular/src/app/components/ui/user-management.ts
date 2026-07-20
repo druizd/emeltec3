@@ -209,15 +209,31 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   <div class="space-y-1.5">
                     <label
                       class="text-[10px] font-semibold text-slate-400 uppercase tracking-widest"
-                      >Teléfono *</label
+                      >Teléfono {{ editingId() ? '' : '*' }}</label
                     >
                     <input
-                      required
+                      [required]="!editingId()"
                       [(ngModel)]="newUser.telefono"
                       name="telefono"
                       class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-primary-container/20 outline-none transition text-body-sm"
                       placeholder="+56 9 ..."
                     />
+                    @if (editingId()) {
+                      <button
+                        type="button"
+                        (click)="revealEditPhone()"
+                        [disabled]="revealingPhone()"
+                        class="inline-flex items-center gap-1 text-[11px] font-bold text-primary-container transition-colors hover:underline disabled:opacity-50"
+                      >
+                        <span
+                          class="material-symbols-outlined text-[13px]"
+                          [class.animate-spin]="revealingPhone()"
+                          aria-hidden="true"
+                          >{{ revealingPhone() ? 'progress_activity' : 'lock_open' }}</span
+                        >
+                        Revelar teléfono actual
+                      </button>
+                    }
                   </div>
                   <div class="space-y-1.5 md:col-span-2">
                     <label
@@ -574,7 +590,22 @@ export class UserManagementComponent implements OnInit, OnChanges {
   loading = signal(false);
   status = signal({ type: '', msg: '' });
   editingId = signal<string | null>(null);
+  revealingPhone = signal(false);
   formOpen = signal(false);
+
+  /** Revela el teléfono real del usuario en edición y lo carga en el form. */
+  revealEditPhone(): void {
+    const id = this.editingId();
+    if (!id || this.revealingPhone()) return;
+    this.revealingPhone.set(true);
+    this.userService.revealUserPhone(id).subscribe({
+      next: (res) => {
+        if (res.ok) this.newUser.telefono = res.data.telefono ?? '';
+        this.revealingPhone.set(false);
+      },
+      error: () => this.revealingPhone.set(false),
+    });
+  }
   rowBusyId = signal<string | null>(null);
   readonly pageSize = 10;
 
@@ -833,10 +864,13 @@ export class UserManagementComponent implements OnInit, OnChanges {
       nombre: this.newUser.nombre,
       apellido: this.newUser.apellido,
       rut_usuario: this.newUser.rut_usuario || null,
-      telefono: this.newUser.telefono || null,
       cargo: this.newUser.cargo || null,
       tipo: this.newUser.tipo,
     };
+    // Solo se envía teléfono si se ingresó/reveló uno: vacío = preservar el
+    // guardado (viene enmascarado, no se debe borrar).
+    const tel = (this.newUser.telefono || '').trim();
+    if (tel) payload.telefono = tel;
 
     this.userService.updateUser(id, payload).subscribe({
       next: (res: ApiResponse<User>) => {

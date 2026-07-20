@@ -76,6 +76,17 @@ export class UserService {
     return this.http.get<ApiResponse<User>>('/api/users/me');
   }
 
+  /**
+   * Revela el teléfono de un usuario (enmascarado en los listados). Exige 2FA
+   * (interceptor global inyecta el código) y queda auditado.
+   */
+  revealUserPhone(id: string): Observable<ApiResponse<{ telefono: string | null }>> {
+    return this.http.post<ApiResponse<{ telefono: string | null }>>(
+      `/api/v2/users/${encodeURIComponent(id)}/reveal`,
+      {},
+    );
+  }
+
   updateCurrentUser(payload: UpdateUserProfilePayload): Observable<ApiResponse<User>> {
     return this.http.patch<ApiResponse<User>>('/api/users/me', payload);
   }
