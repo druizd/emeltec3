@@ -109,6 +109,7 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                   }
                   <option value="Gerente">Gerente (Encargado {{ subName() }})</option>
                   <option value="Cliente">Cliente (Lectura {{ subName() }})</option>
+                  <option value="Vendedor">Vendedor (Demo)</option>
                 </select>
               </div>
 

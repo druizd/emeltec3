@@ -765,6 +765,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   readonly isSuperAdmin = this.authService.canViewAdvancedAnalysis;
   readonly canEditSiteSettings = this.authService.canEditSiteSettings;
+  readonly isVendedor = this.authService.isVendedor;
   private clockSub?: Subscription;
   private dashboardPollingSub?: Subscription;
   private historyPollingSub?: Subscription;
@@ -1000,6 +1001,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       subtitle: 'Portal oficial',
       color: 'text-primary-container',
       openDga: true,
+      isDga: true,
     },
     {
       icon: 'description',
@@ -1007,6 +1009,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
       subtitle: 'Formato oficial',
       color: 'text-accent',
       openDgaReport: true,
+      isDga: true,
     },
   ];
 
@@ -1458,15 +1461,15 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   }
 
   /** true si la acción debe mostrarse deshabilitada (gris + sin click). */
-  quickActionDisabled(action: { openDga?: boolean }): boolean {
+  quickActionDisabled(action: { openDga?: boolean; isDga?: boolean }): boolean {
+    if (action.isDga && this.isVendedor()) return true;
     return action.openDga === true && !this.currentSiteObraDga();
   }
 
   /** Tooltip para el botón. Solo informa cuando está deshabilitado. */
-  quickActionTitle(action: { openDga?: boolean }): string {
-    if (action.openDga && !this.currentSiteObraDga()) {
-      return 'Sin número de obra asignado';
-    }
+  quickActionTitle(action: { openDga?: boolean; isDga?: boolean }): string {
+    if (action.isDga && this.isVendedor()) return 'No disponible en modo demo';
+    if (action.openDga && !this.currentSiteObraDga()) return 'Sin número de obra asignado';
     return '';
   }
 

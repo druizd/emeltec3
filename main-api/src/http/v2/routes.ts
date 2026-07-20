@@ -39,6 +39,8 @@ import {
 } from '../../modules/dga/controller';
 import { require2fa } from '../../shared/email-otp';
 import { require2faIfSensitiveChange } from '../../modules/dga/twofactor-guards';
+import { ForbiddenError } from '../../shared/errors';
+import type { AuthUser } from '../../shared/permissions';
 
 // auditLog es CJS legacy: bitácora append-only para mutaciones (Ley 21.663 §32).
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -104,6 +106,15 @@ const auditDgaMutations = auditMutations((req) => {
   }
   return { action: `dga.${req.method.toLowerCase()}.unknown` };
 });
+
+/** Bloquea acceso DGA de escritura a usuarios Vendedor (empresas tipo Demo). */
+function blockDemoAccess(req: Request, res: Response, next: NextFunction): void {
+  const user = (req as Request & { user?: AuthUser }).user;
+  if (user?.tipo === 'Vendedor') {
+    return next(new ForbiddenError('Acceso DGA no disponible en modo demo.'));
+  }
+  next();
+}
 
 /**
  * Middleware: 2FA siempre para rotación de clave de informante.
@@ -181,6 +192,7 @@ router.get(
 router.patch(
   '/dga/sites/:siteId/pozo-config',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   require2faIfSensitiveChange,
   auditDgaMutations,
@@ -242,8 +254,8 @@ router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
 
 // Mediciones (Detalle de Registros + CSV)
 router.get('/dga/dato', protect, queryDatoDgaHandler);
-router.get('/dga/dato/export.csv', protect, exportDatoDgaCsvHandler);
-router.get('/dga/export-directo.csv', protect, exportDgaDirectoCsvHandler);
+router.get('/dga/dato/export.csv', protect, blockDemoAccess, exportDatoDgaCsvHandler);
+router.get('/dga/export-directo.csv', protect, blockDemoAccess, exportDgaDirectoCsvHandler);
 
 // 2FA: unificado en POST /api/2fa/request (twoFactorRoutes + shared/email-otp).
 // Todas las acciones sensibles — DGA incluido — usan header X-2FA-Code.

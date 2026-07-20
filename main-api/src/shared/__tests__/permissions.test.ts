@@ -1,6 +1,6 @@
 /**
  * Tests del modelo de autorización — foco en el rol Vendedor (equipo
- * comercial Emeltec): alcance tipo-Admin limitado a SU empresa, nunca global.
+ * comercial Emeltec): mismo alcance que Gerente (empresa + sub_empresa estricto).
  */
 import { describe, it, expect } from 'vitest';
 import { canReadSite, scopeByTenant, isSuperAdmin, type AuthUser } from '../permissions';
@@ -19,15 +19,20 @@ describe('Vendedor — canReadSite', () => {
     expect(canReadSite(vendedor, { empresa_id: CLIENTE, sub_empresa_id: null })).toBe(false);
   });
 
-  it('ignora sub_empresa (alcance empresa completa, como Admin)', () => {
+  it('sin sub_empresa asignada → accede a toda la empresa', () => {
+    expect(canReadSite(vendedor, { empresa_id: EMELTEC, sub_empresa_id: 'CUALQUIERA' })).toBe(true);
+  });
+
+  it('con sub_empresa asignada → solo su sub_empresa (como Gerente)', () => {
     const conSub: AuthUser = { ...vendedor, sub_empresa_id: 'SE9' };
-    expect(canReadSite(conSub, { empresa_id: EMELTEC, sub_empresa_id: 'OTRA' })).toBe(true);
+    expect(canReadSite(conSub, { empresa_id: EMELTEC, sub_empresa_id: 'OTRA' })).toBe(false);
+    expect(canReadSite(conSub, { empresa_id: EMELTEC, sub_empresa_id: 'SE9' })).toBe(true);
   });
 });
 
 describe('Vendedor — scopeByTenant', () => {
-  it('filtra por su empresa, sin filtro de sub-empresa', () => {
-    expect(scopeByTenant(vendedor)).toEqual({ empresaIds: [EMELTEC], subEmpresaIds: null });
+  it('filtra por su empresa; sin sub_empresa asignada → subEmpresaIds vacío (como Gerente)', () => {
+    expect(scopeByTenant(vendedor)).toEqual({ empresaIds: [EMELTEC], subEmpresaIds: [] });
   });
 
   it('sin empresa asignada → sin acceso (lista vacía, no global)', () => {

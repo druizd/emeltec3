@@ -12,9 +12,9 @@ export type UserTipo =
   | 'Empresa'
   | 'SubEmpresa'
   /**
-   * Equipo comercial Emeltec. Opera con alcance tipo-Admin pero SIEMPRE
-   * asociado a la empresa interna Emeltec (demos + Maletas Piloto). Sin
-   * acceso a administración de plataforma, DGA admin ni gestión de usuarios.
+   * Equipo comercial Emeltec. Mismo alcance que Gerente: scoped a empresa_id
+   * + sub_empresa_id. Asignado a una empresa de tipo Demo. Sin acceso a DGA,
+   * administración de plataforma ni gestión de usuarios.
    */
   | 'Vendedor';
 
@@ -52,9 +52,13 @@ export function canReadSite(
 ): boolean {
   if (!user || !site) return false;
   if (user.tipo === 'SuperAdmin') return true;
-  if (user.tipo === 'Admin' || user.tipo === 'Empresa' || user.tipo === 'Vendedor')
-    return user.empresa_id === site.empresa_id;
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa') {
+  if (user.tipo === 'Admin' || user.tipo === 'Empresa') return user.empresa_id === site.empresa_id;
+  if (
+    user.tipo === 'Gerente' ||
+    user.tipo === 'Cliente' ||
+    user.tipo === 'SubEmpresa' ||
+    user.tipo === 'Vendedor'
+  ) {
     if (user.empresa_id !== site.empresa_id) return false;
     // Sin sub-empresa asignada → acceso a toda la empresa (decisión jun-2026,
     // alineado con services/dataAccess.canAccessSite).
@@ -84,13 +88,18 @@ export interface TenantScope {
 export function scopeByTenant(user: AuthUser | undefined): TenantScope {
   if (!user) return { empresaIds: [], subEmpresaIds: [] };
   if (user.tipo === 'SuperAdmin') return { empresaIds: null, subEmpresaIds: null };
-  if (user.tipo === 'Admin' || user.tipo === 'Empresa' || user.tipo === 'Vendedor') {
+  if (user.tipo === 'Admin' || user.tipo === 'Empresa') {
     return {
       empresaIds: user.empresa_id ? [user.empresa_id] : [],
       subEmpresaIds: null,
     };
   }
-  if (user.tipo === 'Gerente' || user.tipo === 'Cliente' || user.tipo === 'SubEmpresa') {
+  if (
+    user.tipo === 'Gerente' ||
+    user.tipo === 'Cliente' ||
+    user.tipo === 'SubEmpresa' ||
+    user.tipo === 'Vendedor'
+  ) {
     return {
       empresaIds: user.empresa_id ? [user.empresa_id] : [],
       subEmpresaIds: user.sub_empresa_id ? [user.sub_empresa_id] : [],
