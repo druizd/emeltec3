@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { UserService } from '../../services/user.service';
 import { CompanyService } from '../../services/company.service';
 import { AuthService } from '../../services/auth.service';
+import { ToastService } from '../../services/toast.service';
 import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } from '@emeltec/shared';
 
 @Component({
@@ -486,6 +487,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
   userService = inject(UserService);
   companyService = inject(CompanyService);
   auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   @Input() subEmpresaId = '';
   @Input() empresaId = '';
@@ -664,10 +666,8 @@ export class UserManagementComponent implements OnInit, OnChanges {
       next: (res: ApiResponse<User>) => {
         if (res.ok) {
           this.clearForm();
-          this.status.set({
-            type: 'success',
-            msg: `Usuario creado correctamente para ${submittedEmail}.`,
-          });
+          this.status.set({ type: '', msg: '' });
+          this.toast.success(`Usuario agregado satisfactoriamente (${submittedEmail}).`);
           this.loadUsers();
         } else {
           this.status.set({
@@ -770,7 +770,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
       next: (res: ApiResponse<User>) => {
         if (res.ok) {
           this.cancelEdit();
-          this.status.set({ type: 'success', msg: 'Cambios guardados correctamente.' });
+          this.toast.success('Cambios guardados satisfactoriamente.');
           this.loadUsers();
         } else {
           this.status.set({
@@ -795,10 +795,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.rowBusyId.set(user.id);
     this.userService.deleteUser(user.id).subscribe({
       next: () => {
-        this.status.set({
-          type: 'success',
-          msg: `${user.nombre} ${user.apellido} fue desactivado.`,
-        });
+        this.toast.success(`${user.nombre} ${user.apellido} fue desactivado.`);
         this.rowBusyId.set(null);
         this.loadUsers();
       },
@@ -814,10 +811,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.rowBusyId.set(user.id);
     this.userService.reactivateUser(user.id).subscribe({
       next: () => {
-        this.status.set({
-          type: 'success',
-          msg: `${user.nombre} ${user.apellido} fue reactivado.`,
-        });
+        this.toast.success(`${user.nombre} ${user.apellido} fue reactivado.`);
         this.rowBusyId.set(null);
         this.loadUsers();
       },
@@ -833,10 +827,7 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.rowBusyId.set(user.id);
     this.userService.resetUserPassword(user.id).subscribe({
       next: () => {
-        this.status.set({
-          type: 'success',
-          msg: `Código de acceso reenviado a ${user.email}.`,
-        });
+        this.toast.success(`Código de acceso reenviado a ${user.email}.`);
         this.rowBusyId.set(null);
       },
       error: (err) => {

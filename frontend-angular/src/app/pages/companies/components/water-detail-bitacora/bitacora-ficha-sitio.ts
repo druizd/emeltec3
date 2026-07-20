@@ -13,6 +13,7 @@ import { catchError, of } from 'rxjs';
 import type { OperationalContact, User } from '@emeltec/shared';
 import { AuthService } from '../../../../services/auth.service';
 import { CompanyService } from '../../../../services/company.service';
+import { ToastService } from '../../../../services/toast.service';
 import { UserService } from '../../../../services/user.service';
 import {
   BitacoraSitioService,
@@ -565,6 +566,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
   private readonly api = inject(BitacoraSitioService);
   private readonly companyService = inject(CompanyService);
   private readonly userService = inject(UserService);
+  private readonly toast = inject(ToastService);
 
   readonly sitioId = input<string>('');
   readonly empresaId = input<string>('');
@@ -724,8 +726,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
         this.ficha.set(norm);
         this.original = JSON.stringify(norm);
         this.saving.set(false);
-        this.saveMsg.set('Guardado.');
-        setTimeout(() => this.saveMsg.set(''), 3000);
+        this.toast.success('Ficha guardada satisfactoriamente.');
       },
       error: (err) => {
         this.saving.set(false);
@@ -743,7 +744,10 @@ export class BitacoraFichaSitioComponent implements OnInit {
   removeContacto(id: string): void {
     this.error.set('');
     this.api.deleteContacto(this.sitioId(), id).subscribe({
-      next: (f) => this.applyFicha(f),
+      next: (f) => {
+        this.applyFicha(f);
+        this.toast.success('Contacto eliminado satisfactoriamente.');
+      },
       error: (err) =>
         this.error.set(
           'No se pudo eliminar el contacto: ' + (err?.error?.error?.message ?? err?.message ?? ''),
@@ -845,6 +849,11 @@ export class BitacoraFichaSitioComponent implements OnInit {
         this.applyFicha(f);
         this.saving.set(false);
         this.contactoModalOpen.set(false);
+        this.toast.success(
+          id != null
+            ? 'Contacto actualizado satisfactoriamente.'
+            : 'Contacto agregado satisfactoriamente.',
+        );
       },
       error: (err) => {
         this.saving.set(false);
