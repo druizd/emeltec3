@@ -11,7 +11,7 @@ import {
   signal,
 } from '@angular/core';
 import { Chart, ChartConfiguration, Plugin, registerables } from 'chart.js';
-import { forkJoin } from 'rxjs';
+import { forkJoin, of, catchError } from 'rxjs';
 import { CompanyService, HistoryGranularity } from '../../../services/company.service';
 import type { SiteRecord } from '@emeltec/shared';
 
@@ -283,7 +283,13 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     this.errorMsg.set('');
 
     forkJoin(
-      sites.map((s) => this.companyService.getSiteDashboardHistory(s.id, cfg.limit, opts)),
+      // catchError por sitio: un pozo sin acceso (403) o que falle no debe
+      // tumbar todo el gráfico. forkJoin es fail-fast, así que aislamos cada uno.
+      sites.map((s) =>
+        this.companyService
+          .getSiteDashboardHistory(s.id, cfg.limit, opts)
+          .pipe(catchError(() => of(null))),
+      ),
     ).subscribe({
       next: (results) => {
         const built: SiteSeries[] = [];
