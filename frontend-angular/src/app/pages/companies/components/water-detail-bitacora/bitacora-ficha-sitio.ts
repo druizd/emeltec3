@@ -2,12 +2,13 @@
  * Bitácora — Ficha del sitio.
  * Conectado a /api/v2/sites/:siteId/bitacora/ficha.
  *
- * Vista admin: editable (contactos, acreditaciones, riesgos, pin crítico).
+ * Vista admin: editable (contactos, acreditaciones, pin crítico).
  * Vista cliente: solo lectura.
  */
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, effect, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
 import { catchError, of } from 'rxjs';
 import type { OperationalContact, User } from '@emeltec/shared';
 import { AuthService } from '../../../../services/auth.service';
@@ -17,18 +18,18 @@ import {
   BitacoraSitioService,
   type FichaAcreditacion,
   type FichaContacto,
-  type FichaRiesgo,
   type FichaSitio,
 } from '../../../../services/bitacora-sitio.service';
 import {
   ConfirmDialogComponent,
   type ConfirmDialogData,
 } from '../../../../components/ui/confirm-dialog';
+import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
 
 @Component({
   selector: 'app-bitacora-ficha-sitio',
   standalone: true,
-  imports: [CommonModule, FormsModule, ConfirmDialogComponent],
+  imports: [CommonModule, FormsModule, A11yModule, ConfirmDialogComponent, BitacoraEquipamientoComponent],
   template: `
     <div class="space-y-3">
       <!-- Pin crítico -->
@@ -48,6 +49,7 @@ import {
                 type="text"
                 [ngModel]="ficha().pin_critico"
                 (ngModelChange)="updatePin($event)"
+                (blur)="save()"
                 placeholder="Mensaje crítico (ej. Acceso requiere permiso DGA)"
                 aria-label="Mensaje crítico del sitio"
                 class="mt-0.5 w-full bg-transparent text-body-sm font-semibold text-amber-900 placeholder:text-amber-400 focus:outline-none"
@@ -66,154 +68,114 @@ import {
         <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-              Contactos técnicos
+              Contactos de acceso a planta
             </h3>
             @if (isInternal()) {
               <button
                 type="button"
-                (click)="addContacto()"
-                title="Agregar contacto manual"
-                aria-label="Agregar contacto manual"
-                class="rounded p-1 text-primary-container transition-colors hover:bg-primary-tint-08 active:scale-95"
+                (click)="openContactoModal()"
+                class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-2.5 py-1 text-caption-xs font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
               >
-                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">add</span>
+                Agregar
               </button>
             }
           </div>
 
-          <!-- Dropdown agregar desde agenda + equipo Emeltec. El value usa
-               prefijo c: para OperationalContact y u: para User para
-               distinguir el origen en el handler. -->
-          @if (isInternal() && availableContacts().length + availableUsuariosCliente().length > 0) {
-            <div class="mb-3 flex items-center gap-2">
-              <!-- Usamos (change) + template ref en lugar de [(ngModel)] para
-                   evitar race condition de Angular signal vs DOM: después de
-                   agregar, reseteamos el value directamente en el elemento. -->
-              <select
-                #pickerEl
-                (change)="onContactoPickerChange(pickerEl)"
-                class="flex-1 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-caption text-slate-700 outline-none focus:border-primary-tint-35"
-              >
-                <option value="">+ Agregar desde agenda…</option>
-                @if (availableContacts().length > 0) {
-                  <optgroup label="Agenda del sitio">
-                    @for (c of availableContacts(); track c.id) {
-                      <option [value]="'c:' + c.id">
-                        {{ c.nombre }}{{ c.apellido ? ' ' + c.apellido : '' }}
-                        @if (c.cargo) {
-                          · {{ c.cargo }}
-                        }
-                      </option>
-                    }
-                  </optgroup>
-                }
-                @if (availableUsuariosCliente().length > 0) {
-                  <optgroup label="Usuarios de la planta">
-                    @for (u of availableUsuariosCliente(); track u.id) {
-                      <option [value]="'u:' + u.id">
-                        {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }} · {{ u.tipo }}
-                      </option>
-                    }
-                  </optgroup>
-                }
-              </select>
-            </div>
-          }
           @if (ficha().contactos.length === 0) {
             <p class="text-caption italic text-slate-500">Sin contactos registrados.</p>
           } @else {
             <ul class="space-y-2">
               @for (c of ficha().contactos; track $index) {
-                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2">
-                  @if (isInternal() && editingContactoIdx() === $index) {
-                    <div class="grid grid-cols-2 gap-2 text-caption">
-                      <input
-                        type="text"
-                        maxlength="40"
-                        [ngModel]="c.nombre"
-                        (ngModelChange)="updateContacto($index, 'nombre', $event)"
-                        placeholder="Nombre"
-                        aria-label="Nombre del contacto"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
-                      />
-                      <select
-                        [ngModel]="c.rol"
-                        (ngModelChange)="updateContacto($index, 'rol', $event)"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
+                <li class="group relative rounded-xl border border-slate-100 bg-slate-50/60">
+                  @if (isInternal()) {
+                    <button
+                      type="button"
+                      (click)="openContactoModal($index)"
+                      class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-slate-100 active:scale-[0.99]"
+                      [attr.aria-label]="'Editar contacto ' + (c.nombre || '')"
+                    >
+                      <span
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-caption-xs font-bold text-primary-container"
+                        aria-hidden="true"
+                        >{{ iniciales(c.nombre) }}</span
                       >
-                        <option value="Responsable">Responsable</option>
-                        <option value="Operador">Operador</option>
-                      </select>
-                      <div
-                        class="flex items-stretch overflow-hidden rounded border border-slate-200 focus-within:border-primary-tint-35"
-                      >
-                        <span
-                          class="flex items-center bg-slate-100 px-2 font-mono text-caption text-slate-500"
-                          >+56</span
-                        >
-                        <input
-                          type="tel"
-                          inputmode="numeric"
-                          maxlength="9"
-                          [ngModel]="c.telefono"
-                          (ngModelChange)="updateTelefono($index, $event)"
-                          placeholder="9 1234 5678"
-                          aria-label="Teléfono del contacto"
-                          class="w-full px-2 py-1 font-mono outline-none"
-                        />
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <p class="truncate text-body-sm font-semibold text-slate-700">
+                            {{ c.nombre || 'Sin nombre' }}
+                          </p>
+                          <span
+                            [class]="
+                              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                              rolBadgeClass(c.rol)
+                            "
+                            >{{ c.rol }}</span
+                          >
+                        </div>
+                        <p class="truncate text-caption-xs text-slate-500">{{ contactoLinea(c) }}</p>
                       </div>
-                      <input
-                        type="email"
-                        maxlength="25"
-                        [ngModel]="c.email"
-                        (ngModelChange)="updateContacto($index, 'email', $event)"
-                        placeholder="Email"
-                        aria-label="Email del contacto"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
-                      />
-                    </div>
-                    <div class="mt-1 flex justify-end">
-                      <button
-                        type="button"
-                        (click)="editingContactoIdx.set(null)"
-                        class="inline-flex items-center gap-1 rounded border border-primary-tint-25 bg-primary-tint-08 px-2 py-1 text-caption-xs font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
-                      >
-                        <span class="material-symbols-outlined text-[14px]">check</span>
-                        Listo
-                      </button>
-                    </div>
-                  } @else if (isInternal()) {
-                    <p class="text-body-sm font-semibold text-slate-700">
-                      {{ c.nombre || 'Sin nombre' }}
-                    </p>
-                    <p class="text-caption-xs text-slate-500">
-                      {{ c.rol }} · {{ c.telefono ? '+56 ' + c.telefono : '—' }} ·
-                      {{ c.email || '—' }}
-                    </p>
-                    <div class="mt-1 flex gap-3">
-                      <button
-                        type="button"
-                        (click)="pedirEditarContacto($index)"
-                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-primary-container transition-colors hover:underline active:scale-95"
-                      >
-                        <span class="material-symbols-outlined text-[14px]">edit</span>
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        (click)="pedirEliminarContacto($index)"
-                        class="inline-flex items-center gap-1 text-caption-xs font-semibold text-rose-500 transition-colors hover:underline active:scale-95"
-                      >
-                        <span class="material-symbols-outlined text-[14px]">delete</span>
-                        Eliminar
-                      </button>
-                    </div>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="pedirEliminarContacto($index)"
+                      class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full text-slate-300 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 active:scale-90 group-hover:opacity-100"
+                      aria-label="Eliminar contacto"
+                    >
+                      <span class="material-symbols-outlined text-[14px]">close</span>
+                    </button>
                   } @else {
-                    <p class="text-body-sm font-semibold text-slate-700">{{ c.nombre }}</p>
-                    <p class="text-caption-xs text-slate-500">
-                      {{ c.rol }} · {{ c.telefono ? '+56 ' + c.telefono : '—' }} ·
-                      {{ c.email || '—' }}
-                    </p>
+                    <div class="flex items-center gap-3 px-3 py-2">
+                      <span
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-caption-xs font-bold text-primary-container"
+                        aria-hidden="true"
+                        >{{ iniciales(c.nombre) }}</span
+                      >
+                      <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-2">
+                          <p class="truncate text-body-sm font-semibold text-slate-700">
+                            {{ c.nombre || 'Sin nombre' }}
+                          </p>
+                          <span
+                            [class]="
+                              'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ' +
+                              rolBadgeClass(c.rol)
+                            "
+                            >{{ c.rol }}</span
+                          >
+                        </div>
+                        @if (revelados()[$index]; as rev) {
+                          <p class="truncate text-caption-xs text-slate-600">
+                            {{ rev.telefono ? '+56 ' + rev.telefono : 'Sin teléfono' }} ·
+                            {{ rev.email || 'Sin email' }}
+                          </p>
+                        } @else if (c.datos_ocultos) {
+                          <div class="mt-0.5 flex items-center gap-2">
+                            <span class="font-mono text-caption-xs tracking-widest text-slate-400"
+                              >•••••• · ••••</span
+                            >
+                            <button
+                              type="button"
+                              (click)="revelar($index)"
+                              [disabled]="revelando() !== null"
+                              class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:opacity-50"
+                            >
+                              <span
+                                class="material-symbols-outlined text-[12px]"
+                                [class.animate-spin]="revelando() === $index"
+                                aria-hidden="true"
+                                >{{ revelando() === $index ? 'progress_activity' : 'lock_open' }}</span
+                              >
+                              Revelar
+                            </button>
+                          </div>
+                        } @else {
+                          <p class="truncate text-caption-xs text-slate-500">
+                            {{ contactoLinea(c) }}
+                          </p>
+                        }
+                      </div>
+                    </div>
                   }
                 </li>
               }
@@ -230,11 +192,11 @@ import {
             @if (isInternal()) {
               <button
                 type="button"
-                (click)="addAcreditacion()"
-                aria-label="Agregar acreditación"
-                class="rounded p-1 text-primary-container transition-colors hover:bg-primary-tint-08 active:scale-95"
+                (click)="openAcreModal()"
+                class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-2.5 py-1 text-caption-xs font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
               >
-                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true">add</span>
+                Agregar
               </button>
             }
           </div>
@@ -243,71 +205,44 @@ import {
           } @else {
             <ul class="space-y-2">
               @for (a of ficha().acreditaciones; track $index) {
-                <li class="rounded-lg border border-slate-100 bg-slate-50/60 p-2 text-caption">
-                  @if (isInternal()) {
-                    <div class="grid grid-cols-3 gap-2">
-                      <!-- Persona: dropdown SOLO técnicos Emeltec con tipo
-                           SuperAdmin (los que portan acreditaciones reales en
-                           terreno). Si la persona ya está seteada y no
-                           matchea, queda visible como primera opción.
-                           Usa template ref para evitar race signal/DOM. -->
-                      @if (availableAcreditadores().length > 0) {
-                        <select
-                          #acrePicker
-                          (change)="onAcreditadorPickerChange($index, acrePicker)"
-                          class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
-                          title="Seleccionar técnico Emeltec acreditado"
+                <li class="group relative rounded-xl border border-slate-100 bg-slate-50/60">
+                  <button
+                    type="button"
+                    [disabled]="!isInternal()"
+                    (click)="openAcreModal($index)"
+                    class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors enabled:hover:bg-slate-100 enabled:active:scale-[0.99] disabled:cursor-default"
+                    [attr.aria-label]="isInternal() ? 'Editar acreditación de ' + (a.persona || '') : null"
+                  >
+                    <span
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-tint-08 text-primary-container"
+                      aria-hidden="true"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">workspace_premium</span>
+                    </span>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-2">
+                        <p class="truncate text-body-sm font-semibold text-slate-700">
+                          {{ a.persona || 'Sin persona' }}
+                        </p>
+                        <span
+                          class="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-500"
+                          >{{ a.tipo || '—' }}</span
                         >
-                          <option value="" [selected]="!findTecnicoIdByName(a.persona)">
-                            {{ a.persona || 'Seleccionar persona…' }}
-                          </option>
-                          @for (u of availableAcreditadores(); track u.id) {
-                            <option
-                              [value]="u.id"
-                              [selected]="findTecnicoIdByName(a.persona) === u.id"
-                            >
-                              {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
-                            </option>
-                          }
-                        </select>
-                      } @else {
-                        <input
-                          type="text"
-                          [ngModel]="a.persona"
-                          (ngModelChange)="updateAcreditacion($index, 'persona', $event)"
-                          placeholder="Persona"
-                          aria-label="Persona acreditada"
-                          class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
-                        />
-                      }
-                      <input
-                        type="text"
-                        [ngModel]="a.tipo"
-                        (ngModelChange)="updateAcreditacion($index, 'tipo', $event)"
-                        placeholder="Tipo (DGA, etc)"
-                        aria-label="Tipo de acreditación"
-                        class="rounded border border-slate-200 px-2 py-1 outline-none focus:border-primary-tint-35"
-                      />
-                      <input
-                        type="date"
-                        min="2000-01-01"
-                        [ngModel]="a.vigencia_hasta"
-                        (ngModelChange)="updateAcreditacion($index, 'vigencia_hasta', $event)"
-                        class="rounded border border-slate-200 px-2 py-1 font-mono outline-none focus:border-primary-tint-35"
-                      />
+                      </div>
+                      <p class="truncate text-caption-xs" [class]="vigenciaClass(a.vigencia_hasta)">
+                        {{ a.vigencia_hasta ? 'Vigente hasta ' + a.vigencia_hasta : 'Sin vigencia' }}
+                      </p>
                     </div>
+                  </button>
+                  @if (isInternal()) {
                     <button
                       type="button"
                       (click)="removeAcreditacion($index)"
-                      class="mt-1 text-caption-xs font-semibold text-rose-500 transition-colors hover:underline active:scale-95"
+                      class="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full text-slate-300 opacity-0 transition-all hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 active:scale-90 group-hover:opacity-100"
+                      aria-label="Eliminar acreditación"
                     >
-                      Eliminar
+                      <span class="material-symbols-outlined text-[14px]">close</span>
                     </button>
-                  } @else {
-                    <p class="font-semibold text-slate-700">{{ a.persona }} · {{ a.tipo }}</p>
-                    <p [class]="vigenciaClass(a.vigencia_hasta)">
-                      {{ a.vigencia_hasta ? 'Vigente hasta ' + a.vigencia_hasta : 'Sin vigencia' }}
-                    </p>
                   }
                 </li>
               }
@@ -315,266 +250,309 @@ import {
           }
         </section>
 
-        <!-- Riesgos: matriz IPER chileno (Probabilidad × Severidad) con
-             niveles Trivial / Tolerable / Moderado / Importante / Intolerable
-             según práctica SST común (Ley 16.744 / D.S. 40 / Mutual). -->
-        <section class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm xl:col-span-2">
-          <div class="mb-3 flex items-start justify-between gap-2">
-            <div>
-              <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-                Matriz IPER — Probabilidad × Severidad
-              </h3>
-              <p class="mt-0.5 text-caption-xs text-slate-500">
-                Prepará la salida a terreno antes de viajar. En sitio, marcá "Verificado" para
-                confirmar el riesgo al llegar.
-              </p>
-            </div>
-            @if (isInternal()) {
-              <div class="flex items-center gap-1">
-                <!-- Atajos de riesgos comunes en pozos -->
-                <select
-                  [ngModel]="''"
-                  (ngModelChange)="addRiesgoFromPreset($event)"
-                  class="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-caption-xs text-slate-600 outline-none focus:border-primary-tint-35"
-                >
-                  <option value="">+ Riesgo común…</option>
-                  @for (p of presetRiesgos; track p.descripcion) {
-                    <option [value]="p.descripcion">{{ p.descripcion }}</option>
-                  }
-                </select>
-                <button
-                  type="button"
-                  (click)="addRiesgo()"
-                  title="Agregar riesgo manual"
-                  aria-label="Agregar riesgo manual"
-                  class="rounded p-1 text-primary-container transition-colors hover:bg-primary-tint-08 active:scale-95"
-                >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
-                </button>
-              </div>
-            }
-          </div>
-
-          <!-- Matriz 5×5: Probabilidad (Y, descendente) × Severidad (X).
-               Etiquetas SST chilenas. Cada celda muestra cantidad de
-               riesgos plotted ahí + el valor numérico al hover. -->
-          <div class="mb-4 overflow-x-auto">
-            <div
-              class="grid min-w-[560px] grid-cols-[100px_repeat(5,minmax(0,1fr))] gap-1 text-caption-xs"
-            >
-              <span></span>
-              @for (i of [1, 2, 3, 4, 5]; track i) {
-                <span class="text-center font-bold text-slate-500">
-                  {{ severidadLabel(i) }}
-                </span>
-              }
-              @for (p of [5, 4, 3, 2, 1]; track p) {
-                <span class="flex items-center justify-end pr-1 font-bold text-slate-500">
-                  {{ probabilidadLabel(p) }}
-                </span>
-                @for (i of [1, 2, 3, 4, 5]; track i) {
-                  <div
-                    class="flex h-12 flex-col items-center justify-center rounded font-bold"
-                    [class]="matrizCellClass(p * i)"
-                    [title]="nivelLabel(p * i) + ' · ' + p * i"
-                  >
-                    <span class="text-[10px] font-bold opacity-60">{{ p * i }}</span>
-                    @if (matrizCount(p, i) > 0) {
-                      <span class="text-body-sm">{{ matrizCount(p, i) }}</span>
-                    }
-                  </div>
-                }
-              }
-            </div>
-          </div>
-
-          <!-- Leyenda IPER chileno -->
-          <div class="mb-3 flex flex-wrap items-center gap-2 text-caption-xs">
-            <span class="rounded bg-emerald-100 px-2 py-0.5 font-bold text-emerald-700">
-              Trivial (1-2)
-            </span>
-            <span class="rounded bg-lime-100 px-2 py-0.5 font-bold text-lime-700">
-              Tolerable (3-4)
-            </span>
-            <span class="rounded bg-amber-100 px-2 py-0.5 font-bold text-amber-700">
-              Moderado (5-8)
-            </span>
-            <span class="rounded bg-orange-200 px-2 py-0.5 font-bold text-orange-800">
-              Importante (9-12)
-            </span>
-            <span class="rounded bg-rose-200 px-2 py-0.5 font-bold text-rose-800">
-              Intolerable (13-25)
-            </span>
-            <span class="ml-auto text-slate-500">
-              {{ ficha().riesgos.length }} riesgo(s) · {{ riesgosVerificados() }} verificado(s) en
-              terreno
-            </span>
-          </div>
-
-          @if (ficha().riesgos.length === 0) {
-            <p class="text-caption italic text-slate-500">Sin riesgos registrados.</p>
-          } @else {
-            <ul class="space-y-2">
-              @for (r of ficha().riesgos; track $index) {
-                <li
-                  class="rounded-lg border p-3 text-caption"
-                  [class]="riesgoCardClass(nivelRiesgo(r))"
-                >
-                  @if (isInternal()) {
-                    <div class="grid gap-2 md:grid-cols-[2fr_auto_auto_2fr_auto]">
-                      <input
-                        type="text"
-                        [ngModel]="r.descripcion"
-                        (ngModelChange)="updateRiesgo($index, 'descripcion', $event)"
-                        placeholder="Descripción del riesgo"
-                        aria-label="Descripción del riesgo"
-                        class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
-                      />
-                      <label
-                        class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1"
-                      >
-                        <span class="text-caption-xs font-bold text-slate-400">P</span>
-                        <select
-                          [ngModel]="r.probabilidad"
-                          (ngModelChange)="updateRiesgo($index, 'probabilidad', +$event)"
-                          class="w-12 bg-transparent text-center font-mono outline-none"
-                        >
-                          <option [ngValue]="null">—</option>
-                          @for (n of [1, 2, 3, 4, 5]; track n) {
-                            <option [ngValue]="n">{{ n }}</option>
-                          }
-                        </select>
-                      </label>
-                      <label
-                        class="flex items-center gap-1 rounded border border-slate-200 bg-white px-2 py-1"
-                      >
-                        <span class="text-caption-xs font-bold text-slate-400">I</span>
-                        <select
-                          [ngModel]="r.impacto"
-                          (ngModelChange)="updateRiesgo($index, 'impacto', +$event)"
-                          class="w-12 bg-transparent text-center font-mono outline-none"
-                        >
-                          <option [ngValue]="null">—</option>
-                          @for (n of [1, 2, 3, 4, 5]; track n) {
-                            <option [ngValue]="n">{{ n }}</option>
-                          }
-                        </select>
-                      </label>
-                      <input
-                        type="text"
-                        [ngModel]="r.mitigacion"
-                        (ngModelChange)="updateRiesgo($index, 'mitigacion', $event)"
-                        placeholder="Mitigación / control"
-                        aria-label="Mitigación o control del riesgo"
-                        class="rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
-                      />
-                      <span
-                        class="flex flex-col items-center justify-center rounded px-2 py-1 font-bold"
-                        [class]="nivelBadgeClass(nivelRiesgo(r))"
-                        [title]="'Nivel calculado: ' + (nivelRiesgo(r) ?? '—')"
-                      >
-                        <span class="text-caption-xs uppercase">{{
-                          nivelLabel(nivelRiesgo(r))
-                        }}</span>
-                        <span class="font-mono text-[10px] opacity-60">{{
-                          nivelRiesgo(r) ?? '—'
-                        }}</span>
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      [ngModel]="r.epp_requerido"
-                      (ngModelChange)="updateRiesgo($index, 'epp_requerido', $event)"
-                      placeholder="EPP requerido (casco, arnés, guantes…)"
-                      aria-label="EPP requerido"
-                      class="mt-2 w-full rounded border border-slate-200 bg-white px-2 py-1 outline-none focus:border-primary-tint-35"
-                    />
-                    <div class="mt-2 flex items-center justify-between gap-2">
-                      <label
-                        class="inline-flex items-center gap-1.5 text-caption-xs font-semibold text-slate-600"
-                      >
-                        <input
-                          type="checkbox"
-                          [ngModel]="r.evaluado_terreno"
-                          (ngModelChange)="updateRiesgo($index, 'evaluado_terreno', $event)"
-                          class="accent-primary"
-                        />
-                        Verificado en terreno
-                      </label>
-                      <button
-                        type="button"
-                        (click)="removeRiesgo($index)"
-                        class="text-caption-xs font-semibold text-rose-500 transition-colors hover:underline active:scale-95"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  } @else {
-                    <div class="flex items-start justify-between gap-2">
-                      <p class="font-semibold text-slate-700">{{ r.descripcion }}</p>
-                      <span
-                        class="rounded px-2 py-0.5 font-bold"
-                        [class]="nivelBadgeClass(nivelRiesgo(r))"
-                      >
-                        {{ nivelLabel(nivelRiesgo(r)) }}
-                      </span>
-                    </div>
-                    <p class="mt-1 text-slate-500">
-                      P: {{ r.probabilidad ?? '—' }} · I: {{ r.impacto ?? '—' }} · Mitigación:
-                      {{ r.mitigacion || '—' }}
-                    </p>
-                    @if (r.epp_requerido) {
-                      <p class="mt-1 text-slate-500"><strong>EPP:</strong> {{ r.epp_requerido }}</p>
-                    }
-                    @if (r.evaluado_terreno) {
-                      <p class="mt-1 text-caption-xs font-bold text-emerald-600">
-                        ✓ Verificado en terreno
-                      </p>
-                    }
-                  }
-                </li>
-              }
-            </ul>
-          }
-        </section>
       </div>
 
       @if (isInternal()) {
-        <!-- Barra de acciones sticky cuando hay cambios pendientes. Avisa al
-             operador que las modificaciones quedan solo en memoria hasta
-             clickear "Guardar cambios". Sin esto, al refrescar la página
-             todo lo agregado se pierde — comportamiento esperado pero
-             confuso. -->
-        <div
-          class="sticky bottom-0 z-10 -mx-1 flex items-center justify-end gap-2 rounded-xl border bg-white/95 px-3 py-2 shadow-md backdrop-blur"
-          [class.border-amber-300]="dirty() && !saving()"
-          [class.border-slate-200]="!dirty() || saving()"
+        <!-- Equipamiento del sitio (fusionado en Ficha: es data de referencia
+             del pozo, no una sección aparte). Guarda con su propio CRUD. -->
+        <app-bitacora-equipamiento [sitioId]="sitioId()" />
+      }
+
+      <!-- Los cambios (pin, contactos, acreditaciones) se guardan solos al
+           confirmar/borrar. Este status es solo feedback transiente. -->
+      @if (isInternal() && (saving() || saveMsg() || error())) {
+        <p
+          class="flex items-center justify-end gap-1 text-caption-xs font-semibold"
+          [class.text-slate-500]="saving()"
+          [class.text-emerald-600]="!saving() && saveMsg()"
+          [class.text-rose-600]="!saving() && error()"
+          role="status"
+          aria-live="polite"
         >
-          @if (dirty() && !saving()) {
-            <span
-              class="mr-auto inline-flex items-center gap-1 text-caption-xs font-semibold text-amber-700"
+          @if (saving()) {
+            <span class="material-symbols-outlined animate-spin text-[14px]" aria-hidden="true"
+              >progress_activity</span
             >
-              <span class="material-symbols-outlined text-[14px]">edit_note</span>
-              Cambios sin guardar
-            </span>
+            Guardando…
+          } @else if (error()) {
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">error</span>
+            {{ error() }}
+          } @else if (saveMsg()) {
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check_circle</span>
+            {{ saveMsg() }}
           }
-          @if (saveMsg()) {
-            <span class="text-caption-xs font-semibold text-emerald-600">{{ saveMsg() }}</span>
-          }
-          @if (error()) {
-            <span class="text-caption-xs font-semibold text-rose-600">{{ error() }}</span>
-          }
-          <button
-            type="button"
-            (click)="save()"
-            [disabled]="saving() || !dirty()"
-            class="rounded-lg bg-primary px-4 py-2 text-body-sm font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:opacity-40"
-          >
-            {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
-          </button>
-        </div>
+        </p>
       }
     </div>
+
+    @if (contactoModalOpen()) {
+      <div
+        class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+        animate.leave="anim-overlay-out"
+        role="dialog"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        aria-modal="true"
+        aria-labelledby="contacto-modal-title"
+        (click)="onContactoModalBackdrop($event)"
+        (keydown.escape)="closeContactoModal()"
+      >
+        <div
+          class="anim-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h2 id="contacto-modal-title" class="text-h6 font-semibold text-slate-800">
+              {{ contactoEditIdx() !== null ? 'Editar contacto' : 'Nuevo contacto' }}
+            </h2>
+            <button
+              type="button"
+              (click)="closeContactoModal()"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          <div class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
+            @if (
+              contactoEditIdx() === null &&
+              availableContacts().length + availableUsuariosCliente().length > 0
+            ) {
+              <div>
+                <label
+                  class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >Cargar desde la agenda (opcional)</label
+                >
+                <select
+                  #cpick
+                  (change)="onContactoDraftPicker(cpick)"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+                >
+                  <option value="">Elegir contacto existente…</option>
+                  @if (availableContacts().length > 0) {
+                    <optgroup label="Agenda del sitio">
+                      @for (c of availableContacts(); track c.id) {
+                        <option [value]="'c:' + c.id">
+                          {{ c.nombre }}{{ c.apellido ? ' ' + c.apellido : '' }}
+                        </option>
+                      }
+                    </optgroup>
+                  }
+                  @if (availableUsuariosCliente().length > 0) {
+                    <optgroup label="Usuarios de la planta">
+                      @for (u of availableUsuariosCliente(); track u.id) {
+                        <option [value]="'u:' + u.id">
+                          {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }} · {{ u.tipo }}
+                        </option>
+                      }
+                    </optgroup>
+                  }
+                </select>
+              </div>
+            }
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Nombre</label
+              >
+              <input
+                type="text"
+                maxlength="40"
+                [(ngModel)]="contactoDraft.nombre"
+                placeholder="Nombre y apellido"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+              />
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Rol</label
+              >
+              <select
+                [(ngModel)]="contactoDraft.rol"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-semibold text-slate-700 outline-none focus:border-primary-tint-35"
+              >
+                <option value="Responsable">Responsable</option>
+                <option value="Operador">Operador</option>
+              </select>
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Teléfono</label
+              >
+              <div
+                class="flex items-stretch overflow-hidden rounded-xl border border-slate-200 focus-within:border-primary-tint-35"
+              >
+                <span class="flex items-center bg-slate-100 px-3 font-mono text-body-sm text-slate-500"
+                  >+56</span
+                >
+                <input
+                  type="tel"
+                  inputmode="numeric"
+                  maxlength="9"
+                  [ngModel]="contactoDraft.telefono"
+                  (ngModelChange)="onContactoDraftTelefono($event)"
+                  placeholder="9 1234 5678"
+                  class="w-full bg-white px-3 py-2 font-mono text-body-sm text-slate-700 outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Email</label
+              >
+              <input
+                type="email"
+                maxlength="35"
+                [(ngModel)]="contactoDraft.email"
+                placeholder="contacto@empresa.cl"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+              />
+            </div>
+          </div>
+
+          <div
+            class="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50/60 px-5 py-4"
+          >
+            <button
+              type="button"
+              (click)="closeContactoModal()"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              [disabled]="!contactoDraft.nombre.trim()"
+              (click)="saveContactoModal()"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span class="material-symbols-outlined text-[16px]">check</span>
+              {{ contactoEditIdx() !== null ? 'Guardar' : 'Agregar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (acreModalOpen()) {
+      <div
+        class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+        animate.leave="anim-overlay-out"
+        role="dialog"
+        cdkTrapFocus
+        cdkTrapFocusAutoCapture
+        aria-modal="true"
+        aria-labelledby="acre-modal-title"
+        (click)="onAcreModalBackdrop($event)"
+        (keydown.escape)="closeAcreModal()"
+      >
+        <div
+          class="anim-panel relative flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          (click)="$event.stopPropagation()"
+        >
+          <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h2 id="acre-modal-title" class="text-h6 font-semibold text-slate-800">
+              {{ acreEditIdx() !== null ? 'Editar acreditación' : 'Nueva acreditación' }}
+            </h2>
+            <button
+              type="button"
+              (click)="closeAcreModal()"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+              aria-label="Cerrar"
+            >
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+          </div>
+
+          <div class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
+            @if (acreEditIdx() === null && availableAcreditadores().length > 0) {
+              <div>
+                <label
+                  class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >Cargar técnico Emeltec (opcional)</label
+                >
+                <select
+                  #apick
+                  (change)="onAcreDraftPicker(apick)"
+                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+                >
+                  <option value="">Elegir técnico…</option>
+                  @for (u of availableAcreditadores(); track u.id) {
+                    <option [value]="u.id">
+                      {{ u.nombre }}{{ u.apellido ? ' ' + u.apellido : '' }}
+                    </option>
+                  }
+                </select>
+              </div>
+            }
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Persona</label
+              >
+              <input
+                type="text"
+                maxlength="60"
+                [(ngModel)]="acreDraft.persona"
+                placeholder="Nombre de la persona acreditada"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+              />
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Tipo</label
+              >
+              <input
+                type="text"
+                maxlength="40"
+                [(ngModel)]="acreDraft.tipo"
+                placeholder="DGA, altura, espacio confinado…"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+              />
+            </div>
+            <div>
+              <label
+                class="mb-1 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Vigente hasta (opcional)</label
+              >
+              <input
+                type="date"
+                min="2000-01-01"
+                [(ngModel)]="acreDraft.vigencia_hasta"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 outline-none focus:border-primary-tint-35"
+              />
+            </div>
+          </div>
+
+          <div
+            class="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50/60 px-5 py-4"
+          >
+            <button
+              type="button"
+              (click)="closeAcreModal()"
+              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              [disabled]="!acreDraft.persona.trim() || !acreDraft.tipo.trim()"
+              (click)="saveAcreModal()"
+              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span class="material-symbols-outlined text-[16px]">check</span>
+              {{ acreEditIdx() !== null ? 'Guardar' : 'Agregar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
 
     <app-confirm-dialog
       [data]="confirmData()"
@@ -786,6 +764,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
       ...f,
       contactos: f.contactos.filter((_, i) => i !== idx),
     }));
+    this.save();
   }
   updateContacto(idx: number, field: keyof FichaContacto, value: unknown): void {
     this.ficha.update((f) => ({
@@ -901,10 +880,134 @@ export class BitacoraFichaSitioComponent implements OnInit {
     this.contactPickerId.set('');
   }
 
+  // -------- Modal contacto (agregar / editar) --------
+  readonly contactoModalOpen = signal(false);
+  readonly contactoEditIdx = signal<number | null>(null);
+  contactoDraft: FichaContacto = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
+
+  openContactoModal(idx?: number): void {
+    if (idx != null && this.ficha().contactos[idx]) {
+      this.contactoEditIdx.set(idx);
+      this.contactoDraft = { ...this.ficha().contactos[idx] };
+    } else {
+      this.contactoEditIdx.set(null);
+      this.contactoDraft = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
+    }
+    this.contactoModalOpen.set(true);
+  }
+  closeContactoModal(): void {
+    this.contactoModalOpen.set(false);
+  }
+  onContactoModalBackdrop(e: MouseEvent): void {
+    if (e.target === e.currentTarget) this.contactoModalOpen.set(false);
+  }
+  onContactoDraftTelefono(raw: string): void {
+    this.contactoDraft.telefono = String(raw ?? '')
+      .replace(/\D/g, '')
+      .slice(0, 9);
+  }
+  onContactoDraftPicker(el: HTMLSelectElement): void {
+    const built = this.buildContactoFromAgenda(el.value);
+    el.value = '';
+    if (built) this.contactoDraft = built;
+  }
+  saveContactoModal(): void {
+    const draft: FichaContacto = {
+      ...this.contactoDraft,
+      nombre: (this.contactoDraft.nombre || '').trim(),
+    };
+    if (!draft.nombre) return;
+    const idx = this.contactoEditIdx();
+    this.ficha.update((f) => ({
+      ...f,
+      contactos:
+        idx != null ? f.contactos.map((c, i) => (i === idx ? draft : c)) : [...f.contactos, draft],
+    }));
+    this.contactoModalOpen.set(false);
+    this.save();
+  }
+
+  /** Construye un FichaContacto desde la agenda/usuarios (sin agregarlo). */
+  private buildContactoFromAgenda(prefixedId: string): FichaContacto | null {
+    if (!prefixedId) return null;
+    const [kind, id] = prefixedId.split(':');
+    if (kind === 'c') {
+      const found = this.availableContacts().find((c) => c.id === id);
+      if (found) {
+        const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
+        return {
+          nombre: nombre || found.nombre,
+          rol: found.cargo || found.tipo_contacto || 'Responsable',
+          telefono: this.toLocalPhone(found.telefono),
+          email: found.email || '',
+        };
+      }
+    } else if (kind === 'u') {
+      const found = this.availableUsuariosCliente().find((u) => u.id === id);
+      if (found) {
+        const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
+        return {
+          nombre: nombre || found.email || 'Usuario',
+          rol: found.tipo,
+          telefono: this.toLocalPhone(found.telefono),
+          email: found.email || '',
+        };
+      }
+    }
+    return null;
+  }
+
   // -------- Acreditaciones --------
   addAcreditacion(): void {
     const next: FichaAcreditacion = { persona: '', tipo: '', vigencia_hasta: null };
     this.ficha.update((f) => ({ ...f, acreditaciones: [...f.acreditaciones, next] }));
+  }
+
+  // -------- Modal acreditación (agregar / editar) --------
+  readonly acreModalOpen = signal(false);
+  readonly acreEditIdx = signal<number | null>(null);
+  acreDraft: FichaAcreditacion = { persona: '', tipo: '', vigencia_hasta: null };
+
+  openAcreModal(idx?: number): void {
+    if (idx != null && this.ficha().acreditaciones[idx]) {
+      this.acreEditIdx.set(idx);
+      this.acreDraft = { ...this.ficha().acreditaciones[idx] };
+    } else {
+      this.acreEditIdx.set(null);
+      this.acreDraft = { persona: '', tipo: '', vigencia_hasta: null };
+    }
+    this.acreModalOpen.set(true);
+  }
+  closeAcreModal(): void {
+    this.acreModalOpen.set(false);
+  }
+  onAcreModalBackdrop(e: MouseEvent): void {
+    if (e.target === e.currentTarget) this.acreModalOpen.set(false);
+  }
+  onAcreDraftPicker(el: HTMLSelectElement): void {
+    const found = this.availableAcreditadores().find((u) => u.id === el.value);
+    if (found) {
+      this.acreDraft.persona =
+        [found.nombre, found.apellido].filter(Boolean).join(' ').trim() || found.email || '';
+    }
+  }
+  saveAcreModal(): void {
+    const draft: FichaAcreditacion = {
+      ...this.acreDraft,
+      persona: (this.acreDraft.persona || '').trim(),
+      tipo: (this.acreDraft.tipo || '').trim(),
+    };
+    if (!draft.persona || !draft.tipo) return;
+    const idx = this.acreEditIdx();
+    this.ficha.update((f) => ({
+      ...f,
+      acreditaciones:
+        idx != null
+          ? f.acreditaciones.map((a, i) => (i === idx ? draft : a))
+          : [...f.acreditaciones, draft],
+    }));
+    this.acreModalOpen.set(false);
+    this.save();
   }
   /**
    * Resuelve el id del técnico cuyo nombre completo coincide con `persona`.
@@ -954,6 +1057,7 @@ export class BitacoraFichaSitioComponent implements OnInit {
       ...f,
       acreditaciones: f.acreditaciones.filter((_, i) => i !== idx),
     }));
+    this.save();
   }
   updateAcreditacion(idx: number, field: keyof FichaAcreditacion, value: unknown): void {
     this.ficha.update((f) => ({
@@ -964,206 +1068,40 @@ export class BitacoraFichaSitioComponent implements OnInit {
     }));
   }
 
-  // -------- Riesgos --------
+  // -------- Revelado de datos de contacto (cliente, con 2FA) --------
+  readonly revelados = signal<Record<number, { telefono: string | null; email: string | null }>>(
+    {},
+  );
+  readonly revelando = signal<number | null>(null);
 
-  /**
-   * Catálogo de riesgos típicos en sitios de pozos. El operador elige uno
-   * del dropdown y se pre-rellenan probabilidad/impacto/mitigación/EPP
-   * según el preset. Luego puede ajustar manualmente.
-   */
-  readonly presetRiesgos: FichaRiesgo[] = [
-    {
-      descripcion: 'Trabajo en altura (sobre cabezal de pozo, escalera o estructura)',
-      categoria: 'altura',
-      probabilidad: 3,
-      impacto: 5,
-      mitigacion: 'Arnés con doble cabo, punto de anclaje certificado, supervisión',
-      epp_requerido: 'Casco con barbiquejo, arnés de cuerpo completo, calzado antideslizante',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Riesgo eléctrico (tablero, variador, cables expuestos)',
-      categoria: 'electrico',
-      probabilidad: 3,
-      impacto: 5,
-      mitigacion: 'Bloqueo + tarjeteo (LOTO), verificación con multímetro antes de tocar',
-      epp_requerido: 'Guantes dieléctricos, casco clase E, calzado dieléctrico',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Espacio confinado (cámara de pozo profundo o tanque)',
-      categoria: 'confinado',
-      probabilidad: 2,
-      impacto: 5,
-      mitigacion: 'Medición de gases pre-ingreso, ventilación forzada, vigía externo',
-      epp_requerido: 'Detector multi-gas, arnés con cuerda de rescate, radio',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Exposición a químicos (cloración / dosificación)',
-      categoria: 'quimico',
-      probabilidad: 2,
-      impacto: 4,
-      mitigacion: 'Ventilación, MSDS disponible, ducha de emergencia identificada',
-      epp_requerido: 'Mascarilla full-face, guantes nitrilo, lentes protección',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Riesgo mecánico (bomba, motor, válvulas en operación)',
-      categoria: 'mecanico',
-      probabilidad: 3,
-      impacto: 4,
-      mitigacion: 'Detener equipo antes de intervenir, bloqueo de válvulas',
-      epp_requerido: 'Guantes anti-corte, lentes, calzado punta acero',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Caída a distinto nivel (acceso al cabezal sin baranda)',
-      categoria: 'altura',
-      probabilidad: 4,
-      impacto: 4,
-      mitigacion: 'Instalar baranda temporal o línea de vida',
-      epp_requerido: 'Arnés, casco, calzado de seguridad',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Exposición a sol/calor extremo (sitio rural sin sombra)',
-      categoria: 'ambiental',
-      probabilidad: 4,
-      impacto: 3,
-      mitigacion: 'Hidratación frecuente, sombrillas, no trabajar al mediodía',
-      epp_requerido: 'Sombrero, bloqueador solar SPF50+, ropa manga larga clara',
-      evaluado_terreno: false,
-    },
-    {
-      descripcion: 'Acceso remoto / sin comunicación (zona sin señal)',
-      categoria: 'comunicacion',
-      probabilidad: 3,
-      impacto: 4,
-      mitigacion: 'Plan de comunicación con horarios, radio satelital o handheld',
-      epp_requerido: 'Radio satelital, botiquín, agua extra',
-      evaluado_terreno: false,
-    },
-  ];
-
-  addRiesgo(): void {
-    const next: FichaRiesgo = {
-      descripcion: '',
-      probabilidad: null,
-      impacto: null,
-      mitigacion: '',
-      categoria: null,
-      epp_requerido: null,
-      evaluado_terreno: false,
-    };
-    this.ficha.update((f) => ({ ...f, riesgos: [...f.riesgos, next] }));
+  revelar(idx: number): void {
+    if (this.revelando() !== null) return;
+    this.revelando.set(idx);
+    this.api.revealContacto(this.sitioId(), idx).subscribe({
+      next: (data) => {
+        this.revelados.update((m) => ({ ...m, [idx]: data }));
+        this.revelando.set(null);
+      },
+      error: () => this.revelando.set(null),
+    });
   }
 
-  /**
-   * Agrega un riesgo desde el catálogo preset, copiando todos sus campos.
-   * Reset del dropdown manejado por el `[ngModel]=''` en el template.
-   */
-  addRiesgoFromPreset(descripcion: string): void {
-    if (!descripcion) return;
-    const preset = this.presetRiesgos.find((p) => p.descripcion === descripcion);
-    if (!preset) return;
-    this.ficha.update((f) => ({ ...f, riesgos: [...f.riesgos, { ...preset }] }));
+  contactoLinea(c: FichaContacto): string {
+    const tel = c.telefono ? '+56 ' + c.telefono : 'Sin teléfono';
+    return `${tel} · ${c.email || 'Sin email'}`;
   }
 
-  removeRiesgo(idx: number): void {
-    this.ficha.update((f) => ({
-      ...f,
-      riesgos: f.riesgos.filter((_, i) => i !== idx),
-    }));
-  }
-  updateRiesgo(idx: number, field: keyof FichaRiesgo, value: unknown): void {
-    this.ficha.update((f) => ({
-      ...f,
-      riesgos: f.riesgos.map((r, i) => (i === idx ? { ...r, [field]: value as never } : r)),
-    }));
+  /** Responsable se destaca con color de marca; Operador queda neutral. */
+  rolBadgeClass(rol: string | null | undefined): string {
+    return rol === 'Responsable'
+      ? 'bg-primary-tint-14 text-primary-container ring-1 ring-primary-tint-25'
+      : 'bg-slate-100 text-slate-500';
   }
 
-  /**
-   * Nivel de riesgo = probabilidad × impacto. Retorna null si falta P o I.
-   */
-  nivelRiesgo(r: FichaRiesgo): number | null {
-    const p = Number(r.probabilidad);
-    const i = Number(r.impacto);
-    if (!Number.isFinite(p) || !Number.isFinite(i) || p <= 0 || i <= 0) return null;
-    return p * i;
-  }
-
-  /**
-   * Clase Tailwind para colorear celdas de la matriz según el nivel IPER.
-   * Trivial (1-2) verde · Tolerable (3-4) lima · Moderado (5-8) ámbar ·
-   * Importante (9-12) naranja · Intolerable (13-25) rojo.
-   */
-  matrizCellClass(nivel: number): string {
-    if (nivel <= 2) return 'bg-emerald-100 text-emerald-700';
-    if (nivel <= 4) return 'bg-lime-100 text-lime-700';
-    if (nivel <= 8) return 'bg-amber-100 text-amber-700';
-    if (nivel <= 12) return 'bg-orange-200 text-orange-800';
-    return 'bg-rose-200 text-rose-800';
-  }
-
-  /**
-   * Etiqueta SST chilena para probabilidad (1-5).
-   */
-  probabilidadLabel(p: number): string {
-    return ['Raro', 'Improbable', 'Posible', 'Probable', 'Casi seguro'][p - 1] ?? String(p);
-  }
-
-  /**
-   * Etiqueta SST chilena para severidad/consecuencia (1-5).
-   */
-  severidadLabel(s: number): string {
-    return ['Insignificante', 'Menor', 'Moderada', 'Mayor', 'Catastrófica'][s - 1] ?? String(s);
-  }
-
-  /**
-   * Etiqueta del nivel calculado según matriz IPER chileno.
-   */
-  nivelLabel(nivel: number | null): string {
-    if (nivel === null || !Number.isFinite(nivel)) return '—';
-    if (nivel <= 2) return 'Trivial';
-    if (nivel <= 4) return 'Tolerable';
-    if (nivel <= 8) return 'Moderado';
-    if (nivel <= 12) return 'Importante';
-    return 'Intolerable';
-  }
-
-  /**
-   * Cuenta cuántos riesgos están plotted en una celda (p, i) específica.
-   */
-  matrizCount(p: number, i: number): number {
-    return this.ficha().riesgos.filter((r) => r.probabilidad === p && r.impacto === i).length;
-  }
-
-  /**
-   * Borde de la card del riesgo según su nivel IPER chileno.
-   */
-  riesgoCardClass(nivel: number | null): string {
-    if (nivel === null) return 'border-slate-200 bg-slate-50/60';
-    if (nivel <= 2) return 'border-emerald-200 bg-emerald-50/40';
-    if (nivel <= 4) return 'border-lime-200 bg-lime-50/40';
-    if (nivel <= 8) return 'border-amber-200 bg-amber-50/40';
-    if (nivel <= 12) return 'border-orange-300 bg-orange-50/40';
-    return 'border-rose-300 bg-rose-50/40';
-  }
-
-  /**
-   * Badge del nivel calculado (mismo color scheme que la matriz).
-   */
-  nivelBadgeClass(nivel: number | null): string {
-    if (nivel === null) return 'bg-slate-100 text-slate-400';
-    return this.matrizCellClass(nivel);
-  }
-
-  /**
-   * Cuenta riesgos ya verificados en terreno (checkbox marcado).
-   */
-  riesgosVerificados(): number {
-    return this.ficha().riesgos.filter((r) => r.evaluado_terreno === true).length;
+  iniciales(nombre: string | null | undefined): string {
+    const parts = (nombre || '').trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '—';
+    return ((parts[0][0] || '') + (parts[1]?.[0] || '')).toUpperCase();
   }
 
   vigenciaClass(fecha: string | null | undefined): string {

@@ -12,6 +12,9 @@ export interface FichaContacto {
   rol: 'Responsable' | 'Operador' | string;
   telefono?: string | null | undefined;
   email?: string | null | undefined;
+  /** Solo en la respuesta enmascarada al cliente: true si hay tel/email
+   * ocultos que se pueden revelar con 2FA. No se persiste. */
+  datos_ocultos?: boolean;
 }
 
 export interface FichaAcreditacion {

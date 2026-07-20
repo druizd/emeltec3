@@ -163,6 +163,8 @@ export class BitacoraAuditLogComponent {
   private readonly auditService = inject(AuditLogService);
 
   readonly sitioId = input<string>('');
+  /** Búsqueda transversal desde el header de Bitácora. */
+  readonly search = input<string>('');
   readonly empresaId = input<string>('');
 
   readonly filtroRecurso = signal<RecursoFiltro>('todos');
@@ -205,9 +207,17 @@ export class BitacoraAuditLogComponent {
 
   readonly entradas = computed(() => {
     const f = this.filtroRecurso();
-    return f === 'todos'
-      ? this.entradasAll()
-      : this.entradasAll().filter((e) => e.target_type === f);
+    const q = this.search().trim().toLowerCase();
+    let list =
+      f === 'todos' ? this.entradasAll() : this.entradasAll().filter((e) => e.target_type === f);
+    if (q) {
+      list = list.filter((e) =>
+        `${e.actor_email ?? ''} ${e.action} ${e.target_type ?? ''} ${e.target_id ?? ''}`
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    return list;
   });
 
   accionLabel(action: string): string {

@@ -210,6 +210,7 @@ import {
   listEquiposHandler,
   patchEquipoHandler,
   patchFichaHandler,
+  revealContactoHandler,
 } from '../../modules/bitacoraSitio/controller';
 
 // Análisis del sitio (salud, métricas).
@@ -225,6 +226,14 @@ router.get(
 
 router.get('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), getFichaHandler);
 router.patch('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), patchFichaHandler);
+// Revela tel/email de un contacto (datos de terceros) — exige 2FA y audita.
+router.post(
+  '/sites/:siteId/bitacora/contacto/:idx/reveal',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  revealContactoHandler,
+);
 router.get(
   '/sites/:siteId/bitacora/equipos',
   protect,

@@ -11,6 +11,9 @@ export interface FichaContacto {
   rol: string;
   telefono?: string | null;
   email?: string | null;
+  /** true cuando el backend enmascaró tel/email (rol Cliente): hay datos
+   * ocultos revelables con 2FA. */
+  datos_ocultos?: boolean;
 }
 
 export interface FichaAcreditacion {
@@ -102,6 +105,21 @@ export class BitacoraSitioService {
       .patch<
         ApiResponse<FichaSitio>
       >(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/ficha`, ficha)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Revela tel/email de un contacto enmascarado. Exige 2FA (el interceptor
+   * global inyecta el código) y queda auditado en el backend.
+   */
+  revealContacto(
+    siteId: string,
+    idx: number,
+  ): Observable<{ telefono: string | null; email: string | null }> {
+    return this.http
+      .post<
+        ApiResponse<{ telefono: string | null; email: string | null }>
+      >(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/contacto/${idx}/reveal`, {})
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 

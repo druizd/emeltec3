@@ -11,6 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { SkeletonComponent } from '../../../../components/ui/skeleton';
 import {
@@ -54,7 +55,7 @@ const TIPOS: DocumentoTipo[] = [
   selector: 'app-bitacora-documentos',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent, SkeletonComponent],
+  imports: [CommonModule, FormsModule, A11yModule, InlineErrorComponent, SkeletonComponent],
   template: `
     <div class="space-y-3">
       @if (errorMsg()) {
@@ -95,15 +96,42 @@ const TIPOS: DocumentoTipo[] = [
       </header>
 
       @if (mostrandoSubida()) {
-        <article
-          class="rounded-2xl border-2 border-dashed border-primary-tint-25 bg-primary-tint-08/30 p-4"
+        <div
+          class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+          animate.leave="anim-overlay-out"
+          role="dialog"
+          cdkTrapFocus
+          cdkTrapFocusAutoCapture
+          aria-modal="true"
+          aria-labelledby="nuevo-documento-title"
+          (click)="onBackdrop($event)"
+          (keydown.escape)="toggleSubida()"
         >
-          <p
-            class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
+          <div
+            class="anim-panel relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            (click)="$event.stopPropagation()"
           >
-            Nuevo documento
-          </p>
-          <div class="space-y-3">
+            <div class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
+                >
+                  <span class="material-symbols-outlined text-[20px]">upload_file</span>
+                </span>
+                <h2 id="nuevo-documento-title" class="text-h6 font-semibold text-slate-800">
+                  Nuevo documento
+                </h2>
+              </div>
+              <button
+                type="button"
+                (click)="toggleSubida()"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+                aria-label="Cerrar"
+              >
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
             <div>
               <label
                 class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
@@ -187,11 +215,15 @@ const TIPOS: DocumentoTipo[] = [
               ></textarea>
             </div>
 
-            <div class="flex justify-end gap-2">
+            </div>
+
+            <div
+              class="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50/60 px-5 py-4"
+            >
               <button
                 type="button"
                 (click)="toggleSubida()"
-                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-95"
+                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
               >
                 Cancelar
               </button>
@@ -199,7 +231,7 @@ const TIPOS: DocumentoTipo[] = [
                 type="button"
                 [disabled]="uploading() || !puedeSubir()"
                 (click)="subir()"
-                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-50"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
                   >cloud_upload</span
@@ -208,7 +240,7 @@ const TIPOS: DocumentoTipo[] = [
               </button>
             </div>
           </div>
-        </article>
+        </div>
       }
 
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -343,6 +375,8 @@ export class BitacoraDocumentosComponent {
   private readonly documentoService = inject(DocumentoService);
 
   readonly sitioId = input<string>('');
+  /** Búsqueda transversal desde el header de Bitácora. */
+  readonly search = input<string>('');
   readonly empresaId = input<string>('');
 
   readonly tipos = TIPOS;
@@ -395,7 +429,16 @@ export class BitacoraDocumentosComponent {
 
   readonly documentosFiltrados = computed(() => {
     const f = this.filtroActivo();
-    return f === 'todos' ? this.documentos() : this.documentos().filter((d) => d.tipo === f);
+    const q = this.search().trim().toLowerCase();
+    let list = f === 'todos' ? this.documentos() : this.documentos().filter((d) => d.tipo === f);
+    if (q) {
+      list = list.filter((d) =>
+        `${d.titulo ?? ''} ${d.descripcion ?? ''} ${d.version ?? ''} ${d.tipo ?? ''}`
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    return list;
   });
 
   contarPorTipo(key: TipoFiltro): number {
@@ -415,6 +458,11 @@ export class BitacoraDocumentosComponent {
       this.draft = emptyDraft();
       this.mostrandoSubida.set(true);
     }
+  }
+
+  /** Cierra el modal solo si el click cae en el backdrop, no en el panel. */
+  onBackdrop(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.toggleSubida();
   }
 
   onFileChange(ev: Event): void {
