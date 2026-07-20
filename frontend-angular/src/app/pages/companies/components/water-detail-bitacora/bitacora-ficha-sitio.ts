@@ -585,10 +585,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
   readonly error = signal<string>('');
   readonly dirty = computed(() => JSON.stringify(this.ficha()) !== this.original);
 
-  // Índice del contacto en modo edición (null = todos read-only). Editar un
-  // contacto existente requiere desbloquear con confirmación.
-  readonly editingContactoIdx = signal<number | null>(null);
-
   // Confirmación con modal del proyecto (reemplaza confirm() nativo).
   readonly confirmData = signal<ConfirmDialogData | null>(null);
   private pendingConfirm: (() => void) | null = null;
@@ -610,21 +606,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
     this.confirmData.set(null);
   }
 
-  /** Pide confirmación antes de desbloquear un contacto existente para editar. */
-  pedirEditarContacto(idx: number): void {
-    const c = this.ficha().contactos[idx];
-    this.askConfirm(
-      {
-        title: 'Editar contacto',
-        message: `¿Querés editar el contacto "${c?.nombre || 'sin nombre'}"?`,
-        confirmText: 'Editar',
-        tone: 'primary',
-        icon: 'edit',
-      },
-      () => this.editingContactoIdx.set(idx),
-    );
-  }
-
   /** Pide confirmación antes de eliminar un contacto. */
   pedirEliminarContacto(idx: number): void {
     const c = this.ficha().contactos[idx];
@@ -638,7 +619,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
       },
       () => {
         this.removeContacto(idx);
-        this.editingContactoIdx.set(null);
       },
     );
   }
@@ -672,10 +652,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
   readonly availableAcreditadores = computed(() =>
     this.availableUsers().filter((u) => u.tipo === 'SuperAdmin'),
   );
-  // Estado temporal para el selector "Agregar contacto desde agenda".
-  readonly contactPickerId = signal<string>('');
-  readonly acreditacionPickerIdx = signal<number | null>(null);
-
   // Effect: fetcha catálogos cuando cambian empresaId / sitioId. Solo dispara
   // en contexto de inyección.
   private readonly catalogFetchEffect = effect(() => {
@@ -752,13 +728,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
   }
 
   // -------- Contactos --------
-  addContacto(): void {
-    const next: FichaContacto = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
-    const newIdx = this.ficha().contactos.length;
-    this.ficha.update((f) => ({ ...f, contactos: [...f.contactos, next] }));
-    // Un contacto recién agregado queda editable para poder llenarlo.
-    this.editingContactoIdx.set(newIdx);
-  }
   removeContacto(idx: number): void {
     this.ficha.update((f) => ({
       ...f,
@@ -766,30 +735,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
     }));
     this.save();
   }
-  updateContacto(idx: number, field: keyof FichaContacto, value: unknown): void {
-    this.ficha.update((f) => ({
-      ...f,
-      contactos: f.contactos.map((c, i) => (i === idx ? { ...c, [field]: value as never } : c)),
-    }));
-  }
-
-  /**
-   * Parte local (9 dígitos) del teléfono, sin el código país +56. El +56 se
-   * muestra fijo en el template, así el usuario solo escribe los 9 dígitos
-   * del móvil chileno.
-   */
-  /**
-   * En memoria el teléfono se guarda como SOLO los 9 dígitos locales (sin +56).
-   * El +56 se muestra fijo en el template y se antepone únicamente al guardar.
-   * Así el usuario escribe/borra libre y el +56 nunca se mete en el input.
-   */
-  updateTelefono(idx: number, raw: string): void {
-    const digits = String(raw ?? '')
-      .replace(/\D/g, '')
-      .slice(0, 9);
-    this.updateContacto(idx, 'telefono', digits);
-  }
-
   /** Quita el prefijo +56 y cualquier no-dígito; deja los 9 dígitos locales. */
   private toLocalPhone(tel: string | null | undefined): string {
     return String(tel ?? '')
@@ -826,58 +771,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
       ),
       riesgos: f.riesgos.filter((r) => (r.descripcion ?? '').trim().length > 0),
     };
-  }
-
-  /**
-   * Handler del cambio del <select> de contactos. Usa template ref para
-   * leer el value y resetear el control directamente en el DOM, evitando
-   * race conditions entre el signal y la actualización del elemento.
-   */
-  onContactoPickerChange(el: HTMLSelectElement): void {
-    const value = el.value;
-    el.value = '';
-    this.addContactoFromAgenda(value);
-  }
-
-  /**
-   * Selecciona un contacto desde la agenda (OperationalContact) O desde
-   * usuarios de la misma planta (User cliente), y lo agrega a la ficha.
-   * El valor del dropdown es un id prefijado: `c:<contactId>` para
-   * OperationalContact o `u:<userId>` para User cliente.
-   */
-  addContactoFromAgenda(prefixedId: string): void {
-    if (!prefixedId) return;
-    const [kind, id] = prefixedId.split(':');
-    let next: FichaContacto | null = null;
-    if (kind === 'c') {
-      const found = this.availableContacts().find((c) => c.id === id);
-      if (found) {
-        const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
-        next = {
-          nombre: nombre || found.nombre,
-          rol: found.cargo || found.tipo_contacto || 'Responsable',
-          telefono: this.toLocalPhone(found.telefono),
-          email: found.email || '',
-        };
-      }
-    } else if (kind === 'u') {
-      const found = this.availableUsuariosCliente().find((u) => u.id === id);
-      if (found) {
-        const nombre = [found.nombre, found.apellido].filter(Boolean).join(' ').trim();
-        next = {
-          nombre: nombre || found.email || 'Usuario',
-          rol: found.tipo,
-          telefono: this.toLocalPhone(found.telefono),
-          email: found.email || '',
-        };
-      }
-    }
-    if (next) {
-      const newIdx = this.ficha().contactos.length;
-      this.ficha.update((f) => ({ ...f, contactos: [...f.contactos, next!] }));
-      this.editingContactoIdx.set(newIdx);
-    }
-    this.contactPickerId.set('');
   }
 
   // -------- Modal contacto (agregar / editar) --------
@@ -955,12 +848,6 @@ export class BitacoraFichaSitioComponent implements OnInit {
       }
     }
     return null;
-  }
-
-  // -------- Acreditaciones --------
-  addAcreditacion(): void {
-    const next: FichaAcreditacion = { persona: '', tipo: '', vigencia_hasta: null };
-    this.ficha.update((f) => ({ ...f, acreditaciones: [...f.acreditaciones, next] }));
   }
 
   // -------- Modal acreditación (agregar / editar) --------

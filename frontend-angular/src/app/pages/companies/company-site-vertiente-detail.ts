@@ -2516,10 +2516,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
     const fmt = (s: string) => (s ? s.split('-').reverse().join('/') : '—');
     return `${fmt(from)} — ${fmt(to)}`;
   });
-  historySourceRows = computed(() => {
-    if (this.historyRows().length) return this.historyRows();
-    return this.historyLoading() ? [] : this.historyMockRows;
-  });
+  historySourceRows = computed(() => this.historyRows());
   historyFilteredRows = computed(() => {
     if (this.historyServerTotalRows() !== null) return this.historySourceRows();
 
@@ -2788,89 +2785,6 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
     { id: '1m', label: '1 minuto', hint: 'Detalle máximo' },
     { id: '1h', label: '1 hora', hint: 'Resumen por hora' },
     { id: '1d', label: '1 día', hint: 'Resumen diario' },
-  ];
-
-  readonly historyMockRows: HistoricalTelemetryRow[] = [
-    {
-      id: 'mock-2026-04-01-06-00',
-      fecha: '01/04/2026 06:00',
-      caudal: '0',
-      totalizador: '531.100',
-      nivelFreatico: '1.6',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-05-00',
-      fecha: '01/04/2026 05:00',
-      caudal: '19.75',
-      totalizador: '531.060,063',
-      nivelFreatico: '3.3',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-04-00',
-      fecha: '01/04/2026 04:00',
-      caudal: '0',
-      totalizador: '531.038,375',
-      nivelFreatico: '1.5',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-03-00',
-      fecha: '01/04/2026 03:00',
-      caudal: '19.75',
-      totalizador: '531.009,375',
-      nivelFreatico: '3.3',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-02-00',
-      fecha: '01/04/2026 02:00',
-      caudal: '19.63',
-      totalizador: '530.986,75',
-      nivelFreatico: '3.4',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-01-00',
-      fecha: '01/04/2026 01:00',
-      caudal: '19.88',
-      totalizador: '530.956,188',
-      nivelFreatico: '3.1',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-00-00',
-      fecha: '01/04/2026 00:00',
-      caudal: '0',
-      totalizador: '530.921,625',
-      nivelFreatico: '1.5',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-03-31-23-00',
-      fecha: '31/03/2026 23:00',
-      caudal: '19.75',
-      totalizador: '530.900,188',
-      nivelFreatico: '3.4',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-03-31-22-00',
-      fecha: '31/03/2026 22:00',
-      caudal: '19.75',
-      totalizador: '530.858,938',
-      nivelFreatico: '3.5',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-03-31-21-00',
-      fecha: '31/03/2026 21:00',
-      caudal: '19.75',
-      totalizador: '530.806,375',
-      nivelFreatico: '3.2',
-      mock: true,
-    },
   ];
 
   ngOnInit(): void {
