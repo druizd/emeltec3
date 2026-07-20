@@ -13,7 +13,7 @@ import {
 import { Chart, ChartConfiguration, Plugin, registerables } from 'chart.js';
 import { forkJoin } from 'rxjs';
 import { CompanyService, HistoryGranularity } from '../../../services/company.service';
-import type { SiteDashboardHistoryEntry, SiteRecord } from '@emeltec/shared';
+import type { SiteRecord } from '@emeltec/shared';
 
 Chart.register(...registerables);
 
@@ -289,8 +289,7 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
         const built: SiteSeries[] = [];
         sites.forEach((site, i) => {
           const res = results[i];
-          const entries = res?.ok ? (res.data ?? []) : [];
-          const { nivel, caudal } = this.extractSeries(entries);
+          const { nivel, caudal } = this.extractSeries(res?.ok ? res : null);
           if (nivel.length === 0 && caudal.length === 0) return;
           built.push({
             id: site.id,
@@ -313,17 +312,24 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     });
   }
 
-  private extractSeries(entries: SiteDashboardHistoryEntry[]): {
+  /**
+   * El endpoint dashboard-history devuelve { data: { rows: [...] } } donde cada
+   * fila trae los roles ya clasificados como { ok, valor }: nivel_freatico,
+   * nivel, caudal, totalizador. (Mismo shape que consume water-detail-operacion.)
+   */
+  private extractSeries(res: unknown): {
     nivel: { x: number; y: number }[];
     caudal: { x: number; y: number }[];
   } {
+    const rows = (res as { data?: { rows?: unknown[] } } | null)?.data?.rows;
+    const list = Array.isArray(rows) ? rows : [];
     const nivel: { x: number; y: number }[] = [];
     const caudal: { x: number; y: number }[] = [];
-    for (const entry of entries) {
-      const x = Date.parse(entry.timestamp);
+    for (const row of list as Array<Record<string, unknown>>) {
+      const x = Date.parse(String(row['timestamp'] ?? row['fecha'] ?? ''));
       if (!Number.isFinite(x)) continue;
-      const nv = this.toNum(entry.variables['nivel_freatico'] ?? entry.variables['nivel']);
-      const cv = this.toNum(entry.variables['caudal']);
+      const nv = this.roleNum(row['nivel_freatico'] ?? row['nivel']);
+      const cv = this.roleNum(row['caudal']);
       if (nv !== null) nivel.push({ x, y: nv });
       if (cv !== null) caudal.push({ x, y: cv });
     }
@@ -332,9 +338,25 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     return { nivel, caudal };
   }
 
+  /** Valor de un rol { ok, valor } → número (o null si no medido). */
+  private roleNum(role: unknown): number | null {
+    const r = role as { ok?: boolean; valor?: unknown } | null | undefined;
+    if (!r || r.ok === false) return null;
+    return this.toNum(r.valor);
+  }
+
+  /** Parseo tolerante a formato chileno ("530.806,375" → 530806.375). */
   private toNum(raw: unknown): number | null {
     if (raw === null || raw === undefined || raw === '') return null;
-    const n = typeof raw === 'number' ? raw : Number(raw);
+    if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+    let text = String(raw).trim();
+    if (!text) return null;
+    if (text.includes(',') && text.includes('.')) {
+      text = text.replace(/\./g, '').replace(',', '.');
+    } else if (text.includes(',')) {
+      text = text.replace(',', '.');
+    }
+    const n = Number(text.replace(/[^\d.-]/g, ''));
     return Number.isFinite(n) ? n : null;
   }
 
