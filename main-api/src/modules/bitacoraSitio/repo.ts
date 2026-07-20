@@ -201,6 +201,23 @@ export async function patchEquipo(
   return r.rows[0] ?? null;
 }
 
+/**
+ * De un conjunto de ids de documento, devuelve solo los que existen y
+ * pertenecen al sitio. Evita persistir en documento_ids referencias a
+ * documentos de otro sitio/empresa (el array no tiene FK que lo impida).
+ */
+export async function filterDocumentoIdsDelSitio(siteId: string, ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const r = await query<{ id: string }>(
+    `SELECT id FROM documentos WHERE sitio_id = $1 AND id = ANY($2::bigint[])`,
+    [siteId, ids],
+    { name: 'bitacora__filter_doc_ids' },
+  );
+  const validos = new Set(r.rows.map((row) => String(row.id)));
+  // Preserva orden de entrada y elimina duplicados.
+  return [...new Set(ids)].filter((id) => validos.has(id));
+}
+
 /** Devuelve el sitio_id de un equipo (para autorización por :id). */
 export async function findEquipoSitioId(id: number): Promise<string | null> {
   const r = await query<{ sitio_id: string }>(

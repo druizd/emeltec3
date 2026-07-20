@@ -13,9 +13,10 @@ import {
   listEquipos,
   patchEquipo,
   patchFicha,
+  filterDocumentoIdsDelSitio,
   type FichaContacto,
-  type FichaSitio,
 } from './repo';
+import { maskFichaForRole } from './mask';
 import { CreateEquipoPayload, FichaPayload, PatchEquipoPayload } from './schema';
 import { assertSiteAccessById } from '../../middlewares/siteAccess';
 import type { AuthUser } from '../../shared/permissions';
@@ -39,25 +40,6 @@ const { record: auditRecord } = require('../../services/auditLog') as {
     metadata?: unknown;
   }) => Promise<void> | void;
 };
-
-/**
- * Enmascara datos personales de terceros (tel/email de contactos) para el rol
- * Cliente. El dato real NO sale del servidor; se revela por endpoint con 2FA.
- * Minimización + accountability (Ley 21.719).
- */
-function maskFichaForRole(f: FichaSitio, tipo: string | undefined): FichaSitio {
-  if (tipo !== 'Cliente') return f;
-  return {
-    ...f,
-    contactos: f.contactos.map((c) => ({
-      nombre: c.nombre,
-      rol: c.rol,
-      telefono: null,
-      email: null,
-      datos_ocultos: Boolean(c.telefono || c.email),
-    })),
-  };
-}
 
 // ============================================================================
 // Ficha
@@ -110,8 +92,11 @@ export async function revealContactoHandler(
         statusCode: 200,
         metadata: { nombre: c.nombre, rol: c.rol, campos: ['telefono', 'email'] },
       });
-    } catch {
-      // Auditar no debe romper la respuesta; si falla, se sirve igual.
+    } catch (auditErr) {
+      // Auditar no debe romper la respuesta; si falla, se sirve igual. Pero
+      // NO en silencio: se revela PII de un tercero, el fallo de auditoría
+      // debe quedar en el log para no perder trazabilidad (Ley 21.719).
+      console.error('[bitacora.contacto.reveal] fallo al auditar:', auditErr);
     }
     res.json(
       ok(
@@ -182,7 +167,9 @@ export async function createEquipoHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    const row = await insertEquipo({ sitio_id: siteId, ...parsed.data });
+    // Descarta ids de documento que no pertenezcan al sitio (self-healing).
+    const documento_ids = await filterDocumentoIdsDelSitio(siteId, parsed.data.documento_ids);
+    const row = await insertEquipo({ sitio_id: siteId, ...parsed.data, documento_ids });
     res.status(201).json(ok(row, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
@@ -207,7 +194,15 @@ export async function patchEquipoHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    const row = await patchEquipo(id, parsed.data);
+    // Si se envían documento_ids, descarta los que no sean del sitio.
+    const data =
+      parsed.data.documento_ids !== undefined
+        ? {
+            ...parsed.data,
+            documento_ids: await filterDocumentoIdsDelSitio(sitioId, parsed.data.documento_ids),
+          }
+        : parsed.data;
+    const row = await patchEquipo(id, data);
     if (!row) throw new NotFoundError('Equipo no encontrado');
     res.json(ok(row, { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
