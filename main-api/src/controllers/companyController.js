@@ -1601,7 +1601,13 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       }
     }
 
-    const granularity = dashboardHistoryGranularity();
+    // Granularidad desde el query, validada contra el whitelist de caggs
+    // (nunca se interpola el valor crudo en SQL — solo la clave mapea a un view
+    // fijo). Default '1m' para no cambiar el comportamiento de la vista en vivo.
+    const reqGran = cleanString(req.query.granularity);
+    const granularity = HISTORY_EXPORT_GRANULARITY[reqGran]
+      ? reqGran
+      : dashboardHistoryGranularity();
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
 
     if (!site.activo) {
@@ -1920,7 +1926,13 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
     }
 
     const limit = parseLimit(req.query.limit, 500, 3500);
-    const granularity = dashboardHistoryGranularity();
+    // Granularidad desde el query, validada contra el whitelist de caggs
+    // (nunca se interpola el valor crudo en SQL — solo la clave mapea a un view
+    // fijo). Default '1m' para no cambiar el comportamiento de la vista en vivo.
+    const reqGran = cleanString(req.query.granularity);
+    const granularity = HISTORY_EXPORT_GRANULARITY[reqGran]
+      ? reqGran
+      : dashboardHistoryGranularity();
     const granConfig = HISTORY_EXPORT_GRANULARITY[granularity];
 
     if (!site.activo) {
