@@ -412,7 +412,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <p class="text-caption font-semibold text-slate-500">Volver al detalle del sitio</p>
               </div>
               <app-site-variable-settings-panel
-                [siteId]="context.site?.id || ''"
+                [siteId]="context.site.id || ''"
                 [site]="context.site"
                 [showDgaReporteButton]="dgaEnabled"
                 (openDgaReporte)="abrirDgaReporteModal()"

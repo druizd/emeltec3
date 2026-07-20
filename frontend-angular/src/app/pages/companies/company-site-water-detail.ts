@@ -11,11 +11,6 @@ import {
   signal,
 } from '@angular/core';
 import { InlineErrorComponent } from '../../components/ui/inline-error';
-import { WellDiagramSkeletonComponent } from '../../components/ui/well-diagram-skeleton';
-import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
-import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
-import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
-import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
@@ -189,11 +184,6 @@ type OperationMode = 'realtime' | 'turnos';
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
     InlineErrorComponent,
-    WellDiagramSkeletonComponent,
-    KpiStripSkeletonComponent,
-    ChartSkeletonComponent,
-    TableSkeletonComponent,
-    WellStatCardComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -396,7 +386,7 @@ type OperationMode = 'realtime' | 'turnos';
                 <p class="text-caption font-semibold text-slate-500">Volver al detalle del sitio</p>
               </div>
               <app-site-variable-settings-panel
-                [siteId]="context.site?.id || ''"
+                [siteId]="context.site.id || ''"
                 [site]="context.site"
                 [showDgaReporteButton]="true"
                 (openDgaReporte)="abrirDgaReporteModal()"
