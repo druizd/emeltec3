@@ -6,18 +6,19 @@ import { ok } from '../../shared/httpEnvelope';
 import { NotFoundError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import {
-  addContacto,
-  deleteContacto,
+  deleteContactoSitio,
   deleteEquipo,
+  findContactoSitioId,
   findEquipoSitioId,
+  getContactoPII,
   getFicha,
+  insertContactoSitio,
   insertEquipo,
   listEquipos,
   patchEquipo,
   patchFicha,
-  updateContacto,
+  updateContactoSitio,
   filterDocumentoIdsDelSitio,
-  type FichaContacto,
 } from './repo';
 import { maskFicha } from './mask';
 import {
@@ -70,6 +71,43 @@ export async function getFichaHandler(
   }
 }
 
+/** Best-effort audit de una acción sobre un contacto. Nunca rompe la respuesta. */
+async function auditContacto(
+  req: Request,
+  action: string,
+  siteId: string,
+  contactoId: number,
+  metadata: Record<string, unknown>,
+): Promise<void> {
+  const u = getUser(req);
+  try {
+    await auditRecord({
+      req,
+      action,
+      actorId: u?.id != null ? String(u.id) : null,
+      actorEmail: u?.email ?? null,
+      actorTipo: u?.tipo ?? null,
+      targetType: 'contacto_operativo',
+      targetId: `${siteId}#${contactoId}`,
+      statusCode: 200,
+      metadata,
+    });
+  } catch (auditErr) {
+    console.error(`[${action}] fallo al auditar:`, auditErr);
+  }
+}
+
+/** Valida :id y que el contacto pertenezca al :siteId de la ruta (anti-IDOR). */
+async function resolveContacto(req: Request): Promise<{ siteId: string; id: number }> {
+  const siteId = String(req.params.siteId ?? '').trim();
+  const id = Number(req.params.id);
+  if (!siteId) throw new ValidationError('siteId requerido');
+  if (!Number.isFinite(id) || id <= 0) throw new ValidationError('id inválido');
+  const owner = await findContactoSitioId(id);
+  if (owner !== siteId) throw new NotFoundError('Contacto no encontrado');
+  return { siteId, id };
+}
+
 /**
  * Revela tel/email de un contacto puntual. Protegido por 2FA (middleware) y
  * auditado: registra quién reveló datos personales de un tercero, cuándo.
@@ -81,37 +119,15 @@ export async function revealContactoHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   try {
-    const siteId = String(req.params.siteId ?? '').trim();
-    const idx = Number(req.params.idx);
-    if (!siteId) throw new ValidationError('siteId requerido');
-    if (!Number.isFinite(idx) || idx < 0) throw new ValidationError('idx inválido');
-    const f = await getFicha(siteId);
-    const c: FichaContacto | undefined = f.contactos[idx];
-    if (!c) throw new NotFoundError('Contacto no encontrado');
-    const u = getUser(req);
-    try {
-      await auditRecord({
-        req,
-        action: 'bitacora.contacto.reveal',
-        actorId: u?.id != null ? String(u.id) : null,
-        actorEmail: u?.email ?? null,
-        actorTipo: u?.tipo ?? null,
-        targetType: 'bitacora_contacto',
-        targetId: `${siteId}#${idx}`,
-        statusCode: 200,
-        metadata: { nombre: c.nombre, rol: c.rol, campos: ['telefono', 'email'] },
-      });
-    } catch (auditErr) {
-      // Auditar no debe romper la respuesta; si falla, se sirve igual. Pero
-      // NO en silencio: se revela PII de un tercero, el fallo de auditoría
-      // debe quedar en el log para no perder trazabilidad (Ley 21.719).
-      console.error('[bitacora.contacto.reveal] fallo al auditar:', auditErr);
-    }
+    const { siteId, id } = await resolveContacto(req);
+    const pii = await getContactoPII(id);
+    if (!pii) throw new NotFoundError('Contacto no encontrado');
+    await auditContacto(req, 'bitacora.contacto.reveal', siteId, id, {
+      nombre: pii.nombre,
+      campos: ['telefono', 'email'],
+    });
     res.json(
-      ok(
-        { telefono: c.telefono ?? null, email: c.email ?? null },
-        { durationMs: elapsedMs(startedAt) },
-      ),
+      ok({ telefono: pii.telefono, email: pii.email }, { durationMs: elapsedMs(startedAt) }),
     );
   } catch (err) {
     next(err);
@@ -131,14 +147,11 @@ export async function patchFichaHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    // Los contactos NO se tocan por esta vía: son PII y se gestionan por sus
-    // endpoints dedicados con 2FA. Preservamos los almacenados para que un
-    // guardado de ficha (pin/acreditaciones/riesgos) con contactos enmascarados
-    // no borre tel/email reales.
-    const stored = await getFicha(siteId);
+    // Los contactos NO viven acá (son contacto_operativo): patchFicha ignora
+    // los del payload y persiste solo pin/acreditaciones/riesgos.
     const updated = await patchFicha(siteId, {
       pin_critico: parsed.data.pin_critico ?? null,
-      contactos: stored.contactos,
+      contactos: [],
       acreditaciones: parsed.data.acreditaciones,
       riesgos: parsed.data.riesgos,
     });
@@ -149,34 +162,8 @@ export async function patchFichaHandler(
 }
 
 // ============================================================================
-// Contactos (PII — endpoints dedicados con 2FA + auditoría)
+// Contactos (PII → contacto_operativo; endpoints con 2FA + auditoría)
 // ============================================================================
-
-/** Registra en el audit-log una mutación de contacto (best-effort). */
-async function auditContacto(
-  req: Request,
-  action: string,
-  siteId: string,
-  idx: number | null,
-  c: Pick<FichaContacto, 'nombre' | 'rol'>,
-): Promise<void> {
-  const u = getUser(req);
-  try {
-    await auditRecord({
-      req,
-      action,
-      actorId: u?.id != null ? String(u.id) : null,
-      actorEmail: u?.email ?? null,
-      actorTipo: u?.tipo ?? null,
-      targetType: 'bitacora_contacto',
-      targetId: idx != null ? `${siteId}#${idx}` : siteId,
-      statusCode: 200,
-      metadata: { nombre: c.nombre, rol: c.rol },
-    });
-  } catch (auditErr) {
-    console.error(`[${action}] fallo al auditar:`, auditErr);
-  }
-}
 
 export async function createContactoHandler(
   req: Request,
@@ -191,14 +178,20 @@ export async function createContactoHandler(
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    const updated = await addContacto(siteId, {
+    const created = await insertContactoSitio({
+      siteId,
       nombre: parsed.data.nombre,
       rol: parsed.data.rol,
       telefono: parsed.data.telefono ?? null,
       email: parsed.data.email ?? null,
     });
-    await auditContacto(req, 'bitacora.contacto.create', siteId, null, parsed.data);
-    res.status(201).json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
+    await auditContacto(req, 'bitacora.contacto.create', siteId, Number(created.id), {
+      nombre: created.nombre,
+      rol: created.rol,
+    });
+    res
+      .status(201)
+      .json(ok(maskFicha(await getFicha(siteId)), { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
@@ -211,26 +204,24 @@ export async function patchContactoHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   try {
-    const siteId = String(req.params.siteId ?? '').trim();
-    const idx = Number(req.params.idx);
-    if (!siteId) throw new ValidationError('siteId requerido');
-    if (!Number.isFinite(idx) || idx < 0) throw new ValidationError('idx inválido');
+    const { siteId, id } = await resolveContacto(req);
     const parsed = PatchContactoPayload.safeParse(req.body);
     if (!parsed.success) {
       throw new ValidationError('Payload inválido', { details: parsed.error.issues });
     }
-    const updated = await updateContacto(siteId, idx, {
+    const updated = await updateContactoSitio(id, {
       ...(parsed.data.nombre !== undefined ? { nombre: parsed.data.nombre } : {}),
       ...(parsed.data.rol !== undefined ? { rol: parsed.data.rol } : {}),
-      ...(parsed.data.telefono != null ? { telefono: parsed.data.telefono } : {}),
-      ...(parsed.data.email != null ? { email: parsed.data.email } : {}),
+      // vacío/undefined → COALESCE preserva el valor guardado en el repo.
+      telefono: parsed.data.telefono || null,
+      email: parsed.data.email || null,
     });
     if (!updated) throw new NotFoundError('Contacto no encontrado');
-    await auditContacto(req, 'bitacora.contacto.update', siteId, idx, {
-      nombre: parsed.data.nombre ?? '',
-      rol: parsed.data.rol ?? '',
+    await auditContacto(req, 'bitacora.contacto.update', siteId, id, {
+      nombre: updated.nombre,
+      rol: updated.rol,
     });
-    res.json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
+    res.json(ok(maskFicha(await getFicha(siteId)), { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
@@ -243,14 +234,11 @@ export async function deleteContactoHandler(
 ): Promise<void> {
   const startedAt = nowHrtime();
   try {
-    const siteId = String(req.params.siteId ?? '').trim();
-    const idx = Number(req.params.idx);
-    if (!siteId) throw new ValidationError('siteId requerido');
-    if (!Number.isFinite(idx) || idx < 0) throw new ValidationError('idx inválido');
-    const updated = await deleteContacto(siteId, idx);
-    if (!updated) throw new NotFoundError('Contacto no encontrado');
-    await auditContacto(req, 'bitacora.contacto.delete', siteId, idx, { nombre: '', rol: '' });
-    res.json(ok(maskFicha(updated), { durationMs: elapsedMs(startedAt) }));
+    const { siteId, id } = await resolveContacto(req);
+    const okDelete = await deleteContactoSitio(id);
+    if (!okDelete) throw new NotFoundError('Contacto no encontrado');
+    await auditContacto(req, 'bitacora.contacto.delete', siteId, id, {});
+    res.json(ok(maskFicha(await getFicha(siteId)), { durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }

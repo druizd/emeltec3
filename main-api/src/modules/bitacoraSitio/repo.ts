@@ -8,6 +8,8 @@ import { query } from '../../config/dbHelpers';
 // ============================================================================
 
 export interface FichaContacto {
+  /** id estable = contacto_operativo.id. Ausente solo en payloads de alta. */
+  id?: string;
   nombre: string;
   rol: 'Responsable' | 'Operador' | string;
   telefono?: string | null | undefined;
@@ -63,67 +65,153 @@ export async function getFicha(siteId: string): Promise<FichaSitio> {
     [siteId],
     { name: 'bitacora__get_ficha' },
   );
-  if (r.rows.length === 0) return EMPTY_FICHA;
-  return normalizeFicha(r.rows[0]?.ficha_critica);
+  const base = r.rows.length === 0 ? EMPTY_FICHA : normalizeFicha(r.rows[0]?.ficha_critica);
+  // Los contactos son la fuente única contacto_operativo (no el JSONB).
+  return { ...base, contactos: await listContactos(siteId) };
 }
 
 /**
- * Upsert de la ficha. Si pozo_config no existe para el sitio, lo crea
- * vacío con la ficha (admin debe completar profundidades aparte).
+ * Upsert de la ficha (pin_critico, acreditaciones, riesgos). Los contactos NO
+ * se persisten acá: viven en contacto_operativo. Se fuerza contactos=[] en el
+ * JSONB para no dejar copias obsoletas de PII.
  */
 export async function patchFicha(siteId: string, ficha: FichaSitio): Promise<FichaSitio> {
-  const r = await query<{ ficha_critica: unknown }>(
+  const toStore = { ...ficha, contactos: [] };
+  await query(
     `INSERT INTO pozo_config (sitio_id, ficha_critica)
      VALUES ($1, $2::jsonb)
      ON CONFLICT (sitio_id) DO UPDATE SET
        ficha_critica = EXCLUDED.ficha_critica,
-       updated_at    = NOW()
-     RETURNING ficha_critica`,
-    [siteId, JSON.stringify(ficha)],
+       updated_at    = NOW()`,
+    [siteId, JSON.stringify(toStore)],
     { name: 'bitacora__patch_ficha' },
   );
-  return normalizeFicha(r.rows[0]?.ficha_critica);
+  return getFicha(siteId);
 }
 
 // ---------------------------------------------------------------------------
-// Contactos (viven en ficha_critica.contactos, JSONB). Se mutan server-side
-// sobre el dato REAL para que el enmascarado del read nunca borre PII.
-// Direccionados por índice posicional, igual que el endpoint de reveal.
+// Contactos de la ficha = filas de contacto_operativo scopeadas al sitio.
+// Fuente única de esa PII; id estable; vínculo opcional a usuario (usuario_id).
 // ---------------------------------------------------------------------------
 
-export async function addContacto(siteId: string, c: FichaContacto): Promise<FichaSitio> {
-  const ficha = await getFicha(siteId);
-  ficha.contactos.push(c);
-  return patchFicha(siteId, ficha);
+interface ContactoOperativoRow {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  email: string | null;
+  telefono: string | null;
+  cargo: string;
+  tipo_contacto: string;
+}
+
+const CONTACTO_COLS = 'id, nombre, apellido, email, telefono, cargo, tipo_contacto';
+
+function mapContacto(row: ContactoOperativoRow): FichaContacto {
+  return {
+    id: String(row.id),
+    nombre: [row.nombre, row.apellido]
+      .filter((s) => s && s.trim())
+      .join(' ')
+      .trim(),
+    rol: row.tipo_contacto,
+    telefono: row.telefono,
+    email: row.email,
+  };
+}
+
+export async function listContactos(siteId: string): Promise<FichaContacto[]> {
+  const r = await query<ContactoOperativoRow>(
+    `SELECT ${CONTACTO_COLS} FROM contacto_operativo
+      WHERE sitio_id = $1 ORDER BY nombre ASC, id ASC`,
+    [siteId],
+    { name: 'bitacora__list_contactos' },
+  );
+  return r.rows.map(mapContacto);
+}
+
+/** Devuelve el sitio_id de un contacto (para autorización por :id). */
+export async function findContactoSitioId(id: number): Promise<string | null> {
+  const r = await query<{ sitio_id: string | null }>(
+    `SELECT sitio_id FROM contacto_operativo WHERE id = $1`,
+    [id],
+    { name: 'bitacora__contacto_sitio_id' },
+  );
+  return r.rows[0]?.sitio_id ?? null;
+}
+
+/** tel/email reales de un contacto (para el endpoint de reveal con 2FA). */
+export async function getContactoPII(
+  id: number,
+): Promise<{ nombre: string; telefono: string | null; email: string | null } | null> {
+  const r = await query<ContactoOperativoRow>(
+    `SELECT ${CONTACTO_COLS} FROM contacto_operativo WHERE id = $1`,
+    [id],
+    { name: 'bitacora__contacto_pii' },
+  );
+  const row = r.rows[0];
+  if (!row) return null;
+  return { nombre: mapContacto(row).nombre, telefono: row.telefono, email: row.email };
+}
+
+export async function insertContactoSitio(input: {
+  siteId: string;
+  nombre: string;
+  rol: string;
+  telefono: string | null;
+  email: string | null;
+}): Promise<FichaContacto> {
+  const r = await query<ContactoOperativoRow>(
+    `INSERT INTO contacto_operativo
+       (empresa_id, sub_empresa_id, sitio_id, nombre, apellido, email, telefono, cargo, tipo_contacto)
+     SELECT s.empresa_id, s.sub_empresa_id, s.id, $2, '', $5, $4, $3,
+            CASE WHEN $3 = 'Responsable' THEN 'Responsable' ELSE 'Operacion' END
+       FROM sitio s WHERE s.id = $1
+     RETURNING ${CONTACTO_COLS}`,
+    [input.siteId, input.nombre, input.rol, input.telefono, input.email],
+    { name: 'bitacora__insert_contacto' },
+  );
+  const row = r.rows[0];
+  if (!row) throw new Error('No se pudo crear el contacto (¿sitio inexistente?)');
+  return mapContacto(row);
 }
 
 /**
- * Actualiza un contacto por índice. Si tel/email vienen vacíos/undefined
- * (p.ej. el cliente envía la vista enmascarada), se PRESERVA el valor real
- * almacenado — nunca se borra por venir enmascarado.
+ * Actualiza un contacto por id. tel/email null/undefined PRESERVAN el valor
+ * guardado (no se borra por venir enmascarado desde el cliente).
  */
-export async function updateContacto(
-  siteId: string,
-  idx: number,
-  partial: Partial<FichaContacto>,
-): Promise<FichaSitio | null> {
-  const ficha = await getFicha(siteId);
-  const cur = ficha.contactos[idx];
-  if (!cur) return null;
-  ficha.contactos[idx] = {
-    nombre: partial.nombre ?? cur.nombre,
-    rol: partial.rol ?? cur.rol,
-    telefono: partial.telefono ? partial.telefono : cur.telefono,
-    email: partial.email ? partial.email : cur.email,
-  };
-  return patchFicha(siteId, ficha);
+export async function updateContactoSitio(
+  id: number,
+  partial: { nombre?: string; rol?: string; telefono?: string | null; email?: string | null },
+): Promise<FichaContacto | null> {
+  const r = await query<ContactoOperativoRow>(
+    `UPDATE contacto_operativo SET
+       nombre        = COALESCE($2, nombre),
+       cargo         = COALESCE($3, cargo),
+       tipo_contacto = CASE WHEN $3 IS NULL THEN tipo_contacto
+                            WHEN $3 = 'Responsable' THEN 'Responsable' ELSE 'Operacion' END,
+       telefono      = COALESCE($4, telefono),
+       email         = COALESCE($5, email),
+       updated_at    = NOW()
+     WHERE id = $1
+     RETURNING ${CONTACTO_COLS}`,
+    [
+      id,
+      partial.nombre ?? null,
+      partial.rol ?? null,
+      partial.telefono ?? null,
+      partial.email ?? null,
+    ],
+    { name: 'bitacora__update_contacto' },
+  );
+  const row = r.rows[0];
+  return row ? mapContacto(row) : null;
 }
 
-export async function deleteContacto(siteId: string, idx: number): Promise<FichaSitio | null> {
-  const ficha = await getFicha(siteId);
-  if (!ficha.contactos[idx]) return null;
-  ficha.contactos.splice(idx, 1);
-  return patchFicha(siteId, ficha);
+export async function deleteContactoSitio(id: number): Promise<boolean> {
+  const r = await query(`DELETE FROM contacto_operativo WHERE id = $1`, [id], {
+    name: 'bitacora__delete_contacto',
+  });
+  return (r.rowCount ?? 0) > 0;
 }
 
 // ============================================================================

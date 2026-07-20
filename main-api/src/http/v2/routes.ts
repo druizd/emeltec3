@@ -229,16 +229,8 @@ router.get(
 
 router.get('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), getFichaHandler);
 router.patch('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), patchFichaHandler);
-// Revela tel/email de un contacto (datos de terceros) — exige 2FA y audita.
-router.post(
-  '/sites/:siteId/bitacora/contacto/:idx/reveal',
-  protect,
-  requireSiteParamAccess(),
-  require2fa,
-  revealContactoHandler,
-);
-// CRUD de contactos: son PII, exigen 2FA y quedan auditados. El read va
-// siempre enmascarado; estos endpoints mutan sobre el dato real server-side.
+// Contactos = contacto_operativo scopeado al sitio. Son PII: el read va
+// enmascarado y estas rutas exigen 2FA + auditoría. Direccionados por id estable.
 router.post(
   '/sites/:siteId/bitacora/contacto',
   protect,
@@ -246,15 +238,22 @@ router.post(
   require2fa,
   createContactoHandler,
 );
+router.post(
+  '/sites/:siteId/bitacora/contacto/:id/reveal',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  revealContactoHandler,
+);
 router.patch(
-  '/sites/:siteId/bitacora/contacto/:idx',
+  '/sites/:siteId/bitacora/contacto/:id',
   protect,
   requireSiteParamAccess(),
   require2fa,
   patchContactoHandler,
 );
 router.delete(
-  '/sites/:siteId/bitacora/contacto/:idx',
+  '/sites/:siteId/bitacora/contacto/:id',
   protect,
   requireSiteParamAccess(),
   require2fa,

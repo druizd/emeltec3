@@ -92,7 +92,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
             <p class="text-caption italic text-slate-500">Sin contactos registrados.</p>
           } @else {
             <ul class="space-y-2">
-              @for (c of ficha().contactos; track $index) {
+              @for (c of ficha().contactos; track c.id) {
                 <li
                   class="group relative flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2"
                 >
@@ -115,7 +115,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                       >
                     </div>
                     <!-- Datos de contacto: SIEMPRE enmascarados; se revelan con 2FA. -->
-                    @if (revelados()[$index]; as rev) {
+                    @if (revelados()[c.id!]; as rev) {
                       <p class="truncate text-caption-xs text-slate-600">
                         {{ rev.telefono ? '+56 ' + rev.telefono : 'Sin teléfono' }} ·
                         {{ rev.email || 'Sin email' }}
@@ -127,15 +127,15 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                         >
                         <button
                           type="button"
-                          (click)="revelar($index)"
+                          (click)="revelar(c.id!)"
                           [disabled]="revelando() !== null"
                           class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:opacity-50"
                         >
                           <span
                             class="material-symbols-outlined text-[12px]"
-                            [class.animate-spin]="revelando() === $index"
+                            [class.animate-spin]="revelando() === c.id"
                             aria-hidden="true"
-                            >{{ revelando() === $index ? 'progress_activity' : 'lock_open' }}</span
+                            >{{ revelando() === c.id ? 'progress_activity' : 'lock_open' }}</span
                           >
                           Revelar
                         </button>
@@ -150,7 +150,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                     >
                       <button
                         type="button"
-                        (click)="openContactoModal($index)"
+                        (click)="openContactoModal(c)"
                         class="flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-90"
                         [attr.aria-label]="'Editar contacto ' + (c.nombre || '')"
                       >
@@ -158,7 +158,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
                       </button>
                       <button
                         type="button"
-                        (click)="pedirEliminarContacto($index)"
+                        (click)="pedirEliminarContacto(c)"
                         class="flex h-6 w-6 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-rose-50 hover:text-rose-500 active:scale-90"
                         aria-label="Eliminar contacto"
                       >
@@ -299,7 +299,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
             class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
           >
             <h2 id="contacto-modal-title" class="text-h6 font-semibold text-slate-800">
-              {{ contactoEditIdx() !== null ? 'Editar contacto' : 'Nuevo contacto' }}
+              {{ contactoEditId() !== null ? 'Editar contacto' : 'Nuevo contacto' }}
             </h2>
             <button
               type="button"
@@ -313,7 +313,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
 
           <div class="flex-1 space-y-3 overflow-y-auto px-5 py-5">
             @if (
-              contactoEditIdx() === null &&
+              contactoEditId() === null &&
               availableContacts().length + availableUsuariosCliente().length > 0
             ) {
               <div>
@@ -429,7 +429,7 @@ import { BitacoraEquipamientoComponent } from './bitacora-equipamiento';
               class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span class="material-symbols-outlined text-[16px]">check</span>
-              {{ contactoEditIdx() !== null ? 'Guardar' : 'Agregar' }}
+              {{ contactoEditId() !== null ? 'Guardar' : 'Agregar' }}
             </button>
           </div>
         </div>
@@ -606,18 +606,19 @@ export class BitacoraFichaSitioComponent implements OnInit {
   }
 
   /** Pide confirmación antes de eliminar un contacto. */
-  pedirEliminarContacto(idx: number): void {
-    const c = this.ficha().contactos[idx];
+  pedirEliminarContacto(c: FichaContacto): void {
+    if (!c.id) return;
+    const id = c.id;
     this.askConfirm(
       {
         title: 'Eliminar contacto',
-        message: `¿Eliminar el contacto "${c?.nombre || 'sin nombre'}"? Recordá guardar los cambios para confirmarlo.`,
+        message: `¿Eliminar el contacto "${c.nombre || 'sin nombre'}"? Esta acción no se puede deshacer.`,
         confirmText: 'Eliminar',
         tone: 'danger',
         icon: 'delete',
       },
       () => {
-        this.removeContacto(idx);
+        this.removeContacto(id);
       },
     );
   }
@@ -735,9 +736,9 @@ export class BitacoraFichaSitioComponent implements OnInit {
   }
 
   // -------- Contactos (endpoints dedicados con 2FA; el read va enmascarado) --------
-  removeContacto(idx: number): void {
+  removeContacto(id: string): void {
     this.error.set('');
-    this.api.deleteContacto(this.sitioId(), idx).subscribe({
+    this.api.deleteContacto(this.sitioId(), id).subscribe({
       next: (f) => this.applyFicha(f),
       error: (err) =>
         this.error.set(
@@ -785,15 +786,16 @@ export class BitacoraFichaSitioComponent implements OnInit {
 
   // -------- Modal contacto (agregar / editar) --------
   readonly contactoModalOpen = signal(false);
-  readonly contactoEditIdx = signal<number | null>(null);
+  readonly contactoEditId = signal<string | null>(null);
   contactoDraft: FichaContacto = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
 
-  openContactoModal(idx?: number): void {
-    if (idx != null && this.ficha().contactos[idx]) {
-      this.contactoEditIdx.set(idx);
-      this.contactoDraft = { ...this.ficha().contactos[idx] };
+  openContactoModal(c?: FichaContacto): void {
+    if (c?.id) {
+      this.contactoEditId.set(c.id);
+      // tel/email vienen enmascarados; se editan vacíos salvo que se revelen.
+      this.contactoDraft = { ...c, telefono: c.telefono ?? '', email: c.email ?? '' };
     } else {
-      this.contactoEditIdx.set(null);
+      this.contactoEditId.set(null);
       this.contactoDraft = { nombre: '', rol: 'Responsable', telefono: '', email: '' };
     }
     this.contactoModalOpen.set(true);
@@ -827,12 +829,12 @@ export class BitacoraFichaSitioComponent implements OnInit {
       telefono: local ? `+56 ${local}` : '',
       email: (this.contactoDraft.email || '').trim(),
     };
-    const idx = this.contactoEditIdx();
+    const id = this.contactoEditId();
     this.saving.set(true);
     this.error.set('');
     const req$ =
-      idx != null
-        ? this.api.patchContacto(this.sitioId(), idx, payload)
+      id != null
+        ? this.api.patchContacto(this.sitioId(), id, payload)
         : this.api.createContacto(this.sitioId(), payload);
     req$.subscribe({
       next: (f) => {
@@ -985,17 +987,17 @@ export class BitacoraFichaSitioComponent implements OnInit {
   }
 
   // -------- Revelado de datos de contacto (cliente, con 2FA) --------
-  readonly revelados = signal<Record<number, { telefono: string | null; email: string | null }>>(
+  readonly revelados = signal<Record<string, { telefono: string | null; email: string | null }>>(
     {},
   );
-  readonly revelando = signal<number | null>(null);
+  readonly revelando = signal<string | null>(null);
 
-  revelar(idx: number): void {
+  revelar(id: string): void {
     if (this.revelando() !== null) return;
-    this.revelando.set(idx);
-    this.api.revealContacto(this.sitioId(), idx).subscribe({
+    this.revelando.set(id);
+    this.api.revealContacto(this.sitioId(), id).subscribe({
       next: (data) => {
-        this.revelados.update((m) => ({ ...m, [idx]: data }));
+        this.revelados.update((m) => ({ ...m, [id]: data }));
         this.revelando.set(null);
       },
       error: () => this.revelando.set(null),
