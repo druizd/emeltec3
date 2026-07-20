@@ -20,7 +20,7 @@ Chart.register(...registerables);
 /** Máx. de requests de historial en vuelo a la vez (protege el pool de la DB). */
 const OVERVIEW_HISTORY_CONCURRENCY = 4;
 
-type RangeKey = '24h' | '7d' | '30d';
+type RangeKey = '24h' | '7d' | 'custom';
 
 interface SiteSeries {
   id: string;
@@ -54,10 +54,9 @@ const PALETTE = [
   '#e11d48',
 ];
 
-const RANGE_MS: Record<RangeKey, number> = {
+const RANGE_MS: Record<'24h' | '7d', number> = {
   '24h': 24 * 60 * 60 * 1000,
   '7d': 7 * 24 * 60 * 60 * 1000,
-  '30d': 30 * 24 * 60 * 60 * 1000,
 };
 
 /** Rellena el fondo en blanco antes de dibujar → los PNG exportados no salen
@@ -110,6 +109,36 @@ const WHITE_BG: Plugin = {
               </button>
             }
           </div>
+
+          <!-- Inputs de rango de fechas (solo modo "Rango") -->
+          @if (range() === 'custom') {
+            <div class="inline-flex items-center gap-1.5">
+              <input
+                type="date"
+                [value]="customFrom()"
+                [max]="customTo()"
+                (change)="onCustomFrom($any($event.target).value)"
+                aria-label="Fecha desde"
+                class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-caption-xs text-slate-600 outline-none focus:border-primary-tint-35"
+              />
+              <span class="text-caption-xs text-slate-400">a</span>
+              <input
+                type="date"
+                [value]="customTo()"
+                [min]="customFrom()"
+                (change)="onCustomTo($any($event.target).value)"
+                aria-label="Fecha hasta"
+                class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-caption-xs text-slate-600 outline-none focus:border-primary-tint-35"
+              />
+              <button
+                type="button"
+                (click)="applyCustomRange()"
+                class="rounded-lg bg-primary px-2.5 py-1 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container active:scale-95"
+              >
+                Aplicar
+              </button>
+            </div>
+          }
 
           <!-- Exportar -->
           <button
@@ -221,10 +250,13 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
   readonly ranges: { key: RangeKey; label: string }[] = [
     { key: '24h', label: '24h' },
     { key: '7d', label: '7d' },
-    { key: '30d', label: '30d' },
+    { key: 'custom', label: 'Rango' },
   ];
 
   readonly range = signal<RangeKey>('7d');
+  // Fechas del modo "Rango" (YYYY-MM-DD). Default: últimos 7 días.
+  readonly customFrom = signal<string>(this.isoDaysAgo(7));
+  readonly customTo = signal<string>(this.isoDaysAgo(0));
   readonly hidden = signal<Set<string>>(new Set());
   readonly series = signal<SiteSeries[]>([]);
   readonly loading = signal(false);
@@ -246,6 +278,27 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     this.loadSeries();
   }
 
+  /** Aplica el rango de fechas custom (from ≤ to). Lo dispara el botón/inputs. */
+  applyCustomRange(): void {
+    if (this.customFrom() && this.customTo() && this.customFrom() > this.customTo()) return;
+    this.loadSeries();
+  }
+
+  onCustomFrom(v: string): void {
+    this.customFrom.set(v);
+  }
+
+  onCustomTo(v: string): void {
+    this.customTo.set(v);
+  }
+
+  /** Fecha (hoy - n días) como YYYY-MM-DD. */
+  private isoDaysAgo(n: number): string {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return d.toISOString().slice(0, 10);
+  }
+
   reintentar(): void {
     this.loadSeries();
   }
@@ -260,18 +313,18 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     this.renderChart();
   }
 
-  private rangeConfig(range: RangeKey): RangeConfig {
-    switch (range) {
-      case '24h':
-        // 1 min (equipo_1min); 1500 cubre 24h a 1 punto/min.
-        return { limit: 1500, granularity: '1m' };
-      case '7d':
-        // 1 hora (equipo_hourly): 168 buckets.
-        return { limit: 2000, granularity: '1h' };
-      case '30d':
-        // 1 día (equipo_daily): 30 buckets.
-        return { limit: 2000, granularity: '1d' };
-    }
+  /**
+   * limit + granularidad (cagg) según el rango. Para 'custom' se elige por el
+   * span en días: corto → 1m, medio → 1h, largo → 1d. Cada uno mapea a su cagg
+   * en el backend (equipo_1min / equipo_hourly / equipo_daily).
+   */
+  private rangeConfig(range: RangeKey, spanDays: number): RangeConfig {
+    if (range === '24h') return { limit: 1500, granularity: '1m' };
+    if (range === '7d') return { limit: 2000, granularity: '1h' };
+    // custom: por span
+    if (spanDays <= 2) return { limit: 3000, granularity: '1m' };
+    if (spanDays <= 31) return { limit: 2000, granularity: '1h' };
+    return { limit: 2000, granularity: '1d' };
   }
 
   private loadSeries(): void {
@@ -282,9 +335,27 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
       return;
     }
 
-    const to = new Date();
-    const from = new Date(to.getTime() - RANGE_MS[this.range()]);
-    const cfg = this.rangeConfig(this.range());
+    let from: Date;
+    let to: Date;
+    if (this.range() === 'custom') {
+      const f = this.customFrom();
+      const t = this.customTo();
+      if (!f || !t || f > t) {
+        this.series.set([]);
+        this.errorMsg.set('Rango de fechas inválido: "desde" no puede ser mayor que "hasta".');
+        this.loading.set(false);
+        this.renderChart();
+        return;
+      }
+      from = new Date(`${f}T00:00:00`);
+      to = new Date(`${t}T23:59:59`);
+    } else {
+      to = new Date();
+      from = new Date(to.getTime() - RANGE_MS[this.range() as '24h' | '7d']);
+    }
+
+    const spanDays = Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 86400000));
+    const cfg = this.rangeConfig(this.range(), spanDays);
     // El backend valida from/to con formato SOLO-fecha (YYYY-MM-DD). Con ISO los
     // descartaba y caía al path sin-rango (escaneo crudo de 48h, lento). En
     // fecha activa el path con rango, servido por el cagg de la granularidad.
