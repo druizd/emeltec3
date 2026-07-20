@@ -13,6 +13,7 @@ import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../../../components/ui/skeleton';
 import { AuthService } from '../../../services/auth.service';
 import { CompanyService } from '../../../services/company.service';
+import { ToastService } from '../../../services/toast.service';
 import { UserService } from '../../../services/user.service';
 import type {
   ApiResponse,
@@ -528,6 +529,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
   private readonly userService = inject(UserService);
   private readonly companyService = inject(CompanyService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   @Input() empresaId = '';
   @Input() subEmpresaId = '';
@@ -710,7 +712,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
         if (res.ok) {
           this.form = this.emptyForm();
           this.showAddModal.set(false);
-          this.setStatus('Contacto correctamente agregado', 'success');
+          this.toast.success('Contacto agregado satisfactoriamente.');
           this.loadContacts();
         } else {
           this.setStatus(res.error || 'No se pudo guardar', 'error');
@@ -742,7 +744,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     this.companyService.deleteOperationalContact(contact.id).subscribe({
       next: () => {
         this.pendingDeleteContact.set(null);
-        this.setStatus('Contacto eliminado correctamente', 'success');
+        this.toast.success('Contacto eliminado satisfactoriamente.');
         this.loadContacts();
         this.deleting.set(false);
       },

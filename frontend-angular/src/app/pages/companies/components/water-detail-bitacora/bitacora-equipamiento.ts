@@ -12,6 +12,7 @@ import {
   type SitioEquipo,
 } from '../../../../services/bitacora-sitio.service';
 import { DocumentoService, type DocumentoRow } from '../../../../services/documento.service';
+import { ToastService } from '../../../../services/toast.service';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 import {
   ConfirmDialogComponent,
@@ -398,6 +399,7 @@ import {
 export class BitacoraEquipamientoComponent implements OnInit {
   private readonly api = inject(BitacoraSitioService);
   private readonly documentoService = inject(DocumentoService);
+  private readonly toast = inject(ToastService);
 
   readonly sitioId = input<string>('');
 
@@ -594,6 +596,9 @@ export class BitacoraEquipamientoComponent implements OnInit {
           this.equipos.update((list) => [row, ...list]);
         }
         this.formOpen.set(false);
+        this.toast.success(
+          id ? 'Equipo actualizado satisfactoriamente.' : 'Equipo agregado satisfactoriamente.',
+        );
       },
       error: (err) => {
         this.saving.set(false);
@@ -613,7 +618,10 @@ export class BitacoraEquipamientoComponent implements OnInit {
       },
       () => {
         this.api.deleteEquipo(eq.id).subscribe({
-          next: () => this.equipos.update((list) => list.filter((e) => e.id !== eq.id)),
+          next: () => {
+            this.equipos.update((list) => list.filter((e) => e.id !== eq.id));
+            this.toast.success('Equipo eliminado satisfactoriamente.');
+          },
           error: (err) =>
             this.error.set(
               'No se pudo eliminar: ' + (err?.error?.error?.message ?? err?.message ?? ''),

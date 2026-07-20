@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { UserService } from '../../../services/user.service';
 import { AuthService } from '../../../services/auth.service';
+import { ToastService } from '../../../services/toast.service';
 import {
   ConfirmDialogComponent,
   type ConfirmDialogData,
@@ -418,6 +419,7 @@ function emptyDraft(): DraftMiembro {
 export class EquipoEmeltecSectionComponent {
   private readonly userService = inject(UserService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -481,7 +483,7 @@ export class EquipoEmeltecSectionComponent {
         next: () => {
           this.saving.set(false);
           this.editandoId.set(null);
-          this.aviso.set(`Cambios guardados para ${this.editDraft.nombre}.`);
+          this.toast.success('Miembro actualizado satisfactoriamente.');
           this.recargar();
         },
         error: (err) => {
@@ -525,7 +527,7 @@ export class EquipoEmeltecSectionComponent {
     this.userService.resetUserPassword(m.id).subscribe({
       next: () => {
         this.saving.set(false);
-        this.aviso.set(`Código de acceso reenviado a ${m.email}.`);
+        this.toast.success('Código de acceso reenviado satisfactoriamente.');
       },
       error: (err) => {
         this.saving.set(false);
@@ -552,7 +554,7 @@ export class EquipoEmeltecSectionComponent {
     this.userService.deleteUser(m.id).subscribe({
       next: () => {
         this.saving.set(false);
-        this.aviso.set(`${m.nombre} ${m.apellido} desactivado.`);
+        this.toast.success('Miembro desactivado satisfactoriamente.');
         this.recargar();
       },
       error: (err) => {
@@ -568,7 +570,7 @@ export class EquipoEmeltecSectionComponent {
     this.userService.reactivateUser(m.id).subscribe({
       next: () => {
         this.saving.set(false);
-        this.aviso.set(`${m.nombre} ${m.apellido} reactivado.`);
+        this.toast.success('Miembro reactivado satisfactoriamente.');
         this.recargar();
       },
       error: (err) => {
@@ -643,9 +645,7 @@ export class EquipoEmeltecSectionComponent {
         next: (res: { ok: boolean; data?: User }) => {
           this.saving.set(false);
           if (res.ok) {
-            this.aviso.set(
-              `${this.draft.nombre} ${this.draft.apellido} creado. Se envió el código de activación a ${this.draft.email}.`,
-            );
+            this.toast.success('Miembro agregado satisfactoriamente.');
             this.mostrandoForm.set(false);
             this.draft = emptyDraft();
             this.recargar();

@@ -7,6 +7,7 @@ import { LayoutUiService } from './layout-ui.service';
 import { ViewAsBannerComponent } from './view-as-banner/view-as-banner';
 import { ShortcutPaletteComponent } from '../ui/shortcut-palette';
 import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
+import { ToastContainerComponent } from '../ui/toast-container';
 
 @Component({
   selector: 'app-layout',
@@ -19,6 +20,7 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
     ViewAsBannerComponent,
     ShortcutPaletteComponent,
     SessionExpiryWarningComponent,
+    ToastContainerComponent,
   ],
   template: `
     <a
@@ -57,6 +59,9 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
         </main>
       </div>
     </div>
+
+    <!-- Toasts globales (feedback de acciones) -->
+    <app-toast-container />
 
     <!-- ── Chatbot flotante ── -->
     @if (chatOpen()) {
