@@ -3,7 +3,7 @@
  * Conectado a /api/v2/sites/:siteId/bitacora/equipos via BitacoraSitioService.
  */
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   BitacoraSitioService,
@@ -11,6 +11,10 @@ import {
   type EquipoEstado,
   type SitioEquipo,
 } from '../../../../services/bitacora-sitio.service';
+import {
+  DocumentoService,
+  type DocumentoRow,
+} from '../../../../services/documento.service';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 import {
   ConfirmDialogComponent,
@@ -90,7 +94,20 @@ import {
               <tbody class="divide-y divide-slate-100">
                 @for (eq of equipos(); track eq.id) {
                   <tr class="group hover:bg-slate-50/60">
-                    <td class="px-3 py-2 font-semibold text-slate-800">{{ eq.nombre }}</td>
+                    <td class="px-3 py-2 font-semibold text-slate-800">
+                      {{ eq.nombre }}
+                      @if (eq.documento_ids?.length) {
+                        <span
+                          class="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-slate-100 px-1.5 py-0.5 align-middle text-caption-xs font-semibold text-slate-500"
+                          [title]="eq.documento_ids.length + ' documento(s) vinculado(s)'"
+                        >
+                          <span class="material-symbols-outlined text-[12px]" aria-hidden="true"
+                            >description</span
+                          >
+                          {{ eq.documento_ids.length }}
+                        </span>
+                      }
+                    </td>
                     <td class="px-3 py-2 text-slate-600">
                       <span class="font-semibold">{{ eq.fabricante || '—' }}</span>
                       <span class="block text-caption-xs text-slate-500">{{
@@ -281,6 +298,69 @@ import {
                 class="rounded border border-slate-200 px-2 py-1.5 text-body-sm outline-none focus:border-primary-tint-35"
               ></textarea>
             </label>
+            <div
+              class="col-span-2 grid gap-1 text-caption-xs uppercase tracking-wider font-semibold text-slate-500"
+            >
+              Documentos vinculados
+              @if (linkedDocs().length) {
+                <div class="flex flex-wrap gap-1.5">
+                  @for (doc of linkedDocs(); track doc.id) {
+                    <span
+                      class="inline-flex items-center gap-1 rounded-full border border-primary-tint-35 bg-primary-tint-10 px-2 py-0.5 text-caption-xs font-semibold normal-case text-primary"
+                    >
+                      <span class="material-symbols-outlined text-[13px]" aria-hidden="true"
+                        >description</span
+                      >
+                      {{ doc.titulo }}
+                      <button
+                        type="button"
+                        (click)="removeDoc(doc.id + '')"
+                        class="rounded-full p-0.5 transition-colors hover:bg-primary/10 active:scale-95"
+                        [attr.aria-label]="'Quitar ' + doc.titulo"
+                      >
+                        <span class="material-symbols-outlined text-[13px]" aria-hidden="true"
+                          >close</span
+                        >
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+              <div class="relative">
+                <input
+                  type="text"
+                  [ngModel]="docSearch()"
+                  (ngModelChange)="docSearch.set($event)"
+                  placeholder="Buscar documento del sitio…"
+                  class="h-9 w-full rounded border border-slate-200 px-2 text-body-sm font-normal normal-case tracking-normal outline-none focus:border-primary-tint-35"
+                />
+                @if (docSearch() && docSuggestions().length) {
+                  <ul
+                    class="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-slate-200 bg-white shadow-lg"
+                  >
+                    @for (doc of docSuggestions(); track doc.id) {
+                      <li>
+                        <button
+                          type="button"
+                          (click)="addDoc(doc)"
+                          class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-body-sm font-normal normal-case tracking-normal text-slate-700 transition-colors hover:bg-slate-50"
+                        >
+                          <span class="material-symbols-outlined text-[15px] text-slate-400" aria-hidden="true"
+                            >description</span
+                          >
+                          {{ doc.titulo }}
+                        </button>
+                      </li>
+                    }
+                  </ul>
+                }
+                @if (docSearch() && !docSuggestions().length) {
+                  <p class="mt-1 text-caption-xs font-normal normal-case tracking-normal text-slate-400">
+                    Sin documentos que coincidan.
+                  </p>
+                }
+              </div>
+            </div>
           </div>
           <div class="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3">
             <button
@@ -312,6 +392,7 @@ import {
 })
 export class BitacoraEquipamientoComponent implements OnInit {
   private readonly api = inject(BitacoraSitioService);
+  private readonly documentoService = inject(DocumentoService);
 
   readonly sitioId = input<string>('');
 
@@ -322,6 +403,40 @@ export class BitacoraEquipamientoComponent implements OnInit {
   readonly formOpen = signal<boolean>(false);
   readonly editingId = signal<string>('');
   readonly form = signal<CreateEquipoPayload>(this.emptyForm());
+
+  // ---- Documentos vinculables ----
+  // Todos los documentos del sitio (para resolver título y ofrecer en el buscador).
+  readonly docs = signal<DocumentoRow[]>([]);
+  // Ids (string) de docs ligados al equipo en edición.
+  readonly linkedDocIds = signal<string[]>([]);
+  // Texto del buscador de documentos.
+  readonly docSearch = signal<string>('');
+
+  /** Docs ya ligados, resueltos a fila (para pintar los chips). */
+  readonly linkedDocs = computed<DocumentoRow[]>(() => {
+    const linked = new Set(this.linkedDocIds());
+    return this.docs().filter((d) => linked.has(String(d.id)));
+  });
+
+  /** Sugerencias del buscador: docs no ligados que matchean el texto. Máx 8. */
+  readonly docSuggestions = computed<DocumentoRow[]>(() => {
+    const linked = new Set(this.linkedDocIds());
+    const q = this.docSearch().trim().toLowerCase();
+    return this.docs()
+      .filter((d) => !linked.has(String(d.id)))
+      .filter((d) => (q ? d.titulo.toLowerCase().includes(q) : true))
+      .slice(0, 8);
+  });
+
+  addDoc(doc: DocumentoRow): void {
+    const id = String(doc.id);
+    this.linkedDocIds.update((ids) => (ids.includes(id) ? ids : [...ids, id]));
+    this.docSearch.set('');
+  }
+
+  removeDoc(id: string): void {
+    this.linkedDocIds.update((ids) => ids.filter((x) => x !== id));
+  }
 
   // Confirmación con modal del proyecto (reemplaza confirm() nativo).
   readonly confirmData = signal<ConfirmDialogData | null>(null);
@@ -358,6 +473,7 @@ export class BitacoraEquipamientoComponent implements OnInit {
       garantia_hasta: '',
       estado: 'operativo',
       notas: '',
+      documento_ids: [],
     };
   }
 
@@ -365,6 +481,11 @@ export class BitacoraEquipamientoComponent implements OnInit {
     if (!this.sitioId()) return;
     this.loading.set(true);
     this.error.set('');
+    // Docs del sitio para resolver títulos y alimentar el buscador.
+    this.documentoService.listar({ sitio_id: this.sitioId(), limit: 200 }).subscribe({
+      next: (rows) => this.docs.set(rows),
+      error: () => this.docs.set([]),
+    });
     this.api.listEquipos(this.sitioId()).subscribe({
       next: (rows) => {
         this.equipos.set(rows);
@@ -380,8 +501,10 @@ export class BitacoraEquipamientoComponent implements OnInit {
   }
 
   openForm(eq?: SitioEquipo): void {
+    this.docSearch.set('');
     if (eq) {
       this.editingId.set(eq.id);
+      this.linkedDocIds.set([...(eq.documento_ids ?? [])]);
       this.form.set({
         nombre: eq.nombre,
         modelo: eq.modelo ?? '',
@@ -394,6 +517,7 @@ export class BitacoraEquipamientoComponent implements OnInit {
       });
     } else {
       this.editingId.set('');
+      this.linkedDocIds.set([]);
       this.form.set(this.emptyForm());
     }
     this.formOpen.set(true);
@@ -446,6 +570,7 @@ export class BitacoraEquipamientoComponent implements OnInit {
       garantia_hasta: clean(f.garantia_hasta),
       estado: f.estado ?? 'operativo',
       notas: clean(f.notas),
+      documento_ids: this.linkedDocIds(),
     };
     this.saving.set(true);
     this.error.set('');

@@ -102,6 +102,8 @@ export interface SitioEquipoRow {
   garantia_hasta: string | null;
   estado: EquipoEstado;
   notas: string | null;
+  /** Ids de documentos vinculados. bigint[] → pg lo devuelve como string[]. */
+  documento_ids: string[];
   created_at: string;
   updated_at: string;
 }
@@ -110,7 +112,7 @@ const EQUIPO_COLS =
   'id, sitio_id, nombre, modelo, fabricante, serie, ' +
   "to_char(fecha_compra, 'YYYY-MM-DD') AS fecha_compra, " +
   "to_char(garantia_hasta, 'YYYY-MM-DD') AS garantia_hasta, " +
-  'estado, notas, created_at, updated_at';
+  'estado, notas, documento_ids, created_at, updated_at';
 
 export async function listEquipos(siteId: string): Promise<SitioEquipoRow[]> {
   const r = await query<SitioEquipoRow>(
@@ -132,11 +134,12 @@ export async function insertEquipo(input: {
   garantia_hasta?: string | null | undefined;
   estado?: EquipoEstado | undefined;
   notas?: string | null | undefined;
+  documento_ids?: string[] | undefined;
 }): Promise<SitioEquipoRow> {
   const r = await query<SitioEquipoRow>(
     `INSERT INTO sitio_equipo
-       (sitio_id, nombre, modelo, fabricante, serie, fecha_compra, garantia_hasta, estado, notas)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       (sitio_id, nombre, modelo, fabricante, serie, fecha_compra, garantia_hasta, estado, notas, documento_ids)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
      RETURNING ${EQUIPO_COLS}`,
     [
       input.sitio_id,
@@ -148,6 +151,7 @@ export async function insertEquipo(input: {
       input.garantia_hasta ?? null,
       input.estado ?? 'operativo',
       input.notas ?? null,
+      input.documento_ids ?? [],
     ],
     { name: 'bitacora__insert_equipo' },
   );
@@ -167,6 +171,7 @@ export async function patchEquipo(
     garantia_hasta?: string | null | undefined;
     estado?: EquipoEstado | undefined;
     notas?: string | null | undefined;
+    documento_ids?: string[] | undefined;
   },
 ): Promise<SitioEquipoRow | null> {
   const sets: string[] = [];

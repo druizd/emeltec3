@@ -67,6 +67,8 @@ export interface SitioEquipo {
   garantia_hasta: string | null;
   estado: EquipoEstado;
   notas: string | null;
+  /** Ids de documentos vinculados (bigint como string). */
+  documento_ids: string[];
   created_at: string;
   updated_at: string;
 }
@@ -80,6 +82,7 @@ export interface CreateEquipoPayload {
   garantia_hasta?: string | null;
   estado?: EquipoEstado;
   notas?: string | null;
+  documento_ids?: string[];
 }
 
 export type PatchEquipoPayload = Partial<CreateEquipoPayload>;

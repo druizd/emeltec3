@@ -55,6 +55,11 @@ export const CreateEquipoPayload = z.object({
     .optional(),
   estado: EquipoEstado.default('operativo'),
   notas: z.string().trim().max(2000).nullable().optional(),
+  // Ids de documentos vinculados (bigint como string). Máx 50 por equipo.
+  documento_ids: z
+    .array(z.string().regex(/^\d+$/, 'id de documento inválido'))
+    .max(50)
+    .default([]),
 });
 export type CreateEquipoPayload = z.infer<typeof CreateEquipoPayload>;
 
