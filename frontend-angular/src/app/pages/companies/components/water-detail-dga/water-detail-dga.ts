@@ -1355,6 +1355,124 @@ interface SiteDashboardData {
           </section>
         </div>
       }
+
+      <!-- Modal detalle de un envío DGA -->
+      @if (selectedDgaReport(); as rep) {
+        <div
+          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-[2px]"
+          (click)="closeDgaReportDetail()"
+        >
+          <section
+            class="w-full max-w-[520px] overflow-hidden rounded-2xl bg-white shadow-2xl"
+            (click)="$event.stopPropagation()"
+            role="dialog"
+            cdkTrapFocus
+            cdkTrapFocusAutoCapture
+            aria-modal="true"
+            aria-labelledby="dga-report-detail-title"
+          >
+            <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
+                >
+                  <span class="material-symbols-outlined text-[20px]">receipt_long</span>
+                </span>
+                <div>
+                  <h2 id="dga-report-detail-title" class="text-h6 font-semibold text-slate-800">
+                    Detalle del envío
+                  </h2>
+                  <p class="text-caption font-semibold text-slate-500">{{ rep.fecha }}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                (click)="closeDgaReportDetail()"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
+                aria-label="Cerrar"
+              >
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div class="space-y-4 px-6 py-5">
+              <div class="flex items-center justify-between">
+                <span class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >Estado</span
+                >
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-caption-xs font-bold"
+                  [style.background]="getDgaStatusBg(rep.estado)"
+                  [style.border]="'1px solid ' + getDgaStatusBorder(rep.estado)"
+                  [style.color]="getDgaStatusColor(rep.estado)"
+                >
+                  <span
+                    class="h-1.5 w-1.5 rounded-full"
+                    [style.background]="getDgaStatusColor(rep.estado)"
+                  ></span>
+                  {{ rep.estado }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-3">
+                <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                  <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                    Nv. freático
+                  </p>
+                  <p class="font-mono text-body-sm font-semibold text-slate-700">
+                    {{ rep.nivelFreatico ?? '—' }}
+                  </p>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                  <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                    Caudal
+                  </p>
+                  <p class="font-mono text-body-sm font-semibold text-slate-700">
+                    {{ rep.caudal ?? '—' }}
+                  </p>
+                </div>
+                <div class="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                  <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+                    Totalizador
+                  </p>
+                  <p class="font-mono text-body-sm font-semibold text-slate-700">
+                    {{ rep.totalizador ?? '—' }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="grid gap-2 text-body-sm">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="shrink-0 font-semibold text-slate-500">Enviado a DGA</span>
+                  <span class="text-right font-mono text-slate-700">{{
+                    rep.enviadoDga || '—'
+                  }}</span>
+                </div>
+                <div class="flex items-start justify-between gap-3">
+                  <span class="shrink-0 font-semibold text-slate-500">Respuesta SNIA</span>
+                  <span class="break-words text-right text-slate-700">{{
+                    rep.respuesta || '—'
+                  }}</span>
+                </div>
+              </div>
+
+              @if (comprobanteUrl(rep.comprobante); as url) {
+                <a
+                  [href]="url"
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
+                >
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >download</span
+                  >
+                  Ver comprobante
+                </a>
+              }
+            </div>
+          </section>
+        </div>
+      }
     </ng-container>
   `,
   styles: [
