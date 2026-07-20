@@ -46,7 +46,7 @@ import { SkeletonComponent } from '../../components/ui/skeleton';
               <button
                 type="button"
                 (click)="settingsOpen.update((value) => !value)"
-                class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50"
+                class="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95"
                 aria-label="Configurar variables"
               >
                 <span class="material-symbols-outlined text-[20px]">settings</span>

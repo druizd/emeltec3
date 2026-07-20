@@ -105,7 +105,7 @@ interface ConfigDraft {
             <button
               type="button"
               (click)="cerrar()"
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
               aria-label="Cerrar"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
@@ -285,7 +285,7 @@ interface ConfigDraft {
                   type="button"
                   (click)="reloadInformantes()"
                   [disabled]="informantesLoading()"
-                  class="text-[10px] font-bold text-accent-container hover:underline disabled:opacity-50"
+                  class="text-[10px] font-bold text-accent-container hover:underline disabled:opacity-50 active:scale-95"
                 >
                   Recargar
                 </button>
@@ -323,6 +323,7 @@ interface ConfigDraft {
                   inputmode="text"
                   maxlength="12"
                   placeholder="RUT nuevo o existente"
+                  aria-label="RUT del informante nuevo o existente"
                   class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-accent/30"
                 />
                 <input
@@ -330,6 +331,7 @@ interface ConfigDraft {
                   [ngModel]="newInfClave()"
                   (ngModelChange)="newInfClave.set($event)"
                   placeholder="clave SNIA (rotar)"
+                  aria-label="Clave SNIA del informante"
                   autocomplete="new-password"
                   class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] font-mono outline-none focus:border-accent/30"
                 />
@@ -338,6 +340,7 @@ interface ConfigDraft {
                   [ngModel]="newInfReferencia()"
                   (ngModelChange)="newInfReferencia.set($event)"
                   placeholder="referencia interna (opcional)"
+                  aria-label="Referencia interna del informante (opcional)"
                   class="rounded border border-slate-200 bg-white px-2 py-1.5 text-[12px] outline-none focus:border-accent/30"
                 />
               </div>
@@ -345,7 +348,7 @@ interface ConfigDraft {
                 type="button"
                 (click)="guardarInformante()"
                 [disabled]="!newInfRut().trim() || informanteSaving()"
-                class="rounded bg-accent-container px-3 py-1.5 text-[12px] font-bold text-white hover:bg-accent-deep disabled:opacity-40"
+                class="rounded bg-accent-container px-3 py-1.5 text-[12px] font-bold text-white transition-colors hover:bg-accent-deep disabled:opacity-40 active:scale-95"
               >
                 @if (informanteSaving()) {
                   Guardando…
@@ -442,7 +445,7 @@ interface ConfigDraft {
               <button
                 type="button"
                 (click)="cerrar()"
-                class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 hover:bg-slate-100"
+                class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-medium text-slate-700 transition-colors hover:bg-slate-100 active:scale-95"
               >
                 Cerrar
               </button>
@@ -450,7 +453,7 @@ interface ConfigDraft {
                 type="button"
                 (click)="guardarConfig()"
                 [disabled]="!isDirty() || saving()"
-                class="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white hover:bg-primary-container disabled:opacity-40"
+                class="rounded-lg bg-primary px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-primary-container disabled:opacity-40 active:scale-95"
               >
                 {{ saving() ? 'Guardando…' : 'Guardar cambios' }}
               </button>

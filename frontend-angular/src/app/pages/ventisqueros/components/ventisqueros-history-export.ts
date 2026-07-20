@@ -30,8 +30,13 @@ import type { SiteRecord } from '@emeltec/shared';
       <aside class="vs-hx-modal" role="dialog" aria-modal="true" aria-label="Descargar historial">
         <header class="vs-hx-head">
           <div class="vs-hx-title">Descargar historial</div>
-          <button type="button" class="vs-hx-close" (click)="open.set(false)" aria-label="Cerrar">
-            <span class="material-symbols-outlined text-[18px]">close</span>
+          <button
+            type="button"
+            class="vs-hx-close active:scale-95"
+            (click)="open.set(false)"
+            aria-label="Cerrar"
+          >
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
           </button>
         </header>
 
@@ -70,8 +75,9 @@ import type { SiteRecord } from '@emeltec/shared';
               @for (opt of historyExportIntervalOptions; track opt.value) {
                 <button
                   type="button"
-                  class="vs-hx-btn"
+                  class="vs-hx-btn active:scale-95"
                   [class.vs-hx-btn--primary]="historyExportInterval() === opt.value"
+                  [attr.aria-pressed]="historyExportInterval() === opt.value"
                   (click)="historyExportInterval.set(opt.value)"
                 >
                   {{ opt.label }}
@@ -91,8 +97,9 @@ import type { SiteRecord } from '@emeltec/shared';
               @for (opt of historyExportVarsOptions; track opt.value) {
                 <button
                   type="button"
-                  class="vs-hx-btn"
+                  class="vs-hx-btn active:scale-95"
                   [class.vs-hx-btn--primary]="historyExportVars() === opt.value"
+                  [attr.aria-pressed]="historyExportVars() === opt.value"
                   (click)="historyExportVars.set(opt.value)"
                 >
                   {{ opt.label }}
@@ -110,7 +117,11 @@ import type { SiteRecord } from '@emeltec/shared';
                   {{ historyExportSelectedSalas().size }} / {{ salaAggregates().length }}
                 </span>
               </div>
-              <button type="button" class="vs-hx-toggle-all" (click)="toggleExportSelectAllSalas()">
+              <button
+                type="button"
+                class="vs-hx-toggle-all active:scale-95"
+                (click)="toggleExportSelectAllSalas()"
+              >
                 {{
                   historyExportSelectedSalas().size === salaAggregates().length
                     ? 'Quitar todas'
@@ -148,7 +159,7 @@ import type { SiteRecord } from '@emeltec/shared';
               @if (exportAvailableSensors().length > 0) {
                 <button
                   type="button"
-                  class="vs-hx-toggle-all"
+                  class="vs-hx-toggle-all active:scale-95"
                   (click)="toggleExportSelectAllSensors()"
                 >
                   {{
@@ -182,27 +193,29 @@ import type { SiteRecord } from '@emeltec/shared';
 
           @if (historyExportError(); as err) {
             <div class="vs-hx-error">
-              <span class="material-symbols-outlined text-[14px]">error</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">error</span>
               {{ err }}
             </div>
           }
         </div>
 
         <footer class="vs-hx-foot">
-          <button type="button" class="vs-hx-btn" (click)="open.set(false)">Cancelar</button>
+          <button type="button" class="vs-hx-btn active:scale-95" (click)="open.set(false)">
+            Cancelar
+          </button>
           <button
             type="button"
-            class="vs-hx-btn vs-hx-btn--primary"
+            class="vs-hx-btn vs-hx-btn--primary active:scale-95"
             [disabled]="historyExportLoading() || historyExportSelectedSensors().size === 0"
             (click)="confirmHistoryExport()"
           >
             @if (historyExportLoading()) {
-              <span class="material-symbols-outlined text-[14px] animate-spin"
+              <span class="material-symbols-outlined text-[14px] animate-spin" aria-hidden="true"
                 >progress_activity</span
               >
               Generando…
             } @else {
-              <span class="material-symbols-outlined text-[14px]">download</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>
               Descargar Excel
             }
           </button>

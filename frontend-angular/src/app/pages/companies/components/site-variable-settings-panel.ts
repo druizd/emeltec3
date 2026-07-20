@@ -160,7 +160,7 @@ function emptyVariables(): SiteVariablesPayload {
               [style.background]="accentSoft"
               [style.color]="accentColor"
             >
-              <span class="material-symbols-outlined text-[22px]">settings</span>
+              <span class="material-symbols-outlined text-[22px]" aria-hidden="true">settings</span>
             </span>
             <div class="min-w-0">
               <p
@@ -178,17 +178,19 @@ function emptyVariables(): SiteVariablesPayload {
             <span
               class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3"
             >
-              <span class="material-symbols-outlined text-[16px]">memory</span>
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">memory</span>
               {{ displaySite().id_serial || 'Sin serial' }}
             </span>
             @if (showDgaReporteButton) {
               <button
                 type="button"
                 (click)="openDgaReporte.emit()"
-                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 text-caption font-semibold text-primary-container transition-colors hover:bg-primary-tint-14"
+                class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 text-caption font-semibold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
                 aria-label="Configurar reporte DGA"
               >
-                <span class="material-symbols-outlined text-[16px]">description</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  >description</span
+                >
                 Configurar reporte DGA
               </button>
             }
@@ -196,10 +198,13 @@ function emptyVariables(): SiteVariablesPayload {
               type="button"
               (click)="load()"
               [disabled]="loading()"
-              class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
               aria-label="Recargar configuración"
             >
-              <span class="material-symbols-outlined text-[18px]" [class.animate-spin]="loading()"
+              <span
+                class="material-symbols-outlined text-[18px]"
+                [class.animate-spin]="loading()"
+                aria-hidden="true"
                 >refresh</span
               >
             </button>
@@ -208,7 +213,7 @@ function emptyVariables(): SiteVariablesPayload {
 
         @if (status().message) {
           <div [class]="statusClass()">
-            <span class="material-symbols-outlined text-[18px]">{{
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
               status().type === 'success' ? 'check_circle' : 'error'
             }}</span>
             {{ status().message }}
@@ -241,7 +246,9 @@ function emptyVariables(): SiteVariablesPayload {
             @if (showPozoConfig && isPozoSite()) {
               <section class="rounded-xl border border-primary-tint-15 bg-primary-tint-08 p-4">
                 <div class="mb-4 flex items-start gap-3">
-                  <span class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
+                  <span
+                    class="material-symbols-outlined mt-0.5 text-[22px] text-primary-container"
+                    aria-hidden="true"
                     >water_drop</span
                   >
                   <div>
@@ -293,7 +300,7 @@ function emptyVariables(): SiteVariablesPayload {
                   [disabled]="busy() === 'pozo'"
                   class="primary-button mt-4"
                 >
-                  <span class="material-symbols-outlined text-[18px]">save</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">save</span>
                   {{ busy() === 'pozo' ? 'Guardando' : 'Guardar configuración' }}
                 </button>
               </section>
@@ -592,7 +599,9 @@ function emptyVariables(): SiteVariablesPayload {
 
               <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
                 <div class="mb-3 flex items-center gap-2">
-                  <span class="material-symbols-outlined text-[18px] text-primary-container"
+                  <span
+                    class="material-symbols-outlined text-[18px] text-primary-container"
+                    aria-hidden="true"
                     >calculate</span
                   >
                   <h3
@@ -635,7 +644,9 @@ function emptyVariables(): SiteVariablesPayload {
                       (click)="updateVariableTransform(transform.id)"
                       [class]="calculatorButtonClass(transform.id)"
                     >
-                      <span class="material-symbols-outlined text-[16px]">functions</span>
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                        >functions</span
+                      >
                       <span>{{ transform.label }}</span>
                     </button>
                   }
@@ -647,7 +658,9 @@ function emptyVariables(): SiteVariablesPayload {
                   Limpiar
                 </button>
                 <button type="submit" [disabled]="busy() === 'variable'" class="primary-button">
-                  <span class="material-symbols-outlined text-[18px]">label</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >label</span
+                  >
                   {{
                     busy() === 'variable'
                       ? 'Guardando'
@@ -717,10 +730,12 @@ function emptyVariables(): SiteVariablesPayload {
                               (click)="
                                 $event.stopPropagation(); deleteVariableMap(variable.mapping)
                               "
-                              class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+                              class="icon-button shrink-0 text-red-500 opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100 active:scale-95"
                               aria-label="Eliminar alias"
                             >
-                              <span class="material-symbols-outlined text-[18px]">delete</span>
+                              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                                >delete</span
+                              >
                             </button>
                           } @else {
                             <span
@@ -1155,7 +1170,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
   calculatorButtonClass(transformId: string): string {
     const base =
-      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-caption font-semibold uppercase tracking-[0.1em] transition';
+      'flex items-center gap-2 rounded-md border px-3 py-2 text-left text-caption font-semibold uppercase tracking-[0.1em] transition active:scale-95';
     return this.variableForm().transformacion === transformId
       ? `${base} border-primary-tint-35 bg-primary-tint-14 text-primary-container`
       : `${base} border-primary-tint-15 bg-white text-primary-container hover:border-primary-tint-30 hover:bg-primary-tint-08`;

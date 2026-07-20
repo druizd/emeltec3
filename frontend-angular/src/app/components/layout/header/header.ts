@@ -31,9 +31,10 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           <button
             type="button"
             (click)="router.navigate(['/dashboard'])"
+            [attr.aria-current]="isDashboard() ? 'page' : null"
             [style.color]="isDashboard() ? '#0899A5' : '#94A3B8'"
             [style.border-bottom]="isDashboard() ? '2px solid #0DAFBD' : '2px solid transparent'"
-            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors"
+            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors active:scale-95"
           >
             <span class="material-symbols-outlined text-[16px]">grid_view</span>
             <span class="hidden sm:inline">Dashboard</span>
@@ -42,9 +43,10 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
           <button
             type="button"
             (click)="router.navigate(['/companies'])"
+            [attr.aria-current]="isMonitoreo() ? 'page' : null"
             [style.color]="isMonitoreo() ? '#0899A5' : '#94A3B8'"
             [style.border-bottom]="isMonitoreo() ? '2px solid #0DAFBD' : '2px solid transparent'"
-            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors"
+            class="flex items-center gap-1.5 border-0 border-t-2 border-transparent bg-transparent px-3 text-body font-medium transition-colors active:scale-95"
           >
             <span class="material-symbols-outlined text-[16px]">monitoring</span>
             <span class="hidden sm:inline">Monitoreo</span>
@@ -100,7 +102,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                     <button
                       type="button"
                       (click)="clearPreview()"
-                      class="flex w-full items-center justify-between gap-3 rounded-lg border border-surface-container bg-surface-subtle px-3 py-2.5 text-left transition-colors hover:bg-white"
+                      class="flex w-full items-center justify-between gap-3 rounded-lg border border-surface-container bg-surface-subtle px-3 py-2.5 text-left transition-colors hover:bg-white active:scale-[0.98]"
                     >
                       <span class="flex min-w-0 items-center gap-2.5">
                         <span
@@ -132,7 +134,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                           [class.border-primary-tint-40]="draftRole() === role.value"
                           [class.bg-primary-tint-08]="draftRole() === role.value"
                           [class.text-primary-container]="draftRole() === role.value"
-                          class="flex min-h-[66px] flex-col items-start justify-between rounded-lg border border-surface-container bg-white px-2.5 py-2 text-left text-slate-500 transition-all hover:border-primary-tint-30 hover:bg-surface-subtle"
+                          class="flex min-h-[66px] flex-col items-start justify-between rounded-lg border border-surface-container bg-white px-2.5 py-2 text-left text-slate-500 transition hover:border-primary-tint-30 hover:bg-surface-subtle active:scale-95"
                         >
                           <span class="material-symbols-outlined text-[17px]">{{ role.icon }}</span>
                           <span>
@@ -222,7 +224,7 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                         type="button"
                         (click)="applyPreview()"
                         [disabled]="!canApplyPreview()"
-                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                        class="flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary px-3 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                       >
                         <span class="material-symbols-outlined text-[15px]">visibility</span>
                         Activar preview
@@ -279,16 +281,22 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                   <button
                     type="button"
                     (click)="goToProfile()"
-                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 active:scale-[0.98]"
                   >
-                    <span class="material-symbols-outlined text-[16px] text-slate-400">person</span>
+                    <span
+                      class="material-symbols-outlined text-[16px] text-slate-400"
+                      aria-hidden="true"
+                      >person</span
+                    >
                     Mi perfil
                   </button>
                   <button
                     type="button"
-                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 active:scale-[0.98]"
                   >
-                    <span class="material-symbols-outlined text-[16px] text-slate-400"
+                    <span
+                      class="material-symbols-outlined text-[16px] text-slate-400"
+                      aria-hidden="true"
                       >notifications</span
                     >
                     Notificaciones
@@ -298,9 +306,11 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                   <button
                     type="button"
                     (click)="logout()"
-                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-rose-600 transition-colors hover:bg-rose-50"
+                    class="flex w-full items-center gap-2.5 px-4 py-2.5 text-body-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 active:scale-[0.98]"
                   >
-                    <span class="material-symbols-outlined text-[16px]">logout</span>
+                    <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                      >logout</span
+                    >
                     Cerrar sesión
                   </button>
                 </div>

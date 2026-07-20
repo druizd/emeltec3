@@ -11,11 +11,6 @@ import {
   signal,
 } from '@angular/core';
 import { InlineErrorComponent } from '../../components/ui/inline-error';
-import { WellDiagramSkeletonComponent } from '../../components/ui/well-diagram-skeleton';
-import { KpiStripSkeletonComponent } from '../../components/ui/kpi-strip-skeleton';
-import { ChartSkeletonComponent } from '../../components/ui/chart-skeleton';
-import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
-import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, of, Subscription, switchMap, timer } from 'rxjs';
@@ -189,11 +184,6 @@ type OperationMode = 'realtime' | 'turnos';
     DgaGenerarReporteModalComponent,
     SiteVariableSettingsPanelComponent,
     InlineErrorComponent,
-    WellDiagramSkeletonComponent,
-    KpiStripSkeletonComponent,
-    ChartSkeletonComponent,
-    TableSkeletonComponent,
-    WellStatCardComponent,
   ],
   template: `
     <div class="min-h-full bg-[#f0f2f5] px-3 pb-5 pt-3 text-slate-700 md:px-4 xl:px-5">
@@ -213,7 +203,9 @@ type OperationMode = 'realtime' | 'turnos';
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary-tint-15 bg-primary-tint-08 text-primary-container transition-colors hover:bg-primary-tint-14"
                   aria-label="Volver a instalaciones"
                 >
-                  <span class="material-symbols-outlined text-[22px]">water_drop</span>
+                  <span class="material-symbols-outlined text-[22px]" aria-hidden="true"
+                    >water_drop</span
+                  >
                 </a>
 
                 <div class="min-w-0">
@@ -243,10 +235,12 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="openSettingsPanel()"
-                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
+                    class="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
                     aria-label="Configuración del sitio"
                   >
-                    <span class="material-symbols-outlined text-[18px]">settings</span>
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                      >settings</span
+                    >
                   </button>
                 }
               </div>
@@ -382,15 +376,17 @@ type OperationMode = 'realtime' | 'turnos';
                 <button
                   type="button"
                   (click)="closeSettingsPanel()"
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                   aria-label="Volver al detalle del sitio"
                 >
-                  <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                  <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                    >arrow_back</span
+                  >
                 </button>
                 <p class="text-caption font-semibold text-slate-500">Volver al detalle del sitio</p>
               </div>
               <app-site-variable-settings-panel
-                [siteId]="context.site?.id || ''"
+                [siteId]="context.site.id || ''"
                 [site]="context.site"
                 [showDgaReporteButton]="true"
                 (openDgaReporte)="abrirDgaReporteModal()"
@@ -407,10 +403,12 @@ type OperationMode = 'realtime' | 'turnos';
                     <button
                       type="button"
                       (click)="closeHistoryView()"
-                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                      class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                       aria-label="Volver al detalle del pozo"
                     >
-                      <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                      <span class="material-symbols-outlined text-[20px]" aria-hidden="true"
+                        >arrow_back</span
+                      >
                     </button>
                     <span
                       class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
@@ -431,7 +429,7 @@ type OperationMode = 'realtime' | 'turnos';
                     <button
                       type="button"
                       (click)="openDownloadModal()"
-                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:bg-slate-50"
+                      class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[16px]">download</span>
                       Descargar
@@ -441,7 +439,9 @@ type OperationMode = 'realtime' | 'turnos';
                       class="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50"
                       aria-label="Opciones de historico"
                     >
-                      <span class="material-symbols-outlined text-[18px]">settings</span>
+                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                        >settings</span
+                      >
                     </button>
                   </div>
                 </div>
@@ -472,14 +472,14 @@ type OperationMode = 'realtime' | 'turnos';
                   <button
                     type="button"
                     (click)="confirmHistoryDateRange()"
-                    class="h-9 rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-4 text-caption-xs font-semibold uppercase tracking-wide text-primary-container transition-colors hover:bg-primary-tint-15"
+                    class="h-9 rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-4 text-caption-xs font-semibold uppercase tracking-wide text-primary-container transition-colors hover:bg-primary-tint-15 active:scale-95"
                   >
                     Confirmar
                   </button>
                   <button
                     type="button"
                     (click)="clearHistoryFilters()"
-                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-caption-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700"
+                    class="h-9 rounded-lg border border-slate-200 bg-slate-50 px-3 text-caption-xs font-semibold uppercase tracking-wide text-slate-500 transition-colors hover:bg-white hover:text-slate-700 active:scale-95"
                   >
                     Limpiar
                   </button>
@@ -499,8 +499,10 @@ type OperationMode = 'realtime' | 'turnos';
                   <p class="mt-0.5 text-caption font-semibold text-slate-500">
                     @if (historyLoading()) {
                       Actualizando registros...
-                    } @else if (isHistoryMock()) {
-                      Vista referencial para pozos sin telemetria activa
+                    } @else if (historyError()) {
+                      No se pudieron cargar los datos históricos
+                    } @else if (isHistoryEmpty()) {
+                      Sin registros para el período seleccionado
                     } @else {
                       Registros minuto a minuto
                     }
@@ -547,7 +549,24 @@ type OperationMode = 'realtime' | 'turnos';
                         class="border-t border-slate-100 text-caption font-semibold text-slate-500"
                       >
                         <td class="px-4 py-8 text-center" colspan="5" data-label="">
-                          Sin registros disponibles para este filtro.
+                          @if (historyError()) {
+                            <div class="flex flex-col items-center gap-2">
+                              <span class="inline-flex items-center gap-1.5 text-rose-600">
+                                <span class="material-symbols-outlined text-[18px]">error</span>
+                                {{ historyError() }}
+                              </span>
+                              <button
+                                type="button"
+                                (click)="reloadHistory()"
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+                              >
+                                <span class="material-symbols-outlined text-[14px]">refresh</span>
+                                Reintentar
+                              </button>
+                            </div>
+                          } @else {
+                            Sin registros disponibles para este filtro.
+                          }
                         </td>
                       </tr>
                     }
@@ -569,7 +588,8 @@ type OperationMode = 'realtime' | 'turnos';
                     type="button"
                     (click)="previousHistoryPage()"
                     [disabled]="historyPage() === 1"
-                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Página anterior"
                   >
                     &larr;
                   </button>
@@ -580,7 +600,8 @@ type OperationMode = 'realtime' | 'turnos';
                     type="button"
                     (click)="nextHistoryPage()"
                     [disabled]="historyPage() === historyTotalPages()"
-                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                    class="h-8 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                    aria-label="Página siguiente"
                   >
                     &rarr;
                   </button>
@@ -930,10 +951,10 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     { label: '—', value: 0 },
   ];
 
-  historySourceRows = computed(() => {
-    if (this.historyRows().length) return this.historyRows();
-    return this.historyLoading() ? [] : this.historyMockRows;
-  });
+  // Solo datos reales. Nunca caer a mock: mostrar mock como telemetría real
+  // es un problema de confianza (esto es cumplimiento DGA). Vacío/error se
+  // renderizan como estado, no como filas fabricadas.
+  historySourceRows = computed(() => this.historyRows());
   historyFilteredRows = computed(() => {
     if (this.historyServerTotalRows() !== null) return this.historySourceRows();
 
@@ -969,7 +990,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   historyRangeEnd = computed(() =>
     Math.min(this.historyPage() * this.historyPageSize, this.historyTotalRows()),
   );
-  isHistoryMock = computed(() => !this.historyLoading() && this.historyRows().length === 0);
+  isHistoryEmpty = computed(() => !this.historyLoading() && this.historyRows().length === 0);
 
   readonly dgaDatePresets = [
     { id: 'today', label: 'Hoy' },
@@ -1034,88 +1055,6 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     'Octubre',
     'Noviembre',
     'Diciembre',
-  ];
-  readonly historyMockRows: HistoricalTelemetryRow[] = [
-    {
-      id: 'mock-2026-04-01-06-00',
-      fecha: '01/04/2026 06:00',
-      caudal: '0',
-      totalizador: '531.100',
-      nivelFreatico: '1.6',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-05-00',
-      fecha: '01/04/2026 05:00',
-      caudal: '19.75',
-      totalizador: '531.060,063',
-      nivelFreatico: '3.3',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-04-00',
-      fecha: '01/04/2026 04:00',
-      caudal: '0',
-      totalizador: '531.038,375',
-      nivelFreatico: '1.5',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-03-00',
-      fecha: '01/04/2026 03:00',
-      caudal: '19.75',
-      totalizador: '531.009,375',
-      nivelFreatico: '3.3',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-02-00',
-      fecha: '01/04/2026 02:00',
-      caudal: '19.63',
-      totalizador: '530.986,75',
-      nivelFreatico: '3.4',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-01-00',
-      fecha: '01/04/2026 01:00',
-      caudal: '19.88',
-      totalizador: '530.956,188',
-      nivelFreatico: '3.1',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-04-01-00-00',
-      fecha: '01/04/2026 00:00',
-      caudal: '0',
-      totalizador: '530.921,625',
-      nivelFreatico: '1.5',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-03-31-23-00',
-      fecha: '31/03/2026 23:00',
-      caudal: '19.75',
-      totalizador: '530.900,188',
-      nivelFreatico: '3.4',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-03-31-22-00',
-      fecha: '31/03/2026 22:00',
-      caudal: '19.75',
-      totalizador: '530.858,938',
-      nivelFreatico: '3.5',
-      mock: true,
-    },
-    {
-      id: 'mock-2026-03-31-21-00',
-      fecha: '31/03/2026 21:00',
-      caudal: '19.75',
-      totalizador: '530.806,375',
-      nivelFreatico: '3.2',
-      mock: true,
-    },
   ];
 
   ngOnInit(): void {
@@ -1519,6 +1458,11 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
     this.historyDateRangeError.set('');
   }
 
+  reloadHistory(): void {
+    const siteId = this.currentSiteId();
+    if (siteId) this.startHistoryPolling(siteId);
+  }
+
   confirmHistoryDateRange(): void {
     const from = this.historyDateFromInput();
     const to = this.historyDateToInput();
@@ -1611,7 +1555,7 @@ export class CompanySiteWaterDetailComponent implements OnInit, OnDestroy {
   getDetailTabClass(tab: DetailTab): string {
     const active = this.activeDetailTab() === tab;
     const base =
-      'relative inline-flex h-9 items-center gap-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded';
+      'relative inline-flex h-9 items-center gap-2 text-caption transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded active:scale-95';
     return active
       ? `${base} font-semibold text-primary-container`
       : `${base} font-bold text-slate-500 hover:text-slate-700`;

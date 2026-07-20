@@ -25,7 +25,7 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
       href="#main-content"
       class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:flex focus:items-center focus:gap-2 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-[13px] focus:font-semibold focus:text-white focus:shadow-primary-focus focus:outline-none focus:ring-2 focus:ring-white"
     >
-      <span class="material-symbols-outlined text-[16px]">arrow_downward</span>
+      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_downward</span>
       Saltar al contenido
     </a>
 
@@ -73,11 +73,13 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
         @if (chatDocked()) {
           <button
             (click)="chatDocked.set(false)"
-            class="absolute left-0 top-1/2 z-20 flex h-20 w-11 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-l-2xl hover:brightness-110 active:brightness-95"
+            class="absolute left-0 top-1/2 z-20 flex h-20 w-11 -translate-y-1/2 flex-col items-center justify-center gap-1 rounded-l-2xl hover:brightness-110 active:brightness-95 active:scale-95"
             style="background: linear-gradient(180deg, #0dafbd 0%, #04606a 100%); box-shadow: -4px 0 16px rgba(13,175,189,0.35);"
             aria-label="Expandir chat"
           >
-            <span class="material-symbols-outlined text-[20px] text-white">chevron_left</span>
+            <span class="material-symbols-outlined text-[20px] text-white" aria-hidden="true"
+              >chevron_left</span
+            >
             <span class="text-[9px] font-bold tracking-[0.12em] text-white/75">AI</span>
           </button>
         }
@@ -107,17 +109,19 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
             </div>
             <button
               (click)="chatDocked.set(true)"
-              class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+              class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
               aria-label="Ocultar chat al costado"
             >
-              <span class="material-symbols-outlined text-[18px]">last_page</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                >last_page</span
+              >
             </button>
             <button
               (click)="chatOpen.set(false); chatDocked.set(false)"
-              class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+              class="flex h-7 w-7 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/15 hover:text-white active:scale-95"
               aria-label="Cerrar chat"
             >
-              <span class="material-symbols-outlined text-[18px]">close</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
             </button>
           </div>
 
@@ -146,14 +150,18 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
             <input
               type="text"
               placeholder="Escribe un mensaje..."
-              class="h-9 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] text-slate-700 outline-none transition-all placeholder:text-slate-300 focus:border-primary/40 focus:bg-white"
+              aria-label="Escribe un mensaje"
+              class="h-9 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[13px] text-slate-700 outline-none transition placeholder:text-slate-500 focus:border-primary/40 focus:bg-white"
               disabled
             />
             <button
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors"
               style="background: linear-gradient(135deg, #0dafbd, #04606a);"
+              aria-label="Enviar mensaje"
             >
-              <span class="material-symbols-outlined text-[17px] text-white">send</span>
+              <span class="material-symbols-outlined text-[17px] text-white" aria-hidden="true"
+                >send</span
+              >
             </button>
           </div>
           <p
@@ -177,16 +185,18 @@ import { SessionExpiryWarningComponent } from '../ui/session-expiry-warning';
       @if (!bubbleHidden()) {
         <button
           (click)="bubbleHidden.set(true)"
-          class="absolute -left-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 opacity-0 transition-opacity group-hover:opacity-100"
+          class="absolute -left-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-slate-600 opacity-0 transition-opacity group-hover:opacity-100 active:scale-95"
           aria-label="Ocultar burbuja de chat"
         >
-          <span class="material-symbols-outlined text-[11px] text-white">close</span>
+          <span class="material-symbols-outlined text-[11px] text-white" aria-hidden="true"
+            >close</span
+          >
         </button>
       }
 
       <button
         (click)="bubbleHidden() ? bubbleHidden.set(false) : toggleChat()"
-        class="h-[72px] w-[72px] overflow-hidden rounded-full p-0 transition-all hover:scale-105 active:scale-95"
+        class="h-[72px] w-[72px] overflow-hidden rounded-full p-0 transition-transform hover:scale-105 active:scale-95"
         style="box-shadow: 0 8px 28px rgba(13,175,189,0.40), 0 2px 8px rgba(15,23,42,0.15);"
         aria-label="Abrir chat Emeltec AI"
       >

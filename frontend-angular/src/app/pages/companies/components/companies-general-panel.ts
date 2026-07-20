@@ -14,6 +14,7 @@ import {
 } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
+import { OverviewNivelCaudalChartComponent } from './overview-nivel-caudal-chart';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
 import type { SiteRecord } from '@emeltec/shared';
 import {
@@ -99,7 +100,7 @@ interface Periodo {
 @Component({
   selector: 'app-companies-general-panel',
   standalone: true,
-  imports: [CommonModule, VentisquerosComponent],
+  imports: [CommonModule, VentisquerosComponent, OverviewNivelCaudalChartComponent],
   template: `
     @if (coldRoomSite(); as coldSite) {
       <app-ventisqueros
@@ -183,7 +184,8 @@ interface Periodo {
                 @for (s of sitiosResumen; track s.nombre; let i = $index) {
                   <button
                     (click)="toggleSite(i)"
-                    class="flex items-center gap-1.5 rounded-full px-2 py-1 text-caption-xs font-bold text-slate-500 transition-all hover:bg-slate-100"
+                    [attr.aria-pressed]="!hiddenSites().has(i)"
+                    class="flex items-center gap-1.5 rounded-full px-2 py-1 text-caption-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 active:scale-95"
                     [style.opacity]="hiddenSites().has(i) ? '0.3' : '1'"
                     [title]="hiddenSites().has(i) ? 'Mostrar ' + s.nombre : 'Ocultar ' + s.nombre"
                   >
@@ -265,7 +267,8 @@ interface Periodo {
                 @for (s of sitiosResumen; track s.nombre; let i = $index) {
                   <button
                     (click)="toggleSite(i)"
-                    class="w-full rounded-xl border px-3 py-2.5 text-left transition-all hover:shadow-sm"
+                    [attr.aria-pressed]="!hiddenSites().has(i)"
+                    class="w-full rounded-xl border px-3 py-2.5 text-left transition hover:shadow-sm active:scale-[0.98]"
                     [style.opacity]="hiddenSites().has(i) ? '0.45' : '1'"
                     [class.border-slate-100]="!hiddenSites().has(i)"
                     [class.bg-slate-50]="!hiddenSites().has(i)"
@@ -424,6 +427,9 @@ interface Periodo {
           </section>
         </div>
 
+        <!-- Nivel freático vs caudal (serie temporal por pozo) -->
+        <app-overview-nivel-caudal-chart [sites]="sites" />
+
         <!-- Comparación de períodos (full width) -->
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <!-- Header -->
@@ -455,9 +461,12 @@ interface Periodo {
             </div>
             <button
               (click)="periodosOpen.set(!periodosOpen())"
-              class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-100"
+              [attr.aria-pressed]="periodosOpen()"
+              class="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-100 active:scale-95"
             >
-              <span class="material-symbols-outlined text-[14px]">date_range</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                >date_range</span
+              >
               Escoger períodos
             </button>
           </div>
@@ -484,7 +493,8 @@ interface Periodo {
                   <button
                     type="button"
                     (click)="setPreset(p.key)"
-                    class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors"
+                    [attr.aria-pressed]="periodoPreset() === p.key"
+                    class="rounded-lg px-3 py-1.5 text-caption-xs font-bold transition-colors active:scale-95"
                     [style.background]="periodoPreset() === p.key ? '#0dafbd' : 'white'"
                     [style.color]="periodoPreset() === p.key ? 'white' : '#475569'"
                     [style.border]="
@@ -576,9 +586,11 @@ interface Periodo {
                   type="button"
                   (click)="aplicarPeriodosCustom()"
                   [disabled]="!periodosCustomPendientes()"
-                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                  class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
                 >
-                  <span class="material-symbols-outlined text-[14px]">check</span>
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                    >check</span
+                  >
                   Aplicar
                 </button>
               </div>
@@ -620,15 +632,17 @@ interface Periodo {
                             Caudal
                           </p>
                         </div>
-                        <span
-                          class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
-                          [style.background]="
-                            s.caudalTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
-                          "
-                          [style.color]="s.caudalTend >= 0 ? '#16A34A' : '#DC2626'"
-                        >
-                          {{ s.caudalTend >= 0 ? '▲' : '▼' }} {{ formatNum(s.caudalTend) }}%
-                        </span>
+                        @if (s.caudalB !== '—') {
+                          <span
+                            class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
+                            [style.background]="
+                              s.caudalTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
+                            "
+                            [style.color]="s.caudalTend >= 0 ? '#16A34A' : '#DC2626'"
+                          >
+                            {{ s.caudalTend >= 0 ? '▲' : '▼' }} {{ formatNum(s.caudalTend) }}%
+                          </span>
+                        }
                       </div>
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
@@ -669,15 +683,17 @@ interface Periodo {
                             Nivel
                           </p>
                         </div>
-                        <span
-                          class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
-                          [style.background]="
-                            s.nivelTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
-                          "
-                          [style.color]="s.nivelTend >= 0 ? '#16A34A' : '#DC2626'"
-                        >
-                          {{ s.nivelTend >= 0 ? '▲' : '▼' }} {{ formatNum(s.nivelTend) }}%
-                        </span>
+                        @if (s.nivelB !== '—') {
+                          <span
+                            class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
+                            [style.background]="
+                              s.nivelTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
+                            "
+                            [style.color]="s.nivelTend >= 0 ? '#16A34A' : '#DC2626'"
+                          >
+                            {{ s.nivelTend >= 0 ? '▲' : '▼' }} {{ formatNum(s.nivelTend) }}%
+                          </span>
+                        }
                       </div>
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
@@ -715,15 +731,17 @@ interface Periodo {
                             Consumo
                           </p>
                         </div>
-                        <span
-                          class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
-                          [style.background]="
-                            s.consumoTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
-                          "
-                          [style.color]="s.consumoTend >= 0 ? '#16A34A' : '#DC2626'"
-                        >
-                          {{ s.consumoTend >= 0 ? '▲' : '▼' }} {{ formatNum(s.consumoTend) }}%
-                        </span>
+                        @if (s.consumoB !== '—') {
+                          <span
+                            class="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-caption-xs font-bold"
+                            [style.background]="
+                              s.consumoTend >= 0 ? 'rgba(34,197,94,0.10)' : 'rgba(248,113,113,0.10)'
+                            "
+                            [style.color]="s.consumoTend >= 0 ? '#16A34A' : '#DC2626'"
+                          >
+                            {{ s.consumoTend >= 0 ? '▲' : '▼' }} {{ formatNum(s.consumoTend) }}%
+                          </span>
+                        }
                       </div>
                       <div class="flex items-center justify-between gap-2">
                         <div class="flex items-center gap-1.5">
@@ -1034,15 +1052,15 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       },
       {
         label: 'Alertas activas',
-        valor: '3',
-        subtext: '1 crítica en seguimiento',
+        valor: '—',
+        subtext: 'Cargando…',
         icon: 'notifications_active',
-        tono: 'warn',
+        tono: 'neutral',
       },
       {
         label: 'DGA pendientes',
-        valor: '1',
-        subtext: 'Mayo 2026 — en plazo',
+        valor: '—',
+        subtext: 'Cargando…',
         icon: 'shield',
         tono: 'neutral',
       },
@@ -1548,33 +1566,26 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   // ── Private ────────────────────────────────────────────────────────────────
 
   private buildMetricasComparacion(): void {
-    const baseMult =
-      this.periodoPreset() === 'semana' ? 0.93 : this.periodoPreset() === 'mes' ? 0.91 : 0.95;
-    // Slight variation per site to simulate realistic data
-    const siteOffset = [0.02, -0.03, 0.01, -0.02, 0.015];
-    const pct = (a: number, b: number): number =>
-      b !== 0 ? Math.round(((a - b) / Math.abs(b)) * 1000) / 10 : 0;
-
-    this.sitiosComparacion = this.sitiosResumen.map((s, i) => {
-      const mult = baseMult + (siteOffset[i % siteOffset.length] ?? 0);
-      const caudalB = s.caudal * mult;
-      const nivelB = s.nivel * (1 - 0.03 * (i % 2 === 0 ? 1 : -1));
-      const consumoB = Math.round(s.consumoMes * mult);
-
-      return {
-        nombre: s.nombre,
-        estado: s.estado,
-        caudalA: s.caudal.toFixed(1),
-        caudalB: caudalB.toFixed(1),
-        caudalTend: pct(s.caudal, caudalB),
-        nivelA: s.nivel.toFixed(1),
-        nivelB: nivelB.toFixed(1),
-        nivelTend: pct(s.nivel, nivelB),
-        consumoA: Math.trunc(s.consumoMes).toString(),
-        consumoB: Math.trunc(consumoB).toString(),
-        consumoTend: pct(s.consumoMes, consumoB),
-      };
-    });
+    // NO fabricar el período B. Antes se derivaba de los valores del período A
+    // por un multiplicador inventado ("simulate realistic data") → mostraba
+    // cifras falsas como comparación real (crítico en cumplimiento DGA).
+    // Caudal/nivel son snapshots instantáneos y no hay histórico por período en
+    // este panel, así que el período B se muestra como "—" (sin dato). El
+    // período A es real. La comparación real por período requiere datos
+    // históricos del backend (pendiente).
+    this.sitiosComparacion = this.sitiosResumen.map((s) => ({
+      nombre: s.nombre,
+      estado: s.estado,
+      caudalA: s.caudal.toFixed(1),
+      caudalB: '—',
+      caudalTend: 0,
+      nivelA: s.nivel.toFixed(1),
+      nivelB: '—',
+      nivelTend: 0,
+      consumoA: Math.trunc(s.consumoMes).toString(),
+      consumoB: '—',
+      consumoTend: 0,
+    }));
   }
 
   private async loadLeaflet(): Promise<any> {

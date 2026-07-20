@@ -262,41 +262,43 @@ const ZOOM_STEP = 1.25;
           type="button"
           (click)="zoomIn()"
           [disabled]="zoom() >= ZOOM_MAX"
-          class="vs-fm-zbtn"
+          class="vs-fm-zbtn active:scale-95"
           title="Zoom in"
           aria-label="Acercar"
         >
-          <span class="material-symbols-outlined text-[15px]">add</span>
+          <span class="material-symbols-outlined text-[15px]" aria-hidden="true">add</span>
         </button>
         <button
           type="button"
           (click)="zoomOut()"
           [disabled]="zoom() <= ZOOM_MIN"
-          class="vs-fm-zbtn"
+          class="vs-fm-zbtn active:scale-95"
           title="Zoom out"
           aria-label="Alejar"
         >
-          <span class="material-symbols-outlined text-[15px]">remove</span>
+          <span class="material-symbols-outlined text-[15px]" aria-hidden="true">remove</span>
         </button>
         <button
           type="button"
           (click)="resetZoom()"
-          class="vs-fm-zbtn"
+          class="vs-fm-zbtn active:scale-95"
           title="Restablecer zoom (0)"
           aria-label="Restablecer zoom"
         >
-          <span class="material-symbols-outlined text-[15px]">center_focus_strong</span>
+          <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
+            >center_focus_strong</span
+          >
         </button>
         <button
           type="button"
           (click)="toggleFullscreen()"
-          class="vs-fm-zbtn"
+          class="vs-fm-zbtn active:scale-95"
           [class.vs-fm-zbtn--on]="fullscreen()"
           [title]="fullscreen() ? 'Salir pantalla completa (Esc)' : 'Pantalla completa (F)'"
           [attr.aria-label]="fullscreen() ? 'Salir pantalla completa' : 'Pantalla completa'"
           [attr.aria-pressed]="fullscreen()"
         >
-          <span class="material-symbols-outlined text-[15px]">{{
+          <span class="material-symbols-outlined text-[15px]" aria-hidden="true">{{
             fullscreen() ? 'fullscreen_exit' : 'fullscreen'
           }}</span>
         </button>

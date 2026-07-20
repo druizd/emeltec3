@@ -108,12 +108,21 @@ export class CompaniesGerenteViewComponent {
     return list.length === 1 && normalizeSiteType(list[0]?.tipo_sitio) === 'camara_frio';
   });
 
+  /** La empresa tiene al menos una cámara de frío → habilita el tab
+   * "Configurar alarmas" (motor cold-room, transversal por salas). Las
+   * alarmas de pozos de agua se gestionan por sitio, en el detalle del pozo. */
+  readonly hasColdRoom = computed(() =>
+    this._sites().some((s) => normalizeSiteType(s?.tipo_sitio) === 'camara_frio'),
+  );
+
   readonly tabsComputed = computed<CompaniesTabItem[]>(() => {
     const inst = installationsTabUi(this._sites());
     return [
       { key: 'general', label: 'General', icon: 'grid_view' },
       { key: 'instalaciones', label: inst.label, icon: inst.icon },
-      { key: 'eventos', label: 'Configurar alarmas', icon: 'notifications' },
+      ...(this.hasColdRoom()
+        ? [{ key: 'eventos', label: 'Configurar alarmas', icon: 'notifications' }]
+        : []),
       { key: 'contactos', label: 'Contactos', icon: 'contact_phone' },
       { key: 'usuarios', label: 'Mi Equipo', icon: 'group' },
     ];

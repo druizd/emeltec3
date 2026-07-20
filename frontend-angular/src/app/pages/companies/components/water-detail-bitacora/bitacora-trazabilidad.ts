@@ -32,8 +32,15 @@ type RecursoFiltro = AuditTargetType | 'todos';
 
       <header class="flex flex-wrap items-center gap-2">
         @for (f of filtros; track f.key) {
-          <button type="button" (click)="filtroRecurso.set(f.key)" [class]="filtroClass(f.key)">
-            <span class="material-symbols-outlined text-[14px]">{{ f.icon }}</span>
+          <button
+            type="button"
+            (click)="filtroRecurso.set(f.key)"
+            [class]="filtroClass(f.key)"
+            [attr.aria-pressed]="filtroRecurso() === f.key"
+          >
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
+              f.icon
+            }}</span>
             {{ f.label }}
           </button>
         }
@@ -112,7 +119,7 @@ type RecursoFiltro = AuditTargetType | 'todos';
                         [class]="recursoClass(entry.target_type)"
                         class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption-xs font-bold"
                       >
-                        <span class="material-symbols-outlined text-[12px]">
+                        <span class="material-symbols-outlined text-[12px]" aria-hidden="true">
                           {{ recursoIcon(entry.target_type) }}
                         </span>
                         {{ recursoLabel(entry.target_type) }}
@@ -125,7 +132,9 @@ type RecursoFiltro = AuditTargetType | 'todos';
                 } @empty {
                   <tr>
                     <td colspan="5" class="px-4 py-10 text-center">
-                      <span class="material-symbols-outlined text-3xl text-slate-300"
+                      <span
+                        class="material-symbols-outlined text-3xl text-slate-300"
+                        aria-hidden="true"
                         >fact_check</span
                       >
                       <p class="mt-2 text-body-sm font-semibold text-slate-400">
@@ -144,9 +153,9 @@ type RecursoFiltro = AuditTargetType | 'todos';
           <button
             type="button"
             (click)="exportarCsv()"
-            class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline"
+            class="inline-flex items-center gap-1 text-caption font-bold text-primary-container hover:underline active:scale-95"
           >
-            <span class="material-symbols-outlined text-[14px]">download</span>
+            <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>
             Exportar CSV
           </button>
         </div>
@@ -158,6 +167,8 @@ export class BitacoraAuditLogComponent {
   private readonly auditService = inject(AuditLogService);
 
   readonly sitioId = input<string>('');
+  /** Búsqueda transversal desde el header de Bitácora. */
+  readonly search = input<string>('');
   readonly empresaId = input<string>('');
 
   readonly filtroRecurso = signal<RecursoFiltro>('todos');
@@ -200,9 +211,17 @@ export class BitacoraAuditLogComponent {
 
   readonly entradas = computed(() => {
     const f = this.filtroRecurso();
-    return f === 'todos'
-      ? this.entradasAll()
-      : this.entradasAll().filter((e) => e.target_type === f);
+    const q = this.search().trim().toLowerCase();
+    let list =
+      f === 'todos' ? this.entradasAll() : this.entradasAll().filter((e) => e.target_type === f);
+    if (q) {
+      list = list.filter((e) =>
+        `${e.actor_email ?? ''} ${e.action} ${e.target_type ?? ''} ${e.target_id ?? ''}`
+          .toLowerCase()
+          .includes(q),
+      );
+    }
+    return list;
   });
 
   accionLabel(action: string): string {
@@ -270,7 +289,7 @@ export class BitacoraAuditLogComponent {
   filtroClass(key: RecursoFiltro): string {
     const active = this.filtroRecurso() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-colors active:scale-95',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

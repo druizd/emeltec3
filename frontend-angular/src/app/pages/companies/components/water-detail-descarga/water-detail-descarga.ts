@@ -28,7 +28,7 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
             <span
               class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"
             >
-              <span class="material-symbols-outlined text-[20px]">download</span>
+              <span class="material-symbols-outlined text-[20px]" aria-hidden="true">download</span>
             </span>
             <div>
               <h2 id="download-modal-title" class="text-h6 font-semibold text-slate-800">
@@ -44,10 +44,10 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
           <button
             type="button"
             (click)="closed.emit()"
-            class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+            class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
             aria-label="Cerrar"
           >
-            <span class="material-symbols-outlined text-[20px]">close</span>
+            <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
           </button>
         </div>
 
@@ -64,14 +64,18 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
                 <button
                   type="button"
                   (click)="applyDownloadPreset(preset.id)"
+                  [attr.aria-pressed]="downloadSelectedPreset() === preset.id"
                   [class]="
                     downloadSelectedPreset() === preset.id
-                      ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                      : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
+                      ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25 transition-colors active:scale-95'
+                      : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95'
                   "
                 >
                   @if (downloadSelectedPreset() === preset.id) {
-                    <span class="h-1.5 w-1.5 rounded-full bg-primary/10 flex-shrink-0"></span>
+                    <span
+                      class="h-1.5 w-1.5 rounded-full bg-primary/10 flex-shrink-0"
+                      aria-hidden="true"
+                    ></span>
                   }
                   {{ preset.label }}
                 </button>
@@ -88,12 +92,13 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
                 <button
                   type="button"
                   (click)="applyDownloadMonth(i)"
+                  [attr.aria-pressed]="downloadSelectedMonths().includes(i)"
                   [class]="
                     !downloadMonthHasData(i)
                       ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
                       : downloadSelectedMonths().includes(i)
-                        ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
-                        : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
+                        ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)] active:scale-95'
+                        : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95'
                   "
                 >
                   {{ month.slice(0, 3) }}
@@ -169,10 +174,11 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
                 <button
                   type="button"
                   (click)="toggleDownloadDataType(dtype.id)"
+                  [attr.aria-pressed]="isDownloadTypeSelected(dtype.id)"
                   [class]="
                     isDownloadTypeSelected(dtype.id)
-                      ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-body-sm font-bold text-primary-container transition-all'
-                      : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-body-sm font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                      ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-3 py-2.5 text-center text-body-sm font-bold text-primary-container transition-colors active:scale-95'
+                      : 'rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-center text-body-sm font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                   "
                 >
                   {{ dtype.label }}
@@ -192,10 +198,11 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
                   type="button"
                   (click)="downloadGranularity.set(gran.id)"
                   [title]="gran.hint"
+                  [attr.aria-pressed]="downloadGranularity() === gran.id"
                   [class]="
                     downloadGranularity() === gran.id
-                      ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-2 py-2 text-center text-caption font-bold text-primary-container transition-all'
-                      : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                      ? 'rounded-lg border border-primary-tint-55 bg-primary-tint-08 px-2 py-2 text-center text-caption font-bold text-primary-container transition-colors active:scale-95'
+                      : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption font-semibold text-slate-500 transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                   "
                 >
                   {{ gran.label }}
@@ -205,7 +212,9 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
             <div
               class="mb-5 mt-3 flex items-start gap-2 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2.5 text-caption font-semibold text-primary-container"
             >
-              <span class="material-symbols-outlined mt-0.5 text-[16px]">schedule</span>
+              <span class="material-symbols-outlined mt-0.5 text-[16px]" aria-hidden="true"
+                >schedule</span
+              >
               <span>{{ downloadWorkloadLabel() }}</span>
             </div>
 
@@ -219,13 +228,14 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
               <button
                 type="button"
                 (click)="downloadFormat.set('csv')"
+                [attr.aria-pressed]="downloadFormat() === 'csv'"
                 [class]="
                   downloadFormat() === 'csv'
-                    ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-body-sm font-bold text-emerald-700'
-                    : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
+                    ? 'flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-body-sm font-bold text-emerald-700 transition-colors active:scale-95'
+                    : 'flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-4 py-2 text-body-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95'
                 "
               >
-                <span class="material-symbols-outlined text-[16px]">csv</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">csv</span>
                 CSV
               </button>
             </div>
@@ -259,7 +269,7 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
             <button
               type="button"
               (click)="closed.emit()"
-              class="rounded-lg px-4 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+              class="rounded-lg px-4 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
             >
               Cancelar
             </button>
@@ -272,9 +282,9 @@ import { CompanyService, type HistoryGranularity } from '../../../../services/co
                 !downloadDateFrom() ||
                 !downloadDateTo()
               "
-              class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
+              class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-emerald-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <span class="material-symbols-outlined text-[17px]">download</span>
+              <span class="material-symbols-outlined text-[17px]" aria-hidden="true">download</span>
               {{ downloadBusy() ? 'Generando...' : 'Descargar' }}
             </button>
           </div>

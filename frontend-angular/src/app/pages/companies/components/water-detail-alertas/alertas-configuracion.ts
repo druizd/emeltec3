@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { AuthService } from '../../../../services/auth.service';
 import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
 import {
   AlertaCondicion,
   AlertaDia,
@@ -101,7 +102,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
   selector: 'app-alertas-configuracion',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, FormsModule, InlineErrorComponent, TableSkeletonComponent],
+  imports: [CommonModule, FormsModule, A11yModule, InlineErrorComponent, TableSkeletonComponent],
   template: `
     <div class="space-y-3">
       <!-- Header -->
@@ -114,9 +115,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           <button
             type="button"
             (click)="toggleNuevo()"
-            class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
+            class="inline-flex items-center gap-1.5 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-2 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-[0.98]"
           >
-            <span class="material-symbols-outlined text-[16px]">{{
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
               mostrandoNuevo() ? 'close' : 'add'
             }}</span>
             {{ mostrandoNuevo() ? 'Cancelar' : 'Nueva regla' }}
@@ -132,44 +133,83 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
         <app-inline-error [message]="errorMsg()" />
       }
 
-      <!-- Formulario nueva regla -->
+      <!-- Modal nueva regla -->
       @if (mostrandoNuevo()) {
-        <article
-          class="rounded-2xl border-2 border-dashed border-primary-tint-25 bg-primary-tint-08/30 p-4"
+        <div
+          class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+          animate.leave="anim-overlay-out"
+          role="dialog"
+          cdkTrapFocus
+          cdkTrapFocusAutoCapture
+          aria-modal="true"
+          aria-labelledby="nueva-alerta-title"
+          (click)="onBackdrop($event)"
+          (keydown.escape)="toggleNuevo()"
         >
-          <p
-            class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
+          <div
+            class="anim-panel relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            (click)="$event.stopPropagation()"
           >
-            Nueva regla
-          </p>
-          <ng-container
-            *ngTemplateOutlet="reglaForm; context: { $implicit: nuevaRegla, isNew: true }"
-          ></ng-container>
-          <div class="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              (click)="toggleNuevo()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200"
+            <!-- Header -->
+            <div
+              class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
             >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              [disabled]="saving() || !puedeGuardar(nuevaRegla)"
-              (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
+                >
+                  <span class="material-symbols-outlined text-[20px]">add_alert</span>
+                </span>
+                <h2 id="nueva-alerta-title" class="text-h6 font-semibold text-slate-800">
+                  Nueva regla de alerta
+                </h2>
+              </div>
+              <button
+                type="button"
+                (click)="toggleNuevo()"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+                aria-label="Cerrar"
+              >
+                <span class="material-symbols-outlined text-[20px]" aria-hidden="true">close</span>
+              </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto px-5 py-5">
+              <ng-container
+                *ngTemplateOutlet="reglaForm; context: { $implicit: nuevaRegla, isNew: true }"
+              ></ng-container>
+            </div>
+
+            <!-- Footer -->
+            <div
+              class="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50/60 px-5 py-4"
             >
-              <span class="material-symbols-outlined text-[16px]">check</span>
-              Crear regla
-            </button>
+              <button
+                type="button"
+                (click)="toggleNuevo()"
+                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                [disabled]="saving() || !puedeGuardar(nuevaRegla)"
+                (click)="guardarNueva()"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">check</span>
+                Crear regla
+              </button>
+            </div>
           </div>
-        </article>
+        </div>
       }
 
       <!-- Lista de reglas existentes -->
       @for (regla of reglas(); track regla.id) {
         <article
-          class="rounded-2xl border bg-white shadow-sm transition-all"
+          class="rounded-2xl border bg-white shadow-sm transition duration-200"
           [class]="regla.activa ? 'border-slate-200' : 'border-slate-100 opacity-60'"
         >
           <div class="flex items-start justify-between gap-3 px-5 py-4">
@@ -179,8 +219,9 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   type="button"
                   (click)="toggleActiva(regla)"
                   [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
-                  class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors"
+                  class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors active:scale-95"
                   [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
+                  [attr.aria-pressed]="regla.activa"
                 >
                   <span
                     [class]="regla.activa ? 'translate-x-4' : 'translate-x-0.5'"
@@ -208,20 +249,23 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 <button
                   type="button"
                   (click)="expandirRegla(regla.id)"
-                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                   [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
+                  [attr.aria-pressed]="reglaExpandida() === regla.id"
                 >
-                  <span class="material-symbols-outlined text-[18px]">{{
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
                     reglaExpandida() === regla.id ? 'expand_less' : 'edit'
                   }}</span>
                 </button>
                 <button
                   type="button"
                   (click)="eliminar(regla)"
-                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-95"
                   aria-label="Eliminar regla"
                 >
-                  <span class="material-symbols-outlined text-[18px]">delete</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                    >delete</span
+                  >
                 </button>
               </div>
             }
@@ -260,7 +304,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 <button
                   type="button"
                   (click)="cancelarEdicion(regla)"
-                  class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                  class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
                 >
                   Cancelar
                 </button>
@@ -268,9 +312,11 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   type="button"
                   [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
                   (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  <span class="material-symbols-outlined text-[16px]">check</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >check</span
+                  >
                   Guardar
                 </button>
               </div>
@@ -288,120 +334,125 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
     <!-- Template del formulario reusable -->
     <ng-template #reglaForm let-draft let-isNew="isNew">
-      <div class="space-y-4">
-        <!-- Nombre -->
-        <div>
-          <label
-            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-            >Nombre</label
-          >
-          <input
-            type="text"
-            [(ngModel)]="draft.nombre"
-            placeholder="Ej: Nivel freático crítico"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-          />
-        </div>
-
-        <!-- Descripción -->
-        <div>
-          <label
-            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-            >Descripción (opcional)</label
-          >
-          <input
-            type="text"
-            [(ngModel)]="draft.descripcion"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-          />
-        </div>
-
-        <!-- Condición -->
-        <div>
-          <label
-            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-            >Condición</label
-          >
-          <select
-            [(ngModel)]="draft.condicion"
-            (ngModelChange)="resetSimulacion()"
-            class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-          >
-            @for (c of condicionesDisponibles; track c) {
-              <option [value]="c">{{ condicionLabel(c) }}</option>
-            }
-          </select>
-        </div>
-
-        <!-- Variable (ocultar para dga_atrasado) -->
-        @if (draft.condicion !== 'dga_atrasado') {
-          <div>
-            <label
-              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-              >Variable</label
+      <div class="space-y-5">
+        <!-- ── Identificación ── -->
+        <section class="space-y-3">
+          <p class="flex items-center gap-2 text-body-sm font-semibold text-slate-700">
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-lg bg-primary-tint-08 text-primary-container"
             >
-            @if (variables().length > 0) {
-              <select
-                [(ngModel)]="draft.variable_key"
-                (ngModelChange)="resetSimulacion()"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-              >
-                <option value="" disabled>Selecciona una variable…</option>
-                @for (v of variables(); track v.id) {
-                  <option [value]="v.d1">
-                    {{ v.alias }} ({{ v.d1 }}){{ v.unidad ? ' · ' + v.unidad : '' }}
-                  </option>
-                }
-              </select>
-              @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
-                <p class="mt-1 flex items-center gap-1 text-caption-xs text-amber-600">
-                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
-                    >warning</span
-                  >
-                  "{{ draft.variable_key }}" no está en las variables registradas del sitio.
-                </p>
-              }
-            } @else {
-              <input
-                type="text"
-                [(ngModel)]="draft.variable_key"
-                (ngModelChange)="resetSimulacion()"
-                placeholder="Ej: caudal, nivel_freatico"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-              />
-              <p class="mt-1 text-caption-xs text-slate-500">
-                Sin variables registradas en el sitio; ingresa la clave manualmente.
-              </p>
-            }
-          </div>
-        }
-
-        <!-- Umbrales (según condición) -->
-        @if (
-          draft.condicion === 'mayor_que' ||
-          draft.condicion === 'menor_que' ||
-          draft.condicion === 'igual_a'
-        ) {
+              <span class="material-symbols-outlined text-[15px]">badge</span>
+            </span>
+            Identificación
+          </p>
+          <!-- Nombre -->
           <div>
             <label
               class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-              >Umbral</label
+              >Nombre</label
             >
             <input
-              type="number"
-              step="any"
-              [(ngModel)]="draft.umbral_bajo"
-              (ngModelChange)="resetSimulacion()"
-              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+              type="text"
+              [(ngModel)]="draft.nombre"
+              placeholder="Ej: Nivel freático crítico"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
           </div>
-        }
-        @if (draft.condicion === 'fuera_rango') {
-          <div class="grid grid-cols-2 gap-3">
+
+          <!-- Descripción -->
+          <div>
+            <label
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+              >Descripción (opcional)</label
+            >
+            <input
+              type="text"
+              [(ngModel)]="draft.descripcion"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            />
+          </div>
+        </section>
+
+        <!-- ── Condición de disparo ── -->
+        <section class="space-y-3 border-t border-slate-100 pt-5">
+          <p class="flex items-center gap-2 text-body-sm font-semibold text-slate-700">
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-lg bg-primary-tint-08 text-primary-container"
+            >
+              <span class="material-symbols-outlined text-[15px]">rule</span>
+            </span>
+            Condición de disparo
+          </p>
+          <!-- Condición -->
+          <div>
+            <label
+              class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+              >Condición</label
+            >
+            <select
+              [(ngModel)]="draft.condicion"
+              (ngModelChange)="resetSimulacion()"
+              class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-body-sm font-bold text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            >
+              @for (c of condicionesDisponibles; track c) {
+                <option [value]="c">{{ condicionLabel(c) }}</option>
+              }
+            </select>
+          </div>
+
+          <!-- Variable (ocultar para dga_atrasado) -->
+          @if (draft.condicion !== 'dga_atrasado') {
             <div>
               <label
                 class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >Mínimo</label
+                >Variable</label
+              >
+              @if (variables().length > 0) {
+                <select
+                  [(ngModel)]="draft.variable_key"
+                  (ngModelChange)="resetSimulacion()"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                >
+                  <option value="" disabled>Selecciona una variable…</option>
+                  @for (v of variables(); track v.id) {
+                    <option [value]="v.d1">
+                      {{ v.alias }} ({{ v.d1 }}){{ v.unidad ? ' · ' + v.unidad : '' }}
+                    </option>
+                  }
+                </select>
+                @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
+                  <p class="mt-1 flex items-center gap-1 text-caption-xs text-amber-600">
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >warning</span
+                    >
+                    "{{ draft.variable_key }}" no está en las variables registradas del sitio.
+                  </p>
+                }
+              } @else {
+                <input
+                  type="text"
+                  [(ngModel)]="draft.variable_key"
+                  (ngModelChange)="resetSimulacion()"
+                  placeholder="Ej: caudal, nivel_freatico"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                />
+                <p class="mt-1 text-caption-xs text-slate-500">
+                  Sin variables registradas en el sitio; ingresa la clave manualmente.
+                </p>
+              }
+            </div>
+          }
+
+          <!-- Umbrales (según condición) -->
+          @if (
+            draft.condicion === 'mayor_que' ||
+            draft.condicion === 'menor_que' ||
+            draft.condicion === 'igual_a'
+          ) {
+            <div>
+              <label
+                class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >Umbral</label
               >
               <input
                 type="number"
@@ -411,101 +462,131 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
               />
             </div>
+          }
+          @if (draft.condicion === 'fuera_rango') {
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >Mínimo</label
+                >
+                <input
+                  type="number"
+                  step="any"
+                  [(ngModel)]="draft.umbral_bajo"
+                  (ngModelChange)="resetSimulacion()"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label
+                  class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >Máximo</label
+                >
+                <input
+                  type="number"
+                  step="any"
+                  [(ngModel)]="draft.umbral_alto"
+                  (ngModelChange)="resetSimulacion()"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                />
+              </div>
+            </div>
+          }
+
+          <!-- Nota especial dga_atrasado -->
+          @if (draft.condicion === 'dga_atrasado') {
+            <div
+              class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-caption text-amber-800"
+            >
+              <p class="mb-1 font-bold">Escalación automática</p>
+              <p>
+                El sistema notifica al cruzar 24h, 48h y 72h sin reporte DGA (severidades media →
+                alta → crítica). No requiere umbral ni variable. Aplica al informante DGA del sitio.
+              </p>
+            </div>
+          }
+
+          <!-- Severidad (solo si no es dga_atrasado — DGA computa por tier) -->
+          @if (draft.condicion !== 'dga_atrasado') {
             <div>
               <label
                 class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >Máximo</label
+                >Severidad</label
               >
-              <input
-                type="number"
-                step="any"
-                [(ngModel)]="draft.umbral_alto"
-                (ngModelChange)="resetSimulacion()"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-              />
+              <div class="flex flex-wrap gap-1.5">
+                @for (s of severidadesDisponibles; track s) {
+                  <button
+                    type="button"
+                    (click)="draft.severidad = s"
+                    [attr.aria-pressed]="draft.severidad === s"
+                    [class]="
+                      draft.severidad === s
+                        ? severidadButtonActive(s)
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    "
+                    class="rounded-full px-3 py-1 text-caption-xs font-bold transition-colors active:scale-95"
+                  >
+                    {{ severidadLabel(s) }}
+                  </button>
+                }
+              </div>
             </div>
-          </div>
-        }
+          }
+        </section>
 
-        <!-- Nota especial dga_atrasado -->
-        @if (draft.condicion === 'dga_atrasado') {
-          <div
-            class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-caption text-amber-800"
-          >
-            <p class="mb-1 font-bold">Escalación automática</p>
-            <p>
-              El sistema notifica al cruzar 24h, 48h y 72h sin reporte DGA (severidades media → alta
-              → crítica). No requiere umbral ni variable. Aplica al informante DGA del sitio.
-            </p>
-          </div>
-        }
-
-        <!-- Severidad (solo si no es dga_atrasado — DGA computa por tier) -->
-        @if (draft.condicion !== 'dga_atrasado') {
+        <!-- ── Programación ── -->
+        <section class="space-y-3 border-t border-slate-100 pt-5">
+          <p class="flex items-center gap-2 text-body-sm font-semibold text-slate-700">
+            <span
+              class="flex h-6 w-6 items-center justify-center rounded-lg bg-primary-tint-08 text-primary-container"
+            >
+              <span class="material-symbols-outlined text-[15px]">schedule</span>
+            </span>
+            Programación
+          </p>
+          <!-- Cooldown -->
           <div>
             <label
               class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-              >Severidad</label
+              >Cooldown (minutos)</label
             >
+            <input
+              type="number"
+              min="1"
+              max="1440"
+              [(ngModel)]="draft.cooldown_minutos"
+              class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+            />
+            <span class="ml-2 text-caption-xs text-slate-500"
+              >tiempo mínimo entre notificaciones</span
+            >
+          </div>
+
+          <!-- Días activos -->
+          <div>
+            <p class="mb-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              Días activos
+            </p>
             <div class="flex flex-wrap gap-1.5">
-              @for (s of severidadesDisponibles; track s) {
+              @for (d of diasOrden; track d) {
                 <button
                   type="button"
-                  (click)="draft.severidad = s"
+                  (click)="toggleDia(draft, d)"
+                  [attr.aria-pressed]="draft.dias_activos.includes(d)"
                   [class]="
-                    draft.severidad === s
-                      ? severidadButtonActive(s)
+                    draft.dias_activos.includes(d)
+                      ? 'bg-primary text-white'
                       : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                   "
-                  class="rounded-full px-3 py-1 text-caption-xs font-bold transition-colors"
+                  class="h-8 min-w-[2rem] rounded-lg px-2 text-caption-xs font-semibold transition-colors active:scale-95"
                 >
-                  {{ severidadLabel(s) }}
+                  {{ diaShort(d) }}
                 </button>
               }
             </div>
           </div>
-        }
-
-        <!-- Cooldown -->
-        <div>
-          <label
-            class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-            >Cooldown (minutos)</label
-          >
-          <input
-            type="number"
-            min="1"
-            max="1440"
-            [(ngModel)]="draft.cooldown_minutos"
-            class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-          />
-          <span class="ml-2 text-caption-xs text-slate-500"
-            >tiempo mínimo entre notificaciones</span
-          >
-        </div>
-
-        <!-- Días activos -->
-        <div>
-          <p class="mb-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-            Días activos
-          </p>
-          <div class="flex flex-wrap gap-1.5">
-            @for (d of diasOrden; track d) {
-              <button
-                type="button"
-                (click)="toggleDia(draft, d)"
-                [class]="
-                  draft.dias_activos.includes(d)
-                    ? 'bg-primary text-white'
-                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                "
-                class="h-8 min-w-[2rem] rounded-lg px-2 text-caption-xs font-semibold transition-colors"
-              >
-                {{ diaShort(d) }}
-              </button>
-            }
-          </div>
-        </div>
+        </section>
 
         <!-- Vista previa con datos reales (rule-tester) -->
         @if (esCondicionSimulable(draft.condicion)) {
@@ -527,7 +608,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 type="button"
                 (click)="simularRegla(draft)"
                 [disabled]="simulating() || !puedeSimular(draft)"
-                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:h-8"
               >
                 <span
                   class="material-symbols-outlined text-[14px]"
@@ -721,6 +802,11 @@ export class AlertasConfiguracionComponent {
       this.nuevaRegla = emptyDraft();
       this.mostrandoNuevo.set(true);
     }
+  }
+
+  /** Cierra el modal solo si el click cae en el backdrop, no en el panel. */
+  onBackdrop(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.toggleNuevo();
   }
 
   expandirRegla(id: number): void {

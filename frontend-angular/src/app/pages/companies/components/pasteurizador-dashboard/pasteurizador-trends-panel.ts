@@ -52,7 +52,7 @@ interface TrendSummaryCard {
     <section class="trend-overview" aria-label="Resumen de tendencias">
       @for (card of summaryCards(); track card.label) {
         <article class="trend-mini-card" [ngClass]="'tone-' + card.tone">
-          <span class="material-symbols-outlined">{{ card.icon }}</span>
+          <span class="material-symbols-outlined" aria-hidden="true">{{ card.icon }}</span>
           <div>
             <p>{{ card.label }}</p>
             <strong>{{ card.value }}</strong>
@@ -64,7 +64,7 @@ interface TrendSummaryCard {
     <section class="trend-card">
       <header class="trend-card__hero">
         <div class="trend-title">
-          <span class="material-symbols-outlined">monitoring</span>
+          <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>
           <div>
             <p>Salida producto a tina vs pasteurizacion</p>
             <strong>Analisis comparativo de tendencias</strong>
@@ -75,6 +75,7 @@ interface TrendSummaryCard {
           <button
             type="button"
             [class.is-active]="selectedDurationMinutes() === 30"
+            [attr.aria-pressed]="selectedDurationMinutes() === 30"
             (click)="applyPreset(30)"
           >
             30m
@@ -82,6 +83,7 @@ interface TrendSummaryCard {
           <button
             type="button"
             [class.is-active]="selectedDurationMinutes() === 60"
+            [attr.aria-pressed]="selectedDurationMinutes() === 60"
             (click)="applyPreset(60)"
           >
             1h
@@ -89,6 +91,7 @@ interface TrendSummaryCard {
           <button
             type="button"
             [class.is-active]="selectedDurationMinutes() >= 115"
+            [attr.aria-pressed]="selectedDurationMinutes() >= 115"
             (click)="applyPreset(120)"
           >
             2h
@@ -149,11 +152,11 @@ interface TrendSummaryCard {
     <section class="batch-card">
       <header>
         <div>
-          <span class="material-symbols-outlined">assignment</span>
+          <span class="material-symbols-outlined" aria-hidden="true">assignment</span>
           <h2>Registro de Batches</h2>
         </div>
         <button type="button">
-          <span class="material-symbols-outlined">download</span>
+          <span class="material-symbols-outlined" aria-hidden="true">download</span>
           Exportar a Excel
         </button>
       </header>
@@ -176,7 +179,7 @@ interface TrendSummaryCard {
                 <td class="batch-id">{{ batch.id }}</td>
                 <td>
                   <div class="time-cell">
-                    <span class="material-symbols-outlined">schedule</span>
+                    <span class="material-symbols-outlined" aria-hidden="true">schedule</span>
                     <strong>{{ batch.duracion }}</strong>
                     <small>{{ batch.inicio }} ~ {{ batch.termino }}</small>
                   </div>

@@ -35,6 +35,30 @@ export const FichaPayload = z.object({
 });
 export type FichaPayload = z.infer<typeof FichaPayload>;
 
+// Alta de contacto (endpoint dedicado con 2FA). Exige email O teléfono
+// (contacto_operativo tiene CHECK: al menos uno no nulo).
+export const CreateContactoPayload = z
+  .object({
+    nombre: z.string().trim().min(1).max(150),
+    rol: z.string().trim().max(60).default('Responsable'),
+    telefono: z.string().trim().max(50).nullable().optional(),
+    email: z.string().trim().max(150).nullable().optional(),
+  })
+  .refine((c) => Boolean(c.telefono || c.email), {
+    message: 'Se requiere teléfono o email',
+    path: ['telefono'],
+  });
+export type CreateContactoPayload = z.infer<typeof CreateContactoPayload>;
+
+// Edición parcial: campos ausentes/vacíos preservan lo guardado (ver repo).
+export const PatchContactoPayload = z.object({
+  nombre: z.string().trim().min(1).max(150).optional(),
+  rol: z.string().trim().max(60).optional(),
+  telefono: z.string().trim().max(50).nullable().optional(),
+  email: z.string().trim().max(150).nullable().optional(),
+});
+export type PatchContactoPayload = z.infer<typeof PatchContactoPayload>;
+
 export const EquipoEstado = z.enum(['operativo', 'en_mantencion', 'fuera_de_servicio']);
 export type EquipoEstado = z.infer<typeof EquipoEstado>;
 
@@ -55,6 +79,8 @@ export const CreateEquipoPayload = z.object({
     .optional(),
   estado: EquipoEstado.default('operativo'),
   notas: z.string().trim().max(2000).nullable().optional(),
+  // Ids de documentos vinculados (bigint como string). Máx 50 por equipo.
+  documento_ids: z.array(z.string().regex(/^\d+$/, 'id de documento inválido')).max(50).default([]),
 });
 export type CreateEquipoPayload = z.infer<typeof CreateEquipoPayload>;
 

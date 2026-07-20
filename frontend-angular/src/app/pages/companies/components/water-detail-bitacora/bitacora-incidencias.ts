@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { A11yModule } from '@angular/cdk/a11y';
 import {
   CATEGORIA_LABELS,
   CreateIncidenciaPayload,
@@ -72,6 +73,7 @@ function emptyDraft(): DraftIncidencia {
   imports: [
     CommonModule,
     FormsModule,
+    A11yModule,
     InlineErrorComponent,
     TableSkeletonComponent,
     ConfirmDialogComponent,
@@ -89,6 +91,7 @@ function emptyDraft(): DraftIncidencia {
             <button
               type="button"
               (click)="filtroOrigen.set(f.key)"
+              [attr.aria-pressed]="filtroOrigen() === f.key"
               [class]="filtroOrigenClass(f.key)"
             >
               <span class="material-symbols-outlined text-[14px]">{{ f.icon }}</span>
@@ -102,6 +105,7 @@ function emptyDraft(): DraftIncidencia {
             <button
               type="button"
               (click)="filtroEstado.set(f.key)"
+              [attr.aria-pressed]="filtroEstado() === f.key"
               [class]="filtroEstadoClass(f.key)"
             >
               {{ f.label }}
@@ -114,7 +118,8 @@ function emptyDraft(): DraftIncidencia {
         <button
           type="button"
           (click)="toggleNueva()"
-          class="inline-flex items-center gap-1 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container hover:bg-primary-tint-14"
+          [attr.aria-pressed]="mostrandoNueva()"
+          class="inline-flex items-center gap-1 rounded-xl border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
         >
           <span class="material-symbols-outlined text-[14px]">{{
             mostrandoNueva() ? 'close' : 'add'
@@ -124,36 +129,72 @@ function emptyDraft(): DraftIncidencia {
       </header>
 
       @if (mostrandoNueva()) {
-        <article
-          class="rounded-2xl border-2 border-dashed border-primary-tint-25 bg-primary-tint-08/30 p-4"
+        <div
+          class="anim-backdrop fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 px-4 backdrop-blur-md"
+          animate.leave="anim-overlay-out"
+          role="dialog"
+          cdkTrapFocus
+          cdkTrapFocusAutoCapture
+          aria-modal="true"
+          aria-labelledby="nueva-incidencia-title"
+          (click)="onBackdrop($event)"
+          (keydown.escape)="toggleNueva()"
         >
-          <p
-            class="mb-3 text-caption-xs font-semibold uppercase tracking-widest text-primary-container"
+          <div
+            class="anim-panel relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+            (click)="$event.stopPropagation()"
           >
-            Nueva incidencia
-          </p>
-          <ng-container
-            *ngTemplateOutlet="formTemplate; context: { $implicit: nuevaDraft, isNew: true }"
-          ></ng-container>
-          <div class="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              (click)="toggleNueva()"
-              class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+            <div
+              class="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4"
             >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              [disabled]="saving() || !puedeGuardar(nuevaDraft)"
-              (click)="guardarNueva()"
-              class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-tint-08 text-primary-container"
+                >
+                  <span class="material-symbols-outlined text-[20px]">add</span>
+                </span>
+                <h2 id="nueva-incidencia-title" class="text-h6 font-semibold text-slate-800">
+                  Nueva incidencia
+                </h2>
+              </div>
+              <button
+                type="button"
+                (click)="toggleNueva()"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+                aria-label="Cerrar"
+              >
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-5 py-5">
+              <ng-container
+                *ngTemplateOutlet="formTemplate; context: { $implicit: nuevaDraft, isNew: true }"
+              ></ng-container>
+            </div>
+
+            <div
+              class="flex shrink-0 justify-end gap-2 border-t border-slate-200 bg-slate-50/60 px-5 py-4"
             >
-              <span class="material-symbols-outlined text-[16px]">check</span>
-              Crear
-            </button>
+              <button
+                type="button"
+                (click)="toggleNueva()"
+                class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                [disabled]="saving() || !puedeGuardar(nuevaDraft)"
+                (click)="guardarNueva()"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined text-[16px]">check</span>
+                Crear
+              </button>
+            </div>
           </div>
-        </article>
+        </div>
       }
 
       @if (loading()) {
@@ -164,7 +205,7 @@ function emptyDraft(): DraftIncidencia {
       <div class="space-y-2">
         @for (inc of incidenciasFiltradas(); track inc.id) {
           <article
-            class="group rounded-2xl border bg-white shadow-sm transition-all"
+            class="group rounded-2xl border bg-white shadow-sm transition"
             [class]="tarjetaClass(inc)"
           >
             <div class="flex items-start gap-3 p-4">
@@ -263,7 +304,7 @@ function emptyDraft(): DraftIncidencia {
                       <button
                         type="button"
                         (click)="cancelarEdicion(inc)"
-                        class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 hover:bg-slate-200"
+                        class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-95"
                       >
                         Cancelar
                       </button>
@@ -271,7 +312,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving() || !puedeGuardar(drafts()[inc.id]!)"
                         (click)="guardarEdicion(inc)"
-                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white hover:bg-primary-container disabled:opacity-50"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[16px]">check</span>
                         Guardar
@@ -283,7 +324,7 @@ function emptyDraft(): DraftIncidencia {
                     <button
                       type="button"
                       (click)="expandir(inc)"
-                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50"
+                      class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[14px]">edit</span>
                       Editar
@@ -293,7 +334,7 @@ function emptyDraft(): DraftIncidencia {
                         type="button"
                         [disabled]="saving()"
                         (click)="cerrar(inc)"
-                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+                        class="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-caption font-bold text-emerald-700 transition-colors hover:bg-emerald-100 active:scale-95 disabled:opacity-50"
                       >
                         <span class="material-symbols-outlined text-[14px]">check_circle</span>
                         Cerrar
@@ -302,7 +343,7 @@ function emptyDraft(): DraftIncidencia {
                     <button
                       type="button"
                       (click)="eliminar(inc)"
-                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-caption font-bold text-rose-600 hover:bg-rose-50"
+                      class="ml-auto inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-caption font-bold text-rose-600 transition-colors hover:bg-rose-50 active:scale-95"
                     >
                       <span class="material-symbols-outlined text-[14px]">delete</span>
                       Eliminar
@@ -469,6 +510,8 @@ export class BitacoraIncidenciasComponent {
   private readonly userService = inject(UserService);
 
   readonly sitioId = input<string>('');
+  /** Búsqueda transversal desde el header de Bitácora. */
+  readonly search = input<string>('');
   readonly empresaId = input<string>('');
 
   readonly origenes = ORIGENES;
@@ -563,7 +606,7 @@ export class BitacoraIncidenciasComponent {
 
   tecnicoChipClass(d: DraftIncidencia, id: string): string {
     const base =
-      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-caption-xs font-semibold transition-colors ';
+      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-caption-xs font-semibold transition-colors active:scale-95 ';
     return this.tecnicoSeleccionado(d, id)
       ? base + 'border-primary-tint-35 bg-primary-tint-14 text-primary-container'
       : base + 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50';
@@ -580,9 +623,14 @@ export class BitacoraIncidenciasComponent {
   readonly incidenciasFiltradas = computed(() => {
     const fo = this.filtroOrigen();
     const fe = this.filtroEstado();
+    const q = this.search().trim().toLowerCase();
     return this.incidencias().filter((i) => {
       if (fo !== 'todos' && i.origen !== fo) return false;
       if (fe !== 'todos' && i.estado !== fe) return false;
+      if (q) {
+        const hay = `${i.codigo} ${i.titulo} ${i.descripcion ?? ''} ${i.categoria}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
   });
@@ -595,6 +643,11 @@ export class BitacoraIncidenciasComponent {
       this.nuevaDraft = emptyDraft();
       this.mostrandoNueva.set(true);
     }
+  }
+
+  /** Cierra el modal solo si el click cae en el backdrop, no en el panel. */
+  onBackdrop(event: MouseEvent): void {
+    if (event.target === event.currentTarget) this.toggleNueva();
   }
 
   expandir(inc: IncidenciaRow): void {
@@ -809,7 +862,7 @@ export class BitacoraIncidenciasComponent {
   filtroOrigenClass(key: IncidenciaOrigen | 'todos'): string {
     const active = this.filtroOrigen() === key;
     return [
-      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition-all',
+      'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-caption font-bold transition active:scale-95',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',
@@ -819,7 +872,7 @@ export class BitacoraIncidenciasComponent {
   filtroEstadoClass(key: IncidenciaEstado | 'todos'): string {
     const active = this.filtroEstado() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition active:scale-95',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

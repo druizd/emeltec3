@@ -7,10 +7,15 @@ import { Observable, map } from 'rxjs';
 import type { ApiResponse } from '@emeltec/shared';
 
 export interface FichaContacto {
+  /** id estable = contacto_operativo.id. Ausente solo al crear. */
+  id?: string;
   nombre: string;
   rol: string;
   telefono?: string | null;
   email?: string | null;
+  /** true cuando el backend enmascaró tel/email: hay datos ocultos
+   * revelables con 2FA. */
+  datos_ocultos?: boolean;
 }
 
 export interface FichaAcreditacion {
@@ -64,6 +69,8 @@ export interface SitioEquipo {
   garantia_hasta: string | null;
   estado: EquipoEstado;
   notas: string | null;
+  /** Ids de documentos vinculados (bigint como string). */
+  documento_ids: string[];
   created_at: string;
   updated_at: string;
 }
@@ -77,6 +84,7 @@ export interface CreateEquipoPayload {
   garantia_hasta?: string | null;
   estado?: EquipoEstado;
   notas?: string | null;
+  documento_ids?: string[];
 }
 
 export type PatchEquipoPayload = Partial<CreateEquipoPayload>;
@@ -102,6 +110,49 @@ export class BitacoraSitioService {
       .patch<
         ApiResponse<FichaSitio>
       >(`/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/ficha`, ficha)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * Revela tel/email de un contacto enmascarado. Exige 2FA (el interceptor
+   * global inyecta el código) y queda auditado en el backend.
+   */
+  revealContacto(
+    siteId: string,
+    id: string,
+  ): Observable<{ telefono: string | null; email: string | null }> {
+    return this.http
+      .post<
+        ApiResponse<{ telefono: string | null; email: string | null }>
+      >(`${this.contactoBase(siteId)}/${encodeURIComponent(id)}/reveal`, {})
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  /**
+   * CRUD de contactos (PII): endpoints dedicados que exigen 2FA (el interceptor
+   * global inyecta el código) y quedan auditados. Devuelven la ficha
+   * enmascarada; el tel/email real solo se obtiene vía revealContacto.
+   */
+  private readonly contactoBase = (siteId: string) =>
+    `/api/v2/sites/${encodeURIComponent(siteId)}/bitacora/contacto`;
+
+  createContacto(siteId: string, contacto: FichaContacto): Observable<FichaSitio> {
+    return this.http
+      .post<ApiResponse<FichaSitio>>(this.contactoBase(siteId), contacto)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  patchContacto(siteId: string, id: string, contacto: FichaContacto): Observable<FichaSitio> {
+    return this.http
+      .patch<
+        ApiResponse<FichaSitio>
+      >(`${this.contactoBase(siteId)}/${encodeURIComponent(id)}`, contacto)
+      .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
+  }
+
+  deleteContacto(siteId: string, id: string): Observable<FichaSitio> {
+    return this.http
+      .delete<ApiResponse<FichaSitio>>(`${this.contactoBase(siteId)}/${encodeURIComponent(id)}`)
       .pipe(map((r) => (r.ok ? r.data : (Promise.reject(r) as never))));
   }
 

@@ -64,7 +64,7 @@ function emptyDraft(): DraftMiembro {
       <div
         class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-body-sm text-red-800"
       >
-        <span class="material-symbols-outlined text-[18px]">error</span>
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
         <span>{{ error() }}</span>
       </div>
     }
@@ -72,7 +72,7 @@ function emptyDraft(): DraftMiembro {
       <div
         class="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-body-sm text-emerald-800"
       >
-        <span class="material-symbols-outlined text-[18px]">check_circle</span>
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">check_circle</span>
         <span>{{ aviso() }}</span>
       </div>
     }
@@ -88,9 +88,10 @@ function emptyDraft(): DraftMiembro {
       <button
         type="button"
         (click)="toggleForm()"
-        class="inline-flex items-center gap-1 rounded-md border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14"
+        [attr.aria-pressed]="mostrandoForm()"
+        class="inline-flex items-center gap-1 rounded-md border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95"
       >
-        <span class="material-symbols-outlined text-[14px]">{{
+        <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
           mostrandoForm() ? 'close' : 'person_add'
         }}</span>
         {{ mostrandoForm() ? 'Cancelar' : 'Agregar miembro' }}
@@ -160,7 +161,9 @@ function emptyDraft(): DraftMiembro {
           <div class="flex gap-2">
             <label [class]="rolCardClass('Vendedor')">
               <input type="radio" name="tipo" value="Vendedor" [(ngModel)]="draft.tipo" hidden />
-              <span class="material-symbols-outlined text-[18px]">storefront</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                >storefront</span
+              >
               <span>
                 <span class="block text-body-sm font-bold">Vendedor</span>
                 <span class="block text-caption-xs"
@@ -170,7 +173,9 @@ function emptyDraft(): DraftMiembro {
             </label>
             <label [class]="rolCardClass('SuperAdmin')">
               <input type="radio" name="tipo" value="SuperAdmin" [(ngModel)]="draft.tipo" hidden />
-              <span class="material-symbols-outlined text-[18px]">shield_person</span>
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                >shield_person</span
+              >
               <span>
                 <span class="block text-body-sm font-bold">SuperAdmin</span>
                 <span class="block text-caption-xs">Toda la plataforma</span>
@@ -189,7 +194,7 @@ function emptyDraft(): DraftMiembro {
             [disabled]="saving() || !formValido()"
             class="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:opacity-50"
           >
-            <span class="material-symbols-outlined text-[16px]">check</span>
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">check</span>
             {{ saving() ? 'Creando…' : 'Crear miembro' }}
           </button>
         </div>
@@ -253,9 +258,9 @@ function emptyDraft(): DraftMiembro {
                       (click)="toggleEdicion(m)"
                       [attr.aria-label]="'Editar a ' + m.nombre"
                       title="Editar"
-                      class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-container"
+                      class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary-container active:scale-95"
                     >
-                      <span class="material-symbols-outlined text-[16px]">{{
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
                         editandoId() === m.id ? 'close' : 'edit'
                       }}</span>
                     </button>
@@ -266,9 +271,11 @@ function emptyDraft(): DraftMiembro {
                         [disabled]="saving()"
                         [attr.aria-label]="'Reenviar código de acceso a ' + m.nombre"
                         title="Reenviar código de acceso"
-                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container disabled:cursor-not-allowed disabled:opacity-40"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <span class="material-symbols-outlined text-[16px]">lock_reset</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >lock_reset</span
+                        >
                       </button>
                     }
                     @if (m.activo) {
@@ -278,9 +285,11 @@ function emptyDraft(): DraftMiembro {
                         [disabled]="esYo(m) || saving()"
                         [attr.aria-label]="'Desactivar a ' + m.nombre"
                         [title]="esYo(m) ? 'No puedes desactivar tu propia cuenta' : 'Desactivar'"
-                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <span class="material-symbols-outlined text-[16px]">person_off</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >person_off</span
+                        >
                       </button>
                     } @else {
                       <button
@@ -289,9 +298,11 @@ function emptyDraft(): DraftMiembro {
                         [disabled]="saving()"
                         [attr.aria-label]="'Reactivar a ' + m.nombre"
                         title="Reactivar"
-                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 disabled:opacity-40"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-emerald-50 hover:text-emerald-600 active:scale-95 disabled:opacity-40"
                       >
-                        <span class="material-symbols-outlined text-[16px]">person_check</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >person_check</span
+                        >
                       </button>
                     }
                   </div>
@@ -365,7 +376,7 @@ function emptyDraft(): DraftMiembro {
                           <button
                             type="button"
                             (click)="toggleEdicion(m)"
-                            class="rounded-md bg-slate-100 px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-200"
+                            class="rounded-md bg-slate-100 px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-95"
                           >
                             Cancelar
                           </button>
@@ -374,7 +385,9 @@ function emptyDraft(): DraftMiembro {
                             [disabled]="saving() || !editValido()"
                             class="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:opacity-50"
                           >
-                            <span class="material-symbols-outlined text-[14px]">check</span>
+                            <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                              >check</span
+                            >
                             {{ saving() ? 'Guardando…' : 'Guardar' }}
                           </button>
                         </div>

@@ -38,6 +38,7 @@ export interface ConfirmDialogData {
         >
           <div class="flex gap-4 border-b border-slate-100 px-5 py-5">
             <span
+              aria-hidden="true"
               [class]="
                 (d.tone ?? 'primary') === 'danger'
                   ? 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-50 text-[24px] text-red-600'
@@ -69,7 +70,7 @@ export interface ConfirmDialogData {
                   : 'inline-flex items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition duration-100 hover:bg-primary-container active:scale-[0.98]'
               "
             >
-              <span class="material-symbols-outlined text-[16px]">{{
+              <span aria-hidden="true" class="material-symbols-outlined text-[16px]">{{
                 (d.tone ?? 'primary') === 'danger' ? 'delete' : 'check'
               }}</span>
               {{ d.confirmText ?? 'Confirmar' }}

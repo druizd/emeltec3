@@ -14,6 +14,7 @@ import {
   WaterOperacionStateService,
   type OperacionPreset as Preset,
 } from './water-operacion-state';
+import { FlujoDiarioChartComponent } from './flujo-diario-chart';
 
 interface KpiPeriodo {
   label: string;
@@ -40,26 +41,6 @@ interface FilaDiaria {
   alertas: number;
 }
 
-interface BarChart {
-  bars: {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    fill: string;
-    /** Centro X de la barra para anclar tooltip. */
-    cx: number;
-    /** Valor real (m³) — usado por el tooltip. */
-    valor: number;
-    /** Label legible de la fecha — usado por el tooltip. */
-    fecha: string;
-  }[];
-  yTicks: { y: number; label: string }[];
-  xLabels: { x: number; label: string }[];
-  /** Unidad para mostrar en el tooltip. */
-  unidad: string;
-}
-
 interface AlertaPeriodo {
   id: number;
   fechaHora: string;
@@ -79,7 +60,7 @@ interface IncidenciaPeriodo {
 @Component({
   selector: 'app-operacion-resumen-periodo',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FlujoDiarioChartComponent],
   template: `
     <div class="space-y-3">
       <!-- Selector de período. Dos sub-componentes en horizontal separados
@@ -144,7 +125,7 @@ interface IncidenciaPeriodo {
                 type="button"
                 (click)="aplicarFechas()"
                 [disabled]="!fechasPendientes()"
-                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                class="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
               >
                 <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
                 Aplicar
@@ -152,13 +133,15 @@ interface IncidenciaPeriodo {
             </div>
           </div>
 
-          <!-- Exportar -->
+          <!-- Exportar CSV del resumen diario -->
           <button
             type="button"
-            class="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 hover:bg-slate-50"
+            (click)="exportarCsv()"
+            [disabled]="data().tabla.length === 0"
+            class="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span class="material-symbols-outlined text-[15px]">download</span>
-            Exportar
+            <span class="material-symbols-outlined text-[15px]" aria-hidden="true">download</span>
+            Exportar CSV
           </button>
         </div>
 
@@ -177,28 +160,49 @@ interface IncidenciaPeriodo {
         </p>
       </section>
 
-      <!-- KPIs del período -->
-      <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-        @for (k of data().kpis; track k.label) {
+      <!-- KPIs del período: hero destacado + grid de soporte -->
+      <div class="grid gap-2 lg:grid-cols-4">
+        @if (heroKpi(); as k) {
           <article
-            class="flex items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm"
+            class="flex flex-col justify-between gap-3 rounded-2xl border bg-white p-5 shadow-sm lg:col-span-1"
             [class]="kpiBorde(k.tono)"
           >
-            <span
-              class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              [class]="kpiIconClass(k.tono)"
-            >
-              <span class="material-symbols-outlined text-[20px]">{{ k.icon }}</span>
-            </span>
-            <div class="min-w-0">
-              <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-                {{ k.label }}
-              </p>
-              <p class="mt-0.5 text-h5 font-semibold text-slate-800">{{ k.valor }}</p>
-              <p class="text-caption-xs text-slate-500">{{ k.subtext }}</p>
-            </div>
+            <p class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              {{ k.label }}
+            </p>
+            <p class="text-[40px] font-bold leading-none tracking-tight text-slate-800">
+              {{ heroNum()
+              }}<span class="ml-1.5 text-[16px] font-semibold text-slate-400">{{
+                heroUnidad()
+              }}</span>
+            </p>
+            <p class="text-caption text-slate-500">{{ k.subtext }}</p>
           </article>
         }
+        <div class="grid gap-2 sm:grid-cols-2 lg:col-span-3 xl:grid-cols-4">
+          @for (k of restoKpis(); track k.label) {
+            <article
+              class="flex items-center gap-2.5 rounded-xl border bg-white p-3 shadow-sm"
+              [class]="kpiBorde(k.tono)"
+            >
+              <span
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                [class]="kpiIconClass(k.tono)"
+              >
+                <span class="material-symbols-outlined text-[16px]">{{ k.icon }}</span>
+              </span>
+              <div class="min-w-0">
+                <p
+                  class="truncate text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                >
+                  {{ k.label }}
+                </p>
+                <p class="mt-0.5 text-body-sm font-semibold text-slate-800">{{ k.valor }}</p>
+                <p class="truncate text-caption-xs text-slate-500">{{ k.subtext }}</p>
+              </div>
+            </article>
+          }
+        </div>
       </div>
 
       <!-- Resumen operacional por turno -->
@@ -211,14 +215,14 @@ interface IncidenciaPeriodo {
               Resumen operacional por turno
             </h3>
             <p class="mt-0.5 flex items-center gap-1 text-caption-xs font-medium text-slate-500">
-              <span class="material-symbols-outlined text-[12px]">link</span>
+              <span class="material-symbols-outlined text-[12px]" aria-hidden="true">link</span>
               Turnos vinculados con "Hoy en tiempo real" — los cambios se guardan por sitio
             </p>
           </div>
           <button
             type="button"
             (click)="resumenSettingsOpen.update((v) => !v)"
-            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             [class]="
               resumenSettingsOpen()
                 ? 'bg-primary-tint-14 text-primary-container'
@@ -227,7 +231,7 @@ interface IncidenciaPeriodo {
             aria-label="Configurar horarios de turno"
             [attr.aria-expanded]="resumenSettingsOpen()"
           >
-            <span class="material-symbols-outlined text-[16px]">settings</span>
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">settings</span>
           </button>
         </div>
 
@@ -245,7 +249,7 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(2)"
-                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  class="px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 2 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -256,7 +260,7 @@ interface IncidenciaPeriodo {
                 <button
                   type="button"
                   (click)="numTurnos.set(3)"
-                  class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                  class="px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                   [class]="
                     numTurnos() === 3 ? 'bg-primary text-white' : 'text-slate-500 hover:bg-slate-50'
                   "
@@ -307,9 +311,9 @@ interface IncidenciaPeriodo {
             <button
               type="button"
               (click)="resumenSettingsOpen.set(false)"
-              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
+              class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95"
             >
-              <span class="material-symbols-outlined text-[14px]">check</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">check</span>
               Listo
             </button>
           </div>
@@ -355,112 +359,8 @@ interface IncidenciaPeriodo {
         </div>
       </section>
 
-      <!-- Gráfico de flujo del período -->
-      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div class="mb-4 flex items-center justify-between">
-          <div>
-            <h3 class="text-body-sm font-semibold text-slate-800">Flujo diario en el período</h3>
-            <p class="mt-0.5 text-caption-xs text-slate-500">m³/día · días sin operación en gris</p>
-          </div>
-          <span
-            class="rounded-full bg-primary-tint-08 px-2.5 py-1 text-caption-xs font-bold text-primary-container"
-            >{{ periodoLabel() }}</span
-          >
-        </div>
-        <div class="relative h-44 w-full">
-          <svg
-            viewBox="0 0 1100 220"
-            class="h-full w-full"
-            preserveAspectRatio="none"
-            (mouseleave)="chartHoverIndex.set(null)"
-          >
-            @for (t of chart().yTicks; track t.y) {
-              <line
-                x1="55"
-                [attr.y1]="t.y"
-                x2="1090"
-                [attr.y2]="t.y"
-                stroke="#f1f5f9"
-                stroke-width="1"
-              />
-              <text
-                x="50"
-                [attr.y]="t.y + 4"
-                font-size="11"
-                fill="#94a3b8"
-                text-anchor="end"
-                font-family="monospace"
-              >
-                {{ t.label }}
-              </text>
-            }
-            @for (l of chart().xLabels; track l.x) {
-              <text [attr.x]="l.x" y="212" font-size="10" fill="#94a3b8" text-anchor="middle">
-                {{ l.label }}
-              </text>
-            }
-            @for (b of chart().bars; track $index; let i = $index) {
-              <!-- Hitbox transparente del ancho total del slot para captar hover
-                   incluso entre barras (gap visual). Mejora la experiencia en
-                   gráficos con muchas barras delgadas. -->
-              <rect
-                [attr.x]="b.x - 2"
-                y="15"
-                [attr.width]="b.w + 4"
-                height="170"
-                fill="transparent"
-                style="cursor: crosshair"
-                (mouseenter)="chartHoverIndex.set(i)"
-                (touchstart)="chartHoverIndex.set(i)"
-                role="img"
-                [attr.aria-label]="b.fecha + ': ' + b.valor + ' ' + chart().unidad"
-              />
-              <rect
-                [attr.x]="b.x"
-                [attr.y]="b.y"
-                [attr.width]="b.w"
-                [attr.height]="b.h"
-                [attr.fill]="b.fill"
-                rx="2"
-                [attr.opacity]="chartHoverIndex() === i ? 1 : 0.85"
-                pointer-events="none"
-              />
-            }
-            @if (chartHoveredBar(); as h) {
-              <!-- Línea vertical de referencia -->
-              <line
-                [attr.x1]="h.cx"
-                [attr.x2]="h.cx"
-                y1="15"
-                y2="185"
-                stroke="#0DAFBD"
-                stroke-width="1"
-                stroke-dasharray="2,3"
-                pointer-events="none"
-              />
-            }
-          </svg>
-
-          <!-- Tooltip flotante: posicionamos en % sobre el SVG (que ocupa todo
-               el contenedor con viewBox fijo). cx/1100 = % horizontal. -->
-          @if (chartHoveredBar(); as h) {
-            <div
-              class="pointer-events-none absolute -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-caption-xs shadow-lg"
-              [style.left.%]="(h.cx / 1100) * 100"
-              [style.top.%]="(h.y / 220) * 100 - 10"
-              style="transform: translate(-50%, -100%)"
-            >
-              <p class="font-semibold text-slate-700">{{ h.fecha }}</p>
-              <p class="mt-0.5 font-mono text-slate-800">
-                <span class="font-bold text-primary-container">{{
-                  h.valor.toLocaleString('es-CL')
-                }}</span>
-                <span class="ml-1 text-slate-500">{{ chart().unidad }}</span>
-              </p>
-            </div>
-          }
-        </div>
-      </section>
+      <!-- Gráfico de flujo del período (Chart.js) -->
+      <app-flujo-diario-chart [points]="dailyChartPoints()" [periodoLabel]="periodoLabel()" />
 
       <!-- Tabla resumen diario: una fila por día calendario en el rango
            aplicado. Cruza daily counters (flujo) + daily aggregates (peaks)
@@ -483,116 +383,156 @@ interface IncidenciaPeriodo {
           </div>
           <button
             type="button"
-            aria-label="Descargar resumen diario en CSV"
-            class="inline-flex items-center gap-1 text-caption-xs font-bold text-primary-container hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            (click)="tablaDiariaOpen.update((v) => !v)"
+            [attr.aria-expanded]="tablaDiariaOpen()"
+            class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-caption-xs font-bold text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <span class="material-symbols-outlined text-[13px]" aria-hidden="true">download</span
-            >.CSV
+            {{ tablaDiariaOpen() ? 'Ocultar detalle' : 'Ver detalle diario' }}
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">{{
+              tablaDiariaOpen() ? 'expand_less' : 'expand_more'
+            }}</span>
           </button>
         </div>
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[640px] text-left text-body-sm">
-            <thead>
-              <tr class="border-b border-slate-100 bg-slate-50/60">
-                <th
-                  class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Fecha
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Flujo (m³)
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Caudal peak
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Caudal prom.
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Freático max
-                </th>
-                <th
-                  class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >
-                  Alertas
-                </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-              @for (fila of data().tabla; track fila.diaIso) {
-                <tr class="hover:bg-slate-50/60" [class.opacity-60]="(fila.flujo ?? 0) === 0">
-                  <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
-                    {{ fila.fecha }}
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.flujo !== null && fila.flujo > 0) {
-                      {{ formatNumber(fila.flujo, 1) }}
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.caudalPeak !== null) {
-                      {{ formatNumber(fila.caudalPeak, 1) }} L/s
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.caudalProm !== null) {
-                      {{ formatNumber(fila.caudalProm, 1) }} L/s
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
-                    @if (fila.freaticoPeak !== null) {
-                      {{ formatNumber(fila.freaticoPeak, 2) }} m
-                    } @else {
-                      <span class="text-slate-300">—</span>
-                    }
-                  </td>
-                  <td class="px-4 py-2.5 text-right">
-                    @if (fila.alertas > 0) {
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
-                      >
-                        {{ fila.alertas }}
-                      </span>
-                    } @else {
-                      <span class="font-mono text-caption text-slate-300">—</span>
-                    }
-                  </td>
+        @if (tablaDiariaOpen()) {
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[640px] text-left text-body-sm">
+              <thead>
+                <tr class="border-b border-slate-100 bg-slate-50/60">
+                  <th
+                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Fecha
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Flujo (m³)
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Caudal peak
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Caudal prom.
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Freático max
+                  </th>
+                  <th
+                    class="px-4 py-2.5 text-right text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                  >
+                    Alertas
+                  </th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        <div class="border-t border-slate-100 px-4 py-2.5">
-          <p class="text-caption-xs text-slate-500">
-            Los datos son provisorios hasta confirmar sincronización con DGA.
-          </p>
-        </div>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                @for (fila of data().tabla; track fila.diaIso) {
+                  <tr class="hover:bg-slate-50/60" [class.opacity-60]="(fila.flujo ?? 0) === 0">
+                    <td class="px-4 py-2.5 font-mono text-caption font-bold text-slate-600">
+                      {{ fila.fecha }}
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.flujo !== null && fila.flujo > 0) {
+                        {{ formatNumber(fila.flujo, 1) }}
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.caudalPeak !== null) {
+                        {{ formatNumber(fila.caudalPeak, 1) }} L/s
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.caudalProm !== null) {
+                        {{ formatNumber(fila.caudalProm, 1) }} L/s
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right font-mono text-caption text-slate-700">
+                      @if (fila.freaticoPeak !== null) {
+                        {{ formatNumber(fila.freaticoPeak, 2) }} m
+                      } @else {
+                        <span class="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td class="px-4 py-2.5 text-right">
+                      @if (fila.alertas > 0) {
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
+                        >
+                          {{ fila.alertas }}
+                        </span>
+                      } @else {
+                        <span class="font-mono text-caption text-slate-300">—</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="border-t border-slate-100 px-4 py-2.5">
+            <p class="text-caption-xs text-slate-500">
+              Los datos son provisorios hasta confirmar sincronización con DGA.
+            </p>
+          </div>
+        }
       </section>
 
-      <!-- Alertas en el período -->
+      <!-- Detalle: Alertas + Incidencias en tabs -->
       <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <!-- Tabs: Alertas | Incidencias -->
         <div
-          class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3"
+          class="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 py-2"
+          role="tablist"
+          aria-label="Detalle del período"
         >
-          <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-            Alertas en el período
-          </h3>
+          <button
+            type="button"
+            role="tab"
+            (click)="detalleTab.set('alertas')"
+            [attr.aria-selected]="detalleTab() === 'alertas'"
+            [class]="
+              detalleTab() === 'alertas'
+                ? 'inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-caption-xs font-bold text-slate-800 shadow-sm transition active:scale-95'
+                : 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-caption-xs font-bold text-slate-500 transition hover:text-slate-700 active:scale-95'
+            "
+          >
+            Alertas
+            <span class="rounded-full bg-slate-100 px-1.5 text-[10px] font-bold text-slate-500">{{
+              data().alertas.length
+            }}</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            (click)="detalleTab.set('incidencias')"
+            [attr.aria-selected]="detalleTab() === 'incidencias'"
+            [class]="
+              detalleTab() === 'incidencias'
+                ? 'inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-caption-xs font-bold text-slate-800 shadow-sm transition active:scale-95'
+                : 'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-caption-xs font-bold text-slate-500 transition hover:text-slate-700 active:scale-95'
+            "
+          >
+            Incidencias
+            <span class="rounded-full bg-slate-100 px-1.5 text-[10px] font-bold text-slate-500">{{
+              data().incidencias.length
+            }}</span>
+          </button>
+        </div>
+
+        @if (detalleTab() === 'alertas') {
           <!-- Resumen por severidad -->
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2 border-b border-slate-100 px-4 py-2.5">
             <span
               class="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-caption-xs font-semibold text-rose-700 ring-1 ring-rose-200"
             >
@@ -618,133 +558,119 @@ interface IncidenciaPeriodo {
               }}
             </span>
           </div>
-        </div>
 
-        @if (data().alertas.length === 0) {
-          <div class="flex flex-col items-center gap-2 py-10 text-center">
-            <span class="material-symbols-outlined text-[36px] text-emerald-300">check_circle</span>
-            <p class="text-body-sm font-bold text-slate-500">
-              Sin alertas en el período seleccionado
-            </p>
-          </div>
+          @if (data().alertas.length === 0) {
+            <div class="flex flex-col items-center gap-2 py-10 text-center">
+              <span class="material-symbols-outlined text-[36px] text-emerald-300"
+                >check_circle</span
+              >
+              <p class="text-body-sm font-bold text-slate-500">
+                Sin alertas en el período seleccionado
+              </p>
+            </div>
+          } @else {
+            <ul class="divide-y divide-slate-100">
+              @for (alerta of data().alertas; track alerta.id) {
+                <li class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/60">
+                  <!-- Icono severidad -->
+                  <span
+                    class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                    [class]="alertaIconClass(alerta.severidad)"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">{{
+                      alertaIcon(alerta.severidad)
+                    }}</span>
+                  </span>
+                  <!-- Contenido -->
+                  <div class="min-w-0 flex-1">
+                    <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
+                    <p class="mt-0.5 font-mono text-caption-xs text-slate-500">
+                      {{ alerta.fechaHora }}
+                    </p>
+                  </div>
+                  <!-- Estado -->
+                  <span
+                    class="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
+                    [class]="alertaEstadoClass(alerta.estado)"
+                  >
+                    {{ alerta.estado === 'resuelta' ? 'Resuelta' : 'Activa' }}
+                  </span>
+                </li>
+              }
+            </ul>
+          }
         } @else {
-          <ul class="divide-y divide-slate-100">
-            @for (alerta of data().alertas; track alerta.id) {
-              <li class="flex items-start gap-3 px-4 py-3 hover:bg-slate-50/60">
-                <!-- Icono severidad -->
-                <span
-                  class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                  [class]="alertaIconClass(alerta.severidad)"
-                >
-                  <span class="material-symbols-outlined text-[15px]">{{
-                    alertaIcon(alerta.severidad)
-                  }}</span>
-                </span>
-                <!-- Contenido -->
-                <div class="min-w-0 flex-1">
-                  <p class="text-body-sm font-bold text-slate-700">{{ alerta.titulo }}</p>
-                  <p class="mt-0.5 font-mono text-caption-xs text-slate-500">
-                    {{ alerta.fechaHora }}
-                  </p>
-                </div>
-                <!-- Estado -->
-                <span
-                  class="mt-0.5 shrink-0 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
-                  [class]="alertaEstadoClass(alerta.estado)"
-                >
-                  {{ alerta.estado === 'resuelta' ? 'Resuelta' : 'Activa' }}
-                </span>
-              </li>
-            }
-          </ul>
-        }
-      </section>
-
-      <!-- Incidencias en el período -->
-      <section class="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div
-          class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3"
-        >
-          <h3 class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
-            Incidencias en el período
-          </h3>
-          <span class="font-mono text-caption-xs text-slate-500"
-            >{{ data().incidencias.length }} registro{{
-              data().incidencias.length !== 1 ? 's' : ''
-            }}</span
-          >
-        </div>
-
-        @if (data().incidencias.length === 0) {
-          <div class="flex flex-col items-center gap-2 py-10 text-center">
-            <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
-            <p class="text-body-sm font-bold text-slate-500">
-              Sin incidencias registradas en el período
-            </p>
-          </div>
-        } @else {
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[620px] text-left text-body-sm">
-              <thead>
-                <tr class="border-b border-slate-100 bg-slate-50/60">
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Fecha
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Descripción
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Categoría
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Estado
-                  </th>
-                  <th
-                    class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                  >
-                    Técnico
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-slate-100">
-                @for (inc of data().incidencias; track inc.fecha + inc.descripcion) {
-                  <tr class="hover:bg-slate-50/60">
-                    <td class="px-4 py-2.5 font-mono text-caption-xs font-bold text-slate-500">
-                      {{ inc.fecha }}
-                    </td>
-                    <td class="px-4 py-2.5 text-caption text-slate-700">{{ inc.descripcion }}</td>
-                    <td class="px-4 py-2.5">
-                      <span
-                        class="rounded-md bg-slate-100 px-2 py-0.5 text-caption-xs font-bold text-slate-600"
-                        >{{ inc.categoria }}</span
-                      >
-                    </td>
-                    <td class="px-4 py-2.5">
-                      <span
-                        class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
-                        [class]="incEstadoClass(inc.estado)"
-                      >
-                        <span
-                          class="h-1.5 w-1.5 rounded-full"
-                          [class]="incEstadoDot(inc.estado)"
-                        ></span>
-                        {{ incEstadoLabel(inc.estado) }}
-                      </span>
-                    </td>
-                    <td class="px-4 py-2.5 text-caption text-slate-500">{{ inc.tecnico }}</td>
+          @if (data().incidencias.length === 0) {
+            <div class="flex flex-col items-center gap-2 py-10 text-center">
+              <span class="material-symbols-outlined text-[36px] text-emerald-300">handyman</span>
+              <p class="text-body-sm font-bold text-slate-500">
+                Sin incidencias registradas en el período
+              </p>
+            </div>
+          } @else {
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[620px] text-left text-body-sm">
+                <thead>
+                  <tr class="border-b border-slate-100 bg-slate-50/60">
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Fecha
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Descripción
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Categoría
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Estado
+                    </th>
+                    <th
+                      class="px-4 py-2.5 text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                    >
+                      Técnico
+                    </th>
                   </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  @for (inc of data().incidencias; track inc.fecha + inc.descripcion) {
+                    <tr class="hover:bg-slate-50/60">
+                      <td class="px-4 py-2.5 font-mono text-caption-xs font-bold text-slate-500">
+                        {{ inc.fecha }}
+                      </td>
+                      <td class="px-4 py-2.5 text-caption text-slate-700">{{ inc.descripcion }}</td>
+                      <td class="px-4 py-2.5">
+                        <span
+                          class="rounded-md bg-slate-100 px-2 py-0.5 text-caption-xs font-bold text-slate-600"
+                          >{{ inc.categoria }}</span
+                        >
+                      </td>
+                      <td class="px-4 py-2.5">
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-caption-xs font-semibold"
+                          [class]="incEstadoClass(inc.estado)"
+                        >
+                          <span
+                            class="h-1.5 w-1.5 rounded-full"
+                            [class]="incEstadoDot(inc.estado)"
+                          ></span>
+                          {{ incEstadoLabel(inc.estado) }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-2.5 text-caption text-slate-500">{{ inc.tecnico }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
         }
       </section>
     </div>
@@ -764,6 +690,26 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   readonly numTurnos = this.state.numTurnos;
   readonly turnosConfig = this.state.turnosConfig;
   readonly resumenSettingsOpen = signal(false);
+
+  // ── Estado del replanteo (resumen ejecutivo + drill-down) ──
+  /** KPI destacado (hero) = primero de la lista; el resto va al grid de soporte. */
+  readonly heroKpi = computed(() => this.data().kpis[0] ?? null);
+  readonly restoKpis = computed(() => this.data().kpis.slice(1));
+  /** Hero: número y unidad separados para renderizar la unidad más chica. */
+  readonly heroNum = computed(() => {
+    const v = this.heroKpi()?.valor ?? '';
+    const i = v.lastIndexOf(' ');
+    return i > 0 ? v.slice(0, i) : v;
+  });
+  readonly heroUnidad = computed(() => {
+    const v = this.heroKpi()?.valor ?? '';
+    const i = v.lastIndexOf(' ');
+    return i > 0 ? v.slice(i + 1) : '';
+  });
+  /** Tabla diaria como drill-down colapsable bajo el gráfico. */
+  readonly tablaDiariaOpen = signal(false);
+  /** Tabs de detalle: alertas | incidencias (antes eran 2 secciones apiladas). */
+  readonly detalleTab = signal<'alertas' | 'incidencias'>('alertas');
 
   // Input signals locales: el operador edita estos sin disparar fetches hasta
   // que clickea Aplicar. Inicializados desde el state actual y resincronizados
@@ -810,8 +756,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     }[]
   >([]);
   readonly dailyAggregatesLoading = signal(false);
-  // Tooltip de chart: índice de barra sobre la que hover. null = sin hover.
-  readonly chartHoverIndex = signal<number | null>(null);
   // toObservable solo se permite en contexto de inyeccion → captura en field init.
   private readonly fechaDesde$ = toObservable(this.fechaDesde);
   private readonly fechaHasta$ = toObservable(this.fechaHasta);
@@ -897,147 +841,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     );
   }
 
-  // SVG drawing area
-  private readonly DX = 55;
-  private readonly DY = 15;
-  private readonly DW = 1035;
-  private readonly DH = 170;
-
-  private readonly mockKpis: Record<Preset, KpiPeriodo[]> = {
-    '7d': [
-      {
-        label: 'Flujo acumulado',
-        valor: '1,183 m³',
-        subtext: 'Últimos 7 días',
-        icon: 'water_drop',
-        tono: 'ok',
-      },
-      {
-        label: 'Caudal promedio',
-        valor: '3.1 L/s',
-        subtext: 'Período activo',
-        icon: 'speed',
-        tono: 'ok',
-      },
-      {
-        label: 'Nivel freático prom.',
-        valor: '32.4 m',
-        subtext: 'Profundidad media',
-        icon: 'vertical_align_bottom',
-        tono: 'neutral',
-      },
-      {
-        label: 'Días con operación',
-        valor: '5 / 7',
-        subtext: '2 días sin bomba',
-        icon: 'event_available',
-        tono: 'neutral',
-      },
-      {
-        label: 'Alertas en período',
-        valor: '1',
-        subtext: '0 críticas',
-        icon: 'notifications',
-        tono: 'ok',
-      },
-      {
-        label: 'Uptime comunicación',
-        valor: '99.8%',
-        subtext: '~29 min offline',
-        icon: 'wifi',
-        tono: 'ok',
-      },
-    ],
-    '30d': [
-      {
-        label: 'Flujo acumulado',
-        valor: '4,920 m³',
-        subtext: 'Últimos 30 días',
-        icon: 'water_drop',
-        tono: 'ok',
-      },
-      {
-        label: 'Caudal promedio',
-        valor: '3.1 L/s',
-        subtext: 'Período activo',
-        icon: 'speed',
-        tono: 'ok',
-      },
-      {
-        label: 'Nivel freático prom.',
-        valor: '32.4 m',
-        subtext: 'Profundidad media',
-        icon: 'vertical_align_bottom',
-        tono: 'neutral',
-      },
-      {
-        label: 'Días con operación',
-        valor: '22 / 30',
-        subtext: '8 días sin bomba',
-        icon: 'event_available',
-        tono: 'neutral',
-      },
-      {
-        label: 'Alertas en período',
-        valor: '4',
-        subtext: '1 crítica',
-        icon: 'notifications',
-        tono: 'warn',
-      },
-      {
-        label: 'Uptime comunicación',
-        valor: '99.1%',
-        subtext: '~4 h 05 min offline',
-        icon: 'wifi',
-        tono: 'ok',
-      },
-    ],
-    '90d': [
-      {
-        label: 'Flujo acumulado',
-        valor: '14,921 m³',
-        subtext: 'Últimos 90 días',
-        icon: 'water_drop',
-        tono: 'ok',
-      },
-      {
-        label: 'Caudal promedio',
-        valor: '3.0 L/s',
-        subtext: 'Período activo',
-        icon: 'speed',
-        tono: 'ok',
-      },
-      {
-        label: 'Nivel freático prom.',
-        valor: '32.5 m',
-        subtext: 'Profundidad media',
-        icon: 'vertical_align_bottom',
-        tono: 'neutral',
-      },
-      {
-        label: 'Días con operación',
-        valor: '66 / 90',
-        subtext: '24 días sin bomba',
-        icon: 'event_available',
-        tono: 'neutral',
-      },
-      {
-        label: 'Alertas en período',
-        valor: '8',
-        subtext: '2 críticas',
-        icon: 'notifications',
-        tono: 'warn',
-      },
-      {
-        label: 'Uptime comunicación',
-        valor: '98.7%',
-        subtext: '~28 h offline',
-        icon: 'wifi',
-        tono: 'warn',
-      },
-    ],
-  };
-
   /**
    * Tabla "Resumen diario" — una fila por día calendario en el rango aplicado.
    * Cruza tres fuentes de datos:
@@ -1106,166 +909,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
     return `${get('year')}-${get('month')}-${get('day')}`;
   }
-
-  private readonly barData: Record<Preset, { vals: number[]; labels: string[]; step: number }> = {
-    '7d': {
-      vals: [0, 171, 175, 0, 168, 172, 169],
-      labels: ['04/05', '05/05', '06/05', '07/05', '08/05', '09/05', '10/05'],
-      step: 1,
-    },
-    '30d': {
-      vals: [
-        172, 168, 175, 0, 163, 171, 174, 169, 177, 165, 0, 178, 172, 166, 175, 168, 0, 171, 174,
-        165, 172, 169, 0, 179, 171, 168, 175, 172, 0, 169,
-      ],
-      labels: [
-        '11/04',
-        '12/04',
-        '13/04',
-        '14/04',
-        '15/04',
-        '16/04',
-        '17/04',
-        '18/04',
-        '19/04',
-        '20/04',
-        '21/04',
-        '22/04',
-        '23/04',
-        '24/04',
-        '25/04',
-        '26/04',
-        '27/04',
-        '28/04',
-        '29/04',
-        '30/04',
-        '01/05',
-        '02/05',
-        '03/05',
-        '04/05',
-        '05/05',
-        '06/05',
-        '07/05',
-        '08/05',
-        '09/05',
-        '10/05',
-      ],
-      step: 5,
-    },
-    '90d': {
-      vals: Array.from({ length: 90 }, (_, i) => {
-        const mod = i % 7;
-        if (mod === 5 || mod === 6) return 0;
-        return [172, 168, 175, 163, 171, 174, 169, 177, 165, 178][i % 10];
-      }),
-      labels: Array.from({ length: 90 }, (_, i) => {
-        const d = new Date(2026, 1, 9);
-        d.setDate(d.getDate() + i);
-        return `${d.getDate()}/${d.getMonth() + 1}`;
-      }),
-      step: 15,
-    },
-  };
-
-  private readonly mockAlertas: Record<Preset, AlertaPeriodo[]> = {
-    '7d': [
-      {
-        id: 1,
-        fechaHora: '08/05/2026 14:22',
-        titulo: 'Caudal por debajo del umbral mínimo (2.5 L/s)',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-    ],
-    '30d': [
-      {
-        id: 1,
-        fechaHora: '08/05/2026 14:22',
-        titulo: 'Caudal por debajo del umbral mínimo (2.5 L/s)',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-      {
-        id: 2,
-        fechaHora: '28/04/2026 03:47',
-        titulo: 'Pérdida de comunicación con sensor (>15 min)',
-        severidad: 'critica',
-        estado: 'resuelta',
-      },
-      {
-        id: 3,
-        fechaHora: '21/04/2026 09:10',
-        titulo: 'Nivel freático superó límite de alerta (34 m)',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-      {
-        id: 4,
-        fechaHora: '14/04/2026 16:55',
-        titulo: 'Sincronización DGA demorada >2 horas',
-        severidad: 'info',
-        estado: 'resuelta',
-      },
-    ],
-    '90d': [
-      {
-        id: 1,
-        fechaHora: '08/05/2026 14:22',
-        titulo: 'Caudal por debajo del umbral mínimo (2.5 L/s)',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-      {
-        id: 2,
-        fechaHora: '28/04/2026 03:47',
-        titulo: 'Pérdida de comunicación con sensor (>15 min)',
-        severidad: 'critica',
-        estado: 'resuelta',
-      },
-      {
-        id: 3,
-        fechaHora: '21/04/2026 09:10',
-        titulo: 'Nivel freático superó límite de alerta (34 m)',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-      {
-        id: 4,
-        fechaHora: '14/04/2026 16:55',
-        titulo: 'Sincronización DGA demorada >2 horas',
-        severidad: 'info',
-        estado: 'resuelta',
-      },
-      {
-        id: 5,
-        fechaHora: '02/04/2026 11:30',
-        titulo: 'Caudal cero por 4 horas consecutivas',
-        severidad: 'critica',
-        estado: 'resuelta',
-      },
-      {
-        id: 6,
-        fechaHora: '18/03/2026 07:15',
-        titulo: 'Variación brusca de nivel freático (+3.2 m)',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-      {
-        id: 7,
-        fechaHora: '05/03/2026 20:40',
-        titulo: 'Temperatura del equipo fuera de rango',
-        severidad: 'advertencia',
-        estado: 'resuelta',
-      },
-      {
-        id: 8,
-        fechaHora: '24/02/2026 13:08',
-        titulo: 'Sincronización DGA demorada >2 horas',
-        severidad: 'info',
-        estado: 'resuelta',
-      },
-    ],
-  };
 
   // ── KPIs reales (4 wireados) + 2 mock ─────────────────────
 
@@ -1511,24 +1154,10 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     };
   });
 
-  /**
-   * Chart de flujo diario con datos REALES del rango aplicado. Ordena
-   * cronológicamente, calcula step de labels para no saturar el eje X (~10
-   * etiquetas visibles), y arma estructura con `cx`, `valor`, `fecha` por
-   * barra para que el tooltip pueda mostrar el dato al hover.
-   */
-  readonly chart = computed((): BarChart => {
-    const daily = [...this.dailyInRange()].sort((a, b) => a.dia.localeCompare(b.dia));
-    if (daily.length === 0) {
-      return this.buildBars([0], [''], 1, [''], 'm³');
-    }
-    const vals = daily.map((p) => p.delta ?? 0);
-    const labelsCompact = daily.map((p) => this.formatDiaCompact(p.dia));
-    const labelsTooltip = daily.map((p) => this.formatDiaLargo(p.dia));
-    const step = Math.max(1, Math.ceil(daily.length / 10));
-    const unidad = daily[0]?.unidad ?? 'm³';
-    return this.buildBars(vals, labelsCompact, step, labelsTooltip, unidad);
-  });
+  /** Puntos para el gráfico de flujo diario (Chart.js, sub-componente). Datos reales del rango. */
+  readonly dailyChartPoints = computed(() =>
+    this.dailyInRange().map((p) => ({ dia: p.dia, delta: p.delta })),
+  );
 
   /**
    * Label corto del rango activo para mostrar al lado de los botones de
@@ -1542,16 +1171,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return `${this.formatDiaLargo(desde)} → ${this.formatDiaLargo(hasta)}`;
   });
 
-  /**
-   * Devuelve la barra resaltada por el hover (si hay). Sirve para renderear
-   * el overlay con tooltip sin recalcular toda la lista de barras.
-   */
-  readonly chartHoveredBar = computed(() => {
-    const i = this.chartHoverIndex();
-    if (i === null) return null;
-    return this.chart().bars[i] ?? null;
-  });
-
   readonly periodoLabel = computed(() => {
     const p = this.preset();
     if (p === '7d') return 'Últimos 7 días';
@@ -1559,6 +1178,40 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     if (p === '90d') return 'Últimos 90 días';
     return 'Rango personalizado';
   });
+
+  /** Exporta el resumen diario del período a CSV (datos reales de la tabla). */
+  exportarCsv(): void {
+    const filas = this.data().tabla;
+    if (filas.length === 0) return;
+    const headers = [
+      'Fecha',
+      'Flujo (m3)',
+      'Caudal peak (L/s)',
+      'Caudal prom (L/s)',
+      'Freatico max (m)',
+      'Alertas',
+    ];
+    const rows = filas.map((f) => [
+      f.fecha,
+      f.flujo ?? '',
+      f.caudalPeak ?? '',
+      f.caudalProm ?? '',
+      f.freaticoPeak ?? '',
+      f.alertas,
+    ]);
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `resumen-periodo-${this.fechaDesde()}_${this.fechaHasta()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
 
   setPreset(p: Preset): void {
     this.state.setPreset(p);
@@ -1736,55 +1389,6 @@ export class OperacionResumenPeriodoComponent implements OnInit {
     return '';
   }
 
-  private buildBars(
-    vals: number[],
-    labels: string[],
-    xStep: number,
-    tooltipLabels: string[] = labels,
-    unidad = 'm³',
-  ): BarChart {
-    const maxVal = Math.max(...vals) || 1;
-    const slotW = this.DW / vals.length;
-    const barW = Math.max(slotW * 0.72, 3);
-    const gapW = (slotW - barW) / 2;
-
-    const bars = vals.map((v, i) => {
-      const h = Math.round((v / maxVal) * this.DH);
-      const x = Math.round(this.DX + i * slotW + gapW);
-      return {
-        x,
-        y: Math.round(this.DY + this.DH - h),
-        w: Math.round(barW),
-        h: Math.max(h, v > 0 ? 2 : 0),
-        fill: v === 0 ? '#e2e8f0' : '#0DAFBD',
-        cx: Math.round(x + barW / 2),
-        valor: v,
-        fecha: tooltipLabels[i] ?? labels[i] ?? '',
-      };
-    });
-
-    const nTicks = 4;
-    const yTicks = Array.from({ length: nTicks }, (_, i) => ({
-      y: Math.round(this.DY + this.DH - (i / (nTicks - 1)) * this.DH),
-      label: i === 0 ? '0' : Math.round((maxVal * i) / (nTicks - 1)).toString(),
-    }));
-
-    const xLabels: { x: number; label: string }[] = [];
-    for (let i = 0; i < vals.length; i += xStep) {
-      xLabels.push({ x: Math.round(this.DX + i * slotW + slotW / 2), label: labels[i] ?? '' });
-    }
-
-    return { bars, yTicks, xLabels, unidad };
-  }
-
-  /**
-   * Formato compacto para eje X (DD/MM).
-   */
-  private formatDiaCompact(diaIso: string): string {
-    const [, m, d] = diaIso.split('-');
-    return `${d}/${m}`;
-  }
-
   /**
    * Formato largo para tooltip (DD/MM/YYYY).
    */
@@ -1796,7 +1400,7 @@ export class OperacionResumenPeriodoComponent implements OnInit {
   presetClass(p: Preset): string {
     const active = this.preset() === p;
     return [
-      'rounded-lg px-3 py-1.5 text-caption font-bold transition-all',
+      'rounded-lg px-3 py-1.5 text-caption font-bold transition-colors active:scale-95',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

@@ -39,11 +39,11 @@ import type { SalaAggregate } from '../ventisqueros';
           </div>
           <button
             type="button"
-            class="vs-drawer-close"
+            class="vs-drawer-close active:scale-95"
             (click)="open.set(false)"
             aria-label="Cerrar"
           >
-            <span class="material-symbols-outlined text-[18px]">close</span>
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
           </button>
         </header>
         <div class="vs-drawer-body vs-defrost-body">
@@ -51,8 +51,9 @@ import type { SalaAggregate } from '../ventisqueros';
             @for (sa of defrostSchedules(); track sa.slug) {
               <button
                 type="button"
-                class="vs-defrost-sala-btn"
+                class="vs-defrost-sala-btn active:scale-95"
                 [class.vs-defrost-sala-btn--active]="defrostSelectedSlug() === sa.slug"
+                [attr.aria-current]="defrostSelectedSlug() === sa.slug ? 'page' : null"
                 (click)="selectDefrostSala(sa.slug)"
               >
                 <div class="vs-defrost-sala-name truncate">{{ sa.area }}</div>
@@ -67,10 +68,10 @@ import type { SalaAggregate } from '../ventisqueros';
                 <div class="vs-defrost-detail-name">{{ ds.area }}</div>
                 <button
                   type="button"
-                  class="vs-defrost-add-btn"
+                  class="vs-defrost-add-btn active:scale-95"
                   (click)="addDefrostWindow(ds.area)"
                 >
-                  <span class="material-symbols-outlined text-[14px]">add</span>
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true">add</span>
                   Agregar ventana
                 </button>
               </div>
@@ -96,11 +97,13 @@ import type { SalaAggregate } from '../ventisqueros';
                       </label>
                       <button
                         type="button"
-                        class="vs-defrost-remove"
+                        class="vs-defrost-remove active:scale-95"
                         (click)="removeDefrostWindow(ds.area, w.id)"
                         aria-label="Quitar ventana"
                       >
-                        <span class="material-symbols-outlined text-[14px]">delete</span>
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >delete</span
+                        >
                       </button>
                     </header>
 
@@ -133,8 +136,9 @@ import type { SalaAggregate } from '../ventisqueros';
                         @for (d of daysOfWeekChoices; track d.n) {
                           <button
                             type="button"
-                            class="vs-defrost-day"
+                            class="vs-defrost-day active:scale-95"
                             [class.vs-defrost-day--active]="hasDefrostDay(ds.area, w.id, d.n)"
+                            [attr.aria-pressed]="hasDefrostDay(ds.area, w.id, d.n)"
                             (click)="toggleDefrostDay(ds.area, w.id, d.n)"
                           >
                             {{ d.lbl }}

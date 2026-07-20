@@ -9,6 +9,9 @@ export interface User {
   email: string;
   tipo: UserRole;
   telefono?: string | null;
+  /** true cuando el backend enmascaró el teléfono en un listado: hay dato
+   * revelable con 2FA. El teléfono real llega null en ese caso. */
+  telefono_oculto?: boolean;
   cargo?: string | null;
   empresa_id?: string | null;
   sub_empresa_id?: string | null;

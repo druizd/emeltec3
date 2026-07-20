@@ -20,7 +20,9 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
             <div
               class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary-tint-20 bg-primary-tint-08 text-primary-container"
             >
-              <span class="material-symbols-outlined text-[14px]">{{ getSiteIcon() }}</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
+                getSiteIcon()
+              }}</span>
             </div>
 
             <div class="min-w-0">
@@ -49,7 +51,8 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
               {{ getStatusLabel() }}
             </span>
             <span
-              class="material-symbols-outlined text-[14px] text-slate-300 transition-all group-hover:translate-x-0.5 group-hover:text-primary-container"
+              class="material-symbols-outlined text-[14px] text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-primary-container"
+              aria-hidden="true"
             >
               chevron_right
             </span>
@@ -71,6 +74,7 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
                     ? 'text-primary-container'
                     : 'text-slate-500 group-hover:text-primary-container')
                 "
+                aria-hidden="true"
                 >{{ getSiteIcon() }}</span
               >
             </div>
@@ -83,18 +87,19 @@ import { getSiteTypeUi } from '../../shared/site-type-ui';
           </div>
           <span
             [class]="
-              'material-symbols-outlined text-[16px] transition-all ' +
+              'material-symbols-outlined text-[16px] transition ' +
               (selected
                 ? 'translate-x-1 text-primary-container'
                 : 'text-slate-300 group-hover:translate-x-1 group-hover:text-primary-container')
             "
+            aria-hidden="true"
             >chevron_right</span
           >
         </div>
 
         <div class="flex items-center justify-between border-t border-slate-100 pt-2">
           <div class="flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[12px] text-slate-400">{{
+            <span class="material-symbols-outlined text-[12px] text-slate-400" aria-hidden="true">{{
               getSiteIcon()
             }}</span>
             <span class="text-caption-xs font-medium text-slate-500">{{ getSiteTypeLabel() }}</span>
@@ -129,7 +134,7 @@ export class SiteCardComponent {
   getCardClass(): string {
     if (this.variant === 'superadmin') {
       return [
-        'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
+        'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition duration-200 active:scale-[0.98]',
         this.selected
           ? 'border-primary-tint-35 shadow-primary-glow-md'
           : 'border-slate-200/90 shadow-slate-rest hover:border-primary-tint-30 hover:shadow-primary-glow',
@@ -137,7 +142,7 @@ export class SiteCardComponent {
     }
 
     return [
-      'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition-all duration-200',
+      'group w-full cursor-pointer rounded-lg border bg-white px-2.5 py-2 text-left transition duration-200',
       this.selected
         ? 'border-primary-container ring-2 ring-primary-container/15 shadow-primary-glow-md'
         : 'border-slate-200 hover:border-slate-300 hover:shadow-md',

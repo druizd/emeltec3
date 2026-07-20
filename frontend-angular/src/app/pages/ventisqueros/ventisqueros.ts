@@ -164,8 +164,9 @@ interface MetricOption {
         <div class="vs-tabs-bar flex shrink-0 items-center gap-0">
           @for (t of subTabs(); track t.key) {
             <button
-              class="vs-tab-btn flex items-center gap-1.5"
+              class="vs-tab-btn flex items-center gap-1.5 active:scale-95"
               [class.vs-tab-btn--active]="activeTab() === t.key"
+              [attr.aria-current]="activeTab() === t.key ? 'page' : null"
               (click)="activeTab.set(t.key)"
             >
               <span class="material-symbols-outlined text-[13px]">{{ t.icon }}</span>
@@ -201,8 +202,9 @@ interface MetricOption {
               <div class="vs-metric-toggle flex gap-0.5">
                 @for (o of metricOptions; track o.v) {
                   <button
-                    class="vs-metric-btn flex items-center gap-1.5"
+                    class="vs-metric-btn flex items-center gap-1.5 active:scale-95"
                     [class.vs-metric-btn--active]="metric() === o.v"
+                    [attr.aria-current]="metric() === o.v ? 'page' : null"
                     (click)="metric.set(o.v)"
                   >
                     <span class="material-symbols-outlined text-[13px]">{{ o.icon }}</span>
@@ -222,7 +224,7 @@ interface MetricOption {
                 </div>
                 <div class="text-[11.5px] text-rose-600 opacity-80">{{ serviceError() }}</div>
               </div>
-              <button class="vs-error-retry" (click)="onRetry()">Reintentar</button>
+              <button class="vs-error-retry active:scale-95" (click)="onRetry()">Reintentar</button>
             </div>
           }
 
@@ -244,7 +246,7 @@ interface MetricOption {
                   <div class="vs-alert-body">
                     Variables fuera de rango detectadas en
                     @for (a of alertSnippet(); track a.id; let last = $last) {
-                      <button class="vs-alert-link" (click)="selectedId.set(a.id)">
+                      <button class="vs-alert-link active:scale-95" (click)="selectedId.set(a.id)">
                         {{ a.area }} ({{ a.id }})</button
                       >{{ last ? '' : ', ' }}
                     }
@@ -259,7 +261,7 @@ interface MetricOption {
                   }
                 </div>
                 <button
-                  class="vs-alert-btn flex items-center gap-1.5"
+                  class="vs-alert-btn flex items-center gap-1.5 active:scale-95"
                   (click)="activeTab.set('alarmas')"
                 >
                   <span class="material-symbols-outlined text-[11px]">notifications_active</span>
@@ -459,7 +461,7 @@ interface MetricOption {
             <div class="flex items-center gap-2">
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                 (click)="umbralesOpen.set(true)"
                 [title]="
                   salasSinUmbralCount() > 0
@@ -477,7 +479,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                 (click)="defrostOpen.set(true)"
                 [title]="
                   defrostEnabledCount() > 0
@@ -493,7 +495,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                 (click)="auditOpen.set(true)"
                 title="Registro auditoría HACCP"
               >
@@ -505,7 +507,7 @@ interface MetricOption {
               </button>
               <button
                 type="button"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-surface-container bg-white px-3 py-1.5 text-[12px] font-medium text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                 (click)="historyExportOpen.set(true)"
                 title="Descargar historial Excel con rango y sensores configurables"
               >
@@ -552,7 +554,7 @@ interface MetricOption {
                   type="button"
                   [routerLink]="salaRouterLink(sa.area)"
                   [queryParams]="salaQueryParams()"
-                  class="sala-card group"
+                  class="sala-card group active:scale-[0.98]"
                   [attr.data-status]="sa.maintenance ? 'maintenance' : sa.status"
                 >
                   <header class="sala-card-head">
@@ -773,16 +775,18 @@ interface MetricOption {
               <div class="comp-period-pills">
                 <button
                   type="button"
-                  class="comp-pill"
+                  class="comp-pill active:scale-95"
                   [class.comp-pill--active]="compliancePeriod() === '24h'"
+                  [attr.aria-current]="compliancePeriod() === '24h' ? 'page' : null"
                   (click)="setCompliancePeriod('24h')"
                 >
                   24h
                 </button>
                 <button
                   type="button"
-                  class="comp-pill"
+                  class="comp-pill active:scale-95"
                   [class.comp-pill--active]="compliancePeriod() === '7d'"
+                  [attr.aria-current]="compliancePeriod() === '7d' ? 'page' : null"
                   (click)="setCompliancePeriod('7d')"
                 >
                   7d
@@ -1097,32 +1101,36 @@ interface MetricOption {
               <span class="vs-diag-filter-lbl">Filtrar</span>
               <button
                 type="button"
-                class="vs-diag-pill"
+                class="vs-diag-pill active:scale-95"
                 [class.vs-diag-pill--active]="diagFilter() === 'all'"
+                [attr.aria-current]="diagFilter() === 'all' ? 'page' : null"
                 (click)="diagFilter.set('all')"
               >
                 Todos
               </button>
               <button
                 type="button"
-                class="vs-diag-pill"
+                class="vs-diag-pill active:scale-95"
                 [class.vs-diag-pill--active]="diagFilter() === 'online'"
+                [attr.aria-current]="diagFilter() === 'online' ? 'page' : null"
                 (click)="diagFilter.set('online')"
               >
                 Online
               </button>
               <button
                 type="button"
-                class="vs-diag-pill"
+                class="vs-diag-pill active:scale-95"
                 [class.vs-diag-pill--active]="diagFilter() === 'degraded'"
+                [attr.aria-current]="diagFilter() === 'degraded' ? 'page' : null"
                 (click)="diagFilter.set('degraded')"
               >
                 Degradado
               </button>
               <button
                 type="button"
-                class="vs-diag-pill"
+                class="vs-diag-pill active:scale-95"
                 [class.vs-diag-pill--active]="diagFilter() === 'offline'"
+                [attr.aria-current]="diagFilter() === 'offline' ? 'page' : null"
                 (click)="diagFilter.set('offline')"
               >
                 Offline
@@ -1145,7 +1153,7 @@ interface MetricOption {
           <div class="vs-taps-grid grid gap-3">
             @for (d of tapDiagFiltered(); track d.tap) {
               <div
-                class="vs-tap-diag group relative flex w-full flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5"
+                class="vs-tap-diag group relative flex w-full flex-col rounded-2xl border bg-white px-4 py-4 text-left transition-transform duration-200 hover:-translate-y-0.5"
                 [attr.data-status]="d.status"
               >
                 <a
@@ -1232,7 +1240,7 @@ interface MetricOption {
                   >
                     Ver TAP
                     <span
-                      class="material-symbols-outlined text-base text-slate-300 transition-all group-hover:translate-x-0.5"
+                      class="material-symbols-outlined text-base text-slate-300 transition-transform group-hover:translate-x-0.5"
                       [style.color]="d.color"
                       >chevron_right</span
                     >
@@ -1266,16 +1274,18 @@ interface MetricOption {
               <div class="vs-alarms-filter mt-2">
                 <button
                   type="button"
-                  class="vs-alarms-chip"
+                  class="vs-alarms-chip active:scale-95"
                   [class.vs-alarms-chip--active]="alarmsView() === 'activas'"
+                  [attr.aria-current]="alarmsView() === 'activas' ? 'page' : null"
                   (click)="alarmsView.set('activas')"
                 >
                   Activas
                 </button>
                 <button
                   type="button"
-                  class="vs-alarms-chip"
+                  class="vs-alarms-chip active:scale-95"
                   [class.vs-alarms-chip--active]="alarmsView() === 'historial'"
+                  [attr.aria-current]="alarmsView() === 'historial' ? 'page' : null"
                   (click)="alarmsView.set('historial')"
                 >
                   Historial
@@ -1286,32 +1296,36 @@ interface MetricOption {
               <div class="vs-alarms-filter">
                 <button
                   type="button"
-                  class="vs-alarms-chip"
+                  class="vs-alarms-chip active:scale-95"
                   [class.vs-alarms-chip--active]="alarmsFilter() === 'all'"
+                  [attr.aria-current]="alarmsFilter() === 'all' ? 'page' : null"
                   (click)="alarmsFilter.set('all')"
                 >
                   Todas <strong>{{ alarmsCounts().total }}</strong>
                 </button>
                 <button
                   type="button"
-                  class="vs-alarms-chip vs-alarms-chip--crit"
+                  class="vs-alarms-chip vs-alarms-chip--crit active:scale-95"
                   [class.vs-alarms-chip--active]="alarmsFilter() === 'crit'"
+                  [attr.aria-current]="alarmsFilter() === 'crit' ? 'page' : null"
                   (click)="alarmsFilter.set('crit')"
                 >
                   Críticas <strong>{{ alarmsCounts().crit }}</strong>
                 </button>
                 <button
                   type="button"
-                  class="vs-alarms-chip vs-alarms-chip--warn"
+                  class="vs-alarms-chip vs-alarms-chip--warn active:scale-95"
                   [class.vs-alarms-chip--active]="alarmsFilter() === 'warn'"
+                  [attr.aria-current]="alarmsFilter() === 'warn' ? 'page' : null"
                   (click)="alarmsFilter.set('warn')"
                 >
                   Advertencias <strong>{{ alarmsCounts().warn }}</strong>
                 </button>
                 <button
                   type="button"
-                  class="vs-alarms-chip vs-alarms-chip--info"
+                  class="vs-alarms-chip vs-alarms-chip--info active:scale-95"
                   [class.vs-alarms-chip--active]="alarmsFilter() === 'info'"
+                  [attr.aria-current]="alarmsFilter() === 'info' ? 'page' : null"
                   (click)="alarmsFilter.set('info')"
                 >
                   Info <strong>{{ alarmsCounts().info }}</strong>

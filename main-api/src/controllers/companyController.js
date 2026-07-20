@@ -2893,7 +2893,18 @@ exports.listOperationalContacts = async (req, res, next) => {
       params,
     );
 
-    res.json({ ok: true, data: rows });
+    // Minimización PII (Ley 21.719): tel/email NO salen en el listado para
+    // NINGÚN rol. Se revelan puntualmente con 2FA vía
+    // POST /api/v2/companies/contacts/:id/reveal. datos_ocultos indica que hay
+    // dato revelable.
+    const masked = rows.map((r) => ({
+      ...r,
+      telefono: null,
+      email: null,
+      datos_ocultos: Boolean(r.telefono || r.email),
+    }));
+
+    res.json({ ok: true, data: masked });
   } catch (err) {
     next(err);
   }

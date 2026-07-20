@@ -55,7 +55,7 @@ import { ShortcutBinding, ShortcutService } from '../../services/shortcut.servic
             <button
               type="button"
               (click)="service.closePalette()"
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
               aria-label="Cerrar paleta"
             >
               <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
@@ -81,7 +81,7 @@ import { ShortcutBinding, ShortcutService } from '../../services/shortcut.servic
                       <button
                         type="button"
                         (click)="service.dispatch(binding)"
-                        class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-body-sm transition-colors hover:bg-primary-tint-08 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        class="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-body-sm transition-colors hover:bg-primary-tint-08 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-95"
                       >
                         <span class="text-on-surface">{{ binding.label }}</span>
                         <kbd

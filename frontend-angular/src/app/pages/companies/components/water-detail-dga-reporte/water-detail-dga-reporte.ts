@@ -58,7 +58,8 @@ interface DgaReportRow {
             <button
               type="button"
               (click)="closeDgaReportModal()"
-              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+              class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
+              aria-label="Cerrar"
             >
               <span class="material-symbols-outlined text-[18px]">close</span>
             </button>
@@ -76,10 +77,11 @@ interface DgaReportRow {
                 <button
                   type="button"
                   (click)="applyDgaReportPreset(preset.id)"
+                  [attr.aria-pressed]="dgaReportSelectedPreset() === preset.id"
                   [class]="
                     dgaReportSelectedPreset() === preset.id
-                      ? 'rounded-lg border border-accent/30 bg-accent/10 px-2 py-2 text-center text-caption-xs font-bold text-accent-deep transition-all'
-                      : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption-xs font-semibold text-slate-500 transition-all hover:border-slate-300 hover:bg-slate-50'
+                      ? 'rounded-lg border border-accent/30 bg-accent/10 px-2 py-2 text-center text-caption-xs font-bold text-accent-deep transition active:scale-95'
+                      : 'rounded-lg border border-slate-200 bg-white px-2 py-2 text-center text-caption-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 active:scale-95'
                   "
                 >
                   {{ preset.label }}
@@ -100,12 +102,13 @@ interface DgaReportRow {
                 <button
                   type="button"
                   (click)="applyDgaReportMonth(i)"
+                  [attr.aria-pressed]="dgaReportSelectedMonths().includes(i)"
                   [class]="
                     !dgaMonthHasData(i)
                       ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed'
                       : dgaReportSelectedMonths().includes(i)
-                        ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-accent-container text-white ring-2 ring-accent/30'
-                        : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
+                        ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-accent-container text-white ring-2 ring-accent/30 active:scale-95'
+                        : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95'
                   "
                 >
                   {{ month.slice(0, 3) }}
@@ -156,10 +159,11 @@ interface DgaReportRow {
                 <button
                   type="button"
                   (click)="dgaReportBucket.set(opt.value)"
+                  [attr.aria-pressed]="dgaReportBucket() === opt.value"
                   [class]="
                     dgaReportBucket() === opt.value
-                      ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container'
-                      : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 hover:border-accent/20 hover:text-accent-container'
+                      ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
+                      : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
                   "
                 >
                   {{ opt.label }}
@@ -181,10 +185,11 @@ interface DgaReportRow {
                 <button
                   type="button"
                   (click)="dgaReportOrden.set(opt.value)"
+                  [attr.aria-pressed]="dgaReportOrden() === opt.value"
                   [class]="
                     dgaReportOrden() === opt.value
-                      ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container'
-                      : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 hover:border-accent/20 hover:text-accent-container'
+                      ? 'rounded-lg border border-accent bg-accent/10 px-2 py-1.5 text-caption-xs font-semibold text-accent-container active:scale-95'
+                      : 'rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-caption-xs font-semibold text-slate-600 transition-colors hover:border-accent/20 hover:text-accent-container active:scale-95'
                   "
                 >
                   {{ opt.label }}
@@ -223,7 +228,7 @@ interface DgaReportRow {
                 type="button"
                 (click)="closeDgaReportModal()"
                 [disabled]="dgaReportDownloading()"
-                class="rounded-lg px-3 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
+                class="rounded-lg px-3 py-2 text-body-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -231,13 +236,19 @@ interface DgaReportRow {
                 type="button"
                 (click)="generateDgaReport()"
                 [disabled]="!dgaReportDateFrom() || !dgaReportDateTo() || dgaReportDownloading()"
-                class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-accent-deep disabled:cursor-not-allowed disabled:opacity-40"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-accent-container px-4 py-2 text-body-sm font-semibold text-white transition-colors hover:bg-accent-deep active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 @if (dgaReportDownloading()) {
-                  <span class="material-symbols-outlined animate-spin text-[16px]">sync</span>
+                  <span
+                    class="material-symbols-outlined animate-spin text-[16px]"
+                    aria-hidden="true"
+                    >sync</span
+                  >
                   Descargando
                 } @else {
-                  <span class="material-symbols-outlined text-[16px]">download</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >download</span
+                  >
                   Descargar CSV DGA
                 }
               </button>
@@ -271,7 +282,7 @@ interface DgaReportRow {
               <button
                 type="button"
                 (click)="closeDgaReportDetail()"
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                 aria-label="Cerrar seguimiento"
               >
                 <span class="material-symbols-outlined text-[20px]">close</span>
@@ -333,7 +344,7 @@ interface DgaReportRow {
                 <div class="mt-6 flex items-center justify-between gap-4">
                   <div class="flex items-center gap-3">
                     <span
-                      class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"
+                      class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-500"
                     >
                       <span class="material-symbols-outlined text-[22px]">send</span>
                     </span>
@@ -350,10 +361,15 @@ interface DgaReportRow {
                   </div>
 
                   <span
-                    class="inline-flex h-8 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-caption font-semibold text-emerald-700"
+                    [class]="
+                      'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-caption font-semibold ' +
+                      estadoBadgeClass(report.estado)
+                    "
                   >
-                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                    Completado
+                    <span
+                      [class]="'h-1.5 w-1.5 rounded-full ' + estadoDotClass(report.estado)"
+                    ></span>
+                    {{ report.estado || 'Sin estado' }}
                   </span>
                 </div>
 
@@ -376,7 +392,9 @@ interface DgaReportRow {
                         [title]="'Abrir en portal SNIA: ' + url"
                       >
                         <span class="font-mono">{{ report.comprobante }}</span>
-                        <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >open_in_new</span
+                        >
                       </a>
                     } @else {
                       <p
@@ -598,6 +616,41 @@ export class WaterDetailDgaReporteComponent {
 
   openDgaReportDetail(report: DgaReportRow): void {
     this.selectedDgaReport.set(report);
+  }
+
+  /** Estado real del envío DGA — nunca asumir "Completado". */
+  private estadoKey(estado: string): 'enviado' | 'pendiente' | 'rechazado' | 'otro' {
+    const e = (estado || '').toLowerCase();
+    if (e.includes('rechaz')) return 'rechazado';
+    if (e.includes('pend')) return 'pendiente';
+    if (e.includes('envi') || e.includes('complet') || e.includes('acept')) return 'enviado';
+    return 'otro';
+  }
+
+  estadoBadgeClass(estado: string): string {
+    switch (this.estadoKey(estado)) {
+      case 'enviado':
+        return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+      case 'pendiente':
+        return 'border-amber-200 bg-amber-50 text-amber-700';
+      case 'rechazado':
+        return 'border-rose-200 bg-rose-50 text-rose-700';
+      default:
+        return 'border-slate-200 bg-slate-50 text-slate-600';
+    }
+  }
+
+  estadoDotClass(estado: string): string {
+    switch (this.estadoKey(estado)) {
+      case 'enviado':
+        return 'bg-emerald-500';
+      case 'pendiente':
+        return 'bg-amber-500';
+      case 'rechazado':
+        return 'bg-rose-500';
+      default:
+        return 'bg-slate-400';
+    }
   }
 
   closeDgaReportDetail(): void {

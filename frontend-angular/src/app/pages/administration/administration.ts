@@ -217,7 +217,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
               type="button"
               (click)="loadDashboard()"
               [disabled]="loading()"
-              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-surface-container bg-white text-on-surface-variant transition-all hover:border-primary-tint-30 hover:text-primary-container hover:shadow-primary-glow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
+              class="flex h-full min-h-[64px] w-full items-center justify-center rounded-xl border border-surface-container bg-white text-on-surface-variant transition hover:border-primary-tint-30 hover:text-primary-container hover:shadow-primary-glow active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 sm:w-[56px]"
               aria-label="Actualizar"
             >
               <span
@@ -232,7 +232,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
 
         @if (status().message) {
           <div [class]="statusClass()" role="alert">
-            <span class="material-symbols-outlined text-[19px]">{{
+            <span class="material-symbols-outlined text-[19px]" aria-hidden="true">{{
               status().type === 'success' ? 'check_circle' : 'error'
             }}</span>
             <span>{{ status().message }}</span>
@@ -246,7 +246,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
             aria-live="polite"
           >
             <div class="flex min-w-0 items-center gap-2">
-              <span class="material-symbols-outlined text-[19px]">schedule</span>
+              <span class="material-symbols-outlined text-[19px]" aria-hidden="true">schedule</span>
               <span class="truncate">
                 Eliminando {{ pending.label }} en {{ pendingDeleteCountdown() }}s…
               </span>
@@ -254,9 +254,9 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
             <button
               type="button"
               (click)="undoPendingDelete()"
-              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-caption font-semibold text-amber-800 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 text-caption font-semibold text-amber-800 transition-colors hover:bg-amber-100 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             >
-              <span class="material-symbols-outlined text-[16px]">undo</span>
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">undo</span>
               Deshacer
             </button>
           </div>
@@ -278,6 +278,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
             >
               <div class="flex gap-4 border-b border-slate-100 px-5 py-5">
                 <span
+                  aria-hidden="true"
                   [class]="
                     dialog.tone === 'danger'
                       ? 'material-symbols-outlined grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-red-50 text-[24px] text-red-600'
@@ -303,7 +304,7 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                   (click)="confirmDialogAction()"
                   [class]="dialog.tone === 'danger' ? 'danger-button' : 'primary-button'"
                 >
-                  <span class="material-symbols-outlined text-[18px]">{{
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
                     dialog.tone === 'danger' ? 'delete' : 'check'
                   }}</span>
                   {{ dialog.confirmText }}
@@ -320,8 +321,11 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
                 type="button"
                 (click)="setSection(item.id)"
                 [class]="sectionButtonClass(item.id)"
+                [attr.aria-current]="activeSection() === item.id ? 'page' : null"
               >
-                <span class="material-symbols-outlined text-[21px]">{{ item.icon }}</span>
+                <span class="material-symbols-outlined text-[21px]" aria-hidden="true">{{
+                  item.icon
+                }}</span>
                 <span>{{ item.label }}</span>
               </button>
             }

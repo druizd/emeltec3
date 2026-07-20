@@ -216,13 +216,27 @@ router.get('/dga/sites/:siteId/verify', protect, requireSiteParamAccess(), verif
 // Bitácora del sitio: ficha + equipamiento.
 // =====================================================================
 import {
+  createContactoHandler,
   createEquipoHandler,
+  deleteContactoHandler,
   deleteEquipoHandler,
   getFichaHandler,
   listEquiposHandler,
+  patchContactoHandler,
   patchEquipoHandler,
   patchFichaHandler,
+  revealContactoHandler,
 } from '../../modules/bitacoraSitio/controller';
+
+// Reveal de PII de contactos operativos (agenda). El listado va enmascarado;
+// esto revela con 2FA + auditoría, con el mismo scoping por rol.
+import { revealOperationalContactHandler } from '../../modules/contactos/controller';
+import { revealUserPhoneHandler } from '../../modules/usuarios/controller';
+
+router.post('/companies/contacts/:id/reveal', protect, require2fa, revealOperationalContactHandler);
+
+// Reveal del teléfono de un usuario (listados van enmascarados). 2FA + audit.
+router.post('/users/:id/reveal', protect, require2fa, revealUserPhoneHandler);
 
 // Análisis del sitio (salud, métricas).
 import { getMetricasHandler, getSaludHandler } from '../../modules/analisis/controller';
@@ -237,6 +251,36 @@ router.get(
 
 router.get('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), getFichaHandler);
 router.patch('/sites/:siteId/bitacora/ficha', protect, requireSiteParamAccess(), patchFichaHandler);
+// Contactos = contacto_operativo scopeado al sitio. Son PII: el read va
+// enmascarado y estas rutas exigen 2FA + auditoría. Direccionados por id estable.
+router.post(
+  '/sites/:siteId/bitacora/contacto',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  createContactoHandler,
+);
+router.post(
+  '/sites/:siteId/bitacora/contacto/:id/reveal',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  revealContactoHandler,
+);
+router.patch(
+  '/sites/:siteId/bitacora/contacto/:id',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  patchContactoHandler,
+);
+router.delete(
+  '/sites/:siteId/bitacora/contacto/:id',
+  protect,
+  requireSiteParamAccess(),
+  require2fa,
+  deleteContactoHandler,
+);
 router.get(
   '/sites/:siteId/bitacora/equipos',
   protect,

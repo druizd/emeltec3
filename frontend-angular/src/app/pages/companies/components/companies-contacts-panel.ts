@@ -1,5 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, inject, Input, OnChanges, Output, signal } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  computed,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { SkeletonComponent } from '../../../components/ui/skeleton';
 import { AuthService } from '../../../services/auth.service';
@@ -73,9 +82,9 @@ const CONTACT_TYPES = [
             <button
               type="button"
               (click)="openAddModal()"
-              class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark"
+              class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark active:scale-[0.98]"
             >
-              <span class="material-symbols-outlined text-[16px]">add</span>
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">add</span>
               Agregar contacto
             </button>
           }
@@ -109,10 +118,12 @@ const CONTACT_TYPES = [
                 <button
                   type="button"
                   (click)="deleteContact(contact)"
-                  class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 opacity-0 transition-all duration-150 hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 group-hover:opacity-100"
+                  class="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-slate-300 opacity-0 transition duration-150 hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 group-hover:opacity-100 active:scale-95"
                   aria-label="Eliminar contacto"
                 >
-                  <span class="material-symbols-outlined text-[16px]">delete</span>
+                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                    >delete</span
+                  >
                 </button>
               }
 
@@ -137,7 +148,10 @@ const CONTACT_TYPES = [
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container">
+                  <span
+                    class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
+                    aria-hidden="true"
+                  >
                     badge
                   </span>
                   <div class="min-w-0">
@@ -153,32 +167,69 @@ const CONTACT_TYPES = [
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container">
+                  <span
+                    class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
+                    aria-hidden="true"
+                  >
                     call
                   </span>
                   <div class="min-w-0">
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Telefono
                     </p>
-                    <p class="break-words text-[13px] font-semibold text-slate-700">
-                      {{ contact.telefono || 'Sin telefono registrado' }}
-                    </p>
+                    @if (revealed()[contact.id]; as rev) {
+                      <p class="break-words text-[13px] font-semibold text-slate-700">
+                        {{ rev.telefono || 'Sin telefono registrado' }}
+                      </p>
+                    } @else if (contact.datos_ocultos) {
+                      <button
+                        type="button"
+                        (click)="revealContact(contact)"
+                        [disabled]="revealing() !== null"
+                        class="mt-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:opacity-50"
+                      >
+                        <span
+                          class="material-symbols-outlined text-[13px]"
+                          [class.animate-spin]="revealing() === contact.id"
+                          aria-hidden="true"
+                          >{{
+                            revealing() === contact.id ? 'progress_activity' : 'lock_open'
+                          }}</span
+                        >
+                        Revelar datos
+                      </button>
+                    } @else {
+                      <p class="break-words text-[13px] font-semibold text-slate-700">
+                        Sin telefono registrado
+                      </p>
+                    }
                   </div>
                 </div>
 
                 <div
                   class="flex items-start gap-3 rounded-xl border border-slate-200/80 bg-slate-50/80 px-3 py-2.5"
                 >
-                  <span class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container">
+                  <span
+                    class="material-symbols-outlined mt-0.5 text-[17px] text-primary-container"
+                    aria-hidden="true"
+                  >
                     mail
                   </span>
                   <div class="min-w-0">
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Correo
                     </p>
-                    <p class="break-all text-[13px] font-semibold text-slate-700">
-                      {{ contact.email || 'Sin correo registrado' }}
-                    </p>
+                    @if (revealed()[contact.id]; as rev) {
+                      <p class="break-all text-[13px] font-semibold text-slate-700">
+                        {{ rev.email || 'Sin correo registrado' }}
+                      </p>
+                    } @else if (contact.datos_ocultos) {
+                      <p class="break-all text-[13px] font-semibold text-slate-400">••••••••</p>
+                    } @else {
+                      <p class="break-all text-[13px] font-semibold text-slate-700">
+                        Sin correo registrado
+                      </p>
+                    }
                   </div>
                 </div>
               </div>
@@ -187,7 +238,9 @@ const CONTACT_TYPES = [
         </div>
       } @else {
         <div [class]="getEmptyStateClass()">
-          <span class="material-symbols-outlined mb-4 text-5xl text-slate-300">contact_phone</span>
+          <span class="material-symbols-outlined mb-4 text-5xl text-slate-300" aria-hidden="true"
+            >contact_phone</span
+          >
           <p class="text-body-sm font-bold uppercase tracking-[0.18em] text-slate-400">
             Sin contactos operativos
           </p>
@@ -222,10 +275,10 @@ const CONTACT_TYPES = [
                 type="button"
                 (click)="closeAddModal()"
                 [disabled]="saving()"
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50 active:scale-95"
                 aria-label="Cerrar"
               >
-                <span class="material-symbols-outlined text-[18px]">close</span>
+                <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
               </button>
             </div>
 
@@ -368,21 +421,41 @@ const CONTACT_TYPES = [
               </label>
             </div>
 
+            <div class="px-6 pb-5">
+              <div
+                class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-body-sm text-blue-800"
+              >
+                <p class="font-bold">Información sobre el tratamiento de datos</p>
+                <p class="mt-1">
+                  Al registrar este contacto, la plataforma almacenará: nombre, apellido, email,
+                  teléfono y cargo, con la finalidad de gestión operativa del servicio (base legal:
+                  ejecución de contrato B2B / interés legítimo, Ley 21.719). Si el contacto es una
+                  persona externa, debes informarle de este tratamiento y de sus derechos de acceso,
+                  rectificación y supresión.
+                  <a href="/privacidad" class="underline font-semibold"
+                    >Ver política de privacidad</a
+                  >.
+                </p>
+              </div>
+            </div>
+
             <div class="flex flex-wrap justify-end gap-2 border-t border-slate-100 px-6 py-4">
               <button
                 type="button"
                 (click)="closeAddModal()"
                 [disabled]="saving()"
-                class="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-caption font-bold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-caption font-bold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 [disabled]="saving()"
-                class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                class="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-primary-dark disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 active:scale-[0.98]"
               >
-                <span class="material-symbols-outlined text-[16px]">add_call</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                  >add_call</span
+                >
                 {{ saving() ? 'Guardando...' : 'Guardar contacto' }}
               </button>
             </div>
@@ -404,7 +477,7 @@ const CONTACT_TYPES = [
               <div
                 class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600"
               >
-                <span class="material-symbols-outlined text-[22px]">delete</span>
+                <span class="material-symbols-outlined text-[22px]" aria-hidden="true">delete</span>
               </div>
               <div class="min-w-0 flex-1">
                 <h3 id="delete-contact-title" class="text-h6 font-bold text-slate-900">
@@ -431,7 +504,7 @@ const CONTACT_TYPES = [
                 type="button"
                 (click)="cancelDeleteContact()"
                 [disabled]="deleting()"
-                class="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-caption font-bold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                class="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-caption font-bold uppercase tracking-wide text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
               >
                 Cancelar
               </button>
@@ -439,9 +512,9 @@ const CONTACT_TYPES = [
                 type="button"
                 (click)="confirmDeleteContact()"
                 [disabled]="deleting()"
-                class="inline-flex h-9 items-center gap-2 rounded-lg bg-rose-600 px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                class="inline-flex h-9 items-center gap-2 rounded-lg bg-rose-600 px-4 text-caption font-bold uppercase tracking-wide text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-slate-300 active:scale-[0.98]"
               >
-                <span class="material-symbols-outlined text-[16px]">delete</span>
+                <span class="material-symbols-outlined text-[16px]" aria-hidden="true">delete</span>
                 {{ deleting() ? 'Eliminando...' : 'Eliminar contacto' }}
               </button>
             </div>
@@ -464,10 +537,30 @@ export class CompaniesContactsPanelComponent implements OnChanges {
   @Output() contactsCountChange = new EventEmitter<number>();
 
   readonly contacts = signal<OperationalContact[]>([]);
-  readonly availableUsers = signal<User[]>([]);
+  /** Usuarios del scope (división/sitio) traídos del backend, sin filtrar. */
+  private readonly scopeUsers = signal<User[]>([]);
+  /**
+   * Usuarios elegibles para vincular: todos los del scope (división/sitio),
+   * incluidos los ya agregados como contacto — permite registrar al mismo
+   * usuario con otro tipo de contacto. Los ya agregados se marcan en el label
+   * y saveContact() bloquea el duplicado exacto (mismo usuario + mismo tipo).
+   */
+  readonly availableUsers = computed<User[]>(() => this.scopeUsers());
+  /** IDs de usuarios que ya figuran como contacto en este sitio/división. */
+  readonly linkedUserIds = computed<Set<string>>(
+    () =>
+      new Set(
+        this.contacts()
+          .map((contact) => contact.usuario_id)
+          .filter((id): id is string => !!id),
+      ),
+  );
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly deleting = signal(false);
+  /** PII revelada por id de contacto (tel/email obtenidos con 2FA). */
+  readonly revealed = signal<Record<string, { telefono: string | null; email: string | null }>>({});
+  readonly revealing = signal<string | null>(null);
   readonly status = signal('');
   readonly statusType = signal<'success' | 'error'>('success');
   readonly pendingDeleteContact = signal<OperationalContact | null>(null);
@@ -503,6 +596,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
         next: (res: ApiResponse<OperationalContact[]>) => {
           const contacts = res.ok ? (res.data ?? []) : [];
           this.contacts.set(contacts);
+          this.revealed.set({});
           this.contactsCountChange.emit(contacts.length);
           this.loading.set(false);
         },
@@ -514,18 +608,33 @@ export class CompaniesContactsPanelComponent implements OnChanges {
       });
   }
 
+  /** Revela tel/email de un contacto (2FA + auditoría en el backend). */
+  revealContact(contact: OperationalContact): void {
+    if (this.revealing() !== null) return;
+    this.revealing.set(contact.id);
+    this.companyService.revealOperationalContact(contact.id).subscribe({
+      next: (res) => {
+        if (res.ok) {
+          this.revealed.update((m) => ({ ...m, [contact.id]: res.data }));
+        }
+        this.revealing.set(null);
+      },
+      error: () => this.revealing.set(null),
+    });
+  }
+
   loadAvailableUsers(): void {
     if (!this.empresaId || !this.canManageContacts()) {
-      this.availableUsers.set([]);
+      this.scopeUsers.set([]);
       return;
     }
 
     this.userService.getUsers({ empresa_id: this.empresaId }).subscribe({
       next: (res) => {
         const users = res.ok ? (res.data ?? []) : [];
-        this.availableUsers.set(this.filterUsersForScope(users));
+        this.scopeUsers.set(this.filterUsersForScope(users));
       },
-      error: () => this.availableUsers.set([]),
+      error: () => this.scopeUsers.set([]),
     });
   }
 
@@ -569,6 +678,17 @@ export class CompaniesContactsPanelComponent implements OnChanges {
     if (this.form.email.trim().length > 35 || this.form.cargo.trim().length > 35) {
       this.setStatus('Correo y cargo deben tener maximo 35 caracteres', 'error');
       return;
+    }
+    if (this.form.usuario_id) {
+      const duplicated = this.contacts().some(
+        (contact) =>
+          contact.usuario_id === this.form.usuario_id &&
+          contact.tipo_contacto === this.form.tipo_contacto,
+      );
+      if (duplicated) {
+        this.setStatus('Este usuario ya esta agregado con ese tipo de contacto', 'error');
+        return;
+      }
     }
 
     const payload: CreateOperationalContactPayload = {
@@ -635,7 +755,8 @@ export class CompaniesContactsPanelComponent implements OnChanges {
 
   userLabel(user: User): string {
     const name = `${user.nombre || ''} ${user.apellido || ''}`.trim() || user.email;
-    return `${name} - ${user.tipo}`;
+    const base = `${name} - ${user.tipo}`;
+    return this.linkedUserIds().has(user.id) ? `${base} (ya agregado)` : base;
   }
 
   getContactInitials(contact: OperationalContact): string {

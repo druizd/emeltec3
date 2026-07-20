@@ -129,7 +129,7 @@ interface SiteDashboardData {
                   target="_blank"
                   rel="noopener noreferrer"
                   [title]="'Abrir comprobante en SNIA · ' + comp"
-                  class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
+                  class="group flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 shadow-sm transition hover:border-emerald-400 hover:shadow-md"
                 >
                   <div class="flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[14px] text-emerald-600"
@@ -264,17 +264,40 @@ interface SiteDashboardData {
 
             <!-- Rechazados: cuenta en rango -->
             <article
-              class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm"
+              [class]="
+                dgaCountRechazados() > 0
+                  ? 'rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center shadow-sm'
+                  : 'rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center shadow-sm'
+              "
               title="Envíos que el portal SNIA no aceptó (Rechazado) o que fallaron antes de llegar (Fallido). Revisa la columna 'Estado' en la tabla para identificar la causa."
             >
-              <p class="text-caption-xs font-semibold uppercase tracking-[0.2em] text-rose-700">
+              <p
+                [class]="
+                  'text-caption-xs font-semibold uppercase tracking-[0.2em] ' +
+                  (dgaCountRechazados() > 0 ? 'text-rose-700' : 'text-emerald-700')
+                "
+              >
                 Rechazados
               </p>
-              <p class="mt-1 text-h3 font-semibold leading-none text-rose-600">
+              <p
+                [class]="
+                  'mt-1 text-h3 font-semibold leading-none ' +
+                  (dgaCountRechazados() > 0 ? 'text-rose-600' : 'text-emerald-600')
+                "
+              >
                 {{ dgaCountRechazados() }}
               </p>
-              <p class="mt-1 text-caption font-semibold text-rose-700">
-                Rechazados por SNIA + fallidos antes del envío
+              <p
+                [class]="
+                  'mt-1 text-caption font-semibold ' +
+                  (dgaCountRechazados() > 0 ? 'text-rose-700' : 'text-emerald-700')
+                "
+              >
+                {{
+                  dgaCountRechazados() > 0
+                    ? 'Rechazados por SNIA + fallidos antes del envío'
+                    : 'Sin rechazos en el período'
+                }}
               </p>
             </article>
           </section>
@@ -837,7 +860,7 @@ interface SiteDashboardData {
                   </span>
                   <button
                     type="button"
-                    class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-50"
+                    class="flex h-7 w-7 items-center justify-center rounded-lg transition-colors hover:bg-slate-50 active:scale-95"
                     aria-label="Opciones de grafico"
                   >
                     <span class="material-symbols-outlined text-[18px]">more_vert</span>
@@ -944,7 +967,7 @@ interface SiteDashboardData {
                     [class]="
                       quickActionDisabled(action)
                         ? 'rounded-lg px-3 py-2 text-left opacity-50 cursor-not-allowed'
-                        : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
+                        : 'rounded-lg px-3 py-2 text-left transition-colors hover:bg-primary-tint-06 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95'
                     "
                   >
                     <span
@@ -996,7 +1019,7 @@ interface SiteDashboardData {
               <button
                 type="button"
                 (click)="openDgaDateFilter()"
-                class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container"
+                class="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-slate-600 transition-colors hover:border-primary-tint-30 hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
               >
                 <span class="material-symbols-outlined text-[16px]">calendar_month</span>
                 {{ dgaSelectedRangeLabel() }}
@@ -1049,7 +1072,7 @@ interface SiteDashboardData {
                             <button
                               type="button"
                               (click)="openDgaReportDetail(report)"
-                              class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors"
+                              class="inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-caption-xs font-semibold transition-colors active:scale-95"
                               [style.background]="getDgaStatusBg(report.estado)"
                               [style.border-color]="getDgaStatusBorder(report.estado)"
                               [style.color]="getDgaStatusColor(report.estado)"
@@ -1073,6 +1096,7 @@ interface SiteDashboardData {
                                 rel="noopener noreferrer"
                                 (click)="$event.stopPropagation()"
                                 [title]="'Ver comprobante en SNIA: ' + report.comprobante"
+                                aria-label="Ver comprobante en SNIA"
                                 class="inline-flex h-7 w-7 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 transition-colors hover:bg-emerald-100"
                               >
                                 <span class="material-symbols-outlined text-[14px]"
@@ -1132,7 +1156,7 @@ interface SiteDashboardData {
                 type="button"
                 (click)="previousDgaPage()"
                 [disabled]="dgaPage() === 1"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
                 aria-label="Pagina anterior"
               >
                 <span class="material-symbols-outlined text-[18px]">chevron_left</span>
@@ -1141,7 +1165,7 @@ interface SiteDashboardData {
                 type="button"
                 (click)="nextDgaPage()"
                 [disabled]="dgaPage() === dgaTotalPages()"
-                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-40 active:scale-95"
                 aria-label="Pagina siguiente"
               >
                 <span class="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -1183,7 +1207,7 @@ interface SiteDashboardData {
               <button
                 type="button"
                 (click)="closeDgaDateFilter()"
-                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                class="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
                 aria-label="Cerrar"
               >
                 <span class="material-symbols-outlined text-[20px]">close</span>
@@ -1203,10 +1227,11 @@ interface SiteDashboardData {
                     <button
                       type="button"
                       (click)="applyDgaDatePreset(preset.id)"
+                      [attr.aria-pressed]="dgaSelectedPreset() === preset.id"
                       [class]="
                         dgaSelectedPreset() === preset.id
-                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25'
-                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50'
+                          ? 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-bold bg-primary-tint-08 text-primary-container border border-primary-tint-25 active:scale-95'
+                          : 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-body-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors active:scale-95'
                       "
                     >
                       @if (dgaSelectedPreset() === preset.id) {
@@ -1227,12 +1252,13 @@ interface SiteDashboardData {
                     <button
                       type="button"
                       (click)="applyDgaMonth(i)"
+                      [attr.aria-pressed]="dgaSelectedMonths().includes(i)"
                       [class]="
                         !dgaMonthHasData(i)
                           ? 'rounded-lg py-1.5 text-caption-xs font-semibold bg-slate-50 text-slate-300 cursor-not-allowed select-none'
                           : dgaSelectedMonths().includes(i)
-                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)]'
-                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors'
+                            ? 'rounded-lg py-1.5 text-caption-xs font-bold bg-primary text-white ring-2 ring-[rgba(13,175,189,0.45)] active:scale-95'
+                            : 'rounded-lg py-1.5 text-caption-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors active:scale-95'
                       "
                     >
                       {{ month.slice(0, 3) }}
@@ -1313,14 +1339,14 @@ interface SiteDashboardData {
                 <button
                   type="button"
                   (click)="closeDgaDateFilter()"
-                  class="rounded-lg px-4 py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800"
+                  class="rounded-lg px-4 py-2 text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-800 active:scale-95"
                 >
                   Cancelar
                 </button>
                 <button
                   type="button"
                   (click)="applyDgaDateFilter()"
-                  class="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--color-primary-container)]"
+                  class="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-colors hover:bg-[var(--color-primary-container)] active:scale-95"
                 >
                   Aplicar filtro
                 </button>

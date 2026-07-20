@@ -31,7 +31,12 @@ type HistoricoFiltro = 'todos' | AlertaSeveridad;
       <!-- Filtros -->
       <header class="flex flex-wrap items-center gap-2">
         @for (f of filtros; track f.key) {
-          <button type="button" (click)="filtroActivo.set(f.key)" [class]="filtroClass(f.key)">
+          <button
+            type="button"
+            (click)="filtroActivo.set(f.key)"
+            [class]="filtroClass(f.key)"
+            [attr.aria-current]="filtroActivo() === f.key ? 'page' : null"
+          >
             {{ f.label }}
           </button>
         }
@@ -142,7 +147,7 @@ export class AlertasHistoricoComponent {
   filtroClass(key: HistoricoFiltro): string {
     const active = this.filtroActivo() === key;
     return [
-      'rounded-xl px-3 py-1.5 text-caption font-bold transition-all',
+      'rounded-xl px-3 py-1.5 text-caption font-bold transition active:scale-95',
       active
         ? 'bg-slate-800 text-white'
         : 'bg-white text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50',

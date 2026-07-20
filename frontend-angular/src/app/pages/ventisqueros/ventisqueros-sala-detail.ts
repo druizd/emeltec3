@@ -103,6 +103,7 @@ function slugify(area: string): string {
           [disabled]="isLoading()"
           (click)="refresh()"
           title="Actualizar (R)"
+          aria-label="Actualizar"
         >
           <span class="material-symbols-outlined text-[16px]" [class.sala-spin]="isLoading()"
             >sync</span
@@ -247,6 +248,8 @@ function slugify(area: string): string {
                         type="button"
                         class="sensor-defective-toggle"
                         [class.sensor-defective-toggle--active]="s.defective"
+                        [attr.aria-pressed]="s.defective"
+                        aria-label="Marcar sensor fuera de servicio"
                         (click)="toggleSensorDefective(s, $event)"
                         [title]="
                           s.defective
@@ -564,6 +567,7 @@ function slugify(area: string): string {
                       role="tab"
                       class="range-pill"
                       [class.range-pill--active]="range() === r && !selectedDate()"
+                      [attr.aria-selected]="range() === r && !selectedDate()"
                       (click)="setRange(r)"
                     >
                       {{ r }}
@@ -800,6 +804,7 @@ function slugify(area: string): string {
             <textarea
               class="note-modal-textarea"
               rows="4"
+              aria-label="Nota HACCP"
               placeholder="Ej: defrost programado de 03:00–03:15. Producto bajo control."
               [value]="nm.note"
               (input)="updateNoteModalText($event)"
@@ -884,6 +889,7 @@ function slugify(area: string): string {
                     role="tab"
                     class="range-pill"
                     [class.range-pill--active]="drilldownRange() === r"
+                    [attr.aria-selected]="drilldownRange() === r"
                     (click)="setDrilldownRange(r)"
                   >
                     {{ r }}

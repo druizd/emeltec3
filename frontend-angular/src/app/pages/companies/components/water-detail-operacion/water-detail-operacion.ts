@@ -132,7 +132,7 @@ interface RealtimeChartPoint {
           Resumen por Período
         </button>
         <p class="ml-auto flex items-center gap-1 text-caption-xs font-semibold text-slate-500">
-          <span class="material-symbols-outlined text-[14px]">info</span>
+          <span class="material-symbols-outlined text-[14px]" aria-hidden="true">info</span>
           Puede presentar desfases momentáneos
         </p>
       </nav>
@@ -158,7 +158,9 @@ interface RealtimeChartPoint {
               <span
                 class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-tint-10"
               >
-                <span class="material-symbols-outlined text-[18px] text-primary-container"
+                <span
+                  class="material-symbols-outlined text-[18px] text-primary-container"
+                  aria-hidden="true"
                   >bolt</span
                 >
               </span>
@@ -214,7 +216,7 @@ interface RealtimeChartPoint {
                 <button
                   type="button"
                   (click)="turnosSettingsOpen.update((v) => !v)"
-                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  class="flex h-6 w-6 items-center justify-center rounded-lg transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   [class]="
                     turnosSettingsOpen()
                       ? 'bg-primary-tint-14 text-primary-container'
@@ -223,7 +225,9 @@ interface RealtimeChartPoint {
                   aria-label="Configurar horarios de turno"
                   [attr.aria-expanded]="turnosSettingsOpen()"
                 >
-                  <span class="material-symbols-outlined text-[15px]">settings</span>
+                  <span class="material-symbols-outlined text-[15px]" aria-hidden="true"
+                    >settings</span
+                  >
                 </button>
               </div>
               <!-- Navegación de fecha -->
@@ -231,7 +235,7 @@ interface RealtimeChartPoint {
                 <button
                   type="button"
                   (click)="diaOffset.update((v) => v - 1)"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   aria-label="Día anterior"
                 >
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
@@ -253,7 +257,7 @@ interface RealtimeChartPoint {
                   [disabled]="esHoy()"
                   [attr.aria-disabled]="esHoy()"
                   aria-label="Día siguiente"
-                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
                   <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
                     >chevron_right</span
@@ -263,7 +267,7 @@ interface RealtimeChartPoint {
                   <button
                     type="button"
                     (click)="diaOffset.set(0)"
-                    class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-caption-xs font-bold text-slate-600 hover:bg-slate-50"
+                    class="rounded-lg border border-slate-200 bg-white px-2 py-1 text-caption-xs font-bold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
                   >
                     Hoy
                   </button>
@@ -290,7 +294,7 @@ interface RealtimeChartPoint {
                     <button
                       type="button"
                       (click)="numTurnos.set(2)"
-                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                      class="px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       [class]="
                         numTurnos() === 2
                           ? 'bg-primary text-white'
@@ -303,7 +307,7 @@ interface RealtimeChartPoint {
                     <button
                       type="button"
                       (click)="numTurnos.set(3)"
-                      class="px-3 py-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                      class="px-3 py-1.5 transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
                       [class]="
                         numTurnos() === 3
                           ? 'bg-primary text-white'
@@ -338,18 +342,21 @@ interface RealtimeChartPoint {
                       type="text"
                       [value]="t.nombre"
                       (change)="updateTurnoConfig(i, 'nombre', $any($event.target).value)"
+                      [attr.aria-label]="'Nombre del turno ' + (i + 1)"
                       class="h-8 rounded-lg border border-slate-200 bg-white px-3 text-caption font-semibold text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                     <input
                       type="time"
                       [value]="t.inicio"
                       (change)="updateTurnoConfig(i, 'inicio', $any($event.target).value)"
+                      [attr.aria-label]="'Hora de inicio del turno ' + (i + 1)"
                       class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                     <input
                       type="time"
                       [value]="t.fin"
                       (change)="updateTurnoConfig(i, 'fin', $any($event.target).value)"
+                      [attr.aria-label]="'Hora de fin del turno ' + (i + 1)"
                       class="h-8 rounded-lg border border-slate-200 bg-white px-1 text-center font-mono text-caption-xs text-slate-700 outline-none focus:border-primary-tint-55 focus:ring-1 focus:ring-primary-tint-20"
                     />
                   }
@@ -357,9 +364,11 @@ interface RealtimeChartPoint {
                 <button
                   type="button"
                   (click)="turnosSettingsOpen.set(false)"
-                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container"
+                  class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-95"
                 >
-                  <span class="material-symbols-outlined text-[14px]">check</span>
+                  <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                    >check</span
+                  >
                   Listo
                 </button>
               </div>
@@ -403,7 +412,7 @@ interface RealtimeChartPoint {
                       </div>
                       <button
                         type="button"
-                        class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/60 text-slate-600 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        class="flex h-6 w-6 items-center justify-center rounded-lg bg-white/60 text-slate-600 transition-colors hover:bg-white active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         aria-label="Descargar datos del turno"
                       >
                         <span class="material-symbols-outlined text-[13px]" aria-hidden="true"
@@ -454,7 +463,7 @@ interface RealtimeChartPoint {
                   </div>
                   <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                     <div
-                      class="h-full rounded-full transition-all"
+                      class="h-full rounded-full transition-[width]"
                       [class]="d.barClass"
                       [style.width]="d.pct + '%'"
                     ></div>
@@ -484,7 +493,7 @@ interface RealtimeChartPoint {
                 }}</span>
                 <div class="flex-1 h-2 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    class="h-full rounded-full transition-all"
+                    class="h-full rounded-full transition-[width]"
                     [class]="d.barClass"
                     [style.width]="d.pct + '%'"
                   ></div>
@@ -1045,7 +1054,7 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
   modoClass(m: OperacionModo): string {
     const active = this.modo() === m;
     return [
-      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition-all',
+      'inline-flex items-center gap-2 rounded-xl px-3 py-2 text-body-sm font-bold transition active:scale-95',
       active
         ? 'bg-primary-tint-08 text-primary-container ring-1 ring-primary-tint-30'
         : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700',

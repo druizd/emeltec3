@@ -23,7 +23,12 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
             Anterior
           </button>
           @for (p of pages(); track p) {
-            <button type="button" (click)="goto(p)" [class]="btnClass(p === page())">
+            <button
+              type="button"
+              (click)="goto(p)"
+              [class]="btnClass(p === page())"
+              [attr.aria-current]="p === page() ? 'page' : null"
+            >
               {{ p }}
             </button>
           }

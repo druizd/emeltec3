@@ -31,7 +31,7 @@ import {
           </div>
           <button
             type="button"
-            class="vs-drawer-close"
+            class="vs-drawer-close active:scale-95"
             (click)="open.set(false)"
             aria-label="Cerrar"
           >
@@ -77,16 +77,16 @@ import {
             />
             <button
               type="button"
-              class="vs-audit-btn vs-audit-btn--primary"
+              class="vs-audit-btn vs-audit-btn--primary active:scale-95"
               [disabled]="auditFiltered().length === 0"
               (click)="exportAuditCsv()"
               title="Exportar CSV"
             >
-              <span class="material-symbols-outlined text-[14px]">download</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">download</span>
               CSV
             </button>
             <span class="vs-audit-locked" title="Audit log inmutable (almacenado en DB, HACCP)">
-              <span class="material-symbols-outlined text-[14px]">lock</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true">lock</span>
               Inmutable
             </span>
           </div>
@@ -98,7 +98,9 @@ import {
 
           @if (auditFiltered().length === 0) {
             <div class="vs-audit-empty">
-              <span class="material-symbols-outlined text-[28px] text-slate-300">history</span>
+              <span class="material-symbols-outlined text-[28px] text-slate-300" aria-hidden="true"
+                >history</span
+              >
               <div class="mt-2 text-[13px] font-medium text-slate-500">
                 {{
                   auditEntries().length === 0
@@ -121,7 +123,9 @@ import {
                   </div>
                   <div class="vs-audit-row-body">
                     <span class="vs-audit-actor">
-                      <span class="material-symbols-outlined text-[12px]">person</span>
+                      <span class="material-symbols-outlined text-[12px]" aria-hidden="true"
+                        >person</span
+                      >
                       {{ e.actor }}
                       @if (e.actorRole) {
                         <span class="vs-audit-role">{{ e.actorRole }}</span>
@@ -140,8 +144,14 @@ import {
               }
             </div>
             @if (auditFiltered().length > auditPaged().length) {
-              <button type="button" class="vs-audit-loadmore" (click)="loadMoreAudit()">
-                <span class="material-symbols-outlined text-[14px]">expand_more</span>
+              <button
+                type="button"
+                class="vs-audit-loadmore active:scale-[0.98]"
+                (click)="loadMoreAudit()"
+              >
+                <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                  >expand_more</span
+                >
                 Cargar más ({{ auditFiltered().length - auditPaged().length }} restantes)
               </button>
             }

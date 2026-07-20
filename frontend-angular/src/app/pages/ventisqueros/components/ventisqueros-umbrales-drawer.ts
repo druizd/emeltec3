@@ -24,11 +24,11 @@ import type { Sensor } from '../ventisqueros-data';
           </div>
           <button
             type="button"
-            class="vs-drawer-close"
+            class="vs-drawer-close active:scale-95"
             (click)="open.set(false)"
             aria-label="Cerrar"
           >
-            <span class="material-symbols-outlined text-[18px]">close</span>
+            <span class="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
           </button>
         </header>
         <div class="vs-drawer-body">
@@ -52,13 +52,15 @@ import type { Sensor } from '../ventisqueros-data';
                   </span>
                   <button
                     type="button"
-                    class="vs-thresholds-remove"
+                    class="vs-thresholds-remove active:scale-95"
                     (click)="removeThreshold(t.area)"
                     title="Quitar"
                     aria-label="Quitar umbral"
                     [disabled]="isNaN(t.tMax)"
                   >
-                    <span class="material-symbols-outlined text-[14px]">delete</span>
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >delete</span
+                    >
                   </button>
                 </header>
 
@@ -104,11 +106,13 @@ import type { Sensor } from '../ventisqueros-data';
           <div class="vs-thresholds-footer">
             <button
               type="button"
-              class="vs-thresholds-reset"
+              class="vs-thresholds-reset active:scale-95"
               (click)="resetThresholds()"
               title="Restaurar valores por defecto del cliente"
             >
-              <span class="material-symbols-outlined text-[14px]">restart_alt</span>
+              <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                >restart_alt</span
+              >
               Restaurar defaults cliente
             </button>
             <span class="vs-thresholds-hint"> Cambios se guardan automáticamente (local). </span>

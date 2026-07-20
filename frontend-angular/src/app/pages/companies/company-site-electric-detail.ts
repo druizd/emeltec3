@@ -57,7 +57,7 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
                   class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-600 transition-colors hover:bg-orange-100"
                   aria-label="Volver a instalaciones"
                 >
-                  <span class="material-symbols-outlined text-[24px]">bolt</span>
+                  <span class="material-symbols-outlined text-[24px]" aria-hidden="true">bolt</span>
                 </a>
                 <div class="min-w-0">
                   <h1 class="truncate text-h5 font-semibold text-slate-900">
@@ -93,7 +93,9 @@ const ELECTRIC_LIVE_STALE_MS = 10 * 60 * 1000;
                   [attr.aria-selected]="activeTab() === tab.id"
                   [attr.tabindex]="activeTab() === tab.id ? 0 : -1"
                 >
-                  <span class="material-symbols-outlined text-[18px]">{{ tab.icon }}</span>
+                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
+                    tab.icon
+                  }}</span>
                   {{ tab.label }}
                   @if (tab.badge) {
                     <span class="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">
@@ -595,7 +597,7 @@ export class CompanySiteElectricDetailComponent implements OnInit {
   tabClass(tab: ElectricTab): string {
     const active = this.activeTab() === tab;
     const base =
-      'relative inline-flex h-full items-center gap-2 border-b-2 text-body-sm font-semibold transition-colors';
+      'relative inline-flex h-full items-center gap-2 border-b-2 text-body-sm font-semibold transition-colors active:scale-95';
     return active
       ? `${base} border-orange-500 text-orange-600`
       : `${base} border-transparent text-slate-500 hover:text-slate-800`;
