@@ -35,6 +35,9 @@
  *    - sent_at es el momento del envío legacy a SNIA (no la fecha actual).
  *    - api_n_comprobante es el folio devuelto por SNIA. Puede repetirse en
  *      filas consecutivas (envío en lote legacy).
+ *    - Filas vacías (sin flow/level/totalizator NI comprobante) se SALTAN:
+ *      son placeholders del export legacy, no envíos reales (sin folio SNIA).
+ *      Importarlas dejaría slots 'enviado' sin dato ni folio en dato_dga.
  *
  *
  *  IDEMPOTENCIA
@@ -299,6 +302,17 @@ async function main() {
     const nivel = numericOrNull(parts[cols.level]);
     const comprobante = parts[cols.api_n_comprobante] || null;
     const sentAt = parts[cols.sent_at] || null;
+
+    // Fila placeholder del export legacy: sin ninguna medición Y sin
+    // comprobante. NO es un envío real (sin folio SNIA), así que importarla
+    // como 'enviado' dejaría slots sin dato ni folio en dato_dga (aparecen
+    // como "enviado" vacío en la UI). Se salta en dry-run y en real para que
+    // el conteo skipped sea fiel. Una fila con comprobante (aunque sin
+    // valores) SÍ se importa: tuvo folio = hubo envío.
+    if (caudal == null && nivel == null && totalizatorRaw == null && !comprobante) {
+      skipped++;
+      continue;
+    }
 
     if (!args.dryRun) {
       try {
