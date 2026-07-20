@@ -327,6 +327,11 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     return { limit: 2000, granularity: '1d' };
   }
 
+  /** Etiqueta del pozo: número de obra DGA si existe; si no, nombre; si no, id. */
+  private siteLabel(site: SiteRecord): string {
+    return site.pozo_config?.obra_dga?.trim() || site.descripcion || site.id;
+  }
+
   private loadSeries(): void {
     const sites = this._sites;
     if (!sites.length) {
@@ -389,18 +394,16 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
       .subscribe({
         next: (results: PozoHistResult[]) => {
           const built: SiteSeries[] = [];
-          // Orden estable por nombre para que el color de cada pozo no cambie
+          // Orden estable por etiqueta para que el color de cada pozo no cambie
           // entre recargas (mergeMap devuelve en orden de finalización).
-          results.sort((a, b) =>
-            (a.site.descripcion || a.site.id).localeCompare(b.site.descripcion || b.site.id),
-          );
+          results.sort((a, b) => this.siteLabel(a.site).localeCompare(this.siteLabel(b.site)));
           for (const { site, res } of results) {
             const ok = res && (res as { ok?: boolean }).ok;
             const { nivel, caudal } = this.extractSeries(ok ? res : null);
             if (nivel.length === 0 && caudal.length === 0) continue;
             built.push({
               id: site.id,
-              nombre: site.descripcion || site.id,
+              nombre: this.siteLabel(site),
               color: PALETTE[built.length % PALETTE.length],
               nivel,
               caudal,
