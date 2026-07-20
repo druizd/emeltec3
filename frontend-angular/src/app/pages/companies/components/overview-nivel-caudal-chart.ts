@@ -238,9 +238,20 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
   private readonly companyService = inject(CompanyService);
 
   @Input() set sites(value: SiteRecord[]) {
-    this._sites = (value || []).filter((s) => !!s?.id);
+    const next = (value || []).filter((s) => !!s?.id);
+    // El panel re-emite `sites` en cada poll (nueva ref, mismos ids). Recargar
+    // el historial + recrear el chart ahí causaba parpadeo. Solo recargamos si
+    // el conjunto de pozos cambió de verdad.
+    const key = next
+      .map((s) => s.id)
+      .sort()
+      .join(',');
+    this._sites = next;
+    if (key === this._sitesKey) return;
+    this._sitesKey = key;
     if (this.viewReady) this.loadSeries();
   }
+  private _sitesKey = '';
   private _sites: SiteRecord[] = [];
 
   @ViewChild('chartCanvas') chartCanvas!: ElementRef<HTMLCanvasElement>;
@@ -472,16 +483,26 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
 
   private renderChart(): void {
     if (!this.viewReady || !this.chartCanvas?.nativeElement) return;
-    this.chart?.destroy();
-    this.chart = null;
 
     const visible = this.series().filter((s) => !this.hidden().has(s.id));
-    if (visible.length === 0) return;
+    if (visible.length === 0) {
+      this.chart?.destroy();
+      this.chart = null;
+      return;
+    }
+
+    const config = this.buildConfig(visible, false);
+    // Actualizar la instancia en el lugar (sin animación) evita el parpadeo de
+    // destruir+recrear en cada refresh/toggle. Solo se crea de cero la 1ª vez.
+    if (this.chart) {
+      this.chart.data = config.data;
+      this.chart.update('none');
+      return;
+    }
 
     const ctx = this.chartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
-
-    this.chart = new Chart(ctx, this.buildConfig(visible, false));
+    this.chart = new Chart(ctx, config);
   }
 
   /** Config de Chart.js compartida entre el gráfico combinado y los PNG por pozo. */
@@ -521,7 +542,10 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
       type: 'line',
       data: { datasets },
       options: {
-        responsive: true,
+        // En export el canvas está fuera del DOM: con responsive:true Chart.js
+        // no puede medir el contenedor y genera una imagen vacía/corrupta. Se
+        // usa el tamaño fijo del canvas (1200×600) y render síncrono.
+        responsive: !forExport,
         maintainAspectRatio: false,
         animation: forExport || reduceMotion ? false : { duration: 300, easing: 'easeOutQuart' },
         interaction: { mode: 'nearest', axis: 'x', intersect: false },
