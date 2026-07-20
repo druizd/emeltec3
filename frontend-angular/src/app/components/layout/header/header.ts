@@ -342,6 +342,7 @@ export class HeaderComponent implements OnInit {
     { value: 'Admin', label: 'Admin', scope: 'Empresa', icon: 'admin_panel_settings' },
     { value: 'Gerente', label: 'Gerente', scope: 'Division', icon: 'manage_accounts' },
     { value: 'Cliente', label: 'Cliente', scope: 'Sitio', icon: 'person' },
+    { value: 'Vendedor', label: 'Vendedor', scope: 'Demo', icon: 'storefront' },
   ];
 
   readonly draftRole = signal<PreviewRole>('Admin');

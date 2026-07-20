@@ -21,6 +21,8 @@ RUN apt-get update \
 
 COPY --from=builder /app/csvconsumer-rust/target/release/csvconsumer /usr/local/bin/csvconsumer
 
+RUN mkdir -p /data && chown nobody:nogroup /data
+
 USER nobody
 
 EXPOSE 50051

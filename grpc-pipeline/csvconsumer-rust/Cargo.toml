@@ -21,6 +21,10 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal"] }
 tokio-postgres = "0.7"
 # dotenvy        — carga variables desde un archivo .env opcional al arrancar.
 dotenvy = "0.15"
+# rusqlite       — SQLite embebido. Feature "bundled" compila sqlite3 en el binario
+#                  (no depende de libsqlite3 del sistema). Usado para WAL local:
+#                  persistir registros antes de ACKar gRPC → sobrevive reinicios.
+rusqlite = { version = "0.31", features = ["bundled"] }
 
 [build-dependencies]
 # tonic-build — generador de código a partir de archivos .proto.
