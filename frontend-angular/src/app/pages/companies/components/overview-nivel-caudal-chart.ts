@@ -542,7 +542,10 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
       type: 'line',
       data: { datasets },
       options: {
-        responsive: true,
+        // En export el canvas está fuera del DOM: con responsive:true Chart.js
+        // no puede medir el contenedor y genera una imagen vacía/corrupta. Se
+        // usa el tamaño fijo del canvas (1200×600) y render síncrono.
+        responsive: !forExport,
         maintainAspectRatio: false,
         animation: forExport || reduceMotion ? false : { duration: 300, easing: 'easeOutQuart' },
         interaction: { mode: 'nearest', axis: 'x', intersect: false },
