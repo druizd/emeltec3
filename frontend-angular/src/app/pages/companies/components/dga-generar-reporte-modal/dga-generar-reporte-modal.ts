@@ -299,7 +299,7 @@ interface ConfigDraft {
                 <select
                   [value]="draft().dga_informante_rut"
                   [disabled]="saving() || informantesLoading()"
-                  (change)="setDraft('dga_informante_rut', $any($event.target).value)"
+                  (change)="onAsociarInformante($any($event.target).value)"
                   class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-accent/30"
                 >
                   <option value="">— ninguno —</option>
@@ -361,6 +361,16 @@ interface ConfigDraft {
                   class="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] text-red-700"
                 >
                   {{ informanteError() }}
+                </div>
+              }
+              @if (informanteAviso()) {
+                <div
+                  class="flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700"
+                >
+                  <span class="material-symbols-outlined text-[13px]" aria-hidden="true"
+                    >check_circle</span
+                  >
+                  {{ informanteAviso() }}
                 </div>
               }
               <p class="text-[10px] text-slate-500">
@@ -496,6 +506,7 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
   readonly newInfReferencia = signal<string>('');
   readonly informanteSaving = signal<boolean>(false);
   readonly informanteError = signal<string>('');
+  readonly informanteAviso = signal<string>('');
 
   // Live preview
   readonly preview = signal<DgaLivePreview | null>(null);
@@ -757,6 +768,27 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
     this.newInfRut.set(formatRutDgaInput(value));
   }
 
+  /**
+   * Asocia un informante al pozo (parte del borrador) Y precarga el bloque de
+   * alta/rotación con su RUT + referencia para poder confirmar/editar los datos
+   * guardados. La clave NUNCA vuelve del backend (es secreta): queda vacía y
+   * solo se completa si se quiere rotar.
+   */
+  onAsociarInformante(rut: string): void {
+    this.setDraft('dga_informante_rut', rut);
+    this.informanteError.set('');
+    this.informanteAviso.set('');
+    this.newInfClave.set('');
+    if (!rut) {
+      this.newInfRut.set('');
+      this.newInfReferencia.set('');
+      return;
+    }
+    const inf = this.informantes().find((i) => formatRutDgaInput(i.rut) === formatRutDgaInput(rut));
+    this.newInfRut.set(formatRutDgaInput(rut));
+    this.newInfReferencia.set(inf?.referencia ?? '');
+  }
+
   guardarInformante(): void {
     const rut = formatRutDgaInput(this.newInfRut());
     if (!rut) return;
@@ -775,12 +807,17 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
 
     // Con clave el backend exige 2FA — el interceptor global abre el diálogo.
     const payload = clave ? { rut, clave_informante: clave, referencia } : { rut, referencia };
+    const eraNuevo = !rutExisteEnPool;
     this.informanteSaving.set(true);
     this.informanteError.set('');
+    this.informanteAviso.set('');
     this.dgaService.upsertInformante(payload).subscribe({
       next: () => {
         this.informanteSaving.set(false);
         this.newInfClave.set('');
+        this.informanteAviso.set(
+          eraNuevo ? `Informante ${rut} creado.` : `Informante ${rut} actualizado.`,
+        );
         this.loadInformantes();
       },
       error: (err: HttpErrorResponse) => {
