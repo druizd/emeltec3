@@ -54,6 +54,8 @@ export interface OperationalContact {
   cargo: string;
   tipo_contacto: OperationalContactType;
   notas?: string | null;
+  /** true cuando el backend enmascaró tel/email: hay dato revelable con 2FA. */
+  datos_ocultos?: boolean;
   empresa_nombre?: string | null;
   sub_empresa_nombre?: string | null;
   sitio_nombre?: string | null;

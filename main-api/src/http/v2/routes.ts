@@ -216,6 +216,12 @@ import {
   revealContactoHandler,
 } from '../../modules/bitacoraSitio/controller';
 
+// Reveal de PII de contactos operativos (agenda). El listado va enmascarado;
+// esto revela con 2FA + auditoría, con el mismo scoping por rol.
+import { revealOperationalContactHandler } from '../../modules/contactos/controller';
+
+router.post('/companies/contacts/:id/reveal', protect, require2fa, revealOperationalContactHandler);
+
 // Análisis del sitio (salud, métricas).
 import { getMetricasHandler, getSaludHandler } from '../../modules/analisis/controller';
 

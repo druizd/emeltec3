@@ -327,6 +327,19 @@ export class CompanyService {
   }
 
   /**
+   * Revela tel/email de un contacto operativo (enmascarado en el listado).
+   * Exige 2FA (interceptor global inyecta el código) y queda auditado.
+   */
+  revealOperationalContact(
+    contactId: string,
+  ): Observable<ApiResponse<{ telefono: string | null; email: string | null }>> {
+    return this.http.post<ApiResponse<{ telefono: string | null; email: string | null }>>(
+      `/api/v2/companies/contacts/${encodeURIComponent(contactId)}/reveal`,
+      {},
+    );
+  }
+
+  /**
    * Cache TTL + in-flight dedupe para fetches frecuentes por sitio. Comparte
    * respuestas entre la vista General y el detalle por sitio cuando ambas
    * piden el mismo dato dentro de la ventana de SITE_CACHE_TTL_MS.

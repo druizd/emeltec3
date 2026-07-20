@@ -177,9 +177,32 @@ const CONTACT_TYPES = [
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Telefono
                     </p>
-                    <p class="break-words text-[13px] font-semibold text-slate-700">
-                      {{ contact.telefono || 'Sin telefono registrado' }}
-                    </p>
+                    @if (revealed()[contact.id]; as rev) {
+                      <p class="break-words text-[13px] font-semibold text-slate-700">
+                        {{ rev.telefono || 'Sin telefono registrado' }}
+                      </p>
+                    } @else if (contact.datos_ocultos) {
+                      <button
+                        type="button"
+                        (click)="revealContact(contact)"
+                        [disabled]="revealing() !== null"
+                        class="mt-0.5 inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95 disabled:opacity-50"
+                      >
+                        <span
+                          class="material-symbols-outlined text-[13px]"
+                          [class.animate-spin]="revealing() === contact.id"
+                          aria-hidden="true"
+                          >{{
+                            revealing() === contact.id ? 'progress_activity' : 'lock_open'
+                          }}</span
+                        >
+                        Revelar datos
+                      </button>
+                    } @else {
+                      <p class="break-words text-[13px] font-semibold text-slate-700">
+                        Sin telefono registrado
+                      </p>
+                    }
                   </div>
                 </div>
 
@@ -196,9 +219,17 @@ const CONTACT_TYPES = [
                     <p class="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                       Correo
                     </p>
-                    <p class="break-all text-[13px] font-semibold text-slate-700">
-                      {{ contact.email || 'Sin correo registrado' }}
-                    </p>
+                    @if (revealed()[contact.id]; as rev) {
+                      <p class="break-all text-[13px] font-semibold text-slate-700">
+                        {{ rev.email || 'Sin correo registrado' }}
+                      </p>
+                    } @else if (contact.datos_ocultos) {
+                      <p class="break-all text-[13px] font-semibold text-slate-400">••••••••</p>
+                    } @else {
+                      <p class="break-all text-[13px] font-semibold text-slate-700">
+                        Sin correo registrado
+                      </p>
+                    }
                   </div>
                 </div>
               </div>
@@ -527,6 +558,9 @@ export class CompaniesContactsPanelComponent implements OnChanges {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly deleting = signal(false);
+  /** PII revelada por id de contacto (tel/email obtenidos con 2FA). */
+  readonly revealed = signal<Record<string, { telefono: string | null; email: string | null }>>({});
+  readonly revealing = signal<string | null>(null);
   readonly status = signal('');
   readonly statusType = signal<'success' | 'error'>('success');
   readonly pendingDeleteContact = signal<OperationalContact | null>(null);
@@ -562,6 +596,7 @@ export class CompaniesContactsPanelComponent implements OnChanges {
         next: (res: ApiResponse<OperationalContact[]>) => {
           const contacts = res.ok ? (res.data ?? []) : [];
           this.contacts.set(contacts);
+          this.revealed.set({});
           this.contactsCountChange.emit(contacts.length);
           this.loading.set(false);
         },
@@ -571,6 +606,21 @@ export class CompaniesContactsPanelComponent implements OnChanges {
           this.loading.set(false);
         },
       });
+  }
+
+  /** Revela tel/email de un contacto (2FA + auditoría en el backend). */
+  revealContact(contact: OperationalContact): void {
+    if (this.revealing() !== null) return;
+    this.revealing.set(contact.id);
+    this.companyService.revealOperationalContact(contact.id).subscribe({
+      next: (res) => {
+        if (res.ok) {
+          this.revealed.update((m) => ({ ...m, [contact.id]: res.data }));
+        }
+        this.revealing.set(null);
+      },
+      error: () => this.revealing.set(null),
+    });
   }
 
   loadAvailableUsers(): void {

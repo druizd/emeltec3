@@ -658,6 +658,10 @@ export class BitacoraFichaSitioComponent implements OnInit {
     const empId = this.empresaId();
     const sId = this.sitioId();
     if (!sId) return;
+    // Los catálogos (agenda + usuarios) solo alimentan los pickers de edición,
+    // que son internos. No los traemos para roles externos: evita mover PII
+    // (aunque ya venga enmascarada) al browser de quien solo lee la ficha.
+    if (!this.isInternal()) return;
 
     // Operational contacts: filtramos client-side a los que apliquen al sitio
     // (sitio_id === sId o sitio_id === null = aplica a toda empresa).
