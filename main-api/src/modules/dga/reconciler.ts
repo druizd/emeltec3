@@ -72,7 +72,18 @@ async function reconcileDriftEnviado(): Promise<number> {
   return drift.length;
 }
 
-async function reportEnviadoSinAudit(): Promise<number> {
+/**
+ * Una sección de alerta del reconciler. `block`/`sig` en null cuando no hay
+ * hallazgos. runReconcilerCycle junta todas las secciones en UN solo correo
+ * (evita el spam de un email por categoría por ciclo).
+ */
+interface AlertPart {
+  count: number;
+  block: string | null;
+  sig: string;
+}
+
+async function reportEnviadoSinAudit(): Promise<AlertPart> {
   const orphans = await listEnviadoSinAudit();
   for (const slot of orphans) {
     logger.error(
@@ -80,25 +91,24 @@ async function reportEnviadoSinAudit(): Promise<number> {
       'reconciler (C): slot enviado SIN audit — anomalía, revisar manualmente',
     );
   }
-  if (orphans.length > 0) {
-    const lines = orphans
-      .slice(0, 50)
-      .map((o) => `- site=${o.site_id} ts=${o.ts} comprobante=${o.comprobante ?? '(null)'}`);
-    await sendDgaAdminAlert({
-      subject: `[DGA] ${orphans.length} slot(s) enviado(s) SIN audit`,
-      body:
-        `El reconciler detectó ${orphans.length} slot(s) en estado 'enviado' sin ` +
-        `ningún registro en dga_send_audit.\n\n` +
-        `Causas posibles: import legacy mal hecho, fix manual del admin, bug en submission.\n` +
-        `Acción: revisar manualmente cada caso. NO se auto-corrige.\n\n` +
-        `Primeros ${Math.min(orphans.length, 50)} casos:\n` +
-        lines.join('\n'),
-    });
-  }
-  return orphans.length;
+  if (orphans.length === 0) return { count: 0, block: null, sig: '' };
+  const lines = orphans
+    .slice(0, 50)
+    .map((o) => `  - site=${o.site_id} ts=${o.ts} comprobante=${o.comprobante ?? '(null)'}`);
+  const block =
+    `▸ ${orphans.length} slot(s) en estado 'enviado' SIN registro en dga_send_audit.\n` +
+    `  Causas: import legacy, fix manual del admin, bug en submission. ` +
+    `Acción: revisar manualmente (NO se auto-corrige).\n` +
+    `  Primeros ${Math.min(orphans.length, 50)}:\n` +
+    lines.join('\n');
+  return {
+    count: orphans.length,
+    block,
+    sig: `C:${orphans.map((o) => o.site_id + o.ts).join(',')}`,
+  };
 }
 
-async function reportDoubleSubmission(): Promise<number> {
+async function reportDoubleSubmission(): Promise<AlertPart> {
   const doubles = await listDoubleSubmission();
   for (const slot of doubles) {
     logger.error(
@@ -106,42 +116,32 @@ async function reportDoubleSubmission(): Promise<number> {
       'reconciler (D): posible doble envío a SNIA — verificar en MIA-DGA',
     );
   }
-  if (doubles.length > 0) {
-    const lines = doubles
-      .slice(0, 50)
-      .map((d) => `- site=${d.site_id} ts=${d.ts} envíos_OK=${d.ok_count}`);
-    await sendDgaAdminAlert({
-      subject: `[DGA] ${doubles.length} slot(s) con doble envío a SNIA`,
-      body:
-        `El reconciler detectó ${doubles.length} slot(s) con 2 o más audits OK ` +
-        `(status='00') a SNIA. Puede activar bloqueo del Centro de Control ` +
-        `(Res 2170 §6.3).\n\n` +
-        `Acción: verificar en MIA-DGA. Si es bug, revisar lock del submission.\n\n` +
-        `Primeros ${Math.min(doubles.length, 50)} casos:\n` +
-        lines.join('\n'),
-    });
-  }
-  return doubles.length;
+  if (doubles.length === 0) return { count: 0, block: null, sig: '' };
+  const lines = doubles
+    .slice(0, 50)
+    .map((d) => `  - site=${d.site_id} ts=${d.ts} envíos_OK=${d.ok_count}`);
+  const block =
+    `▸ ${doubles.length} slot(s) con 2+ audits OK (status='00') a SNIA — posible doble envío ` +
+    `(puede activar bloqueo del Centro de Control, Res 2170 §6.3).\n` +
+    `  Acción: verificar en MIA-DGA. Si es bug, revisar lock del submission.\n` +
+    `  Primeros ${Math.min(doubles.length, 50)}:\n` +
+    lines.join('\n');
+  return {
+    count: doubles.length,
+    block,
+    sig: `D:${doubles.map((d) => d.site_id + d.ts).join(',')}`,
+  };
 }
 
-// Throttle in-memory: evita reenviar el mismo digest cada hora si los slots
-// stale no cambian. Si entra/sale un slot, firma cambia y se manda nuevo
-// digest. Resetea al reiniciar el proceso (aceptable: max 1 alerta post-deploy).
-let lastStaleSignature = '';
+// Throttle in-memory del DIGEST completo: si el conjunto de hallazgos no cambia
+// entre ciclos, no se reenvía el correo. Resetea al reiniciar el proceso.
+let lastDigestSignature = '';
 
-async function reportVacioStale(): Promise<number> {
+async function reportVacioStale(): Promise<AlertPart> {
   const stale = await listVacioSlotsStale(STALE_VACIO_HOURS);
   if (stale.length === 0) {
-    lastStaleSignature = '';
-    return 0;
+    return { count: 0, block: null, sig: '' };
   }
-
-  const signature = stale.map((s) => `${s.site_id}:${s.ts}`).join('|');
-  if (signature === lastStaleSignature) {
-    logger.debug({ count: stale.length }, 'reconciler (E): stale set sin cambios, skip alerta');
-    return stale.length;
-  }
-  lastStaleSignature = signature;
 
   const bySite = new Map<string, { ts: string; hours_stale: number }[]>();
   for (const s of stale) {
@@ -152,31 +152,28 @@ async function reportVacioStale(): Promise<number> {
 
   const sections: string[] = [];
   for (const [siteId, slots] of bySite.entries()) {
-    sections.push(`\nSitio ${siteId} (${slots.length} slot(s)):`);
+    sections.push(`  Sitio ${siteId} (${slots.length} slot(s)):`);
     sections.push(
       ...slots
         .slice(0, 10)
-        .map((sl) => `  - ts=${sl.ts} (vacio hace ${sl.hours_stale.toFixed(1)}h)`),
+        .map((sl) => `    - ts=${sl.ts} (vacio hace ${sl.hours_stale.toFixed(1)}h)`),
     );
-    if (slots.length > 10) sections.push(`  ... y ${slots.length - 10} más`);
+    if (slots.length > 10) sections.push(`    ... y ${slots.length - 10} más`);
   }
 
   logger.warn({ total: stale.length, sites: bySite.size }, 'reconciler (E): slots vacios stale');
 
-  await sendDgaAdminAlert({
-    subject: `[DGA] ${stale.length} slot(s) sin dato hace >${STALE_VACIO_HOURS}h`,
-    body:
-      `Detectados ${stale.length} slot(s) en estado 'vacio' con antigüedad mayor a ` +
-      `${STALE_VACIO_HOURS} horas. El fill worker no logra encontrar el bucket exacto ` +
-      `de medición correspondiente.\n\n` +
-      `Causas posibles: equipo offline / sin señal, equipo no emite en boundary del slot, ` +
-      `pozo_config.dga_hora_inicio mal alineada.\n\n` +
-      `NO se reportará a DGA hasta que el dato real arribe.\n\n` +
-      `Desglose por sitio:` +
-      sections.join('\n'),
-  });
-
-  return stale.length;
+  const block =
+    `▸ ${stale.length} slot(s) en estado 'vacio' con antigüedad > ${STALE_VACIO_HOURS}h. ` +
+    `El fill worker no encuentra el bucket exacto.\n` +
+    `  Causas: equipo offline/sin señal, no emite en boundary del slot, ` +
+    `pozo_config.dga_hora_inicio mal alineada. NO se reporta a DGA hasta que llegue el dato.\n` +
+    sections.join('\n');
+  return {
+    count: stale.length,
+    block,
+    sig: `E:${stale.map((s) => `${s.site_id}:${s.ts}`).join('|')}`,
+  };
 }
 
 export async function runReconcilerCycle(): Promise<void> {
@@ -188,14 +185,42 @@ export async function runReconcilerCycle(): Promise<void> {
     const doubles = await reportDoubleSubmission();
     const stale = await reportVacioStale();
 
-    if (stuck > 0 || driftEnviado > 0 || sinAudit > 0 || doubles > 0 || stale > 0) {
+    // Un SOLO correo por ciclo: se juntan todas las categorías con hallazgos en
+    // un digest, con throttle único (no reenvía si el conjunto no cambió).
+    const parts = [sinAudit, doubles, stale].filter((p) => p.block);
+    if (parts.length > 0) {
+      const signature = parts.map((p) => p.sig).join('||');
+      if (signature !== lastDigestSignature) {
+        lastDigestSignature = signature;
+        const total = sinAudit.count + doubles.count + stale.count;
+        await sendDgaAdminAlert({
+          subject: `[DGA] Reconciler: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
+          body:
+            `Resumen del reconciler DGA. Se agrupan todas las alertas en un solo correo ` +
+            `para evitar spam; llega uno nuevo solo cuando el conjunto de hallazgos cambia.\n\n` +
+            parts.map((p) => p.block).join('\n\n────────────────────\n\n'),
+        });
+      } else {
+        logger.debug('DGA reconciler: digest sin cambios, skip alerta');
+      }
+    } else {
+      lastDigestSignature = '';
+    }
+
+    if (
+      stuck > 0 ||
+      driftEnviado > 0 ||
+      sinAudit.count > 0 ||
+      doubles.count > 0 ||
+      stale.count > 0
+    ) {
       logger.info(
         {
           stuck_unlocked: stuck,
           drift_enviado_fixed: driftEnviado,
-          enviado_sin_audit: sinAudit,
-          double_submission: doubles,
-          vacio_stale: stale,
+          enviado_sin_audit: sinAudit.count,
+          double_submission: doubles.count,
+          vacio_stale: stale.count,
         },
         'DGA reconciler: ciclo con hallazgos',
       );
