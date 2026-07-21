@@ -378,6 +378,14 @@ exports.sendAdminPlainEmail = async ({ to, subject, text, html }) => {
   return enviar({ to, subject, text, html });
 };
 
+/**
+ * Envuelve `contentHtml` (filas <tr> del cuerpo) en el shell branded de Emeltec
+ * (logo, barra de acento, footer). Para armar correos de admin lindos desde los
+ * workers sin duplicar el marco.
+ */
+exports.renderAdminShell = ({ title, preheader, accentColor, accentGradient, contentHtml }) =>
+  renderShell({ title, preheader, accentColor, accentGradient, contentHtml });
+
 exports.sendAlertEmail = async (emailDestino, nombreCompleto, mensaje, regla) => {
   try {
     const nombre = (nombreCompleto || '').trim() || 'usuario';
