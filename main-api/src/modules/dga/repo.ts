@@ -280,6 +280,50 @@ export interface StaleSlotRow {
   hours_stale: number;
 }
 
+export interface SitioDesconectadoRow {
+  id: string;
+  descripcion: string;
+  empresa: string | null;
+  sub_empresa: string | null;
+  tipo_sitio: string;
+  horas: number;
+}
+
+/**
+ * Sitios activos que ENVIABAN datos y llevan > thresholdHours sin emitir
+ * (última lectura en equipo_1min más vieja que el umbral). Los que nunca
+ * emitieron se excluyen (recién instalados / sin serial mapeado).
+ */
+export async function listSitiosDesconectados(
+  thresholdHours: number,
+  limit = 200,
+): Promise<SitioDesconectadoRow[]> {
+  const r = await query<SitioDesconectadoRow>(
+    `SELECT s.id, s.descripcion, s.tipo_sitio,
+            e.nombre  AS empresa,
+            se.nombre AS sub_empresa,
+            EXTRACT(EPOCH FROM (now() - ls.last_seen)) / 3600 AS horas
+       FROM sitio s
+       LEFT JOIN empresa e      ON e.id = s.empresa_id
+       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
+       JOIN LATERAL (
+         SELECT bucket AS last_seen
+           FROM equipo_1min
+          WHERE id_serial = s.id_serial
+          ORDER BY bucket DESC
+          LIMIT 1
+       ) ls ON true
+      WHERE COALESCE(s.activo, true) = true
+        AND s.id_serial IS NOT NULL
+        AND ls.last_seen < now() - ($1 || ' hours')::interval
+      ORDER BY horas DESC
+      LIMIT $2`,
+    [thresholdHours, limit],
+    { name: 'dga__sitios_desconectados' },
+  );
+  return r.rows;
+}
+
 export async function listVacioSlotsStale(
   thresholdHours: number,
   limit = 200,

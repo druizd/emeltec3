@@ -10,12 +10,32 @@ import {
   listDoubleSubmission,
   listDriftAuditEnviadoVsEstado,
   listEnviadoSinAudit,
+  listSitiosDesconectados,
   listStuckEnviando,
   listVacioSlotsStale,
   reconcileMarkEnviado,
   unlockStuckEnviando,
 } from './repo';
 import { sendDgaAdminAlert } from './notifier';
+
+// Base del frontend para links clickeables en el mail (no navega si no hay
+// sesión, pero deja el sitio a un click una vez logueado).
+const FRONTEND_BASE = (process.env.FRONTEND_URL || 'https://nuevacloud.emeltec.cl/login').replace(
+  /\/login\/?$/,
+  '',
+);
+// tipo_sitio → segmento de ruta del detalle (ver frontend site-type-ui.ts).
+const TIPO_RUTA: Record<string, string> = {
+  pozo: 'water',
+  vertiente: 'vertiente',
+  canal: 'canal',
+  electrico: 'electric',
+  riles: 'riles',
+};
+function siteUrl(siteId: string, tipo: string): string {
+  const seg = TIPO_RUTA[tipo] ?? 'water';
+  return `${FRONTEND_BASE}/companies/${siteId}/${seg}`;
+}
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_RECONCILER_POLL_MS ?? 60 * 60 * 1000);
 const STUCK_THRESHOLD_MINUTES = Number(process.env.DGA_RECONCILER_STUCK_MIN ?? 15);
@@ -152,7 +172,7 @@ async function reportVacioStale(): Promise<AlertPart> {
 
   const sections: string[] = [];
   for (const [siteId, slots] of bySite.entries()) {
-    sections.push(`  Sitio ${siteId} (${slots.length} slot(s)):`);
+    sections.push(`  Sitio ${siteId} (${slots.length} slot(s)):  ${siteUrl(siteId, 'pozo')}`);
     sections.push(
       ...slots
         .slice(0, 10)
@@ -176,6 +196,26 @@ async function reportVacioStale(): Promise<AlertPart> {
   };
 }
 
+const DESCONEXION_HORAS = Number(process.env.DGA_DESCONEXION_HORAS ?? STALE_VACIO_HOURS);
+
+/** Sitios que dejaron de enviar datos hace > DESCONEXION_HORAS. */
+async function reportSitiosDesconectados(): Promise<AlertPart> {
+  const sitios = await listSitiosDesconectados(DESCONEXION_HORAS);
+  if (sitios.length === 0) return { count: 0, block: null, sig: '' };
+  logger.warn({ total: sitios.length }, 'reconciler (F): sitios desconectados');
+  const lines = sitios.slice(0, 50).map((s) => {
+    const scope = [s.empresa, s.sub_empresa].filter(Boolean).join(' / ') || '—';
+    return (
+      `  - ${s.descripcion} (${scope}) — ${Number(s.horas).toFixed(1)}h sin datos\n` +
+      `    ${siteUrl(s.id, s.tipo_sitio)}`
+    );
+  });
+  const block =
+    `▸ ${sitios.length} sitio(s) DESCONECTADO(s) (> ${DESCONEXION_HORAS}h sin enviar datos):\n` +
+    lines.join('\n');
+  return { count: sitios.length, block, sig: `F:${sitios.map((s) => s.id).join(',')}` };
+}
+
 export async function runReconcilerCycle(): Promise<void> {
   beat('dgaReconciler');
   try {
@@ -184,20 +224,23 @@ export async function runReconcilerCycle(): Promise<void> {
     const sinAudit = await reportEnviadoSinAudit();
     const doubles = await reportDoubleSubmission();
     const stale = await reportVacioStale();
+    const desconectados = await reportSitiosDesconectados();
 
-    // Un SOLO correo por ciclo: se juntan todas las categorías con hallazgos en
-    // un digest, con throttle único (no reenvía si el conjunto no cambió).
-    const parts = [sinAudit, doubles, stale].filter((p) => p.block);
+    // Un SOLO correo por ciclo con TODO (envío DGA + reconciler + desconexión):
+    // se juntan las categorías con hallazgos en un digest, con throttle único
+    // (no reenvía si el conjunto no cambió). Los sitios traen link clickeable.
+    const parts = [desconectados, stale, sinAudit, doubles].filter((p) => p.block);
     if (parts.length > 0) {
       const signature = parts.map((p) => p.sig).join('||');
       if (signature !== lastDigestSignature) {
         lastDigestSignature = signature;
-        const total = sinAudit.count + doubles.count + stale.count;
+        const total = desconectados.count + stale.count + sinAudit.count + doubles.count;
         await sendDgaAdminAlert({
-          subject: `[DGA] Reconciler: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
+          subject: `[DGA] Resumen: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
           body:
-            `Resumen del reconciler DGA. Se agrupan todas las alertas en un solo correo ` +
-            `para evitar spam; llega uno nuevo solo cuando el conjunto de hallazgos cambia.\n\n` +
+            `Resumen de monitoreo (envío DGA + reconciler + desconexión de sitios). ` +
+            `Todo en un solo correo para evitar spam; llega uno nuevo solo cuando el ` +
+            `conjunto de hallazgos cambia. Los sitios son clickeables (requieren sesión).\n\n` +
             parts.map((p) => p.block).join('\n\n────────────────────\n\n'),
         });
       } else {
@@ -212,7 +255,8 @@ export async function runReconcilerCycle(): Promise<void> {
       driftEnviado > 0 ||
       sinAudit.count > 0 ||
       doubles.count > 0 ||
-      stale.count > 0
+      stale.count > 0 ||
+      desconectados.count > 0
     ) {
       logger.info(
         {
@@ -221,6 +265,7 @@ export async function runReconcilerCycle(): Promise<void> {
           enviado_sin_audit: sinAudit.count,
           double_submission: doubles.count,
           vacio_stale: stale.count,
+          sitios_desconectados: desconectados.count,
         },
         'DGA reconciler: ciclo con hallazgos',
       );
