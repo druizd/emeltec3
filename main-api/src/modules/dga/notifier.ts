@@ -19,6 +19,23 @@ interface MailService {
     text: string;
     html?: string;
   }) => Promise<unknown>;
+  renderAdminShell: (opts: {
+    title: string;
+    preheader?: string;
+    accentColor?: string;
+    accentGradient?: string;
+    contentHtml: string;
+  }) => string;
+}
+
+/** Envuelve el cuerpo (filas <tr>) en el shell branded de Emeltec. */
+export function renderAdminShell(opts: {
+  title: string;
+  preheader?: string;
+  contentHtml: string;
+}): string | undefined {
+  const mail = loadMailService();
+  return mail?.renderAdminShell(opts);
 }
 
 let cachedMail: MailService | null = null;
@@ -56,7 +73,11 @@ function loadMailService(): MailService | null {
  * y sigue sin error — el reconciler corre periódicamente y no debe fallar
  * por config incompleta.
  */
-export async function sendDgaAdminAlert(input: { subject: string; body: string }): Promise<void> {
+export async function sendDgaAdminAlert(input: {
+  subject: string;
+  body: string;
+  html?: string;
+}): Promise<void> {
   const to = config.monitor.primaryEmail;
   if (!to) {
     logger.warn({ subject: input.subject }, 'DGA notifier: MONITOR_PRIMARY_EMAIL no configurado');
@@ -69,6 +90,7 @@ export async function sendDgaAdminAlert(input: { subject: string; body: string }
       to,
       subject: input.subject,
       text: input.body,
+      ...(input.html ? { html: input.html } : {}),
     });
   } catch (err) {
     logger.error(
