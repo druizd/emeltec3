@@ -31,9 +31,12 @@ function canAccessSite(user, site) {
   if (!user) return false;
   if (user.tipo === 'SuperAdmin') return true;
   if (!site) return false;
-  // Vendedor: equipo comercial Emeltec — mismo alcance que Admin, siempre
-  // asociado a la empresa interna (demos + Maletas Piloto).
-  if (user.tipo === 'Admin' || user.tipo === 'Vendedor') return user.empresa_id === site.empresa_id;
+  // Vendedor: ve maletas piloto (es_maleta_piloto) + instalaciones asignadas
+  // (usuario_sitio). Este chequeo SÍNCRONO solo resuelve las maletas (el site
+  // trae el flag); las asignadas se validan en userCanAccessSiteId (async) y en
+  // buildUserSiteScope (subquery). Read-only.
+  if (user.tipo === 'Vendedor') return site.es_maleta_piloto === true;
+  if (user.tipo === 'Admin') return user.empresa_id === site.empresa_id;
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
     if (user.empresa_id !== site.empresa_id) return false;
     // Sin sub-empresa asignada → acceso a toda la empresa.
@@ -56,7 +59,14 @@ function buildUserSiteScope(user, alias = 's', startIndex = 1) {
   if (!user || user.tipo === 'SuperAdmin') {
     return { clause: '', params: [] };
   }
-  if (user.tipo === 'Admin' || user.tipo === 'Vendedor') {
+  if (user.tipo === 'Vendedor') {
+    // Maletas piloto (cualquier empresa) + instalaciones asignadas al vendedor.
+    return {
+      clause: `(${alias}.es_maleta_piloto = TRUE OR ${alias}.id IN (SELECT sitio_id FROM usuario_sitio WHERE usuario_id = $${startIndex}))`,
+      params: [user.id],
+    };
+  }
+  if (user.tipo === 'Admin') {
     return { clause: `${alias}.empresa_id = $${startIndex}`, params: [user.empresa_id] };
   }
   if (user.tipo === 'Gerente' || user.tipo === 'Cliente') {
@@ -134,10 +144,20 @@ async function resolveAccessibleSerial(pool, user, requestedSerial) {
 
 /** Busca el alcance (empresa/sub) de un sitio por su id. null si no existe. */
 async function lookupSiteById(pool, siteId) {
-  const { rows } = await pool.query(`SELECT empresa_id, sub_empresa_id FROM sitio WHERE id = $1`, [
-    siteId,
-  ]);
+  const { rows } = await pool.query(
+    `SELECT id, empresa_id, sub_empresa_id, es_maleta_piloto FROM sitio WHERE id = $1`,
+    [siteId],
+  );
   return rows[0] || null;
+}
+
+/** ¿El sitio está asignado al usuario? (tabla usuario_sitio). */
+async function siteAssignedToUser(pool, userId, siteId) {
+  const { rows } = await pool.query(
+    `SELECT 1 FROM usuario_sitio WHERE usuario_id = $1 AND sitio_id = $2 LIMIT 1`,
+    [userId, siteId],
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -149,6 +169,10 @@ async function userCanAccessSiteId(pool, user, siteId) {
   if (user && user.tipo === 'SuperAdmin') return true;
   const site = await lookupSiteById(pool, siteId);
   if (!site) return false;
+  // Vendedor: maleta piloto (sync) o instalación asignada (async).
+  if (user && user.tipo === 'Vendedor') {
+    return site.es_maleta_piloto === true || siteAssignedToUser(pool, user.id, siteId);
+  }
   return canAccessSite(user, site);
 }
 

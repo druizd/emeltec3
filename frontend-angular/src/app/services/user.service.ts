@@ -20,6 +20,16 @@ export interface Tecnico {
   cargo: string | null;
 }
 
+/** Instalación asignada a un usuario (Vendedor). */
+export interface AssignedSite {
+  id: string;
+  descripcion: string;
+  empresa_id: string;
+  empresa_nombre: string | null;
+  tipo_sitio: string;
+  es_maleta_piloto: boolean;
+}
+
 export interface EquipoEmeltecResponse {
   empresa_emeltec: { id: string; nombre: string } | null;
   miembros: {
@@ -74,6 +84,25 @@ export class UserService {
 
   getCurrentUser(): Observable<ApiResponse<User>> {
     return this.http.get<ApiResponse<User>>('/api/users/me');
+  }
+
+  /** Instalaciones asignadas a un usuario (Vendedor). SuperAdmin only. */
+  listUserSites(userId: string): Observable<ApiResponse<AssignedSite[]>> {
+    return this.http.get<ApiResponse<AssignedSite[]>>(
+      `/api/users/${encodeURIComponent(userId)}/sites`,
+    );
+  }
+
+  addUserSite(userId: string, sitioId: string): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`/api/users/${encodeURIComponent(userId)}/sites`, {
+      sitio_id: sitioId,
+    });
+  }
+
+  removeUserSite(userId: string, sitioId: string): Observable<ApiResponse<unknown>> {
+    return this.http.delete<ApiResponse<unknown>>(
+      `/api/users/${encodeURIComponent(userId)}/sites/${encodeURIComponent(sitioId)}`,
+    );
   }
 
   /**

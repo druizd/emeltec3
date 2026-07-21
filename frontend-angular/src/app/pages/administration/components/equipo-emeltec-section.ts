@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { UserService } from '../../../services/user.service';
+import { UserService, type AssignedSite } from '../../../services/user.service';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
+import { CompanyService } from '../../../services/company.service';
 import {
   ConfirmDialogComponent,
   type ConfirmDialogData,
@@ -254,6 +255,20 @@ function emptyDraft(): DraftMiembro {
                 </td>
                 <td class="px-4 py-2">
                   <div class="flex justify-end gap-1">
+                    @if (m.tipo === 'Vendedor') {
+                      <button
+                        type="button"
+                        (click)="toggleSitiosPanel(m)"
+                        [attr.aria-label]="'Instalaciones asignadas a ' + m.nombre"
+                        title="Instalaciones asignadas"
+                        [class.text-primary-container]="sitiosPanelId() === m.id"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95"
+                      >
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >location_on</span
+                        >
+                      </button>
+                    }
                     <button
                       type="button"
                       (click)="toggleEdicion(m)"
@@ -397,6 +412,75 @@ function emptyDraft(): DraftMiembro {
                   </td>
                 </tr>
               }
+              @if (sitiosPanelId() === m.id) {
+                <tr class="bg-primary-tint-08/20">
+                  <td colspan="6" class="px-4 py-3">
+                    <div class="space-y-2.5">
+                      <p
+                        class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                      >
+                        Instalaciones asignadas a {{ m.nombre }}
+                      </p>
+                      <p class="text-caption-xs text-slate-400">
+                        El vendedor ve estas instalaciones (solo lectura) además de todas las
+                        maletas piloto.
+                      </p>
+                      @if (sitiosLoading()) {
+                        <p class="text-caption text-slate-400">Cargando…</p>
+                      } @else {
+                        @if (asignados().length === 0) {
+                          <p class="text-caption italic text-slate-500">
+                            Sin instalaciones asignadas.
+                          </p>
+                        } @else {
+                          <div class="flex flex-wrap gap-1.5">
+                            @for (s of asignados(); track s.id) {
+                              <span
+                                class="inline-flex items-center gap-1 rounded-full border border-primary-tint-25 bg-primary-tint-08 px-2 py-0.5 text-caption-xs font-semibold text-primary-container"
+                              >
+                                {{ s.descripcion }}
+                                <span class="font-normal text-slate-400"
+                                  >· {{ s.empresa_nombre || s.empresa_id }}</span
+                                >
+                                <button
+                                  type="button"
+                                  (click)="quitarSitio(m.id, s.id)"
+                                  class="rounded-full p-0.5 transition-colors hover:bg-primary/10 active:scale-95"
+                                  [attr.aria-label]="'Quitar ' + s.descripcion"
+                                >
+                                  <span class="material-symbols-outlined text-[13px]">close</span>
+                                </button>
+                              </span>
+                            }
+                          </div>
+                        }
+                        <div class="flex items-center gap-2">
+                          <select
+                            [ngModel]="sitioParaAgregar()"
+                            (ngModelChange)="sitioParaAgregar.set($event)"
+                            class="h-8 min-w-[240px] rounded border border-slate-200 bg-white px-2 text-caption-xs outline-none focus:border-primary-tint-35"
+                          >
+                            <option value="">Agregar instalación…</option>
+                            @for (opt of disponiblesFiltrados(); track opt.id) {
+                              <option [value]="opt.id">
+                                {{ opt.descripcion }} — {{ opt.empresa_nombre }}
+                              </option>
+                            }
+                          </select>
+                          <button
+                            type="button"
+                            (click)="agregarSitio(m.id)"
+                            [disabled]="!sitioParaAgregar() || sitiosSaving()"
+                            class="rounded bg-primary px-2.5 py-1 text-caption-xs font-bold text-white transition-colors hover:bg-primary-container active:scale-95 disabled:opacity-40"
+                          >
+                            Agregar
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
             } @empty {
               <tr>
                 <td colspan="6" class="px-4 py-6 text-center text-slate-400">
@@ -420,6 +504,95 @@ export class EquipoEmeltecSectionComponent {
   private readonly userService = inject(UserService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
+  private readonly companyService = inject(CompanyService);
+
+  // --- Instalaciones asignadas a un Vendedor ---
+  readonly sitiosPanelId = signal<string | null>(null);
+  readonly asignados = signal<AssignedSite[]>([]);
+  readonly sitiosDisponibles = signal<
+    { id: string; descripcion: string; empresa_nombre: string }[]
+  >([]);
+  readonly sitiosLoading = signal(false);
+  readonly sitiosSaving = signal(false);
+  readonly sitioParaAgregar = signal<string>('');
+
+  toggleSitiosPanel(m: MiembroEquipo): void {
+    if (this.sitiosPanelId() === m.id) {
+      this.sitiosPanelId.set(null);
+      return;
+    }
+    this.sitiosPanelId.set(m.id);
+    this.sitioParaAgregar.set('');
+    this.cargarAsignados(m.id);
+    if (this.sitiosDisponibles().length === 0) this.cargarDisponibles();
+  }
+
+  private cargarAsignados(userId: string): void {
+    this.sitiosLoading.set(true);
+    this.userService.listUserSites(userId).subscribe({
+      next: (res) => {
+        this.asignados.set(res.ok ? (res.data ?? []) : []);
+        this.sitiosLoading.set(false);
+      },
+      error: () => {
+        this.asignados.set([]);
+        this.sitiosLoading.set(false);
+      },
+    });
+  }
+
+  /** Aplana el árbol de empresas a una lista de instalaciones para el selector. */
+  private cargarDisponibles(): void {
+    this.companyService.fetchHierarchy().subscribe({
+      next: (res) => {
+        if (!res.ok) return;
+        const flat: { id: string; descripcion: string; empresa_nombre: string }[] = [];
+        for (const empresa of res.data) {
+          for (const sub of empresa.subCompanies ?? []) {
+            for (const s of sub.sites ?? []) {
+              flat.push({ id: s.id, descripcion: s.descripcion, empresa_nombre: empresa.nombre });
+            }
+          }
+        }
+        flat.sort((a, b) => a.descripcion.localeCompare(b.descripcion));
+        this.sitiosDisponibles.set(flat);
+      },
+    });
+  }
+
+  /** Disponibles menos los ya asignados. */
+  disponiblesFiltrados(): { id: string; descripcion: string; empresa_nombre: string }[] {
+    const yaAsignados = new Set(this.asignados().map((s) => s.id));
+    return this.sitiosDisponibles().filter((s) => !yaAsignados.has(s.id));
+  }
+
+  agregarSitio(userId: string): void {
+    const sitioId = this.sitioParaAgregar();
+    if (!sitioId || this.sitiosSaving()) return;
+    this.sitiosSaving.set(true);
+    this.userService.addUserSite(userId, sitioId).subscribe({
+      next: () => {
+        this.sitiosSaving.set(false);
+        this.sitioParaAgregar.set('');
+        this.toast.success('Instalación asignada satisfactoriamente.');
+        this.cargarAsignados(userId);
+      },
+      error: (err) => {
+        this.sitiosSaving.set(false);
+        this.toast.error(err?.error?.error || 'No se pudo asignar la instalación.');
+      },
+    });
+  }
+
+  quitarSitio(userId: string, sitioId: string): void {
+    this.userService.removeUserSite(userId, sitioId).subscribe({
+      next: () => {
+        this.toast.success('Instalación quitada.');
+        this.cargarAsignados(userId);
+      },
+      error: (err) => this.toast.error(err?.error?.error || 'No se pudo quitar la instalación.'),
+    });
+  }
 
   readonly loading = signal(false);
   readonly saving = signal(false);

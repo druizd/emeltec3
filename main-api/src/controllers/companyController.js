@@ -284,8 +284,18 @@ function requireSuperAdmin(req, res) {
 // Fuente única de verdad del modelo de acceso a sitios (canAccessSite se importa
 // arriba desde services/dataAccess). Se delega para que un cambio de política no
 // diverja entre controladores.
-function canReadSite(user, site) {
-  return canAccessSite(user, site);
+async function canReadSite(user, site) {
+  if (canAccessSite(user, site)) return true;
+  // Vendedor: además de maletas piloto (resueltas por canAccessSite), puede leer
+  // instalaciones asignadas (usuario_sitio). Read-only.
+  if (user && user.tipo === 'Vendedor' && site && site.id) {
+    const { rows } = await db.query(
+      'SELECT 1 FROM usuario_sitio WHERE usuario_id = $1 AND sitio_id = $2 LIMIT 1',
+      [user.id, site.id],
+    );
+    return rows.length > 0;
+  }
+  return false;
 }
 
 // Mismo modelo que el acceso a sitios (empresa/sub-empresa, con fallback
@@ -1510,7 +1520,7 @@ exports.getSitePozoConfig = async (req, res, next) => {
     const siteId = normalizeId(req.params.siteId);
     const site = await getSiteById(siteId);
     if (!site) return notFound(res, 'Sitio no encontrado.');
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para consultar este sitio.');
     }
     const pozoConfig = await getPozoConfigBySiteId(siteId);
@@ -1534,7 +1544,7 @@ exports.getSiteDashboardData = async (req, res, next) => {
       return notFound(res, 'Sitio no encontrado.');
     }
 
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
     }
 
@@ -1585,7 +1595,7 @@ exports.getSiteDashboardHistory = async (req, res, next) => {
       return notFound(res, 'Sitio no encontrado.');
     }
 
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
     }
 
@@ -1921,7 +1931,7 @@ exports.getSiteOperacionBundle = async (req, res, next) => {
       return notFound(res, 'Sitio no encontrado.');
     }
 
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para consultar datos de este sitio.');
     }
 
@@ -2138,7 +2148,7 @@ exports.getSitePeriodAggregates = async (req, res, next) => {
     const siteId = normalizeId(req.params.siteId);
     const site = await getSiteById(siteId);
     if (!site) return notFound(res, 'Sitio no encontrado.');
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para consultar este sitio.');
     }
 
@@ -2291,7 +2301,7 @@ exports.getSitePeriodAggregatesDaily = async (req, res, next) => {
     const siteId = normalizeId(req.params.siteId);
     const site = await getSiteById(siteId);
     if (!site) return notFound(res, 'Sitio no encontrado.');
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para consultar este sitio.');
     }
 
@@ -2438,7 +2448,7 @@ exports.exportSiteDashboardHistory = async (req, res, next) => {
       return notFound(res, 'Sitio no encontrado.');
     }
 
-    if (!canReadSite(req.user, site)) {
+    if (!(await canReadSite(req.user, site))) {
       return forbidden(res, 'No tiene permisos para exportar datos de este sitio.');
     }
 

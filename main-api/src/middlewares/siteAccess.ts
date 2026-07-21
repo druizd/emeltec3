@@ -9,8 +9,24 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { query } from '../config/dbHelpers';
-import { NotFoundError, ValidationError } from '../shared/errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '../shared/errors';
 import { requireSiteAccess, type AuthUser, type SiteScope } from '../shared/permissions';
+
+/**
+ * Acceso de un Vendedor a un sitio: maleta piloto o instalación asignada
+ * (usuario_sitio). Read-only. Devuelve true si puede verlo.
+ */
+async function vendedorPuedeVerSitio(userId: string, siteId: string): Promise<boolean> {
+  const r = await query<{ ok: boolean }>(
+    `SELECT (s.es_maleta_piloto = TRUE OR us.usuario_id IS NOT NULL) AS ok
+       FROM sitio s
+       LEFT JOIN usuario_sitio us ON us.sitio_id = s.id AND us.usuario_id = $2
+      WHERE s.id = $1`,
+    [siteId, userId],
+    { name: 'siteaccess__vendedor' },
+  );
+  return r.rows[0]?.ok === true;
+}
 
 /**
  * Variante para handlers que reciben el site_id por query/body (no por `:siteId`
@@ -52,6 +68,15 @@ export function requireSiteParamAccess(paramName = 'siteId') {
         return;
       }
       const user = (req as Request & { user?: AuthUser }).user;
+      // Vendedor: scope a nivel sitio (maleta piloto o asignada), no por tenant.
+      if (user?.tipo === 'Vendedor') {
+        if (await vendedorPuedeVerSitio(String(user.id ?? ''), siteId)) {
+          next();
+          return;
+        }
+        next(new ForbiddenError('No tiene permisos para consultar datos de este sitio.'));
+        return;
+      }
       requireSiteAccess(user, site); // lanza ForbiddenError si no tiene acceso
       next();
     } catch (err) {
