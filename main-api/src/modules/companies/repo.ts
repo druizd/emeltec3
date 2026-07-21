@@ -52,6 +52,22 @@ export async function listSubCompanies(
   return r.rows;
 }
 
+/**
+ * Sitios visibles para un Vendedor: maletas piloto (cualquier empresa) +
+ * instalaciones asignadas en usuario_sitio. Scope a nivel sitio (cross-empresa).
+ */
+export async function listSitesForVendedor(userId: string): Promise<HierarchySite[]> {
+  const r = await query<HierarchySite>(
+    `SELECT ${SITE_COLUMNS} FROM sitio
+      WHERE es_maleta_piloto = TRUE
+         OR id IN (SELECT sitio_id FROM usuario_sitio WHERE usuario_id = $1)
+      ORDER BY descripcion ASC`,
+    [userId],
+    { name: 'companies__sites_vendedor' },
+  );
+  return r.rows;
+}
+
 export async function listSites(
   empresaIds: string[] | null,
   subEmpresaIds: string[] | null,

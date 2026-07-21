@@ -139,6 +139,73 @@ exports.getEquipoEmeltec = async (req, res, next) => {
   }
 };
 
+// ============================================================================
+// Instalaciones asignadas a un usuario (rol Vendedor). Solo SuperAdmin gestiona.
+// El vendedor las ve (read-only) sumadas a las maletas piloto.
+// ============================================================================
+exports.listUserSites = async (req, res, next) => {
+  try {
+    if (req.user.tipo !== 'SuperAdmin') {
+      return res.status(403).json({ ok: false, error: 'Solo SuperAdmin' });
+    }
+    const { id } = req.params;
+    const { rows } = await db.query(
+      `SELECT s.id, s.descripcion, s.empresa_id, s.tipo_sitio, s.es_maleta_piloto,
+              e.nombre AS empresa_nombre
+         FROM usuario_sitio us
+         JOIN sitio s        ON s.id = us.sitio_id
+         LEFT JOIN empresa e ON e.id = s.empresa_id
+        WHERE us.usuario_id = $1
+        ORDER BY s.descripcion ASC`,
+      [id],
+    );
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.addUserSite = async (req, res, next) => {
+  try {
+    if (req.user.tipo !== 'SuperAdmin') {
+      return res.status(403).json({ ok: false, error: 'Solo SuperAdmin' });
+    }
+    const { id } = req.params;
+    const sitioId = String(req.body?.sitio_id || '').trim();
+    if (!sitioId) return res.status(400).json({ ok: false, error: 'sitio_id requerido' });
+    const u = await db.query('SELECT 1 FROM usuario WHERE id = $1', [id]);
+    if (u.rows.length === 0)
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    const s = await db.query('SELECT 1 FROM sitio WHERE id = $1', [sitioId]);
+    if (s.rows.length === 0)
+      return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
+    await db.query(
+      `INSERT INTO usuario_sitio (usuario_id, sitio_id, created_by)
+       VALUES ($1, $2, $3) ON CONFLICT (usuario_id, sitio_id) DO NOTHING`,
+      [id, sitioId, req.user.id ?? null],
+    );
+    res.status(201).json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.removeUserSite = async (req, res, next) => {
+  try {
+    if (req.user.tipo !== 'SuperAdmin') {
+      return res.status(403).json({ ok: false, error: 'Solo SuperAdmin' });
+    }
+    const { id, sitioId } = req.params;
+    await db.query('DELETE FROM usuario_sitio WHERE usuario_id = $1 AND sitio_id = $2', [
+      id,
+      sitioId,
+    ]);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.getAllUsers = async (req, res, next) => {
   try {
     const { tipo, empresa_id, sub_empresa_id: userSubEmpresaId } = req.user;

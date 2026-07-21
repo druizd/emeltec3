@@ -8,11 +8,30 @@ import {
   attachPozoConfigsToSites,
   listCompanies,
   listSites,
+  listSitesForVendedor,
   listSubCompanies,
 } from './repo';
 import type { HierarchyNode, HierarchySite, SubCompany } from './types';
 
 export async function getHierarchyTreeForUser(user: AuthUser): Promise<HierarchyNode[]> {
+  // Vendedor: scope a nivel SITIO (maletas piloto + asignadas), no por tenant.
+  // Se traen sus sitios y se derivan las empresas/sub-empresas a mostrar.
+  if (user.tipo === 'Vendedor') {
+    const sitesRaw = await listSitesForVendedor(String(user.id ?? ''));
+    if (sitesRaw.length === 0) return [];
+    const empresaIds = [
+      ...new Set(sitesRaw.map((s) => s.empresa_id).filter((x): x is string => !!x)),
+    ];
+    const subEmpresaIds = [
+      ...new Set(sitesRaw.map((s) => s.sub_empresa_id).filter((x): x is string => !!x)),
+    ];
+    const [companies, subCompanies] = await Promise.all([
+      listCompanies(empresaIds),
+      listSubCompanies(empresaIds, subEmpresaIds),
+    ]);
+    return buildTree(companies, subCompanies, await enrichSites(sitesRaw));
+  }
+
   const scope = scopeByTenant(user);
   // Si el usuario no tiene scope válido, devolver vacío sin tocar DB.
   if (
@@ -28,13 +47,24 @@ export async function getHierarchyTreeForUser(user: AuthUser): Promise<Hierarchy
     listSites(scope.empresaIds, scope.subEmpresaIds),
   ]);
 
+  return buildTree(companies, subCompanies, await enrichSites(sitesRaw));
+}
+
+/** Adjunta pozo_config + last_seen a los sitios. */
+async function enrichSites(sitesRaw: HierarchySite[]): Promise<HierarchySite[]> {
   const sitesWithPozo = await attachPozoConfigsToSites(sitesRaw);
-  const sites = await attachLastSeenToSites(sitesWithPozo);
+  return attachLastSeenToSites(sitesWithPozo);
+}
+
+function buildTree(
+  companies: { id: string }[],
+  subCompanies: SubCompany[],
+  sites: HierarchySite[],
+): HierarchyNode[] {
   const sitesBySub = groupBy(sites, (s) => s.sub_empresa_id ?? '__none__');
   const subsByCompany = groupBy(subCompanies, (sc) => sc.empresa_id);
-
   return companies.map((company) => ({
-    ...company,
+    ...(company as HierarchyNode),
     subCompanies: (subsByCompany.get(company.id) ?? []).map((sub: SubCompany) => ({
       ...sub,
       sites: (sitesBySub.get(sub.id) ?? []) as HierarchySite[],

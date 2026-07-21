@@ -37,6 +37,16 @@ router.patch('/me/security', userController.updateCurrentSecurity);
 // Listar usuarios (filtrado por rol en el controller)
 router.get('/', userController.getAllUsers);
 
+// Instalaciones asignadas a un usuario (Vendedor). Solo SuperAdmin gestiona.
+// Antes de /:id para que Express no las capture como id.
+router.get('/:id/sites', authMiddleware.authorizeRoles('SuperAdmin'), userController.listUserSites);
+router.post('/:id/sites', authMiddleware.authorizeRoles('SuperAdmin'), userController.addUserSite);
+router.delete(
+  '/:id/sites/:sitioId',
+  authMiddleware.authorizeRoles('SuperAdmin'),
+  userController.removeUserSite,
+);
+
 // Crear usuarios (Solo Admin, SuperAdmin y Gerente) — exige 2FA.
 router.post(
   '/',
