@@ -10,12 +10,32 @@ import {
   listDoubleSubmission,
   listDriftAuditEnviadoVsEstado,
   listEnviadoSinAudit,
+  listSitiosDesconectados,
   listStuckEnviando,
   listVacioSlotsStale,
   reconcileMarkEnviado,
   unlockStuckEnviando,
 } from './repo';
 import { sendDgaAdminAlert } from './notifier';
+
+// Base del frontend para links clickeables en el mail (no navega si no hay
+// sesión, pero deja el sitio a un click una vez logueado).
+const FRONTEND_BASE = (process.env.FRONTEND_URL || 'https://nuevacloud.emeltec.cl/login').replace(
+  /\/login\/?$/,
+  '',
+);
+// tipo_sitio → segmento de ruta del detalle (ver frontend site-type-ui.ts).
+const TIPO_RUTA: Record<string, string> = {
+  pozo: 'water',
+  vertiente: 'vertiente',
+  canal: 'canal',
+  electrico: 'electric',
+  riles: 'riles',
+};
+function siteUrl(siteId: string, tipo: string): string {
+  const seg = TIPO_RUTA[tipo] ?? 'water';
+  return `${FRONTEND_BASE}/companies/${siteId}/${seg}`;
+}
 
 const POLL_INTERVAL_MS = Number(process.env.DGA_RECONCILER_POLL_MS ?? 60 * 60 * 1000);
 const STUCK_THRESHOLD_MINUTES = Number(process.env.DGA_RECONCILER_STUCK_MIN ?? 15);
@@ -133,9 +153,31 @@ async function reportDoubleSubmission(): Promise<AlertPart> {
   };
 }
 
-// Throttle in-memory del DIGEST completo: si el conjunto de hallazgos no cambia
-// entre ciclos, no se reenvía el correo. Resetea al reiniciar el proceso.
-let lastDigestSignature = '';
+// Cadencia del digest: se envía en horarios fijos (hora Chile), por defecto
+// 3 veces al día (08, 14, 20). El reconciler igual corre cada 1h para los
+// auto-fixes; solo el CORREO se agenda. Dedup por slot (fecha+hora) para no
+// repetir dentro de la misma hora objetivo. Resetea al reiniciar el proceso.
+const DIGEST_HOURS = String(process.env.DGA_DIGEST_HOURS ?? '8,14,20')
+  .split(',')
+  .map((h) => parseInt(h.trim(), 10))
+  .filter((h) => Number.isFinite(h) && h >= 0 && h <= 23);
+let lastDigestSlot = '';
+
+/** Fecha (YYYY-MM-DD) y hora (0-23) actuales en zona horaria de Chile. */
+function chileSlot(): { hour: number; slot: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const hour = parseInt(get('hour'), 10) % 24;
+  const slot = `${get('year')}-${get('month')}-${get('day')}:${hour}`;
+  return { hour, slot };
+}
 
 async function reportVacioStale(): Promise<AlertPart> {
   const stale = await listVacioSlotsStale(STALE_VACIO_HOURS);
@@ -152,7 +194,7 @@ async function reportVacioStale(): Promise<AlertPart> {
 
   const sections: string[] = [];
   for (const [siteId, slots] of bySite.entries()) {
-    sections.push(`  Sitio ${siteId} (${slots.length} slot(s)):`);
+    sections.push(`  Sitio ${siteId} (${slots.length} slot(s)):  ${siteUrl(siteId, 'pozo')}`);
     sections.push(
       ...slots
         .slice(0, 10)
@@ -176,6 +218,26 @@ async function reportVacioStale(): Promise<AlertPart> {
   };
 }
 
+const DESCONEXION_HORAS = Number(process.env.DGA_DESCONEXION_HORAS ?? STALE_VACIO_HOURS);
+
+/** Sitios que dejaron de enviar datos hace > DESCONEXION_HORAS. */
+async function reportSitiosDesconectados(): Promise<AlertPart> {
+  const sitios = await listSitiosDesconectados(DESCONEXION_HORAS);
+  if (sitios.length === 0) return { count: 0, block: null, sig: '' };
+  logger.warn({ total: sitios.length }, 'reconciler (F): sitios desconectados');
+  const lines = sitios.slice(0, 50).map((s) => {
+    const scope = [s.empresa, s.sub_empresa].filter(Boolean).join(' / ') || '—';
+    return (
+      `  - ${s.descripcion} (${scope}) — ${Number(s.horas).toFixed(1)}h sin datos\n` +
+      `    ${siteUrl(s.id, s.tipo_sitio)}`
+    );
+  });
+  const block =
+    `▸ ${sitios.length} sitio(s) DESCONECTADO(s) (> ${DESCONEXION_HORAS}h sin enviar datos):\n` +
+    lines.join('\n');
+  return { count: sitios.length, block, sig: `F:${sitios.map((s) => s.id).join(',')}` };
+}
+
 export async function runReconcilerCycle(): Promise<void> {
   beat('dgaReconciler');
   try {
@@ -184,27 +246,28 @@ export async function runReconcilerCycle(): Promise<void> {
     const sinAudit = await reportEnviadoSinAudit();
     const doubles = await reportDoubleSubmission();
     const stale = await reportVacioStale();
+    const desconectados = await reportSitiosDesconectados();
 
-    // Un SOLO correo por ciclo: se juntan todas las categorías con hallazgos en
-    // un digest, con throttle único (no reenvía si el conjunto no cambió).
-    const parts = [sinAudit, doubles, stale].filter((p) => p.block);
-    if (parts.length > 0) {
-      const signature = parts.map((p) => p.sig).join('||');
-      if (signature !== lastDigestSignature) {
-        lastDigestSignature = signature;
-        const total = sinAudit.count + doubles.count + stale.count;
-        await sendDgaAdminAlert({
-          subject: `[DGA] Reconciler: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
-          body:
-            `Resumen del reconciler DGA. Se agrupan todas las alertas en un solo correo ` +
-            `para evitar spam; llega uno nuevo solo cuando el conjunto de hallazgos cambia.\n\n` +
-            parts.map((p) => p.block).join('\n\n────────────────────\n\n'),
-        });
-      } else {
-        logger.debug('DGA reconciler: digest sin cambios, skip alerta');
-      }
-    } else {
-      lastDigestSignature = '';
+    // Un SOLO correo con TODO (envío DGA + reconciler + desconexión), enviado en
+    // horarios fijos (DIGEST_HOURS, hora Chile) → por defecto 3 veces al día.
+    // Los sitios traen link clickeable. Si no hay hallazgos en el horario, no
+    // se manda "todo OK" (evita ruido).
+    const parts = [desconectados, stale, sinAudit, doubles].filter((p) => p.block);
+    const { hour, slot } = chileSlot();
+    const enHorario = DIGEST_HOURS.includes(hour);
+    if (parts.length > 0 && enHorario && slot !== lastDigestSlot) {
+      lastDigestSlot = slot;
+      const total = desconectados.count + stale.count + sinAudit.count + doubles.count;
+      await sendDgaAdminAlert({
+        subject: `[DGA] Resumen: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
+        body:
+          `Resumen de monitoreo (envío DGA + reconciler + desconexión de sitios). ` +
+          `Se envía en horarios fijos (${DIGEST_HOURS.map((h) => `${h}:00`).join(', ')} hora ` +
+          `Chile) para no spamear. Los sitios son clickeables (requieren sesión).\n\n` +
+          parts.map((p) => p.block).join('\n\n────────────────────\n\n'),
+      });
+    } else if (parts.length > 0) {
+      logger.debug({ hour, enHorario }, 'DGA reconciler: hallazgos fuera de horario de digest');
     }
 
     if (
@@ -212,7 +275,8 @@ export async function runReconcilerCycle(): Promise<void> {
       driftEnviado > 0 ||
       sinAudit.count > 0 ||
       doubles.count > 0 ||
-      stale.count > 0
+      stale.count > 0 ||
+      desconectados.count > 0
     ) {
       logger.info(
         {
@@ -221,6 +285,7 @@ export async function runReconcilerCycle(): Promise<void> {
           enviado_sin_audit: sinAudit.count,
           double_submission: doubles.count,
           vacio_stale: stale.count,
+          sitios_desconectados: desconectados.count,
         },
         'DGA reconciler: ciclo con hallazgos',
       );
