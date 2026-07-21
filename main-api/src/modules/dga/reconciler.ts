@@ -25,15 +25,22 @@ const FRONTEND_BASE = (process.env.FRONTEND_URL || 'https://nuevacloud.emeltec.c
   '',
 );
 // tipo_sitio → segmento de ruta del detalle (ver frontend site-type-ui.ts).
+// tipo_sitio → segmento de ruta del detalle (espejo de frontend site-type-ui).
 const TIPO_RUTA: Record<string, string> = {
   pozo: 'water',
   vertiente: 'vertiente',
   canal: 'canal',
   electrico: 'electric',
   riles: 'riles',
+  camara_frio: 'cold-room',
+  proceso: 'process',
+  pasteurizador: 'pasteurizador',
+  generico: 'generic',
+  maleta: 'generic',
 };
 function siteUrl(siteId: string, tipo: string): string {
-  const seg = TIPO_RUTA[tipo] ?? 'water';
+  // Fallback 'generic' (ruta existente) para tipos desconocidos, no 'water'.
+  const seg = TIPO_RUTA[tipo] ?? 'generic';
   return `${FRONTEND_BASE}/companies/${siteId}/${seg}`;
 }
 
