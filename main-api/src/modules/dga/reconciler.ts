@@ -153,9 +153,31 @@ async function reportDoubleSubmission(): Promise<AlertPart> {
   };
 }
 
-// Throttle in-memory del DIGEST completo: si el conjunto de hallazgos no cambia
-// entre ciclos, no se reenvía el correo. Resetea al reiniciar el proceso.
-let lastDigestSignature = '';
+// Cadencia del digest: se envía en horarios fijos (hora Chile), por defecto
+// 3 veces al día (08, 14, 20). El reconciler igual corre cada 1h para los
+// auto-fixes; solo el CORREO se agenda. Dedup por slot (fecha+hora) para no
+// repetir dentro de la misma hora objetivo. Resetea al reiniciar el proceso.
+const DIGEST_HOURS = String(process.env.DGA_DIGEST_HOURS ?? '8,14,20')
+  .split(',')
+  .map((h) => parseInt(h.trim(), 10))
+  .filter((h) => Number.isFinite(h) && h >= 0 && h <= 23);
+let lastDigestSlot = '';
+
+/** Fecha (YYYY-MM-DD) y hora (0-23) actuales en zona horaria de Chile. */
+function chileSlot(): { hour: number; slot: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Santiago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const hour = parseInt(get('hour'), 10) % 24;
+  const slot = `${get('year')}-${get('month')}-${get('day')}:${hour}`;
+  return { hour, slot };
+}
 
 async function reportVacioStale(): Promise<AlertPart> {
   const stale = await listVacioSlotsStale(STALE_VACIO_HOURS);
@@ -226,28 +248,26 @@ export async function runReconcilerCycle(): Promise<void> {
     const stale = await reportVacioStale();
     const desconectados = await reportSitiosDesconectados();
 
-    // Un SOLO correo por ciclo con TODO (envío DGA + reconciler + desconexión):
-    // se juntan las categorías con hallazgos en un digest, con throttle único
-    // (no reenvía si el conjunto no cambió). Los sitios traen link clickeable.
+    // Un SOLO correo con TODO (envío DGA + reconciler + desconexión), enviado en
+    // horarios fijos (DIGEST_HOURS, hora Chile) → por defecto 3 veces al día.
+    // Los sitios traen link clickeable. Si no hay hallazgos en el horario, no
+    // se manda "todo OK" (evita ruido).
     const parts = [desconectados, stale, sinAudit, doubles].filter((p) => p.block);
-    if (parts.length > 0) {
-      const signature = parts.map((p) => p.sig).join('||');
-      if (signature !== lastDigestSignature) {
-        lastDigestSignature = signature;
-        const total = desconectados.count + stale.count + sinAudit.count + doubles.count;
-        await sendDgaAdminAlert({
-          subject: `[DGA] Resumen: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
-          body:
-            `Resumen de monitoreo (envío DGA + reconciler + desconexión de sitios). ` +
-            `Todo en un solo correo para evitar spam; llega uno nuevo solo cuando el ` +
-            `conjunto de hallazgos cambia. Los sitios son clickeables (requieren sesión).\n\n` +
-            parts.map((p) => p.block).join('\n\n────────────────────\n\n'),
-        });
-      } else {
-        logger.debug('DGA reconciler: digest sin cambios, skip alerta');
-      }
-    } else {
-      lastDigestSignature = '';
+    const { hour, slot } = chileSlot();
+    const enHorario = DIGEST_HOURS.includes(hour);
+    if (parts.length > 0 && enHorario && slot !== lastDigestSlot) {
+      lastDigestSlot = slot;
+      const total = desconectados.count + stale.count + sinAudit.count + doubles.count;
+      await sendDgaAdminAlert({
+        subject: `[DGA] Resumen: ${total} hallazgo(s) en ${parts.length} categoría(s)`,
+        body:
+          `Resumen de monitoreo (envío DGA + reconciler + desconexión de sitios). ` +
+          `Se envía en horarios fijos (${DIGEST_HOURS.map((h) => `${h}:00`).join(', ')} hora ` +
+          `Chile) para no spamear. Los sitios son clickeables (requieren sesión).\n\n` +
+          parts.map((p) => p.block).join('\n\n────────────────────\n\n'),
+      });
+    } else if (parts.length > 0) {
+      logger.debug({ hour, enHorario }, 'DGA reconciler: hallazgos fuera de horario de digest');
     }
 
     if (
