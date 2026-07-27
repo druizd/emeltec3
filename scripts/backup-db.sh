@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Backup diario de TimescaleDB → Azure Blob Storage
-# Formato: pg_dump -Fc (custom format, comprimido, compatible con hypertablas)
-# Retención: Azure Lifecycle Policy se encarga (no se borran desde este script)
+# Backup diario de TimescaleDB → Azure Blob Storage (Hot tier, retención 14 días)
+# Formato: pg_dump -Fc (custom, compresión zlib integrada, compatible con hypertables)
 #
-# Cron: 0 2 * * * /home/azureuser/emeltec3/scripts/backup-db.sh >> /var/log/emeltec-backup.log 2>&1
+# Cron: 0 3 * * * /home/azureuser/emeltec3/scripts/backup-db.sh >> /var/log/emeltec-backup.log 2>&1
 #
-# Para restaurar:
-#   az storage blob download --container-name "db-backups" --name "backup_YYYYMMDD_HHMMSS.dump" --file restore.dump
+# Restaurar:
+#   az storage blob download --connection-string "$CONN" --container-name db-backups --name backup_YYYYMMDD_HHMMSS.dump --file restore.dump
 #   docker exec -i emeltec-db psql -U postgres -c "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"
-#   pg_restore -U postgres -d telemetry_platform -Fc restore.dump
+#   docker exec -i emeltec-db pg_restore -U postgres -d telemetry_platform -Fc < restore.dump
 set -Eeuo pipefail
 
-# ── Configuración ─────────────────────────────────────────────────────
+# ── Configuración ─────────────────────────────────────────────────────────────
 APP_DIR="/home/azureuser/emeltec3"
 ENV_FILE="$APP_DIR/.env"
 BACKUP_DIR="/tmp/emeltec-backups"
@@ -20,7 +19,9 @@ BLOB_CONTAINER="db-backups"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 BACKUP_FILE="backup_${TIMESTAMP}.dump"
 
-# ── Leer valor de .env ────────────────────────────────────────────────
+log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
+
+# ── Leer .env ─────────────────────────────────────────────────────────────────
 read_env() {
   { grep -E "^${1}=" "$ENV_FILE" || true; } | tail -n1 | cut -d= -f2- | tr -d '\r'
 }
@@ -31,52 +32,53 @@ AZURE_CONN=$(read_env AZURE_STORAGE_CONNECTION_STRING)
 POSTGRES_USER="${POSTGRES_USER:-postgres}"
 POSTGRES_DB="${POSTGRES_DB:-telemetry_platform}"
 
-# ── Validaciones previas ──────────────────────────────────────────────
+# ── Validaciones ──────────────────────────────────────────────────────────────
 if [ -z "$AZURE_CONN" ]; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: AZURE_STORAGE_CONNECTION_STRING vacío en $ENV_FILE"
+  log "ERROR: AZURE_STORAGE_CONNECTION_STRING vacío en $ENV_FILE"
   exit 1
 fi
 
 if ! command -v az >/dev/null 2>&1; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: az CLI no instalado. Instalar con: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"
+  log "ERROR: az CLI no instalado — instalar: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash"
   exit 1
 fi
 
 if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
-  echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: container '$DB_CONTAINER' no está corriendo"
+  log "ERROR: container '$DB_CONTAINER' no está corriendo"
   exit 1
 fi
 
-# ── Crear container Azure si no existe ───────────────────────────────
+# ── Crear container si no existe ──────────────────────────────────────────────
 az storage container create \
   --connection-string "$AZURE_CONN" \
   --name "$BLOB_CONTAINER" \
   --output none 2>/dev/null || true
 
-# ── Generar backup ────────────────────────────────────────────────────
+# ── Generar backup ────────────────────────────────────────────────────────────
 mkdir -p "$BACKUP_DIR"
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Iniciando pg_dump de '$POSTGRES_DB' (formato custom -Fc)..."
+log "Iniciando pg_dump de '$POSTGRES_DB' (formato custom -Fc --compress=9)..."
 
 docker exec "$DB_CONTAINER" \
-  pg_dump -U "$POSTGRES_USER" -Fc --no-acl --no-owner "$POSTGRES_DB" \
+  pg_dump -U "$POSTGRES_USER" -Fc --compress=9 --no-acl --no-owner "$POSTGRES_DB" \
   > "$BACKUP_DIR/$BACKUP_FILE"
 
 SIZE=$(du -sh "$BACKUP_DIR/$BACKUP_FILE" | cut -f1)
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Backup generado: $BACKUP_FILE ($SIZE)"
+log "Dump generado: $BACKUP_FILE ($SIZE)"
 
-# ── Subir a Azure Blob ────────────────────────────────────────────────
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Subiendo a Azure Blob ($BLOB_CONTAINER)..."
+# ── Subir a Azure Blob Hot ────────────────────────────────────────────────────
+log "Subiendo a Azure Blob (Hot tier)..."
 
 az storage blob upload \
   --connection-string "$AZURE_CONN" \
   --container-name "$BLOB_CONTAINER" \
   --name "$BACKUP_FILE" \
   --file "$BACKUP_DIR/$BACKUP_FILE" \
+  --tier Hot \
   --output none
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] Upload exitoso: $BACKUP_FILE"
+log "Upload exitoso: $BACKUP_FILE ($SIZE)"
 
-# ── Eliminar archivo local temporal ──────────────────────────────────
+# ── Limpiar temporal ──────────────────────────────────────────────────────────
 rm "$BACKUP_DIR/$BACKUP_FILE"
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S')] ✓ Backup completado exitosamente. Retención gestionada por Azure Lifecycle Policy."
+log "Backup completado. Retención 14 días gestionada por Azure Lifecycle Policy."

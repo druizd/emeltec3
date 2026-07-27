@@ -11,13 +11,16 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func SendRecords(ctx context.Context, grpcAddress, filename string, records []model.TelemetryRecord) (*model.SendRecordsResponse, error) {
-	conn, err := grpc.NewClient(normalizeAddress(grpcAddress), grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
+// Dial creates a persistent gRPC connection safe for concurrent use.
+// The caller owns the connection and must close it on shutdown.
+func Dial(address string) (*grpc.ClientConn, error) {
+	return grpc.NewClient(
+		normalizeAddress(address),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+}
 
+func SendRecords(ctx context.Context, conn *grpc.ClientConn, filename string, records []model.TelemetryRecord) (*model.SendRecordsResponse, error) {
 	client := pb.NewLogIngestionClient(conn)
 	req := &pb.SendRecordsRequest{
 		Filename: filename,

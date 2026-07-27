@@ -17,9 +17,17 @@ graph LR
     HOME([🏠 HOME])
 
     subgraph INFRA [Infraestructura]
+        ARQ[[arquitectura-general]]
         SVC[[servicios]]
         DEP[[deployment]]
         ENV[[variables-entorno]]
+        MON[[monitor-alertas]]
+        BCK[[backup-db]]
+    end
+
+    subgraph JUS [Justificaciones]
+        JI[[justificacion/infraestructura-cloud]]
+        JB[[justificacion/azure-blob-storage]]
     end
 
     subgraph DB [Base de datos]
@@ -41,13 +49,18 @@ graph LR
     REF[[quick-ref]]
     PEN[[pendientes]]
 
-    HOME --> SVC
+    HOME --> ARQ
+    HOME --> JI
     HOME --> SCH
     HOME --> FD
     HOME --> DS
     HOME --> REF
     HOME --> PEN
 
+    ARQ --> SVC
+    ARQ --> MON
+    ARQ --> BCK
+    JI --> JB
     SVC --> DEP
     SVC --> ENV
     SCH --> QRY
@@ -62,9 +75,17 @@ graph LR
 
 > [!info] Infraestructura
 >
-> - [[servicios]] — containers, puertos, arquitectura
+> - [[arquitectura-general]] — visión completa del sistema con diagramas
+> - [[servicios]] — containers, puertos, tabla de servicios
 > - [[deployment]] — deploy, migraciones, rollback
 > - [[variables-entorno]] — .env, flags workers, secrets
+> - [[monitor-alertas]] — sistema de alertas por email (monitor.sh)
+> - [[backup-db]] — backup diario TimescaleDB → Azure Blob
+
+> [!abstract] Justificaciones (para el negocio)
+>
+> - [[justificacion/infraestructura-cloud]] — por qué esta infra, costos, resiliencia
+> - [[justificacion/azure-blob-storage]] — por qué Azure Blob para backups
 
 > [!tip] Base de datos
 >

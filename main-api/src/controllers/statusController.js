@@ -42,6 +42,13 @@ const WORKER_NAMES = [
 const INGESTION_CACHE_MS = 60 * 1000;
 let ingestionCache = { at: 0, value: null };
 
+// Cache de respuestas completas de /api/status y /api/status/detail.
+// Evita que múltiples clientes del panel disparen pings externos en cada sondeo.
+const STATUS_CACHE_MS = 30 * 1000;
+const DETAIL_CACHE_MS = 30 * 1000;
+let statusCache = { at: 0, value: null };
+let detailCache = { at: 0, value: null };
+
 function loadPipelinePkg() {
   const def = protoLoader.loadSync(PROTO_PATH, {
     keepCase: true,
@@ -217,6 +224,13 @@ function processBlock() {
  * servicio. El detalle vive en /api/status/detail, autenticado.
  */
 exports.getStatus = async (req, res) => {
+  const now = Date.now();
+  if (statusCache.value && now - statusCache.at < STATUS_CACHE_MS) {
+    return res
+      .status(statusCache.value.ok ? 200 : 207)
+      .json({ ...statusCache.value, _cached: true });
+  }
+
   const [database, pipeline, auth] = await Promise.all([
     pingDatabase(),
     pingGrpc(CSVCONSUMER_HOST, CSVCONSUMER_PORT),
@@ -231,11 +245,9 @@ exports.getStatus = async (req, res) => {
   };
 
   const overall = overallStatus(services);
-  res.status(overall === 'online' ? 200 : 207).json({
-    ok: overall === 'online',
-    timestamp: new Date().toISOString(),
-    services,
-  });
+  const body = { ok: overall === 'online', timestamp: new Date().toISOString(), services };
+  statusCache = { at: Date.now(), value: body };
+  res.status(overall === 'online' ? 200 : 207).json(body);
 };
 
 /**
@@ -245,6 +257,13 @@ exports.getStatus = async (req, res) => {
  * estáticos y los del lado Windows no se sondean desde aquí.
  */
 exports.getStatusDetail = async (req, res) => {
+  const now = Date.now();
+  if (detailCache.value && now - detailCache.at < DETAIL_CACHE_MS) {
+    return res
+      .status(detailCache.value.ok ? 200 : 207)
+      .json({ ...detailCache.value, _cached: true });
+  }
+
   const [database, csvconsumer, ftpconsumer, auth, redis, linuxDbApi, ingestion] =
     await Promise.all([
       pingDatabase(),
@@ -270,7 +289,7 @@ exports.getStatusDetail = async (req, res) => {
   const summary = summarize(services);
   const overall = overallStatus(services);
 
-  res.status(overall === 'online' ? 200 : 207).json({
+  const body = {
     ok: overall === 'online',
     timestamp: new Date().toISOString(),
     overall,
@@ -279,5 +298,7 @@ exports.getStatusDetail = async (req, res) => {
     ingestion,
     workers,
     process: processBlock(),
-  });
+  };
+  detailCache = { at: Date.now(), value: body };
+  res.status(overall === 'online' ? 200 : 207).json(body);
 };

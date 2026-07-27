@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"golang.org/x/sys/windows/svc"
+	"google.golang.org/grpc"
 
 	"ftpprocessor/internal/config"
 	"ftpprocessor/internal/filemanager"
@@ -67,21 +68,28 @@ func startApp() {
 	_ = godotenv.Load(filepath.Join(exeDir, "ftpprocessor", ".env"))
 	_ = godotenv.Load(filepath.Join(exeDir, ".env"))
 	cfg := config.Load().ResolvePaths(exeDir)
-	if err := filemanager.EnsureDirectories(cfg.InputDir, cfg.RawBackupDir, cfg.FailedDir, cfg.HoldCorruptDir); err != nil {
+	if err := filemanager.EnsureDirectories(
+		cfg.InputDir, cfg.RawBackupDir,
+		cfg.FailedDir, cfg.HoldCorruptDir); err != nil {
 		log.Fatalf("directorios: %v", err)
 	}
 	store, err := localdb.Open(cfg.SQLitePath)
 	if err != nil {
 		log.Fatalf("SQLite local [%s]: %v", cfg.SQLitePath, err)
 	}
+	conn, err := sender.Dial(cfg.GRPCAddress)
+	if err != nil {
+		log.Fatalf("gRPC dial [%s]: %v", cfg.GRPCAddress, err)
+	}
 	fileChan := make(chan string, 500)
 	var inProcess sync.Map
 	fmt.Printf("ftpprocessor iniciado | workers: %d | watch: %dms | ready: %dms | retry: %ds | consumer: %s\n",
-		cfg.NumWorkers, cfg.WatchIntervalMs, cfg.FileReadyAgeMs, cfg.RetryIntervalSec, cfg.GRPCAddress)
+		cfg.NumWorkers, cfg.WatchIntervalMs, cfg.FileReadyAgeMs,
+		cfg.RetryIntervalSec, cfg.GRPCAddress)
 	for i := 0; i < cfg.NumWorkers; i++ {
 		go func() {
 			for filePath := range fileChan {
-				processFile(filePath, cfg, store)
+				processFile(filePath, cfg, store, conn)
 				inProcess.Delete(filePath)
 			}
 		}()
@@ -89,8 +97,14 @@ func startApp() {
 	go watchAndExtractZips(cfg)
 	go watchInputFiles(cfg, fileChan, &inProcess)
 	go retryFailedFiles(cfg, fileChan, &inProcess)
-	go retryPendingTelemetry(cfg, store)
+	go retryPendingTelemetry(cfg, store, conn)
 	go printStats(cfg, store)
+	go func() {
+		for {
+			store.PurgeDedup()
+			time.Sleep(24 * time.Hour)
+		}
+	}()
 }
 
 func initLogging(exeDir string) {
@@ -129,7 +143,9 @@ func watchAndExtractZips(cfg config.Config) {
 
 func watchInputFiles(cfg config.Config, fileChan chan<- string, inProcess *sync.Map) {
 	for {
-		files, err := filemanager.ListReadyInputFiles(cfg.InputDir, time.Duration(cfg.FileReadyAgeMs)*time.Millisecond)
+		files, err := filemanager.ListReadyInputFiles(
+			cfg.InputDir,
+			time.Duration(cfg.FileReadyAgeMs)*time.Millisecond)
 		if err == nil {
 			for _, filePath := range files {
 				if _, exists := inProcess.LoadOrStore(filePath, true); !exists {
@@ -156,7 +172,7 @@ func retryFailedFiles(cfg config.Config, fileChan chan<- string, inProcess *sync
 	}
 }
 
-func retryPendingTelemetry(cfg config.Config, store *localdb.Store) {
+func retryPendingTelemetry(cfg config.Config, store *localdb.Store, conn *grpc.ClientConn) {
 	if cfg.LocalSyncIntervalSec <= 0 {
 		return
 	}
@@ -172,18 +188,23 @@ func retryPendingTelemetry(cfg config.Config, store *localdb.Store) {
 			ids = append(ids, item.LocalID)
 			records = append(records, item.Record)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.TimeoutSeconds)*time.Second)
-		resp, err := sender.SendRecords(ctx, cfg.GRPCAddress, "sqlite-pending", records)
+		ctx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(cfg.TimeoutSeconds)*time.Second)
+		resp, err := sender.SendRecords(
+			ctx, conn, "sqlite-pending", records)
 		cancel()
 		if err != nil {
 			store.MarkTelemetryFailed(ids, fmt.Sprintf("gRPC retry: %v", err))
 			continue
 		}
 		if !resp.OK {
-			store.MarkTelemetryFailed(ids, fmt.Sprintf("consumer retry: %s", resp.Message))
+			store.MarkTelemetryFailed(
+				ids, fmt.Sprintf("consumer retry: %s", resp.Message))
 			continue
 		}
 		store.MarkTelemetrySynced(ids)
+		store.MarkDeduped(records)
 		totalRetryOk.Add(int64(len(records)))
 		fmt.Printf("sqlite sync ok | records: %d\n", len(records))
 	}
@@ -194,21 +215,39 @@ func printStats(cfg config.Config, store *localdb.Store) {
 		time.Sleep(time.Duration(cfg.StatsIntervalSec) * time.Second)
 		pending, _ := filemanager.ListInputFiles(cfg.InputDir)
 		failed, _ := filemanager.ListInputFiles(cfg.FailedDir)
-		fmt.Printf("stats | procesados: %d | insertados: %d | fallidos: %d | recuperados: %d | pendientes_archivo: %d | failed_files: %d | sqlite_pending: %d\n",
-			totalProcessed.Load(), totalInserted.Load(), totalFailed.Load(), totalRetryOk.Load(),
+		fmt.Printf("stats | procesados: %d | insertados: %d | "+
+			"fallidos: %d | recuperados: %d | pendientes_archivo: %d | "+
+			"failed_files: %d | sqlite_pending: %d\n",
+			totalProcessed.Load(), totalInserted.Load(),
+			totalFailed.Load(), totalRetryOk.Load(),
 			len(pending), len(failed), store.Stats())
 	}
 }
 
-func processFile(filePath string, cfg config.Config, store *localdb.Store) {
+func processFile(filePath string, cfg config.Config, store *localdb.Store, conn *grpc.ClientConn) {
 	fileName := filepath.Base(filePath)
 	isRetry := filemanager.IsInsideDir(cfg.FailedDir, filePath)
 	idSerial, err := parser.SerialFromFilename(fileName)
 	if err != nil {
 		idSerial = "sin-serial"
 	}
+
+	// Historical _log_ files (e.g. DEVICE_log_20260501_20260531.csv) are monthly
+	// dumps that exceed the gRPC size limit and flood the SQLite queue. Move them
+	// to hold_corrupt so they are kept but never retried.
+	if strings.Contains(strings.ToLower(fileName), "_log_") {
+		destPath := filepath.Join(cfg.HoldCorruptDir, fileName)
+		if err := os.Rename(filePath, destPath); err != nil {
+			log.Printf("mover log a hold_corrupt [%s]: %v", fileName, err)
+			filemanager.DeleteFile(filePath)
+		} else {
+			fmt.Printf("skip log (%s) %s | archivo historico movido a hold_corrupt\n", idSerial, fileName)
+		}
+		return
+	}
+
 	for attempt := 1; attempt <= 3; attempt++ {
-		ok, inserted, dur, errMsg := runPipeline(filePath, cfg, store)
+		ok, inserted, dur, errMsg := runPipeline(filePath, cfg, store, conn)
 		if ok {
 			totalProcessed.Add(1)
 			totalInserted.Add(int64(inserted))
@@ -226,26 +265,32 @@ func processFile(filePath string, cfg config.Config, store *localdb.Store) {
 			continue
 		}
 		totalFailed.Add(1)
-		fmt.Printf("fail ftp (%s) %s | attempt 3/3 | %s\n", idSerial, fileName, errMsg)
-		isCorrupt := strings.HasPrefix(errMsg, "lectura:") || strings.HasPrefix(errMsg, "parse:")
+		fmt.Printf("fail ftp (%s) %s | attempt 3/3 | %s\n",
+			idSerial, fileName, errMsg)
+		isCorrupt := strings.HasPrefix(errMsg, "lectura:") ||
+			strings.HasPrefix(errMsg, "parse:")
 		if isCorrupt {
 			destPath := filepath.Join(cfg.HoldCorruptDir, fileName)
 			if err := os.Rename(filePath, destPath); err != nil {
 				log.Printf("mover a hold_corrupt [%s]: %v", fileName, err)
 			} else {
-				fmt.Printf("corrupt ftp (%s) %s | movido a hold_corrupt\n", idSerial, fileName)
+				fmt.Printf("corrupt ftp (%s) %s | movido a hold_corrupt\n",
+					idSerial, fileName)
 			}
 		} else if !isRetry {
-			if err := filemanager.MoveToFailedFromRoot(filePath, cfg.InputDir, cfg.FailedDir); err != nil {
+			if err := filemanager.MoveToFailedFromRoot(
+				filePath, cfg.InputDir, cfg.FailedDir); err != nil {
 				log.Printf("mover a failed [%s]: %v", fileName, err)
 			}
 		}
 	}
 }
 
-func runPipeline(filePath string, cfg config.Config, store *localdb.Store) (bool, int, time.Duration, string) {
+func runPipeline(filePath string, cfg config.Config, store *localdb.Store, conn *grpc.ClientConn) (bool, int, time.Duration, string) {
 	start := time.Now()
+	t := start
 	fileName := filepath.Base(filePath)
+
 	rows, err := ftpreader.ReadRows(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -253,6 +298,8 @@ func runPipeline(filePath string, cfg config.Config, store *localdb.Store) (bool
 		}
 		return false, 0, 0, fmt.Sprintf("lectura: %v", err)
 	}
+	tRead := time.Since(t); t = time.Now()
+
 	records, err := parser.BuildTelemetryRecords(fileName, rows)
 	if err != nil {
 		return false, 0, 0, fmt.Sprintf("parse: %v", err)
@@ -265,9 +312,27 @@ func runPipeline(filePath string, cfg config.Config, store *localdb.Store) (bool
 	for i := range records {
 		records[i].IDSerial = idSerial
 	}
-	if err := filemanager.CopyToBackupBySerial(filePath, cfg.RawBackupDir, idSerial, parser.EarliestDate(records)); err != nil {
+	tParse := time.Since(t); t = time.Now()
+
+	// Filter records already sent successfully in a previous run.
+	// Computed before backup so EarliestDate uses the full original set.
+	earliestDate := parser.EarliestDate(records)
+	filtered, err := store.FilterDuplicates(records)
+	if err != nil {
+		return false, 0, 0, fmt.Sprintf("dedup check: %v", err)
+	}
+	if skipped := len(records) - len(filtered); skipped > 0 {
+		fmt.Printf("dedup ftp (%s) %s | descartados: %d duplicados\n", idSerial, fileName, skipped)
+	}
+	tDedup := time.Since(t); t = time.Now()
+
+	if err := filemanager.CopyToBackupBySerial(
+		filePath, cfg.RawBackupDir, idSerial, earliestDate); err != nil {
 		return false, 0, 0, fmt.Sprintf("backup: %v", err)
 	}
+	tBackup := time.Since(t); t = time.Now()
+
+	records = filtered
 	if len(records) == 0 {
 		filemanager.DeleteFile(filePath)
 		return true, 0, time.Since(start), ""
@@ -277,9 +342,15 @@ func runPipeline(filePath string, cfg config.Config, store *localdb.Store) (bool
 	if err != nil {
 		return false, 0, 0, fmt.Sprintf("sqlite: %v", err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.TimeoutSeconds)*time.Second)
-	resp, err := sender.SendRecords(ctx, cfg.GRPCAddress, fileName, records)
+	tSQLite := time.Since(t); t = time.Now()
+
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Duration(cfg.TimeoutSeconds)*time.Second)
+	resp, err := sender.SendRecords(ctx, conn, fileName, records)
 	cancel()
+	tGRPC := time.Since(t); t = time.Now()
+
 	if err != nil {
 		store.MarkTelemetryFailed(localIDs, fmt.Sprintf("gRPC: %v", err))
 		return false, 0, 0, fmt.Sprintf("gRPC: %v", err)
@@ -289,6 +360,14 @@ func runPipeline(filePath string, cfg config.Config, store *localdb.Store) (bool
 		return false, 0, 0, fmt.Sprintf("consumer: %s", resp.Message)
 	}
 	store.MarkTelemetrySynced(localIDs)
+	store.MarkDeduped(records)
+	tMark := time.Since(t)
+
+	fmt.Printf("timing ftp (%s) %s | read:%dms parse:%dms dedup:%dms backup:%dms sqlite:%dms grpc:%dms mark:%dms\n",
+		idSerial, fileName,
+		tRead.Milliseconds(), tParse.Milliseconds(), tDedup.Milliseconds(),
+		tBackup.Milliseconds(), tSQLite.Milliseconds(), tGRPC.Milliseconds(), tMark.Milliseconds())
+
 	filemanager.DeleteFile(filePath)
 	return true, resp.Inserted, time.Since(start), ""
 }

@@ -5,7 +5,7 @@ tags: [vault/ftp]
 
 # ftpprocessor — Servicio Go (Windows Azure)
 
-← [[HOME]] | Ver también: [[ftp-dispositivos]] · [[servicios]] · [[queries]]
+← [[HOME]] | Ver también: [[ftp-dispositivos]] · [[investigacion-latencia-2026-07-23]]
 
 ---
 
@@ -13,28 +13,36 @@ tags: [vault/ftp]
 
 ```mermaid
 graph TD
-    W[Watcher 500ms\ndata/incoming_ftp/] -->|nuevo CSV| P[parser.go\nSerialFromFilename]
-    P -->|BuildTelemetryRecords| G[agrupar por timestamp]
-    G -->|calidad G| DB[(SQLite\npending queue)]
-    G -->|sentinel -999| X[descartado]
-    DB -->|batch 200 records| GRPC[gRPC client\n:50061 Linux]
-    GRPC -->|ok| LOG[log: ok ftp serial archivo.csv]
-    GRPC -->|timeout 20s| RETRY[retry hasta 3 intentos]
+    W[Watcher 500ms\ndata/incoming_ftp/] -->|nuevo CSV| LOG{es _log_?}
+    LOG -->|sí| HC[hold_corrupt/\nno se reintenta]
+    LOG -->|no| P[parser.go\nSerialFromFilename]
+    P -->|BuildTelemetryRecords| DEDUP[FilterDuplicates\nSQLite dedup_log]
+    DEDUP -->|duplicado| DEL[delete file]
+    DEDUP -->|nuevo| BK[CopyToBackupBySerial]
+    BK --> DB[(SQLite\ntelemetry_records\npending queue)]
+    DB -->|SaveTelemetryBatch| GRPC[gRPC conn compartida\n:50061 ftpconsumer]
+    GRPC -->|ok| MARK[MarkTelemetrySynced\nMarkDeduped]
+    GRPC -->|fail| RETRY[retry hasta 3 intentos\n→ failed/ si persiste]
+
+    RETRYLOOP[retryPendingTelemetry\nbatch 200 records] -->|cada LocalSyncIntervalSec| GRPC
 
     style DB fill:#f0a500,color:#fff
-    style X fill:#dc2626,color:#fff
+    style HC fill:#dc2626,color:#fff
+    style DEL fill:#6b7280,color:#fff
 ```
 
 ---
 
 ## Archivos clave
 
-| Archivo                        | Función                                     |
-| ------------------------------ | ------------------------------------------- |
-| `internal/parser/parser.go`    | Parsea CSV, extrae serial, filtra sentinels |
-| `internal/ftpreader/reader.go` | Lee CSV 6 columnas semicolón                |
-| `internal/grpc/client.go`      | Envía batch a ftpconsumer Linux             |
-| `data/incoming_ftp/`           | Drop zone — watcher monitorea esta carpeta  |
+| Archivo | Función |
+|---|---|
+| `cmd/ftpprocessor/main.go` | Entry point, watcher, workers, retry loop |
+| `internal/parser/parser.go` | Parsea CSV, extrae serial, filtra sentinels |
+| `internal/ftpreader/reader.go` | Lee CSV 6 columnas semicolón |
+| `internal/localdb/store.go` | SQLite: dedup_log, telemetry_records, batch ops |
+| `internal/sender/sender.go` | gRPC: `Dial()` (persistente) + `SendRecords()` |
+| `data/incoming_ftp/` | Drop zone — watcher monitorea esta carpeta |
 
 ---
 
@@ -58,7 +66,7 @@ graph TD
 1. Lee filas CSV (fecha;hora;nombre;valor;unidad;quality)
 2. Filtra FREESPACE (shouldSkipName)
 3. Filtra sentinels: -999, -999.0, -999.000 (isSentinel)
-4. ⚠️  NO filtra quality B — BUG pendiente (ver [[pendientes]])
+4. ⚠️  NO filtra quality B — BUG pendiente (ver [[backlog]])
 5. Convierte timestamp America/Santiago → UTC
 6. Agrupa por timestamp: {ts → {sensor → valor}}
 7. Solo emite grupos con los 3 sensores simultáneos (RequireAllSensors)
@@ -66,13 +74,42 @@ graph TD
 
 ---
 
-## Configuración (.env Windows Server)
+## SQLite local — cola de durabilidad
+
+Dos tablas:
+
+| Tabla | Propósito |
+|---|---|
+| `telemetry_records` | Cola WAL: pending → synced. Permite retry si gRPC falla |
+| `dedup_log` | Evita reenvíos: registra (id_serial, fecha, hora) de todo lo que se envió exitosamente. Retención 90 días. |
+
+`FilterDuplicates` usa **row-value constructor** para aprovechar el PRIMARY KEY composite `(id_serial, fecha, hora)`:
+```sql
+WHERE (id_serial, fecha, hora) IN ((?,?,?),(?,?,?),...)  -- O(log n) con índice
+-- NO: id_serial || '|' || fecha || '|' || hora IN (?)   -- O(n) full scan
+```
+
+`MarkDeduped` y `MarkTelemetrySynced` usan **bulk operations** para minimizar el tiempo que retienen la única conexión SQLite (`MaxOpenConns(1)`).
+
+---
+
+## Configuración (.env)
 
 ```env
 DEVICE_ALIASES=REGADIO:25120112,CASINO:25120225
-GRPC_TARGET=145.190.8.19:50061
+GRPC_ADDRESS=145.190.8.19:50061
 GRPC_TIMEOUT_SECONDS=20
 INCOMING_FTP_DIR=data/incoming_ftp
+RAW_BACKUP_DIR=data/backup
+FAILED_DIR=data/failed
+HOLD_CORRUPT_DIR=data/hold_corrupt
+SQLITE_PATH=data/ftpprocessor.db
+NUM_WORKERS=4
+WATCH_INTERVAL_MS=500
+FILE_READY_AGE_MS=2000
+RETRY_INTERVAL_SEC=60
+LOCAL_SYNC_INTERVAL_SEC=5
+STATS_INTERVAL_SEC=30
 ```
 
 ---
@@ -80,9 +117,17 @@ INCOMING_FTP_DIR=data/incoming_ftp
 ## Logs esperados
 
 ```
-ok ftp (25120112) REGADIO_log_20260501_20260531.csv | attempt 1/3 | records: 19336 | 284ms
-failed ftp (25120225) archivo.csv | attempt 3/3 | error: context deadline exceeded
+ftpprocessor iniciado | workers: 4 | watch: 500ms | ready: 2000ms | retry: 60s | consumer: 145.190.8.19:50061
+ok ftp (REGADIO) REGADIO_20260723083519.csv | attempt 1/3 | records: 2 | 95ms
+timing ftp (REGADIO) REGADIO_20260723083519.csv | read:2ms parse:1ms dedup:0ms backup:12ms sqlite:8ms grpc:68ms mark:4ms
+skip log (REGADIO) REGADIO_log_20260501_20260531.csv | archivo historico movido a hold_corrupt
+dedup ftp (REGADIO) REGADIO_20260723083519.csv | descartados: 2 duplicados
+sqlite sync ok | records: 200
+stats | procesados: 1173 | insertados: 2206 | fallidos: 23 | recuperados: 340400 | sqlite_pending: 135804
 ```
 
+---
+
 > Ver dispositivos conectados en [[ftp-dispositivos]].
-> Para cargar datos históricos: [[ftp-dispositivos#Procedimiento — carga histórica]].
+> Investigación de latencia completa en [[investigacion-latencia-2026-07-23]].
+> Para carga de datos históricos: [[ftp-dispositivos#Procedimiento — carga histórica]].
