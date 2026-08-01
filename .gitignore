@@ -44,6 +44,7 @@ __screenshots__/
 Basura/
 .env
 **/.env
+scripts/watchdog-windows.env
 
 # Datos y volcados sensibles (EMT-C05 / EMT-L08)
 # Volcados de datos DGA / históricos: NO deben versionarse.

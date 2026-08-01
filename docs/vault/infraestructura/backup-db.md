@@ -70,13 +70,38 @@ RPO no-ingest resultante: **24 h** (aceptado como trade-off por evitar impacto e
 Si en el futuro el negocio necesita RPO menor sin impactar horario productivo, la única salida sana es **PITR con `wal-g`** (ver alternativa futura al final de este doc): WAL streaming es continuo pero incremental — cada segmento son pocos MB, sin spike concentrado.
 
 **Endurecimiento (2026-07-27):**
-- **Verify post-dump**: `pg_restore --list` sobre el archivo antes de subir. Si falla, aborta y notifica.
+- **Sanity check pre-dump de la DB fuente**: antes de correr `pg_dump`, valida `pg_isready` + cuenta tablas (`information_schema.tables`) y hypertables (`timescaledb_information.hypertables`) en la DB viva. Si hay 0 tablas o 0 hypertables → aborta, no dumpea. Además compara contra `table_count`/`hypertable_count` del último heartbeat exitoso: si bajaron, aborta (señal de `DROP TABLE`/borrado accidental) — así no se sube un backup que "confirma" un borrado.
+- **Verify post-dump**: `pg_restore --list` sobre el archivo antes de subir. Si falla, aborta y notifica. (Esto valida que el *archivo* esté bien armado, no reemplaza el check anterior — una DB rota igual puede producir un dump estructuralmente válido).
 - **Tamaño mínimo**: rechaza dumps < 1 MiB (proxy contra fallo mid-stream).
 - **Checksum SHA-256**: calculado local, guardado como metadata del blob (`sha256`, `size_bytes`, `source_host`). Restore puede verificar integridad.
 - **Heartbeat blob**: al terminar OK, escribe `heartbeat/last-success.json` con timestamp, tamaño, hash, duración. Alerta externa: si último heartbeat > 26 h → backup roto.
 - **`trap ERR`**: cualquier fallo dispara `notify` con línea + últimas 20 líneas de log.
 - **Webhook opcional**: si `BACKUP_WEBHOOK_URL` está definido en `.env`, se envía JSON en éxito y fallo.
 - **Cifrado GPG opcional**: si `BACKUP_GPG_PASSPHRASE_FILE` está definido, el dump se cifra con AES-256 antes de subir. El blob queda `backup_TS.dump.gpg`, metadata incluye `encrypted=true`, `cipher=AES256`, `sha256_plain` (hash del dump antes del cifrado, para verificar post-descifrado).
+
+---
+
+## Pre-chequeo 2h antes — `scripts/check-db-health.sh`
+
+`backup-db.sh` aborta sin subir nada si la DB fuente está rota (ver
+"Endurecimiento" arriba) — pero eso se descubre recién a las 03:00, sin
+ventana pa reaccionar. `check-db-health.sh` corre los mismos chequeos
+(tablas/hypertables > 0, sin regresión vs. el último heartbeat exitoso) a
+la **01:00**, 2h antes, y **solo manda email si algo está mal** — una
+corrida sana no genera correo.
+
+```bash
+# Cron sugerido — 2h antes del backup diario (03:00)
+0 1 * * * /home/azureuser/emeltec3/scripts/check-db-health.sh >> /var/log/emeltec-db-health.log 2>&1
+```
+
+Reusa el mismo motor de email (Resend, HTML branded) que `monitor.sh`, pero
+es un script standalone — no depende de `monitor.sh` ni lo modifica. Si el
+chequeo mismo falla al ejecutarse (docker/az rotos, etc.), también avisa
+por email vía `trap ERR`, para no confundir "no llegó email" con "todo
+bien" cuando en realidad el chequeo ni corrió.
+
+**Asunto del email:** `🟡 [PRE-BACKUP] DB no lista para el backup de las 03:00 — revisar`
 
 ---
 
@@ -91,7 +116,9 @@ flowchart TD
     VAL -->|container caído| ERR2["❌ exit 1"]
     VAL -->|AZURE_CONN vacío| ERR3["❌ exit 1"]
 
-    VAL -->|ok| DUMP["🐳 docker exec emeltec-db<br/>pg_dump -Fc --compress=9"]
+    VAL -->|ok| SRCCHECK{"🩺 sanity DB fuente<br/>tablas>0, hypertables>0<br/>vs último heartbeat"}
+    SRCCHECK -->|falla o bajó| ERRS["❌ abort + notify<br/>(no dumpea)"]
+    SRCCHECK -->|ok| DUMP["🐳 docker exec emeltec-db<br/>pg_dump -Fc --compress=9"]
     DUMP --> TMP["💾 backup_YYYYMMDD.dump<br/>aprox 1.5 GB comprimido"]
     TMP --> CHECK{"🔍 verify<br/>size >= 1MiB<br/>pg_restore --list"}
     CHECK -->|falla| ERRV["❌ abort + notify"]
@@ -125,6 +152,8 @@ flowchart TD
     style ERR1 fill:#dc2626,color:#fff,stroke:#ef4444
     style ERR2 fill:#dc2626,color:#fff,stroke:#ef4444
     style ERR3 fill:#dc2626,color:#fff,stroke:#ef4444
+    style SRCCHECK fill:#1e293b,color:#fff,stroke:#475569
+    style ERRS fill:#dc2626,color:#fff,stroke:#ef4444
 ```
 
 ---
@@ -228,6 +257,8 @@ crontab -e
 ## Logs esperados
 
 ```
+[2026-07-27 03:00:00] Verificando salud de la DB fuente antes de generar el dump...
+[2026-07-27 03:00:01] DB fuente: 42 tablas, 3 hypertables.
 [2026-07-27 03:00:01] Iniciando pg_dump de 'telemetry_platform' (formato custom -Fc --compress=9)...
 [2026-07-27 03:01:23] Dump generado: backup_20260727_030001.dump (1.4G, 1503238553 bytes)
 [2026-07-27 03:01:24] Verificando integridad del dump...
@@ -239,10 +270,17 @@ crontab -e
 [2026-07-27 03:02:48] Backup completado. Retención 14 días gestionada por Azure Lifecycle Policy.
 ```
 
-**Fallo**:
+**Fallo — dump mal formado**:
 ```
 [2026-07-27 03:01:31] ERROR: pg_restore --list falló. Dump corrupto — abortando upload.
-[2026-07-27 03:01:31] FALLO en línea 105 (exit=1)
+[2026-07-27 03:01:31] FALLO en línea 128 (exit=1)
+```
+
+**Fallo — DB fuente rota/borrada (no llega a dumpear)**:
+```
+[2026-07-27 03:00:01] DB fuente: 3 tablas, 3 hypertables.
+[2026-07-27 03:00:01] ERROR: tablas bajaron de 42 a 3 vs. último backup exitoso. Posible borrado accidental — abortando.
+[2026-07-27 03:00:01] FALLO en línea 144 (exit=1)
 ```
 
 ---
@@ -336,6 +374,8 @@ Salida:
   "backup_file": "backup_20260727_030001.dump",
   "size_bytes": 1503238553,
   "sha256": "3f9c2a...e7b1",
+  "table_count": 42,
+  "hypertable_count": 3,
   "duration_seconds": 167,
   "host": "emeltec-linux"
 }
@@ -650,6 +690,7 @@ Sin webhook propio, se puede alertar directo desde Azure:
 - [ ] Correr manual: `./scripts/verify-backup.sh` — verificar que descarga, descifra si corresponde, restaura en container efímero, y sale limpio.
 - [ ] Confirmar que `emeltec-verify-db` fue eliminado al final (`docker ps -a | grep verify`).
 - [ ] Agregar cron: `0 4 * * 0 /home/azureuser/emeltec3/scripts/verify-backup.sh >> /var/log/emeltec-verify.log 2>&1`.
+- [ ] `chmod +x scripts/check-db-health.sh` y agregar cron: `0 1 * * * /home/azureuser/emeltec3/scripts/check-db-health.sh >> /var/log/emeltec-db-health.log 2>&1`.
 - [ ] (Opcional) Setear `BACKUP_WEBHOOK_URL` en `.env`.
 - [ ] Revisar lifecycle policy actual en Portal — confirmar prefijo `db-backups/backup_` (matchea tanto `.dump` como `.dump.gpg`).
 
@@ -661,9 +702,40 @@ Sin webhook propio, se puede alertar directo desde Azure:
 |---|---|---|---|
 | Dumps en Hot tier (14 días × 1/día × 1.5 GB) | ~21 GB | $0.018/GB/mes | $0.38/mes |
 | Heartbeat blob | < 1 KB | — | ~$0 |
-| Ops (upload, list, get metadata) | ~30/mes | despreciable | ~$0 |
+| Ops subida (`backup-db.sh`, PutBlob, 30/mes) | 30 ops | despreciable | ~$0 |
+| Ops bajada/restore (`verify-backup.sh` semanal + restore manual) | ~5/mes | despreciable | ~$0 |
+| Egress restore (descarga dump ~1.5 GB) | 1.5 GB/restore | $0 (VM y Storage Account en misma región Azure) | ~$0 |
 | **Costo mensual** | | | **~$0.38/mes** |
 | **Costo anual** | | | **~$4.56/año** |
+
+### Por qué cada valor
+
+**Dumps en Hot tier — $0.38/mes**
+- `pg_dump -Fc --compress=9` corre 1 vez al día → 30 dumps/mes generados, pero la lifecycle policy borra automático a los 14 días, así que en cualquier momento hay **14 dumps vivos** en el Storage Account, no 30.
+- Cada dump comprimido pesa ~1.5 GB (tamaño real observado en los logs, ver sección "Logs esperados" más arriba — TimescaleDB comprime bien datos time-series con zlib, ~5-10x).
+- 14 dumps × 1.5 GB = **21 GB** promedio guardados en Hot tier en todo momento (el volumen sube y baja un poco día a día porque el dump de hoy entra antes de que el de hace 15 días se borre, pero 21 GB es el estable).
+- Azure cobra Hot tier a **$0.018 por GB por mes** (precio público Azure Blob Storage, LRS, región estándar — verificar tarifa vigente en el Portal si pasa mucho tiempo, Azure ajusta precios).
+- 21 GB × $0.018/GB = **$0.378/mes ≈ $0.38/mes**.
+
+**Heartbeat blob — ~$0**
+- `heartbeat/last-success.json` es un archivo de texto con timestamp, tamaño, hash — pesa menos de 1 KB.
+- 1 KB es 0.000001 GB: a $0.018/GB eso es un costo indetectable, Azure ni lo factura por separado (todo el Storage Account se cobra junto).
+
+**Ops subida — ~$0**
+- `backup-db.sh` hace 1 `PutBlob` (subir el dump) + 1 `PutBlob` (actualizar el heartbeat) por corrida = 2 operaciones de escritura por día → ~30-60 ops/mes (redondeado a 30 porque el heartbeat es liviano y algunas herramientas lo cuentan distinto).
+- Azure cobra operaciones de escritura en bloques de 10.000: ~$0.05 por cada 10k `PutBlob`. Con 30-60 ops/mes ni se acerca a completar un bloque de 10k → **$0 real, no solo redondeo**.
+
+**Ops bajada/restore — ~$0**
+- `verify-backup.sh` corre 1 vez por semana (4-5/mes) y hace `GetBlob` (descargar el último dump) + `blob show` (leer metadata) = ~2 ops por corrida → ~8-10 ops/mes.
+- Sumale una restauración manual de emergencia ocasional (no todos los meses) → total realista **~5 ops/mes** contando ambos casos.
+- Igual que la subida: Azure cobra `GetBlob` en bloques de 10.000 a ~$0.004/10k — con un puñado de ops al mes, el costo es indetectable.
+
+**Egress restore — $0 (condicional)**
+- "Egress" es lo que Azure cobra por sacar datos **fuera** de su red (a internet o a otra región). Tráfico **dentro de la misma región** (VM Linux ↔ Storage Account, ambos en la misma región Azure) es gratis — por eso $0 acá.
+- Si el día de mañana restaurás desde tu notebook, desde otra nube, o el Storage Account está en otra región que la VM: ahí sí aplica egress a internet, ~$0.087/GB (tarifa estándar Azure para los primeros GB salientes por mes, sube en tramos altos de volumen — irrelevante acá porque son pocos GB/mes).
+- Un restore de emergencia baja 1 dump de 1.5 GB → 1.5 GB × $0.087/GB ≈ **$0.13 esa vez**, no mensual — es costo puntual solo si restaurás fuera de la región.
+
+**Por qué el total no sube con las restauraciones**: storage (el $0.38) es el único costo que se acumula mes a mes de forma predecible. Ops y egress son centavos o cero, y solo ocurren cuando efectivamente restaurás — no hay cargo fijo por "tener la capacidad" de restaurar.
 
 Valor real del versionado en git: **no es ahorro, es reproducibilidad y auditoría**. Si mañana la policy desaparece del Portal (accidente, migración, error), reaplicar es un solo comando desde `deployment/azure/lifecycle-policy.json`.
 
@@ -813,3 +885,4 @@ Diferencia real vs. actual: +$0.11/mo por RPO segundos + PITR.
 2. Re-aplicar la policy vía `az storage account management-policy create ...`.
 3. Actualizar la sección de costo estimado.
 4. Sin cambios en `backup-db.sh` ni `verify-backup.sh`.
+

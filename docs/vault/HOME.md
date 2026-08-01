@@ -41,9 +41,24 @@ graph LR
         FP[[ftpprocessor]]
     end
 
+    subgraph TEL [Pipeline Telemetría Modbus]
+        CC[[csvconsumer]]
+        CP[[csvprocessor]]
+    end
+
     subgraph DGA [Pipeline DGA]
         DS[[dga-setup]]
         DW[[dga-workers]]
+    end
+
+    subgraph BACK [Backend]
+        MA[[main-api/overview]]
+        AUTH[[main-api/auth]]
+        MDGA[[main-api/dga-pipeline]]
+    end
+
+    subgraph FRONT [Frontend]
+        FE[[frontend/overview]]
     end
 
     REF[[quick-ref]]
@@ -53,7 +68,10 @@ graph LR
     HOME --> JI
     HOME --> SCH
     HOME --> FD
+    HOME --> TEL
     HOME --> DS
+    HOME --> MA
+    HOME --> FE
     HOME --> REF
     HOME --> PEN
 
@@ -66,7 +84,12 @@ graph LR
     SCH --> QRY
     SCH --> MIG
     FD --> FP
+    CC --> CP
     DS --> DW
+    MA --> AUTH
+    MA --> MDGA
+    MDGA --> DW
+    FE --> MA
 ```
 
 ---
@@ -98,10 +121,25 @@ graph LR
 > - [[ftp-dispositivos]] — REGADIO / CASINO: datos, archivos pendientes, gotchas
 > - [[ftpprocessor]] — servicio Go: parser, serial, gRPC
 
+> [!example] Pipeline Telemetría (Modbus/IP)
+>
+> - [[grpc-pipeline/csvprocessor]] — cliente Windows: dispositivos Modbus/IP → SQLite → gRPC
+> - [[grpc-pipeline/csvconsumer]] — servidor Rust Linux: recibe e inserta en PostgreSQL
+
 > [!example] Pipeline DGA
 >
 > - [[dga-setup]] — configurar sitio DGA, estado actual de pozos
 > - [[dga-workers]] — preseed, fill, submission, reconciler
+
+> [!note] Backend — main-api
+>
+> - [[main-api/overview]] — API Express, stack, workers
+> - [[main-api/auth]] — roles y permisos
+> - [[main-api/dga-pipeline]] — pipeline DGA visto desde la API
+
+> [!note] Frontend
+>
+> - [[frontend/overview]] — Angular 21, stack, módulos por `tipo_empresa`
 
 > [!tip] Referencia rápida
 >

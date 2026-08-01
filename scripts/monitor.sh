@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # scripts/monitor.sh — Emeltec infrastructure health monitor
 # Cron: */5 * * * * /home/azureuser/emeltec3/scripts/monitor.sh >> /var/log/emeltec-monitor.log 2>&1
+# Rotación: /etc/logrotate.d/emeltec-monitor -> /var/log/emeltec-monitor.log { daily rotate 7 compress delaycompress missingok notifempty }
 
 set -Eeuo pipefail
+
+LOCK_FILE="/tmp/emeltec-monitor.lock"
+exec 200>"$LOCK_FILE"
+flock -n 200 || { echo "[$(date '+%Y-%m-%d %H:%M:%S')] SKIP: corrida anterior aún activa"; exit 0; }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$(dirname "$SCRIPT_DIR")/.env"
@@ -28,6 +33,10 @@ CONTAINERS=(
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 mkdir -p "$STATE_DIR"
 
+if [[ ! -f "$ENV_FILE" ]]; then
+  log "WARN: $ENV_FILE no encontrado, usando valores por defecto"
+fi
+
 read_env() {
   { grep -E "^${1}=" "$ENV_FILE" 2>/dev/null || true; } | tail -n1 | cut -d= -f2- | tr -d '\r'
 }
@@ -46,12 +55,18 @@ get_state() { cat "${STATE_DIR}/${1}" 2>/dev/null || echo "ok"; }
 set_state()  { printf '%s' "$2" > "${STATE_DIR}/${1}"; }
 
 # ── HTML builders ──────────────────────────────────────────────────────────────
+escape_html() {
+  printf '%s' "$1" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g'
+}
+
 make_rows() {
-  local out=""
+  local out="" safe1 safe2
   while [[ $# -ge 2 ]]; do
+    safe1=$(escape_html "$1")
+    safe2=$(escape_html "$2")
     out+="<tr>"
-    out+="<td style='padding:7px 0;font-size:12px;color:#64748B;width:40%;vertical-align:top;'><strong>$1</strong></td>"
-    out+="<td style='padding:7px 0;font-size:13px;color:#1E293B;vertical-align:top;'>$2</td>"
+    out+="<td style='padding:7px 0;font-size:12px;color:#64748B;width:40%;vertical-align:top;'><strong>$safe1</strong></td>"
+    out+="<td style='padding:7px 0;font-size:13px;color:#1E293B;vertical-align:top;'>$safe2</td>"
     out+="</tr>"
     shift 2
   done
@@ -147,7 +162,7 @@ process.stdout.write(JSON.stringify(payload));
     rm -f "$ts" "$tt" "$th"
 
     local code
-    code=$(curl -s -o "$tr" -w '%{http_code}' \
+    code=$(curl -s -o "$tr" -w '%{http_code}' --max-time 10 \
       -X POST 'https://api.resend.com/emails' \
       -H "Authorization: Bearer $RESEND_API_KEY" \
       -H 'Content-Type: application/json' \
@@ -164,13 +179,16 @@ process.stdout.write(JSON.stringify(payload));
 }
 
 # ── Container check ───────────────────────────────────────────────────────────
+declare -a SUMMARY_ROWS=()
+
 check_container() {
   local name="$1"
   local key="c_${name}"
   local prev
   prev=$(get_state "$key")
 
-  if ! docker inspect "$name" >/dev/null 2>&1; then
+  if ! timeout 5 docker inspect "$name" >/dev/null 2>&1; then
+    SUMMARY_ROWS+=("$name" "no existe")
     [[ "$prev" == "missing" ]] && { log "SKIP $name (ya alertado: missing)"; return; }
     set_state "$key" "missing"
     local rows
@@ -187,15 +205,16 @@ check_container() {
   fi
 
   local status exit_code
-  status=$(docker inspect --format='{{.State.Status}}' "$name")
-  exit_code=$(docker inspect --format='{{.State.ExitCode}}' "$name")
+  status=$(timeout 5 docker inspect --format='{{.State.Status}}' "$name" 2>/dev/null || echo "unknown")
+  exit_code=$(timeout 5 docker inspect --format='{{.State.ExitCode}}' "$name" 2>/dev/null || echo "-1")
 
   if [[ "$status" != "running" ]]; then
+    SUMMARY_ROWS+=("$name" "$status (exit $exit_code)")
     [[ "$prev" == "down" ]] && { log "SKIP $name (ya alertado: down)"; return; }
     set_state "$key" "down"
 
     local raw_logs safe_logs
-    raw_logs=$(docker logs --tail 30 "$name" 2>&1 || echo "(sin logs disponibles)")
+    raw_logs=$(timeout 5 docker logs --tail 30 "$name" 2>&1 || echo "(sin logs disponibles)")
     safe_logs=$(printf '%s' "$raw_logs" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
 
     local rows
@@ -210,6 +229,7 @@ check_container() {
       "Container $name cayó. Estado: $status. Exit: $exit_code. $(date)" \
       "$(make_html '#dc2626' '🔴' "Container caído: $name" "$inner")"
   else
+    SUMMARY_ROWS+=("$name" "running")
     if [[ "$prev" == "down" || "$prev" == "missing" ]]; then
       set_state "$key" "ok"
       local rows
@@ -234,19 +254,19 @@ check_flow() {
 
   # Skip if DB is down (already alerted separately)
   local db_status
-  db_status=$(docker inspect --format='{{.State.Status}}' "emeltec-db" 2>/dev/null || echo "unknown")
+  db_status=$(timeout 5 docker inspect --format='{{.State.Status}}' "emeltec-db" 2>/dev/null || echo "unknown")
   if [[ "$db_status" != "running" ]]; then
     log "SKIP flow $key: emeltec-db no está running"
     return
   fi
 
   local min_raw min last_ts
-  min_raw=$(docker exec emeltec-db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  min_raw=$(timeout 5 docker exec emeltec-db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
     -t -c "$min_query" 2>/dev/null | tr -d ' \n\r') || true
   [[ -z "${min_raw:-}" || "$min_raw" == "NULL" ]] && min_raw=9999
   min=$(printf '%.0f' "$min_raw" 2>/dev/null || echo 9999)
 
-  last_ts=$(docker exec emeltec-db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  last_ts=$(timeout 5 docker exec emeltec-db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
     -t -c "$last_query" 2>/dev/null | tr -d '\n\r' | xargs 2>/dev/null || echo "—")
   [[ -z "${last_ts:-}" ]] && last_ts="Sin datos registrados"
 
@@ -256,6 +276,7 @@ check_flow() {
   fi
 
   log "FLOW $key: ${min}m (level=$level, prev=$prev, último=$last_ts)"
+  SUMMARY_ROWS+=("$label" "$([[ "$level" == "ok" ]] && echo "datos OK ($last_ts)" || echo "sin datos hace ${min} min ($level)")")
 
   if [[ "$level" == "red" && "$prev" != "red" ]]; then
     set_state "$state_key" "red"
@@ -295,8 +316,49 @@ check_flow() {
   fi
 }
 
+# ── Detección de reinicio (VM caída y vuelta) ──────────────────────────────────
+# STATE_DIR vive en /tmp, que se limpia en cada boot de Ubuntu — la ausencia
+# del heartbeat de la corrida anterior, o un hueco grande entre corridas
+# (mucho más que los 5 min del cron), es la señal de que la VM se reinició.
+MONITOR_HEARTBEAT="$STATE_DIR/monitor-last-run"
+RESTART_GAP_SECONDS=900  # 15 min — 3x el intervalo del cron, evita falsos positivos
+NOW_EPOCH=$(date +%s)
+LAST_RUN_EPOCH=$(cat "$MONITOR_HEARTBEAT" 2>/dev/null || echo "")
+
+RESTART_DETECTED=0
+RESTART_REASON=""
+
+if [[ -z "$LAST_RUN_EPOCH" ]]; then
+  RESTART_DETECTED=1
+  RESTART_REASON="Sin heartbeat de la corrida anterior (perdido por reinicio de VM o primera corrida de monitor.sh)."
+elif [[ ! "$LAST_RUN_EPOCH" =~ ^[0-9]+$ ]]; then
+  RESTART_DETECTED=1
+  RESTART_REASON="Heartbeat de la corrida anterior corrupto (contenido no numérico) — tratado como reinicio."
+else
+  GAP=$(( NOW_EPOCH - LAST_RUN_EPOCH ))
+  if (( GAP > RESTART_GAP_SECONDS )); then
+    RESTART_DETECTED=1
+    GAP_MIN=$(( GAP / 60 ))
+    RESTART_REASON="monitor.sh no corrió por ${GAP_MIN} min (última corrida: $(date -d "@$LAST_RUN_EPOCH" '+%d/%m/%Y %H:%M:%S' 2>/dev/null || echo "epoch $LAST_RUN_EPOCH"))."
+  fi
+fi
+
+if [[ "$RESTART_DETECTED" -eq 1 ]]; then
+  BOOT_STR=$(uptime -s 2>/dev/null || echo "")
+  if [[ -n "$BOOT_STR" ]]; then
+    BOOT_EPOCH=$(date -d "$BOOT_STR" +%s 2>/dev/null || echo 0)
+    if [[ "$BOOT_EPOCH" -gt 0 ]]; then
+      UPTIME_MIN=$(( (NOW_EPOCH - BOOT_EPOCH) / 60 ))
+      if (( UPTIME_MIN < 20 )); then
+        RESTART_REASON="$RESTART_REASON VM reinició hace ${UPTIME_MIN} min (boot: $BOOT_STR)."
+      fi
+    fi
+  fi
+fi
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 log "=== Monitor Emeltec — inicio ==="
+[[ "$RESTART_DETECTED" -eq 1 ]] && log "REINICIO DETECTADO: $RESTART_REASON"
 
 for c in "${CONTAINERS[@]}"; do
   check_container "$c"
@@ -313,5 +375,17 @@ check_flow "ftp" "ftpconsumer (FTP pipeline)" "emeltec-ftpconsumer" \
    FROM equipo WHERE received_at IS NULL;" \
   "SELECT COALESCE(to_char(MAX(time), 'DD/MM/YYYY HH24:MI'), 'Sin datos')
    FROM equipo WHERE received_at IS NULL;"
+
+# ── Email de reinicio: resumen inmediato con el estado de todo + la razón ─────
+if [[ "$RESTART_DETECTED" -eq 1 ]]; then
+  rows=$(make_rows "${SUMMARY_ROWS[@]}")
+  inner=$(info_block "$rows")
+  inner+=$(note_box "#EFF6FF" "#BFDBFE" "#1D4ED8" "$RESTART_REASON")
+  send_email "🔵 [MONITOR] monitor.sh arrancó — resumen de estado" \
+    "monitor.sh volvió a correr. $RESTART_REASON" \
+    "$(make_html '#0DAFBD' '🔵' 'Monitor arrancó — resumen de estado' "$inner")"
+fi
+
+printf '%s' "$NOW_EPOCH" > "$MONITOR_HEARTBEAT"
 
 log "=== Monitor Emeltec — fin ==="

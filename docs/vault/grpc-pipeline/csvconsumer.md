@@ -1,4 +1,11 @@
+---
+aliases: [csvconsumer, rust, grpc consumer]
+tags: [vault/telemetry]
+---
+
 # csvconsumer — Servidor gRPC Linux
+
+← [[../HOME]] | Ver también: [[csvprocessor]] · [[../base-de-datos/schema]]
 
 Servicio Rust que recibe telemetría de csvprocessor (Windows) por gRPC y la inserta en PostgreSQL.
 
@@ -126,5 +133,5 @@ Los logs muestran `modo=bulk` — indica que el consumer está procesando en mod
 ## Ver también
 
 - [[csvprocessor]] — cliente Windows que envía los datos
-- [[../db/equipo]] — tabla destino en PostgreSQL
+- [[../base-de-datos/schema#Grupo: Telemetría (series temporales)]] — tabla `equipo`, destino en PostgreSQL
 - [[../infraestructura/incidente-2026-07-13-csvconsumer-reconexion]] — incidente de reconexión

@@ -46,7 +46,7 @@ on_error() {
   log "FALLO en línea $line (exit=$exit_code)"
   notify "fail" "backup falló línea $line exit=$exit_code. Últimas líneas: $tail_log"
   # Limpiar temporales (plano + cifrado si quedaron)
-  rm -f "$BACKUP_DIR/backup_${TIMESTAMP}.dump" "$BACKUP_DIR/backup_${TIMESTAMP}.dump.gpg" "$BACKUP_DIR/heartbeat.json" 2>/dev/null || true
+  rm -f "$BACKUP_DIR/backup_${TIMESTAMP}.dump" "$BACKUP_DIR/backup_${TIMESTAMP}.dump.gpg" "$BACKUP_DIR/heartbeat.json" "$BACKUP_DIR/last-heartbeat.json" 2>/dev/null || true
   exit "$exit_code"
 }
 
@@ -94,6 +94,82 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
   log "ERROR: container '$DB_CONTAINER' no está corriendo"
   exit 1
 fi
+
+# ── Sanity check de la DB fuente (antes de dumpear) ───────────────────────────
+# pg_dump puede generar un dump "válido" de una DB rota (tablas borradas,
+# extensión caída) — el check de pg_restore --list no detecta eso, solo valida
+# que el archivo esté bien armado. Acá se valida la DB viva antes de tocarla.
+log "Verificando salud de la DB fuente antes de generar el dump..."
+
+if ! docker exec "$DB_CONTAINER" pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; then
+  log "ERROR: Postgres no responde en '$DB_CONTAINER' (pg_isready falló)"
+  exit 1
+fi
+
+SRC_TABLE_COUNT=$(docker exec "$DB_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
+  "SELECT count(*) FROM information_schema.tables WHERE table_schema='public';" 2>/dev/null || echo 0)
+SRC_HYPER_COUNT=$(docker exec "$DB_CONTAINER" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc \
+  "SELECT count(*) FROM timescaledb_information.hypertables;" 2>/dev/null || echo 0)
+SRC_TABLE_COUNT=$(printf '%s' "$SRC_TABLE_COUNT" | tr -d ' \r\n')
+SRC_HYPER_COUNT=$(printf '%s' "$SRC_HYPER_COUNT" | tr -d ' \r\n')
+SRC_TABLE_COUNT="${SRC_TABLE_COUNT:-0}"
+SRC_HYPER_COUNT="${SRC_HYPER_COUNT:-0}"
+# psql puede devolver vacío si la query corre pero no hay filas que contar (no debería pasar con count(*), pero por si acaso)
+case "$SRC_TABLE_COUNT" in ''|*[!0-9]*) SRC_TABLE_COUNT=0 ;; esac
+case "$SRC_HYPER_COUNT" in ''|*[!0-9]*) SRC_HYPER_COUNT=0 ;; esac
+
+log "DB fuente: $SRC_TABLE_COUNT tablas, $SRC_HYPER_COUNT hypertables."
+
+if [ "$SRC_TABLE_COUNT" -lt 1 ]; then
+  log "ERROR: DB fuente sin tablas en schema public. Posible DB rota o borrada — abortando antes de dumpear."
+  notify "fail" "DB fuente sin tablas (public). Backup abortado antes de generar el dump — posible corrupción/borrado."
+  exit 1
+fi
+
+if [ "$SRC_HYPER_COUNT" -lt 1 ]; then
+  log "ERROR: DB fuente sin hypertables. Extensión TimescaleDB caída o DB rota — abortando antes de dumpear."
+  notify "fail" "DB fuente sin hypertables. Backup abortado antes de generar el dump — posible corrupción."
+  exit 1
+fi
+
+# Comparar contra el último heartbeat exitoso: si bajaron tablas/hypertables
+# respecto al backup anterior, es señal de borrado accidental (DROP TABLE,
+# TRUNCATE de schema, etc.) — no se sube un backup que "confirma" el borrado.
+# az CLI no soporta "-" como stdout en --file: hay que bajar a un archivo real.
+mkdir -p "$BACKUP_DIR"
+LAST_HEARTBEAT_FILE="$BACKUP_DIR/last-heartbeat.json"
+rm -f "$LAST_HEARTBEAT_FILE"
+az storage blob download \
+  --connection-string "$AZURE_CONN" \
+  --container-name "$BLOB_CONTAINER" \
+  --name "$HEARTBEAT_BLOB" \
+  --file "$LAST_HEARTBEAT_FILE" \
+  --output none >/dev/null 2>&1 || true
+
+LAST_HEARTBEAT_JSON=""
+[ -f "$LAST_HEARTBEAT_FILE" ] && LAST_HEARTBEAT_JSON=$(cat "$LAST_HEARTBEAT_FILE")
+rm -f "$LAST_HEARTBEAT_FILE"
+
+if [ -n "$LAST_HEARTBEAT_JSON" ]; then
+  PREV_TABLE_COUNT=$(printf '%s' "$LAST_HEARTBEAT_JSON" | grep -oP '"table_count"\s*:\s*\K[0-9]+' || true)
+  PREV_HYPER_COUNT=$(printf '%s' "$LAST_HEARTBEAT_JSON" | grep -oP '"hypertable_count"\s*:\s*\K[0-9]+' || true)
+
+  if [ -n "$PREV_TABLE_COUNT" ] && [ "$SRC_TABLE_COUNT" -lt "$PREV_TABLE_COUNT" ]; then
+    log "ERROR: tablas bajaron de $PREV_TABLE_COUNT a $SRC_TABLE_COUNT vs. último backup exitoso. Posible borrado accidental — abortando."
+    notify "fail" "Tablas bajaron de $PREV_TABLE_COUNT a $SRC_TABLE_COUNT vs. último heartbeat. Backup abortado, posible borrado accidental."
+    exit 1
+  fi
+
+  if [ -n "$PREV_HYPER_COUNT" ] && [ "$SRC_HYPER_COUNT" -lt "$PREV_HYPER_COUNT" ]; then
+    log "ERROR: hypertables bajaron de $PREV_HYPER_COUNT a $SRC_HYPER_COUNT vs. último backup exitoso. Posible borrado accidental — abortando."
+    notify "fail" "Hypertables bajaron de $PREV_HYPER_COUNT a $SRC_HYPER_COUNT vs. último heartbeat. Backup abortado, posible borrado accidental."
+    exit 1
+  fi
+else
+  log "Sin heartbeat previo — no hay línea base para comparar (primera corrida o heartbeat aún no existe)."
+fi
+
+log "DB fuente verificada OK. Continuando con el dump."
 
 # ── Crear container si no existe ──────────────────────────────────────────────
 az storage container create \
@@ -203,6 +279,8 @@ cat > "$HEARTBEAT_FILE" <<EOF
   "encrypted": $ENCRYPTED_JSON,
   "cipher": $CIPHER_JSON,
   "sha256_plain": $SHA256_PLAIN_JSON,
+  "table_count": $SRC_TABLE_COUNT,
+  "hypertable_count": $SRC_HYPER_COUNT,
   "duration_seconds": $DURATION,
   "host": "$(hostname)"
 }
@@ -221,4 +299,4 @@ rm "$HEARTBEAT_FILE"
 log "Heartbeat actualizado ($HEARTBEAT_BLOB). Duración: ${DURATION}s."
 notify "success" "backup $BACKUP_FILE (${UPLOAD_SIZE_BYTES}B, cifrado=$ENCRYPTED_JSON, ${DURATION}s) OK"
 
-log "Backup completado. Retención 14 días gestionada por Azure Lifecycle Policy."
+log "Backup completado. Retención 14 días (Hot tier) gestionada por Azure Lifecycle Policy."

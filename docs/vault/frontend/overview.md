@@ -1,4 +1,11 @@
+---
+aliases: [frontend, angular, ui]
+tags: [vault/frontend]
+---
+
 # Frontend — Overview
+
+← [[../HOME]] | Ver también: [[../main-api/overview]] · [[../main-api/auth]]
 
 **Framework:** Angular 21, standalone components, signals
 **Estilos:** Tailwind CSS v4
@@ -156,4 +163,4 @@ Módulos: Consumo de Agua, Generación de Riles, Variables de Proceso, Consumo E
 
 - [[../main-api/auth]] — roles y permisos que controlan las vistas
 - [[../main-api/overview]] — API que consume el frontend
-- [[../db/empresa-sitio]] — jerarquía que estructura la navegación
+- [[../base-de-datos/schema#Grupo: Entidades base]] — jerarquía empresa → sitio que estructura la navegación

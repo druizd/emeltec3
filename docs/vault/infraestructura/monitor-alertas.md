@@ -96,6 +96,36 @@ Cada flujo tiene su archivo: `f_csv`, `f_ftp`.
 
 ---
 
+## Email de reinicio — cuando la VM (o monitor.sh) vuelve
+
+`/tmp` se limpia en cada boot de Ubuntu, así que el estado anti-spam
+(`/tmp/emeltec-monitor/*`) desaparece con un reinicio de la VM. Sin esto,
+`monitor.sh` volvería a correr en silencio tras un reinicio — nadie se
+entera de que "todo se levantó" salvo revisando logs a mano.
+
+`monitor.sh` guarda un heartbeat propio (`/tmp/emeltec-monitor/monitor-last-run`,
+timestamp de cada corrida) y en la corrida siguiente compara contra el
+heartbeat anterior. Si detecta que se perdió el estado, manda **un email
+resumen inmediato** con el estado de los 8 containers + las 2 pipelines,
+y la razón detectada:
+
+| Señal detectada | Razón en el email |
+|---|---|
+| Sin heartbeat previo (primer arranque tras boot) | "Sin heartbeat de la corrida anterior..." |
+| Heartbeat con contenido corrupto | "Heartbeat de la corrida anterior corrupto..." |
+| Heartbeat viejo — hueco > 15 min entre corridas (3x el intervalo del cron) | "monitor.sh no corrió por N min (última corrida: ...)" |
+| Además, si `uptime -s` muestra boot < 20 min | Se agrega: "VM reinició hace N min (boot: ...)" |
+
+**Asunto:** `🔵 [MONITOR] monitor.sh arrancó — resumen de estado`
+
+Este email es independiente de las alertas individuales por container —
+si algún container quedó realmente caído tras el reinicio, sigue llegando
+también su `🔴 [CAÍDO]` de siempre. El resumen solo agrega el panorama
+completo + la razón, una sola vez por reinicio (se autolimita: la próxima
+corrida ya tiene heartbeat reciente y no vuelve a dispararse).
+
+---
+
 ## Destinatarios
 
 ```bash
@@ -168,6 +198,16 @@ Si `RESEND_API_KEY` está vacío, el script simula el envío y loguea el asunto 
 [2026-07-24 09:00:04] FLOW ftp: 7m (level=yellow, prev=ok, último=24/07/2026 08:53)
 [2026-07-24 09:00:04] Email OK → mcid@emeltec.cl [⚠️ [ALERTA] ftpconsumer...]
 [2026-07-24 09:00:04] === Monitor Emeltec — fin ===
+```
+
+**Tras un reinicio de VM** (heartbeat perdido):
+```
+[2026-07-24 09:00:01] === Monitor Emeltec — inicio ===
+[2026-07-24 09:00:01] REINICIO DETECTADO: Sin heartbeat de la corrida anterior (perdido por reinicio de VM o primera corrida de monitor.sh). VM reinició hace 3 min (boot: 2026-07-24 08:57:02).
+[2026-07-24 09:00:02] OK emeltec-db: running
+...
+[2026-07-24 09:00:05] Email OK → mcid@emeltec.cl [🔵 [MONITOR] monitor.sh arrancó — resumen de estado]
+[2026-07-24 09:00:05] === Monitor Emeltec — fin ===
 ```
 
 ---
