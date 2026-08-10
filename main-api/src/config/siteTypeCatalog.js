@@ -14,7 +14,8 @@ const COMMON_TRANSFORMS = [
   {
     id: 'ieee754_32',
     label: 'IEEE754 32 bits',
-    description: 'Une dos registros Modbus para obtener un FLOAT32.',
+    description:
+      'Une dos registros Modbus para obtener un FLOAT32. Opcionalmente aplica factor y offset para calibrar el valor.',
     enabled: true,
     requiresD2: true,
   },
