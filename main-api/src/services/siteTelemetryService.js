@@ -1,11 +1,8 @@
-const { m3hALs } = require('../utils/caudal');
-const {
-  parseIEEE754,
-  registrosModbusAFloat32,
-  registrosModbusAUInt32,
-} = require('../utils/ieee754');
 const { calcularNivelFreatico } = require('../utils/nivelFreatico');
 const { VARIABLE_TRANSFORM_IDS } = require('../config/siteTypeCatalog');
+// Fuente única de la matemática de transformación (CommonJS, resuelve en dev
+// src/, dist/ y vitest sin ambigüedad de extensión).
+const { applyMappingTransform } = require('../utils/mappingTransform.js');
 
 const VARIABLE_TRANSFORMS = new Set(VARIABLE_TRANSFORM_IDS);
 
@@ -16,18 +13,6 @@ function cleanString(value) {
 
 function isPlainObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function parseMappingParams(value) {
-  if (isPlainObject(value)) return value;
-  if (typeof value !== 'string' || !value.trim()) return {};
-
-  try {
-    const parsed = JSON.parse(value);
-    return isPlainObject(parsed) ? parsed : {};
-  } catch (_err) {
-    return {};
-  }
 }
 
 function numberOrNull(value) {
@@ -60,12 +45,6 @@ function readRawValue(rawData, key) {
   return rawData[key];
 }
 
-function parseBooleanParam(value, fallback = false) {
-  if (value === undefined || value === null || value === '') return fallback;
-  if (typeof value === 'boolean') return value;
-  return ['true', '1', 'si', 'yes'].includes(String(value).trim().toLowerCase());
-}
-
 function normalizeVariableTransform(value) {
   const normalized = cleanString(value).toLowerCase();
   const allowedValue = normalized || 'directo';
@@ -78,94 +57,6 @@ function normalizeVariableTransform(value) {
 
 function normalizeTransform(value) {
   return normalizeVariableTransform(value) || cleanString(value).toLowerCase();
-}
-
-function applyLinearTransform(value, params = {}) {
-  const base = requireFiniteNumber(value, 'valor');
-  const factor = numberOrNull(params.factor) ?? 1;
-  const offset = numberOrNull(params.offset) ?? 0;
-  return base * factor + offset;
-}
-
-function applyUInt32RegistersTransform({ rawData, mapping, params }) {
-  const rawD1 = readRawValue(rawData, mapping.d1);
-  const rawD2 = readRawValue(rawData, mapping.d2);
-  const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
-  const wordBaja = requireFiniteNumber(rawD2, mapping.d2 || 'd2');
-  const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-  const combinado = registrosModbusAUInt32(wordAlta, wordBaja, wordSwap).valor;
-  // Aplica factor + offset al uint32 combinado para permitir decimales
-  // (ej. factor=0.01 corre 2 decimales). factor defaultea a 1 → retrocompatible
-  // con configs que solo guardaban offset.
-  return applyLinearTransform(combinado, params);
-}
-
-function applyIeeeTransform({ rawData, mapping, params }) {
-  const rawD1 = readRawValue(rawData, mapping.d1);
-  const rawD2 = readRawValue(rawData, mapping.d2);
-
-  if (mapping.d2) {
-    const wordAlta = requireFiniteNumber(rawD1, mapping.d1);
-    const wordBaja = requireFiniteNumber(rawD2, mapping.d2);
-    const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-    return registrosModbusAFloat32(wordAlta, wordBaja, wordSwap).valor;
-  }
-
-  if (rawD1 === undefined || rawD1 === null) {
-    throw new Error(`No existe dato crudo ${mapping.d1}`);
-  }
-
-  return parseIEEE754(rawD1, {
-    formato: params.formato || 'float32',
-    byteOrder: params.byteOrder || params.word_order || 'BE',
-  });
-}
-
-function applyMappingTransform({ rawData, mapping, pozoConfig }) {
-  const params = parseMappingParams(mapping.parametros);
-  const transformacion = normalizeTransform(mapping.transformacion);
-  const rawD1 = readRawValue(rawData, mapping.d1);
-
-  switch (transformacion) {
-    case 'directo':
-      return rawD1;
-
-    case 'lineal':
-      return applyLinearTransform(rawD1, params);
-
-    case 'lineal_int16': {
-      const raw = requireFiniteNumber(rawD1, mapping.d1);
-      const signed = raw > 32767 ? raw - 65536 : raw;
-      return applyLinearTransform(signed, params);
-    }
-
-    case 'ieee754_32':
-      return applyIeeeTransform({ rawData, mapping, params });
-
-    case 'uint32_registros':
-    case 'uint32':
-      return applyUInt32RegistersTransform({ rawData, mapping, params });
-
-    case 'nivel_freatico': {
-      const lecturaPozo = applyLinearTransform(rawD1, params);
-      return calcularNivelFreatico({
-        lecturaPozo,
-        profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
-        profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
-      });
-    }
-
-    case 'caudal_m3h_lps': {
-      const caudalM3h = applyLinearTransform(rawD1, params);
-      return m3hALs(caudalM3h);
-    }
-
-    case 'formula':
-      throw new Error('transformacion formula aun no esta habilitada en dashboard-data');
-
-    default:
-      throw new Error(`transformacion no soportada: ${mapping.transformacion}`);
-  }
 }
 
 function responseKeyForMapping(mapping) {

@@ -1,88 +1,21 @@
 /**
- * Capa TS sobre las transformaciones físicas (IEEE754, lineal, nivel freático,
- * caudal). Reusa los helpers en `src/utils/*.js` para no duplicar matemática.
+ * Fachada TIPADA sobre la fuente única de transformaciones físicas.
+ *
+ * La matemática (IEEE754, lineal, uint32, nivel freático, caudal) vive en
+ * `src/utils/mappingTransform.js` — CommonJS puro para que la consuman tanto
+ * estos módulos TS como `services/siteTelemetryService.js` sin duplicar código.
+ * Aquí sólo agregamos tipos y re-exportamos.
  */
-type ByteOrder = 'BE' | 'LE' | 'MID-BE' | 'MID-LE';
-type Formato = 'float32' | 'int32' | 'uint32' | 'int16' | 'uint16';
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const ieee754Mod = require('../../utils/ieee754.js') as {
-  parseIEEE754: (input: unknown, opts: { formato?: Formato; byteOrder?: ByteOrder }) => number;
-  registrosModbusAFloat32: (a: number, b: number, swap: boolean) => { valor: number };
-  registrosModbusAUInt32: (a: number, b: number, swap: boolean) => { valor: number };
-};
-const { parseIEEE754, registrosModbusAFloat32, registrosModbusAUInt32 } = ieee754Mod;
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const caudalMod = require('../../utils/caudal.js') as { m3hALs: (v: unknown) => number };
-const { m3hALs } = caudalMod;
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const nfMod = require('../../utils/nivelFreatico.js') as {
-  calcularNivelFreatico: (p: {
-    lecturaPozo: number;
-    profundidadSensor: number | null;
-    profundidadTotal: number;
-  }) => number;
-};
-const { calcularNivelFreatico } = nfMod;
-
 import type { PozoConfig, RegMap } from './types';
 
-function numberOrNull(value: unknown): number | null {
-  if (value === undefined || value === null || value === '') return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
-}
-
-function requireFiniteNumber(value: unknown, label: string): number {
-  const n = numberOrNull(value);
-  if (n === null) throw new Error(`${label} debe ser numerico`);
-  return n;
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readRawValue(rawData: unknown, key: string | null | undefined): unknown {
-  if (!key || !isPlainObject(rawData)) return undefined;
-  return rawData[key];
-}
-
-function parseBooleanParam(value: unknown, fallback = false): boolean {
-  if (value === undefined || value === null || value === '') return fallback;
-  if (typeof value === 'boolean') return value;
-  return ['true', '1', 'si', 'yes'].includes(String(value).trim().toLowerCase());
-}
-
-function normalizeTransform(value: unknown): string {
-  const raw = String(value ?? 'directo')
-    .trim()
-    .toLowerCase();
-  if (raw === 'escala_lineal') return 'lineal';
-  if (raw === 'ieee754') return 'ieee754_32';
-  if (raw === 'caudal') return 'caudal_m3h_lps';
-  if (raw === 'uint32') return 'uint32_registros';
-  return raw;
-}
-
-function parseMappingParams(value: unknown): Record<string, unknown> {
-  if (isPlainObject(value)) return value;
-  if (typeof value !== 'string' || !value.trim()) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return isPlainObject(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-
-export function applyLinearTransform(value: unknown, params: Record<string, unknown>): number {
-  const base = requireFiniteNumber(value, 'valor');
-  const factor = numberOrNull(params.factor) ?? 1;
-  const offset = numberOrNull(params.offset) ?? 0;
-  return base * factor + offset;
+export interface VariableParameters {
+  factor?: number | null;
+  offset?: number | null;
+  word_order?: string | null;
+  word_swap?: boolean | null;
+  wordSwap?: boolean | null;
+  formato?: string | null;
+  byteOrder?: string | null;
 }
 
 export interface MappingTransformInput {
@@ -91,78 +24,21 @@ export interface MappingTransformInput {
   pozoConfig?: PozoConfig | null;
 }
 
-/** Devuelve el valor transformado o lanza Error si la transformación no aplica. */
-export function applyMappingTransform({
-  rawData,
-  mapping,
-  pozoConfig,
-}: MappingTransformInput): number | unknown {
-  const params = parseMappingParams(mapping.parametros);
-  const transform = normalizeTransform(mapping.transformacion);
-  const rawD1 = readRawValue(rawData, mapping.d1);
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mappingTransformMod = require('../../utils/mappingTransform.js') as {
+  applyMappingTransform: (input: MappingTransformInput) => number | unknown;
+  applyLinearTransform: (value: unknown, params: Record<string, unknown>) => number;
+  normalizeTransform: (value: unknown) => string;
+  parseMappingParams: (value: unknown) => Record<string, unknown>;
+  readRawValue: (rawData: unknown, key: string | null | undefined) => unknown;
+  numberOrNull: (value: unknown) => number | null;
+  isPlainObject: (value: unknown) => value is Record<string, unknown>;
+};
 
-  switch (transform) {
-    case 'directo':
-      return rawD1;
-
-    case 'lineal':
-      return applyLinearTransform(rawD1, params);
-
-    case 'lineal_int16': {
-      const raw = requireFiniteNumber(rawD1, mapping.d1);
-      const signed = raw > 32767 ? raw - 65536 : raw;
-      return applyLinearTransform(signed, params);
-    }
-
-    case 'ieee754_32': {
-      if (mapping.d2) {
-        const high = requireFiniteNumber(rawD1, mapping.d1);
-        const low = requireFiniteNumber(readRawValue(rawData, mapping.d2), mapping.d2);
-        const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-        return registrosModbusAFloat32(high, low, wordSwap).valor;
-      }
-      if (rawD1 === undefined || rawD1 === null) {
-        throw new Error(`No existe dato crudo ${mapping.d1}`);
-      }
-      return parseIEEE754(rawD1, {
-        formato: ((params.formato as string | undefined) ?? 'float32') as Formato,
-        byteOrder: ((params.byteOrder as string | undefined) ??
-          (params.word_order as string | undefined) ??
-          'BE') as ByteOrder,
-      });
-    }
-
-    case 'uint32_registros': {
-      const high = requireFiniteNumber(rawD1, mapping.d1);
-      const low = requireFiniteNumber(readRawValue(rawData, mapping.d2), mapping.d2 ?? 'd2');
-      const wordSwap = parseBooleanParam(params.word_swap ?? params.wordSwap, false);
-      const combinado = registrosModbusAUInt32(high, low, wordSwap).valor;
-      // Aplica factor + offset al uint32 combinado para permitir decimales
-      // (ej. factor=0.01 corre 2 decimales). factor defaultea a 1 →
-      // retrocompatible con configs que solo guardaban offset.
-      return applyLinearTransform(combinado, params);
-    }
-
-    case 'nivel_freatico': {
-      const lecturaPozo = applyLinearTransform(rawD1, params);
-      return calcularNivelFreatico({
-        lecturaPozo,
-        profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
-        profundidadTotal: requireFiniteNumber(pozoConfig?.profundidad_pozo_m, 'profundidad_pozo_m'),
-      });
-    }
-
-    case 'caudal_m3h_lps': {
-      const caudalM3h = applyLinearTransform(rawD1, params);
-      return m3hALs(caudalM3h);
-    }
-
-    case 'formula':
-      throw new Error('transformacion formula aun no esta habilitada en dashboard-data');
-
-    default:
-      throw new Error(`transformacion no soportada: ${transform}`);
-  }
-}
-
-export { normalizeTransform, parseMappingParams, readRawValue, numberOrNull, isPlainObject };
+export const applyMappingTransform = mappingTransformMod.applyMappingTransform;
+export const applyLinearTransform = mappingTransformMod.applyLinearTransform;
+export const normalizeTransform = mappingTransformMod.normalizeTransform;
+export const parseMappingParams = mappingTransformMod.parseMappingParams;
+export const readRawValue = mappingTransformMod.readRawValue;
+export const numberOrNull = mappingTransformMod.numberOrNull;
+export const isPlainObject = mappingTransformMod.isPlainObject;

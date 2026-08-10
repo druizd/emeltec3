@@ -94,7 +94,7 @@ const COMMON_TRANSFORMS: SiteTypeTransformOption[] = [
     id: 'ieee754_32',
     label: 'Coma flotante (2 registros · IEEE754)',
     description:
-      'Combina dos registros Modbus consecutivos en un decimal IEEE754 (FLOAT32). Si tu equipo invierte el orden de los bytes, cambia el "Orden de registros" a CDAB.',
+      'Combina dos registros Modbus consecutivos en un decimal IEEE754 (FLOAT32). Si tu equipo invierte el orden de los bytes, cambia el "Orden de registros" a CDAB. Opcionalmente aplica factor y offset para calibrar el valor.',
     enabled: true,
     requiresD2: true,
   },
@@ -594,6 +594,57 @@ function emptyVariables(): SiteVariablesPayload {
                     >resultado = ((registro alto × 65536) + registro bajo) × factor / divisor +
                     offset</span
                   >. Usá divisor=100 para correr 2 decimales.
+                </p>
+              }
+
+              @if (isIeeeTransformSelected()) {
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                      >Factor multiplicador</label
+                    >
+                    <input
+                      type="number"
+                      step="any"
+                      name="settings-variable-ieee-factor"
+                      [ngModel]="variableForm().factor"
+                      (ngModelChange)="updateVariableForm('factor', $event)"
+                      class="field-control bg-white"
+                      placeholder="1"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Divisor</label>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      name="settings-variable-ieee-divisor"
+                      [ngModel]="variableForm().divisor"
+                      (ngModelChange)="updateVariableForm('divisor', $event)"
+                      class="field-control bg-white"
+                      placeholder="1"
+                    />
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
+                    <input
+                      type="number"
+                      step="any"
+                      name="settings-variable-ieee-offset"
+                      [ngModel]="variableForm().offset"
+                      (ngModelChange)="updateVariableForm('offset', $event)"
+                      class="field-control bg-white"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <p class="text-caption-xs text-slate-500">
+                  Fórmula:
+                  <span class="font-mono"
+                    >resultado = decimal IEEE754 × factor / divisor + offset</span
+                  >. Dejá factor=1 y offset=0 para el valor sin ajuste; usá offset para calibrar el
+                  sensor.
                 </p>
               }
 
@@ -1158,6 +1209,10 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     return this.variableForm().transformacion === 'uint32_registros';
   }
 
+  isIeeeTransformSelected(): boolean {
+    return this.variableForm().transformacion === 'ieee754_32';
+  }
+
   registerOrderHint(): string {
     const form = this.variableForm();
     const first = form.d1 || 'primer registro';
@@ -1208,7 +1263,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       if (decoded === null) {
         return form.d2 ? 'Registros no numéricos' : 'Selecciona segundo registro';
       }
-      return `${this.formatPreviewNumber(decoded)}${unit}`;
+      const factor = this.toNumber(form.factor) ?? 1;
+      const offset = this.toNumber(form.offset) ?? 0;
+      return `${this.formatPreviewNumber((decoded * factor) / this.safeDivisor(form.divisor) + offset)}${unit}`;
     }
 
     if (form.transformacion === 'uint32_registros') {
@@ -1261,10 +1318,11 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       return {
         word_swap: form.wordSwap === 'true',
         formato: form.transformacion === 'ieee754_32' ? 'float32' : 'uint32',
-        ...(form.transformacion === 'uint32_registros'
+        // uint32_registros e ieee754_32 aplican factor/offset sobre el valor
+        // combinado/decodificado. Mismo split UI factor/divisor que lineal: el
+        // backend solo conoce factor, divisor es ayuda de UI para decimales.
+        ...(this.usesScaleTransformValue(form.transformacion)
           ? {
-              // Mismo split UI factor/divisor que lineal: el backend solo
-              // conoce factor, divisor es ayuda de UI para tipear decimales.
               factor: (this.toNumber(form.factor) ?? 1) / this.safeDivisor(form.divisor),
               offset: this.toNumber(form.offset) ?? 0,
             }
@@ -1316,9 +1374,13 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     return transformId === 'lineal' || transformId === 'escala_lineal';
   }
 
-  /** Transforms que aceptan factor/divisor/offset: lineal y uint32_registros. */
+  /** Transforms que aceptan factor/divisor/offset: lineal, uint32_registros e ieee754_32. */
   private usesScaleTransformValue(transformId: string): boolean {
-    return this.isLinearTransformValue(transformId) || transformId === 'uint32_registros';
+    return (
+      this.isLinearTransformValue(transformId) ||
+      transformId === 'uint32_registros' ||
+      transformId === 'ieee754_32'
+    );
   }
 
   private normalizeRole(roleId: string | null | undefined): string {
