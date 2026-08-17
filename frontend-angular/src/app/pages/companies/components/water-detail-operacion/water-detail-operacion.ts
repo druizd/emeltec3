@@ -1075,8 +1075,10 @@ export class WaterDetailOperacionComponent implements OnInit, OnDestroy {
     return '';
   }
 
-  private mapHistoryRows(res: any): HistoricalRow[] {
-    const rows = Array.isArray(res?.data?.rows) ? res.data.rows : [];
+  private mapHistoryRows(res: { data?: { rows?: unknown[] } | null }): HistoricalRow[] {
+    const rows: HistoricalApiRow[] = Array.isArray(res?.data?.rows)
+      ? (res.data.rows as HistoricalApiRow[])
+      : [];
     return rows.map((row: HistoricalApiRow) => {
       const timestamp = this.parseDate(row.timestamp || row.fecha || '');
       return {

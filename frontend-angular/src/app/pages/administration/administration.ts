@@ -16,18 +16,13 @@ import { forkJoin } from 'rxjs';
 import {
   AdministrationService,
   CompanyNode,
-  CreateVariableMapPayload,
   DetectedDevice,
   PozoConfig,
   SiteRecord,
   SiteTypeCatalogItem,
   SiteTypeCatalogResponse,
-  SiteTypeRoleOption,
-  SiteTypeTransformOption,
-  SiteVariable,
   SiteVariablesPayload,
   SubCompanyNode,
-  VariableMapping,
 } from '../../services/administration.service';
 import { CompanyService } from '../../services/company.service';
 import { KpiCardComponent } from '../../components/ui/kpi-card';
@@ -117,36 +112,6 @@ interface SiteForm {
   obra_dga: string;
   slug: string;
 }
-
-interface VariableForm {
-  mapId: string;
-  alias: string;
-  d1: string;
-  d2: string;
-  tipo_dato: string;
-  unidad: string;
-  rol_dashboard: string;
-  transformacion: string;
-  factor: string;
-  offset: string;
-  sandboxRaw: string;
-}
-
-const ADMIN_PAGE_SIZE = 10;
-
-const DEFAULT_VARIABLE_FORM: VariableForm = {
-  mapId: '',
-  alias: '',
-  d1: '',
-  d2: '',
-  tipo_dato: 'FLOAT',
-  unidad: '',
-  rol_dashboard: 'generico',
-  transformacion: 'directo',
-  factor: '1',
-  offset: '0',
-  sandboxRaw: '',
-};
 
 @Component({
   selector: 'app-administration',
@@ -657,7 +622,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     obra_dga: '',
     slug: '',
   });
-  variableForm = signal<VariableForm>({ ...DEFAULT_VARIABLE_FORM });
 
   allSubCompanies = computed<SubCompanyOption[]>(() =>
     this.hierarchy().flatMap((company) =>
@@ -699,21 +663,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   );
 
   siteTypeOptions = computed<SiteTypeCatalogItem[]>(() => Object.values(this.siteTypeCatalog()));
-
-  selectedSiteCatalog = computed<SiteTypeCatalogItem>(() => {
-    const type = this.siteVariables().site.tipo_sitio || this.siteForm().tipo_sitio || 'generico';
-    return (
-      this.siteTypeCatalog()[type] ||
-      this.siteTypeCatalog()['generico'] ||
-      DEFAULT_SITE_TYPE_CATALOG['generico']
-    );
-  });
-
-  variableRoleOptions = computed<SiteTypeRoleOption[]>(() => this.selectedSiteCatalog().roles);
-
-  variableTransformOptions = computed<SiteTypeTransformOption[]>(() =>
-    this.selectedSiteCatalog().transforms.filter((transform) => transform.enabled !== false),
-  );
 
   ngOnInit(): void {
     this.loadDashboard();
@@ -798,109 +747,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
   @HostListener('document:keydown.escape')
   handleEscapeKey(): void {
     if (this.confirmDialog()) this.cancelConfirmDialog();
-  }
-
-  private totalPages(totalItems: number): number {
-    return Math.max(1, Math.ceil(totalItems / ADMIN_PAGE_SIZE));
-  }
-
-  updateVariableForm(field: keyof VariableForm, value: string): void {
-    this.variableForm.update((form) => ({ ...form, [field]: value }));
-  }
-
-  updateVariableRole(role: string): void {
-    const nextRole = this.normalizeVariableRoleForForm(role);
-    const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
-
-    this.variableForm.update((form) => ({
-      ...form,
-      rol_dashboard: nextRole,
-      unidad: form.unidad || roleOption?.unitHint || '',
-      transformacion: this.suggestTransformForRole(nextRole, form.transformacion),
-    }));
-  }
-
-  selectVariableKey(d1: string): void {
-    const selected = this.siteVariables().variables.find((variable) => variable.nombre_dato === d1);
-    const nextRole = this.inferVariableRoleFromValues(
-      this.variableForm().alias || selected?.nombre_dato,
-      d1,
-      this.variableForm().unidad,
-    );
-    const roleOption = this.variableRoleOptions().find((item) => item.id === nextRole);
-
-    this.variableForm.update((form) => ({
-      ...form,
-      d1,
-      alias: form.alias || selected?.nombre_dato || '',
-      tipo_dato: form.tipo_dato || this.guessDataType(selected?.valor_dato ?? null),
-      rol_dashboard: form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
-      unidad: form.unidad || roleOption?.unitHint || '',
-      transformacion: this.suggestTransformForRole(
-        form.rol_dashboard === 'generico' ? nextRole : form.rol_dashboard,
-        form.transformacion,
-      ),
-      sandboxRaw:
-        selected?.valor_dato === null || selected?.valor_dato === undefined
-          ? form.sandboxRaw
-          : String(selected.valor_dato),
-    }));
-  }
-
-  updateVariableTransform(transformacion: string): void {
-    const normalizedTransform = this.normalizeVariableTransformForForm(transformacion);
-
-    this.variableForm.update((form) => ({
-      ...form,
-      transformacion: normalizedTransform,
-      factor: this.isLinearTransformValue(normalizedTransform) ? form.factor || '1' : '1',
-      offset: this.isLinearTransformValue(normalizedTransform) ? form.offset || '0' : '0',
-    }));
-  }
-
-  isLinearTransform(): boolean {
-    return this.isLinearTransformValue(this.variableForm().transformacion);
-  }
-
-  requiresSecondRegister(): boolean {
-    return this.selectedVariableTransform()?.requiresD2 === true;
-  }
-
-  selectedVariableRole(): SiteTypeRoleOption | undefined {
-    return this.variableRoleOptions().find((role) => role.id === this.variableForm().rol_dashboard);
-  }
-
-  selectedVariableTransform(): SiteTypeTransformOption | undefined {
-    return this.variableTransformOptions().find(
-      (transform) => transform.id === this.variableForm().transformacion,
-    );
-  }
-
-  previewResultText(): string {
-    const form = this.variableForm();
-    const rawText = String(form.sandboxRaw ?? '').trim();
-    const unit = form.unidad ? ` ${form.unidad}` : '';
-
-    if (!rawText) return 'Ingresa un valor crudo';
-
-    if (this.isLinearTransformValue(form.transformacion)) {
-      const raw = this.parsePreviewNumber(rawText);
-      const factor = this.parsePreviewNumber(form.factor) ?? 1;
-      const offset = this.parsePreviewNumber(form.offset) ?? 0;
-      if (raw === null) return 'Valor crudo no numerico';
-      return `${this.formatPreviewNumber(raw * factor + offset)}${unit}`;
-    }
-
-    if (form.transformacion === 'ieee754_32') {
-      return form.d2 ? 'Se calculara con dos registros' : 'Selecciona segundo registro';
-    }
-
-    return `${rawText}${unit}`;
-  }
-
-  displayVariableTransform(transformacion: string | null | undefined): string {
-    const normalized = this.normalizeVariableTransformForForm(transformacion);
-    return this.findTransformOption(normalized)?.label || normalized;
   }
 
   submitCompany(event: Event): void {
@@ -1499,90 +1345,8 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     });
   }
 
-  prepareVariableMap(variable: SiteVariable): void {
-    const params = variable.mapping?.parametros || null;
-
-    this.variableForm.set({
-      mapId: variable.mapping?.id || '',
-      alias: variable.mapping?.alias || variable.nombre_dato,
-      d1: variable.nombre_dato,
-      d2: variable.mapping?.d2 || '',
-      tipo_dato: variable.mapping?.tipo_dato || this.guessDataType(variable.valor_dato),
-      unidad: variable.mapping?.unidad || '',
-      rol_dashboard: this.normalizeVariableRoleForForm(variable.mapping?.rol_dashboard),
-      transformacion: this.normalizeVariableTransformForForm(variable.mapping?.transformacion),
-      factor: this.configNumberToString(params?.factor) || '1',
-      offset: this.configNumberToString(params?.offset) || '0',
-      sandboxRaw:
-        variable.valor_dato === null || variable.valor_dato === undefined
-          ? ''
-          : String(variable.valor_dato),
-    });
-  }
-
-  createVariableMap(event: Event): void {
-    event.preventDefault();
-    const siteId = this.selectedSiteId();
-    if (!siteId) {
-      this.setError('Selecciona un sitio.');
-      return;
-    }
-
-    const payload: CreateVariableMapPayload = {
-      alias: this.variableForm().alias,
-      d1: this.variableForm().d1,
-      d2: this.variableForm().d2 || null,
-      tipo_dato: this.variableForm().tipo_dato,
-      unidad: this.variableForm().unidad || null,
-      rol_dashboard: this.normalizeVariableRoleForForm(this.variableForm().rol_dashboard),
-      transformacion: this.normalizeVariableTransformForForm(this.variableForm().transformacion),
-      parametros: this.buildVariableParameters(),
-    };
-
-    this.busyAction.set('variable');
-    const request$ = this.variableForm().mapId
-      ? this.api.updateSiteVariableMap(siteId, this.variableForm().mapId, payload)
-      : this.api.createSiteVariableMap(siteId, payload);
-
-    request$.subscribe({
-      next: (res) => {
-        this.busyAction.set('');
-        this.setSuccess(res.message || 'Variable guardada.');
-        this.variableForm.set({ ...DEFAULT_VARIABLE_FORM });
-        this.loadSiteVariables(siteId);
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible guardar la variable.'));
-      },
-    });
-  }
-
-  deleteVariableMap(mapping: VariableMapping): void {
-    const siteId = this.selectedSiteId();
-    if (!siteId) return;
-
-    this.busyAction.set('delete-variable');
-    this.api.deleteSiteVariableMap(siteId, mapping.id).subscribe({
-      next: (res) => {
-        this.busyAction.set('');
-        this.setSuccess(res.message || 'Variable eliminada.');
-        this.loadSiteVariables(siteId);
-      },
-      error: (err: unknown) => {
-        this.busyAction.set('');
-        this.setError(this.errorMessage(err, 'No fue posible eliminar la variable.'));
-      },
-    });
-  }
-
   openSite(site: SiteRecord): void {
     this.router.navigate(dashboardRouteForSite(site));
-  }
-
-  displayValue(value: SiteVariable['valor_dato']): string {
-    if (value === null || value === undefined) return '-';
-    return String(value);
   }
 
   sectionButtonClass(section: SectionId): string {
@@ -1595,18 +1359,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     return this.status().type === 'success'
       ? `${base} border-emerald-200 bg-emerald-50 text-emerald-700`
       : `${base} border-red-200 bg-red-50 text-red-700`;
-  }
-
-  private paginate<T>(items: T[], page: number): T[] {
-    const currentPage = this.clampPage(page, items.length);
-    const start = (currentPage - 1) * ADMIN_PAGE_SIZE;
-    return items.slice(start, start + ADMIN_PAGE_SIZE);
-  }
-
-  private clampPage(page: number, totalItems: number): number {
-    const total = this.totalPages(totalItems);
-    const normalized = Number.isFinite(page) ? Math.trunc(page) : 1;
-    return Math.min(Math.max(normalized, 1), total);
   }
 
   // Paginación de sitios delegada al hijo SitiosSectionComponent.
@@ -1664,12 +1416,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     if (this.selectedSiteId()) {
       this.selectSite(this.selectedSiteId());
     }
-  }
-
-  private guessDataType(value: SiteVariable['valor_dato']): string {
-    if (typeof value === 'boolean') return 'BOOLEAN';
-    if (typeof value === 'number') return Number.isInteger(value) ? 'INTEGER' : 'FLOAT';
-    return 'TEXT';
   }
 
   private setSuccess(message: string): void {
@@ -1762,16 +1508,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     });
   }
 
-  private matchesSearch(query: string, values: (string | number | null | undefined)[]): boolean {
-    const normalizedQuery = this.normalizeSearchText(query);
-    if (!normalizedQuery) return true;
-    const haystack = this.normalizeSearchText(...values.map((value) => String(value ?? '')));
-    return normalizedQuery
-      .split(' ')
-      .filter(Boolean)
-      .every((part) => haystack.includes(part));
-  }
-
   private errorMessage(err: unknown, fallback: string): string {
     if (err instanceof HttpErrorResponse) {
       const payload = err.error as { message?: string; error?: string } | string | undefined;
@@ -1795,63 +1531,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     };
   }
 
-  private buildPozoConfigPayload(): PozoConfig | null {
-    if (this.siteForm().tipo_sitio !== 'pozo') return null;
-
-    return {
-      profundidad_pozo_m: this.numberOrNull(this.siteForm().profundidad_pozo_m),
-      profundidad_sensor_m: this.numberOrNull(this.siteForm().profundidad_sensor_m),
-    };
-  }
-
-  private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
-    const form = this.variableForm();
-
-    if (this.transformUsesLinearParameters(form.transformacion)) {
-      return {
-        factor: this.numberOrNull(form.factor) ?? 1,
-        offset: this.numberOrNull(form.offset) ?? 0,
-      };
-    }
-
-    return {};
-  }
-
-  private inferVariableRoleFromValues(...values: (string | null | undefined)[]): string {
-    const text = this.normalizeSearchText(...values);
-    const availableRoles = new Set(this.variableRoleOptions().map((role) => role.id));
-
-    if (text.includes('freatico') && availableRoles.has('nivel')) return 'nivel';
-    if (
-      (text.includes('nivel') || text.includes('level') || text.includes('sonda')) &&
-      availableRoles.has('nivel')
-    )
-      return 'nivel';
-    if (
-      (text.includes('caudal') || text.includes('l s') || text.includes('lps')) &&
-      availableRoles.has('caudal')
-    )
-      return 'caudal';
-    if (
-      text.includes('totalizador') ||
-      text.includes('totalizado') ||
-      text.includes('acumulado') ||
-      text.includes('volumen')
-    ) {
-      return availableRoles.has('totalizador') ? 'totalizador' : 'generico';
-    }
-    if (
-      (text.includes('senal') ||
-        text.includes('signal') ||
-        text.includes('rssi') ||
-        text.includes('csq')) &&
-      availableRoles.has('señal')
-    )
-      return 'señal';
-
-    return 'generico';
-  }
-
   private patchPozoConfigForm(config: PozoConfig | null): void {
     this.siteForm.update((form) => ({
       ...form,
@@ -1861,84 +1540,6 @@ export class AdministrationComponent implements OnInit, OnDestroy {
       obra_dga: config?.obra_dga || '',
       slug: config?.slug || '',
     }));
-  }
-
-  private isLinearTransformValue(transformacion: string): boolean {
-    return this.transformUsesLinearParameters(transformacion);
-  }
-
-  private normalizeVariableTransformForForm(transformacion: string | null | undefined): string {
-    if (transformacion === 'lineal' || transformacion === 'escala_lineal') return 'lineal';
-    if (transformacion === 'ieee754' || transformacion === 'ieee754_32') return 'ieee754_32';
-    if (
-      transformacion === 'caudal' ||
-      transformacion === 'caudal_m3h_lps' ||
-      transformacion === 'nivel_freatico'
-    )
-      return 'lineal';
-    return 'directo';
-  }
-
-  private normalizeVariableRoleForForm(role: string | null | undefined): string {
-    const normalizedInput = String(role ?? '')
-      .trim()
-      .toLowerCase();
-    const normalized =
-      normalizedInput === 'nivel_freatico' ? 'nivel' : normalizedInput || 'generico';
-    return this.variableRoleOptions().some((option) => option.id === normalized)
-      ? normalized
-      : 'generico';
-  }
-
-  private suggestTransformForRole(role: string, currentTransform: string): string {
-    const current = this.normalizeVariableTransformForForm(currentTransform);
-    if (current !== 'directo') return current;
-    return current;
-  }
-
-  private transformUsesLinearParameters(transformacion: string): boolean {
-    return transformacion === 'lineal';
-  }
-
-  private findTransformOption(transformacion: string): SiteTypeTransformOption | undefined {
-    const normalized = this.normalizeVariableTransformForForm(transformacion);
-    return this.variableTransformOptions().find((option) => option.id === normalized);
-  }
-
-  private normalizeSearchText(...values: (string | null | undefined)[]): string {
-    return values
-      .map((value) => String(value ?? '').trim())
-      .join(' ')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, ' ')
-      .trim();
-  }
-
-  private parsePreviewNumber(value: string): number | null {
-    const normalized = String(value ?? '')
-      .trim()
-      .replace(',', '.');
-    if (!normalized) return null;
-    const parsed = Number(normalized);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-
-  private formatPreviewNumber(value: number): string {
-    if (!Number.isFinite(value)) return 'No calculable';
-    const rounded = Math.round(value * 1000) / 1000;
-    return Number.isInteger(rounded)
-      ? String(rounded)
-      : String(rounded)
-          .replace(/(\.\d*?)0+$/, '$1')
-          .replace(/\.$/, '');
-  }
-
-  private numberOrNull(value: string): number | null {
-    if (value === undefined || value === null || String(value).trim() === '') return null;
-    const parsed = Number(String(value).trim().replace(',', '.'));
-    return Number.isFinite(parsed) ? parsed : null;
   }
 
   private configNumberToString(value: number | null | undefined): string {

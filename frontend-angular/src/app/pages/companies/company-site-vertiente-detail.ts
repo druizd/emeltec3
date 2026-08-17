@@ -38,7 +38,7 @@ import {
 import { DatoDgaRow, DgaService } from '../../services/dga.service';
 import { AuthService } from '../../services/auth.service';
 import { HttpClient } from '@angular/common/http';
-import type { CompanyNode } from '@emeltec/shared';
+import type { ApiResponse, CompanyNode, SiteDashboardHistoryPayload } from '@emeltec/shared';
 import { type SiteContext, findAccessibleSite } from '../../shared/site-context';
 
 /**
@@ -2804,7 +2804,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
     this.startMonthlyCountersPolling(siteId);
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res) => {
         if (!res.ok) {
           this.router.navigate(['/companies']);
           return;
@@ -3914,7 +3914,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
 
   private refreshDashboardSnapshot(siteId: string): void {
     this.companyService.getSiteDashboardData(siteId).subscribe({
-      next: (res: any) => {
+      next: (res) => {
         const payload = res?.ok === false ? null : res?.data || res || null;
         if (!payload) return;
         this.syncServerClock(payload.server_time);
@@ -3931,7 +3931,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
     if (!siteId) return;
 
     this.companyService.fetchHierarchy().subscribe({
-      next: (res: any) => {
+      next: (res) => {
         if (!res.ok) return;
         const match = this.findAccessibleSite(res.data, siteId);
         if (!match) return;
@@ -3970,9 +3970,9 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
 
   private loadHydratedSite(match: SiteContext): void {
     this.companyService.getSites(match.subCompany.id).subscribe({
-      next: (json: any) => {
+      next: (json) => {
         const hydratedSite = json.ok
-          ? (json.data || []).find((site: any) => site.id === match.site.id)
+          ? (json.data || []).find((site) => site.id === match.site.id)
           : null;
 
         this.siteContext.set({
@@ -4008,7 +4008,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
           ),
         ),
       )
-      .subscribe((res: any) => {
+      .subscribe((res) => {
         if (!res) return;
 
         const payload = res?.ok === false ? null : res?.data || res || null;
@@ -4067,7 +4067,7 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
             );
         }),
       )
-      .subscribe((res: any) => {
+      .subscribe((res) => {
         if (!res) return;
 
         const apiRows = this.extractHistoryApiRows(res);
@@ -4087,10 +4087,12 @@ export class CompanySiteVertienteDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  private extractHistoryApiRows(res: any): HistoricalTelemetryApiRow[] {
+  private extractHistoryApiRows(
+    res: ApiResponse<SiteDashboardHistoryPayload> | null | undefined,
+  ): HistoricalTelemetryApiRow[] {
     if (res?.ok === false) return [];
-    const rows = res?.data?.rows || res?.data || [];
-    return Array.isArray(rows) ? rows : [];
+    const rows = res?.data?.rows ?? [];
+    return Array.isArray(rows) ? (rows as unknown as HistoricalTelemetryApiRow[]) : [];
   }
 
   private mapHistoryApiRow(

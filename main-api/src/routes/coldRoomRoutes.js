@@ -1843,7 +1843,7 @@ router.get('/:siteId/alarm-eligible-users', async (req, res) => {
     if (siteRes.rowCount === 0) {
       return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
     }
-    const { sub_empresa_id, empresa_id } = siteRes.rows[0];
+    const { empresa_id } = siteRes.rows[0];
 
     // Incluir usuarios de la empresa del sitio (cualquier sub_empresa, cualquier
     // tipo). SuperAdmins excluidos: son staff Emeltec, no destinatarios
@@ -1934,8 +1934,6 @@ router.get('/:siteId/alarm-events', async (req, res) => {
 // === ALARM EVAL LOOP (cron-like, in-process)
 // =============================================================================
 
-const SEVERITY_RANK = { info: 0, warn: 1, crit: 2 };
-
 async function evalRulesForSite(siteId) {
   // Carga reglas habilitadas.
   const rulesRes = await pool.query(
@@ -1960,7 +1958,6 @@ async function evalRulesForSite(siteId) {
       const triggered = evalRuleOp(rule, value);
 
       // Look up open event for this rule+target.
-      const eventKey = `${rule.id}::${label}`;
       const openRes = await pool.query(
         `SELECT * FROM cold_room_alarm_event
          WHERE rule_id=$1 AND target_label=$2 AND resolved_at IS NULL

@@ -495,7 +495,7 @@ export async function getDailySeries(opts: {
   // Días sin fila materializada necesitan fallback on-demand.
   const missingDays = days.filter((d) => !materialized.has(getDayRangeChile(d).diaIso));
 
-  let onDemandByDay = new Map<string, import('./types').MonthDeltaResult>();
+  let onDemandByDay = new Map<string, MonthDeltaResult>();
 
   if (missingDays.length > 0) {
     // Solo carga mappings/config si hace falta el fallback.
@@ -749,7 +749,7 @@ export async function getJornadaSeries(opts: {
   // Días sin fila materializada necesitan fallback on-demand.
   const missingDays = days.filter((d) => !materialized.has(getDayRangeChile(d).diaIso));
 
-  let onDemandByDay = new Map<string, import('./types').MonthDeltaResult>();
+  let onDemandByDay = new Map<string, MonthDeltaResult>();
 
   if (missingDays.length > 0) {
     const mappings = await getMappingsBySiteId(sitioId);

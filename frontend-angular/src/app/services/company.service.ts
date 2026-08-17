@@ -14,6 +14,7 @@ import type {
   SiteRecord,
   SiteDashboardData,
   SiteDashboardHistoryEntry,
+  SiteDashboardHistoryPayload,
 } from '@emeltec/shared';
 
 export interface ContadorMensualPoint {
@@ -394,7 +395,7 @@ export class CompanyService {
     siteId: string,
     limit = 500,
     options: { from?: string; to?: string; granularity?: HistoryGranularity; page?: number } = {},
-  ): Observable<ApiResponse<SiteDashboardHistoryEntry[]>> {
+  ): Observable<ApiResponse<SiteDashboardHistoryPayload>> {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
     if (options.page) params.set('page', String(options.page));
@@ -402,7 +403,7 @@ export class CompanyService {
     if (options.to) params.set('to', options.to);
     if (options.granularity) params.set('granularity', options.granularity);
     params.set('t', String(Date.now()));
-    return this.http.get<ApiResponse<SiteDashboardHistoryEntry[]>>(
+    return this.http.get<ApiResponse<SiteDashboardHistoryPayload>>(
       `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,
     );
   }

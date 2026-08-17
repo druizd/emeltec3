@@ -12,6 +12,7 @@ const {
   remainingLockMinutes,
   clampOtpMinutes,
 } = require('../services/securityPolicy');
+const { validateNewPassword } = require('../services/passwordPolicy');
 
 // Política de seguridad: la sesión dura 1 hora, sin refresh ni extensión silenciosa.
 const AUTH_TOKEN_TTL = '1h';
@@ -43,14 +44,14 @@ async function leerRespuestaJson(res) {
   }
 }
 
-async function dispararCorreoOtp(email, nombre, code, minutes) {
+async function dispararCorreoOtp(email, nombre, code, minutes, purpose = 'acceso') {
   const res = await fetch(`${mainApiUrl}/api/internal/email/otp`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'X-Internal-Key': internalApiKey,
     },
-    body: JSON.stringify({ email, nombre, code, minutes }),
+    body: JSON.stringify({ email, nombre, code, minutes, purpose }),
   });
 
   const payload = await leerRespuestaJson(res);
@@ -63,6 +64,34 @@ async function dispararCorreoOtp(email, nombre, code, minutes) {
   }
 
   return payload;
+}
+
+/**
+ * Aviso "tu contrasena fue cambiada". Best-effort: la contrasena YA cambió, así
+ * que un fallo de correo no puede tumbar la respuesta ni revertir el cambio.
+ */
+async function notificarCambioPassword(user, origen, req) {
+  try {
+    const res = await fetch(`${mainApiUrl}/api/internal/email/password-changed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Key': internalApiKey,
+      },
+      body: JSON.stringify({
+        email: user.email,
+        nombre: user.nombre,
+        origen,
+        ip: clientIp(req),
+        ts: new Date().toISOString(),
+      }),
+    });
+    if (!res.ok) {
+      console.error('[auth-api] Aviso de cambio de contrasena rechazado:', res.status);
+    }
+  } catch (err) {
+    console.error('[auth-api] No se pudo avisar el cambio de contrasena:', err.message);
+  }
 }
 
 function clientIp(req) {
@@ -235,7 +264,12 @@ async function ensureNotLocked(req, user, res) {
   return true;
 }
 
-async function issueOtp(req, user, minutes, { ignorePreference = false, action } = {}) {
+async function issueOtp(
+  req,
+  user,
+  minutes,
+  { ignorePreference = false, action, purpose = 'acceso' } = {},
+) {
   if (!ignorePreference && !allowsOtpLogin(user)) {
     const err = new Error('Ingreso con codigo OTP desactivado.');
     err.status = 403;
@@ -278,7 +312,7 @@ async function issueOtp(req, user, minutes, { ignorePreference = false, action }
   );
 
   try {
-    await dispararCorreoOtp(user.email, user.nombre, otpCode, minutes);
+    await dispararCorreoOtp(user.email, user.nombre, otpCode, minutes, purpose);
   } catch (err) {
     try {
       await db.query('UPDATE usuario SET otp_hash = NULL, otp_expires_at = NULL WHERE email = $1', [
@@ -400,11 +434,8 @@ exports.startSetup = async (req, res, next) => {
     const password = String(new_password || '');
 
     if (!email) return res.status(400).json({ ok: false, error: 'El correo es requerido.' });
-    if (password.length < 8) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'La contrasena debe tener al menos 8 caracteres.' });
-    }
+    const policy = validateNewPassword(password);
+    if (!policy.ok) return res.status(400).json({ ok: false, error: policy.error });
 
     const user = await findAuthUserByEmail(email);
     if (!user) return rejectUnknownEmail(req, email, res);
@@ -441,11 +472,8 @@ exports.completeSetup = async (req, res, next) => {
     if (!email || !otp_code || !setup_token) {
       return res.status(400).json({ ok: false, error: 'Correo, codigo y token son requeridos.' });
     }
-    if (password.length < 8) {
-      return res
-        .status(400)
-        .json({ ok: false, error: 'La contrasena debe tener al menos 8 caracteres.' });
-    }
+    const policy = validateNewPassword(password);
+    if (!policy.ok) return res.status(400).json({ ok: false, error: policy.error });
 
     let decoded;
     try {
@@ -496,6 +524,188 @@ exports.completeSetup = async (req, res, next) => {
     });
 
     return finishLogin(req, res, user, 'setup_password');
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.startRecovery = async (req, res, next) => {
+  try {
+    const { email, new_password } = req.body;
+    const password = String(new_password || '');
+
+    if (!email) return res.status(400).json({ ok: false, error: 'El correo es requerido.' });
+    const policy = validateNewPassword(password);
+    if (!policy.ok) return res.status(400).json({ ok: false, error: policy.error });
+
+    // EMT-H10 (anti-enumeración): el reset_token se emite SIEMPRE, exista o no
+    // la cuenta. Si no existe, /recover/complete fallará luego con el 401
+    // genérico de codigo invalido, indistinguible de un OTP equivocado.
+    const resetToken = jwt.sign({ email, purpose: 'password_reset' }, jwtSecret, {
+      expiresIn: '10m',
+      algorithm: 'HS256',
+    });
+    const generic = {
+      ok: true,
+      reset_token: resetToken,
+      message: 'Si el correo esta registrado, recibiras un codigo para restablecer la contrasena.',
+    };
+
+    const user = await findAuthUserByEmail(email);
+    if (!user) {
+      await audit.record({
+        req,
+        action: 'password_reset.unknown_email',
+        actorEmail: email,
+        statusCode: 200,
+      });
+      return res.json(generic);
+    }
+
+    // Sin OTP para cuentas bloqueadas, sin activar, desactivadas o que no usan
+    // contrasena (auth_mode = 'otp'). Misma respuesta genérica en todos los casos.
+    const skipReason = evaluateLock(user.locked_until).locked
+      ? 'account_locked'
+      : !user.activated_at
+        ? 'not_activated'
+        : !user.activo
+          ? 'inactive'
+          : !allowsPasswordLogin(user)
+            ? 'password_login_disabled'
+            : null;
+
+    if (skipReason) {
+      await audit.record({
+        req,
+        action: 'password_reset.skipped',
+        actorId: user.id,
+        actorEmail: user.email,
+        actorTipo: user.tipo,
+        statusCode: 200,
+        metadata: { reason: skipReason },
+      });
+      return res.json(generic);
+    }
+
+    // EMT-H10: un 429 (throttle por cuenta) o un 502 (correo caído) sólo pueden
+    // ocurrir para cuentas EXISTENTES, así que propagarlos convertía el status
+    // en un oráculo de enumeración. Se responde el genérico y el motivo real
+    // queda en audit_log (issueOtp ya registra rate_limited / email_failed).
+    let expiresAt;
+    try {
+      ({ expiresAt } = await issueOtp(req, user, DEFAULT_OTP_MINS, {
+        ignorePreference: true,
+        action: 'password_reset.otp_sent',
+        purpose: 'password_reset',
+      }));
+    } catch (err) {
+      console.error('[auth-api] OTP de recuperacion no emitido:', err.status, err.message);
+      return res.json(generic);
+    }
+
+    return res.json({ ...generic, expires_at: expiresAt.toISOString() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.completeRecovery = async (req, res, next) => {
+  try {
+    const { email, new_password, otp_code, reset_token } = req.body;
+    const password = String(new_password || '');
+
+    if (!email || !otp_code || !reset_token) {
+      return res.status(400).json({ ok: false, error: 'Correo, codigo y token son requeridos.' });
+    }
+    const policy = validateNewPassword(password);
+    if (!policy.ok) return res.status(400).json({ ok: false, error: policy.error });
+
+    try {
+      const decoded = jwt.verify(reset_token, jwtSecret, { algorithms: ['HS256'] });
+      if (decoded.email !== email || decoded.purpose !== 'password_reset') throw new Error();
+    } catch {
+      return res
+        .status(401)
+        .json({ ok: false, error: 'El restablecimiento expiro. Solicita otro codigo.' });
+    }
+
+    const invalidCode = { ok: false, error: 'Codigo invalido o expirado.' };
+
+    const user = await findAuthUserByEmail(email);
+    if (!user) {
+      await audit.record({
+        req,
+        action: 'password_reset.failure',
+        actorEmail: email,
+        statusCode: 401,
+        metadata: { reason: 'user_not_found' },
+      });
+      return res.status(401).json(invalidCode);
+    }
+    if (await ensureNotLocked(req, user, res)) return;
+    if (!user.activated_at || !user.activo || !allowsPasswordLogin(user)) {
+      return res.status(401).json(invalidCode);
+    }
+
+    // Sin OTP pendiente no se cuenta el intento contra el lockout. Como
+    // /recover/start entrega reset_token para CUALQUIER correo, contarlo dejaba
+    // bloquear a voluntad una cuenta conocida mandando codigos al azar.
+    const otpExpired = user.otp_expires_at && new Date() > new Date(user.otp_expires_at);
+    const hasPendingOtp = !!user.otp_hash && !otpExpired;
+    if (!hasPendingOtp) {
+      await audit.record({
+        req,
+        action: 'password_reset.failure',
+        actorId: user.id,
+        actorEmail: user.email,
+        actorTipo: user.tipo,
+        statusCode: 401,
+        metadata: { reason: 'no_pending_otp' },
+      });
+      return res.status(401).json(invalidCode);
+    }
+
+    const validOtp = await verifyOtpCredential(user, String(otp_code));
+    if (!validOtp) {
+      await recordFailedLogin(req, user, email);
+      return res.status(401).json(invalidCode);
+    }
+
+    // No se toca auth_mode: una cuenta 'password_otp' conserva su segundo factor.
+    // sessions_valid_from corta las sesiones abiertas con la contrasena anterior.
+    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+    await db.query(
+      `UPDATE usuario
+       SET password_hash = $1,
+           password_set_at = NOW(),
+           sessions_valid_from = NOW(),
+           otp_hash = NULL,
+           otp_expires_at = NULL,
+           failed_logins = 0,
+           locked_until = NULL,
+           updated_at = NOW()
+       WHERE email = $2`,
+      [passwordHash, email],
+    );
+
+    await audit.record({
+      req,
+      action: 'password_reset.success',
+      actorId: user.id,
+      actorEmail: user.email,
+      actorTipo: user.tipo,
+      statusCode: 200,
+      metadata: { sessions_revoked: true },
+    });
+
+    await notificarCambioPassword(user, 'recuperacion', req);
+
+    // Sin auto-login: el usuario vuelve a /login con su nueva contrasena, de modo
+    // que una cuenta con MFA siga exigiendo su segundo factor al ingresar.
+    return res.json({
+      ok: true,
+      message: 'Contrasena actualizada. Inicia sesion con tu nueva contrasena.',
+    });
   } catch (err) {
     next(err);
   }
@@ -630,7 +840,13 @@ exports.requestCode = async (req, res, next) => {
       return res.json(generic);
     }
 
-    await issueOtp(req, usr, minutes);
+    // Mismo criterio que /recover/start: 429 y 502 sólo ocurren para cuentas
+    // existentes, así que no pueden llegar al cliente sin romper la uniformidad.
+    try {
+      await issueOtp(req, usr, minutes);
+    } catch (err) {
+      console.error('[auth-api] OTP no emitido:', err.status, err.message);
+    }
     return res.json(generic);
   } catch (err) {
     next(err);

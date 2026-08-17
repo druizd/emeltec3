@@ -19,14 +19,16 @@ Sin workers. Puro request-response.
 
 Base: `/api/auth`
 
-| Método | Ruta                       | Rate limit     | Qué hace                                            |
-| ------ | -------------------------- | -------------- | --------------------------------------------------- |
-| POST   | `/api/auth/start`          | 30/min global  | Inicia login, detecta estado cuenta → devuelve flow |
-| POST   | `/api/auth/setup/start`    | 30/min global  | Activa cuenta nueva, envía OTP                      |
-| POST   | `/api/auth/setup/complete` | 30/min global  | Completa activación con OTP + password              |
-| POST   | `/api/auth/login`          | 5/min estricto | Valida credenciales → JWT o challenge MFA           |
-| POST   | `/api/auth/request-code`   | 5/min estricto | Solicita nuevo OTP manualmente                      |
-| GET    | `/api/health`              | Sin límite     | Liveness + test SELECT NOW() a DB                   |
+| Método | Ruta                         | Rate limit     | Qué hace                                            |
+| ------ | ---------------------------- | -------------- | --------------------------------------------------- |
+| POST   | `/api/auth/start`            | 30/min global  | Inicia login, detecta estado cuenta → devuelve flow |
+| POST   | `/api/auth/setup/start`      | 30/min global  | Activa cuenta nueva, envía OTP                      |
+| POST   | `/api/auth/setup/complete`   | 30/min global  | Completa activación con OTP + password              |
+| POST   | `/api/auth/recover/start`    | 5/min estricto | Inicia reset de contraseña, envía OTP               |
+| POST   | `/api/auth/recover/complete` | 5/min estricto | Aplica la nueva contraseña con OTP                  |
+| POST   | `/api/auth/login`            | 5/min estricto | Valida credenciales → JWT o challenge MFA           |
+| POST   | `/api/auth/request-code`     | 5/min estricto | Solicita nuevo OTP manualmente                      |
+| GET    | `/api/health`                | Sin límite     | Liveness + test SELECT NOW() a DB                   |
 
 ---
 
@@ -61,6 +63,30 @@ POST /setup/start    → setup_token (10min) + OTP por email
 POST /setup/complete → activa cuenta, setea password, JWT 1h
 ```
 
+### 5. Recuperación de contraseña
+
+```
+POST /recover/start    → reset_token (10min) + OTP por email (purpose=password_reset)
+POST /recover/complete → setea password, corta sesiones, SIN JWT (vuelve a /login)
+```
+
+Solo aplica a cuentas activadas, activas, no bloqueadas y con `auth_mode` que
+permita contraseña (`password` / `password_otp`). El `auth_mode` no se modifica:
+una cuenta con MFA conserva su segundo factor y debe usarlo al ingresar — por eso
+`/recover/complete` no emite JWT.
+
+Anti-enumeración: `/recover/start` responde siempre igual (200 + `reset_token`)
+exista o no la cuenta; si el correo no corresponde a una cuenta elegible, no se
+envía OTP y `/recover/complete` falla con el 401 genérico de código inválido.
+
+Sin OTP pendiente, `/recover/complete` **no** cuenta el intento contra el lockout:
+como el `reset_token` se entrega para cualquier correo, contarlo permitía bloquear
+a voluntad una cuenta conocida mandando códigos al azar.
+
+Al completarse se setea `sessions_valid_from = NOW()` (cierra las sesiones
+abiertas con la contraseña anterior) y se dispara el aviso "tu contraseña fue
+cambiada" vía `POST {MAIN_API_URL}/api/internal/email/password-changed`.
+
 ---
 
 ## Tokens JWT (HS256, `JWT_SECRET` compartido con main-api)
@@ -70,21 +96,30 @@ POST /setup/complete → activa cuenta, setea password, JWT 1h
 | Auth token    | 1h    | `id, email, tipo, empresa_id, sub_empresa_id` |
 | Challenge MFA | 10min | `{ email, purpose: 'mfa' }`                   |
 | Setup token   | 10min | `{ email, purpose: 'account_setup' }`         |
+| Reset token   | 10min | `{ email, purpose: 'password_reset' }`        |
 
 Sin refresh tokens. Expirado → re-login. La duración del auth token es fija: `1h`. El frontend lee el claim `exp`, muestra un aviso 31 segundos antes y cierra sesión automáticamente al expirar. No hay renovación silenciosa por actividad.
+
+**Revocación.** No hay `jti` ni denylist, pero un cambio de contraseña sí corta
+las sesiones: setea `usuario.sessions_valid_from` y main-api rechaza todo token
+cuyo `iat` sea de un segundo anterior a ese corte
+(`main-api/src/services/sessionRevocation.js`). La propagación tarda hasta
+`SESSION_REVOCATION_TTL_MS` (30 s por defecto) por el cache en proceso.
 
 ---
 
 ## Seguridad
 
-| Mecanismo            | Detalle                                           |
-| -------------------- | ------------------------------------------------- |
-| Rate limit global    | 30 req/min por IP en `/api/auth`                  |
-| Rate limit login/OTP | 5 req/min por IP                                  |
-| Lockout por cuenta   | 5 fallos → bloqueo 1 min, registrado en audit_log |
-| OTP hash             | bcrypt cost=12, expiry 30min                      |
-| Password hash        | bcrypt cost=12, mínimo 8 chars                    |
-| Audit log            | Toda acción auth → tabla `audit_log` (Ley 21.663) |
+| Mecanismo            | Detalle                                                               |
+| -------------------- | --------------------------------------------------------------------- |
+| Rate limit global    | 30 req/min por IP en `/api/auth`                                      |
+| Rate limit login/OTP | 5 req/min por IP                                                      |
+| Lockout por cuenta   | 5 fallos → bloqueo 1 min, registrado en audit_log                     |
+| OTP hash             | bcrypt cost=12, expiry 30min                                          |
+| Password hash        | bcrypt cost=12                                                        |
+| Política de password | `services/passwordPolicy.js`: ≥8 chars, fuerza ≥3, nunca solo dígitos |
+| Corte de sesiones    | `usuario.sessions_valid_from` vs claim `iat`                          |
+| Audit log            | Toda acción auth → tabla `audit_log` (Ley 21.663)                     |
 
 ---
 
@@ -109,6 +144,7 @@ Misma DB que main-api: **TimescaleDB** `telemetry_platform`.
 | `otp_requests_count`        | int         | Rate limit OTPs                     |
 | `otp_requests_window_start` | timestamptz | Ventana rate limit OTP              |
 | `activated_at`              | timestamptz | NULL = cuenta sin activar           |
+| `sessions_valid_from`       | timestamptz | Corte de sesiones; NULL = sin corte |
 | `tipo`                      | text        | Rol: SuperAdmin/Admin/Empresa/etc.  |
 | `empresa_id`                | uuid FK     | Tenant empresa                      |
 | `sub_empresa_id`            | uuid FK     | Tenant sub-empresa                  |
@@ -121,13 +157,21 @@ Registro append-only de todas las acciones auth. Campos: `actor_id`, `actor_emai
 
 ## Integración externa
 
-**Solo una:** llamada HTTP interna a main-api para enviar emails OTP.
+**Solo una:** llamadas HTTP internas a main-api para enviar correos.
 
 ```
 POST {MAIN_API_URL}/api/internal/email/otp
 Headers: X-Internal-Key: {INTERNAL_API_KEY}
-Body: { email, nombre, code, minutes }
+Body: { email, nombre, code, minutes, purpose }
+
+POST {MAIN_API_URL}/api/internal/email/password-changed
+Headers: X-Internal-Key: {INTERNAL_API_KEY}
+Body: { email, nombre, origen, ip, ts }
 ```
+
+`purpose` elige la plantilla: `acceso` (login, MFA, activación) o
+`password_reset`. Sin él, quien pedía recuperar su contraseña recibía el correo
+de "código de acceso", con la nota de seguridad apuntando al evento equivocado.
 
 auth-api no envía emails directamente — delega a main-api que usa Resend.
 

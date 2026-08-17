@@ -1071,7 +1071,10 @@ export class AlertasConfiguracionComponent {
           this.simulationError.set('No se pudo cargar el histórico para la simulación.');
           return;
         }
-        const entries = res.data ?? [];
+        // `data` es el envoltorio { site, rows, pagination }, no el array. Antes
+        // se pasaba el objeto entero a buildSimulation y la simulación corría
+        // sobre algo que no era iterable como filas.
+        const entries = res.data?.rows ?? [];
         this.simulationSummary.set(this.buildSimulation(draft, entries));
       },
       error: (err: unknown) => {

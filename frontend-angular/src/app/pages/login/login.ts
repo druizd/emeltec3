@@ -7,7 +7,15 @@ import type { ApiResponse, User } from '@emeltec/shared';
 import type { Observable } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
 
-type LoginStep = 'email' | 'setup_password' | 'setup_otp' | 'password' | 'otp' | 'mfa';
+type LoginStep =
+  | 'email'
+  | 'setup_password'
+  | 'setup_otp'
+  | 'recover_password'
+  | 'recover_otp'
+  | 'password'
+  | 'otp'
+  | 'mfa';
 type LoginFlow = 'setup' | 'password' | 'otp';
 
 interface LoginStartResponse extends ApiResponse<unknown> {
@@ -24,6 +32,11 @@ interface LoginResponse extends ApiResponse<unknown> {
 
 interface SetupStartResponse extends ApiResponse<unknown> {
   setup_token?: string;
+  expires_at?: string;
+}
+
+interface RecoverStartResponse extends ApiResponse<unknown> {
+  reset_token?: string;
   expires_at?: string;
 }
 
@@ -52,6 +65,7 @@ export class LoginComponent {
   readonly confirmPassword = signal('');
   readonly otpCode = signal('');
   readonly setupToken = signal('');
+  readonly resetToken = signal('');
   readonly mfaChallengeToken = signal('');
   readonly showPassword = signal(false);
   readonly showConfirmPassword = signal(false);
@@ -64,13 +78,32 @@ export class LoginComponent {
   );
   readonly canSubmitCurrentStep = computed(() => {
     if (this.isSubmitting()) return false;
-    if (this.step() === 'setup_password') return this.canStartSetup();
-    if (this.step() === 'password') return this.password().length > 0;
-    if (this.step() === 'setup_otp' || this.step() === 'otp' || this.step() === 'mfa') {
-      return this.otpCode().trim().length === 6;
+    if (this.step() === 'setup_password' || this.step() === 'recover_password') {
+      return this.canStartSetup();
     }
+    if (this.step() === 'password') return this.password().length > 0;
+    if (this.isOtpStep()) return this.otpCode().trim().length === 6;
     return this.email().trim().length > 0;
   });
+
+  /** Pasos que piden una contrasena nueva + confirmacion (activacion y recuperacion). */
+  readonly isNewPasswordStep = computed(
+    () => this.step() === 'setup_password' || this.step() === 'recover_password',
+  );
+
+  /** Pasos que piden un codigo OTP de 6 caracteres. */
+  readonly isOtpStep = computed(
+    () =>
+      this.step() === 'setup_otp' ||
+      this.step() === 'recover_otp' ||
+      this.step() === 'otp' ||
+      this.step() === 'mfa',
+  );
+
+  /** Pasos del flujo de recuperacion de contrasena. */
+  readonly isRecoveryStep = computed(
+    () => this.step() === 'recover_password' || this.step() === 'recover_otp',
+  );
 
   get title(): string {
     return (
@@ -78,6 +111,8 @@ export class LoginComponent {
         email: 'Ingresa tu correo',
         setup_password: 'Cuenta nueva',
         setup_otp: 'Confirma tu correo',
+        recover_password: 'Recuperar contrasena',
+        recover_otp: 'Confirma el cambio',
         password: 'Ingresa tu contrasena',
         otp: 'Codigo de acceso',
         mfa: 'Verificacion 2FA',
@@ -91,6 +126,8 @@ export class LoginComponent {
         email: 'El sistema revisara el metodo configurado para tu cuenta.',
         setup_password: 'Ingresa una contrasena para iniciar sesion.',
         setup_otp: 'Escribe el codigo enviado para activar la cuenta.',
+        recover_password: 'Define una contrasena nueva para esta cuenta.',
+        recover_otp: 'Escribe el codigo enviado para aplicar el cambio.',
         password: 'Usa la contrasena configurada para este correo.',
         otp: 'Revisa tu correo y escribe el codigo de un solo uso.',
         mfa: 'Confirma la sesion con el codigo enviado a tu correo.',
@@ -104,6 +141,8 @@ export class LoginComponent {
         email: 'Continuar',
         setup_password: 'Enviar codigo OTP',
         setup_otp: 'Activar cuenta',
+        recover_password: 'Enviar codigo OTP',
+        recover_otp: 'Cambiar contrasena',
         password: 'Iniciar sesion',
         otp: 'Confirmar acceso',
         mfa: 'Confirmar acceso',
@@ -114,7 +153,7 @@ export class LoginComponent {
   handleSubmit(event: Event): void {
     event.preventDefault();
     if (!this.canSubmitCurrentStep()) {
-      if (this.step() === 'setup_password' && this.password() !== this.confirmPassword()) {
+      if (this.isNewPasswordStep() && this.password() !== this.confirmPassword()) {
         this.errorMsg.set('Las contrasenas no coinciden.');
       }
       return;
@@ -123,6 +162,8 @@ export class LoginComponent {
       email: () => this.startLogin(),
       setup_password: () => this.startSetup(),
       setup_otp: () => this.completeSetup(),
+      recover_password: () => this.startRecovery(),
+      recover_otp: () => this.completeRecovery(),
       password: () => this.loginWithPassword(),
       otp: () => this.loginWithOtp(),
       mfa: () => this.completeMfa(),
@@ -131,16 +172,39 @@ export class LoginComponent {
   }
 
   goBack(): void {
+    // Desde recuperacion se vuelve al paso de contrasena, no al de correo: el
+    // usuario ya identifico su cuenta y solo esta abandonando el reset.
+    const target: LoginStep = this.isRecoveryStep() ? 'password' : 'email';
+    this.resetTransientState();
+    this.step.set(target);
+  }
+
+  /** Entra al flujo de recuperacion desde el paso de contrasena. */
+  goToRecovery(): void {
+    this.resetTransientState();
+    this.step.set('recover_password');
+  }
+
+  /** Reenvia el codigo del paso actual sin perder lo ya escrito. */
+  resendCode(): void {
+    if (this.isSubmitting()) return;
+    if (this.step() === 'recover_otp') return this.startRecovery();
+    if (this.step() === 'setup_otp') return this.startSetup();
+    if (this.step() === 'otp') return this.startLogin();
+    if (this.step() === 'mfa') return this.loginWithPassword();
+  }
+
+  private resetTransientState(): void {
     this.errorMsg.set(null);
     this.successMsg.set(null);
     this.password.set('');
     this.confirmPassword.set('');
     this.otpCode.set('');
     this.setupToken.set('');
+    this.resetToken.set('');
     this.mfaChallengeToken.set('');
     this.showPassword.set(false);
     this.showConfirmPassword.set(false);
-    this.step.set('email');
   }
 
   get strengthLabel(): string {
@@ -192,11 +256,15 @@ export class LoginComponent {
   }
 
   private canStartSetup(): boolean {
+    // Debe coincidir con `validateNewPassword` de auth-api: longitud >= 8,
+    // fuerza >= 3 y nada que sea solo numeros ("12345678" pasaba con fuerza 2).
+    const password = this.password();
     return (
-      this.password().length >= 8 &&
-      this.passwordStrength() >= 2 &&
+      password.length >= 8 &&
+      !/^\d+$/.test(password) &&
+      this.passwordStrength() >= 3 &&
       this.confirmPassword().length > 0 &&
-      this.password() === this.confirmPassword()
+      password === this.confirmPassword()
     );
   }
 
@@ -224,6 +292,47 @@ export class LoginComponent {
         }),
       (res) => this.finishAuth(res),
       'No se pudo activar la cuenta.',
+    );
+  }
+
+  private startRecovery(): void {
+    const password = this.password();
+    if (password.length < 8)
+      return this.errorMsg.set('La contrasena debe tener al menos 8 caracteres.');
+    if (password !== this.confirmPassword())
+      return this.errorMsg.set('Las contrasenas no coinciden.');
+
+    this.run<RecoverStartResponse>(
+      () =>
+        this.http.post<RecoverStartResponse>('/api/auth/recover/start', {
+          email: this.email().trim(),
+          new_password: password,
+        }),
+      (res) => {
+        this.resetToken.set(res.reset_token ?? '');
+        this.otpCode.set('');
+        this.step.set('recover_otp');
+        this.successMsg.set(res.message ?? 'Codigo enviado a tu correo.');
+      },
+      'No se pudo enviar el codigo de recuperacion.',
+    );
+  }
+
+  private completeRecovery(): void {
+    this.run<ApiResponse<unknown>>(
+      () =>
+        this.http.post<ApiResponse<unknown>>('/api/auth/recover/complete', {
+          email: this.email().trim(),
+          new_password: this.password(),
+          otp_code: this.otpCode().trim(),
+          reset_token: this.resetToken(),
+        }),
+      (res) => {
+        this.resetTransientState();
+        this.step.set('password');
+        this.successMsg.set(res.message ?? 'Contrasena actualizada. Inicia sesion.');
+      },
+      'No se pudo cambiar la contrasena.',
     );
   }
 

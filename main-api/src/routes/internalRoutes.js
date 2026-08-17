@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
-const { sendOtpEmail } = require('../controllers/internalController');
+const { sendOtpEmail, sendPasswordChangedEmail } = require('../controllers/internalController');
 const { requireEnv } = require('../config/requireEnv');
 
 const INTERNAL_KEY_BUF = Buffer.from(requireEnv('INTERNAL_API_KEY'), 'utf8');
@@ -19,5 +19,6 @@ function internalAuth(req, res, next) {
 }
 
 router.post('/email/otp', internalAuth, sendOtpEmail);
+router.post('/email/password-changed', internalAuth, sendPasswordChangedEmail);
 
 module.exports = router;

@@ -446,7 +446,7 @@ export class OverviewNivelCaudalChartComponent implements AfterViewInit, OnDestr
     const list = Array.isArray(rows) ? rows : [];
     const nivel: { x: number; y: number }[] = [];
     const caudal: { x: number; y: number }[] = [];
-    for (const row of list as Array<Record<string, unknown>>) {
+    for (const row of list as Record<string, unknown>[]) {
       const x = Date.parse(String(row['timestamp'] ?? row['fecha'] ?? ''));
       if (!Number.isFinite(x)) continue;
       const nv = this.roleNum(row['nivel_freatico'] ?? row['nivel']);
