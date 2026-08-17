@@ -1,0 +1,1658 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ley 21.719 — Impacto en Emeltec · Presentación gerencia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=JetBrains+Mono:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --teal-300: #2bc5d3;
+        --teal-400: #0dafbd;
+        --teal-500: #0899a5;
+        --teal-700: #04606a;
+        --teal-900: #032f34;
+        --bg-body: #f0f2f5;
+        --bg-surface: #ffffff;
+        --bg-subtle: #f8fafc;
+        --border-default: #e2e8f0;
+        --text-primary: #1e293b;
+        --text-secondary: #64748b;
+        --text-muted: #94a3b8;
+        --success: #16a34a;
+        --success-bg: #f0fdf4;
+        --success-border: #bbf7d0;
+        --warning: #d97706;
+        --warning-bg: #fffbeb;
+        --warning-border: #fde68a;
+        --danger: #dc2626;
+        --danger-bg: #fef2f2;
+        --danger-border: #fecaca;
+        --font-display: 'Josefin Sans', sans-serif;
+        --font-body: 'DM Sans', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg-body);
+        font-family: var(--font-body);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ---------- Deck chrome ---------- */
+      .deck {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 5vh 7vw;
+        opacity: 0;
+        transform: translateX(48px);
+        transition:
+          opacity 0.45s ease,
+          transform 0.45s cubic-bezier(0.22, 0.9, 0.3, 1);
+        pointer-events: none;
+        visibility: hidden;
+      }
+      .slide.active {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
+        visibility: visible;
+      }
+      .slide.prev {
+        transform: translateX(-48px);
+      }
+
+      /* staggered entrance for slide children */
+      .slide .rise {
+        opacity: 0;
+        transform: translateY(18px);
+        transition:
+          opacity 0.5s ease,
+          transform 0.5s cubic-bezier(0.22, 0.9, 0.3, 1);
+      }
+      .slide.active .rise {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      .slide.active .rise:nth-child(1),
+      .slide.active .r1 {
+        transition-delay: 0.1s;
+      }
+      .slide.active .rise:nth-child(2),
+      .slide.active .r2 {
+        transition-delay: 0.22s;
+      }
+      .slide.active .rise:nth-child(3),
+      .slide.active .r3 {
+        transition-delay: 0.34s;
+      }
+      .slide.active .rise:nth-child(4),
+      .slide.active .r4 {
+        transition-delay: 0.46s;
+      }
+      .slide.active .rise:nth-child(5),
+      .slide.active .r5 {
+        transition-delay: 0.58s;
+      }
+      .slide.active .rise:nth-child(6),
+      .slide.active .r6 {
+        transition-delay: 0.7s;
+      }
+
+      /* progress bar */
+      .progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--teal-400), var(--teal-300));
+        width: 0;
+        z-index: 60;
+        transition: width 0.4s ease;
+      }
+
+      /* footer chrome */
+      .chrome {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 28px;
+        z-index: 50;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        pointer-events: none;
+      }
+      .chrome .brand {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        font-size: 10px;
+      }
+      .chrome .nav-btns {
+        display: flex;
+        gap: 8px;
+        pointer-events: auto;
+      }
+      .chrome button {
+        width: 34px;
+        height: 34px;
+        border-radius: 6px;
+        border: 1px solid var(--border-default);
+        background: var(--bg-surface);
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 15px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+        transition: all 0.15s ease;
+      }
+      .chrome button:hover {
+        border-color: var(--teal-400);
+        color: var(--teal-500);
+        box-shadow:
+          0 0 0 1px rgba(13, 175, 189, 0.25),
+          0 2px 8px rgba(13, 175, 189, 0.15);
+      }
+      .dark-slide-chrome .chrome button {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.18);
+        color: rgba(255, 255, 255, 0.75);
+      }
+      .dark-slide-chrome .chrome {
+        color: rgba(255, 255, 255, 0.45);
+      }
+
+      /* ---------- Shared typographic pieces ---------- */
+      .kicker {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--teal-500);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .kicker::before {
+        content: '';
+        width: 28px;
+        height: 2px;
+        background: var(--teal-400);
+      }
+      .kicker .knum {
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        font-weight: 500;
+        letter-spacing: 0;
+      }
+
+      h1,
+      h2 {
+        font-family: var(--font-display);
+        font-weight: 600;
+        line-height: 1.08;
+        letter-spacing: -0.01em;
+      }
+      h2 {
+        font-size: clamp(26px, 3.4vw, 42px);
+        margin-bottom: 8px;
+      }
+      .sub {
+        color: var(--text-secondary);
+        font-size: clamp(13px, 1.15vw, 16px);
+        max-width: 62ch;
+        margin-bottom: 28px;
+      }
+
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      .card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 9999px;
+        padding: 3px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: var(--font-body);
+      }
+      .badge::before {
+        content: '';
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .badge.ok {
+        background: var(--success-bg);
+        border: 1px solid var(--success-border);
+        color: var(--success);
+      }
+      .badge.warn {
+        background: var(--warning-bg);
+        border: 1px solid var(--warning-border);
+        color: var(--warning);
+      }
+      .badge.bad {
+        background: var(--danger-bg);
+        border: 1px solid var(--danger-border);
+        color: var(--danger);
+      }
+      .badge.teal {
+        background: rgba(13, 175, 189, 0.1);
+        border: 1px solid rgba(13, 175, 189, 0.25);
+        color: var(--teal-500);
+      }
+
+      /* ---------- Dark (cover / closing) slides ---------- */
+      .slide.dark {
+        background:
+          radial-gradient(1100px 600px at 85% -10%, rgba(13, 175, 189, 0.28), transparent 60%),
+          radial-gradient(900px 700px at -10% 110%, rgba(8, 153, 165, 0.2), transparent 55%),
+          linear-gradient(135deg, var(--teal-900) 0%, #06343c 55%, var(--teal-700) 100%);
+        color: #fff;
+      }
+      .slide.dark::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 26px 26px;
+        mask-image: linear-gradient(115deg, transparent 45%, rgba(0, 0, 0, 0.9));
+        pointer-events: none;
+      }
+      .slide.dark .kicker {
+        color: var(--teal-300);
+      }
+      .slide.dark .kicker::before {
+        background: var(--teal-300);
+      }
+
+      /* ---------- Cover ---------- */
+      #s1 .law-num {
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: clamp(64px, 11vw, 150px);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+        background: linear-gradient(100deg, #fff 30%, var(--teal-300));
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      #s1 h1 {
+        font-size: clamp(22px, 2.6vw, 34px);
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.92);
+        margin-top: 18px;
+        max-width: 34ch;
+      }
+      #s1 .deadline {
+        margin-top: 40px;
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        flex-wrap: wrap;
+      }
+      #s1 .deadline .pill {
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        background: rgba(255, 255, 255, 0.07);
+        backdrop-filter: blur(4px);
+        border-radius: 10px;
+        padding: 14px 22px;
+      }
+      #s1 .deadline .lbl {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.18em;
+        color: rgba(255, 255, 255, 0.55);
+        margin-bottom: 6px;
+      }
+      #s1 .deadline .val {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 700;
+        color: #fff;
+      }
+      #s1 .deadline .val small {
+        font-size: 12px;
+        font-weight: 400;
+        color: var(--teal-300);
+      }
+      #s1 .meta {
+        position: absolute;
+        bottom: 8vh;
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 0.2em;
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      /* ---------- Three phrases ---------- */
+      .tri {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+      }
+      .tri .card {
+        padding: 26px 24px;
+        position: relative;
+        overflow: hidden;
+      }
+      .tri .num {
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: 54px;
+        line-height: 1;
+        color: rgba(13, 175, 189, 0.16);
+        position: absolute;
+        top: 14px;
+        right: 18px;
+      }
+      .tri h3 {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        max-width: 85%;
+      }
+      .tri p {
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+      .tri strong {
+        color: var(--text-primary);
+      }
+      .tri .accent {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(var(--teal-400), var(--teal-700));
+      }
+
+      /* ---------- Risk numbers ---------- */
+      .fines {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-bottom: 22px;
+      }
+      .fine {
+        padding: 26px 24px;
+        text-align: left;
+      }
+      .fine .flabel {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+      .fine .fval {
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: clamp(30px, 3.6vw, 48px);
+        line-height: 1;
+        letter-spacing: -0.02em;
+      }
+      .fine .funit {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-muted);
+        margin-left: 4px;
+      }
+      .fine .fclp {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-top: 10px;
+      }
+      .fine.grave .fval {
+        color: var(--warning);
+      }
+      .fine.gravisima {
+        border-color: var(--danger-border);
+        box-shadow:
+          0 0 0 1px rgba(220, 38, 38, 0.1),
+          0 2px 12px rgba(220, 38, 38, 0.08);
+      }
+      .fine.gravisima .fval {
+        color: var(--danger);
+      }
+      .fine.reinc .fval {
+        color: var(--teal-500);
+      }
+      .scenarios {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 20px;
+      }
+      .scenario {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+      .scenario::before {
+        content: '▸';
+        color: var(--danger);
+        font-size: 11px;
+      }
+      .footnote {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 20px;
+        font-family: var(--font-mono);
+      }
+
+      /* ---------- Checklist (what complies) ---------- */
+      .check-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .check-item {
+        display: flex;
+        gap: 14px;
+        padding: 16px 18px;
+        align-items: flex-start;
+      }
+      .check-item .ic {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: var(--success-bg);
+        border: 1px solid var(--success-border);
+        color: var(--success);
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .check-item b {
+        display: block;
+        font-size: 13.5px;
+        margin-bottom: 3px;
+      }
+      .check-item span {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+      }
+
+      .callout {
+        margin-top: 20px;
+        padding: 16px 20px;
+        border-radius: 10px;
+        background: rgba(13, 175, 189, 0.07);
+        border: 1px solid rgba(13, 175, 189, 0.25);
+        font-size: 13.5px;
+        color: var(--text-primary);
+      }
+      .callout b {
+        color: var(--teal-500);
+      }
+      .callout.red {
+        background: var(--danger-bg);
+        border-color: var(--danger-border);
+      }
+      .callout.red b {
+        color: var(--danger);
+      }
+      .callout.amber {
+        background: var(--warning-bg);
+        border-color: var(--warning-border);
+      }
+      .callout.amber b {
+        color: var(--warning);
+      }
+
+      /* ---------- Platform changes (grouped) ---------- */
+      .groups {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+      }
+      .group {
+        padding: 20px 18px;
+      }
+      .group .gtitle {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        color: var(--teal-500);
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-default);
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .group .gtitle .cnt {
+        font-family: var(--font-mono);
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      .group ul {
+        list-style: none;
+      }
+      .group li {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+        padding: 6px 0 6px 14px;
+        position: relative;
+      }
+      .group li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 12px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--teal-400);
+      }
+      .group li b {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      /* ---------- Ops changes ---------- */
+      .ops {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-auto-rows: 1fr;
+        gap: 16px;
+      }
+      .op {
+        padding: 20px;
+      }
+      .op .num-big {
+        font-family: var(--font-mono);
+        font-size: 26px;
+        font-weight: 700;
+        color: var(--teal-400);
+      }
+      .op h3 {
+        font-family: var(--font-display);
+        font-size: 15px;
+        font-weight: 600;
+        margin: 8px 0 6px;
+      }
+      .op p {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+      .op p b {
+        color: var(--text-primary);
+      }
+
+      /* ---------- Yes/No table ---------- */
+      table.data {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--bg-surface);
+        border: 1px solid var(--border-default);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+      .tablewrap {
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-default);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+      }
+      .tablewrap table {
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+      }
+      table.data th {
+        background: var(--bg-subtle);
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        color: var(--text-muted);
+        font-weight: 700;
+        text-align: left;
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--border-default);
+      }
+      table.data td {
+        padding: 11px 18px;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border-default);
+        color: var(--text-primary);
+      }
+      table.data tr:last-child td {
+        border-bottom: none;
+      }
+      table.data td.yn {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .yn.si {
+        color: var(--danger);
+      }
+      .yn.no {
+        color: var(--success);
+      }
+
+      /* ---------- Providers ---------- */
+      .prov {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-top: 18px;
+      }
+      .prov .card {
+        padding: 20px;
+      }
+      .prov h3 {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .prov p {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+      .prov p b {
+        color: var(--text-primary);
+      }
+
+      /* ---------- RRHH slide ---------- */
+      #s9 .hero-fine {
+        display: flex;
+        align-items: center;
+        gap: 28px;
+        padding: 26px 30px;
+        margin-bottom: 22px;
+        border-color: var(--danger-border);
+        background: linear-gradient(100deg, var(--danger-bg), var(--bg-surface) 60%);
+      }
+      #s9 .hero-fine .big {
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: clamp(40px, 5vw, 64px);
+        color: var(--danger);
+        line-height: 1;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+      }
+      #s9 .hero-fine .big small {
+        font-size: 16px;
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      #s9 .hero-fine .why {
+        font-size: 13.5px;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+      #s9 .hero-fine .why b {
+        color: var(--text-primary);
+      }
+      .actions-min {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+      .actions-min .card {
+        padding: 18px;
+        font-size: 13px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+      .actions-min .card b {
+        display: block;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        font-size: 13.5px;
+      }
+      .actions-min .tag {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--danger);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 8px;
+        display: block;
+      }
+
+      /* ---------- No-change slide ---------- */
+      .nochange {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .nochange .card {
+        padding: 24px 22px;
+        border-color: var(--success-border);
+        background: linear-gradient(160deg, var(--success-bg), var(--bg-surface) 55%);
+      }
+      .nochange h3 {
+        font-family: var(--font-display);
+        font-size: 15.5px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+      }
+      .nochange h3::before {
+        content: '✓';
+        color: var(--success);
+        font-weight: 700;
+      }
+      .nochange p {
+        font-size: 12.5px;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      /* ---------- Timeline ---------- */
+      .timeline {
+        position: relative;
+        margin-top: 10px;
+      }
+      .timeline::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 26px;
+        height: 2px;
+        background: linear-gradient(90deg, var(--teal-400), var(--border-default));
+      }
+      .tl-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+      }
+      .tl-item {
+        position: relative;
+        padding-top: 44px;
+      }
+      .tl-item::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 0;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: var(--bg-surface);
+        border: 3px solid var(--teal-400);
+      }
+      .tl-item.deadline-dot::before {
+        background: var(--danger);
+        border-color: var(--danger);
+        box-shadow: 0 0 0 4px var(--danger-bg);
+      }
+      .tl-item .when {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--teal-500);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+      }
+      .tl-item.deadline-dot .when {
+        color: var(--danger);
+      }
+      .tl-item ul {
+        list-style: none;
+      }
+      .tl-item li {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+        padding: 3px 0 3px 12px;
+        position: relative;
+      }
+      .tl-item li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 9px;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--text-muted);
+      }
+      .tl-item li b {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      /* ---------- Closing / decisions ---------- */
+      #s12 .decisions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-top: 8px;
+        max-width: 980px;
+      }
+      #s12 .dec {
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(4px);
+        border-radius: 12px;
+        padding: 22px 24px;
+        display: flex;
+        gap: 18px;
+        align-items: flex-start;
+      }
+      #s12 .dec .dnum {
+        font-family: var(--font-mono);
+        font-weight: 800;
+        font-size: 24px;
+        color: var(--teal-300);
+        line-height: 1.2;
+      }
+      #s12 .dec b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 15.5px;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #fff;
+      }
+      #s12 .dec span {
+        font-size: 12.5px;
+        color: rgba(255, 255, 255, 0.65);
+        line-height: 1.5;
+      }
+      #s12 h2 {
+        color: #fff;
+      }
+      #s12 .sub {
+        color: rgba(255, 255, 255, 0.65);
+      }
+
+      /* ---------- Keyboard hint ---------- */
+      .hint {
+        position: fixed;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-muted);
+        background: var(--bg-surface);
+        border: 1px solid var(--border-default);
+        padding: 8px 16px;
+        border-radius: 9999px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        z-index: 70;
+        opacity: 1;
+        transition: opacity 0.6s ease;
+        pointer-events: none;
+      }
+      .hint.gone {
+        opacity: 0;
+      }
+
+      /* ---------- Print → PDF ---------- */
+      @media print {
+        html,
+        body {
+          overflow: visible;
+          background: #fff;
+        }
+        .deck {
+          width: auto;
+          height: auto;
+        }
+        .slide {
+          position: relative;
+          opacity: 1 !important;
+          transform: none !important;
+          visibility: visible !important;
+          pointer-events: auto;
+          page-break-after: always;
+          height: 100vh;
+        }
+        .slide .rise,
+        .slide .r1,
+        .slide .r2,
+        .slide .r3,
+        .slide .r4,
+        .slide .r5,
+        .slide .r6 {
+          opacity: 1 !important;
+          transform: none !important;
+        }
+        .progress,
+        .chrome,
+        .hint {
+          display: none;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .tri,
+        .fines,
+        .groups,
+        .ops,
+        .prov,
+        .nochange,
+        .tl-grid,
+        .check-grid,
+        .actions-min,
+        #s12 .decisions {
+          grid-template-columns: 1fr;
+        }
+        .slide {
+          overflow-y: auto;
+          justify-content: flex-start;
+          padding-top: 8vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="progress" id="progress"></div>
+
+    <div class="deck" id="deck">
+      <!-- ============ 1 · PORTADA ============ -->
+      <section class="slide dark active" id="s1">
+        <div class="kicker rise">Presentación a gerencia · Julio 2026</div>
+        <div class="law-num rise">LEY 21.719</div>
+        <h1 class="rise">
+          Protección de datos personales: qué cambia para la plataforma y para Emeltec como empresa.
+        </h1>
+        <div class="deadline rise">
+          <div class="pill">
+            <div class="lbl">Entrada en vigencia</div>
+            <div class="val">01 · 12 · 2026</div>
+          </div>
+          <div class="pill">
+            <div class="lbl">Tiempo restante</div>
+            <div class="val"><span id="countdown">—</span> <small>días</small></div>
+          </div>
+          <div class="pill">
+            <div class="lbl">Multa máxima</div>
+            <div class="val">20.000 <small>UTM</small></div>
+          </div>
+        </div>
+        <div class="meta">
+          Emeltec · cloud.emeltec.cl · Borrador operativo — no constituye asesoría legal
+        </div>
+      </section>
+
+      <!-- ============ 2 · LA LEY EN TRES FRASES ============ -->
+      <section class="slide" id="s2">
+        <div class="kicker"><span class="knum">02</span> Contexto</div>
+        <h2 class="rise">La ley, en tres frases</h2>
+        <p class="sub rise">
+          Lo esencial que gerencia necesita saber antes de cualquier detalle técnico.
+        </p>
+        <div class="tri">
+          <div class="card rise">
+            <div class="accent"></div>
+            <div class="num">1</div>
+            <h3>Ahora tiene dientes</h3>
+            <p>
+              Desde el <strong>01-12-2026</strong> existe una
+              <strong>Agencia fiscalizadora</strong> con potestad sancionatoria: multas de hasta
+              <strong>10.000 UTM</strong> (infracciones graves) y
+              <strong>20.000 UTM</strong> (gravísimas), con recargos por reincidencia.
+            </p>
+          </div>
+          <div class="card rise">
+            <div class="accent"></div>
+            <div class="num">2</div>
+            <h3>Nos aplica directamente</h3>
+            <p>
+              La plataforma trata datos personales de los usuarios de nuestros clientes:
+              <strong>nombre, email, RUT, teléfono, cargo, IP y credenciales DGA</strong>. Las
+              mediciones IIoT (caudales, niveles) <strong>no</strong> son datos personales.
+            </p>
+          </div>
+          <div class="card rise">
+            <div class="accent"></div>
+            <div class="num">3</div>
+            <h3>La prueba es nuestra</h3>
+            <p>
+              Ante un incidente, la carga de la prueba es de <strong>Emeltec</strong>: hay que
+              demostrar con documentos fechados que las medidas existían y funcionaban (Art. 14
+              quinquies). <strong>Lo no documentado, legalmente no existe.</strong>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 3 · RIESGO EN NÚMEROS ============ -->
+      <section class="slide" id="s3">
+        <div class="kicker"><span class="knum">03</span> Riesgo</div>
+        <h2 class="rise">Si no hacemos nada: los números</h2>
+        <p class="sub rise">
+          Escenarios concretos de nuestra operación actual, con la sanción máxima asociada.
+        </p>
+        <div class="fines">
+          <div class="card fine grave rise">
+            <div class="flabel">Infracción grave</div>
+            <div class="fval">10.000<span class="funit">UTM</span></div>
+            <div class="fclp">≈ CLP $690 millones*</div>
+          </div>
+          <div class="card fine gravisima rise">
+            <div class="flabel">Infracción gravísima</div>
+            <div class="fval">20.000<span class="funit">UTM</span></div>
+            <div class="fclp">≈ CLP $1.380 millones*</div>
+          </div>
+          <div class="card fine reinc rise">
+            <div class="flabel">Reincidencia (no PYME)</div>
+            <div class="fval">2–4<span class="funit">% ingresos anuales</span></div>
+            <div class="fclp">sobre facturación del año anterior</div>
+          </div>
+        </div>
+        <div class="scenarios rise">
+          <div class="scenario">
+            Datos personales en localStorage + XSS → fuga sin medidas acreditables: <b>grave</b>
+          </div>
+          <div class="scenario">
+            Brecha no reportada a la Agencia: grave; deliberada: <b>gravísima</b>
+          </div>
+          <div class="scenario">
+            Usuario pide borrar su cuenta y solo hacemos soft-delete: infracción a derechos
+          </div>
+          <div class="scenario">
+            Sin política de seguridad pública: incumplimiento Art. 14 ter e
+          </div>
+        </div>
+        <div class="footnote rise">
+          * Aproximación referencial con 1 UTM ≈ CLP $69.000 (valor 2026 aprox., varía
+          mensualmente).
+        </div>
+      </section>
+
+      <!-- ============ 4 · QUÉ YA CUMPLE ============ -->
+      <section class="slide" id="s4">
+        <div class="kicker"><span class="knum">04</span> Plataforma · dónde estamos</div>
+        <h2 class="rise">Qué ya cumple cloud.emeltec.cl</h2>
+        <p class="sub rise">
+          La base técnica existe. El trabajo pendiente es completarla y — clave — dejarla acreditada
+          por escrito.
+        </p>
+        <div class="check-grid">
+          <div class="card check-item rise">
+            <div class="ic">✓</div>
+            <div>
+              <b>JWT + 2FA por email, guards por rol, auto-logout</b
+              ><span>Evidencia de diligencia en control de acceso</span>
+            </div>
+          </div>
+          <div class="card check-item rise">
+            <div class="ic">✓</div>
+            <div>
+              <b>Headers de seguridad (HSTS, CSP, X-Frame-Options)</b
+              ><span>Medidas técnicas del Art. 14 quinquies</span>
+            </div>
+          </div>
+          <div class="card check-item rise">
+            <div class="ic">✓</div>
+            <div>
+              <b>Audit log completo</b
+              ><span
+                >Quién hizo qué, cuándo y desde qué IP — insumo del registro de vulneraciones</span
+              >
+            </div>
+          </div>
+          <div class="card check-item rise">
+            <div class="ic">✓</div>
+            <div>
+              <b>Sin analytics de terceros, sin cookies</b
+              ><span>Minimización: no hay tratamiento oculto</span>
+            </div>
+          </div>
+          <div class="card check-item rise">
+            <div class="ic">✓</div>
+            <div>
+              <b>Páginas /privacidad y /terminos</b
+              ><span>Base del deber de información (texto por actualizar)</span>
+            </div>
+          </div>
+          <div class="card check-item rise">
+            <div class="ic">✓</div>
+            <div>
+              <b>Rectificación de datos en /profile</b
+              ><span>Primer derecho ARCO+ ya operativo</span>
+            </div>
+          </div>
+        </div>
+        <div class="callout rise">
+          <b>Lectura para gerencia:</b> no partimos de cero — partimos de una base sólida que hay
+          que completar y documentar antes del 01-12-2026.
+        </div>
+      </section>
+
+      <!-- ============ 5 · QUÉ CAMBIA EN LA PLATAFORMA ============ -->
+      <section class="slide" id="s5">
+        <div class="kicker"><span class="knum">05</span> Plataforma · trabajo técnico</div>
+        <h2 class="rise">Qué cambia en la plataforma</h2>
+        <p class="sub rise">
+          Nueve cambios del plan de mejoras (eje B), agrupados en cuatro frentes.
+        </p>
+        <div class="groups">
+          <div class="card group rise">
+            <div class="gtitle">Derechos del titular <span class="cnt">3</span></div>
+            <ul>
+              <li>
+                <b>Borrado real de cuentas</b> — hoy es soft-delete; supresión/anonimización
+                efectiva
+              </li>
+              <li><b>Sección «Mis datos»</b> — ver, exportar (JSON/CSV) y pedir supresión</li>
+              <li><b>Aviso + checkbox</b> al crear usuarios, con timestamp persistido</li>
+            </ul>
+          </div>
+          <div class="card group rise">
+            <div class="gtitle">Minimización <span class="cnt">2</span></div>
+            <ul>
+              <li>
+                <b>Sesión más liviana</b> — sacar email/RUT/teléfono de localStorage; solo id,
+                nombre y rol
+              </li>
+              <li>
+                <b>Retención con reloj</b> — job que anonimiza el audit log: 12 meses general, 36
+                meses acciones DGA
+              </li>
+            </ul>
+          </div>
+          <div class="card group rise">
+            <div class="gtitle">Seguridad <span class="cnt">3</span></div>
+            <ul>
+              <li><b>Cifrado en reposo</b> de credenciales DGA</li>
+              <li>
+                <b>Alertas sobre el audit log</b> — logins anómalos, exportaciones masivas, cambios
+                de permisos
+              </li>
+              <li><b>Backups con prueba</b> de restauración documentada</li>
+            </ul>
+          </div>
+          <div class="card group rise">
+            <div class="gtitle">Transparencia <span class="cnt">1</span></div>
+            <ul>
+              <li>
+                <b>/privacidad actualizada</b> + política de seguridad pública (obligatoria por Art.
+                14 ter e)
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 6 · QUÉ CAMBIA EN OPERACIÓN ============ -->
+      <section class="slide" id="s6">
+        <div class="kicker"><span class="knum">06</span> Operación · no es código</div>
+        <h2 class="rise">Qué cambia en cómo operamos</h2>
+        <p class="sub rise">
+          Cinco frentes organizacionales que la ley exige, independientes del software.
+        </p>
+        <div class="ops">
+          <div class="card op rise">
+            <div class="num-big">01</div>
+            <h3>Delegado de protección de datos</h3>
+            <p>
+              <b>D. Ruiz</b>, designado por acta física. Punto de contacto único:
+              <b>datos@emeltec.cl</b> (grupo por crear).
+            </p>
+          </div>
+          <div class="card op rise">
+            <div class="num-big">02</div>
+            <h3>Procedimiento de brechas</h3>
+            <p>
+              5 fases: contención inmediata, evaluación <b>≤24 h</b>, notificación a la Agencia
+              <b>≤72 h</b>. Registro interno de <b>toda</b> vulneración, incluso las no notificadas.
+              Simulacro anual.
+            </p>
+          </div>
+          <div class="card op rise">
+            <div class="num-big">03</div>
+            <h3>Proveedores como «encargados»</h3>
+            <p>
+              <b>Resend</b> (correo 2FA) y <b>Azure</b> tratan datos por nosotros → contrato/DPA
+              obligatorio (Art. 15 bis). No hay que cambiar de proveedor; hay que archivar el papel.
+            </p>
+          </div>
+          <div class="card op rise">
+            <div class="num-big">04</div>
+            <h3>Solicitudes de titulares</h3>
+            <p>
+              Plazo legal de <b>30 días</b> (meta interna: 10). Toda solicitud registrada con
+              timestamp.
+            </p>
+          </div>
+          <div class="card op rise">
+            <div class="num-big">05</div>
+            <h3>Reglas de uso interno</h3>
+            <p>
+              Mínimo privilegio, view-as solo con justificación, cero exportaciones de datos
+              personales, nada de datos productivos en dev, canales corporativos.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 7 · EMPRESA ≠ PERSONA ============ -->
+      <section class="slide" id="s7">
+        <div class="kicker"><span class="knum">07</span> Empresa · la regla de oro</div>
+        <h2 class="rise">No es solo el software: empresa ≠ persona</h2>
+        <p class="sub rise">
+          La ley protege datos de <b>personas naturales</b>. Los datos de empresas no son datos
+          personales — esa distinción define todo el impacto comercial.
+        </p>
+        <div class="tablewrap rise">
+          <table class="data">
+            <thead>
+              <tr>
+                <th style="width: 70%">Dato</th>
+                <th>¿Dato personal?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Razón social, RUT de empresa, giro, dirección comercial</td>
+                <td class="yn no">NO</td>
+              </tr>
+              <tr>
+                <td>Números de venta, montos facturados, órdenes de compra</td>
+                <td class="yn no">NO</td>
+              </tr>
+              <tr>
+                <td>Nombre, email, teléfono y cargo del <b>contacto</b> en esa empresa</td>
+                <td class="yn si">SÍ</td>
+              </tr>
+              <tr>
+                <td>RUT y firma del representante legal en un contrato</td>
+                <td class="yn si">SÍ</td>
+              </tr>
+              <tr>
+                <td>Cliente o proveedor que es <b>persona natural</b></td>
+                <td class="yn si">SÍ, completo</td>
+              </tr>
+              <tr>
+                <td>Remuneraciones, evaluaciones y licencias médicas de empleados</td>
+                <td class="yn si">SÍ — salud es SENSIBLE</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout rise">
+          <b>Consecuencia práctica:</b> las cifras de venta y las OC no tienen problema. El riesgo
+          vive en las <b>personas de contacto</b> que las rodean y, sobre todo, en <b>RRHH</b>.
+        </div>
+      </section>
+
+      <!-- ============ 8 · DÓNDE VIVEN LOS DATOS ============ -->
+      <section class="slide" id="s8">
+        <div class="kicker"><span class="knum">08</span> Empresa · inventario</div>
+        <h2 class="rise">Dónde viven los datos fuera de la plataforma</h2>
+        <p class="sub rise">
+          Ventas, compras, facturación y RRHH tratan datos personales en sistemas de terceros. Tres
+          proveedores con rol legal distinto:
+        </p>
+        <div class="prov">
+          <div class="card rise">
+            <h3>Buk <span class="badge bad">Prioridad 1</span></h3>
+            <p>
+              <b>Encargado de tratamiento</b> (Art. 15 bis). Para la firma de liquidaciones
+              <b>ve remuneraciones</b> — ver ya es tratar. Es el encargado más crítico de la
+              empresa: <b>revisar su contrato/DPA primero</b>.
+            </p>
+          </div>
+          <div class="card rise">
+            <h3>Disofi <span class="badge warn">Revisar contrato</span></h3>
+            <p>
+              <b>Encargado de tratamiento</b> del ERP Softland (Disofi lo opera, no Softland como
+              marca). Si Disofi usa infraestructura de terceros, eso es <b>subdelegación</b>: exige
+              autorización escrita de Emeltec.
+            </p>
+          </div>
+          <div class="card rise">
+            <h3>ACHS <span class="badge teal">Sin contrato 15 bis</span></h3>
+            <p>
+              <b>Responsable independiente</b> — no es encargado. Trata salud laboral con finalidad
+              propia por mandato legal (Ley 16.744). Solo debe constar en el registro de
+              tratamientos.
+            </p>
+          </div>
+        </div>
+        <div class="callout amber rise">
+          <b>Además:</b> contactos comerciales en correo, planillas y WhatsApp; CVs de postulantes
+          en correo. Cada área necesita inventario formal (1 reunión por área, agosto 2026).
+        </div>
+      </section>
+
+      <!-- ============ 9 · RRHH ============ -->
+      <section class="slide" id="s9">
+        <div class="kicker"><span class="knum">09</span> Empresa · punto crítico</div>
+        <h2 class="rise">El punto que gerencia no puede pasar por alto: RRHH</h2>
+        <p class="sub rise">
+          Licencias médicas, exámenes preocupacionales y accidentes laborales son
+          <b>datos sensibles</b> (Art. 2° g).
+        </p>
+        <div class="card hero-fine rise">
+          <div class="big">20.000 <small>UTM</small></div>
+          <div class="why">
+            Vulnerar el secreto sobre datos sensibles es infracción <b>GRAVÍSIMA</b> — el doble que
+            cualquier falla de la plataforma. Y una brecha que afecte datos de salud obliga a
+            <b>notificar a los propios empleados</b>.
+          </div>
+        </div>
+        <div class="actions-min">
+          <div class="card rise">
+            <span class="tag">Acción inmediata</span><b>Legajos bajo acceso restringido</b>Solo
+            quien necesita el legajo de RRHH lo ve. Mínimo privilegio aplicado a personas, no solo a
+            sistemas.
+          </div>
+          <div class="card rise">
+            <span class="tag">Acción inmediata</span><b>Sacar salud de canales abiertos</b>No
+            circular licencias médicas por correo abierto ni WhatsApp. Un correo mal dirigido con la
+            planilla de remuneraciones ES una vulneración.
+          </div>
+          <div class="card rise">
+            <span class="tag">Acción inmediata</span><b>Auditar contabilidad externa</b>Verificar
+            qué datos de trabajadores ve la contabilidad externa y bajo qué contrato.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 10 · LO QUE NO CAMBIA ============ -->
+      <section class="slide" id="s10">
+        <div class="kicker"><span class="knum">10</span> Tranquilidad</div>
+        <h2 class="rise">Lo que NO cambia</h2>
+        <p class="sub rise">
+          La operación comercial normal sigue igual. La ley exige informar, proteger y responder —
+          no pide permiso para operar.
+        </p>
+        <div class="nochange">
+          <div class="card rise">
+            <h3>El negocio</h3>
+            <p>
+              Vender, comprar, facturar y reportar números de negocio: cero impacto. Son datos de
+              empresas, no de personas.
+            </p>
+          </div>
+          <div class="card rise">
+            <h3>El core técnico</h3>
+            <p>
+              Las mediciones IIoT (caudales, niveles) y los reportes DGA no son datos personales. El
+              producto no cambia.
+            </p>
+          </div>
+          <div class="card rise">
+            <h3>La relación B2B</h3>
+            <p>
+              No hay que pedir consentimiento a cada contacto B2B: la base contractual / interés
+              legítimo cubre el uso normal de la relación comercial.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 11 · CALENDARIO ============ -->
+      <section class="slide" id="s11">
+        <div class="kicker"><span class="knum">11</span> Plan</div>
+        <h2 class="rise">Calendario hacia el 1 de diciembre</h2>
+        <p class="sub rise">
+          Plataforma (eje B del plan de mejoras) + acciones de empresa, en paralelo.
+        </p>
+        <div class="timeline rise">
+          <div class="tl-grid">
+            <div class="tl-item">
+              <div class="when">Jul – Ago</div>
+              <ul>
+                <li><b>Sesión liviana</b> (B2)</li>
+                <li><b>Retención</b> audit log (B5)</li>
+                <li>Evaluaciones documentadas (B12)</li>
+                <li>Inventario por área (empresa)</li>
+              </ul>
+            </div>
+            <div class="tl-item">
+              <div class="when">Ago – Sep</div>
+              <ul>
+                <li><b>Supresión real</b> (B1)</li>
+                <li>/privacidad (B8)</li>
+                <li>Política de seguridad (B10.1)</li>
+                <li>Registro tratamientos T7+ · NDAs equipo</li>
+              </ul>
+            </div>
+            <div class="tl-item">
+              <div class="when">Sep – Oct</div>
+              <ul>
+                <li><b>«Mis datos»</b> ARCO+ (B3)</li>
+                <li>Cifrado + backups (B10.2/.3)</li>
+                <li>DPA <b>Buk</b> y contrato <b>Disofi</b></li>
+              </ul>
+            </div>
+            <div class="tl-item">
+              <div class="when">Oct – Nov</div>
+              <ul>
+                <li><b>Alertas de brechas</b> (B4.2)</li>
+                <li>Consentimiento (B7)</li>
+                <li>DPAs plataforma (B11)</li>
+                <li>Política retención comercial</li>
+              </ul>
+            </div>
+            <div class="tl-item deadline-dot">
+              <div class="when">01 Dic 2026</div>
+              <ul>
+                <li><b>Ley vigente.</b> Todo lo anterior documentado, fechado y acreditable.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="callout red rise">
+          <b>RRHH no espera al calendario:</b> restricción de legajos y salida de datos sensibles de
+          canales abiertos es <b>inmediato</b>.
+        </div>
+      </section>
+
+      <!-- ============ 12 · DECISIONES ============ -->
+      <section class="slide dark" id="s12">
+        <div class="kicker rise">Cierre</div>
+        <h2 class="rise" style="font-size: clamp(30px, 4vw, 52px)">Cuatro decisiones para hoy</h2>
+        <p class="sub rise">Nada de esto avanza sin el visto bueno de gerencia.</p>
+        <div class="decisions">
+          <div class="dec rise">
+            <div class="dnum">01</div>
+            <div>
+              <b>Formalizar el delegado de datos</b
+              ><span
+                >Designar a D. Ruiz por acta física y crear el grupo datos@emeltec.cl como canal
+                único.</span
+              >
+            </div>
+          </div>
+          <div class="dec rise">
+            <div class="dnum">02</div>
+            <div>
+              <b>Restringir legajos RRHH — hoy</b
+              ><span
+                >Acceso restringido a legajos y datos de salud fuera de correo abierto y WhatsApp.
+                Es la exposición gravísima (20.000 UTM).</span
+              >
+            </div>
+          </div>
+          <div class="dec rise">
+            <div class="dnum">03</div>
+            <div>
+              <b>Aprobar el calendario del eje B</b
+              ><span
+                >Priorizar el trabajo técnico Jul–Nov para llegar documentados al 1 de
+                diciembre.</span
+              >
+            </div>
+          </div>
+          <div class="dec rise">
+            <div class="dnum">04</div>
+            <div>
+              <b>Presupuestar asesoría legal</b
+              ><span
+                >NDAs del equipo, revisión de DPAs (Buk, Disofi, Resend, Azure) y validación de las
+                políticas públicas.</span
+              >
+            </div>
+          </div>
+        </div>
+        <div
+          class="meta rise"
+          style="
+            margin-top: 36px;
+            font-family: var(--font-display);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.5);
+          "
+        >
+          Detalle: IMPACTO-LEY-CLOUD.md · IMPACTO-LEY-EMPRESA.md · GOBERNANZA-DATOS.md ·
+          RESPUESTA-BRECHAS.md · PLAN-MEJORAS.md
+        </div>
+      </section>
+    </div>
+
+    <div class="chrome">
+      <div class="brand">Emeltec · Ley 21.719</div>
+      <div class="nav-btns">
+        <button id="btnPrev" aria-label="Anterior">‹</button>
+        <button id="btnNext" aria-label="Siguiente">›</button>
+      </div>
+      <div class="counter mono"><span id="cur">1</span> / <span id="total">12</span></div>
+    </div>
+
+    <div class="hint" id="hint">← → navegar · Ctrl+P exportar PDF</div>
+
+    <script>
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const progress = document.getElementById('progress');
+      const cur = document.getElementById('cur');
+      const total = document.getElementById('total');
+      const hint = document.getElementById('hint');
+      let i = 0;
+      total.textContent = slides.length;
+
+      function go(n) {
+        if (n < 0 || n >= slides.length || n === i) return;
+        slides[i].classList.remove('active');
+        slides[i].classList.toggle('prev', n > i);
+        slides[n].classList.remove('prev');
+        // force reflow so entering slide animates from the correct side
+        void slides[n].offsetWidth;
+        slides[n].classList.add('active');
+        i = n;
+        cur.textContent = i + 1;
+        progress.style.width = ((i + 1) / slides.length) * 100 + '%';
+        document.body.classList.toggle('dark-slide-chrome', slides[i].classList.contains('dark'));
+        hint.classList.add('gone');
+      }
+
+      document.addEventListener('keydown', (e) => {
+        if (['ArrowRight', ' ', 'PageDown'].includes(e.key)) {
+          e.preventDefault();
+          go(i + 1);
+        }
+        if (['ArrowLeft', 'PageUp'].includes(e.key)) {
+          e.preventDefault();
+          go(i - 1);
+        }
+        if (e.key === 'Home') go(0);
+        if (e.key === 'End') go(slides.length - 1);
+      });
+
+      document.getElementById('btnNext').addEventListener('click', () => go(i + 1));
+      document.getElementById('btnPrev').addEventListener('click', () => go(i - 1));
+
+      // touch swipe
+      let x0 = null;
+      document.addEventListener(
+        'touchstart',
+        (e) => {
+          x0 = e.touches[0].clientX;
+        },
+        { passive: true },
+      );
+      document.addEventListener(
+        'touchend',
+        (e) => {
+          if (x0 === null) return;
+          const dx = e.changedTouches[0].clientX - x0;
+          if (Math.abs(dx) > 50) go(dx < 0 ? i + 1 : i - 1);
+          x0 = null;
+        },
+        { passive: true },
+      );
+
+      // countdown to 2026-12-01
+      const days = Math.max(0, Math.ceil((new Date(2026, 11, 1) - new Date()) / 86400000));
+      document.getElementById('countdown').textContent = days;
+
+      // initial state
+      progress.style.width = (1 / slides.length) * 100 + '%';
+      document.body.classList.add('dark-slide-chrome');
+      setTimeout(() => hint.classList.add('gone'), 6000);
+    </script>
+  </body>
+</html>
