@@ -18,6 +18,7 @@ import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 import { WellStatCardComponent } from '../../components/ui/well-stat-card';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { tabDesdeQuery } from '../../shared/detail-tab-query';
 import { catchError, firstValueFrom, of, Subscription, switchMap, timer } from 'rxjs';
 import {
   CompanyService,
@@ -182,6 +183,7 @@ interface SiteDashboardData {
 }
 
 type DetailTab = 'dga' | 'operacion' | 'alertas' | 'bitacora' | 'analisis';
+const DETAIL_TABS: DetailTab[] = ['dga', 'operacion', 'alertas', 'bitacora', 'analisis'];
 type OperationMode = 'realtime' | 'turnos';
 
 @Component({
@@ -3284,6 +3286,10 @@ export class CompanySiteCanalDetailComponent implements OnInit, OnDestroy {
       this.router.navigate(['/companies']);
       return;
     }
+
+    // Deep-link `?tab=alertas` desde la campana del header.
+    const tabSolicitada = tabDesdeQuery(this.route, DETAIL_TABS);
+    if (tabSolicitada) this.setDetailTab(tabSolicitada);
 
     this.clockSub = timer(0, 1000).subscribe(() => this.currentTime.set(new Date()));
     this.startDashboardPolling(siteId);

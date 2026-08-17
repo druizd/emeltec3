@@ -7,6 +7,8 @@ import type { PreviewRole, ViewAsContext } from '../../../services/auth.service'
 import { CompanyService } from '../../../services/company.service';
 import { ShortcutService } from '../../../services/shortcut.service';
 import { LayoutUiService } from '../layout-ui.service';
+import { AlertNotificationsService } from '../../../services/alert-notifications.service';
+import type { EventoReciente } from '../../../services/alerta.service';
 import { getSiteTypeUi, siteTypesForModule } from '../../../shared/site-type-ui';
 import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
 
@@ -56,6 +58,124 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
         <div class="flex-1"></div>
 
         <div class="flex items-center gap-1.5">
+          <!-- Campana: pendientes sin revisar de TODOS los sitios visibles,
+               para verlas antes de entrar a un sitio en particular. -->
+          <div class="relative" data-menu="alertas">
+            <button
+              type="button"
+              (click)="toggleAlertMenu()"
+              class="relative flex h-[30px] w-[30px] items-center justify-center rounded-md transition duration-100 hover:bg-[#f1f5f9] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              [class]="
+                alerts.sinRevisar() > 0 ? 'text-rose-600' : 'text-on-surface-muted hover:text-[#475569]'
+              "
+              [attr.aria-label]="alertBellLabel()"
+              [title]="alertBellLabel()"
+              [attr.aria-expanded]="alertMenuOpen()"
+            >
+              <span class="material-symbols-outlined text-[16px]">
+                {{ alerts.sinRevisar() > 0 ? 'notifications_active' : 'notifications' }}
+              </span>
+              @if (alerts.sinRevisar() > 0) {
+                <span
+                  class="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold leading-none text-white"
+                  [class]="alerts.hayCriticas() ? 'bg-rose-600' : 'bg-amber-500'"
+                  aria-hidden="true"
+                >
+                  {{ alerts.sinRevisar() > 99 ? '99+' : alerts.sinRevisar() }}
+                </span>
+              }
+            </button>
+
+            @if (alertMenuOpen()) {
+              <div
+                class="anim-popover absolute right-0 top-full z-50 mt-2 w-[min(400px,calc(100vw-1.5rem))] origin-top-right overflow-hidden rounded-xl border border-surface-container bg-white shadow-[0_18px_46px_rgba(15,23,42,0.16)]"
+              >
+                <div
+                  class="flex items-center justify-between border-b border-surface-container px-4 py-3"
+                >
+                  <div>
+                    <p class="text-caption-xs font-bold uppercase tracking-wide text-slate-400">
+                      Alertas sin revisar
+                    </p>
+                    <p class="mt-0.5 text-caption text-slate-500">
+                      @if (alerts.sinRevisar() === 0) {
+                        Nada pendiente en tus sitios.
+                      } @else {
+                        {{ alerts.sinRevisar() }}
+                        {{ alerts.sinRevisar() === 1 ? 'pendiente' : 'pendientes' }}
+                        @if (alerts.hayCriticas()) {
+                          · <span class="font-bold text-rose-600">{{ alerts.criticas() }} crítica{{ alerts.criticas() === 1 ? '' : 's' }}</span>
+                        }
+                      }
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="alerts.refrescar()"
+                    class="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 active:scale-95"
+                    aria-label="Actualizar"
+                    title="Actualizar"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">refresh</span>
+                  </button>
+                </div>
+
+                @if (alerts.error()) {
+                  <p class="px-4 py-3 text-caption text-amber-700">
+                    No se pudo actualizar. Mostrando el último estado conocido.
+                  </p>
+                }
+
+                <div class="max-h-[min(60vh,420px)] overflow-y-auto">
+                  @for (e of alerts.recientes(); track e.id) {
+                    <button
+                      type="button"
+                      (click)="abrirEvento(e)"
+                      class="flex w-full items-start gap-2.5 border-b border-slate-100 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-slate-50 active:scale-[0.99]"
+                    >
+                      <span
+                        class="mt-1 h-2 w-2 shrink-0 rounded-full"
+                        [class]="severidadDot(e.severidad)"
+                        aria-hidden="true"
+                      ></span>
+                      <span class="min-w-0 flex-1">
+                        <span
+                          class="block truncate text-caption-xs font-bold uppercase tracking-wide text-slate-400"
+                        >
+                          {{ e.sitio_desc || e.sitio_id }}
+                        </span>
+                        <span class="mt-0.5 block text-body-sm leading-snug text-slate-700">
+                          {{ e.mensaje || e.alerta_nombre }}
+                        </span>
+                        <span class="mt-0.5 block text-caption-xs text-slate-400">
+                          {{ formatCuando(e.triggered_at) }}
+                        </span>
+                      </span>
+                    </button>
+                  } @empty {
+                    <div class="px-4 py-8 text-center">
+                      <span
+                        class="material-symbols-outlined text-3xl text-slate-300"
+                        aria-hidden="true"
+                        >notifications_off</span
+                      >
+                      <p class="mt-2 text-caption text-slate-400">Sin alertas pendientes</p>
+                    </div>
+                  }
+                </div>
+
+                @if (alerts.sinRevisar() > alerts.recientes().length) {
+                  <p
+                    class="border-t border-surface-container bg-slate-50/60 px-4 py-2 text-caption-xs text-slate-500"
+                  >
+                    Mostrando las {{ alerts.recientes().length }} más recientes de
+                    {{ alerts.sinRevisar() }}.
+                  </p>
+                }
+              </div>
+            }
+          </div>
+
           <button
             type="button"
             (click)="shortcuts.openPalette()"
@@ -328,10 +448,54 @@ export class HeaderComponent implements OnInit {
   readonly companyService = inject(CompanyService);
   readonly router = inject(Router);
   readonly ui = inject(LayoutUiService);
+  readonly alerts = inject(AlertNotificationsService);
 
   private currentUrl = signal(this.router.url);
   readonly userMenuOpen = signal(false);
   readonly viewAsMenuOpen = signal(false);
+  readonly alertMenuOpen = signal(false);
+
+  alertBellLabel(): string {
+    const n = this.alerts.sinRevisar();
+    if (n === 0) return 'Alertas: sin pendientes';
+    return `Alertas: ${n} sin revisar`;
+  }
+
+  severidadDot(sev: string): string {
+    switch (sev) {
+      case 'critica':
+        return 'bg-rose-500';
+      case 'alta':
+        return 'bg-orange-500';
+      case 'media':
+        return 'bg-amber-400';
+      default:
+        return 'bg-emerald-400';
+    }
+  }
+
+  /** "hace 5 min" — la antigüedad importa más que la hora exacta acá. */
+  formatCuando(iso: string): string {
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return '';
+    const min = Math.floor((Date.now() - t) / 60_000);
+    if (min < 1) return 'recién';
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `hace ${h} h`;
+    return `hace ${Math.floor(h / 24)} d`;
+  }
+
+  abrirEvento(e: EventoReciente): void {
+    this.alertMenuOpen.set(false);
+    this.alerts.irAlEvento(e);
+  }
+
+  toggleAlertMenu(): void {
+    this.alertMenuOpen.update((v) => !v);
+    this.userMenuOpen.set(false);
+    this.viewAsMenuOpen.set(false);
+  }
 
   readonly previewRoleOptions: {
     value: PreviewRole;
@@ -403,7 +567,12 @@ export class HeaderComponent implements OnInit {
         this.currentUrl.set(e.urlAfterRedirects || e.url);
         this.userMenuOpen.set(false);
         this.viewAsMenuOpen.set(false);
+        this.alertMenuOpen.set(false);
       });
+
+    // El header solo se monta dentro del layout autenticado, así que acá ya
+    // hay sesión: es el punto natural para arrancar la vigilancia.
+    this.alerts.iniciar();
   }
 
   @HostListener('document:click', ['$event'])
@@ -412,6 +581,7 @@ export class HeaderComponent implements OnInit {
     const menu = target.closest('[data-menu]')?.getAttribute('data-menu');
     if (menu !== 'user') this.userMenuOpen.set(false);
     if (menu !== 'view-as') this.viewAsMenuOpen.set(false);
+    if (menu !== 'alertas') this.alertMenuOpen.set(false);
   }
 
   toggleUserMenu(): void {
