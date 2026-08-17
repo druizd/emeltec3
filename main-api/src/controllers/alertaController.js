@@ -18,6 +18,43 @@ function esSuperAdmin(req) {
   return req.user?.tipo === 'SuperAdmin';
 }
 
+/**
+ * Roles que administran alarmas (mismos que alertaRoutes permite para
+ * crear/editar/borrar). Ven todas las reglas dentro de su alcance: no se puede
+ * gestionar una regla que no se ve.
+ */
+const ROLES_EDITORES_ALARMA = new Set(['SuperAdmin', 'Admin', 'Gerente', 'Vendedor']);
+
+/**
+ * Filtro de visibilidad de una regla (`alertas.visible_to_all` /
+ * `viewer_user_ids`). Estos campos se guardaban desde el formulario pero NO se
+ * aplicaban en ninguna consulta: una regla marcada "Restringida" la veía todo
+ * el mundo igual.
+ *
+ * Se aplica solo a los roles NO editores (típicamente Cliente): restringir
+ * sirve para acotar el ruido a quien opera, no para esconderle reglas a quien
+ * las administra.
+ *
+ * @param {object} user
+ * @param {string} alias alias de la tabla `alertas` en la query
+ * @param {number} startIndex índice del primer placeholder disponible
+ */
+function buildAlarmVisibilityScope(user, alias = 'a', startIndex = 1) {
+  if (!user || ROLES_EDITORES_ALARMA.has(user.tipo)) {
+    return { clause: '', params: [] };
+  }
+  return {
+    clause:
+      `(${alias}.visible_to_all = TRUE` +
+      ` OR ${alias}.creado_por = $${startIndex}` +
+      ` OR $${startIndex} = ANY(${alias}.viewer_user_ids))`,
+    params: [user.id],
+  };
+}
+
+// Exportado para tests.
+exports.buildAlarmVisibilityScope = buildAlarmVisibilityScope;
+
 // Modelo unificado por empresa/sub-empresa (canAccessSite), no por creador.
 // Antes un usuario no podía gestionar alertas de un colega de su misma empresa,
 // y el control no respetaba el límite de sub-empresa.
@@ -157,6 +194,12 @@ exports.listarAlertas = async (req, res) => {
     conditions.push(`a.activa = $${params.length}`);
   }
 
+  const visibilidad = buildAlarmVisibilityScope(req.user, 'a', params.length + 1);
+  if (visibilidad.clause) {
+    conditions.push(visibilidad.clause);
+    params.push(...visibilidad.params);
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const { rows } = await pool.query(
@@ -269,17 +312,19 @@ exports.listarEventos = async (req, res) => {
   const countParams = [];
   const conditions = [];
 
-  if (req.user.tipo !== 'SuperAdmin') {
-    countParams.push(req.user.empresa_id);
-    conditions.push(`e.empresa_id = $${countParams.length}`);
-  } else if (empresa_id) {
-    countParams.push(empresa_id);
-    conditions.push(`e.empresa_id = $${countParams.length}`);
-  }
-
-  if (req.user.sub_empresa_id) {
-    countParams.push(req.user.sub_empresa_id);
-    conditions.push(`e.sub_empresa_id = $${countParams.length}`);
+  // Alcance por sitio, con el MISMO criterio que listarAlertas. Antes se
+  // filtraba a mano por empresa_id/sub_empresa_id, lo que para un Vendedor
+  // daba un conjunto distinto al de las reglas: le mostraba sitios de su
+  // empresa que no tiene asignados y le ocultaba las maletas piloto de otras.
+  if (esSuperAdmin(req)) {
+    if (empresa_id) {
+      countParams.push(empresa_id);
+      conditions.push(`e.empresa_id = $${countParams.length}`);
+    }
+  } else {
+    const scope = buildUserSiteScope(req.user, 's', countParams.length + 1);
+    conditions.push(scope.clause || 'FALSE');
+    countParams.push(...scope.params);
   }
 
   if (sitio_id) {
@@ -303,7 +348,19 @@ exports.listarEventos = async (req, res) => {
     conditions.push(`e.triggered_at <= $${countParams.length}`);
   }
 
+  const visibilidad = buildAlarmVisibilityScope(req.user, 'a', countParams.length + 1);
+  if (visibilidad.clause) {
+    conditions.push(visibilidad.clause);
+    countParams.push(...visibilidad.params);
+  }
+
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  // El WHERE referencia `a` (visibilidad) y `s` (alcance), así que el COUNT
+  // necesita los mismos JOINs que la consulta principal.
+  const eventosFrom = `
+    FROM alertas_eventos e
+    JOIN alertas a ON a.id = e.alerta_id
+    LEFT JOIN sitio s ON s.id = e.sitio_id`;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
   const limitPh = countParams.length + 1;
@@ -322,9 +379,7 @@ exports.listarEventos = async (req, res) => {
             ur.nombre  AS reconocido_nombre,
             ur.apellido AS reconocido_apellido,
             FALSE AS leido
-     FROM alertas_eventos e
-     JOIN alertas a ON a.id = e.alerta_id
-     LEFT JOIN sitio s ON s.id = e.sitio_id
+     ${eventosFrom}
      LEFT JOIN empresa emp ON emp.id = e.empresa_id
      LEFT JOIN usuario ua ON ua.id = e.asignado_a
      LEFT JOIN usuario ur ON ur.id = e.reconocida_por
@@ -343,7 +398,7 @@ exports.listarEventos = async (req, res) => {
   }));
 
   const { rows: countRows } = await pool.query(
-    `SELECT COUNT(*) FROM alertas_eventos e ${where}`,
+    `SELECT COUNT(*) ${eventosFrom} ${where}`,
     countParams,
   );
 
@@ -497,45 +552,82 @@ exports.vincularIncidencia = async (req, res) => {
 };
 
 exports.resumen = async (req, res) => {
-  const esSuperAdmin = req.user.tipo === 'SuperAdmin';
   const { sitio_id, empresa_id } = req.query;
   const params = [];
   const conditions = [];
 
-  if (!esSuperAdmin) {
-    params.push(req.user.empresa_id);
-    conditions.push(`empresa_id = $${params.length}`);
-  } else if (empresa_id) {
-    params.push(empresa_id);
-    conditions.push(`empresa_id = $${params.length}`);
-  }
-
-  if (req.user.sub_empresa_id) {
-    params.push(req.user.sub_empresa_id);
-    conditions.push(`sub_empresa_id = $${params.length}`);
+  // Mismo criterio de alcance y visibilidad que listarAlertas/listarEventos:
+  // la campana del header no puede contar eventos que el usuario no vería al
+  // abrir la bandeja.
+  if (esSuperAdmin(req)) {
+    if (empresa_id) {
+      params.push(empresa_id);
+      conditions.push(`e.empresa_id = $${params.length}`);
+    }
+  } else {
+    const scope = buildUserSiteScope(req.user, 's', params.length + 1);
+    conditions.push(scope.clause || 'FALSE');
+    params.push(...scope.params);
   }
 
   if (sitio_id) {
     params.push(sitio_id);
-    conditions.push(`sitio_id = $${params.length}`);
+    conditions.push(`e.sitio_id = $${params.length}`);
   }
 
-  const where = conditions.length ? `AND ${conditions.join(' AND ')}` : '';
+  const visibilidad = buildAlarmVisibilityScope(req.user, 'a', params.length + 1);
+  if (visibilidad.clause) {
+    conditions.push(visibilidad.clause);
+    params.push(...visibilidad.params);
+  }
 
+  const from = `
+    FROM alertas_eventos e
+    JOIN alertas a ON a.id = e.alerta_id
+    LEFT JOIN sitio s ON s.id = e.sitio_id`;
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  // "Sin revisar" = no resuelta y que nadie haya reconocido todavía. Es el
+  // contador que alimenta la campana del header: lo que aún no ha tocado
+  // ningún operador. No existe un "leído" por usuario — `marcarLeido` es un
+  // no-op y este modelo trata la bandeja como estado de equipo, no personal.
   const { rows } = await pool.query(
     `SELECT
-       COUNT(*) FILTER (WHERE resuelta = FALSE) AS activas,
-       COUNT(*) FILTER (WHERE resuelta = FALSE AND severidad = 'critica') AS criticas,
-       COUNT(*) FILTER (WHERE resuelta = FALSE AND severidad = 'alta')    AS altas,
-       COUNT(*) FILTER (WHERE resuelta = FALSE AND severidad = 'media')   AS medias,
-       COUNT(*) FILTER (WHERE resuelta = FALSE AND severidad = 'baja')    AS bajas
-     FROM alertas_eventos
-     WHERE 1=1 ${where}`,
+       COUNT(*) FILTER (WHERE e.resuelta = FALSE) AS activas,
+       COUNT(*) FILTER (WHERE e.resuelta = FALSE AND e.reconocida_at IS NULL) AS sin_revisar,
+       COUNT(*) FILTER (WHERE e.resuelta = FALSE AND e.severidad = 'critica') AS criticas,
+       COUNT(*) FILTER (WHERE e.resuelta = FALSE AND e.severidad = 'alta')    AS altas,
+       COUNT(*) FILTER (WHERE e.resuelta = FALSE AND e.severidad = 'media')   AS medias,
+       COUNT(*) FILTER (WHERE e.resuelta = FALSE AND e.severidad = 'baja')    AS bajas
+     ${from}
+     ${where}`,
     params,
   );
 
+  // Los más recientes sin revisar, para que el header pueda listarlos y
+  // disparar el popup sin un segundo round-trip por cada poll.
+  const pendientes = 'e.resuelta = FALSE AND e.reconocida_at IS NULL';
+  const { rows: recientes } = await pool.query(
+    `SELECT e.id, e.severidad, e.mensaje, e.triggered_at, e.sitio_id, e.empresa_id,
+            a.nombre AS alerta_nombre,
+            s.descripcion AS sitio_desc,
+            s.tipo_sitio
+     ${from}
+     ${where ? `${where} AND ${pendientes}` : `WHERE ${pendientes}`}
+     ORDER BY e.triggered_at DESC
+     LIMIT 15`,
+    params,
+  );
+
+  const counts = rows[0] || {};
   res.json({
     ok: true,
-    data: { ...rows[0], no_leidas: 0 },
+    data: {
+      ...counts,
+      // `no_leidas` se mantiene por compatibilidad con clientes viejos, pero
+      // ahora refleja el conteo real de pendientes en vez de un 0 fijo.
+      no_leidas: Number(counts.sin_revisar || 0),
+      recientes,
+    },
   });
 };

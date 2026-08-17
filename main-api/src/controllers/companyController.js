@@ -2586,9 +2586,16 @@ exports.getSiteVariables = async (req, res, next) => {
       return notFound(res, 'Sitio no encontrado.');
     }
 
-    const superAdminError = requireSuperAdmin(req, res);
-    if (superAdminError) {
-      return superAdminError;
+    // LECTURA del reg_map: alcance de sitio, no SuperAdmin. Configurar una
+    // alarma exige elegir la variable y su alias/unidad, y eso lo hacen
+    // Admin/Gerente/Vendedor (ver alarmEditorRoles en alertaRoutes). Con
+    // requireSuperAdmin, a esos roles el panel de alarmas les quedaba sin
+    // reg_map: el rule-tester deshabilitado, el selector de variable
+    // degradado a texto libre y todas las variables marcadas "sin mapeo".
+    // Las MUTACIONES del reg_map (create/update/delete) siguen siendo
+    // exclusivas de SuperAdmin.
+    if (!(await canReadSite(req.user, site))) {
+      return forbidden(res, 'No tiene permisos para consultar este sitio.');
     }
 
     const mappingsRes = await db.query(

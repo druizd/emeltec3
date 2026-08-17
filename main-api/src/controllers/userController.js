@@ -7,6 +7,7 @@ const emailService = require('../services/emailService');
 const { query: dbHelperQuery } = require('../config/dbHelpers');
 const audit = require('../services/auditLog');
 const { validateNewPassword } = require('../services/passwordPolicy');
+const { buildUserListScope } = require('../services/userListScope');
 const sessionRevocation = require('../services/sessionRevocation');
 const { requireEnv } = require('../config/requireEnv');
 
@@ -219,10 +220,6 @@ exports.getAllUsers = async (req, res, next) => {
     const { tipo, empresa_id, sub_empresa_id: userSubEmpresaId } = req.user;
     const { sub_empresa_id, empresa_id: queryEmpresaId } = req.query;
 
-    if (tipo === 'Cliente') {
-      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver usuarios' });
-    }
-
     let query = `
       SELECT u.id,
              u.nombre,
@@ -246,31 +243,20 @@ exports.getAllUsers = async (req, res, next) => {
       LEFT JOIN empresa e ON e.id = u.empresa_id
       LEFT JOIN sub_empresa se ON se.id = u.sub_empresa_id
     `;
-    const conditions = [];
-    const params = [];
-
-    if (tipo === 'SuperAdmin') {
-      if (sub_empresa_id) {
-        params.push(sub_empresa_id);
-        conditions.push(`u.sub_empresa_id = $${params.length}`);
-      } else if (queryEmpresaId) {
-        params.push(queryEmpresaId);
-        conditions.push(`u.empresa_id = $${params.length}`);
-      }
-    } else if (tipo === 'Admin' || tipo === 'Vendedor') {
-      params.push(empresa_id);
-      conditions.push(`u.empresa_id = $${params.length}`);
-      if (sub_empresa_id) {
-        params.push(sub_empresa_id);
-        conditions.push(`u.sub_empresa_id = $${params.length}`);
-      }
-    } else if (tipo === 'Gerente') {
-      if (!userSubEmpresaId) {
-        return res.json({ ok: true, data: [] });
-      }
-      params.push(userSubEmpresaId);
-      conditions.push(`u.sub_empresa_id = $${params.length}`);
+    // El alcance se decide en services/userListScope (cierra por defecto).
+    const scope = buildUserListScope(
+      { tipo, empresa_id, sub_empresa_id: userSubEmpresaId },
+      { sub_empresa_id, empresa_id: queryEmpresaId },
+    );
+    if (!scope.allow) {
+      return res.status(403).json({ ok: false, error: 'No tiene permisos para ver usuarios' });
     }
+    if (scope.empty) {
+      return res.json({ ok: true, data: [] });
+    }
+
+    const conditions = scope.conditions;
+    const params = scope.params;
 
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
