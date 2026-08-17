@@ -49,6 +49,22 @@ export interface ContadorJornadaPoint {
 
 export type TelemetryPreset = '24h' | '7d' | '30d' | '365d';
 
+/** Roles de `reg_map.rol_dashboard` que el módulo de contadores sabe acumular. */
+export const CONTADOR_ROLES = ['totalizador', 'energia', 'volumen'] as const;
+export type ContadorRol = (typeof CONTADOR_ROLES)[number];
+
+/** Punto de `GET /api/companies/sites/:id/contadores-diarios`. */
+export interface ContadorDiarioPoint {
+  /** 'YYYY-MM-DD' en hora de Chile. */
+  dia: string;
+  /** Consumo del día (delta), ya transformado. `null` si no hubo datos. */
+  delta: number | null;
+  unidad: string | null;
+  muestras: number;
+  ultimo_dato: string | null;
+  resets_detectados: number;
+}
+
 export interface TelemetryHistoryRow {
   id_serial: string;
   fecha: string;
@@ -405,6 +421,23 @@ export class CompanyService {
     params.set('t', String(Date.now()));
     return this.http.get<ApiResponse<SiteDashboardHistoryPayload>>(
       `/api/companies/sites/${siteId}/dashboard-history?${params.toString()}`,
+    );
+  }
+
+  /**
+   * Serie de consumo diario (delta del contador por día calendario chileno).
+   * El delta ya viene transformado por el reg_map y con los resets del
+   * contador resueltos — no es el valor acumulado.
+   */
+  getContadoresDiarios(
+    siteId: string,
+    options: { rol?: ContadorRol; dias?: number } = {},
+  ): Observable<ApiResponse<ContadorDiarioPoint[]>> {
+    const params = new URLSearchParams();
+    params.set('rol', options.rol ?? 'totalizador');
+    params.set('dias', String(options.dias ?? 30));
+    return this.http.get<ApiResponse<ContadorDiarioPoint[]>>(
+      `/api/companies/sites/${encodeURIComponent(siteId)}/contadores-diarios?${params.toString()}`,
     );
   }
 
