@@ -21,10 +21,11 @@ const cliente = { tipo: 'Cliente', empresa_id: 1, sub_empresa_id: 10 };
 const clienteSinSub = { tipo: 'Cliente', empresa_id: 1, sub_empresa_id: null };
 const gerenteSinSub = { tipo: 'Gerente', empresa_id: 1 }; // sub_empresa_id undefined
 
-type Handler = { match: RegExp; respond: (params: any) => { rows: any[] } };
+type QueryParams = unknown[] | undefined;
+type Handler = { match: RegExp; respond: (params: QueryParams) => { rows: unknown[] } };
 function fakePool(handlers: Handler[]) {
   return {
-    query: async (sql: string, params: any) => {
+    query: async (sql: string, params: QueryParams) => {
       for (const h of handlers) {
         if (h.match.test(sql)) return h.respond(params);
       }

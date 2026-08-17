@@ -16,6 +16,8 @@ import { catchError, of } from 'rxjs';
 import { VentisquerosComponent } from '../../ventisqueros/ventisqueros';
 import { OverviewNivelCaudalChartComponent } from './overview-nivel-caudal-chart';
 import { normalizeSiteType } from '../../../shared/site-type-ui';
+import type * as Leaflet from 'leaflet';
+import type proj4 from 'proj4';
 import type { SiteRecord } from '@emeltec/shared';
 import {
   CompanyService,
@@ -801,15 +803,15 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
    * sub-empresas hermanas.) Los fetch por empresa_id de eventos/incidencias
    * ya se acotan client-side con `this.sites`, así que heredan este scope.
    */
-  @Input() set sites(value: any[]) {
+  @Input() set sites(value: SiteRecord[]) {
     this._sites = value || [];
     this._sitesSignal.set(value || []);
   }
-  get sites(): any[] {
+  get sites(): SiteRecord[] {
     return this._sites;
   }
-  private _sites: any[] = [];
-  private _sitesSignal = signal<any[]>([]);
+  private _sites: SiteRecord[] = [];
+  private _sitesSignal = signal<SiteRecord[]>([]);
 
   @Input() subEmpresaId = '';
 
@@ -997,9 +999,9 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     return `${meses[hoy.getMonth()]} ${hoy.getFullYear()}`;
   }
 
-  private map: any = null;
-  private mapMarkers: any[] = [];
-  private L: any = null;
+  private map: Leaflet.Map | null = null;
+  private mapMarkers: Leaflet.Marker[] = [];
+  private L: typeof Leaflet | null = null;
   private viewReady = false;
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -1016,7 +1018,10 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       // datos reales del backend. Si el sitio no es pozo o no tiene
       // contadores configurados, quedan en 0.
       return {
-        nombre: s.descripcion || s.nombre || s.id_serial || 'Instalación',
+        // `nombre` no existe en SiteRecord: es un fallback para respuestas
+        // legacy que traían ese campo en vez de `descripcion`. Se conserva el
+        // comportamiento, pero explicitando que no es parte del contrato.
+        nombre: s.descripcion || (s as { nombre?: string }).nombre || s.id_serial || 'Instalación',
         ubicacion: s.ubicacion || 'Sin ubicación',
         obraDga: s.pozo_config?.obra_dga || null,
         estado: (s.activo ? 'online' : 'sinDatos') as SitioResumen['estado'],
@@ -1588,7 +1593,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     }));
   }
 
-  private async loadLeaflet(): Promise<any> {
+  private async loadLeaflet(): Promise<typeof Leaflet> {
     const m = await import('leaflet');
     return m.default ?? m;
   }
@@ -1606,8 +1611,8 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
   /**
    * Lazy load proj4. Solo se importa cuando el mapa se inicializa.
    */
-  private proj4Lib: any = null;
-  private async loadProj4(): Promise<any> {
+  private proj4Lib: typeof proj4 | null = null;
+  private async loadProj4(): Promise<typeof proj4> {
     if (this.proj4Lib) return this.proj4Lib;
     const m = await import('proj4');
     this.proj4Lib = m.default ?? m;
@@ -1642,7 +1647,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
     await this.loadProj4();
     if (!this.mapContainer || this.map) return; // guard against re-entry after await
 
-    const L: any = this.L;
+    const L = this.L;
 
     this.map = L.map(this.mapContainer.nativeElement, {
       scrollWheelZoom: false,
@@ -1691,7 +1696,10 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
 
   private updateMarkers(): void {
     if (!this.map || !this.L) return;
-    const L: any = this.L;
+    // Copias locales: el estrechamiento de `this.map` se pierde dentro de los
+    // callbacks de abajo, porque es una propiedad mutable.
+    const L = this.L;
+    const map = this.map;
 
     this.mapMarkers.forEach((m) => m.remove());
     this.mapMarkers = [];
@@ -1797,7 +1805,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
           offset: [0, -38],
           className: 'emeltec-marker-label',
         })
-        .addTo(this.map);
+        .addTo(map);
 
       this.mapMarkers.push(marker);
       bounds.push([s.lat, s.lng]);
@@ -1810,7 +1818,7 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
       // más bajo para overview. Padding 60px en todos los casos.
       const diagKm = this.boundsDiagonalKm(bounds);
       const maxZoom = diagKm < 1 ? 17 : diagKm < 5 ? 16 : diagKm < 20 ? 14 : diagKm < 100 ? 12 : 10;
-      this.map.fitBounds(bounds, { padding: [60, 60], maxZoom });
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom });
     }
   }
 

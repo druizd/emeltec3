@@ -7,7 +7,6 @@ import { AdminSectionHeaderComponent } from './admin-section-header';
 import { AdminFormActionsComponent } from './admin-form-actions';
 import { AdminTableToolbarComponent } from './admin-table-toolbar';
 import { AdminPaginationComponent } from './admin-pagination';
-import { formatRutInput } from '../../../shared/rut';
 
 const PAGE_SIZE = 10;
 

@@ -19,7 +19,7 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { ok } from '../../shared/httpEnvelope';
-import { ForbiddenError, UnauthorizedError, ValidationError } from '../../shared/errors';
+import { ForbiddenError, ValidationError } from '../../shared/errors';
 import { elapsedMs, nowHrtime } from '../../shared/time';
 import { assertSiteAccessById } from '../../middlewares/siteAccess';
 import { z } from 'zod';

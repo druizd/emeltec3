@@ -13,11 +13,12 @@ import { query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
 import { suprimirUsuario } from './supresion';
+import type { SuprimirParams } from './supresion';
 import { runAuditAlertsCycle } from './auditAlerts';
 
 type SendAvisoFn = (email: string, nombre: string, diasRestantes: number) => Promise<void>;
 type DbQuery = (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }>;
-type SuprimirFn = (params: import('./supresion').SuprimirParams) => Promise<void>;
+type SuprimirFn = (params: SuprimirParams) => Promise<void>;
 
 const SYSTEM_ACTOR = {
   actorId: 'SYSTEM',

@@ -106,3 +106,36 @@ export interface SiteDashboardHistoryEntry {
   timestamp: string;
   variables: Record<string, string | number | boolean | null>;
 }
+
+/** Paginación de `GET /api/companies/sites/:siteId/dashboard-history`. */
+export interface SiteDashboardHistoryPagination {
+  limit: number;
+  page: number;
+  page_size: number;
+  /** `null` cuando el conteo total no se pudo calcular. */
+  total: number | null;
+  total_pages: number;
+  has_more: boolean;
+  granularity?: string;
+  source?: string;
+}
+
+/**
+ * `data` de `GET /api/companies/sites/:siteId/dashboard-history`.
+ *
+ * El endpoint NO devuelve un array plano: envuelve las filas junto al sitio y
+ * la paginación. El tipo declaraba `SiteDashboardHistoryEntry[]` y los
+ * componentes compensaban anotando la respuesta como `any`, lo que además
+ * escondía el acceso a `data.pagination`.
+ */
+export interface SiteDashboardHistoryPayload {
+  site: {
+    id: string;
+    descripcion: string | null;
+    id_serial: string | null;
+    tipo_sitio: string | null;
+    activo?: boolean | null;
+  };
+  rows: SiteDashboardHistoryEntry[];
+  pagination?: SiteDashboardHistoryPagination;
+}
