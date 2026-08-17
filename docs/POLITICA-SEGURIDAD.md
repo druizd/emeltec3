@@ -95,7 +95,29 @@ acciones sensibles (gestión de usuarios, operaciones críticas). El segundo
 factor se entrega mediante código de un solo uso enviado al correo electrónico
 registrado del usuario, con tiempo de expiración y límite de intentos.
 
-### 4.4 Registro de auditoría
+Las contraseñas se almacenan con bcrypt (cost 12) y deben cumplir una política
+mínima verificada **en el servidor**: al menos 8 caracteres, tres de las cuatro
+señales de complejidad (longitud, mayúsculas y minúsculas, dígitos, símbolos) y
+nunca compuestas solo por dígitos.
+
+### 4.4 Recuperación y cambio de contraseña
+
+El titular puede restablecer su contraseña desde la pantalla de acceso. El
+procedimiento exige un código de un solo uso enviado al correo registrado, y no
+revela si una dirección corresponde o no a una cuenta existente
+(anti-enumeración).
+
+Todo cambio de contraseña — por recuperación, por cambio voluntario desde el
+perfil o por restablecimiento administrativo — produce dos efectos:
+
+1. **Cierre de sesiones abiertas.** Las credenciales de sesión emitidas antes
+   del cambio dejan de ser válidas, de modo que un acceso no autorizado en curso
+   queda cortado.
+2. **Notificación al titular.** Se envía un aviso al correo registrado
+   indicando origen, fecha y dirección IP del cambio, para que pueda detectar y
+   denunciar un restablecimiento que no haya solicitado.
+
+### 4.5 Registro de auditoría
 
 Las acciones relevantes sobre datos personales (creaciones, modificaciones,
 eliminaciones, accesos sensibles) quedan registradas con identificador del
@@ -104,21 +126,21 @@ detección de accesos no autorizados y para la investigación de incidentes.
 Los datos del registro se conservan conforme a la política de retención
 documentada en `RETENCION-DATOS.md`.
 
-### 4.5 Minimización de datos en el cliente
+### 4.6 Minimización de datos en el cliente
 
 La plataforma aplica el principio de minimización de datos por defecto
 (Art. 14 quáter): el cliente web retiene únicamente los datos estrictamente
 necesarios para el funcionamiento de la interfaz, sin almacenar datos
 personales adicionales en el navegador del usuario.
 
-### 4.6 Protección desde el diseño
+### 4.7 Protección desde el diseño
 
 Las nuevas funciones y cambios que involucren datos personales se evalúan
 antes de su implementación para incorporar medidas de protección desde el
 diseño (Art. 14 quáter). Los cambios de tratamiento se documentan antes de
 ser llevados a producción.
 
-### 4.7 Gestión de encargados de tratamiento
+### 4.8 Gestión de encargados de tratamiento
 
 Los terceros que tratan datos personales por cuenta de Emeltec (proveedores
 de infraestructura, servicios de comunicación) son identificados y evaluados.
@@ -126,7 +148,7 @@ Se exige que adopten medidas de seguridad equivalentes a las de esta política
 y que notifiquen cualquier incidente de seguridad a Emeltec de forma
 inmediata (Art. 15 bis).
 
-### 4.8 Revisión periódica de eficacia
+### 4.9 Revisión periódica de eficacia
 
 Emeltec establece un calendario de revisión periódica de sus medidas de
 seguridad, que incluye revisión interna de accesos y configuraciones,

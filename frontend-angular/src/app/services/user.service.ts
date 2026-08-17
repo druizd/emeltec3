@@ -13,6 +13,15 @@ import type {
   UserRole,
 } from '@emeltec/shared';
 
+/**
+ * Cambiar la contraseña cierra las demás sesiones (`sessions_valid_from`), lo
+ * que también invalidaría el token actual. La API devuelve uno nuevo para que
+ * quien hizo el cambio no quede deslogueado.
+ */
+export interface PasswordChangeResponse extends ApiResponse<User> {
+  token?: string;
+}
+
 export interface Tecnico {
   id: string;
   nombre: string;
@@ -120,8 +129,8 @@ export class UserService {
     return this.http.patch<ApiResponse<User>>('/api/users/me', payload);
   }
 
-  updateCurrentPassword(payload: UpdateUserPasswordPayload): Observable<ApiResponse<User>> {
-    return this.http.patch<ApiResponse<User>>('/api/users/me/password', payload);
+  updateCurrentPassword(payload: UpdateUserPasswordPayload): Observable<PasswordChangeResponse> {
+    return this.http.patch<PasswordChangeResponse>('/api/users/me/password', payload);
   }
 
   updateCurrentSecurity(payload: UpdateUserSecurityPayload): Observable<ApiResponse<User>> {
@@ -141,7 +150,11 @@ export class UserService {
     return this.http.patch<ApiResponse<User>>(`/api/users/${id}`, { activo: true });
   }
 
-  /** Reset de contraseña por admin: reenvía el código de acceso. */
+  /**
+   * Reset de acceso por admin: anula la contraseña, cierra las sesiones del
+   * usuario y lo devuelve al flujo de activación. No envía código — ese lo emite
+   * auth-api cuando el usuario define su contraseña nueva.
+   */
   resetUserPassword(id: string): Observable<ApiResponse<unknown>> {
     return this.http.post<ApiResponse<unknown>>(`/api/users/${id}/reset-password`, {});
   }

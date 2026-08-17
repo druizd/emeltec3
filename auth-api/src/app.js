@@ -79,6 +79,8 @@ const startLimiter = rateLimit({
 
 app.use('/api/health', healthRoutes);
 app.use('/api/auth/request-code', otpRequestLimiter);
+app.use('/api/auth/recover/start', otpRequestLimiter);
+app.use('/api/auth/recover/complete', loginLimiter);
 app.use('/api/auth/login', loginLimiter);
 app.use('/api/auth/start', startLimiter);
 app.use('/api/auth', authLimiter, authRoutes);

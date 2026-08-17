@@ -396,8 +396,8 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                             (click)="resetPassword(user)"
                             [disabled]="rowBusyId() === user.id"
                             class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600 disabled:opacity-40"
-                            title="Reenviar código de acceso"
-                            aria-label="Reenviar código de acceso"
+                            title="Restablecer acceso"
+                            aria-label="Restablecer acceso del usuario"
                           >
                             <span class="material-symbols-outlined text-[18px]">lock_reset</span>
                           </button>
@@ -827,13 +827,13 @@ export class UserManagementComponent implements OnInit, OnChanges {
     this.rowBusyId.set(user.id);
     this.userService.resetUserPassword(user.id).subscribe({
       next: () => {
-        this.toast.success(`Código de acceso reenviado a ${user.email}.`);
+        this.toast.success(`Acceso restablecido. ${user.email} debe crear una contraseña nueva.`);
         this.rowBusyId.set(null);
       },
       error: (err) => {
         this.status.set({
           type: 'error',
-          msg: this.errorDetail(err, 'No se pudo reenviar el código.'),
+          msg: this.errorDetail(err, 'No se pudo restablecer el acceso.'),
         });
         this.rowBusyId.set(null);
       },
