@@ -63,7 +63,8 @@ router.patch(
   userController.updateUser,
 );
 
-// Reset de contraseña por admin (reenvía código de acceso) — exige 2FA.
+// Restablecer acceso por admin: borra la contraseña, revoca sesiones y devuelve
+// la cuenta al flujo de activación. No emite OTP — exige 2FA.
 router.post(
   '/:id/reset-password',
   authMiddleware.authorizeRoles('Admin', 'SuperAdmin', 'Gerente'),

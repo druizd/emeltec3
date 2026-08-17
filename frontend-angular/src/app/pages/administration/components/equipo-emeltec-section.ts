@@ -52,9 +52,11 @@ function emptyDraft(): DraftMiembro {
  * Sección "Equipo Emeltec" de /administration (solo SuperAdmin).
  *
  * Lista SuperAdmins y Vendedores, y permite crear miembros nuevos. El alta
- * usa POST /api/users (flujo OTP de bienvenida por email) asociando el
- * usuario a la empresa interna Emeltec. La acción exige 2FA: el desafío lo
- * maneja el two-factor.interceptor global (abre el diálogo y reintenta).
+ * usa POST /api/users asociando el usuario a la empresa interna Emeltec; el
+ * correo de bienvenida NO lleva código, invita a definir la contraseña desde
+ * el login (ahí se emite el OTP que sirve). "Restablecer acceso" hace lo
+ * mismo sobre una cuenta existente. Ambas exigen 2FA: el desafío lo maneja el
+ * two-factor.interceptor global (abre el diálogo y reintenta).
  */
 @Component({
   selector: 'app-equipo-emeltec-section',
@@ -283,10 +285,10 @@ function emptyDraft(): DraftMiembro {
                     @if (m.activo) {
                       <button
                         type="button"
-                        (click)="pedirReenvio(m)"
+                        (click)="pedirRestablecer(m)"
                         [disabled]="saving()"
-                        [attr.aria-label]="'Reenviar código de acceso a ' + m.nombre"
-                        title="Reenviar código de acceso"
+                        [attr.aria-label]="'Restablecer el acceso de ' + m.nombre"
+                        title="Restablecer acceso"
                         class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
@@ -679,20 +681,21 @@ export class EquipoEmeltecSectionComponent {
     });
   }
 
-  pedirReenvio(m: MiembroEquipo): void {
-    this.pendingConfirm = () => this.reenviarCodigo(m);
+  pedirRestablecer(m: MiembroEquipo): void {
+    this.pendingConfirm = () => this.restablecerAcceso(m);
     this.confirmData.set({
-      title: 'Reenviar código de acceso',
+      title: 'Restablecer acceso',
       message:
-        `¿Reenviar el código de acceso a ${m.nombre} ${m.apellido} (${m.email})? ` +
-        `Recibirá un correo para volver a ingresar. Requiere tu código 2FA.`,
-      confirmText: 'Reenviar',
+        `¿Restablecer el acceso de ${m.nombre} ${m.apellido} (${m.email})? ` +
+        `Su contraseña actual dejará de ser válida y se cerrarán sus sesiones abiertas. ` +
+        `Recibirá un correo para crear una contraseña nueva desde el login. Requiere tu código 2FA.`,
+      confirmText: 'Restablecer',
       tone: 'primary',
       icon: 'lock_reset',
     });
   }
 
-  private reenviarCodigo(m: MiembroEquipo): void {
+  private restablecerAcceso(m: MiembroEquipo): void {
     this.saving.set(true);
     this.error.set('');
     // El backend exige 2FA (require2fa); el twoFactorInterceptor global abre
@@ -700,11 +703,11 @@ export class EquipoEmeltecSectionComponent {
     this.userService.resetUserPassword(m.id).subscribe({
       next: () => {
         this.saving.set(false);
-        this.toast.success('Código de acceso reenviado satisfactoriamente.');
+        this.toast.success('Acceso restablecido. Le enviamos el correo para crear su contraseña.');
       },
       error: (err) => {
         this.saving.set(false);
-        this.error.set(err?.error?.error || 'No se pudo reenviar el código de acceso.');
+        this.error.set(err?.error?.error || 'No se pudo restablecer el acceso.');
       },
     });
   }
