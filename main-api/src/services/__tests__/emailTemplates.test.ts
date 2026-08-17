@@ -114,6 +114,84 @@ describe('sendPasswordChangedEmail', () => {
   });
 });
 
+/**
+ * El HTML no pasa por el log del modo simulado, así que se asertan los renders
+ * expuestos (`_render*`). Importa porque el HTML es lo que el cliente de correo
+ * muestra; el texto plano es solo el fallback.
+ */
+describe('HTML de las plantillas', () => {
+  it('el reset escapa el nombre: sin esto habría inyección de HTML', () => {
+    const { html } = emailService._renderPasswordResetEmail('<script>alert(1)</script>', 'A2B3C4');
+
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('el aviso de cambio escapa nombre, origen e IP', () => {
+    const { html } = emailService._renderPasswordChangedEmail('<b>N</b>', {
+      origen: 'perfil',
+      ip: '<img src=x>',
+    });
+
+    expect(html).not.toContain('<b>N</b>');
+    expect(html).not.toContain('<img src=x>');
+    expect(html).toContain('&lt;img src=x&gt;');
+  });
+
+  it('la invitación escapa el nombre en la variante de cuenta nueva', () => {
+    const { html } = emailService._renderAccountAccessEmail('<i>x</i>', {
+      motivo: 'nueva_cuenta',
+    });
+
+    expect(html).not.toContain('<i>x</i>');
+    expect(html).toContain('&lt;i&gt;x&lt;/i&gt;');
+  });
+
+  it('todas referencian el logo por CID, que es lo que gatilla el adjunto', () => {
+    // `enviar` solo adjunta el logo si el HTML incluye este cid. Si el shell
+    // cambia y rompe la referencia, el correo sale sin logo y nadie se entera.
+    const htmls = [
+      emailService._renderPasswordResetEmail('N', 'A2B3C4').html,
+      emailService._renderPasswordChangedEmail('N', { origen: 'perfil' }).html,
+      emailService._renderAccountAccessEmail('N', { motivo: 'reset_admin' }).html,
+    ];
+
+    for (const html of htmls) expect(html).toContain('cid:emeltec-logo');
+  });
+
+  it('el HTML del reset muestra el código y su etiqueta propia', () => {
+    const { html } = emailService._renderPasswordResetEmail('Denisse', 'A2B3C4', 15);
+
+    expect(html).toContain('A2B3C4');
+    expect(html).toContain('Código de restablecimiento');
+    expect(html).toContain('15 minutos');
+    // Regresión: no debe heredar el copy del correo de login.
+    expect(html).not.toContain('Código de acceso');
+  });
+
+  it('el HTML de los correos sin código no filtra uno', () => {
+    const sinCodigo = [
+      emailService._renderPasswordChangedEmail('N', { origen: 'recuperacion' }).html,
+      emailService._renderAccountAccessEmail('N', { motivo: 'nueva_cuenta' }).html,
+      emailService._renderAccountAccessEmail('N', { motivo: 'reset_admin' }).html,
+    ];
+
+    for (const html of sinCodigo) {
+      expect(html).not.toContain('Código de restablecimiento');
+      expect(html).not.toContain('Código de acceso');
+    }
+  });
+
+  it('render y envío coinciden en asunto y texto', () => {
+    // Si divergen, los tests de log dejarían de reflejar lo que se manda.
+    const r = emailService._renderPasswordResetEmail('Denisse', 'A2B3C4', 30);
+
+    expect(r.subject).toBe('Código para restablecer tu contraseña · Emeltec Cloud');
+    expect(r.text).toContain('A2B3C4');
+    expect(Object.keys(r).sort()).toEqual(['html', 'subject', 'text']);
+  });
+});
+
 describe('sendAccountAccessEmail', () => {
   it('cuenta nueva: invita a definir contraseña, SIN código', async () => {
     const res = await emailService.sendAccountAccessEmail('u@e.cl', 'Denisse', {

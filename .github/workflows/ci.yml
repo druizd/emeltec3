@@ -50,6 +50,75 @@ jobs:
       - name: Build
         run: pnpm run build
 
+  # Los tests de auth-api sustituyen `config/db` por un doble que acepta
+  # cualquier SQL sin ejecutarlo: no detecta una columna inexistente ni
+  # placeholders `$n` desalineados. Este job levanta TimescaleDB, aplica el mismo
+  # esquema que producción (init-db + migraciones, en el mismo orden que
+  # scripts/deploy-production.sh) y corre el flujo de recuperación contra él.
+  #
+  # Efecto de borde deliberado: también valida las migraciones ANTES de que
+  # lleguen a producción, que es lo que faltaba.
+  db-tests:
+    name: Integration tests (TimescaleDB)
+    runs-on: ubuntu-latest
+
+    services:
+      timescaledb:
+        image: timescale/timescaledb:latest-pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: telemetry_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d telemetry_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      PGPASSWORD: postgres
+      RUN_DB_TESTS: '1'
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: telemetry_platform
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: ci-test-secret
+      INTERNAL_API_KEY: ci-test-internal-key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5
+        with:
+          version: 11.1.1
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+
+      - name: Install workspaces
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply base schema
+        run: psql -h localhost -U postgres -d telemetry_platform -v ON_ERROR_STOP=1 -f infra-db/init-db/01-init-schema.sql
+
+      - name: Apply migrations
+        run: |
+          for migration in infra-db/migrations/*.sql; do
+            echo "Applying $migration..."
+            psql -h localhost -U postgres -d telemetry_platform -v ON_ERROR_STOP=1 -f "$migration"
+          done
+
+      - name: Integration tests (auth-api)
+        run: pnpm --filter auth-api test
+
   compose-validate:
     name: Validate docker-compose
     runs-on: ubuntu-latest

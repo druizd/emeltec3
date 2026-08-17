@@ -272,8 +272,8 @@ ${securityNoteHtml('Por seguridad, no compartas este código con nadie. Si no so
  *
  * @param {'nueva_cuenta'|'reset_admin'} motivo
  */
-exports.sendAccountAccessEmail = async (emailDestino, nombreCompleto, { motivo } = {}) => {
-  try {
+function buildAccountAccessEmail(nombreCompleto, { motivo } = {}) {
+  {
     const nombre = (nombreCompleto || '').trim() || 'usuario';
     const esReset = motivo === 'reset_admin';
 
@@ -308,9 +308,9 @@ ${securityNoteHtml(nota)}`;
       contentHtml,
     });
 
-    const data = await enviar({
-      to: emailDestino,
+    return {
       subject: asunto,
+      html,
       text: [
         esReset ? 'Hola,' : `Hola ${nombre},`,
         '',
@@ -323,7 +323,15 @@ ${securityNoteHtml(nota)}`;
         '',
         nota,
       ].join('\n'),
-      html,
+    };
+  }
+}
+
+exports.sendAccountAccessEmail = async (emailDestino, nombreCompleto, opciones = {}) => {
+  try {
+    const data = await enviar({
+      to: emailDestino,
+      ...buildAccountAccessEmail(nombreCompleto, opciones),
     });
     return { ok: true, id: data.id };
   } catch (error) {
@@ -336,8 +344,8 @@ ${securityNoteHtml(nota)}`;
 // porque aquel habla de "acceso a la plataforma": quien pidió recuperar su
 // contraseña recibía un correo que parecía de login, y la nota de seguridad
 // ("si no solicitaste este acceso") apuntaba al evento equivocado.
-exports.sendPasswordResetEmail = async (emailDestino, nombreCompleto, code, minutes = 30) => {
-  try {
+function buildPasswordResetEmail(nombreCompleto, code, minutes = 30) {
+  {
     const nombre = (nombreCompleto || '').trim() || 'usuario';
     const otp = String(code ?? '');
     const contentHtml = `          <tr>
@@ -367,9 +375,9 @@ ${securityNoteHtml('Si no pediste cambiar tu contraseña, NO uses este código: 
       contentHtml,
     });
 
-    const data = await enviar({
-      to: emailDestino,
+    return {
       subject: 'Código para restablecer tu contraseña · Emeltec Cloud',
+      html,
       text: [
         `Hola ${nombre},`,
         '',
@@ -380,7 +388,15 @@ ${securityNoteHtml('Si no pediste cambiar tu contraseña, NO uses este código: 
         'Si no pediste cambiar tu contraseña, NO uses este código: tu contraseña',
         'actual sigue vigente. Avisa a soporte lo antes posible.',
       ].join('\n'),
-      html,
+    };
+  }
+}
+
+exports.sendPasswordResetEmail = async (emailDestino, nombreCompleto, code, minutes = 30) => {
+  try {
+    const data = await enviar({
+      to: emailDestino,
+      ...buildPasswordResetEmail(nombreCompleto, code, minutes),
     });
     return { ok: true, id: data.id };
   } catch (error) {
@@ -392,12 +408,8 @@ ${securityNoteHtml('Si no pediste cambiar tu contraseña, NO uses este código: 
 // Aviso posterior al cambio efectivo de contraseña. Es la defensa principal
 // frente a un restablecimiento no autorizado: el titular se entera aunque el
 // atacante controle el flujo.
-exports.sendPasswordChangedEmail = async (
-  emailDestino,
-  nombreCompleto,
-  { origen, ip, ts } = {},
-) => {
-  try {
+function buildPasswordChangedEmail(nombreCompleto, { origen, ip, ts } = {}) {
+  {
     const nombre = (nombreCompleto || '').trim() || 'usuario';
     const cuando = ts ? new Date(ts) : new Date();
     const fecha = cuando.toLocaleString('es-CL', { timeZone: 'America/Santiago' });
@@ -433,9 +445,9 @@ ${securityNoteHtml('Si no fuiste tú, tu cuenta está comprometida: contacta a s
       contentHtml,
     });
 
-    const data = await enviar({
-      to: emailDestino,
+    return {
       subject: 'Tu contraseña fue cambiada · Emeltec Cloud',
+      html,
       text: [
         `Hola ${nombre},`,
         '',
@@ -449,7 +461,15 @@ ${securityNoteHtml('Si no fuiste tú, tu cuenta está comprometida: contacta a s
         'Si no fuiste tú, tu cuenta está comprometida: contacta a soporte de',
         'inmediato para bloquearla.',
       ].join('\n'),
-      html,
+    };
+  }
+}
+
+exports.sendPasswordChangedEmail = async (emailDestino, nombreCompleto, opciones = {}) => {
+  try {
+    const data = await enviar({
+      to: emailDestino,
+      ...buildPasswordChangedEmail(nombreCompleto, opciones),
     });
     return { ok: true, id: data.id };
   } catch (error) {
@@ -868,6 +888,16 @@ ${securityNoteHtml('Notificación automática del sistema de monitoreo Emeltec. 
 // Internal — usados por scripts de preview/render. No estable.
 exports._renderHealthDigestHtml = (input) => buildDigestHtml(input);
 exports._renderHealthEventHtml = (input) => buildEventHtml(input);
+
+// Renders del ciclo de contraseña, expuestos para poder asertar el HTML: en modo
+// simulado `enviar` solo loguea asunto y texto, así que el HTML —lo que el
+// cliente de correo realmente muestra— quedaba sin verificar. Devuelven
+// { subject, html, text }; los senders no hacen más que agregarles `to`.
+exports._renderPasswordResetEmail = (nombre, code, minutes) =>
+  buildPasswordResetEmail(nombre, code, minutes);
+exports._renderPasswordChangedEmail = (nombre, opciones) =>
+  buildPasswordChangedEmail(nombre, opciones);
+exports._renderAccountAccessEmail = (nombre, opciones) => buildAccountAccessEmail(nombre, opciones);
 
 exports.sendHealthDigest = async ({
   to,

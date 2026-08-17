@@ -5,9 +5,14 @@
  * equivocado — que es exactamente el bug corregido: todo OTP salía por
  * `sendWelcomeEmail` ("Tu código de acceso"), incluidos los de recuperación.
  *
- * No se sustituye emailService: se corre en modo simulado (sin RESEND_API_KEY) y
- * se identifica la plantilla elegida por el ASUNTO que loguea. Así el test
- * verifica la seleccion real de punta a punta, no que se llamo a un doble.
+ * Dos capas de verificación:
+ *  - Con emailService REAL en modo simulado (sin RESEND_API_KEY): identifica la
+ *    plantilla elegida por el ASUNTO que loguea, así que valida la selección de
+ *    punta a punta y no que se llamó a un doble.
+ *  - Con emailService sustituido: cubre la rama 502, imposible de alcanzar con
+ *    el servicio real porque en modo simulado el envío siempre tiene éxito. Ese
+ *    502 es load-bearing: es lo que hace que `issueOtp` de auth-api borre el OTP
+ *    que ya guardó.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
