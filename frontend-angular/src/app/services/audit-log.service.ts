@@ -15,7 +15,7 @@ export interface AuditLogEntry {
   target_id: string | null;
   status_code: number | null;
   ip: string | null;
-  metadata: Record<string, unknown> | null;
+  metadata: AuditMetadata | null;
   resolved_sitio_id: string | null;
 }
 
@@ -63,6 +63,44 @@ export const ACCION_VERBO: Record<string, string> = {
   update: 'Modificó',
   delete: 'Eliminó',
   mutate: 'Modificó',
+  enable: 'Activó',
+  disable: 'Desactivó',
+};
+
+/** Desenlace de la mutación, escrito por el middleware en `metadata.outcome`. */
+export type AuditOutcome =
+  | 'ok'
+  | 'denied'
+  | 'unauthorized'
+  | 'not_found'
+  | 'invalid'
+  | 'conflict'
+  | 'error';
+
+/** Antes/después de un campo, o '[redactado]' si su valor no es auditable. */
+export type AuditChange = { antes?: unknown; despues?: unknown } | string;
+
+export interface AuditMetadata {
+  method?: string;
+  path?: string;
+  duration_ms?: number;
+  outcome?: AuditOutcome;
+  changed_fields?: string[];
+  changes?: Record<string, AuditChange>;
+  /** Snapshot de los campos auditables del recurso borrado. */
+  deleted?: Record<string, unknown>;
+  /** Campos que se intentó tocar en una mutación rechazada. */
+  attempted_fields?: string[];
+}
+
+export const OUTCOME_LABEL: Record<AuditOutcome, string> = {
+  ok: 'Aplicado',
+  denied: 'Denegado',
+  unauthorized: 'Sin sesión',
+  not_found: 'No encontrado',
+  invalid: 'Rechazado',
+  conflict: 'Conflicto',
+  error: 'Error',
 };
 
 export function describeAccion(action: string): { verbo: string; recurso: string } {

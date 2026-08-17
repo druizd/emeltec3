@@ -108,19 +108,39 @@ describe('auditAlerts — detectarCambiosRol()', () => {
     vi.clearAllMocks();
   });
 
-  it('4. Busca action con patrón de patch de usuario que modifica tipo', async () => {
+  it('4. Consulta la acción REAL del productor (usuario.update, en español) y no la inexistente user.*', async () => {
     const dbQ = vi.fn().mockResolvedValue({ rows: [] });
 
     await detectarCambiosRol(dbQ);
 
-    const selectCall = dbQ.mock.calls.find(
-      (call: unknown[]) =>
-        String(call[0]).includes('audit_log') &&
-        (String(call[0]).includes('user.') || String(call[0]).includes('patch')),
+    // Contrato productor→consumidor: services/auditResolver.js emite las
+    // acciones en español ('usuario.update'). 'user.patch' / 'user.update' no
+    // los escribe nadie — mismo bug que tuvo detectarLoginsFallidos con
+    // 'user.login.failed': el detector nunca encontró un cambio de rol.
+    const selectCall = dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('audit_log'),
     );
     expect(selectCall).toBeDefined();
     const [sql] = selectCall! as [string];
-    expect(sql).toContain('audit_log');
+    expect(sql).toContain("'usuario.update'");
+    expect(sql).not.toContain("'user.update'");
+    expect(sql).not.toContain("'user.patch'");
+  });
+
+  it('4b. Acota la ventana a 24h y exige que el cambio haya tocado el campo tipo', async () => {
+    const dbQ = vi.fn().mockResolvedValue({ rows: [] });
+
+    await detectarCambiosRol(dbQ);
+
+    const [sql] = dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('audit_log'),
+    )! as [string];
+    // El comentario prometía "últimas 24h" pero el SQL no filtraba por ts.
+    expect(sql).toContain('24 hours');
+    // Sin este filtro, cualquier edición de usuario se reportaba como cambio de rol.
+    expect(sql).toContain('tipo');
+    // Un intento rechazado no es un cambio de rol.
+    expect(sql).toContain('status_code');
   });
 
   it('5. Si detecta cambio de rol, llama sendAlertaSeguridad con tipo cambio_rol', async () => {
@@ -130,6 +150,7 @@ describe('auditAlerts — detectarCambiosRol()', () => {
         actor_email: 'admin@empresa.cl',
         target_id: 'USR01',
         ts: new Date().toISOString(),
+        cambio_tipo: { antes: 'Operador', despues: 'Admin' },
       },
     ];
     const dbQ = vi
@@ -145,6 +166,66 @@ describe('auditAlerts — detectarCambiosRol()', () => {
 
     expect(sendAlerta).toHaveBeenCalled();
     expect(sendAlerta).toHaveBeenCalledWith(expect.any(String), 'cambio_rol', expect.any(Object));
+  });
+
+  it('5b. La alerta informa de qué rol a qué rol fue el cambio', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            actor_id: 'ADM01',
+            actor_email: 'admin@empresa.cl',
+            target_id: 'USR01',
+            ts: new Date().toISOString(),
+            cambio_tipo: { antes: 'Operador', despues: 'SuperAdmin' },
+          },
+        ],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    expect(sendAlerta).toHaveBeenCalledWith(
+      expect.any(String),
+      'cambio_rol',
+      expect.objectContaining({ rol_anterior: 'Operador', rol_nuevo: 'SuperAdmin' }),
+    );
+  });
+
+  it('5c. Tolera registros sin el detalle del cambio (bitácora previa al diff)', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            actor_id: 'ADM01',
+            actor_email: 'admin@empresa.cl',
+            target_id: 'USR01',
+            ts: new Date().toISOString(),
+            cambio_tipo: null,
+          },
+        ],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    expect(sendAlerta).toHaveBeenCalledWith(
+      expect.any(String),
+      'cambio_rol',
+      expect.objectContaining({ rol_anterior: '—', rol_nuevo: '—' }),
+    );
   });
 });
 
