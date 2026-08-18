@@ -344,6 +344,155 @@ export async function listVacioSlotsStale(
   return r.rows;
 }
 
+// ============================================================================
+// Slots liberados como `no_data_stale` (checks G y H del reconciler)
+// ============================================================================
+
+/**
+ * Un slot que el fill liberó a `requires_review` con `no_data_stale` queda
+ * muerto: el fill solo mira `estatus='vacio'`, así que nadie lo recomputa
+ * aunque el dato llegue después. Estas dos consultas cierran ese agujero —
+ * una rescata los que ya tienen dato, la otra da de baja los que nunca lo
+ * van a tener para que dejen de contar en la alerta `review_queue_acumulacion`
+ * (ver alerts/worker.ts, que cuenta requires_review sin filtro de antigüedad).
+ */
+export interface NoDataStaleRow {
+  site_id: string;
+  ts: string;
+  dias: number;
+}
+
+/**
+ * Slots `no_data_stale` cuyo bucket exacto YA existe en `equipo_1min`: el dato
+ * llegó tarde (backfill del equipo, red recuperada, reproceso del consumer).
+ *
+ * El match es el mismo `id_serial + bucket` exacto que usa
+ * `getDashboardBucketExact` en el fill: si aparece acá, el fill lo encuentra.
+ * Ojo con relajarlo a match aproximado — rompería la consistencia
+ * dashboard ↔ DGA que el fill preserva a propósito.
+ */
+export async function listNoDataStaleConDatoTardio(limit = 500): Promise<NoDataStaleRow[]> {
+  const r = await query<NoDataStaleRow>(
+    `SELECT d.site_id,
+            d.ts,
+            EXTRACT(EPOCH FROM (now() - d.ts)) / 86400 AS dias
+       FROM dato_dga d
+       JOIN sitio s ON s.id = d.site_id
+      WHERE d.estatus     = 'requires_review'
+        AND d.fail_reason = 'no_data_stale'
+        AND s.id_serial IS NOT NULL
+        AND EXISTS (SELECT 1
+                      FROM equipo_1min e
+                     WHERE e.id_serial = s.id_serial
+                       AND e.bucket    = d.ts)
+      ORDER BY d.ts ASC
+      LIMIT $1`,
+    [limit],
+    { name: 'dga__no_data_stale_con_dato_tardio' },
+  );
+  return r.rows;
+}
+
+/**
+ * Devuelve el slot a `vacio` para que el fill lo recompute con el dato tardío.
+ * `intentos` vuelve a 0: el slot nunca llegó a postearse, los intentos previos
+ * eran del fill, no de SNIA.
+ *
+ * El WHERE reconfirma estatus y fail_reason, así que dos ciclos solapados no
+ * pisan un slot que ya cambió de estado.
+ */
+export async function resetSlotAVacio(input: { site_id: string; ts: string }): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus             = 'vacio',
+            fail_reason         = NULL,
+            next_retry_at       = NULL,
+            intentos            = 0,
+            validation_warnings = COALESCE(validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'no_data_rescatado',
+                                       'reason', 'El bucket llego tarde a equipo_1min. '
+                                                 || 'Slot devuelto a vacio para que el fill lo recompute.',
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+      WHERE site_id     = $1
+        AND ts          = $2
+        AND estatus     = 'requires_review'
+        AND fail_reason = 'no_data_stale'`,
+    [input.site_id, input.ts],
+    { name: 'dga__reset_slot_a_vacio' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * Slots `no_data_stale` más viejos que `dias` y que SIGUEN sin bucket. Pasado
+ * ese plazo el dato no va a llegar (la ventana de backfill de los equipos es
+ * de horas, no de semanas) y dejarlos en la cola solo mantiene a los sitios
+ * sobre el umbral de `review_queue_acumulacion`, escondiendo los slots nuevos.
+ *
+ * Un sitio sin `id_serial` cae acá también: sin serial el fill jamás va a
+ * encontrar el bucket.
+ */
+export async function listNoDataStaleVencidos(
+  dias: number,
+  limit = 500,
+): Promise<NoDataStaleRow[]> {
+  const r = await query<NoDataStaleRow>(
+    `SELECT d.site_id,
+            d.ts,
+            EXTRACT(EPOCH FROM (now() - d.ts)) / 86400 AS dias
+       FROM dato_dga d
+       JOIN sitio s ON s.id = d.site_id
+      WHERE d.estatus     = 'requires_review'
+        AND d.fail_reason = 'no_data_stale'
+        AND d.ts < now() - ($1 || ' days')::interval
+        AND NOT EXISTS (SELECT 1
+                          FROM equipo_1min e
+                         WHERE e.id_serial = s.id_serial
+                           AND e.bucket    = d.ts)
+      ORDER BY d.ts ASC
+      LIMIT $2`,
+    [dias, limit],
+    { name: 'dga__no_data_stale_vencidos' },
+  );
+  return r.rows;
+}
+
+/**
+ * Baja definitiva de un slot sin dato: `fallido` + `no_data_definitivo`, con el
+ * motivo y el plazo aplicado escritos en `validation_warnings`. Es una baja
+ * DOCUMENTADA, no un borrado: el slot sigue consultable en el detalle del sitio
+ * y el warning explica por qué nunca se reportó a la DGA.
+ */
+export async function markSlotNoDataDefinitivo(input: {
+  site_id: string;
+  ts: string;
+  dias_umbral: number;
+}): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus             = 'fallido',
+            fail_reason         = 'no_data_definitivo',
+            next_retry_at       = NULL,
+            validation_warnings = COALESCE(validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'no_data_definitivo',
+                                       'reason', 'Sin bucket en equipo_1min tras ' || $3::text
+                                                 || ' dias. El equipo no emitio en esa ventana y el dato '
+                                                 || 'ya no puede recuperarse: el slot NO se reporto a la DGA.',
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+      WHERE site_id     = $1
+        AND ts          = $2
+        AND estatus     = 'requires_review'
+        AND fail_reason = 'no_data_stale'`,
+    [input.site_id, input.ts, input.dias_umbral],
+    { name: 'dga__mark_no_data_definitivo' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
 export async function findLastValidTotalizador(
   siteId: string,
   beforeTs: string,
@@ -906,17 +1055,45 @@ export interface ReviewSlotRow {
   referencia_informante: string | null;
 }
 
-export async function listSlotsRequiresReview(input: {
+export interface ReviewQueueFiltros {
   site_id?: string | undefined;
-  limit?: number | undefined;
-}): Promise<ReviewSlotRow[]> {
-  const limit = Math.min(input.limit ?? 100, 500);
-  const args: unknown[] = [limit];
+  /** ISO 8601 con offset. Inclusivo. */
+  desde?: string | undefined;
+  /** ISO 8601 con offset. Inclusivo. */
+  hasta?: string | undefined;
+}
+
+/**
+ * WHERE compartido por el listado y el conteo. Que los dos deriven de acá es
+ * lo que hace que el "mostrando N de M" no mienta: si divergieran, el total
+ * podría contar filas que el listado nunca muestra.
+ *
+ * `args` se recibe ya inicializado porque el listado necesita `$1` para el
+ * LIMIT y el conteo no lleva ninguno.
+ */
+function whereReviewQueue(f: ReviewQueueFiltros, args: unknown[]): string {
   let where = `d.estatus = 'requires_review'`;
-  if (input.site_id) {
-    args.push(input.site_id);
+  if (f.site_id) {
+    args.push(f.site_id);
     where += ` AND d.site_id = $${args.length}`;
   }
+  if (f.desde) {
+    args.push(f.desde);
+    where += ` AND d.ts >= $${args.length}::timestamptz`;
+  }
+  if (f.hasta) {
+    args.push(f.hasta);
+    where += ` AND d.ts <= $${args.length}::timestamptz`;
+  }
+  return where;
+}
+
+export async function listSlotsRequiresReview(
+  input: ReviewQueueFiltros & { limit?: number | undefined },
+): Promise<ReviewSlotRow[]> {
+  const limit = Math.min(input.limit ?? 100, 500);
+  const args: unknown[] = [limit];
+  const where = whereReviewQueue(input, args);
   const r = await query<ReviewSlotRow>(
     `SELECT
         d.site_id,
@@ -937,6 +1114,59 @@ export async function listSlotsRequiresReview(input: {
      LIMIT $1`,
     args,
     { name: 'dga__list_review_queue' },
+  );
+  return r.rows;
+}
+
+/**
+ * Total de slots que matchean los filtros, SIN el tope del listado. La página
+ * corta en 100 y sin este número el usuario no tiene cómo saber que hay más:
+ * un tope que se lee como total es exactamente el error que hacía que la
+ * alerta de doble envío dijera "100".
+ */
+export async function countSlotsRequiresReview(input: ReviewQueueFiltros): Promise<number> {
+  const args: unknown[] = [];
+  const where = whereReviewQueue(input, args);
+  const r = await query<{ total: number }>(
+    // El JOIN a pozo_config es INNER y NO es decorativo: replica el del
+    // listado, que descarta los slots cuyo sitio no tiene config. Sin él el
+    // total cuenta filas que la página no puede mostrar y el aviso de
+    // "hay N más" queda prendido para siempre, sin filtro que lo resuelva.
+    `SELECT COUNT(*)::int AS total
+       FROM dato_dga d
+       JOIN pozo_config pc ON pc.sitio_id = d.site_id
+      WHERE ${where}`,
+    args,
+    { name: 'dga__count_review_queue' },
+  );
+  return r.rows[0]?.total ?? 0;
+}
+
+/**
+ * Sitios presentes en la cola, para poblar el selector del filtro.
+ *
+ * A propósito NO aplica los filtros: si el selector se recortara según el
+ * filtro activo, elegir un sitio lo dejaría fuera de su propia lista y no
+ * habría forma de volver. El listado es la vista filtrada; esto es el catálogo.
+ */
+export interface ReviewQueueSitio {
+  site_id: string;
+  codigo_obra: string | null;
+  referencia_informante: string | null;
+}
+export async function listReviewQueueSites(): Promise<ReviewQueueSitio[]> {
+  const r = await query<ReviewQueueSitio>(
+    `SELECT DISTINCT
+            d.site_id,
+            pc.obra_dga    AS codigo_obra,
+            inf.referencia AS referencia_informante
+       FROM dato_dga d
+       JOIN pozo_config pc          ON pc.sitio_id = d.site_id
+       LEFT JOIN dga_informante inf ON inf.rut = pc.dga_informante_rut
+      WHERE d.estatus = 'requires_review'
+      ORDER BY d.site_id`,
+    [],
+    { name: 'dga__review_queue_sites' },
   );
   return r.rows;
 }

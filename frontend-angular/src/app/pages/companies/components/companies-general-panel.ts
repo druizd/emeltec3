@@ -1317,11 +1317,11 @@ export class CompaniesGeneralPanelComponent implements OnChanges, AfterViewInit,
         this.kpisSecundarios = [...this.kpisSecundarios];
       } else {
         this.dgaService
-          .listReviewQueue(undefined, 500)
-          .pipe(catchError(() => of([] as DgaReviewSlot[])))
-          .subscribe((queue) => {
+          .listReviewQueue({ limit: 500 })
+          .pipe(catchError(() => of({ slots: [] as DgaReviewSlot[], total: 0, sitios: [] })))
+          .subscribe((page) => {
             const siteIds = new Set(sitiosPozo.map((s) => s.id));
-            const pendientes = queue.filter((slot) => siteIds.has(slot.site_id));
+            const pendientes = page.slots.filter((slot) => siteIds.has(slot.site_id));
             // Etiqueta del mes actual para el subtext.
             const mesActual = new Date().toLocaleDateString('es-CL', {
               month: 'long',

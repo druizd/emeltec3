@@ -73,6 +73,10 @@ export type PatchPozoDgaConfigPayload = z.infer<typeof PatchPozoDgaConfigPayload
 
 export const ListReviewQueueParams = z.object({
   site_id: z.string().trim().min(1).max(10).optional(),
+  // Rango inclusivo sobre dato_dga.ts. Opcionales e independientes: se puede
+  // pedir "desde el 1 de junio" sin tope superior.
+  desde: z.string().datetime({ offset: true }).optional(),
+  hasta: z.string().datetime({ offset: true }).optional(),
   limit: z.coerce.number().int().positive().max(500).optional(),
 });
 export type ListReviewQueueParams = z.infer<typeof ListReviewQueueParams>;

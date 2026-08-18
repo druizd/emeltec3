@@ -3,7 +3,10 @@
  *
  * Spec: §"review_queue_acumulacion" — todos los escenarios.
  * ADR-5: umbral N leído de alerta.umbral_bajo.
- * ADR-6a: cooldown chequeado DENTRO del evaluador.
+ * ADR-6: el veredicto pasa por `debeNotificar`, que es quien aplica el cooldown,
+ * agrupa las repeticiones de un evento reconocido y rearma cuando la cola baja
+ * del umbral. Un backlog no se vacía solo, así que sin esa agrupación la
+ * condición avisaba una vez por cooldown de forma indefinida.
  * Resultado: valor_texto=String(n), valor_detectado=NULL, severidad=alerta.severidad.
  */
 import { describe, it, expect, vi } from 'vitest';
@@ -53,40 +56,68 @@ function makeAlerta(overrides: { umbral_bajo?: number | null } = {}) {
   };
 }
 
-function makeClient(responses: Array<{ rows: unknown[] }>) {
+/**
+ * Cliente de base falso que responde según el SQL recibido, no por posición.
+ * El orden de las consultas depende del estado del evento abierto (reconocido o
+ * no), así que un arreglo posicional se rompe en cuanto el evaluador deja de
+ * empezar siempre por el cooldown.
+ */
+function makeClient(opts: {
+  eventoAbierto?: { id: string; reconocida_at: string | null } | null;
+  dentroDeCooldown?: boolean;
+  enRevision?: number;
+}) {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
-  let idx = 0;
   const client = {
-    query: vi.fn(async (sql: string, params: unknown[]) => {
-      calls.push({ sql, params });
-      const resp = responses[idx++];
-      if (!resp) throw new Error(`Sin respuesta stub #${idx}: ${sql.slice(0, 80)}`);
-      return resp;
-    }),
     _calls: calls,
+    query: vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      if (sql.includes('FROM alertas_eventos') && sql.includes('resuelta = FALSE')) {
+        return { rows: opts.eventoAbierto ? [opts.eventoAbierto] : [] };
+      }
+      if (sql.includes('SELECT 1 FROM alertas_eventos')) {
+        return { rows: opts.dentroDeCooldown ? [{ '?column?': 1 }] : [] };
+      }
+      if (sql.includes('COUNT(*)') && sql.includes('dato_dga')) {
+        return { rows: [{ n: opts.enRevision ?? 0 }] };
+      }
+      if (sql.startsWith('INSERT INTO alertas_eventos')) {
+        return { rows: [{ id: 'evento-rq-nuevo' }] };
+      }
+      return { rows: [] };
+    }),
   };
   return client;
 }
 
+const hizoCount = (c: ReturnType<typeof makeClient>) =>
+  c._calls.some((x) => x.sql.toUpperCase().includes('COUNT'));
+const hizoInsert = (c: ReturnType<typeof makeClient>) =>
+  c._calls.some((x) => x.sql.toUpperCase().includes('INSERT'));
+const hizoUpdate = (c: ReturnType<typeof makeClient>, frag: string) =>
+  c._calls.some((x) => x.sql.includes('UPDATE alertas_eventos') && x.sql.includes(frag));
+const insertDe = (c: ReturnType<typeof makeClient>) =>
+  c._calls.find((x) => x.sql.toUpperCase().includes('INSERT'));
+
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('evaluarAlertaReviewQueue — umbral_bajo inválido (misconfig guard)', () => {
-  it('umbral_bajo = null → no emite COUNT query, no inserta, no lanza error', async () => {
-    const client = makeClient([]); // ninguna respuesta esperada
+  it('umbral_bajo = null → no emite ninguna query, no inserta, no lanza error', async () => {
+    const client = makeClient({});
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: null as unknown as number }));
 
     expect(client._calls).toHaveLength(0);
   });
 
-  it('umbral_bajo = 0 → no emite COUNT query, no inserta', async () => {
-    const client = makeClient([]);
+  it('umbral_bajo = 0 → no emite ninguna query, no inserta', async () => {
+    const client = makeClient({});
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 0 }));
 
     expect(client._calls).toHaveLength(0);
   });
 
   it('umbral_bajo negativo → también se trata como misconfig', async () => {
-    const client = makeClient([]);
+    const client = makeClient({});
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: -1 }));
 
     expect(client._calls).toHaveLength(0);
@@ -95,50 +126,40 @@ describe('evaluarAlertaReviewQueue — umbral_bajo inválido (misconfig guard)',
 
 describe('evaluarAlertaReviewQueue — cooldown activo', () => {
   it('cooldown activo → NO emite COUNT query, NO inserta', async () => {
-    // Primera query es cooldown → devuelve un evento reciente
-    const client = makeClient([{ rows: [{ triggered_at: new Date().toISOString() }] }]);
+    const client = makeClient({ dentroDeCooldown: true, enRevision: 40 });
 
     await evaluarAlertaReviewQueue(client, makeAlerta());
 
-    expect(client._calls).toHaveLength(1);
-    const hasCount = client._calls.some((c) => c.sql.toUpperCase().includes('COUNT'));
-    expect(hasCount).toBe(false);
+    // El COUNT sobre dato_dga se evalúa de forma diferida: si el cooldown ya
+    // corta el ciclo, no se paga (ADR-6a).
+    expect(hizoCount(client)).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
   });
 });
 
 describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => {
   it('COUNT = 5, N = 5 → NO inserta (5 no es estrictamente mayor que 5)', async () => {
-    const client = makeClient([
-      { rows: [] }, // cooldown: no activo
-      { rows: [{ n: 5 }] }, // COUNT: 5 — igual al umbral, NO dispara
-    ]);
+    const client = makeClient({ enRevision: 5 });
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
   });
 
   it('COUNT = 2, N = 5 → NO inserta (count debajo del umbral)', async () => {
-    const client = makeClient([{ rows: [] }, { rows: [{ n: 2 }] }]);
+    const client = makeClient({ enRevision: 2 });
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
   });
 
   it('COUNT = 6, N = 5 → INSERTA con valor_texto="6", valor_detectado=NULL, severidad=alerta.severidad', async () => {
-    const insertResult = { rows: [{ id: 'evento-rq-1' }] };
-    const client = makeClient([
-      { rows: [] }, // cooldown: no activo
-      { rows: [{ n: 6 }] }, // COUNT: 6 > umbral 5
-      insertResult, // INSERT alertas_eventos
-    ]);
+    const client = makeClient({ enRevision: 6 });
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
-    const insertCall = client._calls.find((c) => c.sql.toUpperCase().includes('INSERT'));
+    const insertCall = insertDe(client);
     expect(insertCall).toBeDefined();
 
     const params = insertCall!.params;
@@ -148,26 +169,21 @@ describe('evaluarAlertaReviewQueue — umbral estrictamente mayor que N', () => 
   });
 
   it('cooldown activo con COUNT > N → NO inserta (cooldown tiene prioridad)', async () => {
-    const client = makeClient([
-      { rows: [{ triggered_at: new Date().toISOString() }] }, // cooldown activo
-    ]);
+    const client = makeClient({ dentroDeCooldown: true, enRevision: 40 });
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
-    const hasInsert = client._calls.some((c) => c.sql.toUpperCase().includes('INSERT'));
-    expect(hasInsert).toBe(false);
+    expect(hizoInsert(client)).toBe(false);
   });
 });
 
 describe('evaluarAlertaReviewQueue — mensaje en español', () => {
   it('mensaje contiene referencia a requires_review o cola de revisión', async () => {
-    const insertResult = { rows: [{ id: 'evento-rq-2' }] };
-    const client = makeClient([{ rows: [] }, { rows: [{ n: 8 }] }, insertResult]);
+    const client = makeClient({ enRevision: 8 });
 
     await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
 
-    const insertCall = client._calls.find((c) => c.sql.toUpperCase().includes('INSERT'));
-    const mensaje = insertCall!.params.find(
+    const mensaje = insertDe(client)!.params.find(
       (p) =>
         typeof p === 'string' &&
         (p.toLowerCase().includes('revisi') || p.toLowerCase().includes('review')),
@@ -176,5 +192,45 @@ describe('evaluarAlertaReviewQueue — mensaje en español', () => {
     // El mensaje debe incluir el count y el umbral
     expect(mensaje as string).toMatch(/8/);
     expect(mensaje as string).toMatch(/5/);
+  });
+});
+
+describe('evaluarAlertaReviewQueue — evento reconocido', () => {
+  it('reconocido y la cola sigue sobre el umbral → agrupa la repetición, no crea evento', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: '2026-08-18T10:00:00Z' },
+      enRevision: 40,
+    });
+
+    await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
+
+    expect(hizoInsert(client)).toBe(false);
+    expect(hizoUpdate(client, 'repeticiones')).toBe(true);
+  });
+
+  it('reconocido y la cola bajó del umbral → resuelve el evento para volver a avisar', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: '2026-08-18T10:00:00Z' },
+      enRevision: 2,
+    });
+
+    await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
+
+    expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(true);
+    expect(hizoInsert(client)).toBe(false);
+  });
+
+  it('abierto SIN reconocer y sobre el umbral → sigue rigiendo el cooldown', async () => {
+    const client = makeClient({
+      eventoAbierto: { id: 'EV1', reconocida_at: null },
+      dentroDeCooldown: true,
+      enRevision: 40,
+    });
+
+    await evaluarAlertaReviewQueue(client, makeAlerta({ umbral_bajo: 5 }));
+
+    expect(hizoInsert(client)).toBe(false);
+    expect(hizoUpdate(client, 'repeticiones')).toBe(false);
+    expect(hizoUpdate(client, 'resuelta = TRUE')).toBe(false);
   });
 });

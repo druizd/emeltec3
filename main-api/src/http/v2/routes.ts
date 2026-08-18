@@ -186,6 +186,7 @@ router.delete(
 router.get(
   '/dga/sites/:siteId/pozo-config',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   getPozoDgaConfigHandler,
 );
@@ -201,16 +202,24 @@ router.patch(
 router.get(
   '/dga/sites/:siteId/live-preview',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   getDgaLivePreviewHandler,
 );
 router.get(
   '/dga/sites/:siteId/ultimo-envio',
   protect,
+  blockDemoAccess,
   requireSiteParamAccess(),
   getUltimoEnvioHandler,
 );
-router.get('/dga/sites/:siteId/verify', protect, requireSiteParamAccess(), verifySniaHandler);
+router.get(
+  '/dga/sites/:siteId/verify',
+  protect,
+  blockDemoAccess,
+  requireSiteParamAccess(),
+  verifySniaHandler,
+);
 
 // =====================================================================
 // Bitácora del sitio: ficha + equipamiento.
@@ -297,7 +306,10 @@ router.patch('/sites/bitacora/equipos/:id', protect, patchEquipoHandler);
 router.delete('/sites/bitacora/equipos/:id', protect, deleteEquipoHandler);
 
 // Mediciones (Detalle de Registros + CSV)
-router.get('/dga/dato', protect, queryDatoDgaHandler);
+// blockDemoAccess acá y no solo en los .csv de abajo: sin esto un Vendedor
+// lee exactamente los mismos datos en JSON y el bloqueo de la descarga es
+// decorativo.
+router.get('/dga/dato', protect, blockDemoAccess, queryDatoDgaHandler);
 router.get('/dga/dato/export.csv', protect, blockDemoAccess, exportDatoDgaCsvHandler);
 router.get('/dga/export-directo.csv', protect, blockDemoAccess, exportDgaDirectoCsvHandler);
 

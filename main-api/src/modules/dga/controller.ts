@@ -250,8 +250,8 @@ export async function listReviewQueueHandler(
     } else if (user?.tipo !== 'SuperAdmin') {
       throw new ForbiddenError('site_id requerido para este rol');
     }
-    const rows = await listReviewQueue(parsed.data);
-    res.json(ok(rows, { count: rows.length, durationMs: elapsedMs(startedAt) }));
+    const { slots, total, sitios } = await listReviewQueue(parsed.data);
+    res.json(ok(slots, { count: slots.length, total, sitios, durationMs: elapsedMs(startedAt) }));
   } catch (err) {
     next(err);
   }
