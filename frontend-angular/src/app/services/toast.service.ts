@@ -27,7 +27,12 @@ export class ToastService {
   readonly toasts = signal<Toast[]>([]);
   private seq = 0;
 
-  private push(message: string, type: ToastType, durationMs: number, extra: Partial<Toast> = {}): void {
+  private push(
+    message: string,
+    type: ToastType,
+    durationMs: number,
+    extra: Partial<Toast> = {},
+  ): void {
     const id = ++this.seq;
     this.toasts.update((list) => [...list, { id, type, message, ...extra }]);
     if (durationMs > 0) {

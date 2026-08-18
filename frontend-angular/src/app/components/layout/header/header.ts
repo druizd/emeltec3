@@ -66,7 +66,9 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
               (click)="toggleAlertMenu()"
               class="relative flex h-[30px] w-[30px] items-center justify-center rounded-md transition duration-100 hover:bg-[#f1f5f9] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               [class]="
-                alerts.sinRevisar() > 0 ? 'text-rose-600' : 'text-on-surface-muted hover:text-[#475569]'
+                alerts.sinRevisar() > 0
+                  ? 'text-rose-600'
+                  : 'text-on-surface-muted hover:text-[#475569]'
               "
               [attr.aria-label]="alertBellLabel()"
               [title]="alertBellLabel()"
@@ -104,7 +106,12 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                         {{ alerts.sinRevisar() }}
                         {{ alerts.sinRevisar() === 1 ? 'pendiente' : 'pendientes' }}
                         @if (alerts.hayCriticas()) {
-                          · <span class="font-bold text-rose-600">{{ alerts.criticas() }} crítica{{ alerts.criticas() === 1 ? '' : 's' }}</span>
+                          ·
+                          <span class="font-bold text-rose-600"
+                            >{{ alerts.criticas() }} crítica{{
+                              alerts.criticas() === 1 ? '' : 's'
+                            }}</span
+                          >
                         }
                       }
                     </p>

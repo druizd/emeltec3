@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { auditResolver } = require('../auditResolver.js') as {
-  auditResolver: (req: {
-    originalUrl: string;
-    method: string;
-    body?: unknown;
-  }) => { action: string; targetType: string | null; targetId: string | null };
+  auditResolver: (req: { originalUrl: string; method: string; body?: unknown }) => {
+    action: string;
+    targetType: string | null;
+    targetId: string | null;
+  };
 };
 
 const req = (method: string, originalUrl: string, body?: unknown) => ({

@@ -263,9 +263,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                       (click)="toggleActiva(regla)"
                       [class]="regla.activa ? 'bg-primary' : 'bg-slate-300 hover:bg-slate-400'"
                       class="relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-tint-55 focus-visible:ring-offset-2 active:scale-95"
-                      [attr.aria-label]="
-                        regla.activa ? 'Desactivar regla' : 'Activar regla'
-                      "
+                      [attr.aria-label]="regla.activa ? 'Desactivar regla' : 'Activar regla'"
                       [attr.aria-pressed]="regla.activa"
                     >
                       <span
@@ -424,36 +422,36 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 </div>
               }
 
-          @if (reglaExpandida() === regla.id && drafts()[regla.id]) {
-            <div class="space-y-4 border-t border-slate-100 px-5 py-4">
-              <ng-container
-                *ngTemplateOutlet="
-                  reglaForm;
-                  context: { $implicit: drafts()[regla.id]!, isNew: false }
-                "
-              ></ng-container>
-              <div class="flex justify-end gap-2">
-                <button
-                  type="button"
-                  (click)="cancelarEdicion(regla)"
-                  class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
-                  (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
-                    >check</span
-                  >
-                  Guardar
-                </button>
-              </div>
-            </div>
-          }
+              @if (reglaExpandida() === regla.id && drafts()[regla.id]) {
+                <div class="space-y-4 border-t border-slate-100 px-5 py-4">
+                  <ng-container
+                    *ngTemplateOutlet="
+                      reglaForm;
+                      context: { $implicit: drafts()[regla.id]!, isNew: false }
+                    "
+                  ></ng-container>
+                  <div class="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      (click)="cancelarEdicion(regla)"
+                      class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
+                      (click)="guardarEdicion(regla)"
+                      class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                        >check</span
+                      >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
           </div>
         </article>

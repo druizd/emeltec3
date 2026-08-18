@@ -139,9 +139,10 @@ describe('configuración de allowlist', () => {
     const prohibidos = /password|contrasena|clave|token|secret|otp|rut|email|telefono|direccion/i;
     for (const [targetType, campos] of Object.entries(audit.VALUE_ALLOWLIST)) {
       for (const campo of campos) {
-        expect(prohibidos.test(campo), `${targetType}.${campo} no puede estar en la allowlist`).toBe(
-          false,
-        );
+        expect(
+          prohibidos.test(campo),
+          `${targetType}.${campo} no puede estar en la allowlist`,
+        ).toBe(false);
       }
     }
   });
