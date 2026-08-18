@@ -12,6 +12,12 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Explicito para no depender del default del repo: en repos privados el permiso
+# por defecto del GITHUB_TOKEN lo fija la organizacion y puede ser mas
+# restrictivo que en publico. El CI solo necesita leer el codigo.
+permissions:
+  contents: read
+
 jobs:
   lint-test-build:
     name: Lint, test, build
