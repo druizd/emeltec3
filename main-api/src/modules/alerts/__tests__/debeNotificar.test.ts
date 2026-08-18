@@ -21,7 +21,7 @@ vi.mock('../../../config/logger', () => ({
 vi.mock('../../../config/appConfig', () => ({ config: { alerts: {} } }));
 vi.mock('../../../services/emailService.js', () => ({ sendAlertEmail: vi.fn() }));
 
-const { evaluarAlerta } = await import('../worker');
+import { evaluarAlerta } from '../worker';
 
 type Fila = Record<string, unknown>;
 

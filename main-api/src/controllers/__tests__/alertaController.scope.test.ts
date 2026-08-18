@@ -98,7 +98,7 @@ describe('resumen — alcance', () => {
       expect(sql).toContain('visible_to_all');
     }
     // El id del usuario viaja como parámetro, nunca interpolado.
-    expect(consultas[0].params).toContain('U9');
+    expect(consultas[0]?.params).toContain('U9');
   });
 
   it('un Vendedor usa su alcance real: maletas piloto + sitios asignados', async () => {
