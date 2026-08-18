@@ -573,6 +573,78 @@ export async function markSlotEnviado(input: {
   );
 }
 
+/**
+ * Marca 'enviado' un slot que NO acabamos de enviar: ya existía un audit OK
+ * con comprobante (pre-check anti-doble-envío, o reconciler tras un crash).
+ *
+ * Existe aparte de `markSlotEnviado` porque ese exige `estatus='enviando'` y
+ * este camino corre ANTES del lock, con el slot en 'pendiente' — el guard no
+ * calzaba y el UPDATE afectaba 0 filas en silencio, dejando el slot en
+ * 'pendiente' y relistado cada ciclo para siempre.
+ *
+ * `estatus <> 'enviado'` lo hace idempotente y evita pisar un slot ya cerrado.
+ * No incrementa `intentos`: no hubo intento nuevo contra SNIA.
+ */
+export async function markSlotEnviadoSinReenvio(input: {
+  site_id: string;
+  ts: string;
+  comprobante: string;
+}): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus       = 'enviado',
+            comprobante   = $3,
+            next_retry_at = NULL,
+            fail_reason   = NULL
+      WHERE site_id = $1
+        AND ts      = $2
+        AND estatus <> 'enviado'`,
+    [input.site_id, input.ts, input.comprobante],
+    { name: 'dga__mark_enviado_sin_reenvio' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * SNIA aceptó la medición ('00') pero la respuesta no trajo comprobante.
+ * No se puede marcar 'enviado' (no hay folio que respalde el envío ante DGA)
+ * y tampoco se puede reenviar (§6.3). Va a 'requires_review' con
+ * `next_retry_at = NULL` para sacarlo de la cola de envío, y queda un warning
+ * en `validation_warnings` para la revisión manual en MIA-DGA.
+ */
+export async function markSlotOkSinComprobante(input: {
+  site_id: string;
+  ts: string;
+}): Promise<boolean> {
+  const r = await query(
+    `UPDATE dato_dga
+        SET estatus             = 'requires_review',
+            fail_reason         = 'dga_ok_sin_comprobante',
+            next_retry_at       = NULL,
+            validation_warnings = COALESCE(validation_warnings, '[]'::jsonb)
+                                  || jsonb_build_array(jsonb_build_object(
+                                       'code', 'dga_ok_sin_comprobante',
+                                       'reason', 'SNIA respondio status 00 sin numeroComprobante. '
+                                                 || 'La medicion esta en MIA-DGA pero sin folio local. '
+                                                 || 'Verificar manualmente; NO reenviar (Res 2170 6.3).',
+                                       'at', to_char(now(), 'YYYY-MM-DD"T"HH24:MI:SSOF')
+                                     ))
+      WHERE site_id = $1
+        AND ts      = $2
+        AND estatus <> 'enviado'`,
+    [input.site_id, input.ts],
+    { name: 'dga__mark_ok_sin_comprobante' },
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * Acepta 'pendiente' además de 'enviando': los pre-checks de submission
+ * (codigo_obra ausente/inválido, pozo sin informante) rechazan ANTES del lock,
+ * con el slot todavía en 'pendiente'. Con el guard limitado a 'enviando' esos
+ * tres rechazos afectaban 0 filas en silencio: no se registraba `fail_reason`
+ * ni se incrementaba `intentos`, y el slot volvía a la cola cada ciclo.
+ */
 export async function markSlotRechazado(input: {
   site_id: string;
   ts: string;
@@ -590,7 +662,7 @@ export async function markSlotRechazado(input: {
                             END
       WHERE site_id = $1
         AND ts      = $2
-        AND estatus = 'enviando'
+        AND estatus IN ('pendiente', 'enviando')
       RETURNING intentos, estatus`,
     [input.site_id, input.ts, input.fail_reason, input.max_retry_attempts],
     { name: 'dga__mark_rechazado' },
@@ -1010,7 +1082,8 @@ export async function reconcileMarkEnviado(input: {
             next_retry_at = NULL,
             fail_reason   = NULL
       WHERE site_id = $1
-        AND ts      = $2`,
+        AND ts      = $2
+        AND estatus <> 'enviado'`,
     [input.site_id, input.ts, input.comprobante],
     { name: 'dga__reconcile_mark_enviado' },
   );
@@ -1040,22 +1113,31 @@ export async function listEnviadoSinAudit(): Promise<EnviadoSinAuditRow[]> {
 }
 
 /**
- * Verifica si ya existe un audit OK (status='00' + comprobante) para
- * (site_id, ts). Usado por submission como pre-check anti-doble-envío
- * (Res 2170 §6.3 prohíbe retransmitir mediciones ya recibidas).
+ * Verifica si ya existe un audit OK (status='00') para (site_id, ts). Usado
+ * por submission como pre-check anti-doble-envío (Res 2170 §6.3 prohíbe
+ * retransmitir mediciones ya recibidas).
+ *
+ * NO filtra por `api_n_comprobante IS NOT NULL`. Un '00' significa que SNIA
+ * aceptó la medición, tenga o no comprobante parseable en la respuesta: el
+ * dato YA está en MIA-DGA y reenviarlo es justamente la retransmisión que
+ * §6.3 castiga. Exigir comprobante dejaba pasar los '00' sin comprobante y
+ * el slot se reenviaba cada 24h acumulando una fila '00' por intento — la
+ * causa raíz de los slots con 2+ audits OK.
+ *
+ * `comprobante` puede venir null; el llamador decide qué hacer (no puede
+ * marcar 'enviado' sin comprobante que respalde el envío ante DGA).
  */
 export async function findExistingSuccessfulAudit(
   siteId: string,
   ts: string,
-): Promise<{ comprobante: string } | null> {
-  const r = await query<{ comprobante: string }>(
+): Promise<{ comprobante: string | null } | null> {
+  const r = await query<{ comprobante: string | null }>(
     `SELECT api_n_comprobante AS comprobante
        FROM dga_send_audit
       WHERE site_id = $1
         AND ts = $2
         AND dga_status_code = '00'
-        AND api_n_comprobante IS NOT NULL
-      ORDER BY sent_at DESC
+      ORDER BY (api_n_comprobante IS NOT NULL) DESC, sent_at DESC
       LIMIT 1`,
     [siteId, ts],
     { name: 'dga__find_existing_ok_audit' },
@@ -1063,24 +1145,85 @@ export async function findExistingSuccessfulAudit(
   return r.rows[0] ?? null;
 }
 
+/**
+ * Clase de duplicado. No todo slot con 2+ audits '00' es un doble envío real
+ * a SNIA, y tratarlos igual convertía la alerta en ruido:
+ *
+ *  - `importador`: al menos una fila es `transport='legacy-import'`, que es una
+ *    fila sintética del importador del CSV histórico y NO un POST de este
+ *    sistema (ver comentario de la columna en 2026-05-16-dga-pipeline-refactor).
+ *    El importador tampoco es idempotente entre corridas. SNIA recibió la
+ *    medición una sola vez → no hay exposición §6.3.
+ *  - `sin_comprobante`: hay filas '00' sin comprobante. Es la firma del bug del
+ *    pre-check (ver `findExistingSuccessfulAudit`). Requiere revisión manual,
+ *    pero no prueba doble aceptación.
+ *  - `mismo_comprobante`: un envío real logueado más de una vez. SNIA tiene un
+ *    registro.
+ *  - `doble_envio_real`: 2+ comprobantes DISTINTOS emitidos por SNIA para el
+ *    mismo (site_id, ts) → dos registros en MIA-DGA. ESTA es la exposición
+ *    Res 2170 §6.3 y la única que exige cruce manual en MIA-DGA.
+ */
+export type DoubleSendClass =
+  | 'doble_envio_real'
+  | 'mismo_comprobante'
+  | 'sin_comprobante'
+  | 'importador';
+
 export interface DoubleSendRow {
   site_id: string;
   ts: string;
   ok_count: number;
+  comprobantes: number;
+  sin_comprobante: number;
+  transports: string;
+  clase: DoubleSendClass;
 }
+
+/**
+ * `LIMIT` alto y deliberado: el 100 anterior no era un techo de seguridad sino
+ * un tope silencioso que hacía que la alerta reportara "100" cuando el total
+ * real podía ser mucho mayor. `countDoubleSubmission` da el total sin tope.
+ */
 export async function listDoubleSubmission(): Promise<DoubleSendRow[]> {
   const r = await query<DoubleSendRow>(
-    `SELECT site_id, ts, COUNT(*)::int AS ok_count
+    `SELECT site_id,
+            ts,
+            COUNT(*)::int                                              AS ok_count,
+            COUNT(DISTINCT api_n_comprobante)::int                     AS comprobantes,
+            COUNT(*) FILTER (WHERE api_n_comprobante IS NULL)::int      AS sin_comprobante,
+            string_agg(DISTINCT transport, ',' ORDER BY transport)      AS transports,
+            CASE
+              WHEN bool_or(transport = 'legacy-import')        THEN 'importador'
+              WHEN COUNT(*) FILTER (WHERE api_n_comprobante IS NULL) > 0
+                                                              THEN 'sin_comprobante'
+              WHEN COUNT(DISTINCT api_n_comprobante) > 1       THEN 'doble_envio_real'
+              ELSE 'mismo_comprobante'
+            END                                                        AS clase
        FROM dga_send_audit
       WHERE dga_status_code = '00'
       GROUP BY site_id, ts
      HAVING COUNT(*) > 1
       ORDER BY site_id, ts
-      LIMIT 100`,
+      LIMIT 2000`,
     [],
     { name: 'dga__double_submission' },
   );
   return r.rows;
+}
+
+/** Total real de slots con 2+ audits OK, sin tope. Para no subreportar. */
+export async function countDoubleSubmission(): Promise<number> {
+  const r = await query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total
+       FROM (SELECT site_id, ts
+               FROM dga_send_audit
+              WHERE dga_status_code = '00'
+              GROUP BY site_id, ts
+             HAVING COUNT(*) > 1) d`,
+    [],
+    { name: 'dga__double_submission_count' },
+  );
+  return r.rows[0]?.total ?? 0;
 }
 
 // ============================================================================

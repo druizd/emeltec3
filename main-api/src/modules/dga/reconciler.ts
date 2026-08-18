@@ -7,12 +7,16 @@
 import { logger } from '../../config/logger';
 import { beat } from '../../config/heartbeat';
 import {
+  countDoubleSubmission,
+  findExistingSuccessfulAudit,
   listDoubleSubmission,
   listDriftAuditEnviadoVsEstado,
   listEnviadoSinAudit,
   listSitiosDesconectados,
   listStuckEnviando,
   listVacioSlotsStale,
+  markSlotEnviadoSinReenvio,
+  markSlotOkSinComprobante,
   reconcileMarkEnviado,
   unlockStuckEnviando,
 } from './repo';
@@ -78,12 +82,40 @@ let intervalHandle: NodeJS.Timeout | null = null;
 
 async function reconcileStuckEnviando(): Promise<number> {
   const stuck = await listStuckEnviando(STUCK_THRESHOLD_MINUTES);
+  let unlocked = 0;
   for (const slot of stuck) {
     try {
+      // Un slot atascado en 'enviando' >15 min significa que el proceso murió
+      // o perdió la respuesta DESPUÉS de postear. Consultar el audit antes de
+      // rearmarlo es obligatorio: si SNIA ya aceptó la medición, devolverlo a
+      // 'pendiente' provoca el reenvío que Res 2170 §6.3 castiga, y este es el
+      // único camino del sistema que puede generar un doble envío real.
+      const existingOk = await findExistingSuccessfulAudit(slot.site_id, slot.ts);
+      if (existingOk?.comprobante) {
+        await markSlotEnviadoSinReenvio({
+          site_id: slot.site_id,
+          ts: slot.ts,
+          comprobante: existingOk.comprobante,
+        });
+        logger.warn(
+          { site_id: slot.site_id, ts: slot.ts, comprobante: existingOk.comprobante },
+          'reconciler (A): slot atascado con audit OK → enviado (no se rearma, evita doble envío)',
+        );
+        continue;
+      }
+      if (existingOk) {
+        await markSlotOkSinComprobante({ site_id: slot.site_id, ts: slot.ts });
+        logger.error(
+          { site_id: slot.site_id, ts: slot.ts },
+          'reconciler (A): slot atascado con audit OK sin comprobante → requires_review',
+        );
+        continue;
+      }
       await unlockStuckEnviando(slot.site_id, slot.ts);
+      unlocked++;
       logger.warn(
         { site_id: slot.site_id, ts: slot.ts },
-        'reconciler (A): slot atascado en enviando → revertido a pendiente',
+        'reconciler (A): slot atascado en enviando sin audit OK → revertido a pendiente',
       );
     } catch (err) {
       logger.error(
@@ -92,7 +124,7 @@ async function reconcileStuckEnviando(): Promise<number> {
       );
     }
   }
-  return stuck.length;
+  return unlocked;
 }
 
 async function reconcileDriftEnviado(): Promise<number> {
@@ -176,44 +208,100 @@ async function reportEnviadoSinAudit(): Promise<AlertPart> {
   };
 }
 
+/**
+ * Solo `doble_envio_real` (2+ comprobantes DISTINTOS de SNIA para el mismo
+ * slot) es exposición Res 2170 §6.3. Las otras clases se cuentan y se
+ * mencionan, pero no disparan la alerta: mezclarlas la volvía ruido y escondía
+ * los casos que sí exigen cruce manual en MIA-DGA.
+ */
 async function reportDoubleSubmission(): Promise<AlertPart> {
-  const doubles = await listDoubleSubmission();
-  for (const slot of doubles) {
+  const [doubles, totalReal] = await Promise.all([
+    listDoubleSubmission(),
+    countDoubleSubmission(),
+  ]);
+
+  const reales = doubles.filter((d) => d.clase === 'doble_envio_real');
+  const sinComprobante = doubles.filter((d) => d.clase === 'sin_comprobante');
+  const importador = doubles.filter((d) => d.clase === 'importador');
+  const mismoComprobante = doubles.filter((d) => d.clase === 'mismo_comprobante');
+
+  for (const slot of reales) {
     logger.error(
-      { site_id: slot.site_id, ts: slot.ts, ok_count: slot.ok_count },
-      'reconciler (D): posible doble envío a SNIA — verificar en MIA-DGA',
+      {
+        site_id: slot.site_id,
+        ts: slot.ts,
+        ok_count: slot.ok_count,
+        comprobantes: slot.comprobantes,
+        transports: slot.transports,
+      },
+      'reconciler (D): DOBLE ENVÍO REAL a SNIA (comprobantes distintos) — verificar en MIA-DGA',
     );
   }
-  if (doubles.length === 0) return { count: 0, block: null, html: null, sig: '' };
-  const lines = doubles
+  for (const slot of sinComprobante) {
+    logger.warn(
+      { site_id: slot.site_id, ts: slot.ts, ok_count: slot.ok_count },
+      'reconciler (D): audits OK sin comprobante — revisión manual, no prueba doble aceptación',
+    );
+  }
+  if (importador.length > 0 || mismoComprobante.length > 0) {
+    logger.info(
+      { importador: importador.length, mismo_comprobante: mismoComprobante.length },
+      'reconciler (D): duplicados de auditoría sin exposición §6.3 (importador legacy / doble log)',
+    );
+  }
+  if (doubles.length < totalReal) {
+    logger.warn(
+      { listados: doubles.length, total: totalReal },
+      'reconciler (D): hay más slots duplicados que el tope de la consulta',
+    );
+  }
+
+  if (reales.length === 0) return { count: 0, block: null, html: null, sig: '' };
+
+  const desglose =
+    `  Otros duplicados de auditoría SIN exposición §6.3: ` +
+    `importador legacy=${importador.length}, mismo comprobante=${mismoComprobante.length}, ` +
+    `OK sin comprobante=${sinComprobante.length}. Total slots duplicados=${totalReal}.\n`;
+  const lines = reales
     .slice(0, 50)
-    .map((d) => `  - site=${d.site_id} ts=${d.ts} envíos_OK=${d.ok_count}`);
+    .map(
+      (d) =>
+        `  - site=${d.site_id} ts=${d.ts} envíos_OK=${d.ok_count} ` +
+        `comprobantes_distintos=${d.comprobantes} transports=${d.transports}`,
+    );
   const block =
-    `▸ ${doubles.length} slot(s) con 2+ audits OK (status='00') a SNIA — posible doble envío ` +
-    `(puede activar bloqueo del Centro de Control, Res 2170 §6.3).\n` +
-    `  Acción: verificar en MIA-DGA. Si es bug, revisar lock del submission.\n` +
-    `  Primeros ${Math.min(doubles.length, 50)}:\n` +
+    `▸ ${reales.length} slot(s) con DOBLE ENVÍO REAL a SNIA (2+ comprobantes distintos) — ` +
+    `puede activar bloqueo del Centro de Control (Res 2170 §6.3).\n` +
+    `  Acción: verificar en MIA-DGA. No es rectificable desde acá.\n` +
+    desglose +
+    `  Primeros ${Math.min(reales.length, 50)}:\n` +
     lines.join('\n');
-  const htmlRows = doubles
+  const htmlRows = reales
     .slice(0, 50)
     .map(
       (d) =>
         `<li style="margin:2px 0;font-family:monospace;font-size:12px;color:#475569;">` +
-        `${esc(d.site_id)} · ${esc(d.ts)} · envíos OK: ${esc(d.ok_count)}</li>`,
+        `${esc(d.site_id)} · ${esc(d.ts)} · comprobantes distintos: ${esc(d.comprobantes)} · ` +
+        `${esc(d.transports)}</li>`,
     )
     .join('');
   const html = cardHtml(
-    `${doubles.length} posible(s) doble(s) envío(s) a SNIA`,
+    `${reales.length} doble(s) envío(s) real(es) a SNIA`,
     '#F87171',
-    `<p style="margin:0 0 8px;font-size:13px;color:#64748B;">2+ audits OK — puede activar bloqueo ` +
-      `del Centro de Control (Res 2170 §6.3). Verificar en MIA-DGA.</p>` +
+    `<p style="margin:0 0 8px;font-size:13px;color:#64748B;">Mismo slot con 2+ comprobantes ` +
+      `distintos: hay dos registros en MIA-DGA. Puede activar bloqueo del Centro de Control ` +
+      `(Res 2170 §6.3) y no es rectificable desde la plataforma.</p>` +
+      `<p style="margin:0 0 8px;font-size:12px;color:#94A3B8;">Duplicados de auditoría sin ` +
+      `exposición §6.3 — importador legacy: ${esc(importador.length)} · mismo comprobante: ` +
+      `${esc(mismoComprobante.length)} · OK sin comprobante: ${esc(sinComprobante.length)} · ` +
+      `total slots duplicados: ${esc(totalReal)}.</p>` +
       `<ul style="margin:0;padding-left:18px;">${htmlRows}</ul>`,
   );
   return {
-    count: doubles.length,
+    count: reales.length,
     block,
     html,
-    sig: `D:${doubles.map((d) => d.site_id + d.ts).join(',')}`,
+    sig: `D:${reales.map((d) => d.site_id + d.ts).join(',')}`,
   };
 }
 
