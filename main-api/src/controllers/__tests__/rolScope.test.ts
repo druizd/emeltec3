@@ -33,14 +33,14 @@ for (const mod of ['./src/config/db']) {
   require_.cache[p] = { id: p, filename: p, loaded: true, exports: poolFalso } as never;
 }
 
-const incidencias = require_('./src/controllers/incidenciaController') as Record<
-  string,
-  (req: unknown, res: unknown) => Promise<void>
->;
-const documentos = require_('./src/controllers/documentoController') as Record<
-  string,
-  (req: unknown, res: unknown) => Promise<void>
->;
+type Handler = (req: unknown, res: unknown) => Promise<void>;
+
+const incidencias = require_('./src/controllers/incidenciaController') as {
+  listarIncidencias: Handler;
+};
+const documentos = require_('./src/controllers/documentoController') as {
+  listarDocumentos: Handler;
+};
 // userController NO se carga acá: hace `require('../config/dbHelpers')`, que
 // solo existe como .ts y el createRequire nativo de Node no lo transpila (en
 // producción corre desde dist/, donde sí es .js). Su cobertura vive en

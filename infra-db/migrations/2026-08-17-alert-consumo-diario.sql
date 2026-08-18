@@ -22,6 +22,11 @@ BEGIN;
 
 -- ─── UP ──────────────────────────────────────────────────────────────────────
 
+-- Esta es la migracion MAS RECIENTE que redefine alertas_condicion_check, asi
+-- que es la que valida: las anteriores usan NOT VALID para no reventar el
+-- deploy cuando ya existen filas con condiciones que ellas no conocian. Si en
+-- el futuro se agrega otra condicion, la migracion nueva debe seguir el mismo
+-- patron y ESTA deberia pasar a NOT VALID.
 ALTER TABLE alertas DROP CONSTRAINT IF EXISTS alertas_condicion_check;
 
 ALTER TABLE alertas
