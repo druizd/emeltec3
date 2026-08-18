@@ -27,7 +27,7 @@ Una fila por **instante por equipo**. Todas las variables de ese instante van
 pivoteadas en `data`:
 
 ```json
-{"Totalizado": 430356, "Flujo Insta": 20.2, "Nivel Freat": 73}
+{ "Totalizado": 430356, "Flujo Insta": 20.2, "Nivel Freat": 73 }
 ```
 
 Dos consecuencias que gobiernan todo el resto del procedimiento:
@@ -63,21 +63,21 @@ Fecha,Hora,Nombre,Valor,Unidad,Calidad
 
 Lo que el parser hace con eso:
 
-| Aspecto | Comportamiento |
-|---|---|
-| Separador | Coma, `;` o tab, autodetectado. Deben ser **exactamente 6** campos. |
-| Fecha | Acepta `YYYY-MM-DD`, `DD-MM-YYYY`, `YYYY/MM/DD` y `MM/DD/YYYY`. **Exigimos ISO** — la forma con slash se interpreta mes primero y es una trampa. |
-| Hora | `HH:MM:SS`. |
-| Zona horaria | Se interpreta como **hora local Chile** y se convierte a UTC con `America/Santiago`, con DST. En BD queda UTC. El archivo **no** debe venir convertido. |
-| Decimal | Punto o coma, se normaliza a punto. |
-| `Nombre` | Va como clave de `data`. `FREESPACE` se descarta. |
-| `Valor` | Debe ser numérico. **Un valor no numérico aborta el archivo completo** → va a `hold_corrupt` tras 3 intentos. |
-| Centinela | `-999`, `-999.0`, `-999.000` → esa variable se omite en ese timestamp. |
-| `Unidad` | Se lee y se ignora. |
-| `Calidad` | **El parser NO la filtra.** Filtrar antes si se quiere excluir `B`. |
-| Líneas ignoradas | Las que empiezan con `:` o con un carácter no numérico (headers, trailer `:YN … :SN …`). |
-| Agrupación | Todas las filas con igual (serial, fecha, hora) → una sola fila de `equipo`. |
-| `id_serial` | **Sale del nombre del archivo, no de una columna.** |
+| Aspecto          | Comportamiento                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Separador        | Coma, `;` o tab, autodetectado. Deben ser **exactamente 6** campos.                                                                                     |
+| Fecha            | Acepta `YYYY-MM-DD`, `DD-MM-YYYY`, `YYYY/MM/DD` y `MM/DD/YYYY`. **Exigimos ISO** — la forma con slash se interpreta mes primero y es una trampa.        |
+| Hora             | `HH:MM:SS`.                                                                                                                                             |
+| Zona horaria     | Se interpreta como **hora local Chile** y se convierte a UTC con `America/Santiago`, con DST. En BD queda UTC. El archivo **no** debe venir convertido. |
+| Decimal          | Punto o coma, se normaliza a punto.                                                                                                                     |
+| `Nombre`         | Va como clave de `data`. `FREESPACE` se descarta.                                                                                                       |
+| `Valor`          | Debe ser numérico. **Un valor no numérico aborta el archivo completo** → va a `hold_corrupt` tras 3 intentos.                                           |
+| Centinela        | `-999`, `-999.0`, `-999.000` → esa variable se omite en ese timestamp.                                                                                  |
+| `Unidad`         | Se lee y se ignora.                                                                                                                                     |
+| `Calidad`        | **El parser NO la filtra.** Filtrar antes si se quiere excluir `B`.                                                                                     |
+| Líneas ignoradas | Las que empiezan con `:` o con un carácter no numérico (headers, trailer `:YN … :SN …`).                                                                |
+| Agrupación       | Todas las filas con igual (serial, fecha, hora) → una sola fila de `equipo`.                                                                            |
+| `id_serial`      | **Sale del nombre del archivo, no de una columna.**                                                                                                     |
 
 **Nombre de archivo:** `<IDENTIFICADOR>_LOG_<YYYYMMDD>_<YYYYMMDD>.csv`
 

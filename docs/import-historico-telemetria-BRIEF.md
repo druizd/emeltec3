@@ -63,14 +63,14 @@ Ejemplo:
 
 ### Especificación campo por campo
 
-| # | Campo | Regla |
-|---|-------|-------|
-| 1 | `Fecha` | **`YYYY-MM-DD`** obligatorio. No uses formatos con slash: son ambiguos y el parser destino interpreta `MM/DD/YYYY`. Si el origen es ambiguo (ej. `03/08/2026`), **detente y pregunta** cuál es el orden; no adivines. |
-| 2 | `Hora` | `HH:MM:SS`, 24 h, con ceros a la izquierda. Si el origen no trae segundos, usa `:00`. |
-| 3 | `Nombre` | Nombre de variable **copiado literalmente** del origen. Ver reglas abajo. |
-| 4 | `Valor` | Numérico, punto decimal. Ver reglas abajo. |
-| 5 | `Unidad` | Unidad tal cual venga en el origen. Si el origen no la trae, deja el campo **vacío** (`,,`) — no inventes unidades. |
-| 6 | `Calidad` | `G` (dato bueno) o `B` (dato malo/dudoso). Si el origen trae una columna de status/quality/flag, mapéala. Si no trae ninguna, emite `G` en todas las filas y anótalo en el reporte. |
+| #   | Campo     | Regla                                                                                                                                                                                                                 |
+| --- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `Fecha`   | **`YYYY-MM-DD`** obligatorio. No uses formatos con slash: son ambiguos y el parser destino interpreta `MM/DD/YYYY`. Si el origen es ambiguo (ej. `03/08/2026`), **detente y pregunta** cuál es el orden; no adivines. |
+| 2   | `Hora`    | `HH:MM:SS`, 24 h, con ceros a la izquierda. Si el origen no trae segundos, usa `:00`.                                                                                                                                 |
+| 3   | `Nombre`  | Nombre de variable **copiado literalmente** del origen. Ver reglas abajo.                                                                                                                                             |
+| 4   | `Valor`   | Numérico, punto decimal. Ver reglas abajo.                                                                                                                                                                            |
+| 5   | `Unidad`  | Unidad tal cual venga en el origen. Si el origen no la trae, deja el campo **vacío** (`,,`) — no inventes unidades.                                                                                                   |
+| 6   | `Calidad` | `G` (dato bueno) o `B` (dato malo/dudoso). Si el origen trae una columna de status/quality/flag, mapéala. Si no trae ninguna, emite `G` en todas las filas y anótalo en el reporte.                                   |
 
 ### Zona horaria — CRÍTICO
 
