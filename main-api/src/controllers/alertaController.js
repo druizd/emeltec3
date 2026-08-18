@@ -609,6 +609,7 @@ exports.resumen = async (req, res) => {
   const pendientes = 'e.resuelta = FALSE AND e.reconocida_at IS NULL';
   const { rows: recientes } = await pool.query(
     `SELECT e.id, e.severidad, e.mensaje, e.triggered_at, e.sitio_id, e.empresa_id,
+            e.repeticiones,
             a.nombre AS alerta_nombre,
             s.descripcion AS sitio_desc,
             s.tipo_sitio

@@ -467,7 +467,12 @@ export async function evaluarAlertaConsumoDiario(client: any, alerta: Alerta): P
 
   const consumo = await getConsumoDiarioActual(client, alerta);
   if (!consumo || consumo.delta === null) return;
-  if (consumo.delta <= alerta.umbral_bajo) return;
+
+  // El veredicto pasa por debeNotificar para que aplique lo mismo que al resto
+  // de condiciones: agrupar repeticiones si ya se dio por conocida, y rearmar
+  // cuando el consumo del dia vuelve a estar bajo el umbral.
+  const dispara = consumo.delta > alerta.umbral_bajo;
+  if (!(await debeNotificar(client, alerta, dispara))) return;
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const severidad = alerta.severidad.toUpperCase();
@@ -590,6 +595,68 @@ async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<Cons
   return { diaIso, delta, unidad };
 }
 
+/**
+ * Decide si corresponde crear un evento NUEVO (y por lo tanto notificar) para
+ * esta alerta, dado si la condición se cumple en este ciclo.
+ *
+ * Reconocer un evento pasa a significar "ya lo sé": mientras siga abierto y
+ * reconocido, las repeticiones se agrupan en él en vez de generar un evento y
+ * un correo por cada cooldown. Antes el cooldown solo miraba `triggered_at`
+ * sin importar el estado, así que una condición que no se normaliza sola
+ * (un totalizador acumulado, por ejemplo) producía un aviso cada 5 minutos
+ * indefinidamente.
+ *
+ * Rearme: si la condición se normaliza y el evento estaba reconocido, se
+ * resuelve solo. Así la próxima vez que ocurra vuelve a avisar de verdad. Un
+ * evento NO reconocido no se auto-resuelve: alguien tiene que verlo.
+ *
+ * @returns true si el llamador debe insertar el evento.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function debeNotificar(client: any, alerta: Alerta, dispara: boolean): Promise<boolean> {
+  const abiertoRes = (await client.query(
+    `SELECT id, reconocida_at FROM alertas_eventos
+      WHERE alerta_id = $1 AND resuelta = FALSE
+      ORDER BY triggered_at DESC LIMIT 1`,
+    [alerta.id],
+  )) as { rows: Array<{ id: string; reconocida_at: string | null }> };
+  const abierto = abiertoRes.rows[0];
+
+  if (!dispara) {
+    if (abierto?.reconocida_at) {
+      await client.query(
+        `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1`,
+        [abierto.id],
+      );
+      logger.info(
+        { alertaId: alerta.id, eventoId: abierto.id },
+        'alerts: condicion normalizada, evento reconocido se rearma',
+      );
+    }
+    return false;
+  }
+
+  if (abierto?.reconocida_at) {
+    await client.query(
+      `UPDATE alertas_eventos
+          SET repeticiones = repeticiones + 1, ultima_repeticion_at = NOW()
+        WHERE id = $1`,
+      [abierto.id],
+    );
+    return false;
+  }
+
+  // Sin reconocer: rige el cooldown normal para no spamear al operador que
+  // todavía no ha mirado la bandeja.
+  const cool = await client.query(
+    `SELECT 1 FROM alertas_eventos
+      WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
+      LIMIT 1`,
+    [alerta.id, alerta.cooldown_minutos],
+  );
+  return cool.rows.length === 0;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
@@ -609,14 +676,6 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     return;
   }
 
-  const cool = await client.query(
-    `SELECT triggered_at FROM alertas_eventos
-     WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
-     ORDER BY triggered_at DESC LIMIT 1`,
-    [alerta.id, alerta.cooldown_minutos],
-  );
-  if (cool.rows.length > 0) return;
-
   if (alerta.condicion === 'consumo_diario') {
     await evaluarAlertaConsumoDiario(client, alerta);
     return;
@@ -629,7 +688,10 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
        LIMIT 1`,
       [alerta.id_serial, alerta.cooldown_minutos],
     );
-    if (r.rows.length === 0) await insertarEvento(client, alerta, null, null);
+    const sinDatos = r.rows.length === 0;
+    if (await debeNotificar(client, alerta, sinDatos)) {
+      await insertarEvento(client, alerta, null, null);
+    }
     return;
   }
 
@@ -642,10 +704,15 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   if (rawVal === undefined) return;
   const valorNum = parseFloat(String(rawVal));
   const valorTexto = String(rawVal);
-  if (
-    !Number.isNaN(valorNum) &&
-    evalCondicion(alerta.condicion, valorNum, alerta.umbral_bajo ?? 0, alerta.umbral_alto ?? 0)
-  ) {
+  if (Number.isNaN(valorNum)) return;
+
+  const dispara = evalCondicion(
+    alerta.condicion,
+    valorNum,
+    alerta.umbral_bajo ?? 0,
+    alerta.umbral_alto ?? 0,
+  );
+  if (await debeNotificar(client, alerta, dispara)) {
     await insertarEvento(client, alerta, valorNum, valorTexto);
   }
 }

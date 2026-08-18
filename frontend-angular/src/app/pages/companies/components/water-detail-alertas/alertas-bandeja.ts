@@ -177,6 +177,26 @@ type FiltroEstado = EventoEstado | 'todos';
                     </div>
                   }
 
+                  @if (ev.repeticiones && ev.repeticiones > 0) {
+                    <p
+                      class="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-caption-xs text-slate-600"
+                      [title]="
+                        'La condicion volvio a cumplirse ' +
+                        ev.repeticiones +
+                        ' veces desde que se reconocio. Se agrupan aca en vez de generar un aviso nuevo cada vez.'
+                      "
+                    >
+                      <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                        >repeat</span
+                      >
+                      Se repitio <strong>{{ ev.repeticiones }}</strong>
+                      {{ ev.repeticiones === 1 ? 'vez' : 'veces' }} sin volver a avisar
+                      @if (ev.ultima_repeticion_at) {
+                        · ultima {{ formatFecha(ev.ultima_repeticion_at) }}
+                      }
+                    </p>
+                  }
+
                   <!-- Acciones -->
                   @if (canOperateAlerts() && ev.estado !== 'resuelta' && asignandoId() !== ev.id) {
                     <div class="mt-3 flex flex-wrap gap-2">
@@ -185,6 +205,7 @@ type FiltroEstado = EventoEstado | 'todos';
                           type="button"
                           [disabled]="actuando()"
                           (click)="reconocer(ev)"
+                          title="Da la alerta por conocida: deja de avisar mientras la condicion siga igual. Si se normaliza y vuelve a ocurrir, avisa de nuevo."
                           class="inline-flex items-center gap-1 rounded-lg border border-primary-tint-25 bg-primary-tint-08 px-3 py-1.5 text-caption font-bold text-primary-container transition-colors hover:bg-primary-tint-14 active:scale-95 disabled:opacity-50"
                         >
                           <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
