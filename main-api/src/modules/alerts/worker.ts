@@ -308,54 +308,45 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
 }
 
 /**
- * Comprueba si ya existe un evento reciente dentro del cooldown para esta alerta.
- * Usado internamente por los evaluadores DGA sticky-state para evitar re-disparos
- * cada 60s (ADR-6a). Los evaluadores DGA hacen early-return antes del cooldown
- * genérico de evaluarAlerta(), por lo que deben gestionar su propia deduplicación.
- *
- * @returns true si hay un evento dentro del window de cooldown (→ caller debe retornar).
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function dentroDeCooldown(client: any, alerta: Alerta): Promise<boolean> {
-  const r = await client.query(
-    `SELECT triggered_at FROM alertas_eventos
-     WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
-     ORDER BY triggered_at DESC LIMIT 1`,
-    [alerta.id, alerta.cooldown_minutos],
-  );
-  return (r as { rows: unknown[] }).rows.length > 0;
-}
-
-/**
  * Evalúa la condición `dga_slots_fallidos`.
- * Cuenta slots dato_dga en estado 'fallido' para el sitio. Si n >= 1 y el
- * cooldown no está activo, inserta alertas_eventos y notifica. (ADR-6)
+ * Cuenta slots dato_dga en estado 'fallido' para el sitio. Si n >= 1, el veredicto
+ * pasa por `debeNotificar` igual que el resto de condiciones. (ADR-6)
  *
- * Guard W-1: si pozo_config.dga_activo=FALSE (o no existe config), el evaluador
- * sale temprano sin disparar alarma — evita falsos positivos por datos residuales
- * en dato_dga luego de que el operador desactiva DGA para el sitio.
+ * Un slot fallido no se arregla solo: es la condición sticky por excelencia, así
+ * que sin la agrupación de repeticiones generaba un correo por cooldown de forma
+ * indefinida. Reconocer el evento corta el aviso; que el slot se recupere lo rearma.
+ *
+ * Guard W-1: si pozo_config.dga_activo=FALSE (o no existe config), la condición se
+ * considera no cumplida — evita falsos positivos por datos residuales en dato_dga
+ * luego de que el operador desactiva DGA para el sitio, y de paso rearma el evento
+ * reconocido en vez de dejarlo abierto para siempre.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta): Promise<void> {
-  if (await dentroDeCooldown(client, alerta)) return;
+  // El count queda en esta variable para reusarlo en el mensaje: debeNotificar
+  // invoca el evaluador a lo más una vez por ciclo.
+  let n = 0;
+  const hayFallidos = async (): Promise<boolean> => {
+    // Guard W-1: verificar que DGA sigue activo para el sitio antes de contar.
+    // Mismo patrón que evaluarAlertaDgaAtrasado (ADR-1).
+    const cfg = (await client.query(
+      `SELECT 1 FROM pozo_config
+        WHERE sitio_id = $1 AND dga_activo = TRUE
+        LIMIT 1`,
+      [alerta.sitio_id],
+    )) as { rows: unknown[] };
+    if (cfg.rows.length === 0) return false; // DGA desactivado o sin config
 
-  // Guard W-1: verificar que DGA sigue activo para el sitio antes de contar.
-  // Mismo patrón que evaluarAlertaDgaAtrasado (ADR-1).
-  const cfg = (await client.query(
-    `SELECT 1 FROM pozo_config
-     WHERE sitio_id = $1 AND dga_activo = TRUE
-     LIMIT 1`,
-    [alerta.sitio_id],
-  )) as { rows: unknown[] };
-  if (cfg.rows.length === 0) return; // DGA desactivado o sin config — no disparar
+    const r = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM dato_dga
+        WHERE site_id = $1 AND estatus = 'fallido'`,
+      [alerta.sitio_id],
+    )) as { rows: Array<{ n: number }> };
+    n = r.rows[0]?.n ?? 0;
+    return n > 0;
+  };
 
-  const r = (await client.query(
-    `SELECT COUNT(*)::int AS n FROM dato_dga
-     WHERE site_id = $1 AND estatus = 'fallido'`,
-    [alerta.sitio_id],
-  )) as { rows: Array<{ n: number }> };
-  const n = r.rows[0]?.n ?? 0;
-  if (n === 0) return;
+  if (!(await debeNotificar(client, alerta, hayFallidos))) return;
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const severidad = alerta.severidad.toUpperCase();
@@ -389,13 +380,21 @@ export async function evaluarAlertaDgaSlotsFallidos(client: any, alerta: Alerta)
 
 /**
  * Evalúa la condición `review_queue_acumulacion`.
- * Cuenta slots dato_dga en estado 'requires_review'. Si n > umbral_bajo (N) y el
- * cooldown no está activo, inserta alertas_eventos y notifica. (ADR-5, ADR-6)
+ * Cuenta slots dato_dga en estado 'requires_review'. Si n > umbral_bajo (N), el
+ * veredicto pasa por `debeNotificar` igual que el resto de condiciones.
+ * (ADR-5, ADR-6)
+ *
+ * La cola de revisión tampoco se vacía sola: un backlog por encima del umbral
+ * mantiene la condición cumplida indefinidamente, y antes eso significaba un
+ * correo por cooldown hasta que alguien vaciara la cola.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Promise<void> {
   // Guard de misconfiguración: umbral_bajo debe ser un número positivo.
-  if (alerta.umbral_bajo === null || alerta.umbral_bajo === undefined || alerta.umbral_bajo <= 0) {
+  // Se copia a un local porque el evaluador es un closure y TS no arrastra el
+  // narrowing de una propiedad mutable hasta dentro.
+  const umbral = alerta.umbral_bajo;
+  if (umbral === null || umbral === undefined || umbral <= 0) {
     logger.warn(
       { alertaId: alerta.id, umbral_bajo: alerta.umbral_bajo },
       'alerts: review_queue_acumulacion sin umbral_bajo válido — alerta mal configurada',
@@ -403,15 +402,20 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
     return;
   }
 
-  if (await dentroDeCooldown(client, alerta)) return;
+  // El count queda en esta variable para reusarlo en el mensaje: debeNotificar
+  // invoca el evaluador a lo más una vez por ciclo.
+  let n = 0;
+  const superaUmbral = async (): Promise<boolean> => {
+    const r = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM dato_dga
+        WHERE site_id = $1 AND estatus = 'requires_review'`,
+      [alerta.sitio_id],
+    )) as { rows: Array<{ n: number }> };
+    n = r.rows[0]?.n ?? 0;
+    return n > umbral;
+  };
 
-  const r = (await client.query(
-    `SELECT COUNT(*)::int AS n FROM dato_dga
-     WHERE site_id = $1 AND estatus = 'requires_review'`,
-    [alerta.sitio_id],
-  )) as { rows: Array<{ n: number }> };
-  const n = r.rows[0]?.n ?? 0;
-  if (n <= alerta.umbral_bajo) return;
+  if (!(await debeNotificar(client, alerta, superaUmbral))) return;
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const severidad = alerta.severidad.toUpperCase();
@@ -472,7 +476,7 @@ export async function evaluarAlertaConsumoDiario(client: any, alerta: Alerta): P
   // de condiciones: agrupar repeticiones si ya se dio por conocida, y rearmar
   // cuando el consumo del dia vuelve a estar bajo el umbral.
   const dispara = consumo.delta > alerta.umbral_bajo;
-  if (!(await debeNotificar(client, alerta, dispara))) return;
+  if (!(await debeNotificar(client, alerta, () => dispara))) return;
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const severidad = alerta.severidad.toUpperCase();
@@ -597,7 +601,10 @@ async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<Cons
 
 /**
  * Decide si corresponde crear un evento NUEVO (y por lo tanto notificar) para
- * esta alerta, dado si la condición se cumple en este ciclo.
+ * esta alerta. `evaluar` responde si la condición se cumple en este ciclo, y se
+ * invoca de forma diferida: cuando el cooldown ya corta el ciclo no hace falta
+ * consultarla, y las condiciones DGA la resuelven con un COUNT sobre `dato_dga`
+ * que no queremos pagar cada 60s (ADR-6a).
  *
  * Reconocer un evento pasa a significar "ya lo sé": mientras siga abierto y
  * reconocido, las repeticiones se agrupan en él en vez de generar un evento y
@@ -612,8 +619,12 @@ async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<Cons
  *
  * @returns true si el llamador debe insertar el evento.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function debeNotificar(client: any, alerta: Alerta, dispara: boolean): Promise<boolean> {
+async function debeNotificar(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  alerta: Alerta,
+  evaluar: () => boolean | Promise<boolean>,
+): Promise<boolean> {
   const abiertoRes = (await client.query(
     `SELECT id, reconocida_at FROM alertas_eventos
       WHERE alerta_id = $1 AND resuelta = FALSE
@@ -622,39 +633,42 @@ async function debeNotificar(client: any, alerta: Alerta, dispara: boolean): Pro
   )) as { rows: Array<{ id: string; reconocida_at: string | null }> };
   const abierto = abiertoRes.rows[0];
 
-  if (!dispara) {
-    if (abierto?.reconocida_at) {
-      await client.query(
-        `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1`,
-        [abierto.id],
-      );
-      logger.info(
-        { alertaId: alerta.id, eventoId: abierto.id },
-        'alerts: condicion normalizada, evento reconocido se rearma',
-      );
-    }
-    return false;
-  }
-
+  // Evento reconocido: no hay correo posible en este ciclo, pero sí hay que
+  // saber si la condición sigue activa para elegir entre agrupar la repetición
+  // y rearmar. El cooldown no aplica acá.
   if (abierto?.reconocida_at) {
-    await client.query(
-      `UPDATE alertas_eventos
+    if (await evaluar()) {
+      await client.query(
+        `UPDATE alertas_eventos
           SET repeticiones = repeticiones + 1, ultima_repeticion_at = NOW()
         WHERE id = $1`,
+        [abierto.id],
+      );
+      return false;
+    }
+    await client.query(
+      `UPDATE alertas_eventos SET resuelta = TRUE, resuelta_at = NOW() WHERE id = $1`,
       [abierto.id],
+    );
+    logger.info(
+      { alertaId: alerta.id, eventoId: abierto.id },
+      'alerts: condicion normalizada, evento reconocido se rearma',
     );
     return false;
   }
 
   // Sin reconocer: rige el cooldown normal para no spamear al operador que
-  // todavía no ha mirado la bandeja.
+  // todavía no ha mirado la bandeja. Un evento sin reconocer tampoco se
+  // auto-resuelve, así que no hace falta evaluar para decidir el rearme.
   const cool = await client.query(
     `SELECT 1 FROM alertas_eventos
       WHERE alerta_id = $1 AND triggered_at > NOW() - ($2 || ' minutes')::INTERVAL
       LIMIT 1`,
     [alerta.id, alerta.cooldown_minutos],
   );
-  return cool.rows.length === 0;
+  if (cool.rows.length > 0) return false;
+
+  return evaluar();
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -689,7 +703,7 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
       [alerta.id_serial, alerta.cooldown_minutos],
     );
     const sinDatos = r.rows.length === 0;
-    if (await debeNotificar(client, alerta, sinDatos)) {
+    if (await debeNotificar(client, alerta, () => sinDatos)) {
       await insertarEvento(client, alerta, null, null);
     }
     return;
@@ -712,7 +726,7 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     alerta.umbral_bajo ?? 0,
     alerta.umbral_alto ?? 0,
   );
-  if (await debeNotificar(client, alerta, dispara)) {
+  if (await debeNotificar(client, alerta, () => dispara)) {
     await insertarEvento(client, alerta, valorNum, valorTexto);
   }
 }

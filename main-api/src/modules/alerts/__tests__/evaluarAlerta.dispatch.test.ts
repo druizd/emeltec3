@@ -53,17 +53,20 @@ function makeAlerta(condicion: string) {
   };
 }
 
-function makeClient(responses: Array<{ rows: unknown[] }>) {
+/**
+ * Cliente de base falso que devuelve cero filas para todo. Estos tests solo
+ * miran el ruteo, así que el evaluador específico corre completo y termina sin
+ * disparar: no hay evento abierto, no hay cooldown y no hay filas en dato_dga.
+ * Lo que se verifica es que nunca se consulte `equipo`.
+ */
+function makeClient() {
   const calls: Array<{ sql: string; params: unknown[] }> = [];
-  let idx = 0;
   const client = {
-    query: vi.fn(async (sql: string, params: unknown[]) => {
-      calls.push({ sql, params });
-      const resp = responses[idx++];
-      if (!resp) throw new Error(`Sin respuesta stub #${idx}: ${sql.slice(0, 80)}`);
-      return resp;
-    }),
     _calls: calls,
+    query: vi.fn(async (sql: string, params: unknown[] = []) => {
+      calls.push({ sql, params });
+      return { rows: [] };
+    }),
   };
   return client;
 }
@@ -72,11 +75,7 @@ function makeClient(responses: Array<{ rows: unknown[] }>) {
 
 describe('evaluarAlerta — dispatch dga_slots_fallidos', () => {
   it('condicion=dga_slots_fallidos no ejecuta ninguna consulta a FROM equipo', async () => {
-    // El evaluador de slots fallidos hará: cooldown + COUNT (dato_dga) + posible INSERT.
-    // Asignamos respuestas para que retorne limpiamente (cooldown activo → early return).
-    const client = makeClient([
-      { rows: [{ triggered_at: new Date().toISOString() }] }, // cooldown activo
-    ]);
+    const client = makeClient();
 
     await evaluarAlerta(client, makeAlerta('dga_slots_fallidos'));
 
@@ -85,12 +84,11 @@ describe('evaluarAlerta — dispatch dga_slots_fallidos', () => {
   });
 
   it('condicion=dga_slots_fallidos retorna (no llega al cooldown genérico de equipo)', async () => {
-    // Con cooldown activo, solo 1 llamada: la de cooldown del evaluador.
-    const client = makeClient([{ rows: [{ triggered_at: new Date().toISOString() }] }]);
+    const client = makeClient();
 
     await evaluarAlerta(client, makeAlerta('dga_slots_fallidos'));
 
-    // La consulta de cooldown genérico de equipo usa DISTINTO SQL que el cooldown del evaluador;
+    // El evaluador específico maneja su propio estado de evento y cooldown;
     // en cualquier caso, equipo no debe aparecer.
     const hasEquipoQuery = client._calls.some((c) => /FROM equipo/i.test(c.sql));
     expect(hasEquipoQuery).toBe(false);
@@ -99,11 +97,9 @@ describe('evaluarAlerta — dispatch dga_slots_fallidos', () => {
 
 describe('evaluarAlerta — dispatch review_queue_acumulacion', () => {
   it('condicion=review_queue_acumulacion no ejecuta ninguna consulta a FROM equipo', async () => {
-    // umbral_bajo = 5 → válido; cooldown activo → early return sin COUNT.
+    // umbral_bajo = 5 → válido, así que el evaluador corre y no debe tocar equipo.
     const alerta = { ...makeAlerta('review_queue_acumulacion'), umbral_bajo: 5 };
-    const client = makeClient([
-      { rows: [{ triggered_at: new Date().toISOString() }] }, // cooldown activo
-    ]);
+    const client = makeClient();
 
     await evaluarAlerta(client, alerta);
 
@@ -117,7 +113,7 @@ describe('evaluarAlerta — dispatch review_queue_acumulacion', () => {
       umbral_bajo: null as unknown as number,
     };
     // Con misconfig guard, no debe haber ninguna llamada a client.query
-    const client = makeClient([]);
+    const client = makeClient();
 
     await evaluarAlerta(client, alerta);
 
