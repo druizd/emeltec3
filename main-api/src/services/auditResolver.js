@@ -14,10 +14,34 @@ const VERBO_POR_METODO = {
   DELETE: 'delete',
 };
 
+/**
+ * Sub-acciones del ciclo de vida de un evento. Todas entran por PUT y sin body,
+ * así que sin esto quedaban como un `evento.update` indistinguible: la bitácora
+ * no permitía saber si alguien reconoció, asignó o resolvió.
+ *
+ * Reconocer importa especialmente: desde la agrupación de repeticiones, es la
+ * acción que silencia los avisos de esa alerta hasta que la condición se
+ * normalice. Tiene que quedar claro quién la dio por conocida y cuándo.
+ */
+const SUBACCIONES_EVENTO = {
+  reconocer: 'acknowledge',
+  resolver: 'resolve',
+  asignar: 'assign',
+  incidencia: 'link_incident',
+  leer: 'read',
+};
+
 /** Primer segmento después del prefijo, o null si la URL es la colección. */
 function idDespuesDe(path, prefijo) {
   const m = new RegExp(`^${prefijo}/([^/]+)`).exec(path);
   return (m && m[1]) || null;
+}
+
+/** `/api/eventos/:id/reconocer` → 'acknowledge'. null si no es sub-acción. */
+function subaccionEvento(path) {
+  const partes = path.split('/').filter(Boolean); // ["api","eventos",":id","reconocer"]
+  if (partes.length < 4 || partes[0] !== 'api' || partes[1] !== 'eventos') return null;
+  return SUBACCIONES_EVENTO[partes[3]] ?? null;
 }
 
 function resolveTarget(path) {
@@ -63,7 +87,7 @@ function auditResolver(req) {
   const path = String(req.originalUrl || req.url || '').split('?')[0];
   const { targetType, targetId } = resolveTarget(path);
   const verbo = VERBO_POR_METODO[req.method] || 'mutate';
-  const accion = refinarVerbo(verbo, req.body);
+  const accion = subaccionEvento(path) ?? refinarVerbo(verbo, req.body);
   return {
     action: targetType ? `${targetType}.${accion}` : `${String(req.method).toLowerCase()}.unknown`,
     targetType,
@@ -71,4 +95,4 @@ function auditResolver(req) {
   };
 }
 
-module.exports = { auditResolver, resolveTarget, refinarVerbo };
+module.exports = { auditResolver, resolveTarget, refinarVerbo, subaccionEvento };

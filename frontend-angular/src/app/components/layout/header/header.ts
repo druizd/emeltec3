@@ -156,6 +156,10 @@ import type { CompanyNode, SiteRecord, SubCompanyNode } from '@emeltec/shared';
                         </span>
                         <span class="mt-0.5 block text-caption-xs text-slate-400">
                           {{ formatCuando(e.triggered_at) }}
+                          @if (e.repeticiones && e.repeticiones > 0) {
+                            · se repitio {{ e.repeticiones }}
+                            {{ e.repeticiones === 1 ? 'vez' : 'veces' }}
+                          }
                         </span>
                       </span>
                     </button>

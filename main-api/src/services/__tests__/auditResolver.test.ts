@@ -94,3 +94,36 @@ describe('auditResolver — activar/desactivar', () => {
     expect(auditResolver(req('DELETE', '/api/alertas/3')).action).toBe('alerta.delete');
   });
 });
+
+describe('auditResolver — sub-acciones de evento', () => {
+  it('distingue reconocer de una edicion cualquiera', () => {
+    // Reconocer es la accion que silencia los avisos de esa alerta hasta que
+    // la condicion se normalice: la bitacora tiene que poder identificarla.
+    expect(auditResolver(req('PUT', '/api/eventos/12/reconocer')).action).toBe(
+      'evento.acknowledge',
+    );
+  });
+
+  it('distingue resolver, asignar y vincular incidencia', () => {
+    expect(auditResolver(req('PUT', '/api/eventos/12/resolver')).action).toBe('evento.resolve');
+    expect(auditResolver(req('PUT', '/api/eventos/12/asignar')).action).toBe('evento.assign');
+    expect(auditResolver(req('PUT', '/api/eventos/12/incidencia')).action).toBe(
+      'evento.link_incident',
+    );
+  });
+
+  it('conserva el id del evento como target', () => {
+    expect(auditResolver(req('PUT', '/api/eventos/99/reconocer'))).toMatchObject({
+      targetType: 'evento',
+      targetId: '99',
+    });
+  });
+
+  it('una sub-accion desconocida cae al verbo normal', () => {
+    expect(auditResolver(req('PUT', '/api/eventos/12/inventada')).action).toBe('evento.update');
+  });
+
+  it('no confunde rutas de otros recursos con sub-acciones', () => {
+    expect(auditResolver(req('PUT', '/api/alertas/12/reconocer')).action).toBe('alerta.update');
+  });
+});

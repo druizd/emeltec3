@@ -115,6 +115,13 @@ export interface EventoRow {
   notificado: boolean;
   resuelta: boolean;
   reconocida_at: string | null;
+  /**
+   * Veces que la condición volvió a cumplirse mientras el evento estaba
+   * reconocido. Reconocer significa "ya lo sé": el worker agrupa acá en vez de
+   * generar un evento y un correo por cada cooldown.
+   */
+  repeticiones?: number;
+  ultima_repeticion_at?: string | null;
   reconocida_por: string | null;
   asignado_a: string | null;
   asignado_at: string | null;
@@ -143,6 +150,8 @@ export interface EventoReciente {
   alerta_nombre: string | null;
   sitio_desc: string | null;
   tipo_sitio: string | null;
+  /** Repeticiones agrupadas desde que se reconoció. 0 o ausente si ninguna. */
+  repeticiones?: number;
 }
 
 export interface EventosResumen {
