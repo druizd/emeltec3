@@ -188,17 +188,28 @@ para enviar.
 
 ### 4.4 Reconciler (`reconciler.ts`)
 
-Red de seguridad horaria, 5 chequeos:
+Red de seguridad horaria, 8 chequeos:
 
-| Check | Condición                                                                      | Acción                                                                                                                                                                                                                                     |
-| ----- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| A     | Slot atascado en `enviando` > 15 min                                           | **Consulta el audit primero.** Con audit OK + comprobante → `enviado`; audit OK sin comprobante → `requires_review`; sin audit OK → revierte a `pendiente`. Rearmar sin consultar era el único camino capaz de generar un doble envío real |
-| B     | Audit dice OK pero estatus ≠ `enviado`                                         | Auto-fix a `enviado` con comprobante                                                                                                                                                                                                       |
-| C     | Slot `enviado` sin fila en audit                                               | **Solo alerta email** — no auto-corrige                                                                                                                                                                                                    |
-| D     | Doble envío OK del mismo slot                                                  | **Solo alerta email** — no auto-corrige. Clasifica antes de alertar (ver abajo): alerta únicamente `doble_envio_real`                                                                                                                      |
-| E     | Slot `vacio` con `ts < now() - 6h` (config `DGA_RECONCILER_STALE_VACIO_HOURS`) | **Alerta email digest** agrupada por sitio. Throttle in-memory: re-envía solo si el set cambió. **No se reportará a DGA** hasta que el dato real arribe.                                                                                   |
+| Check | Condición                                                                       | Acción                                                                                                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A     | Slot atascado en `enviando` > 15 min                                            | **Consulta el audit primero.** Con audit OK + comprobante → `enviado`; audit OK sin comprobante → `requires_review`; sin audit OK → revierte a `pendiente`. Rearmar sin consultar era el único camino capaz de generar un doble envío real  |
+| B     | Audit dice OK pero estatus ≠ `enviado`                                          | Auto-fix a `enviado` con comprobante                                                                                                                                                                                                        |
+| C     | Slot `enviado` sin fila en audit                                                | **Solo alerta email** — no auto-corrige                                                                                                                                                                                                     |
+| D     | Doble envío OK del mismo slot                                                   | **Solo alerta email** — no auto-corrige. Clasifica antes de alertar (ver abajo): alerta únicamente `doble_envio_real`                                                                                                                       |
+| E     | Slot `vacio` con `ts < now() - 6h` (config `DGA_RECONCILER_STALE_VACIO_HOURS`)  | **Alerta email digest** agrupada por sitio. Throttle in-memory: re-envía solo si el set cambió. **No se reportará a DGA** hasta que el dato real arribe.                                                                                    |
+| F     | Sitio activo sin emitir > `DGA_DESCONEXION_HORAS`                               | **Solo alerta email.** Excluye los que nunca emitieron (recién instalados / sin serial mapeado)                                                                                                                                             |
+| G     | Slot `requires_review/no_data_stale` cuyo bucket YA existe en `equipo_1min`     | **Auto-fix**: vuelve a `vacio` para que el fill lo recompute. El fill solo recorre `vacio`, así que sin esto un dato que llega tarde no rellenaba nada nunca. Converge solo: tras el refill el slot deja de calificar                       |
+| H     | Slot `no_data_stale` sin bucket tras `DGA_NO_DATA_GIVEUP_DAYS` (30 por defecto) | **Baja documentada**: `fallido` + `no_data_definitivo`, con el motivo en `validation_warnings`. Sale de la cola para que `review_queue_acumulacion` (que cuenta `requires_review` sin filtro de antigüedad) vuelva a reflejar solo lo nuevo |
 
 Alertas van a `MONITOR_PRIMARY_EMAIL`.
+
+G corre antes que H: un slot cuyo dato llegó tarde se rescata en vez de darse
+de baja. Las consultas ya son excluyentes (una exige el bucket, la otra su
+ausencia), el orden solo deja la intención explícita.
+
+`DGA_NO_DATA_GIVEUP_DAYS=0` desactiva H. Ojo con hacerlo: sin la baja la cola
+de revisión solo crece y cada hueco irrecuperable mantiene al sitio sobre el
+umbral de la alerta para siempre, que es exactamente lo que H resuelve.
 
 #### Clasificación del check D
 
