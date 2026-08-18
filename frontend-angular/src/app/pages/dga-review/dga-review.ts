@@ -8,9 +8,21 @@
  * orquesta nada del 2FA.
  */
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  signal,
+  type WritableSignal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DgaReviewActionPayload, DgaReviewSlot, DgaService } from '../../services/dga.service';
+import {
+  DgaReviewActionPayload,
+  DgaReviewSite,
+  DgaReviewSlot,
+  DgaService,
+} from '../../services/dga.service';
 import { TableSkeletonComponent } from '../../components/ui/table-skeleton';
 
 interface RowEdit {
@@ -121,6 +133,63 @@ const WARNING_LABELS: Record<string, string> = {
         </div>
       </details>
 
+      <!-- Filtros -->
+      <div class="rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col gap-1">
+            <span class="text-caption-xs font-semibold uppercase tracking-wide text-slate-500"
+              >Obra</span
+            >
+            <select
+              [ngModel]="filterSite()"
+              (ngModelChange)="onFilterChange(filterSite, $event)"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm text-slate-700 min-w-52"
+            >
+              <option value="">Todas</option>
+              @for (o of sitios(); track o.site_id) {
+                <option [value]="o.site_id">
+                  {{ o.codigo_obra || o.referencia_informante || o.site_id }}
+                </option>
+              }
+            </select>
+          </label>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-caption-xs font-semibold uppercase tracking-wide text-slate-500"
+              >Desde</span
+            >
+            <input
+              type="date"
+              [ngModel]="filterDesde()"
+              (ngModelChange)="onFilterChange(filterDesde, $event)"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm text-slate-700"
+            />
+          </label>
+
+          <label class="flex flex-col gap-1">
+            <span class="text-caption-xs font-semibold uppercase tracking-wide text-slate-500"
+              >Hasta</span
+            >
+            <input
+              type="date"
+              [ngModel]="filterHasta()"
+              (ngModelChange)="onFilterChange(filterHasta, $event)"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm text-slate-700"
+            />
+          </label>
+
+          @if (hasFilters()) {
+            <button
+              type="button"
+              (click)="clearFilters()"
+              class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-body-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50 active:scale-95"
+            >
+              Limpiar
+            </button>
+          }
+        </div>
+      </div>
+
       <!-- Errores -->
       @if (error()) {
         <div
@@ -145,6 +214,25 @@ const WARNING_LABELS: Record<string, string> = {
           </p>
         </div>
       } @else {
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-caption text-slate-500">
+            Mostrando {{ slots().length }} de {{ total() }}
+            {{ total() === 1 ? 'medición' : 'mediciones' }}
+            @if (hasFilters()) {
+              <span> (filtrado)</span>
+            }
+          </p>
+          @if (truncado()) {
+            <p
+              class="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-caption text-amber-800"
+            >
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">info</span>
+              Hay {{ total() - slots().length }} más sin mostrar. Acotá por obra o fecha para
+              verlas.
+            </p>
+          }
+        </div>
+
         <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table class="min-w-full text-caption">
             <thead class="bg-surface-subtle">
@@ -277,12 +365,27 @@ export class DgaReviewComponent {
   private readonly dga = inject(DgaService);
 
   slots = signal<DgaReviewSlot[]>([]);
+  /** Total que matchea los filtros SIN el tope de la página. */
+  total = signal<number>(0);
+  /** Catálogo del selector de obra: no se recorta con los filtros activos. */
+  sitios = signal<DgaReviewSite[]>([]);
   loading = signal<boolean>(false);
   error = signal<string>('');
   /** Mensaje informativo post-acción (ej. resultado de reconocer sensor). */
   codeMessage = signal<string>('');
   /** key del slot cuya acción está en vuelo (deshabilita botones). */
   acting = signal<string>('');
+
+  /** Filtros. Las fechas son 'YYYY-MM-DD' del input type=date. */
+  filterSite = signal<string>('');
+  filterDesde = signal<string>('');
+  filterHasta = signal<string>('');
+
+  hasFilters = computed(
+    () => this.filterSite() !== '' || this.filterDesde() !== '' || this.filterHasta() !== '',
+  );
+  /** La página cortó: hay más resultados que los mostrados. */
+  truncado = computed(() => this.total() > this.slots().length);
 
   /** Edits por slot (caudal/totalizador/nivel/nota). Map serializable. */
   private edits = signal<Record<string, RowEdit>>({});
@@ -380,20 +483,64 @@ export class DgaReviewComponent {
     }));
   }
 
+  onFilterChange(target: WritableSignal<string>, value: string): void {
+    target.set(value);
+    this.reload();
+  }
+
+  clearFilters(): void {
+    this.filterSite.set('');
+    this.filterDesde.set('');
+    this.filterHasta.set('');
+    this.reload();
+  }
+
+  /**
+   * 'YYYY-MM-DD' -> ISO con offset, cubriendo el día COMPLETO en hora de
+   * Chile. Sin esto un "hasta 17/07" dejaría fuera todo el 17: el backend
+   * compara contra un timestamptz y la medianoche corta el día al empezar.
+   */
+  private dayToIso(day: string, edge: 'start' | 'end'): string | undefined {
+    if (!day) return undefined;
+    const hora = edge === 'start' ? '00:00:00' : '23:59:59';
+    const ms = edge === 'start' ? 0 : 999;
+    // Los milisegundos se suman DESPUÉS: 'sv-SE' formatea hasta el segundo, y
+    // medir el offset contra un instante con .999 lo contamina con esos 999ms.
+    const base = new Date(`${day}T${hora}Z`);
+    // Offset real de Chile en esa fecha, sin pasar por la zona del navegador:
+    // 'sv-SE' da 'YYYY-MM-DD HH:mm:ss' y releerlo como UTC vuelve la
+    // diferencia el offset. Reparsear con toLocaleString a secas no sirve —
+    // con el navegador ya en Chile da 0 y el rango queda corrido 4 horas, que
+    // es justamente el caso normal de esta app.
+    const muroChile = base.toLocaleString('sv-SE', { timeZone: 'America/Santiago' });
+    const offsetMs = new Date(`${muroChile.replace(' ', 'T')}Z`).getTime() - base.getTime();
+    return new Date(base.getTime() + ms - offsetMs).toISOString();
+  }
+
   reload(): void {
     this.loading.set(true);
     this.error.set('');
-    this.dga.listReviewQueue().subscribe({
-      next: (list) => {
-        this.slots.set(list);
-        this.initEdits(list);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set(this.friendlyError(err, 'No se pudo cargar la cola de revisión.'));
-        this.loading.set(false);
-      },
-    });
+    this.dga
+      .listReviewQueue({
+        siteId: this.filterSite() || undefined,
+        desde: this.dayToIso(this.filterDesde(), 'start'),
+        hasta: this.dayToIso(this.filterHasta(), 'end'),
+      })
+      .subscribe({
+        next: (page) => {
+          this.slots.set(page.slots);
+          this.total.set(page.total);
+          // El catálogo solo se repuebla si el backend lo mandó: así un filtro
+          // sin resultados no vacía el selector con el que se filtró.
+          if (page.sitios.length > 0) this.sitios.set(page.sitios);
+          this.initEdits(page.slots);
+          this.loading.set(false);
+        },
+        error: (err) => {
+          this.error.set(this.friendlyError(err, 'No se pudo cargar la cola de revisión.'));
+          this.loading.set(false);
+        },
+      });
   }
 
   /**
@@ -521,6 +668,8 @@ export class DgaReviewComponent {
       next: () => {
         // Quita el slot de la lista localmente y limpia su edit.
         this.slots.update((list) => list.filter((x) => this.slotKey(x) !== key));
+        // El slot salió de la cola: si el total no baja, el contador miente.
+        this.total.update((n) => Math.max(0, n - 1));
         this.edits.update((m) => {
           const copy = { ...m };
           delete copy[key];

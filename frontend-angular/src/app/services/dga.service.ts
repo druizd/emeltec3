@@ -136,6 +136,11 @@ export interface DgaValidationWarning {
   [k: string]: unknown;
 }
 
+/** ApiResponse + el meta que agrega el handler de la cola de revisión. */
+interface ReviewQueueEnvelope extends ApiResponse<DgaReviewSlot[]> {
+  meta?: { total?: number; sitios?: DgaReviewSite[] };
+}
+
 export interface DgaReviewSlot {
   site_id: string;
   ts: string;
@@ -147,6 +152,32 @@ export interface DgaReviewSlot {
   validation_warnings: DgaValidationWarning[];
   fail_reason: string | null;
   referencia_informante: string | null;
+}
+
+/** Sitio del catálogo del filtro. Viene en el meta de la respuesta. */
+export interface DgaReviewSite {
+  site_id: string;
+  codigo_obra: string | null;
+  referencia_informante: string | null;
+}
+
+export interface DgaReviewFilters {
+  siteId?: string | undefined;
+  /** ISO 8601 con offset. */
+  desde?: string | undefined;
+  /** ISO 8601 con offset. */
+  hasta?: string | undefined;
+  limit?: number | undefined;
+}
+
+/**
+ * `total` es el conteo SIN el tope, así la página puede distinguir "hay 40"
+ * de "hay 340 y estás viendo los primeros 100".
+ */
+export interface DgaReviewQueuePage {
+  slots: DgaReviewSlot[];
+  total: number;
+  sitios: DgaReviewSite[];
 }
 
 export interface DgaReviewActionPayload {
@@ -301,12 +332,20 @@ export class DgaService {
 
   // -------- Review queue --------
 
-  listReviewQueue(siteId?: string, limit = 100): Observable<DgaReviewSlot[]> {
-    let params = new HttpParams().set('limit', limit);
-    if (siteId) params = params.set('site_id', siteId);
-    return this.http
-      .get<ApiResponse<DgaReviewSlot[]>>('/api/v2/dga/review-queue', { params })
-      .pipe(map((r) => (r.ok ? r.data : [])));
+  listReviewQueue(filters: DgaReviewFilters = {}): Observable<DgaReviewQueuePage> {
+    let params = new HttpParams().set('limit', filters.limit ?? 100);
+    if (filters.siteId) params = params.set('site_id', filters.siteId);
+    if (filters.desde) params = params.set('desde', filters.desde);
+    if (filters.hasta) params = params.set('hasta', filters.hasta);
+    return this.http.get<ReviewQueueEnvelope>('/api/v2/dga/review-queue', { params }).pipe(
+      map((r) => ({
+        slots: r.ok ? r.data : [],
+        // Sin meta (respuesta vieja en caché o backend previo) el largo de la
+        // página es el mejor total disponible: nunca sub-reporta lo visible.
+        total: r.meta?.total ?? (r.ok ? r.data.length : 0),
+        sitios: r.meta?.sitios ?? [],
+      })),
+    );
   }
 
   applyReviewDecision(payload: DgaReviewActionPayload): Observable<{ ok: true }> {

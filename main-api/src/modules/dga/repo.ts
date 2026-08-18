@@ -1055,17 +1055,45 @@ export interface ReviewSlotRow {
   referencia_informante: string | null;
 }
 
-export async function listSlotsRequiresReview(input: {
+export interface ReviewQueueFiltros {
   site_id?: string | undefined;
-  limit?: number | undefined;
-}): Promise<ReviewSlotRow[]> {
-  const limit = Math.min(input.limit ?? 100, 500);
-  const args: unknown[] = [limit];
+  /** ISO 8601 con offset. Inclusivo. */
+  desde?: string | undefined;
+  /** ISO 8601 con offset. Inclusivo. */
+  hasta?: string | undefined;
+}
+
+/**
+ * WHERE compartido por el listado y el conteo. Que los dos deriven de acá es
+ * lo que hace que el "mostrando N de M" no mienta: si divergieran, el total
+ * podría contar filas que el listado nunca muestra.
+ *
+ * `args` se recibe ya inicializado porque el listado necesita `$1` para el
+ * LIMIT y el conteo no lleva ninguno.
+ */
+function whereReviewQueue(f: ReviewQueueFiltros, args: unknown[]): string {
   let where = `d.estatus = 'requires_review'`;
-  if (input.site_id) {
-    args.push(input.site_id);
+  if (f.site_id) {
+    args.push(f.site_id);
     where += ` AND d.site_id = $${args.length}`;
   }
+  if (f.desde) {
+    args.push(f.desde);
+    where += ` AND d.ts >= $${args.length}::timestamptz`;
+  }
+  if (f.hasta) {
+    args.push(f.hasta);
+    where += ` AND d.ts <= $${args.length}::timestamptz`;
+  }
+  return where;
+}
+
+export async function listSlotsRequiresReview(
+  input: ReviewQueueFiltros & { limit?: number | undefined },
+): Promise<ReviewSlotRow[]> {
+  const limit = Math.min(input.limit ?? 100, 500);
+  const args: unknown[] = [limit];
+  const where = whereReviewQueue(input, args);
   const r = await query<ReviewSlotRow>(
     `SELECT
         d.site_id,
@@ -1086,6 +1114,52 @@ export async function listSlotsRequiresReview(input: {
      LIMIT $1`,
     args,
     { name: 'dga__list_review_queue' },
+  );
+  return r.rows;
+}
+
+/**
+ * Total de slots que matchean los filtros, SIN el tope del listado. La página
+ * corta en 100 y sin este número el usuario no tiene cómo saber que hay más:
+ * un tope que se lee como total es exactamente el error que hacía que la
+ * alerta de doble envío dijera "100".
+ */
+export async function countSlotsRequiresReview(input: ReviewQueueFiltros): Promise<number> {
+  const args: unknown[] = [];
+  const where = whereReviewQueue(input, args);
+  const r = await query<{ total: number }>(
+    `SELECT COUNT(*)::int AS total FROM dato_dga d WHERE ${where}`,
+    args,
+    { name: 'dga__count_review_queue' },
+  );
+  return r.rows[0]?.total ?? 0;
+}
+
+/**
+ * Sitios presentes en la cola, para poblar el selector del filtro.
+ *
+ * A propósito NO aplica los filtros: si el selector se recortara según el
+ * filtro activo, elegir un sitio lo dejaría fuera de su propia lista y no
+ * habría forma de volver. El listado es la vista filtrada; esto es el catálogo.
+ */
+export interface ReviewQueueSitio {
+  site_id: string;
+  codigo_obra: string | null;
+  referencia_informante: string | null;
+}
+export async function listReviewQueueSites(): Promise<ReviewQueueSitio[]> {
+  const r = await query<ReviewQueueSitio>(
+    `SELECT DISTINCT
+            d.site_id,
+            pc.obra_dga    AS codigo_obra,
+            inf.referencia AS referencia_informante
+       FROM dato_dga d
+       JOIN pozo_config pc          ON pc.sitio_id = d.site_id
+       LEFT JOIN dga_informante inf ON inf.rut = pc.dga_informante_rut
+      WHERE d.estatus = 'requires_review'
+      ORDER BY d.site_id`,
+    [],
+    { name: 'dga__review_queue_sites' },
   );
   return r.rows;
 }

@@ -15,6 +15,8 @@ import {
   findInformanteByRut,
   getUltimoEnvioBySite,
   listInformantes,
+  countSlotsRequiresReview,
+  listReviewQueueSites,
   listSlotsRequiresReview,
   markReviewSlotFailedManual,
   patchPozoDgaConfig,
@@ -24,6 +26,8 @@ import {
   type DgaInformanteRow,
   type DgaTransport,
   type PozoDgaConfigRow,
+  type ReviewQueueFiltros,
+  type ReviewQueueSitio,
   type ReviewSlotRow,
   type UltimoEnvioRow,
 } from './repo';
@@ -183,11 +187,26 @@ export async function patchPozoDgaConfigService(
 // Review queue
 // ============================================================================
 
-export async function listReviewQueue(input: {
-  site_id?: string | undefined;
-  limit?: number | undefined;
-}): Promise<ReviewSlotRow[]> {
-  return listSlotsRequiresReview(input);
+/**
+ * El listado va topado (LIMIT) pero `total` no: la UI necesita poder decir
+ * "mostrando 100 de 340" en vez de dejar que el tope se lea como el total.
+ * `sitios` es el catálogo para el selector de filtro — ver listReviewQueueSites.
+ */
+export interface ReviewQueueResult {
+  slots: ReviewSlotRow[];
+  total: number;
+  sitios: ReviewQueueSitio[];
+}
+
+export async function listReviewQueue(
+  input: ReviewQueueFiltros & { limit?: number | undefined },
+): Promise<ReviewQueueResult> {
+  const [slots, total, sitios] = await Promise.all([
+    listSlotsRequiresReview(input),
+    countSlotsRequiresReview(input),
+    listReviewQueueSites(),
+  ]);
+  return { slots, total, sitios };
 }
 
 export async function applyReviewDecision(input: {
