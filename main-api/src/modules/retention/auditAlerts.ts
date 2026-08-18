@@ -9,6 +9,12 @@
  *
  * Cooldown: tabla audit_alert_cooldown evita re-enviar la misma alerta en
  * ventana configurable (AUDIT_ALERT_COOLDOWN_MINUTES).
+ *
+ * Marca de agua: el cooldown solo limita la FRECUENCIA. Cuando la ventana de
+ * detección es más larga que el cooldown, la misma fila de audit_log sigue
+ * calificando ciclo tras ciclo y la alerta se repite hasta que la fila envejece.
+ * `audit_alert_cooldown.watermark_ts` recuerda el `ts` más nuevo ya notificado
+ * para esa clave, y la detección solo mira lo posterior.
  */
 import { query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
@@ -40,12 +46,26 @@ async function estaEnCooldown(alertKey: string, dbQ: DbQuery): Promise<boolean> 
   return rows.length > 0;
 }
 
-async function registrarCooldown(alertKey: string, dbQ: DbQuery): Promise<void> {
+/**
+ * Registra el envío. `watermarkTs` es el `ts` más nuevo de audit_log que viajó en
+ * la alerta; se omite en las alertas cuya ventana de detección ya es más corta
+ * que el cooldown (sus filas expiran antes de poder repetirse).
+ *
+ * La marca nunca retrocede: GREATEST ignora los NULL en Postgres, así que un
+ * envío sin marca conserva la que hubiera.
+ */
+async function registrarCooldown(
+  alertKey: string,
+  dbQ: DbQuery,
+  watermarkTs?: unknown,
+): Promise<void> {
   await dbQ(
-    `INSERT INTO audit_alert_cooldown (alert_key, last_sent_at)
-     VALUES ($1, NOW())
-     ON CONFLICT (alert_key) DO UPDATE SET last_sent_at = NOW()`,
-    [alertKey],
+    `INSERT INTO audit_alert_cooldown (alert_key, last_sent_at, watermark_ts)
+     VALUES ($1, NOW(), $2)
+     ON CONFLICT (alert_key) DO UPDATE
+        SET last_sent_at = NOW(),
+            watermark_ts = GREATEST(EXCLUDED.watermark_ts, audit_alert_cooldown.watermark_ts)`,
+    [alertKey, watermarkTs ?? null],
   );
 }
 
@@ -148,6 +168,15 @@ export async function detectarCambiosRol(
   sendAlerta?: SendAlertaFn,
 ): Promise<void> {
   const _sendAlerta = sendAlerta ?? getEmailService().sendAlertaSeguridad;
+
+  // Alertar una sola vez por lote (agrupado por alerta del tipo).
+  const alertKey = 'cambio_rol:lote';
+
+  // La ventana de 24h es solo el PISO. El filtro que evita repetir es la marca
+  // de agua: sin ella, un cambio de rol seguía calificando durante 24 horas y la
+  // alerta se reenviaba cada vez que expiraba el cooldown de 60 min — 24 rondas
+  // a todos los SuperAdmin por un único cambio (incidente del 18-08-2026).
+  //
   // El join con `usuario` resuelve los IDs a personas al momento de alertar.
   // Sin él la alerta solo decía "ultimo_target: U22046E" y había que abrir la
   // DB para saber a quién le cambiaron el rol. Resolver acá NO relaja la
@@ -163,11 +192,16 @@ export async function detectarCambiosRol(
      LEFT JOIN usuario a ON a.id = al.actor_id
      LEFT JOIN usuario t ON t.id = al.target_id
      WHERE al.action = 'usuario.update'
-       AND al.ts > NOW() - INTERVAL '24 hours'
+       AND al.ts > GREATEST(
+             COALESCE(
+               (SELECT c.watermark_ts FROM audit_alert_cooldown c WHERE c.alert_key = $1),
+               NOW() - INTERVAL '24 hours'),
+             NOW() - INTERVAL '24 hours')
        AND COALESCE(al.status_code, 200) < 400
        AND jsonb_exists(al.metadata -> 'changes', 'tipo')
      ORDER BY al.ts DESC
      LIMIT 100`,
+    [alertKey],
   )) as {
     rows: Array<{
       actor_id: string;
@@ -188,8 +222,6 @@ export async function detectarCambiosRol(
   const admins = await getSuperAdminEmails(dbQ);
   if (admins.length === 0) return;
 
-  // Alertar una sola vez por lote (agrupado por alerta del tipo)
-  const alertKey = 'cambio_rol:lote';
   const enCooldown = await estaEnCooldown(alertKey, dbQ);
   if (enCooldown) return;
 
@@ -218,7 +250,10 @@ export async function detectarCambiosRol(
     await _sendAlerta(adminEmail, 'cambio_rol', detalles);
   }
 
-  await registrarCooldown(alertKey, dbQ);
+  // `rows` viene ORDER BY ts DESC, así que rows[0].ts es el cambio más nuevo
+  // incluido en este correo: la marca se posa exactamente ahí. Un cambio que
+  // entre mientras se envía queda por delante de la marca y se alerta después.
+  await registrarCooldown(alertKey, dbQ, ultimo?.ts);
   // El log lleva IDs, no identidades: los nombres y correos viajan al mail del
   // SuperAdmin, pero persistirlos en los logs de la app sería otra copia de
   // datos personales fuera de la bitácora (Ley 21.719).

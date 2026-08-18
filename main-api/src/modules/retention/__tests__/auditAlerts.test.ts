@@ -368,6 +368,106 @@ describe('auditAlerts — detectarCambiosRol()', () => {
   });
 });
 
+/**
+ * Marca de agua (incidente 18-08-2026).
+ *
+ * El cooldown de 60 min solo limita la frecuencia. Con una ventana de detección
+ * de 24 horas, el MISMO cambio de rol seguía calificando ciclo tras ciclo: un
+ * único cambio a las 04:52 UTC mandó 14 correos por hora — uno por SuperAdmin
+ * activo — durante toda la mañana. La marca de agua recuerda hasta qué `ts` se
+ * alertó, y la detección solo mira lo posterior.
+ */
+describe('auditAlerts — marca de agua de cambio_rol', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const CAMBIO = {
+    actor_id: 'SA001',
+    actor_email: 'druiz@emeltec.cl',
+    actor_nombre: 'Daniel Ruiz',
+    target_id: 'U22046E',
+    target_nombre: 'Marcela Soto',
+    target_email: 'msoto@cliente.cl',
+    target_tipo_actual: 'Admin',
+    ip: null,
+    ts: '2026-08-18T04:52:48.000Z',
+    cambio_tipo: { antes: 'Gerente', despues: 'Admin' },
+  };
+
+  /** Secuencia del flujo completo: SELECT cambios → superadmins → cooldown → UPSERT. */
+  function dbQConAlerta() {
+    return vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [CAMBIO], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+  }
+
+  const upsertDe = (dbQ: ReturnType<typeof vi.fn>) =>
+    dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('INSERT INTO audit_alert_cooldown'),
+    ) as [string, unknown[]] | undefined;
+
+  it('7. La detección arranca en la marca de agua de la clave, con la ventana de 24h como piso', async () => {
+    const dbQ = vi.fn().mockResolvedValue({ rows: [] });
+
+    await detectarCambiosRol(dbQ);
+
+    const call = dbQ.mock.calls.find((c: unknown[]) => String(c[0]).includes('audit_log'))! as [
+      string,
+      unknown[],
+    ];
+    const [sql, params] = call;
+    // El filtro por marca viaja en la misma consulta (no agrega round-trip).
+    expect(sql).toContain('watermark_ts');
+    expect(sql).toContain('GREATEST');
+    // El piso se mantiene: una marca vieja no revive historia antigua.
+    expect(sql).toContain('24 hours');
+    expect(params).toEqual(['cambio_rol:lote']);
+  });
+
+  it('8. Al alertar, la marca queda en el ts del cambio más nuevo notificado — no en NOW()', async () => {
+    const dbQ = dbQConAlerta();
+
+    await detectarCambiosRol(dbQ, vi.fn().mockResolvedValue(undefined));
+
+    const upsert = upsertDe(dbQ);
+    expect(upsert).toBeDefined();
+    // rows viene ORDER BY ts DESC: rows[0].ts es el cambio más nuevo del correo.
+    // Guardar NOW() en su lugar se comería los cambios que entren durante el envío.
+    expect(upsert![1]).toEqual(['cambio_rol:lote', '2026-08-18T04:52:48.000Z']);
+  });
+
+  it('9. La marca nunca retrocede: el UPSERT la avanza con GREATEST', async () => {
+    const dbQ = dbQConAlerta();
+
+    await detectarCambiosRol(dbQ, vi.fn().mockResolvedValue(undefined));
+
+    const [sql] = upsertDe(dbQ)!;
+    expect(sql).toContain('GREATEST(EXCLUDED.watermark_ts, audit_alert_cooldown.watermark_ts)');
+  });
+
+  it('11. logins_fallidos registra sin marca: su ventana de 15 min ya es más corta que el cooldown', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [{ actor_id: 'U001', actor_email: 'malo@empresa.cl', intentos: '7' }],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    await detectarLoginsFallidos(dbQ, vi.fn().mockResolvedValue(undefined));
+
+    // null y no un ts: GREATEST ignora los NULL en Postgres, así que este envío
+    // no pisa ninguna marca existente.
+    expect(upsertDe(dbQ)![1]).toEqual(['logins_fallidos:malo@empresa.cl', null]);
+  });
+});
+
 describe('auditAlerts — detectarExportacionesMasivas()', () => {
   beforeEach(() => {
     vi.clearAllMocks();
