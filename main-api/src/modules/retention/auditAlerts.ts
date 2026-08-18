@@ -50,6 +50,29 @@ async function registrarCooldown(alertKey: string, dbQ: DbQuery): Promise<void> 
 }
 
 /**
+ * Formatea un timestamp de la bitácora al formato de la plataforma:
+ * DD/MM/YYYY HH:MM en hora de Chile. Sin esto la alerta mostraba el
+ * `toString()` crudo de la Date — en UTC y en inglés
+ * ("Tue Aug 18 2026 04:52:48 GMT+0000").
+ */
+function formatearFechaChile(ts: unknown): string {
+  if (!ts) return '—';
+  const d = ts instanceof Date ? ts : new Date(String(ts));
+  if (Number.isNaN(d.getTime())) return String(ts);
+  const partes = new Intl.DateTimeFormat('es-CL', {
+    timeZone: 'America/Santiago',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d);
+  const parte = (tipo: string) => partes.find((p) => p.type === tipo)?.value ?? '';
+  return `${parte('day')}/${parte('month')}/${parte('year')} ${parte('hour')}:${parte('minute')}`;
+}
+
+/**
  * Detecta logins fallidos acumulados en ventana de tiempo.
  * Si >= AUDIT_ALERT_LOGIN_THRESHOLD intentos para el mismo actor, envía alerta.
  *
@@ -125,21 +148,36 @@ export async function detectarCambiosRol(
   sendAlerta?: SendAlertaFn,
 ): Promise<void> {
   const _sendAlerta = sendAlerta ?? getEmailService().sendAlertaSeguridad;
+  // El join con `usuario` resuelve los IDs a personas al momento de alertar.
+  // Sin él la alerta solo decía "ultimo_target: U22046E" y había que abrir la
+  // DB para saber a quién le cambiaron el rol. Resolver acá NO relaja la
+  // redacción de la bitácora: audit_log sigue guardando únicamente IDs.
   const { rows } = (await dbQ(
-    `SELECT actor_id, actor_email, target_id, ts,
-            metadata -> 'changes' -> 'tipo' AS cambio_tipo
-     FROM audit_log
-     WHERE action = 'usuario.update'
-       AND ts > NOW() - INTERVAL '24 hours'
-       AND COALESCE(status_code, 200) < 400
-       AND jsonb_exists(metadata -> 'changes', 'tipo')
-     ORDER BY ts DESC
+    `SELECT al.actor_id, al.actor_email, al.target_id, al.ts, al.ip,
+            NULLIF(TRIM(CONCAT(a.nombre, ' ', COALESCE(a.apellido, ''))), '') AS actor_nombre,
+            NULLIF(TRIM(CONCAT(t.nombre, ' ', COALESCE(t.apellido, ''))), '') AS target_nombre,
+            t.email AS target_email,
+            t.tipo  AS target_tipo_actual,
+            al.metadata -> 'changes' -> 'tipo' AS cambio_tipo
+     FROM audit_log al
+     LEFT JOIN usuario a ON a.id = al.actor_id
+     LEFT JOIN usuario t ON t.id = al.target_id
+     WHERE al.action = 'usuario.update'
+       AND al.ts > NOW() - INTERVAL '24 hours'
+       AND COALESCE(al.status_code, 200) < 400
+       AND jsonb_exists(al.metadata -> 'changes', 'tipo')
+     ORDER BY al.ts DESC
      LIMIT 100`,
   )) as {
     rows: Array<{
       actor_id: string;
       actor_email: string;
+      actor_nombre: string | null;
       target_id: string;
+      target_nombre: string | null;
+      target_email: string | null;
+      target_tipo_actual: string | null;
+      ip: string | null;
       ts: string;
       cambio_tipo: { antes?: unknown; despues?: unknown } | null;
     }>;
@@ -158,14 +196,22 @@ export async function detectarCambiosRol(
   const ultimo = rows[0];
   const detalles = {
     total_cambios: rows.length,
-    ultimo_actor: ultimo?.actor_id ?? '—',
-    ultimo_actor_email: ultimo?.actor_email ?? '—',
-    ultimo_target: ultimo?.target_id ?? '—',
-    ultima_ts: ultimo?.ts ?? '—',
+    // Si la cuenta fue eliminada después del cambio, el join no resuelve
+    // nombre: el actor_email denormalizado de la bitácora es el respaldo.
+    actor_nombre: ultimo?.actor_nombre ?? ultimo?.actor_email ?? '—',
+    actor_email: ultimo?.actor_email ?? '—',
+    actor_id: ultimo?.actor_id ?? '—',
+    actor_ip: ultimo?.ip ?? '—',
+    target_nombre: ultimo?.target_nombre ?? '—',
+    target_email: ultimo?.target_email ?? '—',
+    target_id: ultimo?.target_id ?? '—',
     // `tipo` está en la allowlist de auditoría de usuario, así que su valor
     // sí queda registrado: la alerta puede decir de qué rol a qué rol.
     rol_anterior: String(ultimo?.cambio_tipo?.antes ?? '—'),
     rol_nuevo: String(ultimo?.cambio_tipo?.despues ?? '—'),
+    // El rol que tiene hoy: delata si alguien ya revirtió el cambio.
+    rol_actual: ultimo?.target_tipo_actual ?? '—',
+    fecha: formatearFechaChile(ultimo?.ts),
   };
 
   for (const adminEmail of admins) {
@@ -173,7 +219,19 @@ export async function detectarCambiosRol(
   }
 
   await registrarCooldown(alertKey, dbQ);
-  logger.warn({ ...detalles }, '[auditAlerts] Alerta cambio_rol enviada');
+  // El log lleva IDs, no identidades: los nombres y correos viajan al mail del
+  // SuperAdmin, pero persistirlos en los logs de la app sería otra copia de
+  // datos personales fuera de la bitácora (Ley 21.719).
+  logger.warn(
+    {
+      total_cambios: detalles.total_cambios,
+      actor_id: ultimo?.actor_id ?? null,
+      target_id: ultimo?.target_id ?? null,
+      rol_anterior: detalles.rol_anterior,
+      rol_nuevo: detalles.rol_nuevo,
+    },
+    '[auditAlerts] Alerta cambio_rol enviada',
+  );
 }
 
 /**
