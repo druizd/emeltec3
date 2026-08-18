@@ -483,8 +483,25 @@ export class DgaReviewComponent {
     }));
   }
 
+  /**
+   * ¿La fecha está lista para consultar? Vacía sí (= sin filtro).
+   *
+   * El `<input type="date">` emite en CADA tecla y rellena el año con ceros,
+   * así que escribir "2026" pasa por 0002, 0020 y 0202. Con esos valores no
+   * solo se pediría basura al backend: `sv-SE` no rellena con ceros bajo el
+   * año 1000, devuelve "2-06-30 19:17:15" y reparsear eso da Invalid Date.
+   */
+  private fechaUsable(v: string): boolean {
+    if (v === '') return true;
+    const m = /^(\d{4})-\d{2}-\d{2}$/.exec(v);
+    return m !== null && Number(m[1]) >= 1000;
+  }
+
   onFilterChange(target: WritableSignal<string>, value: string): void {
     target.set(value);
+    // Sin este guard cada tecla del año dispara una consulta, y las tres
+    // primeras revientan en dayToIso dejando la lista sin refrescar.
+    if (!this.fechaUsable(this.filterDesde()) || !this.fechaUsable(this.filterHasta())) return;
     this.reload();
   }
 
@@ -501,7 +518,10 @@ export class DgaReviewComponent {
    * compara contra un timestamptz y la medianoche corta el día al empezar.
    */
   private dayToIso(day: string, edge: 'start' | 'end'): string | undefined {
-    if (!day) return undefined;
+    // Doble red con el guard de onFilterChange: acá el costo de una fecha
+    // rara es una excepción que aborta el reload y deja la lista vieja en
+    // pantalla, así que preferimos devolver "sin filtro" antes que tirar.
+    if (!day || !this.fechaUsable(day)) return undefined;
     const hora = edge === 'start' ? '00:00:00' : '23:59:59';
     const ms = edge === 'start' ? 0 : 999;
     // Los milisegundos se suman DESPUÉS: 'sv-SE' formatea hasta el segundo, y

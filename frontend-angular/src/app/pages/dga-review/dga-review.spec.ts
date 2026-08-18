@@ -74,6 +74,38 @@ describe('DgaReviewComponent — filtros', () => {
     expect(capturado.at(-1)!.siteId).toBe('S127');
   });
 
+  /**
+   * Regresión encontrada en el navegador, no acá: el <input type="date"> emite
+   * en cada tecla y rellena el año con ceros, así que escribir "2026" pasa por
+   * 0002, 0020 y 0202. Con esos años 'sv-SE' no rellena con ceros ("2-06-30"),
+   * reparsearlo daba Invalid Date y toISOString tiraba RangeError, abortando
+   * el reload y dejando la lista sin refrescar.
+   */
+  it('no consulta ni revienta con los años parciales que emite el input', () => {
+    const c = crear();
+    const antes = capturado.length;
+    for (const parcial of ['0002-07-01', '0020-07-01', '0202-07-01']) {
+      expect(() => c.onFilterChange(c.filterDesde, parcial)).not.toThrow();
+    }
+    expect(capturado.length).toBe(antes);
+
+    // Recién con el año completo se consulta, y con la fecha bien convertida.
+    c.onFilterChange(c.filterDesde, '2026-07-01');
+    expect(capturado.length).toBe(antes + 1);
+    expect(capturado.at(-1)!.desde).toBe('2026-07-01T04:00:00.000Z');
+  });
+
+  it('un año parcial en "hasta" tampoco arrastra al filtro de obra', () => {
+    const c = crear();
+    c.onFilterChange(c.filterSite, 'S127');
+    const antes = capturado.length;
+    c.onFilterChange(c.filterHasta, '0002-07-01');
+    expect(capturado.length).toBe(antes);
+    c.onFilterChange(c.filterHasta, '2026-07-17');
+    expect(capturado.at(-1)!.siteId).toBe('S127');
+    expect(capturado.at(-1)!.hasta).toBe('2026-07-18T03:59:59.999Z');
+  });
+
   it('hasFilters distingue vacío de filtrado', () => {
     const c = crear();
     expect(c.hasFilters()).toBe(false);

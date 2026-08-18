@@ -101,6 +101,12 @@ describe('countSlotsRequiresReview — mismo WHERE, sin LIMIT', () => {
       (sql.split(' WHERE ')[1] ?? '').split(' ORDER BY ')[0]!.replace(/\$\d+/g, '$?').trim();
     expect(soloWhere(conteo)).toBe(soloWhere(lista));
     expect(soloWhere(lista)).toContain('d.site_id = $?');
+
+    // El WHERE igual no alcanza: el listado hace INNER JOIN a pozo_config y
+    // descarta los slots cuyo sitio no tiene config. Si el conteo no arrastra
+    // ese JOIN, el total supera a lo mostrado y el aviso de "hay N mas" queda
+    // prendido para siempre. Paso en produccion: la pagina mostraba 79 de 80.
+    expect(conteo).toContain('JOIN pozo_config pc ON pc.sitio_id = d.site_id');
   });
 
   it('devuelve 0 cuando la consulta no trae filas', async () => {

@@ -1128,7 +1128,14 @@ export async function countSlotsRequiresReview(input: ReviewQueueFiltros): Promi
   const args: unknown[] = [];
   const where = whereReviewQueue(input, args);
   const r = await query<{ total: number }>(
-    `SELECT COUNT(*)::int AS total FROM dato_dga d WHERE ${where}`,
+    // El JOIN a pozo_config es INNER y NO es decorativo: replica el del
+    // listado, que descarta los slots cuyo sitio no tiene config. Sin él el
+    // total cuenta filas que la página no puede mostrar y el aviso de
+    // "hay N más" queda prendido para siempre, sin filtro que lo resuelva.
+    `SELECT COUNT(*)::int AS total
+       FROM dato_dga d
+       JOIN pozo_config pc ON pc.sitio_id = d.site_id
+      WHERE ${where}`,
     args,
     { name: 'dga__count_review_queue' },
   );
