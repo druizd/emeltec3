@@ -369,6 +369,14 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                           <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
                           Desactivado
                         </span>
+                      } @else if (activacionPendiente(user)) {
+                        <span
+                          class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-tight text-amber-600"
+                          title="Todavía no definió su contraseña"
+                        >
+                          <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                          Pendiente
+                        </span>
                       } @else {
                         <span
                           class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-tight text-emerald-600"
@@ -391,12 +399,26 @@ import type { ApiResponse, CreateUserPayload, UpdateUserAdminPayload, User } fro
                           >
                             <span class="material-symbols-outlined text-[18px]">edit</span>
                           </button>
+                          @if (activacionPendiente(user)) {
+                            <button
+                              type="button"
+                              (click)="resendAccess(user)"
+                              [disabled]="rowBusyId() === user.id"
+                              class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-primary-tint-10 hover:text-primary-container disabled:opacity-40"
+                              title="Reenviar correo de acceso (no cambia nada en la cuenta)"
+                              aria-label="Reenviar el correo de acceso al usuario"
+                            >
+                              <span class="material-symbols-outlined text-[18px]"
+                                >forward_to_inbox</span
+                              >
+                            </button>
+                          }
                           <button
                             type="button"
                             (click)="resetPassword(user)"
                             [disabled]="rowBusyId() === user.id"
                             class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600 disabled:opacity-40"
-                            title="Restablecer acceso"
+                            title="Restablecer acceso: invalida su contraseña actual y cierra sus sesiones"
                             aria-label="Restablecer acceso del usuario"
                           >
                             <span class="material-symbols-outlined text-[18px]">lock_reset</span>
@@ -822,12 +844,43 @@ export class UserManagementComponent implements OnInit, OnChanges {
     });
   }
 
+  /**
+   * La cuenta nunca definió su contraseña: sigue en el flujo de activación.
+   * Es el único caso donde reenviar la invitación sirve — con contraseña ya
+   * definida, el backend responde 409 y lo que corresponde es un reset.
+   */
+  activacionPendiente(user: User): boolean {
+    return !user.activated_at && user.has_password !== true;
+  }
+
+  /** Reenvía el correo de acceso. No toca la cuenta: no invalida contraseñas. */
+  resendAccess(user: User) {
+    if (!this.canManage(user) || !this.activacionPendiente(user)) return;
+    this.rowBusyId.set(user.id);
+    this.userService.resendUserAccess(user.id).subscribe({
+      next: () => {
+        this.toast.success(`Correo de acceso reenviado a ${user.email}.`);
+        this.rowBusyId.set(null);
+      },
+      error: (err) => {
+        this.status.set({
+          type: 'error',
+          msg: this.errorDetail(err, 'No se pudo reenviar el correo de acceso.'),
+        });
+        this.rowBusyId.set(null);
+      },
+    });
+  }
+
   resetPassword(user: User) {
     if (!this.canManage(user)) return;
     this.rowBusyId.set(user.id);
     this.userService.resetUserPassword(user.id).subscribe({
       next: () => {
         this.toast.success(`Acceso restablecido. ${user.email} debe crear una contraseña nueva.`);
+        // El reset deja la cuenta pendiente de activación: recargar para que la
+        // fila lo refleje (y habilite el reenvío del correo).
+        this.loadUsers();
         this.rowBusyId.set(null);
       },
       error: (err) => {

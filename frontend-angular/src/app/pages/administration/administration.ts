@@ -36,9 +36,16 @@ import { EquiposSectionComponent } from './components/equipos-section';
 import { EmpresasSectionComponent } from './components/empresas-section';
 import { SubempresasSectionComponent } from './components/subempresas-section';
 import { SitiosSectionComponent } from './components/sitios-section';
+import { AlertasCorreoSectionComponent } from './components/alertas-correo-section';
 import { DEFAULT_SITE_TYPE_CATALOG } from './site-type-catalog';
 
-type SectionId = 'empresas' | 'subempresas' | 'sitios' | 'equipos' | 'equipo-emeltec';
+type SectionId =
+  | 'empresas'
+  | 'subempresas'
+  | 'sitios'
+  | 'equipos'
+  | 'equipo-emeltec'
+  | 'alertas-correo';
 type StatusType = 'success' | 'error' | '';
 
 interface AdminStatus {
@@ -129,6 +136,7 @@ interface SiteForm {
     EmpresasSectionComponent,
     SubempresasSectionComponent,
     SitiosSectionComponent,
+    AlertasCorreoSectionComponent,
   ],
   template: `
     <div class="min-h-[calc(100vh-4rem)] bg-slate-50 px-5 py-5 text-slate-800">
@@ -401,6 +409,12 @@ interface SiteForm {
                   <app-equipo-emeltec-section />
                 </app-admin-section-shell>
               }
+
+              @if (activeSection() === 'alertas-correo') {
+                <app-admin-section-shell title="Alertas por correo">
+                  <app-alertas-correo-section />
+                </app-admin-section-shell>
+              }
             }
           </main>
         </section>
@@ -569,6 +583,7 @@ export class AdministrationComponent implements OnInit, OnDestroy {
     { id: 'sitios', icon: 'location_on', label: 'Sitios' },
     { id: 'equipos', icon: 'memory', label: 'Equipos' },
     { id: 'equipo-emeltec', icon: 'groups', label: 'Equipo Emeltec' },
+    { id: 'alertas-correo', icon: 'mark_email_unread', label: 'Alertas por correo' },
   ];
 
   activeSection = signal<SectionId>('empresas');

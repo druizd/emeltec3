@@ -127,3 +127,33 @@ describe('auditResolver — sub-acciones de evento', () => {
     expect(auditResolver(req('PUT', '/api/alertas/12/reconocer')).action).toBe('alerta.update');
   });
 });
+
+describe('auditResolver — sub-acciones sobre una cuenta', () => {
+  it('no etiqueta el reenvío de acceso como creación de usuario', () => {
+    // POST + /api/users → el verbo por método daría 'usuario.create' con el id
+    // de un usuario que no se creó: la bitácora diría lo contrario de lo que pasó.
+    expect(auditResolver(req('POST', '/api/users/U42/reenviar-acceso', {}))).toMatchObject({
+      targetType: 'usuario',
+      targetId: 'U42',
+      action: 'usuario.resend_access',
+    });
+  });
+
+  it('etiqueta el restablecimiento de contraseña como tal', () => {
+    expect(auditResolver(req('POST', '/api/users/U42/reset-password', {})).action).toBe(
+      'usuario.password_reset',
+    );
+  });
+
+  it('una alta real de usuario sigue siendo usuario.create', () => {
+    expect(auditResolver(req('POST', '/api/users', { email: 'a@b.cl' }))).toMatchObject({
+      targetType: 'usuario',
+      targetId: null,
+      action: 'usuario.create',
+    });
+  });
+
+  it('una sub-ruta desconocida de /api/users cae al verbo normal', () => {
+    expect(auditResolver(req('POST', '/api/users/U42/sites', {})).action).toBe('usuario.create');
+  });
+});

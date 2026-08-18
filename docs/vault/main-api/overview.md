@@ -40,7 +40,7 @@ main-api/src/
 | `contadores/`          | Worker de contadores mensuales                                            |
 | `dga/`                 | Pipeline completo DGA (fill, preseed, submission, reconciler, GCS export) |
 | `health/`              | Endpoints de salud de la API                                              |
-| `healthDigest/`        | Worker de monitoreo de usuarios DGA                                       |
+| `healthDigest/`        | Worker de monitoreo interno + destinatarios configurables del resumen     |
 | `metrics/`             | Buffer y flusher de métricas de uso                                       |
 | `simulation/`          | Worker de simulación Mathei (experimental)                                |
 | `siteOperacionConfig/` | Config de operación por sitio                                             |

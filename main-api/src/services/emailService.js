@@ -1043,6 +1043,31 @@ ${securityNoteHtml('Si ya no usas esta plataforma, no es necesario que hagas nad
  * @param {string} tipo - 'logins_fallidos' | 'cambio_rol'
  * @param {object} detalles - información adicional de la alerta
  */
+/**
+ * Etiquetas legibles para las filas de detalle de una alerta. Sin esto el mail
+ * mostraba la clave cruda en mayúsculas ("ULTIMO_TARGET"), que no le dice nada
+ * a quien lo recibe. Las claves sin entrada acá caen al fallback: guiones bajos
+ * convertidos en espacios.
+ */
+const ALERTA_DETALLE_LABELS = {
+  total_cambios: 'Cambios detectados',
+  actor_nombre: 'Responsable del cambio',
+  actor_email: 'Correo del responsable',
+  actor_id: 'ID del responsable',
+  actor_ip: 'IP de origen',
+  target_nombre: 'Usuario afectado',
+  target_email: 'Correo del afectado',
+  target_id: 'ID del afectado',
+  rol_anterior: 'Rol anterior',
+  rol_nuevo: 'Rol nuevo',
+  rol_actual: 'Rol actual en el sistema',
+  fecha: 'Fecha y hora',
+  intentos: 'Intentos',
+  ventana_minutos: 'Ventana (minutos)',
+};
+
+const etiquetaDetalle = (clave) => ALERTA_DETALLE_LABELS[clave] || String(clave).replace(/_/g, ' ');
+
 exports.sendAlertaSeguridad = async (to, tipo, detalles) => {
   try {
     const tipoLabel =
@@ -1056,7 +1081,7 @@ exports.sendAlertaSeguridad = async (to, tipo, detalles) => {
     const detallesRows = Object.entries(detalles || {})
       .map(
         ([k, v]) =>
-          `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(k)}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`,
+          `<tr><td style="padding:8px 14px;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#94A3B8;font-weight:700;width:40%;">${escapeHtml(etiquetaDetalle(k))}</td><td style="padding:8px 14px;font-size:13px;color:#1E293B;">${escapeHtml(String(v ?? '—'))}</td></tr>`,
       )
       .join('');
 
@@ -1091,7 +1116,7 @@ ${securityNoteHtml('Esta alerta fue generada automáticamente por el sistema de 
       text: [
         `ALERTA DE SEGURIDAD: ${tipoLabel}`,
         '',
-        ...Object.entries(detalles || {}).map(([k, v]) => `${k}: ${v}`),
+        ...Object.entries(detalles || {}).map(([k, v]) => `${etiquetaDetalle(k)}: ${v}`),
         '',
         `Revisa en: ${ACCESS_URL}`,
       ].join('\n'),

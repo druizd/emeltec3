@@ -330,4 +330,45 @@ router.post(
   reconocerSensorDefectuosoHandler,
 );
 
+// =====================================================================
+// Monitoreo interno (healthDigest): destinatarios del resumen diario y de
+// las escalaciones. Es config del equipo Emeltec, no de un tenant → solo
+// SuperAdmin. Mutaciones auditadas (Ley 21.663 §32).
+// =====================================================================
+import {
+  listDigestDestinatariosHandler,
+  replaceDigestDestinatariosHandler,
+  require2faIfNuevoDestinatario,
+  sendDigestPruebaHandler,
+} from '../../modules/healthDigest/destinatariosController';
+
+const auditDigestMutations = auditMutations(() => ({
+  action: 'health_digest.destinatarios.update',
+  targetType: 'health_digest_destinatario',
+  targetId: 'lista',
+}));
+
+router.get(
+  '/health-digest/destinatarios',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  listDigestDestinatariosHandler,
+);
+// Agregar una dirección nueva exige 2FA (el resumen nombra instalaciones y
+// empresas); editar o quitar direcciones ya autorizadas, no.
+router.put(
+  '/health-digest/destinatarios',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  require2faIfNuevoDestinatario,
+  auditDigestMutations,
+  replaceDigestDestinatariosHandler,
+);
+router.post(
+  '/health-digest/prueba',
+  protect,
+  authorizeRoles('SuperAdmin'),
+  sendDigestPruebaHandler,
+);
+
 export default router;

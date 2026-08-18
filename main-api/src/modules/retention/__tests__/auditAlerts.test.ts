@@ -227,6 +227,145 @@ describe('auditAlerts — detectarCambiosRol()', () => {
       expect.objectContaining({ rol_anterior: '—', rol_nuevo: '—' }),
     );
   });
+
+  it('5d. Resuelve los IDs contra usuario para nombrar al actor y al afectado', async () => {
+    const dbQ = vi.fn().mockResolvedValue({ rows: [] });
+
+    await detectarCambiosRol(dbQ);
+
+    const [sql] = dbQ.mock.calls.find((call: unknown[]) =>
+      String(call[0]).includes('audit_log'),
+    )! as [string];
+    // Sin el join la alerta solo podía nombrar IDs (U22046E) y obligaba a
+    // consultar la base de datos para saber a quién le cambiaron el rol.
+    expect(sql).toContain('LEFT JOIN usuario');
+    expect(sql).toContain('target_email');
+    // LEFT y no INNER: si la cuenta fue eliminada, el cambio igual debe alertar.
+    expect(sql).not.toContain('INNER JOIN usuario');
+  });
+
+  it('5e. La alerta nombra a las personas, no solo sus identificadores', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            actor_id: 'SA001',
+            actor_email: 'druiz@emeltec.cl',
+            actor_nombre: 'Daniel Ruiz',
+            target_id: 'U22046E',
+            target_nombre: 'Marcela Soto',
+            target_email: 'msoto@cliente.cl',
+            target_tipo_actual: 'Admin',
+            ip: '190.44.12.7',
+            ts: '2026-08-18T04:52:48.000Z',
+            cambio_tipo: { antes: 'Gerente', despues: 'Admin' },
+          },
+        ],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    expect(sendAlerta).toHaveBeenCalledWith(
+      expect.any(String),
+      'cambio_rol',
+      expect.objectContaining({
+        actor_nombre: 'Daniel Ruiz',
+        actor_email: 'druiz@emeltec.cl',
+        actor_id: 'SA001',
+        actor_ip: '190.44.12.7',
+        target_nombre: 'Marcela Soto',
+        target_email: 'msoto@cliente.cl',
+        target_id: 'U22046E',
+        rol_actual: 'Admin',
+      }),
+    );
+  });
+
+  it('5f. La fecha va en formato DD/MM/YYYY HH:MM y en hora de Chile', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            actor_id: 'SA001',
+            actor_email: 'druiz@emeltec.cl',
+            actor_nombre: 'Daniel Ruiz',
+            target_id: 'U22046E',
+            target_nombre: 'Marcela Soto',
+            target_email: 'msoto@cliente.cl',
+            target_tipo_actual: 'Admin',
+            ip: null,
+            // 04:52 UTC en agosto = 00:52 en Chile (UTC-4, horario de invierno).
+            ts: '2026-08-18T04:52:48.000Z',
+            cambio_tipo: { antes: 'Gerente', despues: 'Admin' },
+          },
+        ],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    // Antes se mandaba el timestamp crudo, que el mail renderizaba como
+    // "Tue Aug 18 2026 04:52:48 GMT+0000": en inglés y en UTC.
+    expect(sendAlerta).toHaveBeenCalledWith(
+      expect.any(String),
+      'cambio_rol',
+      expect.objectContaining({ fecha: '18/08/2026 00:52' }),
+    );
+  });
+
+  it('5g. Sin nombre resuelto (cuenta eliminada) cae al email de la bitácora', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            actor_id: 'SA001',
+            actor_email: 'druiz@emeltec.cl',
+            actor_nombre: null,
+            target_id: 'U22046E',
+            target_nombre: null,
+            target_email: null,
+            target_tipo_actual: null,
+            ip: null,
+            ts: '2026-08-18T04:52:48.000Z',
+            cambio_tipo: { antes: 'Gerente', despues: 'Admin' },
+          },
+        ],
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    // actor_email está denormalizado en audit_log justamente para sobrevivir
+    // al DELETE del usuario; el afectado sí queda en '—'.
+    expect(sendAlerta).toHaveBeenCalledWith(
+      expect.any(String),
+      'cambio_rol',
+      expect.objectContaining({
+        actor_nombre: 'druiz@emeltec.cl',
+        target_nombre: '—',
+        target_email: '—',
+      }),
+    );
+  });
 });
 
 describe('auditAlerts — detectarExportacionesMasivas()', () => {
