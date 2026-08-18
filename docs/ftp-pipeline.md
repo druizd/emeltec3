@@ -75,8 +75,13 @@ DEVICE_ALIASES=REGADIO:25120112,CASINO:25120225
 ```sql
 equipo (time, id_serial, data jsonb, received_at)
 -- Hypertable con 834 particiones
--- Trigger: previene duplicados exactos
+-- SIN unique constraint ni trigger. La deduplicacion la hace el ftpconsumer
+-- al insertar: WHERE NOT EXISTS sobre (time, id_serial, data). Reejecutar el
+-- mismo archivo no duplica; mismo timestamp con data distinta SI inserta.
 ```
+
+Para cargar el histórico de un sitio nuevo, ver
+[import-historico-telemetria.md](./import-historico-telemetria.md).
 
 ### Vistas continuous aggregate
 

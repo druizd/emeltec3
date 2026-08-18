@@ -156,9 +156,14 @@ para enviar.
      `codigo_obra_formato_invalido`, `pozo_sin_informante`,
      `clave_decrypt_error`).
   2. **Anti-doble-envío** (Res 2170 §6.3): consulta `dga_send_audit` por
-     audit OK existente para `(site_id, ts)`. Si existe → auto-fix a
-     `enviado` con el comprobante guardado, sin reenviar. Evita ser bloqueado
-     por DGA por retransmisión.
+     audit con `dga_status_code='00'` para `(site_id, ts)`. Si existe → NO
+     reenvía. Con comprobante → `enviado` con ese comprobante. Sin comprobante
+     → `requires_review` (`fail_reason='dga_ok_sin_comprobante'`), porque SNIA
+     igual aceptó la medición y no hay folio local que la respalde.
+     El chequeo **no** exige `api_n_comprobante IS NOT NULL`: exigirlo dejaba
+     pasar los `'00'` sin comprobante y el slot se reenviaba cada 24 h
+     acumulando una fila de audit OK por intento — causa raíz de los slots con
+     2+ audits OK del check D.
   3. Lock optimista: `pendiente` → `enviando` (evita doble envío entre
      instancias).
   4. POST a SNIA (§6).
@@ -166,7 +171,10 @@ para enviar.
      antes de mover el estatus — si el proceso muere entre medio, el
      reconciler corrige el drift.
   6. Respuesta `status="00"` + `numeroComprobante` → `enviado` (guarda
-     comprobante). Otro status → `rechazado` con
+     comprobante). `status="00"` **sin** `numeroComprobante` →
+     `requires_review` con `fail_reason='dga_ok_sin_comprobante'` y
+     `next_retry_at = NULL`: SNIA aceptó el dato, así que reintentar sería
+     retransmisión (§6.3). Otro status → `rechazado` con
      `next_retry_at = now() + 24h` (Res 2170 §6.2: reintento al día
      siguiente). Intentos agotados (`dga_max_retry_attempts`) → `fallido`
      (terminal).
@@ -184,13 +192,29 @@ Red de seguridad horaria, 5 chequeos:
 
 | Check | Condición                                                                      | Acción                                                                                                                                                   |
 | ----- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A     | Slot atascado en `enviando` > 15 min                                           | Auto-revierte a `pendiente`                                                                                                                              |
+| A     | Slot atascado en `enviando` > 15 min                                           | **Consulta el audit primero.** Con audit OK + comprobante → `enviado`; audit OK sin comprobante → `requires_review`; sin audit OK → revierte a `pendiente`. Rearmar sin consultar era el único camino capaz de generar un doble envío real |
 | B     | Audit dice OK pero estatus ≠ `enviado`                                         | Auto-fix a `enviado` con comprobante                                                                                                                     |
 | C     | Slot `enviado` sin fila en audit                                               | **Solo alerta email** — no auto-corrige                                                                                                                  |
-| D     | Doble envío OK del mismo slot                                                  | **Solo alerta email** — no auto-corrige                                                                                                                  |
+| D     | Doble envío OK del mismo slot                                                  | **Solo alerta email** — no auto-corrige. Clasifica antes de alertar (ver abajo): alerta únicamente `doble_envio_real`                                     |
 | E     | Slot `vacio` con `ts < now() - 6h` (config `DGA_RECONCILER_STALE_VACIO_HOURS`) | **Alerta email digest** agrupada por sitio. Throttle in-memory: re-envía solo si el set cambió. **No se reportará a DGA** hasta que el dato real arribe. |
 
 Alertas van a `MONITOR_PRIMARY_EMAIL`.
+
+#### Clasificación del check D
+
+Un slot con 2+ audits `'00'` no es necesariamente un doble envío. `clase`:
+
+| Clase               | Condición                                              | Exposición §6.3                                  |
+| ------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| `importador`        | alguna fila con `transport='legacy-import'`             | **No** — fila sintética del CSV, no un POST real |
+| `sin_comprobante`   | alguna fila `'00'` con `api_n_comprobante IS NULL`      | **No** — revisión manual, no prueba doble aceptación |
+| `mismo_comprobante` | un solo comprobante distinto                            | **No** — un envío real logueado dos veces        |
+| `doble_envio_real`  | 2+ comprobantes **distintos** emitidos por SNIA         | **Sí** — dos registros en MIA-DGA, no rectificable |
+
+Solo `doble_envio_real` dispara la alerta; el resto se cuenta y se menciona en
+el cuerpo del correo. `countDoubleSubmission()` reporta el total sin tope —
+antes el `LIMIT 100` de la consulta hacía que la alerta dijera "100" cuando el
+total real podía ser mayor.
 
 ---
 
