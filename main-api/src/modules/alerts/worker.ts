@@ -8,6 +8,7 @@
 import { getClient, query } from '../../config/dbHelpers';
 import { logger } from '../../config/logger';
 import { config } from '../../config/appConfig';
+import type { RegMap } from '../sites/types';
 interface AlertRegla {
   nombre: string;
   severidad: string;
@@ -56,6 +57,7 @@ interface Alerta {
     | 'dga_atrasado'
     | 'dga_slots_fallidos'
     | 'review_queue_acumulacion'
+    | 'consumo_diario'
     | string;
   umbral_bajo: number | null;
   umbral_alto: number | null;
@@ -122,6 +124,8 @@ function formatCondicion(alerta: Alerta): string {
       return 'tiene slots DGA en estado fallido';
     case 'review_queue_acumulacion':
       return `la cola de revisión DGA superó el umbral de ${alerta.umbral_bajo} slots`;
+    case 'consumo_diario':
+      return `el consumo del día debe superar ${alerta.umbral_bajo}`;
     default:
       return alerta.condicion;
   }
@@ -442,6 +446,150 @@ export async function evaluarAlertaReviewQueue(client: any, alerta: Alerta): Pro
   );
 }
 
+/**
+ * Consumo del día = DELTA del totalizador dentro del día calendario chileno,
+ * NO el valor acumulado del contador.
+ *
+ * Reusa `computeDailyDeltasForVariable` (modules/contadores), que ya:
+ *   - aplica la transformación del reg_map → el delta viene en unidades de
+ *     ingeniería (m³), así que `umbral_bajo` NO es un valor crudo del payload
+ *     como en `mayor_que`;
+ *   - maneja los resets del contador (overflow uint32, reemplazo de sensor);
+ *   - descarta payloads Modbus corruptos que llegan en 0.
+ *
+ * Se evalúa contra el día EN CURSO (acumulado parcial), para poder avisar
+ * durante el evento y no al día siguiente.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlertaConsumoDiario(client: any, alerta: Alerta): Promise<void> {
+  if (alerta.umbral_bajo === null || alerta.umbral_bajo === undefined) return;
+  if (!alerta.id_serial) return;
+
+  const consumo = await getConsumoDiarioActual(client, alerta);
+  if (!consumo || consumo.delta === null) return;
+  if (consumo.delta <= alerta.umbral_bajo) return;
+
+  const sitio = alerta.sitio_desc ?? alerta.sitio_id;
+  const severidad = alerta.severidad.toUpperCase();
+  const unidad = consumo.unidad ? ` ${consumo.unidad}` : '';
+  const deltaTexto = formatConsumo(consumo.delta);
+  const mensaje =
+    `[${severidad}] ${sitio}. Consumo del día ${consumo.diaIso}: ${deltaTexto}${unidad} ` +
+    `(umbral ${alerta.umbral_bajo}${unidad}). Variable ${alerta.variable_key}.`;
+  const ctx = {
+    ...alerta,
+    valor_detectado: `${deltaTexto}${unidad}`,
+    condicion_texto: formatCondicion(alerta),
+  };
+  const ins = (await client.query(
+    `INSERT INTO alertas_eventos
+       (alerta_id, empresa_id, sub_empresa_id, sitio_id, variable_key,
+        valor_detectado, valor_texto, mensaje, severidad)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+     RETURNING id`,
+    [
+      alerta.id,
+      alerta.empresa_id,
+      alerta.sub_empresa_id ?? null,
+      alerta.sitio_id,
+      alerta.variable_key,
+      consumo.delta,
+      `${deltaTexto}${unidad}`,
+      mensaje,
+      alerta.severidad,
+    ],
+  )) as { rows: Array<{ id: string }> };
+  notificarUsuarios(ctx, ins.rows[0]!.id, mensaje).catch((err) =>
+    logger.error({ err: (err as Error).message }, 'alerts: notificacion consumo_diario falló'),
+  );
+}
+
+function formatConsumo(valor: number): string {
+  return (Math.round(valor * 100) / 100).toString();
+}
+
+/**
+ * Cache del delta del día en curso por (sitio, variable). Sin esto, cada ciclo
+ * del worker (60s) reescanearía todas las lecturas del día por alerta — el
+ * cooldown no protege, porque solo aplica DESPUÉS de que la alerta disparó.
+ * Un totalizador avanza lento: 5 min de staleness no cambia la decisión.
+ */
+const CONSUMO_CACHE_TTL_MS = Number(process.env.ALERT_CONSUMO_CACHE_MS ?? 5 * 60 * 1000);
+const consumoCache = new Map<
+  string,
+  { at: number; diaIso: string; delta: number | null; unidad: string | null }
+>();
+
+interface ConsumoDiario {
+  diaIso: string;
+  delta: number | null;
+  unidad: string | null;
+}
+
+/**
+ * Carga diferida de `modules/contadores`: ese módulo inicializa el cliente
+ * Redis al importarse, y las demás condiciones de alerta no lo necesitan.
+ * Importarlo arriba obligaba a todo el worker (y a sus tests) a arrastrar esa
+ * dependencia.
+ */
+async function contadoresService() {
+  // La extensión .js es obligatoria: un import() dinámico se resuelve como
+  // ESM genuino bajo moduleResolution node16, a diferencia de los imports
+  // estáticos de este archivo, que se compilan a require.
+  return import('../contadores/service.js');
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function getConsumoDiarioActual(client: any, alerta: Alerta): Promise<ConsumoDiario | null> {
+  const { computeDailyDeltasForVariable, getDayRangeChile } = await contadoresService();
+  const { start, end, diaIso } = getDayRangeChile(new Date());
+  const cacheKey = `${alerta.sitio_id}:${alerta.variable_key}`;
+  const hit = consumoCache.get(cacheKey);
+  if (hit && hit.diaIso === diaIso && Date.now() - hit.at < CONSUMO_CACHE_TTL_MS) {
+    return { diaIso, delta: hit.delta, unidad: hit.unidad };
+  }
+
+  // La alerta guarda la clave cruda del payload (`d1`); el cálculo de delta
+  // necesita el mapping completo para saber cómo transformarla.
+  const mapRes = (await client.query(
+    `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+            transformacion, parametros
+       FROM reg_map
+      WHERE sitio_id = $1 AND d1 = $2
+      LIMIT 1`,
+    [alerta.sitio_id, alerta.variable_key],
+  )) as { rows: RegMap[] };
+  const mapping = mapRes.rows[0];
+  if (!mapping) {
+    logger.warn(
+      { alerta_id: alerta.id, sitio_id: alerta.sitio_id, variable_key: alerta.variable_key },
+      'alerts: consumo_diario sin mapping en reg_map — regla inevaluable',
+    );
+    return null;
+  }
+
+  const siteRes = (await client.query(`SELECT tipo_sitio FROM sitio WHERE id = $1`, [
+    alerta.sitio_id,
+  ])) as { rows: Array<{ tipo_sitio: string | null }> };
+  let pozoConfig = null;
+  if (siteRes.rows[0]?.tipo_sitio === 'pozo') {
+    const { getPozoConfigBySiteId } = await import('../sites/repo.js');
+    pozoConfig = await getPozoConfigBySiteId(alerta.sitio_id);
+  }
+
+  const deltasByDay = await computeDailyDeltasForVariable({
+    idSerial: alerta.id_serial!,
+    mapping,
+    pozoConfig,
+    start,
+    end,
+  });
+  const delta = deltasByDay.get(diaIso)?.delta ?? null;
+  const unidad = mapping.unidad ?? null;
+  consumoCache.set(cacheKey, { at: Date.now(), diaIso, delta, unidad });
+  return { diaIso, delta, unidad };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
@@ -468,6 +616,11 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
     [alerta.id, alerta.cooldown_minutos],
   );
   if (cool.rows.length > 0) return;
+
+  if (alerta.condicion === 'consumo_diario') {
+    await evaluarAlertaConsumoDiario(client, alerta);
+    return;
+  }
 
   if (alerta.condicion === 'sin_datos') {
     const r = await client.query(

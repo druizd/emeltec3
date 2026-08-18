@@ -104,8 +104,18 @@ export async function detectarLoginsFallidos(
 }
 
 /**
- * Detecta cambios de rol de usuario en audit_log.
- * Busca acciones de patch de usuario con metadata que incluya campo tipo.
+ * Detecta cambios de rol de usuario en audit_log (últimas 24h).
+ *
+ * CONTRATO PRODUCTOR→CONSUMIDOR: quien escribe es `auditMutations` vía el
+ * resolver de `services/auditResolver.js`, que emite las acciones en ESPAÑOL
+ * (`usuario.update`). Esta función buscaba `user.update` / `user.patch`, que
+ * no los escribe nadie: nunca detectó un solo cambio de rol. Mismo defecto
+ * que tuvo `detectarLoginsFallidos` con `user.login.failed`.
+ *
+ * El filtro por campo `tipo` ahora sí es posible: desde que la bitácora guarda
+ * `metadata.changes`, se puede distinguir un cambio de rol de cualquier otra
+ * edición de usuario. Antes solo existía `payload_hash` y la función alertaba
+ * por CUALQUIER update de usuario.
  *
  * @param dbQ - función de query inyectable (para tests)
  * @param sendAlerta - función de email inyectable (para tests). Si no se pasa, usa emailService real.
@@ -115,19 +125,25 @@ export async function detectarCambiosRol(
   sendAlerta?: SendAlertaFn,
 ): Promise<void> {
   const _sendAlerta = sendAlerta ?? getEmailService().sendAlertaSeguridad;
-  // Busca acciones PATCH de usuario registradas en las últimas 24h
-  // donde el payload incluía el campo 'tipo' (cambio de rol).
-  // La acción registrada por auditMutations es el verbo del resolver,
-  // en userRoutes se usa action 'user.patch' o similar.
   const { rows } = (await dbQ(
-    `SELECT actor_id, actor_email, target_id, ts
+    `SELECT actor_id, actor_email, target_id, ts,
+            metadata -> 'changes' -> 'tipo' AS cambio_tipo
      FROM audit_log
-     WHERE action LIKE 'user.%.patch'
-        OR action = 'user.patch'
-        OR action = 'user.update'
+     WHERE action = 'usuario.update'
+       AND ts > NOW() - INTERVAL '24 hours'
+       AND COALESCE(status_code, 200) < 400
+       AND jsonb_exists(metadata -> 'changes', 'tipo')
      ORDER BY ts DESC
      LIMIT 100`,
-  )) as { rows: Array<{ actor_id: string; actor_email: string; target_id: string; ts: string }> };
+  )) as {
+    rows: Array<{
+      actor_id: string;
+      actor_email: string;
+      target_id: string;
+      ts: string;
+      cambio_tipo: { antes?: unknown; despues?: unknown } | null;
+    }>;
+  };
 
   if (rows.length === 0) return;
 
@@ -139,12 +155,17 @@ export async function detectarCambiosRol(
   const enCooldown = await estaEnCooldown(alertKey, dbQ);
   if (enCooldown) return;
 
+  const ultimo = rows[0];
   const detalles = {
     total_cambios: rows.length,
-    ultimo_actor: rows[0]?.actor_id ?? '—',
-    ultimo_actor_email: rows[0]?.actor_email ?? '—',
-    ultimo_target: rows[0]?.target_id ?? '—',
-    ultima_ts: rows[0]?.ts ?? '—',
+    ultimo_actor: ultimo?.actor_id ?? '—',
+    ultimo_actor_email: ultimo?.actor_email ?? '—',
+    ultimo_target: ultimo?.target_id ?? '—',
+    ultima_ts: ultimo?.ts ?? '—',
+    // `tipo` está en la allowlist de auditoría de usuario, así que su valor
+    // sí queda registrado: la alerta puede decir de qué rol a qué rol.
+    rol_anterior: String(ultimo?.cambio_tipo?.antes ?? '—'),
+    rol_nuevo: String(ultimo?.cambio_tipo?.despues ?? '—'),
   };
 
   for (const adminEmail of admins) {

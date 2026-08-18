@@ -8,7 +8,14 @@ export type AlertaCondicion =
   | 'igual_a'
   | 'fuera_rango'
   | 'sin_datos'
-  | 'dga_atrasado';
+  | 'dga_atrasado'
+  /**
+   * Delta del totalizador dentro del día calendario chileno (acumulado
+   * parcial mientras el día transcurre), NO el valor acumulado del contador.
+   * A diferencia de `mayor_que`, el umbral va en unidades de ingeniería
+   * (m³) porque el delta ya viene transformado por el reg_map.
+   */
+  | 'consumo_diario';
 
 export type AlertaSeveridad = 'baja' | 'media' | 'alta' | 'critica';
 
@@ -125,14 +132,43 @@ export interface EventoRow {
   reconocido_apellido?: string | null;
 }
 
+/** Evento pendiente, tal como lo entrega `/api/resumen` para la campana. */
+export interface EventoReciente {
+  id: string;
+  severidad: AlertaSeveridad;
+  mensaje: string;
+  triggered_at: string;
+  sitio_id: string | null;
+  empresa_id: string | null;
+  alerta_nombre: string | null;
+  sitio_desc: string | null;
+  tipo_sitio: string | null;
+}
+
 export interface EventosResumen {
   activas: number;
   criticas: number;
   altas: number;
   medias: number;
   bajas: number;
+  /** No resueltas y que nadie ha reconocido. Es el número de la campana. */
+  sin_revisar: number;
+  /** @deprecated Espejo de `sin_revisar`; no existe "leído" por usuario. */
   no_leidas: number;
+  /** Las 15 pendientes más recientes, para listar y disparar el popup. */
+  recientes: EventoReciente[];
 }
+
+const RESUMEN_VACIO: EventosResumen = {
+  activas: 0,
+  criticas: 0,
+  altas: 0,
+  medias: 0,
+  bajas: 0,
+  sin_revisar: 0,
+  no_leidas: 0,
+  recientes: [],
+};
 
 export interface EventoListFilters {
   empresa_id?: string;
@@ -223,13 +259,26 @@ export class AlertaService {
     if (filters.empresa_id) qs.set('empresa_id', filters.empresa_id);
     if (filters.sitio_id) qs.set('sitio_id', filters.sitio_id);
     const url = `/api/resumen${qs.toString() ? `?${qs}` : ''}`;
-    return this.http
-      .get<ApiEnvelope<EventosResumen>>(url)
-      .pipe(
-        map((r) =>
-          r.ok ? r.data : { activas: 0, criticas: 0, altas: 0, medias: 0, bajas: 0, no_leidas: 0 },
-        ),
-      );
+    return this.http.get<ApiEnvelope<EventosResumen>>(url).pipe(
+      map((r) => {
+        if (!r.ok) return RESUMEN_VACIO;
+        // El backend devuelve los COUNT como string (node-pg no castea
+        // bigint). Sin normalizar, el badge concatenaría en vez de sumar.
+        const d = r.data;
+        return {
+          ...RESUMEN_VACIO,
+          ...d,
+          activas: Number(d.activas ?? 0),
+          criticas: Number(d.criticas ?? 0),
+          altas: Number(d.altas ?? 0),
+          medias: Number(d.medias ?? 0),
+          bajas: Number(d.bajas ?? 0),
+          sin_revisar: Number(d.sin_revisar ?? 0),
+          no_leidas: Number(d.no_leidas ?? 0),
+          recientes: Array.isArray(d.recientes) ? d.recientes : [],
+        };
+      }),
+    );
   }
 }
 
@@ -240,6 +289,7 @@ export const CONDICION_LABELS: Record<AlertaCondicion, string> = {
   fuera_rango: 'Fuera de rango',
   sin_datos: 'Sin datos',
   dga_atrasado: 'Reporte DGA atrasado',
+  consumo_diario: 'Consumo del día mayor que',
 };
 
 export const SEVERIDAD_LABELS: Record<AlertaSeveridad, string> = {

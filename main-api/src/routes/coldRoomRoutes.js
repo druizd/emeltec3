@@ -7,6 +7,7 @@ const {
   findUnauthorizedSiteIds,
 } = require('../middlewares/coldRoomAccess');
 const pool = require('../config/db');
+const { alarmRuleVisibilityScope } = require('../services/alarmRuleVisibility');
 const { sendAlertEmail } = require('../services/emailService');
 const { require2fa } = require('../shared/stepUp2fa');
 
@@ -1722,11 +1723,14 @@ function ruleRowToObj(r) {
 // --- Reglas CRUD ---
 router.get('/:siteId/alarm-rules', async (req, res) => {
   try {
-    // Todos los usuarios con acceso al sitio ven las alarmas (compartidas).
-    // Solo crear/editar/borrar está restringido (ver requireRole en POST/PUT/DELETE).
+    // Crear/editar/borrar está restringido a ADMIN_ROLES (ver requireRole en
+    // POST/PUT/DELETE); leer depende además de la visibilidad de cada regla.
+    const visibilidad = alarmRuleVisibilityScope(req.user, 2);
     const { rows } = await pool.query(
-      `SELECT * FROM cold_room_alarm_rule WHERE site_id = $1 ORDER BY created_at DESC`,
-      [req.params.siteId],
+      `SELECT * FROM cold_room_alarm_rule
+        WHERE site_id = $1${visibilidad.clause}
+        ORDER BY created_at DESC`,
+      [req.params.siteId, ...visibilidad.params],
     );
     res.json({ ok: true, data: rows.map(ruleRowToObj) });
   } catch (err) {

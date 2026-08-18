@@ -25,8 +25,14 @@ import {
   UpdateAlertaPayload,
 } from '../../../../services/alerta.service';
 import { AdministrationService } from '../../../../services/administration.service';
-import { CompanyService } from '../../../../services/company.service';
-import type { SiteDashboardHistoryEntry, VariableMapping } from '@emeltec/shared';
+import {
+  CompanyService,
+  CONTADOR_ROLES,
+  type ContadorDiarioPoint,
+  type ContadorRol,
+  type TelemetryHistoryRow,
+} from '../../../../services/company.service';
+import type { VariableMapping } from '@emeltec/shared';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
 
@@ -44,13 +50,25 @@ interface SimulationSummary {
   withValueCount: number;
 }
 
+/**
+ * Los inputs de umbral son `type="number"`, así que el value accessor de
+ * Angular escribe `number` cuando hay valor y `null` cuando el campo queda
+ * vacío — nunca `''`. El draft acepta los tres para no mentir sobre lo que
+ * realmente llega desde el template.
+ */
+type UmbralValue = string | number | null;
+
+function umbralVacio(v: UmbralValue): boolean {
+  return v === '' || v === null || v === undefined;
+}
+
 interface DraftAlerta {
   nombre: string;
   descripcion: string;
   variable_key: string;
   condicion: AlertaCondicion;
-  umbral_bajo: string;
-  umbral_alto: string;
+  umbral_bajo: UmbralValue;
+  umbral_alto: UmbralValue;
   severidad: AlertaSeveridad;
   cooldown_minutos: number;
   dias_activos: AlertaDia[];
@@ -62,9 +80,16 @@ const CONDICIONES_DISPONIBLES: AlertaCondicion[] = [
   'menor_que',
   'igual_a',
   'fuera_rango',
+  'consumo_diario',
   'sin_datos',
   'dga_atrasado',
 ];
+
+/**
+ * Condiciones cuyo umbral se compara contra un valor YA transformado por el
+ * reg_map (unidades de ingeniería), en vez del valor crudo del payload.
+ */
+const CONDICIONES_EN_UNIDAD_REAL: AlertaCondicion[] = ['consumo_diario'];
 
 const SEVERIDADES_DISPONIBLES: AlertaSeveridad[] = ['baja', 'media', 'alta', 'critica'];
 
@@ -209,119 +234,226 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
       <!-- Lista de reglas existentes -->
       @for (regla of reglas(); track regla.id) {
         <article
-          class="rounded-2xl border bg-white shadow-sm transition duration-200"
-          [class]="regla.activa ? 'border-slate-200' : 'border-slate-100 opacity-60'"
+          class="overflow-hidden rounded-2xl border shadow-sm transition duration-200"
+          [class]="
+            regla.activa
+              ? 'border-slate-200 bg-white hover:shadow-md'
+              : 'border-slate-200/70 bg-slate-50'
+          "
         >
-          <div class="flex items-start justify-between gap-3 px-5 py-4">
-            <div class="flex items-start gap-3">
-              @if (canEdit()) {
-                <button
-                  type="button"
-                  (click)="toggleActiva(regla)"
-                  [class]="regla.activa ? 'bg-primary/10' : 'bg-slate-300'"
-                  class="relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors active:scale-95"
-                  [attr.aria-label]="regla.activa ? 'Desactivar' : 'Activar'"
-                  [attr.aria-pressed]="regla.activa"
+          <div class="flex items-stretch">
+            <!-- Rail de severidad: prioridad legible a un vistazo, sin leer texto -->
+            <span
+              aria-hidden="true"
+              class="w-1 shrink-0"
+              [class]="regla.activa ? severidadRailClass(regla.severidad) : 'bg-slate-300'"
+            ></span>
+
+            <div class="min-w-0 flex-1">
+              <div class="flex items-start justify-between gap-3 px-4 py-3.5">
+                <div class="flex min-w-0 items-start gap-3">
+                  @if (canEdit()) {
+                    <!-- Switch 44x24 con knob de 20px y 2px de aire a cada
+                         lado: translate-x-5 (20px) lo deja simétrico en ambos
+                         extremos. Antes el knob no declaraba left, así que
+                         caía en su posición estática y se montaba sobre el
+                         borde derecho. -->
+                    <button
+                      type="button"
+                      (click)="toggleActiva(regla)"
+                      [class]="regla.activa ? 'bg-primary' : 'bg-slate-300 hover:bg-slate-400'"
+                      class="relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-tint-55 focus-visible:ring-offset-2 active:scale-95"
+                      [attr.aria-label]="regla.activa ? 'Desactivar regla' : 'Activar regla'"
+                      [attr.aria-pressed]="regla.activa"
+                    >
+                      <span
+                        [class]="regla.activa ? 'translate-x-5' : 'translate-x-0'"
+                        class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200"
+                      ></span>
+                    </button>
+                  }
+                  <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p
+                        class="truncate font-semibold"
+                        [class]="regla.activa ? 'text-slate-800' : 'text-slate-500'"
+                      >
+                        {{ regla.nombre }}
+                      </p>
+                      <span
+                        class="inline-block rounded-full px-2 py-0.5 text-caption-xs font-bold"
+                        [class]="severidadBadgeClass(regla.severidad)"
+                      >
+                        {{ severidadLabel(regla.severidad) }}
+                      </span>
+                      @if (!regla.activa) {
+                        <span
+                          class="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-caption-xs font-bold text-slate-600"
+                        >
+                          <span class="material-symbols-outlined text-[12px]" aria-hidden="true"
+                            >pause</span
+                          >
+                          Pausada
+                        </span>
+                      }
+                    </div>
+
+                    <!-- Variable (alias del reg_map) + condición -->
+                    <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                      @if (regla.condicion !== 'dga_atrasado') {
+                        <span
+                          class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
+                          [title]="regla.variable_key"
+                        >
+                          {{ aliasVariable(regla.variable_key) }}
+                        </span>
+                      }
+                      <span
+                        class="rounded-md bg-slate-100 px-2 py-0.5 font-mono text-caption-xs font-bold text-slate-700"
+                      >
+                        {{ condicionResumen(regla) }}
+                      </span>
+                      <!-- Con el reg_map visible abajo ("… · m3"), un umbral
+                           sin unidad se lee como si fuera esa unidad. Cuando
+                           la variable tiene transformación, el worker compara
+                           el valor crudo: hay que decirlo. -->
+                      @if (requiereValorCrudo(regla.variable_key, regla.condicion)) {
+                        <span
+                          class="rounded-md bg-amber-50 px-1.5 py-0.5 text-caption-xs font-semibold text-amber-700"
+                          title="El umbral se compara contra el valor crudo del payload, no contra la unidad del reg_map"
+                        >
+                          valor crudo
+                        </span>
+                      }
+                    </div>
+
+                    @if (regla.descripcion) {
+                      <p class="mt-1 truncate text-caption-xs text-slate-500">
+                        {{ regla.descripcion }}
+                      </p>
+                    }
+                  </div>
+                </div>
+                @if (canEdit()) {
+                  <div class="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      (click)="expandirRegla(regla.id)"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 active:scale-95"
+                      [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
+                      [attr.aria-pressed]="reglaExpandida() === regla.id"
+                    >
+                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
+                        reglaExpandida() === regla.id ? 'expand_less' : 'edit'
+                      }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="eliminar(regla)"
+                      class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-95"
+                      aria-label="Eliminar regla"
+                    >
+                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                        >delete</span
+                      >
+                    </button>
+                  </div>
+                }
+              </div>
+
+              @if (reglaExpandida() !== regla.id) {
+                <div
+                  class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-4 py-2.5"
                 >
-                  <span
-                    [class]="regla.activa ? 'translate-x-4' : 'translate-x-0.5'"
-                    class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform"
-                  ></span>
-                </button>
-              }
-              <div class="min-w-0">
-                <p class="font-semibold text-slate-800">{{ regla.nombre }}</p>
-                <p class="mt-0.5 text-caption text-slate-500">
-                  <span class="font-mono font-bold text-slate-700">{{
-                    condicionResumen(regla)
-                  }}</span>
-                  <span
-                    class="ml-2 inline-block rounded-full px-2 py-0.5 text-caption-xs font-bold"
-                    [class]="severidadBadgeClass(regla.severidad)"
-                  >
-                    {{ severidadLabel(regla.severidad) }}
+                  <span class="flex items-center gap-1 text-caption-xs text-slate-500">
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >calendar_today</span
+                    >
+                    {{ diasResumen(regla.dias_activos) }}
                   </span>
-                </p>
-              </div>
-            </div>
-            @if (canEdit()) {
-              <div class="flex shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  (click)="expandirRegla(regla.id)"
-                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 active:scale-95"
-                  [attr.aria-label]="reglaExpandida() === regla.id ? 'Colapsar' : 'Editar'"
-                  [attr.aria-pressed]="reglaExpandida() === regla.id"
-                >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true">{{
-                    reglaExpandida() === regla.id ? 'expand_less' : 'edit'
-                  }}</span>
-                </button>
-                <button
-                  type="button"
-                  (click)="eliminar(regla)"
-                  class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:scale-95"
-                  aria-label="Eliminar regla"
-                >
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
-                    >delete</span
-                  >
-                </button>
-              </div>
-            }
-          </div>
+                  <span class="flex items-center gap-1 text-caption-xs text-slate-500">
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >schedule</span
+                    >
+                    cooldown {{ regla.cooldown_minutos }} min
+                  </span>
+                  @if (regla.variable_key && regla.condicion !== 'dga_atrasado') {
+                    <!-- La clave cruda sigue visible: es la que compara el worker.
+                         Si no está en el reg_map del sitio, se avisa. -->
+                    @if (isVariableRegistrada(regla.variable_key)) {
+                      <span
+                        class="flex items-center gap-1 text-caption-xs text-slate-500"
+                        [title]="
+                          'Variable del reg_map · rol ' + (rolVariable(regla.variable_key) || '—')
+                        "
+                      >
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >data_object</span
+                        >
+                        <span class="font-semibold">{{ aliasVariable(regla.variable_key) }}</span>
+                        <span class="font-mono text-slate-400">{{ regla.variable_key }}</span>
+                        @if (unidadRegMap(regla.variable_key); as u) {
+                          <span class="font-mono text-slate-400">· {{ u }}</span>
+                        }
+                      </span>
+                    } @else {
+                      <span
+                        class="flex items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 font-mono text-caption-xs text-amber-700"
+                        title="La variable no está registrada en el reg_map del sitio"
+                      >
+                        <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                          >warning</span
+                        >
+                        {{ regla.variable_key }} · sin mapeo
+                      </span>
+                    }
+                  }
+                  @if (!regla.visible_to_all) {
+                    <span
+                      class="flex items-center gap-1 text-caption-xs text-slate-500"
+                      title="Solo visible para usuarios designados"
+                    >
+                      <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                        >visibility_off</span
+                      >
+                      Restringida
+                    </span>
+                  }
+                </div>
+              }
 
-          @if (reglaExpandida() !== regla.id) {
-            <div
-              class="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-100 px-5 py-3"
-            >
-              <span class="flex items-center gap-1 text-caption-xs text-slate-500">
-                <span class="material-symbols-outlined text-[14px]">calendar_today</span>
-                {{ diasResumen(regla.dias_activos) }}
-              </span>
-              <span class="flex items-center gap-1 text-caption-xs text-slate-500">
-                <span class="material-symbols-outlined text-[14px]">schedule</span>
-                cooldown {{ regla.cooldown_minutos }} min
-              </span>
-              @if (regla.variable_key && regla.condicion !== 'dga_atrasado') {
-                <span class="flex items-center gap-1 text-caption-xs text-slate-500">
-                  <span class="material-symbols-outlined text-[14px]">data_object</span>
-                  {{ regla.variable_key }}
-                </span>
+              @if (reglaExpandida() === regla.id && drafts()[regla.id]) {
+                <div class="space-y-4 border-t border-slate-100 px-5 py-4">
+                  <ng-container
+                    *ngTemplateOutlet="
+                      reglaForm;
+                      context: { $implicit: drafts()[regla.id]!, isNew: false }
+                    "
+                  ></ng-container>
+                  <div class="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      (click)="cancelarEdicion(regla)"
+                      class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
+                      (click)="guardarEdicion(regla)"
+                      class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                        >check</span
+                      >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
               }
             </div>
-          }
-
-          @if (reglaExpandida() === regla.id && drafts()[regla.id]) {
-            <div class="space-y-4 border-t border-slate-100 px-5 py-4">
-              <ng-container
-                *ngTemplateOutlet="
-                  reglaForm;
-                  context: { $implicit: drafts()[regla.id]!, isNew: false }
-                "
-              ></ng-container>
-              <div class="flex justify-end gap-2">
-                <button
-                  type="button"
-                  (click)="cancelarEdicion(regla)"
-                  class="rounded-xl bg-slate-100 px-4 py-2 text-caption font-bold text-slate-600 transition-colors hover:bg-slate-200 active:scale-[0.98]"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  [disabled]="saving() || !puedeGuardar(drafts()[regla.id]!)"
-                  (click)="guardarEdicion(regla)"
-                  class="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-caption font-bold text-white transition-colors hover:bg-primary-container active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
-                    >check</span
-                  >
-                  Guardar
-                </button>
-              </div>
-            </div>
-          }
+          </div>
         </article>
       } @empty {
         @if (!loading()) {
@@ -407,19 +539,24 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                 >Variable</label
               >
-              @if (variables().length > 0) {
+              @if (variablesParaCondicion(draft.condicion).length > 0) {
                 <select
                   [(ngModel)]="draft.variable_key"
                   (ngModelChange)="resetSimulacion()"
                   class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
                 >
                   <option value="" disabled>Selecciona una variable…</option>
-                  @for (v of variables(); track v.id) {
+                  @for (v of variablesParaCondicion(draft.condicion); track v.id) {
                     <option [value]="v.d1">
                       {{ v.alias }} ({{ v.d1 }}){{ v.unidad ? ' · ' + v.unidad : '' }}
                     </option>
                   }
                 </select>
+                @if (draft.condicion === 'consumo_diario') {
+                  <p class="mt-1 text-caption-xs text-slate-500">
+                    Solo se listan contadores acumulables (totalizador, energía, volumen).
+                  </p>
+                }
                 @if (draft.variable_key && !isVariableRegistrada(draft.variable_key)) {
                   <p class="mt-1 flex items-center gap-1 text-caption-xs text-amber-600">
                     <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
@@ -428,6 +565,35 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     "{{ draft.variable_key }}" no está en las variables registradas del sitio.
                   </p>
                 }
+                @if (requiereValorCrudo(draft.variable_key, draft.condicion)) {
+                  <p
+                    class="mt-1.5 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-caption-xs text-amber-800"
+                  >
+                    <span class="material-symbols-outlined mt-px text-[14px]" aria-hidden="true"
+                      >info</span
+                    >
+                    <span>
+                      Esta variable tiene transformación
+                      <span class="font-mono">{{ transformacionVariable(draft.variable_key) }}</span
+                      >. La alerta compara el <strong>valor crudo del payload</strong>, no el valor
+                      convertido que muestra el dashboard. Usa "Probar regla" para ver el rango real
+                      antes de fijar el umbral.
+                    </span>
+                  </p>
+                }
+              } @else if (draft.condicion === 'consumo_diario') {
+                <p
+                  class="flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-caption-xs text-amber-800"
+                >
+                  <span class="material-symbols-outlined mt-px text-[14px]" aria-hidden="true"
+                    >warning</span
+                  >
+                  <span>
+                    Este sitio no tiene ninguna variable con rol de contador acumulable
+                    (totalizador, energía o volumen) en su reg_map. Sin eso no hay consumo diario
+                    que medir — asigna el rol en la configuración de variables del sitio.
+                  </span>
+                </p>
               } @else {
                 <input
                   type="text"
@@ -447,20 +613,38 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
           @if (
             draft.condicion === 'mayor_que' ||
             draft.condicion === 'menor_que' ||
-            draft.condicion === 'igual_a'
+            draft.condicion === 'igual_a' ||
+            draft.condicion === 'consumo_diario'
           ) {
             <div>
               <label
                 class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
-                >Umbral</label
               >
-              <input
-                type="number"
-                step="any"
-                [(ngModel)]="draft.umbral_bajo"
-                (ngModelChange)="resetSimulacion()"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
-              />
+                {{ draft.condicion === 'consumo_diario' ? 'Consumo máximo del día' : 'Umbral' }}
+              </label>
+              <div class="relative">
+                <input
+                  type="number"
+                  step="any"
+                  [(ngModel)]="draft.umbral_bajo"
+                  (ngModelChange)="resetSimulacion()"
+                  (wheel)="onWheelNumber($event)"
+                  class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
+                  [class.pr-12]="unidadVariable(draft.variable_key, draft.condicion)"
+                />
+                @if (unidadVariable(draft.variable_key, draft.condicion); as u) {
+                  <span
+                    class="pointer-events-none absolute inset-y-0 right-3 flex items-center font-mono text-caption-xs text-slate-400"
+                    >{{ u }}</span
+                  >
+                }
+              </div>
+              @if (draft.condicion === 'consumo_diario') {
+                <p class="mt-1 text-caption-xs text-slate-500">
+                  Diferencia acumulada del totalizador dentro del día (00:00–23:59, hora de Chile).
+                  Se evalúa durante el día, no al cierre.
+                </p>
+              }
             </div>
           }
           @if (draft.condicion === 'fuera_rango') {
@@ -488,6 +672,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   step="any"
                   [(ngModel)]="draft.umbral_alto"
                   (ngModelChange)="resetSimulacion()"
+                  (wheel)="onWheelNumber($event)"
                   class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
                 />
               </div>
@@ -556,6 +741,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               min="1"
               max="1440"
               [(ngModel)]="draft.cooldown_minutos"
+              (wheel)="onWheelNumber($event)"
               class="w-32 rounded-xl border border-slate-200 bg-white px-3 py-2 text-center font-mono text-body-sm text-slate-700 focus:border-primary-tint-55 focus:outline-none"
             />
             <span class="ml-2 text-caption-xs text-slate-500"
@@ -620,8 +806,12 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               </button>
             </header>
             <p class="text-caption-xs text-on-surface-variant">
-              Evalúa la condición contra las últimas 500 lecturas del sitio. Read-only — no guarda
-              nada ni dispara notificaciones.
+              @if (draft.condicion === 'consumo_diario') {
+                Evalúa el umbral contra el consumo real de cada uno de los últimos 30 días.
+              } @else {
+                Evalúa la condición contra las últimas 500 lecturas crudas del equipo (24 h).
+              }
+              Read-only — no guarda nada ni dispara notificaciones.
             </p>
             @if (simulationError()) {
               <app-inline-error [message]="simulationError()" />
@@ -639,10 +829,19 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   <span class="material-symbols-outlined text-[14px]" aria-hidden="true">{{
                     sim.matched > 0 ? 'notifications_active' : 'check_circle'
                   }}</span>
-                  {{ sim.matched }}
-                  {{ sim.matched === 1 ? 'match' : 'matches' }} en {{ sim.total }} lecturas
+                  @if (draft.condicion === 'consumo_diario') {
+                    {{ sim.matched }} {{ sim.matched === 1 ? 'día' : 'días' }} de
+                    {{ sim.total }}
+                  } @else {
+                    {{ sim.matched }}
+                    {{ sim.matched === 1 ? 'match' : 'matches' }} en {{ sim.total }} lecturas
+                  }
                 </span>
-                @if (draft.condicion !== 'sin_datos') {
+                @if (draft.condicion === 'consumo_diario') {
+                  <span class="text-on-surface-variant">
+                    {{ sim.withValueCount }} días con dato
+                  </span>
+                } @else if (draft.condicion !== 'sin_datos') {
                   <span class="text-on-surface-variant">
                     {{ sim.withValueCount }} con valor numérico
                   </span>
@@ -654,10 +853,10 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     <thead class="bg-slate-50 text-on-surface-muted">
                       <tr>
                         <th class="px-3 py-2 text-left font-semibold uppercase tracking-wider">
-                          Fecha
+                          {{ draft.condicion === 'consumo_diario' ? 'Día' : 'Fecha' }}
                         </th>
                         <th class="px-3 py-2 text-right font-semibold uppercase tracking-wider">
-                          Valor
+                          {{ draft.condicion === 'consumo_diario' ? 'Consumo' : 'Valor' }}
                         </th>
                         <th class="px-3 py-2 text-right font-semibold uppercase tracking-wider">
                           Resultado
@@ -668,11 +867,18 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                       @for (row of sim.rows; track row.timestamp) {
                         <tr>
                           <td class="px-3 py-2 font-mono text-slate-600">
-                            {{ formatSimulationTime(row.timestamp) }}
+                            @if (draft.condicion === 'consumo_diario') {
+                              {{ formatSimulationDay(row.timestamp) }}
+                            } @else {
+                              {{ formatSimulationTime(row.timestamp) }}
+                            }
                           </td>
                           <td class="px-3 py-2 text-right font-mono font-bold text-slate-800">
                             @if (row.value !== null) {
                               {{ row.value }}
+                              <span class="font-normal text-slate-400">{{
+                                unidadVariable(draft.variable_key, draft.condicion)
+                              }}</span>
                             } @else {
                               <span class="text-on-surface-variant italic">sin dato</span>
                             }
@@ -703,8 +909,13 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                   class="rounded-xl bg-emerald-50 px-4 py-3 text-caption text-emerald-700"
                   role="status"
                 >
-                  La regla no habría disparado contra las últimas {{ sim.total }} lecturas. Listo
-                  para activar.
+                  @if (draft.condicion === 'consumo_diario') {
+                    Ninguno de los últimos {{ sim.total }} días superó el umbral. Listo para
+                    activar.
+                  } @else {
+                    La regla no habría disparado contra las últimas {{ sim.total }} lecturas. Listo
+                    para activar.
+                  }
                 </p>
               }
             }
@@ -751,6 +962,10 @@ export class AlertasConfiguracionComponent {
   // data[variable_key] del payload crudo, asi que el value usado es `d1`.
   readonly variables = signal<VariableMapping[]>([]);
 
+  /** Serial del equipo del sitio. Lo necesita el rule-tester para pedir la
+   * telemetría cruda; llega en la misma respuesta de `getSiteVariables`. */
+  readonly idSerial = signal('');
+
   nuevaRegla: DraftAlerta = emptyDraft();
 
   constructor() {
@@ -768,11 +983,15 @@ export class AlertasConfiguracionComponent {
     if (!sid) return;
     this.adminService.getSiteVariables(sid).subscribe({
       next: (res) => {
-        if (res.ok) this.variables.set(res.data.mappings ?? []);
+        if (!res.ok) return;
+        this.variables.set(res.data.mappings ?? []);
+        this.idSerial.set(res.data.site?.id_serial ?? '');
       },
       error: () => {
-        // No bloqueante: el input cae a texto libre.
+        // No bloqueante: el input cae a texto libre. Sin serial, el
+        // rule-tester queda deshabilitado en vez de fallar en silencio.
         this.variables.set([]);
+        this.idSerial.set('');
       },
     });
   }
@@ -835,18 +1054,92 @@ export class AlertasConfiguracionComponent {
     else draft.dias_activos.push(dia);
   }
 
+  // ─── reg_map lookup ─────────────────────────────────────────────────
+  // Las reglas guardan la clave cruda del payload (`d1`), que es lo que
+  // compara el worker. Para mostrarla usamos el reg_map del sitio cuando
+  // existe: alias + unidad son lo que el operador reconoce.
+
+  mappingDe(key: string): VariableMapping | undefined {
+    if (!key) return undefined;
+    return this.variables().find((v) => v.d1 === key);
+  }
+
   isVariableRegistrada(key: string): boolean {
-    return this.variables().some((v) => v.d1 === key);
+    return !!this.mappingDe(key);
+  }
+
+  /** Alias del reg_map, o la clave cruda si la variable no está mapeada. */
+  aliasVariable(key: string): string {
+    return this.mappingDe(key)?.alias?.trim() || key;
+  }
+
+  /**
+   * `true` cuando el reg_map define una transformación para la variable. En
+   * ese caso el valor del payload NO está en la unidad declarada: el worker
+   * compara `equipo.data[d1]` CRUDO, sin transformar. Ej. AI23 llega como 264
+   * y el dashboard lo muestra como 26,4 m — un umbral "4" se compara contra
+   * 264, no contra 26,4.
+   */
+  requiereValorCrudo(key: string, condicion: AlertaCondicion): boolean {
+    // `consumo_diario` compara contra el delta ya transformado, así que su
+    // umbral SÍ va en la unidad del reg_map.
+    if (CONDICIONES_EN_UNIDAD_REAL.includes(condicion)) return false;
+    const t = (this.mappingDe(key)?.transformacion ?? 'directo').trim().toLowerCase();
+    return t !== '' && t !== 'directo';
+  }
+
+  /**
+   * `consumo_diario` solo tiene sentido sobre variables que el módulo de
+   * contadores sabe acumular (rol_dashboard ∈ totalizador/energia/volumen).
+   * El delta de un nivel o un caudal no representa un consumo.
+   */
+  rolContadorDe(key: string): ContadorRol | null {
+    const rol = this.mappingDe(key)?.rol_dashboard?.trim().toLowerCase();
+    return CONTADOR_ROLES.includes(rol as ContadorRol) ? (rol as ContadorRol) : null;
+  }
+
+  /** Variables del sitio elegibles para la condición seleccionada. */
+  variablesParaCondicion(condicion: AlertaCondicion): VariableMapping[] {
+    if (condicion !== 'consumo_diario') return this.variables();
+    return this.variables().filter((v) => this.rolContadorDe(v.d1));
+  }
+
+  /**
+   * Unidad declarada en el reg_map, sin condicionar. Describe la MÉTRICA
+   * (qué mide la variable); distinto de `unidadVariable()`, que decide si la
+   * unidad aplica al UMBRAL de una condición concreta.
+   */
+  unidadRegMap(key: string): string {
+    return this.mappingDe(key)?.unidad?.trim() || '';
+  }
+
+  rolVariable(key: string): string {
+    return this.mappingDe(key)?.rol_dashboard?.trim() || '';
+  }
+
+  transformacionVariable(key: string): string {
+    return (this.mappingDe(key)?.transformacion ?? '').trim() || 'directo';
+  }
+
+  /** Unidad del reg_map, SOLO si el umbral se expresa en esa unidad. */
+  unidadVariable(key: string, condicion: AlertaCondicion): string {
+    if (this.requiereValorCrudo(key, condicion)) return '';
+    return this.mappingDe(key)?.unidad?.trim() || '';
   }
 
   puedeGuardar(d: DraftAlerta): boolean {
     if (!d.nombre.trim()) return false;
     if (d.condicion !== 'dga_atrasado' && !d.variable_key.trim()) return false;
-    if (d.condicion === 'mayor_que' || d.condicion === 'menor_que' || d.condicion === 'igual_a') {
-      if (d.umbral_bajo === '') return false;
+    if (
+      d.condicion === 'mayor_que' ||
+      d.condicion === 'menor_que' ||
+      d.condicion === 'igual_a' ||
+      d.condicion === 'consumo_diario'
+    ) {
+      if (umbralVacio(d.umbral_bajo)) return false;
     }
     if (d.condicion === 'fuera_rango') {
-      if (d.umbral_bajo === '' || d.umbral_alto === '') return false;
+      if (umbralVacio(d.umbral_bajo) || umbralVacio(d.umbral_alto)) return false;
     }
     if (!d.dias_activos.length) return false;
     return true;
@@ -943,9 +1236,9 @@ export class AlertasConfiguracionComponent {
     };
   }
 
-  private numOrNull(val: string, condicion: AlertaCondicion): number | null {
+  private numOrNull(val: UmbralValue, condicion: AlertaCondicion): number | null {
     if (condicion === 'sin_datos' || condicion === 'dga_atrasado') return null;
-    if (val === '' || val === null || val === undefined) return null;
+    if (umbralVacio(val)) return null;
     const n = Number(val);
     return Number.isFinite(n) ? n : null;
   }
@@ -998,21 +1291,43 @@ export class AlertasConfiguracionComponent {
   }
 
   condicionResumen(r: AlertaRow): string {
+    // La unidad viene del reg_map del sitio; sin mapping se omite en vez de
+    // inventar uno.
+    const u = this.unidadVariable(r.variable_key, r.condicion);
+    const sufijo = u ? ` ${u}` : '';
+    const bajo = r.umbral_bajo ?? '—';
+    const alto = r.umbral_alto ?? '—';
     switch (r.condicion) {
+      case 'consumo_diario':
+        return `consumo del día > ${bajo}${sufijo}`;
       case 'mayor_que':
-        return `> ${r.umbral_bajo ?? '—'}`;
+        return `> ${bajo}${sufijo}`;
       case 'menor_que':
-        return `< ${r.umbral_bajo ?? '—'}`;
+        return `< ${bajo}${sufijo}`;
       case 'igual_a':
-        return `= ${r.umbral_bajo ?? '—'}`;
+        return `= ${bajo}${sufijo}`;
       case 'fuera_rango':
-        return `${r.umbral_bajo ?? '—'} – ${r.umbral_alto ?? '—'}`;
+        return `fuera de ${bajo} – ${alto}${sufijo}`;
       case 'sin_datos':
-        return `Sin datos > ${r.cooldown_minutos}m`;
+        return `Sin datos > ${r.cooldown_minutos} min`;
       case 'dga_atrasado':
         return 'DGA atrasado (24/48/72h)';
       default:
         return r.condicion;
+    }
+  }
+
+  /** Barra lateral de color por severidad — lectura de prioridad a un vistazo. */
+  severidadRailClass(s: AlertaSeveridad): string {
+    switch (s) {
+      case 'baja':
+        return 'bg-emerald-400';
+      case 'media':
+        return 'bg-amber-400';
+      case 'alta':
+        return 'bg-orange-500';
+      case 'critica':
+        return 'bg-rose-500';
     }
   }
 
@@ -1032,27 +1347,34 @@ export class AlertasConfiguracionComponent {
    */
   puedeSimular(draft: DraftAlerta): boolean {
     if (!this.esCondicionSimulable(draft.condicion)) return false;
+    if (!this.idSerial()) return false;
     if (draft.condicion === 'sin_datos') {
-      return !!this.sitioId() && draft.cooldown_minutos > 0;
+      return draft.cooldown_minutos > 0;
     }
     if (!draft.variable_key) return false;
-    if (draft.condicion === 'fuera_rango') {
-      return draft.umbral_bajo !== '' && draft.umbral_alto !== '';
+    if (draft.condicion === 'consumo_diario') {
+      return !umbralVacio(draft.umbral_bajo) && !!this.rolContadorDe(draft.variable_key);
     }
-    return draft.umbral_bajo !== '';
+    if (draft.condicion === 'fuera_rango') {
+      return !umbralVacio(draft.umbral_bajo) && !umbralVacio(draft.umbral_alto);
+    }
+    return !umbralVacio(draft.umbral_bajo);
   }
 
   /**
-   * Ejecuta la regla contra las últimas 500 lecturas del dashboard-history
-   * endpoint y reporta cuántas habrían disparado. NO escribe — solo lectura.
-   * 500 entries ≈ últimas 8.3 horas (a 60s polling) o más si el sitio tiene
-   * polling más lento. Buffer suficiente para que el admin pruebe sin
-   * sobrecargar el backend.
+   * Ejecuta la regla contra las últimas 500 lecturas CRUDAS del equipo y
+   * reporta cuántas habrían disparado. NO escribe — solo lectura.
+   *
+   * Fuente = `/api/data/preset` (tabla `equipo`, payload sin transformar),
+   * porque es exactamente lo que evalúa el worker: `equipo.data[variable_key]`.
+   * NO sirve `dashboard-history`: ese endpoint devuelve filas mapeadas por rol
+   * (`caudal`/`nivel`/`totalizador`/`nivel_freatico`), no un diccionario
+   * indexado por la clave cruda de la regla.
    */
   simularRegla(draft: DraftAlerta): void {
-    const siteId = this.sitioId();
-    if (!siteId) {
-      this.simulationError.set('No hay sitio seleccionado.');
+    const serial = this.idSerial();
+    if (!serial) {
+      this.simulationError.set('No se pudo resolver el equipo del sitio.');
       return;
     }
     if (!this.puedeSimular(draft)) {
@@ -1064,27 +1386,130 @@ export class AlertasConfiguracionComponent {
     this.simulationError.set('');
     this.simulationSummary.set(null);
 
-    this.companyService.getSiteDashboardHistory(siteId, 500).subscribe({
+    if (draft.condicion === 'consumo_diario') {
+      this.simularConsumoDiario(draft);
+      return;
+    }
+
+    this.companyService
+      .getTelemetryPreset(serial, {
+        preset: '24h',
+        keys: draft.variable_key ? [draft.variable_key] : undefined,
+        limit: 500,
+      })
+      .subscribe({
+        next: (res) => {
+          this.simulating.set(false);
+          if (!res.ok) {
+            this.simulationError.set('No se pudo cargar el histórico para la simulación.');
+            return;
+          }
+          const rows = Array.isArray(res.data) ? res.data : [];
+          if (rows.length === 0) {
+            this.simulationError.set(
+              'El equipo no tiene lecturas en las últimas 24 horas; no hay contra qué probar.',
+            );
+            return;
+          }
+          this.simulationSummary.set(this.buildSimulation(draft, rows));
+        },
+        error: (err: unknown) => {
+          this.simulating.set(false);
+          const e = err as { error?: { error?: { message?: string }; message?: string } };
+          this.simulationError.set(
+            e?.error?.error?.message ??
+              e?.error?.message ??
+              'No se pudo cargar el histórico para la simulación.',
+          );
+        },
+      });
+  }
+
+  /**
+   * Backtest de `consumo_diario`: en vez de lecturas crudas, evalúa el umbral
+   * contra el consumo REAL de cada uno de los últimos 30 días. Responde la
+   * pregunta que importa: "¿cuántos días de los últimos 30 habrían disparado
+   * esta regla?".
+   */
+  private simularConsumoDiario(draft: DraftAlerta): void {
+    const siteId = this.sitioId();
+    const rol = this.rolContadorDe(draft.variable_key);
+    if (!siteId || !rol) {
+      this.simulating.set(false);
+      this.simulationError.set('La variable seleccionada no es un contador acumulable.');
+      return;
+    }
+
+    this.companyService.getContadoresDiarios(siteId, { rol, dias: 30 }).subscribe({
       next: (res) => {
         this.simulating.set(false);
         if (!res.ok) {
-          this.simulationError.set('No se pudo cargar el histórico para la simulación.');
+          this.simulationError.set('No se pudo cargar el consumo diario para la simulación.');
           return;
         }
-        // `data` es el envoltorio { site, rows, pagination }, no el array. Antes
-        // se pasaba el objeto entero a buildSimulation y la simulación corría
-        // sobre algo que no era iterable como filas.
-        const entries = res.data?.rows ?? [];
-        this.simulationSummary.set(this.buildSimulation(draft, entries));
+        const puntos = Array.isArray(res.data) ? res.data : [];
+        const conDato = puntos.filter((p) => p.delta !== null);
+        if (conDato.length === 0) {
+          this.simulationError.set(
+            'No hay consumo diario calculado para este contador en los últimos 30 días.',
+          );
+          return;
+        }
+        this.simulationSummary.set(this.buildSimulacionConsumo(draft, puntos));
       },
       error: (err: unknown) => {
         this.simulating.set(false);
-        const e = err as { error?: { error?: { message?: string } }; message?: string };
+        const e = err as { error?: { error?: { message?: string }; message?: string } };
         this.simulationError.set(
-          e?.error?.error?.message ?? 'No se pudo cargar el histórico para la simulación.',
+          e?.error?.error?.message ??
+            e?.error?.message ??
+            'No se pudo cargar el consumo diario para la simulación.',
         );
       },
     });
+  }
+
+  private buildSimulacionConsumo(
+    draft: DraftAlerta,
+    puntos: ContadorDiarioPoint[],
+  ): SimulationSummary {
+    const umbral = umbralVacio(draft.umbral_bajo) ? null : Number(draft.umbral_bajo);
+    // Más reciente primero, igual que el backtest de lecturas crudas.
+    const ordenados = [...puntos].sort((a, b) => b.dia.localeCompare(a.dia));
+
+    const rows: SimulationResultRow[] = [];
+    let matched = 0;
+    let withValueCount = 0;
+    for (const p of ordenados) {
+      if (p.delta !== null) withValueCount++;
+      const dispara =
+        umbral !== null && Number.isFinite(umbral) && p.delta !== null && p.delta > umbral;
+      if (dispara) matched++;
+      if (dispara && rows.length < 5) {
+        // `dia` es 'YYYY-MM-DD'; se normaliza a mediodía UTC para que el
+        // formateo local no lo corra al día anterior.
+        rows.push({
+          // El delta viene con la precisión completa del contador
+          // (117.21875 m³); a 2 decimales sigue siendo exacto para decidir
+          // un umbral y deja de competir con el resto de la tabla.
+          timestamp: `${p.dia}T12:00:00Z`,
+          value: Math.round(p.delta! * 100) / 100,
+          raw: p.delta,
+          matched: true,
+        });
+      }
+    }
+    return { total: ordenados.length, matched, rows, withValueCount };
+  }
+
+  /**
+   * La rueda del mouse sobre un input `type="number"` enfocado incrementa o
+   * decrementa el valor en silencio — scrollear el modal cambiaba el umbral
+   * sin que el usuario lo notara. Sacándole el foco, la rueda vuelve a
+   * scrollear la página.
+   */
+  onWheelNumber(event: WheelEvent): void {
+    (event.target as HTMLElement | null)?.blur();
   }
 
   resetSimulacion(): void {
@@ -1101,8 +1526,11 @@ export class AlertasConfiguracionComponent {
       return false;
     }
     if (value === null) return false;
-    const bajo = draft.umbral_bajo === '' ? null : Number(draft.umbral_bajo);
-    const alto = draft.umbral_alto === '' ? null : Number(draft.umbral_alto);
+    // `umbralVacio` cubre el `null` que escribe el input `type="number"` al
+    // vaciarse. Con el check anterior (`=== ''`) caía en `Number(null) === 0`
+    // y la simulación evaluaba contra un umbral 0 inventado.
+    const bajo = umbralVacio(draft.umbral_bajo) ? null : Number(draft.umbral_bajo);
+    const alto = umbralVacio(draft.umbral_alto) ? null : Number(draft.umbral_alto);
     switch (draft.condicion) {
       case 'mayor_que':
         return bajo !== null && Number.isFinite(bajo) && value > bajo;
@@ -1120,12 +1548,24 @@ export class AlertasConfiguracionComponent {
     }
   }
 
-  private buildSimulation(
-    draft: DraftAlerta,
-    entries: SiteDashboardHistoryEntry[],
-  ): SimulationSummary {
+  /** Timestamp UTC de una fila cruda de `/api/data/*`. */
+  private rowTimestamp(row: TelemetryHistoryRow): string {
+    return row.timestamp_completo ?? `${row.fecha ?? ''}T${row.hora ?? '00:00:00'}`;
+  }
+
+  /** Valor crudo de la variable — mismo acceso que hace el worker de alertas. */
+  private rowValue(row: TelemetryHistoryRow, key: string): unknown {
+    if (!key) return null;
+    return (row.data ?? {})[key];
+  }
+
+  private buildSimulation(draft: DraftAlerta, rawRows: TelemetryHistoryRow[]): SimulationSummary {
     // Mostrar más recientes primero para que el admin vea los hits relevantes.
-    const sorted = [...entries].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    const entries = rawRows.map((row) => ({
+      timestamp: this.rowTimestamp(row),
+      raw: this.rowValue(row, draft.variable_key),
+    }));
+    const sorted = entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
     if (draft.condicion === 'sin_datos') {
       // Gap detection: marcar como match cada gap > cooldown_minutos entre
@@ -1137,7 +1577,7 @@ export class AlertasConfiguracionComponent {
       let withValueCount = 0;
       for (let i = 0; i < sorted.length; i++) {
         const entry = sorted[i];
-        const raw = draft.variable_key ? entry.variables[draft.variable_key] : null;
+        const raw = entry.raw;
         const isNull = raw === null || raw === undefined || raw === '';
         let isGap = false;
         if (i < sorted.length - 1) {
@@ -1159,7 +1599,7 @@ export class AlertasConfiguracionComponent {
     let matchedCount = 0;
     let withValueCount = 0;
     for (const entry of sorted) {
-      const raw = entry.variables[draft.variable_key];
+      const raw = entry.raw;
       const value = this.toNum(raw);
       const hasValue = value !== null;
       if (hasValue) withValueCount++;
@@ -1176,6 +1616,17 @@ export class AlertasConfiguracionComponent {
     if (raw === null || raw === undefined || raw === '') return null;
     const n = typeof raw === 'number' ? raw : Number(raw);
     return Number.isFinite(n) ? n : null;
+  }
+
+  /** Día calendario, sin hora — para el backtest de `consumo_diario`. */
+  formatSimulationDay(iso: string): string {
+    const d = new Date(iso);
+    if (!Number.isFinite(d.getTime())) return iso;
+    return d.toLocaleDateString('es-CL', {
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit',
+    });
   }
 
   formatSimulationTime(iso: string): string {
