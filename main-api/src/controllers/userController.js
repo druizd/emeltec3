@@ -8,6 +8,7 @@ const { query: dbHelperQuery } = require('../config/dbHelpers');
 const audit = require('../services/auditLog');
 const { validateNewPassword } = require('../services/passwordPolicy');
 const { buildUserListScope } = require('../services/userListScope');
+const { rechazoReenvioAcceso } = require('../services/accountAccessResend');
 const sessionRevocation = require('../services/sessionRevocation');
 const { requireEnv } = require('../config/requireEnv');
 
@@ -129,7 +130,8 @@ exports.getEquipoEmeltec = async (req, res, next) => {
       db.query(
         `SELECT u.id, u.nombre, COALESCE(u.apellido, '') AS apellido, u.email,
                 u.telefono, u.cargo, u.tipo, u.empresa_id,
-                COALESCE(u.activo, true) AS activo, u.last_login_at, u.activated_at
+                COALESCE(u.activo, true) AS activo, u.last_login_at, u.activated_at,
+                (u.password_hash IS NOT NULL) AS has_password
            FROM usuario u
           WHERE u.tipo IN ('SuperAdmin', 'Vendedor')
           ORDER BY u.tipo, u.nombre ASC`,
@@ -713,6 +715,70 @@ exports.updateUser = async (req, res, next) => {
     if (err.code === '23505') {
       return res.status(409).json({ ok: false, error: 'Dato duplicado' });
     }
+    next(err);
+  }
+};
+
+/**
+ * POST /api/users/:id/reenviar-acceso
+ *
+ * Reenvía la invitación de acceso a una cuenta que TODAVÍA no definió su
+ * contraseña (nunca se activó, o el correo original se perdió). No cambia nada
+ * en la BD: ni la contraseña, ni las sesiones, ni `activated_at`.
+ *
+ * Por eso no exige 2FA, a diferencia de `/reset-password`: no destruye acceso y
+ * el correo va a la dirección ya registrada de la cuenta, nunca a una que
+ * indique quien llama — no hay salida de datos hacia un destino nuevo.
+ *
+ * Si la cuenta YA tiene contraseña devuelve 409: reenviar la invitación no le
+ * serviría (el flujo de activación de auth-api exige `activated_at IS NULL`) y
+ * la plataforma no manda contraseñas por correo a propósito. Ese caso es un
+ * restablecimiento, que sí es destructivo y tiene su propio endpoint.
+ *
+ * La bitácora la escribe el middleware `auditMutations` de /api/users
+ * (action `usuario.resend_access`).
+ */
+exports.reenviarAccesoUsuario = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const currentUser = req.user;
+    const check = await db.query(
+      `SELECT nombre, apellido, email, empresa_id, sub_empresa_id, tipo,
+              COALESCE(activo, true) AS activo, activated_at,
+              (password_hash IS NOT NULL) AS has_password
+         FROM usuario WHERE id = $1`,
+      [id],
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Usuario no encontrado' });
+    }
+    const target = check.rows[0];
+    const permErr = managePermissionError(currentUser, target);
+    if (permErr) return res.status(403).json({ ok: false, error: permErr });
+
+    const rechazo = rechazoReenvioAcceso(target);
+    if (rechazo) {
+      return res
+        .status(rechazo.status)
+        .json({ ok: false, error: rechazo.error, code: rechazo.code });
+    }
+
+    // Se espera el envío (a diferencia de createUser, que lo hace en paralelo):
+    // acá el correo ES la acción, así que un fallo del proveedor debe verse.
+    const envio = await emailService.sendAccountAccessEmail(
+      target.email,
+      `${target.nombre} ${target.apellido || ''}`.trim(),
+      { motivo: 'nueva_cuenta' },
+    );
+    if (!envio || envio.ok === false) {
+      return res.status(502).json({
+        ok: false,
+        error: 'No se pudo enviar el correo. Intenta nuevamente en unos minutos.',
+      });
+    }
+
+    res.json({ ok: true, message: `Invitación de acceso reenviada a ${target.email}.` });
+  } catch (err) {
     next(err);
   }
 };

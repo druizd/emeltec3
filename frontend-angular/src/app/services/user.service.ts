@@ -52,6 +52,8 @@ export interface EquipoEmeltecResponse {
     activo: boolean;
     last_login_at: string | null;
     activated_at: string | null;
+    /** false = la cuenta todavía no definió su contraseña (activación pendiente). */
+    has_password: boolean;
   }[];
 }
 
@@ -157,6 +159,16 @@ export class UserService {
    */
   resetUserPassword(id: string): Observable<ApiResponse<unknown>> {
     return this.http.post<ApiResponse<unknown>>(`/api/users/${id}/reset-password`, {});
+  }
+
+  /**
+   * Reenvía la invitación de acceso a una cuenta que aún no definió su
+   * contraseña. No destruye nada: la cuenta queda igual y no pide 2FA. El
+   * backend responde 409 si la cuenta ya tiene contraseña (ahí corresponde
+   * `resetUserPassword`).
+   */
+  resendUserAccess(id: string): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`/api/users/${id}/reenviar-acceso`, {});
   }
 
   /** Desactiva (soft-delete). El backend marca activo=false. */

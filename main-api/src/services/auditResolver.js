@@ -31,6 +31,23 @@ const SUBACCIONES_EVENTO = {
   leer: 'read',
 };
 
+/**
+ * Sub-acciones sobre una cuenta que entran por POST a una sub-ruta. Sin esto
+ * quedaban como `usuario.create` (el verbo sale del método HTTP) con el id de
+ * un usuario que no se creó: la bitácora decía lo contrario de lo que pasó.
+ */
+const SUBACCIONES_USUARIO = {
+  'reset-password': 'password_reset',
+  'reenviar-acceso': 'resend_access',
+};
+
+/** `/api/users/:id/reset-password` → 'password_reset'. null si no es sub-acción. */
+function subaccionUsuario(path) {
+  const partes = path.split('/').filter(Boolean); // ["api","users",":id","reset-password"]
+  if (partes.length < 4 || partes[0] !== 'api' || partes[1] !== 'users') return null;
+  return SUBACCIONES_USUARIO[partes[3]] ?? null;
+}
+
 /** Primer segmento después del prefijo, o null si la URL es la colección. */
 function idDespuesDe(path, prefijo) {
   const m = new RegExp(`^${prefijo}/([^/]+)`).exec(path);
@@ -87,7 +104,7 @@ function auditResolver(req) {
   const path = String(req.originalUrl || req.url || '').split('?')[0];
   const { targetType, targetId } = resolveTarget(path);
   const verbo = VERBO_POR_METODO[req.method] || 'mutate';
-  const accion = subaccionEvento(path) ?? refinarVerbo(verbo, req.body);
+  const accion = subaccionEvento(path) ?? subaccionUsuario(path) ?? refinarVerbo(verbo, req.body);
   return {
     action: targetType ? `${targetType}.${accion}` : `${String(req.method).toLowerCase()}.unknown`,
     targetType,
@@ -95,4 +112,4 @@ function auditResolver(req) {
   };
 }
 
-module.exports = { auditResolver, resolveTarget, refinarVerbo, subaccionEvento };
+module.exports = { auditResolver, resolveTarget, refinarVerbo, subaccionEvento, subaccionUsuario };

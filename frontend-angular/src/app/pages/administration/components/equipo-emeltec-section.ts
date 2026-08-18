@@ -26,6 +26,9 @@ interface MiembroEquipo {
   tipo: UserRole;
   activo: boolean;
   last_login_at: string | null;
+  activated_at: string | null;
+  /** false = todavía no definió su contraseña (activación pendiente). */
+  has_password: boolean;
 }
 
 interface DraftMiembro {
@@ -239,12 +242,20 @@ function emptyDraft(): DraftMiembro {
                 </td>
                 <td class="px-4 py-2 text-slate-500">{{ m.cargo || '—' }}</td>
                 <td class="px-4 py-2">
-                  @if (m.activo) {
+                  @if (m.activo && activacionPendiente(m)) {
+                    <span
+                      class="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-caption-xs font-semibold text-amber-700"
+                      title="Todavía no definió su contraseña"
+                    >
+                      <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                      Pendiente activación
+                    </span>
+                  } @else if (m.activo) {
                     <span
                       class="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-caption-xs font-semibold text-emerald-700"
                     >
                       <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                      {{ m.last_login_at ? 'Activo' : 'Pendiente activación' }}
+                      Activo
                     </span>
                   } @else {
                     <span
@@ -282,14 +293,28 @@ function emptyDraft(): DraftMiembro {
                         editandoId() === m.id ? 'close' : 'edit'
                       }}</span>
                     </button>
+                    @if (m.activo && activacionPendiente(m)) {
+                      <button
+                        type="button"
+                        (click)="reenviarAcceso(m)"
+                        [disabled]="saving()"
+                        [attr.aria-label]="'Reenviar el correo de acceso a ' + m.nombre"
+                        title="Reenviar correo de acceso (no cambia nada en la cuenta)"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >forward_to_inbox</span
+                        >
+                      </button>
+                    }
                     @if (m.activo) {
                       <button
                         type="button"
                         (click)="pedirRestablecer(m)"
                         [disabled]="saving()"
                         [attr.aria-label]="'Restablecer el acceso de ' + m.nombre"
-                        title="Restablecer acceso"
-                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-primary-tint-08 hover:text-primary-container active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                        title="Restablecer acceso: invalida su contraseña actual y cierra sus sesiones"
+                        class="rounded-md p-1.5 text-slate-400 transition-colors hover:bg-amber-50 hover:text-amber-600 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                       >
                         <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
                           >lock_reset</span
@@ -695,6 +720,32 @@ export class EquipoEmeltecSectionComponent {
     });
   }
 
+  /**
+   * Nunca definió su contraseña: sigue en el flujo de activación. Único caso en
+   * que reenviar la invitación sirve (con contraseña, el backend da 409 y lo que
+   * corresponde es restablecer).
+   */
+  activacionPendiente(m: MiembroEquipo): boolean {
+    return !m.activated_at && m.has_password !== true;
+  }
+
+  /** Reenvía el correo de acceso. No invalida la contraseña ni pide 2FA. */
+  reenviarAcceso(m: MiembroEquipo): void {
+    if (this.saving()) return;
+    this.saving.set(true);
+    this.error.set('');
+    this.userService.resendUserAccess(m.id).subscribe({
+      next: () => {
+        this.saving.set(false);
+        this.toast.success(`Correo de acceso reenviado a ${m.email}.`);
+      },
+      error: (err) => {
+        this.saving.set(false);
+        this.error.set(err?.error?.error || 'No se pudo reenviar el correo de acceso.');
+      },
+    });
+  }
+
   private restablecerAcceso(m: MiembroEquipo): void {
     this.saving.set(true);
     this.error.set('');
@@ -704,6 +755,9 @@ export class EquipoEmeltecSectionComponent {
       next: () => {
         this.saving.set(false);
         this.toast.success('Acceso restablecido. Le enviamos el correo para crear su contraseña.');
+        // La cuenta queda pendiente de activación: recargar para que el badge y
+        // el botón de reenvío lo reflejen.
+        this.recargar();
       },
       error: (err) => {
         this.saving.set(false);
