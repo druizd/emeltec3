@@ -182,14 +182,14 @@ ORDER BY ts DESC;
 
 ## Variables de entorno críticas (`~/emeltec3/.env`)
 
-| Variable                        | Función                                         |
-| ------------------------------- | ----------------------------------------------- |
-| `POSTGRES_USER/DB/PASSWORD`     | Credenciales DB                                 |
-| `JWT_SECRET`                    | Firma JWT (compartido main-api + auth-api)      |
-| `INTERNAL_API_KEY`              | Service-to-service (linux-db-api)               |
-| `DGA_ENCRYPTION_KEY`            | AES-256 para claves informante SNIA             |
-| `DGA_RUT_EMPRESA`               | RUT Centro de Control Emeltec                   |
-| `ENABLE_DGA_SUBMISSION_WORKER`  | **Default `false`** — no tocar sin autorización |
-| `RESEND_API_KEY`                | OTP 2FA por email                               |
-| `MONITOR_PRIMARY_EMAIL`         | Destino alertas reconciler                      |
-| `DEVICE_ALIASES` (ftpprocessor) | `REGADIO:25120112,CASINO:25120225`              |
+| Variable                        | Función                                                         |
+| ------------------------------- | --------------------------------------------------------------- |
+| `POSTGRES_USER/DB/PASSWORD`     | Credenciales DB                                                 |
+| `JWT_SECRET`                    | Firma JWT (compartido main-api + auth-api)                      |
+| `INTERNAL_API_KEY`              | Service-to-service (linux-db-api)                               |
+| `DGA_ENCRYPTION_KEY`            | AES-256 para claves informante SNIA                             |
+| `DGA_RUT_EMPRESA`               | RUT Centro de Control Emeltec                                   |
+| `ENABLE_DGA_SUBMISSION_WORKER`  | **Default `false`** — no tocar sin autorización                 |
+| `RESEND_API_KEY`                | OTP 2FA por email                                               |
+| `MONITOR_PRIMARY_EMAIL`         | Respaldo del monitoreo (ver tabla `health_digest_destinatario`) |
+| `DEVICE_ALIASES` (ftpprocessor) | `REGADIO:25120112,CASINO:25120225`                              |
