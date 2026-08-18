@@ -215,10 +215,7 @@ async function reportEnviadoSinAudit(): Promise<AlertPart> {
  * los casos que sí exigen cruce manual en MIA-DGA.
  */
 async function reportDoubleSubmission(): Promise<AlertPart> {
-  const [doubles, totalReal] = await Promise.all([
-    listDoubleSubmission(),
-    countDoubleSubmission(),
-  ]);
+  const [doubles, totalReal] = await Promise.all([listDoubleSubmission(), countDoubleSubmission()]);
 
   const reales = doubles.filter((d) => d.clase === 'doble_envio_real');
   const sinComprobante = doubles.filter((d) => d.clase === 'sin_comprobante');

@@ -19,12 +19,12 @@
 
 ## Operación
 
-| Doc                              | Tema                                                      |
-| -------------------------------- | --------------------------------------------------------- |
-| [deployment.md](./deployment.md) | Runbook de despliegue (VM Azure, docker-compose, secrets) |
-| [testing.md](./testing.md)       | Guía de testing y conteo de suites                        |
-| [ftp-pipeline.md](./ftp-pipeline.md) | Pipeline FTP de ingesta: servidores, dispositivos, scripts, datos cargados |
-| [import-historico-telemetria.md](./import-historico-telemetria.md) | Runbook para cargar el histórico de telemetría cruda de un sitio nuevo |
+| Doc                                                                            | Tema                                                                                   |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| [deployment.md](./deployment.md)                                               | Runbook de despliegue (VM Azure, docker-compose, secrets)                              |
+| [testing.md](./testing.md)                                                     | Guía de testing y conteo de suites                                                     |
+| [ftp-pipeline.md](./ftp-pipeline.md)                                           | Pipeline FTP de ingesta: servidores, dispositivos, scripts, datos cargados             |
+| [import-historico-telemetria.md](./import-historico-telemetria.md)             | Runbook para cargar el histórico de telemetría cruda de un sitio nuevo                 |
 | [import-historico-telemetria-BRIEF.md](./import-historico-telemetria-BRIEF.md) | Brief entregable a proveedor/IA que convierte el histórico crudo al formato de ingesta |
 
 ## Diseño

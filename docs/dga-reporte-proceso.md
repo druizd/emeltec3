@@ -190,13 +190,13 @@ para enviar.
 
 Red de seguridad horaria, 5 chequeos:
 
-| Check | Condición                                                                      | Acción                                                                                                                                                   |
-| ----- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Check | Condición                                                                      | Acción                                                                                                                                                                                                                                     |
+| ----- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | A     | Slot atascado en `enviando` > 15 min                                           | **Consulta el audit primero.** Con audit OK + comprobante → `enviado`; audit OK sin comprobante → `requires_review`; sin audit OK → revierte a `pendiente`. Rearmar sin consultar era el único camino capaz de generar un doble envío real |
-| B     | Audit dice OK pero estatus ≠ `enviado`                                         | Auto-fix a `enviado` con comprobante                                                                                                                     |
-| C     | Slot `enviado` sin fila en audit                                               | **Solo alerta email** — no auto-corrige                                                                                                                  |
-| D     | Doble envío OK del mismo slot                                                  | **Solo alerta email** — no auto-corrige. Clasifica antes de alertar (ver abajo): alerta únicamente `doble_envio_real`                                     |
-| E     | Slot `vacio` con `ts < now() - 6h` (config `DGA_RECONCILER_STALE_VACIO_HOURS`) | **Alerta email digest** agrupada por sitio. Throttle in-memory: re-envía solo si el set cambió. **No se reportará a DGA** hasta que el dato real arribe. |
+| B     | Audit dice OK pero estatus ≠ `enviado`                                         | Auto-fix a `enviado` con comprobante                                                                                                                                                                                                       |
+| C     | Slot `enviado` sin fila en audit                                               | **Solo alerta email** — no auto-corrige                                                                                                                                                                                                    |
+| D     | Doble envío OK del mismo slot                                                  | **Solo alerta email** — no auto-corrige. Clasifica antes de alertar (ver abajo): alerta únicamente `doble_envio_real`                                                                                                                      |
+| E     | Slot `vacio` con `ts < now() - 6h` (config `DGA_RECONCILER_STALE_VACIO_HOURS`) | **Alerta email digest** agrupada por sitio. Throttle in-memory: re-envía solo si el set cambió. **No se reportará a DGA** hasta que el dato real arribe.                                                                                   |
 
 Alertas van a `MONITOR_PRIMARY_EMAIL`.
 
@@ -204,12 +204,12 @@ Alertas van a `MONITOR_PRIMARY_EMAIL`.
 
 Un slot con 2+ audits `'00'` no es necesariamente un doble envío. `clase`:
 
-| Clase               | Condición                                              | Exposición §6.3                                  |
-| ------------------- | ------------------------------------------------------ | ------------------------------------------------ |
-| `importador`        | alguna fila con `transport='legacy-import'`             | **No** — fila sintética del CSV, no un POST real |
-| `sin_comprobante`   | alguna fila `'00'` con `api_n_comprobante IS NULL`      | **No** — revisión manual, no prueba doble aceptación |
-| `mismo_comprobante` | un solo comprobante distinto                            | **No** — un envío real logueado dos veces        |
-| `doble_envio_real`  | 2+ comprobantes **distintos** emitidos por SNIA         | **Sí** — dos registros en MIA-DGA, no rectificable |
+| Clase               | Condición                                          | Exposición §6.3                                      |
+| ------------------- | -------------------------------------------------- | ---------------------------------------------------- |
+| `importador`        | alguna fila con `transport='legacy-import'`        | **No** — fila sintética del CSV, no un POST real     |
+| `sin_comprobante`   | alguna fila `'00'` con `api_n_comprobante IS NULL` | **No** — revisión manual, no prueba doble aceptación |
+| `mismo_comprobante` | un solo comprobante distinto                       | **No** — un envío real logueado dos veces            |
+| `doble_envio_real`  | 2+ comprobantes **distintos** emitidos por SNIA    | **Sí** — dos registros en MIA-DGA, no rectificable   |
 
 Solo `doble_envio_real` dispara la alerta; el resto se cuenta y se menciona en
 el cuerpo del correo. `countDoubleSubmission()` reporta el total sin tope —
