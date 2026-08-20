@@ -102,6 +102,10 @@ function fallbackDestinatario(): DigestDestinatario {
     nombre: null,
     recibe_resumen: true,
     recibe_eventos: true,
+    // Las alertas de seguridad no tienen buzón de respaldo: `auditAlerts` lee la
+    // tabla directamente y una lista vacía significa no enviar. Este fallback es
+    // solo del digest, así que no se arroga esa suscripción.
+    recibe_seguridad: false,
     umbral_evento: 't3',
     activo: true,
     updated_at: null,

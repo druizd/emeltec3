@@ -174,8 +174,8 @@ describe('reconciler check H — desactivado con DGA_NO_DATA_GIVEUP_DAYS=0', () 
   it('no consulta ni da de baja nada', async () => {
     vi.stubEnv('DGA_NO_DATA_GIVEUP_DAYS', '0');
     vi.resetModules();
-    const { runReconcilerCycle: cycle } = await import('../reconciler');
-    const repo = await import('../repo');
+    const { runReconcilerCycle: cycle } = await import('../reconciler.js');
+    const repo = await import('../repo.js');
     vi.clearAllMocks();
 
     await cycle();

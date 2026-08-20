@@ -34,6 +34,7 @@ const DestinatarioSchema = z.object({
   nombre: z.string().trim().max(120).nullish(),
   recibe_resumen: z.boolean(),
   recibe_eventos: z.boolean(),
+  recibe_seguridad: z.boolean(),
   umbral_evento: z.enum(['t3', 't6', 't12']),
   activo: z.boolean(),
 });
@@ -134,6 +135,7 @@ export async function replaceDigestDestinatariosHandler(
         nombre: d.nombre ?? null,
         recibe_resumen: d.recibe_resumen,
         recibe_eventos: d.recibe_eventos,
+        recibe_seguridad: d.recibe_seguridad,
         umbral_evento: d.umbral_evento,
         activo: d.activo,
       });

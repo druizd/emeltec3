@@ -32,6 +32,7 @@ vi.mock('../../../services/emailService.js', () => ({
 import { query, transaction } from '../../../config/dbHelpers';
 import {
   listDestinatariosActivos,
+  listDestinatariosSeguridad,
   replaceDestinatarios,
   normalizeEmail,
 } from '../destinatariosRepo';
@@ -47,6 +48,7 @@ function dest(over: Partial<DigestDestinatario> = {}): DigestDestinatario {
     nombre: 'Persona',
     recibe_resumen: true,
     recibe_eventos: true,
+    recibe_seguridad: true,
     umbral_evento: 't3',
     activo: true,
     updated_at: '2026-08-18T12:00:00.000Z',
@@ -95,6 +97,9 @@ describe('resolveDestinatarios — fail-open al buzón de respaldo', () => {
         nombre: null,
         recibe_resumen: true,
         recibe_eventos: true,
+        // El respaldo NO se arroga las alertas de seguridad: esas no tienen
+        // buzón de fallback, las lee auditAlerts directo de la tabla.
+        recibe_seguridad: false,
         umbral_evento: 't3',
         activo: true,
         updated_at: null,
@@ -180,6 +185,29 @@ describe('listDestinatariosActivos', () => {
   });
 });
 
+describe('listDestinatariosSeguridad', () => {
+  it('filtra por activo y recibe_seguridad, y devuelve solo los correos', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ email: 'uno@emeltec.cl' }, { email: 'dos@emeltec.cl' }],
+    });
+
+    const emails = await listDestinatariosSeguridad();
+
+    const [sql] = mockQuery.mock.calls[0] as [string];
+    expect(sql).toContain('recibe_seguridad = TRUE');
+    expect(sql).toContain('activo = TRUE');
+    expect(emails).toEqual(['uno@emeltec.cl', 'dos@emeltec.cl']);
+  });
+
+  it('lista vacía devuelve vacío: estas alertas no tienen buzón de respaldo', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] });
+
+    // A diferencia de resolveDestinatarios(), acá NO se cae a MONITOR_PRIMARY:
+    // nadie suscrito significa que no se manda nada (decisión explícita).
+    await expect(listDestinatariosSeguridad()).resolves.toEqual([]);
+  });
+});
+
 describe('normalizeEmail', () => {
   it('trim + minúsculas (el email es la PK de la tabla)', () => {
     expect(normalizeEmail('  Persona@Emeltec.CL ')).toBe('persona@emeltec.cl');
@@ -211,6 +239,7 @@ describe('replaceDestinatarios — reemplazo atómico', () => {
           nombre: 'Queda',
           recibe_resumen: true,
           recibe_eventos: true,
+          recibe_seguridad: true,
           umbral_evento: 't3',
           activo: true,
         },
@@ -244,6 +273,7 @@ describe('replaceDestinatarios — reemplazo atómico', () => {
           nombre: '  Nuevo  ',
           recibe_resumen: false,
           recibe_eventos: true,
+          recibe_seguridad: true,
           umbral_evento: 't12',
           activo: false,
         },
@@ -253,6 +283,15 @@ describe('replaceDestinatarios — reemplazo atómico', () => {
 
     const ins = calls.find((c) => /INSERT/i.test(c.sql))!;
     expect(ins.sql).toMatch(/ON CONFLICT \(email\) DO UPDATE/i);
-    expect(ins.params).toEqual(['nuevo@emeltec.cl', 'Nuevo', false, true, 't12', false, 'U9']);
+    expect(ins.params).toEqual([
+      'nuevo@emeltec.cl',
+      'Nuevo',
+      false,
+      true,
+      true,
+      't12',
+      false,
+      'U9',
+    ]);
   });
 });

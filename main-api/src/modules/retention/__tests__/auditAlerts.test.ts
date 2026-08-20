@@ -69,7 +69,7 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
     const dbQ = vi
       .fn()
       .mockResolvedValueOnce({ rows: actoresConAlertas, rowCount: 1 }) // SELECT logins fallidos
-      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 }) // SELECT superadmins
+      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 }) // SELECT destinatarios de seguridad
       .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // SELECT cooldown
       .mockResolvedValue({ rows: [], rowCount: 0 }); // UPSERT cooldown
 
@@ -91,7 +91,7 @@ describe('auditAlerts — detectarLoginsFallidos()', () => {
     const dbQ = vi
       .fn()
       .mockResolvedValueOnce({ rows: actoresConAlertas, rowCount: 1 }) // SELECT logins fallidos
-      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 }) // SELECT superadmins
+      .mockResolvedValueOnce({ rows: [{ email: 'sa@emeltec.cl' }], rowCount: 1 }) // SELECT destinatarios de seguridad
       .mockResolvedValueOnce({ rows: cooldownActivo, rowCount: 1 }); // SELECT cooldown → activo
 
     const sendAlerta = vi.fn().mockResolvedValue(undefined);
@@ -156,7 +156,7 @@ describe('auditAlerts — detectarCambiosRol()', () => {
     const dbQ = vi
       .fn()
       .mockResolvedValueOnce({ rows: cambiosDetectados, rowCount: 1 }) // SELECT cambios
-      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 }) // SELECT superadmins
+      .mockResolvedValueOnce({ rows: [{ email: 'superadmin@emeltec.cl' }], rowCount: 1 }) // SELECT destinatarios de seguridad
       .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // SELECT cooldown
       .mockResolvedValue({ rows: [], rowCount: 0 }); // UPSERT cooldown
 
@@ -465,6 +465,119 @@ describe('auditAlerts — marca de agua de cambio_rol', () => {
     // null y no un ts: GREATEST ignora los NULL en Postgres, así que este envío
     // no pisa ninguna marca existente.
     expect(upsertDe(dbQ)![1]).toEqual(['logins_fallidos:malo@empresa.cl', null]);
+  });
+});
+
+/**
+ * Destinatarios configurables (18/08/2026 → 20/08/2026).
+ *
+ * Antes iba a `WHERE tipo = 'SuperAdmin'`, hardcodeado: con 14 SuperAdmin
+ * activos, cada alerta salía 14 veces y no había forma de elegir a quién sin
+ * cambiarle el rol a alguien. Ahora la lista se administra en
+ * /administration → "Alertas por correo" (health_digest_destinatario).
+ *
+ * Sin buzón de respaldo, por decisión explícita: lista vacía = no se envía. Lo
+ * importante es que además NO se registre el cooldown, para que la alerta siga
+ * pendiente y le llegue al primero que se suscriba.
+ */
+describe('auditAlerts — destinatarios de las alertas de seguridad', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const CAMBIO = {
+    actor_id: 'SA001',
+    actor_email: 'druiz@emeltec.cl',
+    actor_nombre: 'Daniel Ruiz',
+    target_id: 'U22046E',
+    target_nombre: 'Marcela Soto',
+    target_email: 'msoto@cliente.cl',
+    target_tipo_actual: 'Admin',
+    ip: null,
+    ts: '2026-08-20T04:52:48.000Z',
+    cambio_tipo: { antes: 'Gerente', despues: 'Admin' },
+  };
+
+  const RAFAGA = { actor_id: 'U001', actor_email: 'malo@empresa.cl', intentos: '7' };
+
+  const registroCooldown = (dbQ: ReturnType<typeof vi.fn>) =>
+    dbQ.mock.calls.some((c: unknown[]) =>
+      String(c[0]).includes('INSERT INTO audit_alert_cooldown'),
+    );
+
+  it('12. Lee la lista de health_digest_destinatario y no los SuperAdmin', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [CAMBIO], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ email: 'seguridad@emeltec.cl' }], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+
+    await detectarCambiosRol(dbQ, vi.fn().mockResolvedValue(undefined));
+
+    const consulta = dbQ.mock.calls.find((c: unknown[]) =>
+      String(c[0]).includes('health_digest_destinatario'),
+    );
+    expect(consulta).toBeDefined();
+    const [sql] = consulta! as [string];
+    expect(sql).toContain('recibe_seguridad = TRUE');
+    expect(sql).toContain('activo = TRUE');
+    // La fuente vieja no debe quedar en ninguna consulta.
+    const sigueMirandoUsuario = dbQ.mock.calls.some((c: unknown[]) =>
+      String(c[0]).includes("tipo = 'SuperAdmin'"),
+    );
+    expect(sigueMirandoUsuario).toBe(false);
+  });
+
+  it('13. Manda un correo por suscrito', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [CAMBIO], rowCount: 1 })
+      .mockResolvedValueOnce({
+        rows: [{ email: 'uno@emeltec.cl' }, { email: 'dos@emeltec.cl' }],
+        rowCount: 2,
+      })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    expect(sendAlerta).toHaveBeenCalledTimes(2);
+    expect(sendAlerta.mock.calls.map((c: unknown[]) => c[0])).toEqual([
+      'uno@emeltec.cl',
+      'dos@emeltec.cl',
+    ]);
+  });
+
+  it('14. cambio_rol sin suscritos: no envía y NO registra cooldown ni marca de agua', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [CAMBIO], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // nadie suscrito
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarCambiosRol(dbQ, sendAlerta);
+
+    expect(sendAlerta).not.toHaveBeenCalled();
+    // Sin esto el cambio quedaría "avisado" sin haber salido, y el primero que
+    // se suscriba no se enteraría nunca.
+    expect(registroCooldown(dbQ)).toBe(false);
+  });
+
+  it('15. logins_fallidos sin suscritos: no envía y NO registra cooldown', async () => {
+    const dbQ = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [RAFAGA], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // nadie suscrito
+      .mockResolvedValue({ rows: [], rowCount: 0 });
+    const sendAlerta = vi.fn().mockResolvedValue(undefined);
+
+    await detectarLoginsFallidos(dbQ, sendAlerta);
+
+    expect(sendAlerta).not.toHaveBeenCalled();
+    expect(registroCooldown(dbQ)).toBe(false);
   });
 });
 
