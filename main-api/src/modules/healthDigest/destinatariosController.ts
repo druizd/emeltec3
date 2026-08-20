@@ -8,6 +8,7 @@
  */
 import type { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
+import { config } from '../../config/appConfig';
 import { ok } from '../../shared/httpEnvelope';
 import { ValidationError } from '../../shared/errors';
 import { require2fa } from '../../shared/email-otp';
@@ -101,6 +102,11 @@ export async function listDigestDestinatariosHandler(
         zona_horaria: 'America/Santiago',
         fallback_email: MONITOR_PRIMARY,
         worker_activo: WORKER_ENABLED,
+        // Las alertas de seguridad las manda `auditAlerts`, que corre bajo el
+        // worker de retención — otro switch. La pantalla necesita los dos
+        // estados por separado: con healthDigest apagado y auditoría encendida,
+        // un solo aviso "el worker está apagado" miente sobre la mitad de la tabla.
+        worker_seguridad_activo: config.workers.auditAlerts,
         max_destinatarios: MAX_DESTINATARIOS,
       }),
     );

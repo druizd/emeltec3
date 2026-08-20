@@ -22,7 +22,10 @@ export interface DigestMeta {
   horarios_resumen: number[];
   zona_horaria: string;
   fallback_email: string;
+  /** Worker healthDigest: resumen diario y escalaciones. */
   worker_activo: boolean;
+  /** Worker auditAlerts (bajo retención): alertas de seguridad. Switch aparte. */
+  worker_seguridad_activo: boolean;
   max_destinatarios: number;
 }
 
