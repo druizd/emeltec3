@@ -94,6 +94,19 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
       </div>
     }
 
+    @if (sinSeguridad() && !loading()) {
+      <div
+        class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-body-sm text-amber-800"
+      >
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">shield</span>
+        <span>
+          Nadie recibe las alertas de seguridad. Los cambios de rol y las ráfagas de logins fallidos
+          no se están avisando a nadie: a diferencia del resumen, estas alertas
+          <strong>no tienen buzón de respaldo</strong>.
+        </span>
+      </div>
+    }
+
     @if (loading()) {
       <div class="animate-pulse space-y-2">
         @for (i of [1, 2, 3]; track i) {
@@ -109,6 +122,7 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
               <th class="dga-table-header">Resumen diario</th>
               <th class="dga-table-header">Escalaciones</th>
               <th class="dga-table-header">Desde</th>
+              <th class="dga-table-header">Seguridad</th>
               <th class="dga-table-header">Estado</th>
               <th class="dga-table-header"></th>
             </tr>
@@ -161,6 +175,18 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
                     <option value="t6">Desde 6 h</option>
                     <option value="t12">Solo 12 h+</option>
                   </select>
+                </td>
+                <td class="px-4 py-2">
+                  <label class="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      [ngModel]="d.recibe_seguridad"
+                      (ngModelChange)="setCampo(d.email, 'recibe_seguridad', $event)"
+                      [name]="'seguridad-' + d.email"
+                      class="h-4 w-4 accent-primary"
+                    />
+                    <span class="text-caption-xs text-slate-500">Cambios de rol y logins</span>
+                  </label>
                 </td>
                 <td class="px-4 py-2">
                   @if (d.activo) {
@@ -224,7 +250,7 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" class="px-4 py-6 text-center text-caption italic text-slate-500">
+                <td colspan="7" class="px-4 py-6 text-center text-caption italic text-slate-500">
                   Sin destinatarios configurados. El monitoreo se enviará solo a
                   {{ meta().fallback_email }}.
                 </td>
@@ -362,6 +388,15 @@ export class AlertasCorreoSectionComponent {
     () => this.filas().filter((d) => d.activo && d.recibe_resumen).length === 0,
   );
 
+  /**
+   * A diferencia de `sinResumen`, acá no hay buzón de respaldo: si nadie está
+   * suscrito, las alertas de seguridad simplemente no se envían. El aviso en
+   * pantalla es la única forma de que ese silencio se note.
+   */
+  readonly sinSeguridad = computed(
+    () => this.filas().filter((d) => d.activo && d.recibe_seguridad).length === 0,
+  );
+
   readonly sinCupo = computed(() => this.filas().length >= this.meta().max_destinatarios);
 
   readonly horariosTexto = computed(() =>
@@ -421,7 +456,11 @@ export class AlertasCorreoSectionComponent {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
   }
 
-  setCampo(email: string, campo: 'recibe_resumen' | 'recibe_eventos', valor: boolean): void {
+  setCampo(
+    email: string,
+    campo: 'recibe_resumen' | 'recibe_eventos' | 'recibe_seguridad',
+    valor: boolean,
+  ): void {
     this.filas.update((rows) =>
       rows.map((r) => (r.email === email ? { ...r, [campo]: valor } : r)),
     );
@@ -471,6 +510,9 @@ export class AlertasCorreoSectionComponent {
         nombre: nombre.trim() || null,
         recibe_resumen: true,
         recibe_eventos: true,
+        // Las de seguridad no se heredan al sumar a alguien al monitoreo: hay que
+        // marcarlas a mano. Un cambio de rol es dato sensible, no operación.
+        recibe_seguridad: false,
         umbral_evento: 't3',
         activo: true,
         updated_at: null,
@@ -525,6 +567,7 @@ export class AlertasCorreoSectionComponent {
     const rows = this.filas().filter((d) => d.activo);
     const resumen = rows.filter((d) => d.recibe_resumen).length;
     const eventos = rows.filter((d) => d.recibe_eventos).length;
-    return `${resumen} en el resumen diario · ${eventos} en escalaciones.`;
+    const seguridad = rows.filter((d) => d.recibe_seguridad).length;
+    return `${resumen} en el resumen diario · ${eventos} en escalaciones · ${seguridad} en seguridad.`;
   }
 }

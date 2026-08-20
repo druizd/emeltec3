@@ -10,6 +10,8 @@ export interface DigestDestinatario {
   nombre: string | null;
   recibe_resumen: boolean;
   recibe_eventos: boolean;
+  /** Alertas de auditoría: cambios de rol y ráfagas de logins fallidos. */
+  recibe_seguridad: boolean;
   umbral_evento: UmbralEvento;
   activo: boolean;
   updated_at: string | null;
@@ -42,9 +44,10 @@ export interface DigestPruebaResponse {
 }
 
 /**
- * Destinatarios del monitoreo interno (worker `healthDigest` del main-api):
- * resumen diario 07:00/16:00 y correos inmediatos de escalación. Solo
- * SuperAdmin — el backend rechaza cualquier otro rol.
+ * Destinatarios del monitoreo interno: resumen diario 07:00/16:00 y correos
+ * inmediatos de escalación (worker `healthDigest`), más las alertas de auditoría
+ * de seguridad (worker `auditAlerts`). Solo SuperAdmin — el backend rechaza
+ * cualquier otro rol.
  */
 @Injectable({ providedIn: 'root' })
 export class HealthDigestService {
@@ -62,6 +65,7 @@ export class HealthDigestService {
         nombre: d.nombre,
         recibe_resumen: d.recibe_resumen,
         recibe_eventos: d.recibe_eventos,
+        recibe_seguridad: d.recibe_seguridad,
         umbral_evento: d.umbral_evento,
         activo: d.activo,
       })),

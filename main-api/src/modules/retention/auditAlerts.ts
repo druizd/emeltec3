@@ -1,7 +1,17 @@
 /**
  * Alertas automáticas de audit log (B4.2 — Ley 21.719).
  *
- * Detecta condiciones de seguridad en audit_log y notifica a SuperAdmins:
+ * Detecta condiciones de seguridad en audit_log y notifica a los destinatarios
+ * suscritos en `health_digest_destinatario.recibe_seguridad` (se administran en
+ * /administration → "Alertas por correo"). Antes iba a TODOS los SuperAdmin, sin
+ * forma de elegir: con 14 activos, cada alerta salía 14 veces.
+ *
+ * Esta lista no tiene buzón de respaldo: vacía = no se manda nada, por decisión
+ * explícita. Cuando hay algo que avisar y nadie suscrito, se loguea un warn y no
+ * se registra el cooldown, de modo que la alerta siga pendiente para cuando
+ * alguien se suscriba.
+ *
+ * Condiciones detectadas:
  * 1. Logins fallidos: >= N intentos en ventana de tiempo configurable.
  * 2. Cambios de rol: modificaciones de campo tipo en usuario.
  * 3. Exportaciones masivas: BRECHA DOCUMENTADA — no existe acción 'export' en
@@ -28,9 +38,11 @@ function getEmailService(): { sendAlertaSeguridad: SendAlertaFn } {
   return require('../../services/emailService.js') as { sendAlertaSeguridad: SendAlertaFn };
 }
 
-async function getSuperAdminEmails(dbQ: DbQuery): Promise<string[]> {
+async function getDestinatariosSeguridad(dbQ: DbQuery): Promise<string[]> {
   const { rows } = (await dbQ(
-    `SELECT email FROM usuario WHERE tipo = 'SuperAdmin' AND activo = true`,
+    `SELECT email FROM health_digest_destinatario
+      WHERE activo = TRUE AND recibe_seguridad = TRUE
+      ORDER BY email ASC`,
   )) as { rows: Array<{ email: string }> };
   return rows.map((r) => r.email);
 }
@@ -122,7 +134,16 @@ export async function detectarLoginsFallidos(
 
   if (rows.length === 0) return;
 
-  const admins = await getSuperAdminEmails(dbQ);
+  const destinatarios = await getDestinatariosSeguridad(dbQ);
+  if (destinatarios.length === 0) {
+    // Sin registrar cooldown: la ráfaga sigue pendiente para cuando alguien se
+    // suscriba, en vez de darse por avisada sin haber salido.
+    logger.warn(
+      { actores: rows.length },
+      '[auditAlerts] logins fallidos sin destinatarios suscritos — nadie recibe la alerta',
+    );
+    return;
+  }
 
   for (const row of rows) {
     // Cooldown por email: es la clave de agrupación (actor_id puede ser NULL).
@@ -137,8 +158,8 @@ export async function detectarLoginsFallidos(
       ventana_minutos: loginWindowMinutes,
     };
 
-    for (const adminEmail of admins) {
-      await _sendAlerta(adminEmail, 'logins_fallidos', detalles);
+    for (const email of destinatarios) {
+      await _sendAlerta(email, 'logins_fallidos', detalles);
     }
 
     await registrarCooldown(alertKey, dbQ);
@@ -219,8 +240,16 @@ export async function detectarCambiosRol(
 
   if (rows.length === 0) return;
 
-  const admins = await getSuperAdminEmails(dbQ);
-  if (admins.length === 0) return;
+  const destinatarios = await getDestinatariosSeguridad(dbQ);
+  if (destinatarios.length === 0) {
+    // Igual que arriba: se sale antes del cooldown y antes de mover la marca de
+    // agua, así el cambio de rol sigue siendo nuevo para el primer suscrito.
+    logger.warn(
+      { cambios: rows.length },
+      '[auditAlerts] cambio de rol sin destinatarios suscritos — nadie recibe la alerta',
+    );
+    return;
+  }
 
   const enCooldown = await estaEnCooldown(alertKey, dbQ);
   if (enCooldown) return;
@@ -246,8 +275,8 @@ export async function detectarCambiosRol(
     fecha: formatearFechaChile(ultimo?.ts),
   };
 
-  for (const adminEmail of admins) {
-    await _sendAlerta(adminEmail, 'cambio_rol', detalles);
+  for (const email of destinatarios) {
+    await _sendAlerta(email, 'cambio_rol', detalles);
   }
 
   // `rows` viene ORDER BY ts DESC, así que rows[0].ts es el cambio más nuevo

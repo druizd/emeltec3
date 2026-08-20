@@ -2,8 +2,8 @@
  * Destinatarios del monitoreo interno (healthDigest).
  *
  * Tabla `health_digest_destinatario`: una fila por buzón que recibe el resumen
- * diario y/o las escalaciones. El email es la clave y va SIEMPRE en minúsculas
- * (normalizado acá, no en la BD).
+ * diario, las escalaciones y/o las alertas de seguridad. El email es la clave y
+ * va SIEMPRE en minúsculas (normalizado acá, no en la BD).
  *
  * Ver migración `infra-db/migrations/2026-08-18-health-digest-destinatarios.sql`.
  */
@@ -16,6 +16,8 @@ export interface DigestDestinatario {
   nombre: string | null;
   recibe_resumen: boolean;
   recibe_eventos: boolean;
+  /** Alertas de auditoría de seguridad: cambios de rol y logins fallidos. */
+  recibe_seguridad: boolean;
   umbral_evento: EventoTier;
   activo: boolean;
   updated_at: string | null;
@@ -26,11 +28,13 @@ export interface DigestDestinatarioInput {
   nombre?: string | null;
   recibe_resumen: boolean;
   recibe_eventos: boolean;
+  recibe_seguridad: boolean;
   umbral_evento: EventoTier;
   activo: boolean;
 }
 
-const COLUMNS = 'email, nombre, recibe_resumen, recibe_eventos, umbral_evento, activo, updated_at';
+const COLUMNS =
+  'email, nombre, recibe_resumen, recibe_eventos, recibe_seguridad, umbral_evento, activo, updated_at';
 
 function normalizeTier(value: unknown): EventoTier {
   return value === 't6' || value === 't12' ? value : 't3';
@@ -42,6 +46,7 @@ function mapRow(row: Record<string, unknown>): DigestDestinatario {
     nombre: (row.nombre as string | null) ?? null,
     recibe_resumen: row.recibe_resumen === true,
     recibe_eventos: row.recibe_eventos === true,
+    recibe_seguridad: row.recibe_seguridad === true,
     umbral_evento: normalizeTier(row.umbral_evento),
     activo: row.activo === true,
     updated_at: row.updated_at ? new Date(row.updated_at as string).toISOString() : null,
@@ -74,6 +79,25 @@ export async function listDestinatariosActivos(): Promise<DigestDestinatario[]> 
 }
 
 /**
+ * Correos suscritos a las alertas de seguridad (auditAlerts).
+ *
+ * A diferencia del resumen, esta lista NO tiene buzón de respaldo: si queda
+ * vacía no se manda nada. Es una decisión explícita — la contraparte es el aviso
+ * en amarillo de /administration → "Alertas por correo" cuando nadie está
+ * suscrito, para que el silencio se vea.
+ */
+export async function listDestinatariosSeguridad(): Promise<string[]> {
+  const result = await query<{ email: string }>(
+    `SELECT email FROM health_digest_destinatario
+      WHERE activo = TRUE AND recibe_seguridad = TRUE
+      ORDER BY email ASC`,
+    [],
+    { name: 'health_digest_dest__list_seguridad' },
+  );
+  return result.rows.map((r) => r.email);
+}
+
+/**
  * Reemplaza la lista completa en una transacción: upsert de lo recibido y
  * borrado de lo que ya no viene. Un PUT del set entero evita estados
  * intermedios raros (por ejemplo quedarse sin ningún destinatario mientras la
@@ -98,13 +122,14 @@ export async function replaceDestinatarios(
     for (const [i, row] of rows.entries()) {
       await client.query(
         `INSERT INTO health_digest_destinatario
-           (email, nombre, recibe_resumen, recibe_eventos, umbral_evento, activo,
-            actualizado_por, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+           (email, nombre, recibe_resumen, recibe_eventos, recibe_seguridad,
+            umbral_evento, activo, actualizado_por, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
          ON CONFLICT (email) DO UPDATE SET
            nombre = EXCLUDED.nombre,
            recibe_resumen = EXCLUDED.recibe_resumen,
            recibe_eventos = EXCLUDED.recibe_eventos,
+           recibe_seguridad = EXCLUDED.recibe_seguridad,
            umbral_evento = EXCLUDED.umbral_evento,
            activo = EXCLUDED.activo,
            actualizado_por = EXCLUDED.actualizado_por,
@@ -114,6 +139,7 @@ export async function replaceDestinatarios(
           row.nombre?.trim() || null,
           row.recibe_resumen,
           row.recibe_eventos,
+          row.recibe_seguridad,
           row.umbral_evento,
           row.activo,
           actorId,
