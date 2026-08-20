@@ -293,7 +293,7 @@ async function rolesQuePasan(ruta: RutaExpress, method: string): Promise<Rol[]> 
 let rutas: Array<{ clave: string; ruta: RutaExpress; method: string }> = [];
 
 beforeAll(async () => {
-  const mod = await import('../routes');
+  const mod = await import('../routes.js');
   const router = mod.default as unknown as { stack: Array<{ route?: RutaExpress }> };
   rutas = router.stack
     .filter((l) => l.route)
