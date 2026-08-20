@@ -77,7 +77,11 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
           El worker de monitoreo está apagado en este servidor (<code
             class="font-mono text-caption-xs"
             >ENABLE_HEALTH_DIGEST_WORKER</code
-          >), así que no se enviará nada hasta activarlo. La configuración se guarda igual.
+          >), así que <strong>el resumen diario y las escalaciones</strong> no se enviarán hasta
+          activarlo. La configuración se guarda igual.
+          @if (meta().worker_seguridad_activo) {
+            Las alertas de seguridad no dependen de este worker y sí se están enviando.
+          }
         </span>
       </div>
     }
@@ -94,7 +98,20 @@ function clonar(rows: DigestDestinatario[]): DigestDestinatario[] {
       </div>
     }
 
-    @if (sinSeguridad() && !loading()) {
+    @if (!meta().worker_seguridad_activo && !loading()) {
+      <div
+        class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-body-sm text-amber-800"
+      >
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">pause_circle</span>
+        <span>
+          El worker de auditoría está apagado (<code class="font-mono text-caption-xs"
+            >ENABLE_AUDIT_ALERTS_WORKER</code
+          >), así que la columna <strong>Seguridad</strong> no enviará nada hasta activarlo.
+        </span>
+      </div>
+    }
+
+    @if (sinSeguridad() && meta().worker_seguridad_activo && !loading()) {
       <div
         class="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-body-sm text-amber-800"
       >
@@ -374,6 +391,7 @@ export class AlertasCorreoSectionComponent {
     zona_horaria: 'America/Santiago',
     fallback_email: '',
     worker_activo: false,
+    worker_seguridad_activo: false,
     max_destinatarios: 25,
   });
   /** Miembros del equipo interno que aún no están en la lista. */

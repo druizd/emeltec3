@@ -10,7 +10,12 @@ import type { Request, Response } from 'express';
 import type * as RepoModule from '../destinatariosRepo';
 
 vi.mock('../../../config/appConfig', () => ({
-  config: { db: { slowLogMs: 1000, statementTimeoutMs: 5000 } },
+  config: {
+    db: { slowLogMs: 1000, statementTimeoutMs: 5000 },
+    // La pantalla necesita el estado del worker de auditoría, que es el que
+    // manda las alertas de seguridad — switch distinto al de healthDigest.
+    workers: { auditAlerts: true },
+  },
 }));
 
 vi.mock('../../../config/logger', () => ({
@@ -106,6 +111,10 @@ describe('GET /health-digest/destinatarios', () => {
     expect(body.meta.horarios_resumen).toEqual([7, 16]);
     expect(body.meta.zona_horaria).toBe('America/Santiago');
     expect(body.meta.fallback_email).toBe(MONITOR_PRIMARY);
+    // Los dos workers viajan por separado: healthDigest manda el resumen y las
+    // escalaciones, auditAlerts las alertas de seguridad. Con uno apagado y el
+    // otro encendido, un solo flag hacia la UI miente sobre la mitad de la tabla.
+    expect(body.meta.worker_seguridad_activo).toBe(true);
   });
 });
 
