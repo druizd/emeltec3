@@ -51,6 +51,14 @@ export interface CreateSitePayload {
   pozo_config?: PozoConfig | null;
 }
 
+/** Sitio asociado a un serial detectado. Un serial puede tener varios. */
+export interface DetectedDeviceSite {
+  id: string;
+  descripcion: string;
+  tipo_sitio?: string | null;
+  activo?: boolean | null;
+}
+
 export interface DetectedDevice {
   id_serial: string;
   total_registros: number;
@@ -62,8 +70,12 @@ export interface DetectedDevice {
   ultima_llegada?: string | null;
   ultima_llegada_local?: string | null;
   desfase_segundos?: number | null;
+  /** Primer sitio del serial. Se mantiene por compatibilidad; ver `sitios`. */
   sitio_id?: string | null;
   sitio_descripcion?: string | null;
+  /** Todos los sitios que comparten el serial (misma subempresa). */
+  sitios?: DetectedDeviceSite[] | null;
+  sitios_count?: number;
   empresa_id?: string | null;
   empresa_nombre?: string | null;
   sub_empresa_id?: string | null;
