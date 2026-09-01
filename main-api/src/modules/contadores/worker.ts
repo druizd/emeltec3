@@ -16,13 +16,27 @@
 import { logger } from '../../config/logger';
 import { beat } from '../../config/heartbeat';
 import { getMappingsBySiteId, getSiteById, listCounterVariables } from './repo';
-import { lastNMonths, recomputeMonthsForVariable } from './service';
+import { getMonthRangeChile, lastNMonths, recomputeMonthsForVariable } from './service';
 import { getPozoConfigBySiteId } from '../sites/repo';
 
 const POLL_INTERVAL_MS = Number(process.env.CONTADORES_WORKER_POLL_MS ?? 60 * 60 * 1000);
 const WORKER_ENABLED =
   String(process.env.ENABLE_CONTADORES_WORKER ?? 'true').toLowerCase() !== 'false';
 const MESES_REFRESH = Number(process.env.CONTADORES_WORKER_MESES ?? 2);
+
+/**
+ * Ventana de refresco del cagg `equipo_1min` (`start_offset => 7 days` en
+ * 2026-05-22-equipo-data-caggs.sql). Nada anterior a eso vuelve a
+ * materializarse, asi que un mes cerrado hace mas de 7 dias lee exactamente
+ * los mismos buckets que la ultima vez: recomputarlo es trabajo garantizado
+ * inutil. Lo saltamos — y con eso el barrido deja de escanear ~44k filas por
+ * contador de mas durante las 3 ultimas semanas de cada mes.
+ */
+const CAGG_REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+function mesSiguePudiendoCambiar(monthStart: Date, now: number): boolean {
+  return now - getMonthRangeChile(monthStart).end.getTime() < CAGG_REFRESH_WINDOW_MS;
+}
 
 let intervalHandle: NodeJS.Timeout | null = null;
 let running = false;
@@ -34,7 +48,8 @@ async function runCycle(): Promise<void> {
   const startedAt = Date.now();
   try {
     const counters = await listCounterVariables();
-    const meses = lastNMonths(MESES_REFRESH);
+    const now = Date.now();
+    const meses = lastNMonths(MESES_REFRESH).filter((m) => mesSiguePudiendoCambiar(m, now));
 
     // Cache para mappings/pozoConfig por sitio: varias variables del mismo sitio.
     const mappingsCache = new Map<string, Awaited<ReturnType<typeof getMappingsBySiteId>>>();
@@ -79,6 +94,7 @@ async function runCycle(): Promise<void> {
     logger.info(
       {
         counters: counters.length,
+        meses: meses.length,
         upserts,
         durationMs: Date.now() - startedAt,
       },

@@ -177,6 +177,43 @@ async function userCanAccessSiteId(pool, user, siteId) {
 }
 
 /**
+ * Resuelve el `sitio_id` opcional con que una consulta de telemetría acota un
+ * serial a una sola obra. Un datalogger puede alimentar varios sitios (serial
+ * compartido dentro de una subempresa), y cada uno mapea sus propios registros
+ * en reg_map, así que "las variables del equipo" y "las variables del sitio"
+ * dejan de ser lo mismo.
+ *
+ * Vive acá para que v1 (dataController), v2 (modules/telemetry) y gRPC usen la
+ * misma validación y no diverjan.
+ *
+ * @returns {Promise<{site: {id: string, id_serial: string}|null, error?: {status: number, message: string}}>}
+ *   `site: null` = sin filtro pedido (consulta a nivel de equipo).
+ */
+async function resolveRequestedSiteForSerial(pool, user, siteId, serial) {
+  const wanted = siteId === undefined || siteId === null ? '' : String(siteId).trim();
+  if (!wanted) return { site: null };
+
+  // Autorización primero: así un sitio inexistente y uno ajeno responden igual
+  // y no se puede sondear qué ids existen.
+  if (!(await userCanAccessSiteId(pool, user, wanted))) {
+    return { error: { status: 403, message: 'Sin permisos sobre este sitio' } };
+  }
+
+  const { rows } = await pool.query('SELECT id, id_serial FROM sitio WHERE id = $1', [wanted]);
+  const site = rows[0];
+  if (!site) {
+    return { error: { status: 404, message: `El sitio ${wanted} no existe.` } };
+  }
+  if (site.id_serial !== serial) {
+    return {
+      error: { status: 400, message: `El sitio ${wanted} no pertenece al equipo ${serial}.` },
+    };
+  }
+
+  return { site };
+}
+
+/**
  * Dado un array de siteIds, devuelve los que el usuario NO puede acceder
  * (EMT-C02). SuperAdmin nunca deniega. Un sitio inexistente se considera
  * denegado (no se puede verificar propiedad). `lookupSiteFn(siteId)` debe
@@ -202,4 +239,5 @@ module.exports = {
   findUnauthorizedSites,
   lookupSiteById,
   userCanAccessSiteId,
+  resolveRequestedSiteForSerial,
 };

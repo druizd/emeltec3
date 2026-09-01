@@ -11,6 +11,7 @@ import {
   resolveAccessibleSerial,
   findUnauthorizedSites,
   userCanAccessSiteId,
+  resolveRequestedSiteForSerial,
 } from '../dataAccess';
 
 const superAdmin = { tipo: 'SuperAdmin' };
@@ -223,5 +224,75 @@ describe('findUnauthorizedSites', () => {
     expect(await findUnauthorizedSites(['S10', 'S20'], clienteSinSub, lookup)).toEqual([]);
     // Pero sigue denegando inexistentes (no se puede verificar empresa).
     expect(await findUnauthorizedSites(['S10', 'S99'], clienteSinSub, lookup)).toEqual(['S99']);
+  });
+});
+
+describe('resolveRequestedSiteForSerial', () => {
+  // Dos sitios sobre el mismo datalogger (misma sub-empresa) + uno ajeno.
+  const poolSitios = fakePool([
+    {
+      match: /es_maleta_piloto FROM sitio/,
+      respond: (params) =>
+        ({
+          S140: { rows: [{ id: 'S140', empresa_id: 1, sub_empresa_id: 10 }] },
+          S141: { rows: [{ id: 'S141', empresa_id: 1, sub_empresa_id: 10 }] },
+          S999: { rows: [{ id: 'S999', empresa_id: 2, sub_empresa_id: 20 }] },
+        })[String(params?.[0])] || { rows: [] },
+    },
+    {
+      match: /id_serial FROM sitio WHERE id/,
+      respond: (params) =>
+        ({
+          S140: { rows: [{ id: 'S140', id_serial: '151.2.2.2' }] },
+          S141: { rows: [{ id: 'S141', id_serial: '151.2.2.2' }] },
+          S999: { rows: [{ id: 'S999', id_serial: '151.9.9.9' }] },
+        })[String(params?.[0])] || { rows: [] },
+    },
+  ]);
+
+  it('sin sitio pedido → sin filtro (consulta a nivel de equipo)', async () => {
+    for (const vacio of [null, undefined, '', '   ']) {
+      expect(await resolveRequestedSiteForSerial(poolSitios, cliente, vacio, '151.2.2.2')).toEqual({
+        site: null,
+      });
+    }
+  });
+
+  it('sitio propio del mismo equipo → devuelve el sitio', async () => {
+    const r = await resolveRequestedSiteForSerial(poolSitios, cliente, 'S141', '151.2.2.2');
+    expect(r.error).toBeUndefined();
+    expect(r.site).toEqual({ id: 'S141', id_serial: '151.2.2.2' });
+  });
+
+  it('sitio hermano sobre el MISMO serial también resuelve (serial compartido)', async () => {
+    const r = await resolveRequestedSiteForSerial(poolSitios, cliente, 'S140', '151.2.2.2');
+    expect(r.site?.id).toBe('S140');
+  });
+
+  it('sitio de otra empresa → 403, sin revelar si existe', async () => {
+    expect(
+      await resolveRequestedSiteForSerial(poolSitios, cliente, 'S999', '151.2.2.2'),
+    ).toMatchObject({ error: { status: 403 } });
+    // Un id inexistente responde igual para el mismo usuario.
+    expect(
+      await resolveRequestedSiteForSerial(poolSitios, cliente, 'NOPE', '151.2.2.2'),
+    ).toMatchObject({ error: { status: 403 } });
+  });
+
+  it('SuperAdmin: sitio inexistente → 404', async () => {
+    expect(
+      await resolveRequestedSiteForSerial(poolSitios, superAdmin, 'NOPE', '151.2.2.2'),
+    ).toMatchObject({ error: { status: 404 } });
+  });
+
+  it('sitio real pero de OTRO equipo → 400 (no filtraría nada)', async () => {
+    const r = await resolveRequestedSiteForSerial(poolSitios, superAdmin, 'S999', '151.2.2.2');
+    expect(r.error?.status).toBe(400);
+    expect(r.error?.message).toContain('no pertenece al equipo');
+  });
+
+  it('recorta espacios del id pedido', async () => {
+    const r = await resolveRequestedSiteForSerial(poolSitios, cliente, '  S141  ', '151.2.2.2');
+    expect(r.site?.id).toBe('S141');
   });
 });

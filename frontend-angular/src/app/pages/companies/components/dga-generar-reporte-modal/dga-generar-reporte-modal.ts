@@ -199,7 +199,7 @@ interface ConfigDraft {
                     step="0.01"
                     min="0"
                     [ngModel]="draft().dga_caudal_max_lps"
-                    (ngModelChange)="setDraft('dga_caudal_max_lps', $event)"
+                    (ngModelChange)="setCaudalMax($event)"
                     [disabled]="saving()"
                     placeholder="sin cargar (fallback 1000)"
                     class="h-8 rounded border border-slate-200 bg-white px-2 text-[12px] font-mono outline-none focus:border-primary-tint-35"
@@ -643,6 +643,16 @@ export class DgaGenerarReporteModalComponent implements OnChanges, OnDestroy {
 
   setDraft<K extends keyof ConfigDraft>(field: K, value: ConfigDraft[K]): void {
     this.draft.update((d) => ({ ...d, [field]: value }));
+  }
+
+  /**
+   * El input de caudal es `type="number"`, asi que Angular emite number (o
+   * null al vaciarlo), no string. El borrador guarda texto, y `validateDraft`
+   * hace `.trim()`: sin esta normalizacion, guardar reventaba con
+   * "dga_caudal_max_lps.trim is not a function".
+   */
+  setCaudalMax(value: unknown): void {
+    this.setDraft('dga_caudal_max_lps', value == null ? '' : String(value));
   }
 
   /**

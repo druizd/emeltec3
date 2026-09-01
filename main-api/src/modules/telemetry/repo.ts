@@ -4,6 +4,8 @@
  */
 import { query } from '../../config/dbHelpers';
 import { CHILE_TIME_ZONE } from '../../shared/time';
+// Módulo v1 (CommonJS) reutilizado: el SQL es idéntico en las tres capas.
+import { AVAILABLE_KEYS_SQL } from '../../services/availableKeysQuery';
 
 function chileDateSql(col: string): string {
   return `TO_CHAR(${col} AT TIME ZONE '${CHILE_TIME_ZONE}', 'YYYY-MM-DD')`;
@@ -63,44 +65,17 @@ export async function findLatestReferenceTimestamp(serialId: string): Promise<st
   return row ? `${row.fecha} ${row.hora}` : null;
 }
 
-export async function findAvailableKeys(serialId: string): Promise<string[]> {
-  const result = await query<{ nombre_dato: string }>(
-    `
-    WITH mapped AS (
-      SELECT rm.d1 AS nombre_dato
-      FROM sitio s
-      JOIN reg_map rm ON rm.sitio_id = s.id
-      WHERE s.id_serial = $1
-        AND rm.d1 IS NOT NULL
-      UNION
-      SELECT rm.d2 AS nombre_dato
-      FROM sitio s
-      JOIN reg_map rm ON rm.sitio_id = s.id
-      WHERE s.id_serial = $1
-        AND rm.d2 IS NOT NULL
-    ),
-    latest AS (
-      SELECT data
-      FROM equipo
-      WHERE id_serial = $1
-      ORDER BY time DESC
-      LIMIT 1
-    ),
-    latest_keys AS (
-      SELECT jsonb_object_keys(data) AS nombre_dato
-      FROM latest
-    )
-    SELECT nombre_dato
-    FROM (
-      SELECT nombre_dato FROM mapped
-      UNION
-      SELECT nombre_dato FROM latest_keys
-    ) keys
-    ORDER BY nombre_dato ASC
-    `,
-    [serialId],
-    { name: 'telemetry__available_keys' },
-  );
+/**
+ * Variables disponibles de un equipo. Con `siteId` se acota al reg_map de esa
+ * obra; el SQL es el mismo que usan v1 y gRPC (services/availableKeysQuery).
+ */
+export async function findAvailableKeys(
+  serialId: string,
+  siteId: string | null = null,
+): Promise<string[]> {
+  const result = await query<{ nombre_dato: string }>(AVAILABLE_KEYS_SQL, [serialId, siteId], {
+    name: 'telemetry__available_keys',
+  });
   return result.rows.map((r) => r.nombre_dato);
 }
 

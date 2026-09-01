@@ -588,15 +588,39 @@ async function upsertPozoConfig(client, siteId, rawConfig = {}) {
   return rows[0] || null;
 }
 
-async function ensureSerialAvailable(serialId, currentSiteId = null) {
+/**
+ * ¿Puede este serial usarse en un sitio del alcance indicado?
+ *
+ * Un mismo datalogger puede alimentar varios sitios: cada sitio tiene su
+ * propio reg_map, así que dos obras sobre el mismo equipo son legítimas
+ * mientras vivan en la MISMA subempresa.
+ *
+ * Fuera de esa subempresa no: /api/data/* autoriza por serial (ver
+ * services/dataAccess.js) y devuelve el jsonb crudo del equipo completo, así
+ * que compartirlo entre subempresas expondría los registros de una al usuario
+ * de la otra.
+ *
+ * @param {string} serialId
+ * @param {string|null} currentSiteId sitio que se está editando (se excluye)
+ * @param {{empresaId: string, subEmpresaId: string}|null} scope alcance donde
+ *   el serial compartido es aceptable. Sin scope, cualquier otro sitio con el
+ *   mismo serial es conflicto.
+ * @returns {Promise<object|null>} sitio en conflicto, o null si está libre.
+ */
+async function ensureSerialAvailable(serialId, currentSiteId = null, scope = null) {
   if (!serialId) return null;
 
   const params = [serialId];
-  let query = 'SELECT id, descripcion FROM sitio WHERE id_serial = $1';
+  let query = 'SELECT id, descripcion, empresa_id, sub_empresa_id FROM sitio WHERE id_serial = $1';
 
   if (currentSiteId) {
     params.push(currentSiteId);
     query += ` AND id <> $${params.length}`;
+  }
+
+  if (scope && scope.empresaId && scope.subEmpresaId) {
+    params.push(scope.empresaId, scope.subEmpresaId);
+    query += ` AND NOT (empresa_id = $${params.length - 1} AND sub_empresa_id = $${params.length})`;
   }
 
   query += ' LIMIT 1';
@@ -1150,9 +1174,16 @@ exports.createSite = async (req, res, next) => {
       return notFound(res, 'Subempresa no encontrada para esa empresa.');
     }
 
-    const serialOwner = await ensureSerialAvailable(idSerial);
+    const serialOwner = await ensureSerialAvailable(idSerial, null, {
+      empresaId,
+      subEmpresaId,
+    });
     if (serialOwner) {
-      return conflict(res, `El serial ${idSerial} ya esta asignado al sitio ${serialOwner.id}.`);
+      return conflict(
+        res,
+        `El serial ${idSerial} ya esta asignado al sitio ${serialOwner.id}, de otra subempresa. ` +
+          'Un serial solo se puede compartir entre sitios de la misma subempresa.',
+      );
     }
 
     await client.query('BEGIN');
@@ -1259,12 +1290,23 @@ exports.updateSite = async (req, res, next) => {
       updates.push(`descripcion = $${params.length}`);
     }
 
-    if (idSerial) {
-      const serialOwner = await ensureSerialAvailable(idSerial, siteId);
-      if (serialOwner) {
-        return conflict(res, `El serial ${idSerial} ya esta asignado al sitio ${serialOwner.id}.`);
-      }
+    // El serial efectivo tras el update. Se valida SIEMPRE, no solo cuando
+    // cambia el serial: mover el sitio a otra subempresa también saca a un
+    // serial compartido de su alcance seguro.
+    const nextSerial = idSerial || site.id_serial;
+    const serialOwner = await ensureSerialAvailable(nextSerial, siteId, {
+      empresaId: nextEmpresaId,
+      subEmpresaId: nextSubEmpresaId,
+    });
+    if (serialOwner) {
+      return conflict(
+        res,
+        `El serial ${nextSerial} ya esta asignado al sitio ${serialOwner.id}, de otra subempresa. ` +
+          'Un serial solo se puede compartir entre sitios de la misma subempresa.',
+      );
+    }
 
+    if (idSerial) {
       params.push(idSerial);
       updates.push(`id_serial = $${params.length}`);
     }
@@ -1465,16 +1507,42 @@ exports.getDetectedDevices = async (req, res, next) => {
           WHEN lr.received_at IS NULL THEN NULL
           ELSE ROUND(EXTRACT(EPOCH FROM (lr.time - lr.received_at)))::int
         END AS desfase_segundos,
-        s.id AS sitio_id,
-        s.descripcion AS sitio_descripcion,
+        s.sitio_id,
+        s.sitio_descripcion,
         s.tipo_sitio,
         s.activo,
+        s.sitios,
+        s.sitios_count,
         s.empresa_id,
         e.nombre AS empresa_nombre,
         s.sub_empresa_id,
         se.nombre AS sub_empresa_nombre
       FROM last_row lr
-      LEFT JOIN sitio s ON s.id_serial = lr.id_serial
+      -- Un serial puede alimentar varios sitios de la misma subempresa (mismo
+      -- datalogger, reg_map distinto). Se agregan en una sola fila para que el
+      -- serial siga siendo la clave de la tabla; los campos escalares quedan
+      -- con el primer sitio y "sitios" trae la lista completa.
+      LEFT JOIN LATERAL (
+        SELECT
+          COUNT(*)::int                                     AS sitios_count,
+          (ARRAY_AGG(si.id ORDER BY si.id))[1]              AS sitio_id,
+          (ARRAY_AGG(si.descripcion ORDER BY si.id))[1]     AS sitio_descripcion,
+          (ARRAY_AGG(si.tipo_sitio ORDER BY si.id))[1]      AS tipo_sitio,
+          (ARRAY_AGG(si.activo ORDER BY si.id))[1]          AS activo,
+          (ARRAY_AGG(si.empresa_id ORDER BY si.id))[1]      AS empresa_id,
+          (ARRAY_AGG(si.sub_empresa_id ORDER BY si.id))[1]  AS sub_empresa_id,
+          JSONB_AGG(
+            JSONB_BUILD_OBJECT(
+              'id', si.id,
+              'descripcion', si.descripcion,
+              'tipo_sitio', si.tipo_sitio,
+              'activo', si.activo
+            )
+            ORDER BY si.id
+          ) AS sitios
+        FROM sitio si
+        WHERE si.id_serial = lr.id_serial
+      ) s ON TRUE
       LEFT JOIN empresa e ON e.id = s.empresa_id
       LEFT JOIN sub_empresa se ON se.id = s.sub_empresa_id
       ORDER BY lr.ultimo_registro DESC

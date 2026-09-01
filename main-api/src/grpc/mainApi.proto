@@ -20,6 +20,9 @@ message QueryRequest {
   string serial_id = 1;
   repeated string keys = 2;
   int32 limit = 3;
+  // Solo lo usa GetAvailableKeys: acota el equipo a una obra cuando un mismo
+  // datalogger alimenta varios sitios. Vacio = equipo completo.
+  string sitio_id = 4;
 }
 
 // Request especifico para consultas por preset temporal.

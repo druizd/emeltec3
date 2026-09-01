@@ -49,23 +49,57 @@ export async function listPozosActivos(): Promise<Site[]> {
   return result.rows;
 }
 
+const LATEST_EQUIPO_COLUMNS = 'time, received_at, id_serial, data';
+
+/**
+ * Ultima lectura cruda del equipo, en dos pasos acotados.
+ *
+ * Sin cota de `time`, TimescaleDB abre TODOS los chunks del hypertable (1 dia
+ * c/u, comprimidos despues de 7 dias) antes de devolver la fila: ~2s en reposo
+ * y por encima de los 10s de statement_timeout con la DB cargada. La ventana
+ * de 7 dias cubre a cualquier equipo que este reportando y toca solo chunks
+ * sin comprimir; si lleva mas tiempo mudo, el cagg `equipo_daily` nos da el
+ * ultimo dia con datos y leemos ese unico chunk. Mismo criterio que
+ * `attachLastSeenToSites` (incidente 2026-07-16) y que `loadLatestEquipoSample`
+ * del controller legacy.
+ */
 export async function getLatestEquipoForSerial(serialId: string): Promise<LatestEquipoRow | null> {
-  const result = await query<LatestEquipoRow>(
-    `
-    SELECT
-      time,
-      received_at,
-      id_serial,
-      data
-    FROM equipo
-    WHERE id_serial = $1
-    ORDER BY time DESC
-    LIMIT 1
-    `,
+  const recent = await query<LatestEquipoRow>(
+    `SELECT ${LATEST_EQUIPO_COLUMNS}
+       FROM equipo
+      WHERE id_serial = $1
+        AND time >= NOW() - INTERVAL '7 days'
+      ORDER BY time DESC
+      LIMIT 1`,
     [serialId],
-    { name: 'sites__latest_equipo' },
+    { name: 'sites__latest_equipo_recent' },
   );
-  return result.rows[0] ?? null;
+  if (recent.rows[0]) return recent.rows[0];
+
+  const lastBucket = await query<{ bucket: string | Date }>(
+    `SELECT bucket
+       FROM equipo_daily
+      WHERE id_serial = $1
+      ORDER BY bucket DESC
+      LIMIT 1`,
+    [serialId],
+    { name: 'sites__latest_equipo_bucket' },
+  );
+  const bucket = lastBucket.rows[0]?.bucket;
+  if (!bucket) return null;
+
+  const fallback = await query<LatestEquipoRow>(
+    `SELECT ${LATEST_EQUIPO_COLUMNS}
+       FROM equipo
+      WHERE id_serial = $1
+        AND time >= $2
+        AND time <  $2 + INTERVAL '1 day'
+      ORDER BY time DESC
+      LIMIT 1`,
+    [serialId, bucket],
+    { name: 'sites__latest_equipo_fallback' },
+  );
+  return fallback.rows[0] ?? null;
 }
 
 export async function getDashboardHistory(

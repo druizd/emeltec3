@@ -33,15 +33,15 @@ src/server.js          ← Entry point
 
 ### v2 — TypeScript (`/api/v2/*`)
 
-#### Telemetría (sin auth)
+#### Telemetría (requiere JWT + autorización de serial)
 
-| Método | Ruta                | Qué hace                                    |
-| ------ | ------------------- | ------------------------------------------- |
-| GET    | `/telemetry`        | Histórico por serial, keys, rango de fechas |
-| GET    | `/telemetry/latest` | Último valor por serial                     |
-| GET    | `/telemetry/online` | Seriales online ahora                       |
-| GET    | `/telemetry/preset` | Ventanas predefinidas (24h/7d/30d/365d)     |
-| GET    | `/telemetry/keys`   | Keys disponibles para un serial             |
+| Método | Ruta                | Qué hace                                     |
+| ------ | ------------------- | -------------------------------------------- |
+| GET    | `/telemetry`        | Histórico por serial, keys, rango de fechas  |
+| GET    | `/telemetry/latest` | Último valor por serial                      |
+| GET    | `/telemetry/online` | Seriales online ahora                        |
+| GET    | `/telemetry/preset` | Ventanas predefinidas (24h/7d/30d/365d)      |
+| GET    | `/telemetry/keys`   | Keys de un serial; `sitio_id` acota a 1 obra |
 
 #### Auth (sin auth)
 

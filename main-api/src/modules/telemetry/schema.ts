@@ -58,6 +58,18 @@ export const onlineQuerySchema = z.object({
   variables: keysField,
 });
 
+/**
+ * `/keys` acepta además `sitio_id` (alias `site_id`) para acotar el equipo a
+ * una obra. Va en su propio schema y no en onlineQuerySchema para no anunciar
+ * un parámetro que /online ignoraría.
+ */
+export const keysQuerySchema = z.object({
+  serial_id: serialField,
+  id_serial: serialField,
+  sitio_id: serialField,
+  site_id: serialField,
+});
+
 export const presetQuerySchema = z.object({
   serial_id: serialField,
   id_serial: serialField,
@@ -72,6 +84,7 @@ export const presetQuerySchema = z.object({
 
 export type HistoryQuery = z.infer<typeof historyQuerySchema>;
 export type OnlineQuery = z.infer<typeof onlineQuerySchema>;
+export type KeysQuery = z.infer<typeof keysQuerySchema>;
 export type PresetQuery = z.infer<typeof presetQuerySchema>;
 
 /** Une todos los aliases de keys en un array final único. */

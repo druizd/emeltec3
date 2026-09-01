@@ -15,6 +15,7 @@ const {
   registerVariableMetrics,
   getVariableMetrics,
 } = require('../services/metricsService');
+const { AVAILABLE_KEYS_SQL } = require('../services/availableKeysQuery');
 
 const PROTO_PATH = path.join(__dirname, 'mainApi.proto');
 
@@ -706,42 +707,12 @@ async function getAvailableKeys(call, callback) {
       return;
     }
 
-    const { rows } = await pool.query(
-      `
-      WITH mapped AS (
-        SELECT rm.d1 AS nombre_dato
-        FROM sitio s
-        JOIN reg_map rm ON rm.sitio_id = s.id
-        WHERE s.id_serial = $1
-          AND rm.d1 IS NOT NULL
-        UNION
-        SELECT rm.d2 AS nombre_dato
-        FROM sitio s
-        JOIN reg_map rm ON rm.sitio_id = s.id
-        WHERE s.id_serial = $1
-          AND rm.d2 IS NOT NULL
-      ),
-      latest AS (
-        SELECT data
-        FROM equipo
-        WHERE id_serial = $1
-        ORDER BY time DESC
-        LIMIT 1
-      ),
-      latest_keys AS (
-        SELECT jsonb_object_keys(data) AS nombre_dato
-        FROM latest
-      )
-      SELECT nombre_dato
-      FROM (
-        SELECT nombre_dato FROM mapped
-        UNION
-        SELECT nombre_dato FROM latest_keys
-      ) keys
-      ORDER BY nombre_dato ASC
-      `,
-      [serialId],
-    );
+    // Mismo contrato que GET /api/data/keys: sitio_id vacío = equipo completo
+    // (incluye claves crudas sin mapear); con sitio_id, solo el reg_map de esa
+    // obra. Un sitio de otro equipo no filtra nada: devuelve vacío.
+    const siteFilter = String(call.request.sitio_id || '').trim() || null;
+
+    const { rows } = await pool.query(AVAILABLE_KEYS_SQL, [serialId, siteFilter]);
     const keys = rows.map((row) => row.nombre_dato);
     const baseResponse = {
       ok: true,

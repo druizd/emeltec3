@@ -162,13 +162,16 @@ export async function getPreset(req: PresetRequest): Promise<PresetResult> {
   };
 }
 
-export async function getAvailableKeysFor(serialIdInput?: string): Promise<{
+export async function getAvailableKeysFor(
+  serialIdInput?: string,
+  siteId: string | null = null,
+): Promise<{
   serialId: string | null;
   keys: string[];
 }> {
   const serialId = await resolveSerial(serialIdInput);
   if (!serialId) return { serialId: null, keys: [] };
-  const keys = await findAvailableKeys(serialId);
+  const keys = await findAvailableKeys(serialId, siteId);
   return { serialId, keys };
 }
 
