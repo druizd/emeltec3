@@ -263,16 +263,39 @@ export async function computeMonthDeltaForVariable(opts: {
   // Lee desde cagg equipo_1min (bucket = 1 min, data = last(data, time) ya
   // pre-agregado). Equivalente a la query previa sobre equipo raw pero sin
   // decompress + sin agregacion on-the-fly.
+  //
+  // Proyecta SOLO los registros d1/d2 del mapping en vez del payload `data`
+  // completo: son los unicos que lee `applyMappingTransform`, y un mes son
+  // ~44k filas. Traer el JSONB entero significaba decenas de MB por variable
+  // sobre el socket + 44k objetos que parsear en node — con el worker barriendo
+  // todos los contadores eso saturaba la DB por minutos y tumbaba queries
+  // ajenas por statement_timeout. Los numeros no cambian: mismas claves,
+  // mismo transform.
+  //
+  // El `?` (existencia de clave) no es decorativo: `jsonb_build_object` sobre
+  // una clave ausente devuelve `null`, y `Number(null)` es 0 donde el objeto
+  // completo daba `undefined` → NaN. Esa diferencia inyectaria una muestra de
+  // 0 en un contador monotono, que el algoritmo leeria como reset. Con `?` la
+  // clave ausente sigue ausente y el JS ve exactamente lo de antes.
   const result = await query<{ time: string; data: Record<string, unknown> }>(
     `
-    SELECT bucket AS time, data
+    SELECT
+      bucket AS time,
+      CASE WHEN data ? $4::text
+             THEN jsonb_build_object($4::text, data -> $4::text)
+             ELSE '{}'::jsonb
+      END
+      || CASE WHEN $5::text IS NOT NULL AND data ? $5::text
+                THEN jsonb_build_object($5::text, data -> $5::text)
+                ELSE '{}'::jsonb
+         END AS data
     FROM equipo_1min
     WHERE id_serial = $1
       AND bucket >= $2::timestamptz
       AND bucket <  $3::timestamptz
     ORDER BY bucket ASC
     `,
-    [idSerial, start.toISOString(), end.toISOString()],
+    [idSerial, start.toISOString(), end.toISOString(), mapping.d1, mapping.d2 ?? null],
     { label: 'contadores__month_rows' },
   );
 
