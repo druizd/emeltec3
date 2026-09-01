@@ -244,6 +244,8 @@ export class CompanyService {
 
   companies = signal<Company[]>([]);
   hierarchy = signal<CompanyNode[]>([]);
+  /** Petición de árbol en vuelo, compartida entre llamadores concurrentes. */
+  private hierarchyInFlight: Observable<ApiResponse<CompanyNode[]>> | null = null;
   visibleHierarchy = computed<CompanyNode[]>(() =>
     this.applyPreviewScope(this.hierarchy(), this.auth.viewAsContext()),
   );
@@ -301,18 +303,37 @@ export class CompanyService {
     );
   }
 
+  /**
+   * El árbol lo piden en paralelo el sidebar y la página que se está montando,
+   * así que cada navegación disparaba dos GET idénticos (el `?t=` mata también
+   * el cacheo HTTP). Compartimos la petición EN VUELO: los que llegan mientras
+   * hay una corriendo se cuelgan de esa. Al completar se limpia, así que no hay
+   * TTL ni datos viejos — un `fetchHierarchy()` posterior vuelve a pegarle al
+   * backend, que es lo que esperan los llamadores que refrescan tras guardar.
+   */
   fetchHierarchy(): Observable<ApiResponse<CompanyNode[]>> {
+    if (this.hierarchyInFlight) return this.hierarchyInFlight;
+
     this.loading.set(true);
     // v2: mismo shape que el árbol v1 + last_seen_at y pozo_config por sitio.
     // Sin last_seen_at el dashboard pinta todo "Sin datos" (status pending).
-    return this.http.get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`).pipe(
-      tap((res) => {
-        if (res.ok) {
-          this.hierarchy.set(res.data);
-        }
-        this.loading.set(false);
-      }),
-    );
+    const request = this.http
+      .get<ApiResponse<CompanyNode[]>>(`/api/v2/companies/tree?t=${Date.now()}`)
+      .pipe(
+        tap((res) => {
+          if (res.ok) {
+            this.hierarchy.set(res.data);
+          }
+          this.loading.set(false);
+        }),
+        finalize(() => {
+          this.hierarchyInFlight = null;
+          this.loading.set(false);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false }),
+      );
+    this.hierarchyInFlight = request;
+    return request;
   }
 
   getSites(id: string): Observable<ApiResponse<SiteRecord[]>> {
