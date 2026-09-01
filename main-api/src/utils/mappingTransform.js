@@ -60,6 +60,40 @@ function parseMappingParams(value) {
   }
 }
 
+/** Anchos de registro soportados para el complemento a 2. */
+const SIGNED_BITS = new Set([8, 16, 32]);
+
+/**
+ * Reinterpreta un entero sin signo como complemento a 2 del ancho indicado.
+ * Un registro Modbus de 16 bits no puede llevar el signo, asi que el PLC manda
+ * -449 como 65087 (65536 - 449). Todo lo que pase de la mitad del rango es
+ * negativo.
+ */
+function applySignedWrap(value, bits) {
+  const modulo = 2 ** bits;
+  if (value < 0 || value >= modulo) {
+    // Fuera del rango sin signo el ancho configurado no corresponde. Fallar es
+    // preferible a devolver un numero plausible pero equivocado: el dashboard
+    // muestra el error y el dato no entra a contadores ni a DGA.
+    throw new Error(`${value} no cabe en un registro sin signo de ${bits} bits`);
+  }
+  return value >= modulo / 2 ? value - modulo : value;
+}
+
+/**
+ * Devuelve el crudo ya reinterpretado con signo si `con_signo` esta activo.
+ * `signo_bits` defaultea al ancho natural de la transformacion (16 para un
+ * registro suelto, 32 para el par combinado).
+ */
+function applySignedParam(value, params, defaultBits) {
+  if (!parseBooleanParam(params.con_signo, false)) return value;
+  const bits = numberOrNull(params.signo_bits) ?? defaultBits;
+  return applySignedWrap(
+    requireFiniteNumber(value, 'valor'),
+    SIGNED_BITS.has(bits) ? bits : defaultBits,
+  );
+}
+
 function applyLinearTransform(value, params = {}) {
   const base = requireFiniteNumber(value, 'valor');
   const factor = numberOrNull(params.factor) ?? 1;
@@ -78,12 +112,11 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
       return rawD1;
 
     case 'lineal':
-      return applyLinearTransform(rawD1, params);
+      return applyLinearTransform(applySignedParam(rawD1, params, 16), params);
 
     case 'lineal_int16': {
       const raw = requireFiniteNumber(rawD1, mapping.d1);
-      const signed = raw > 32767 ? raw - 65536 : raw;
-      return applyLinearTransform(signed, params);
+      return applyLinearTransform(applySignedWrap(raw, 16), params);
     }
 
     case 'ieee754_32': {
@@ -116,11 +149,11 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
       // Aplica factor + offset al uint32 combinado para permitir decimales
       // (ej. factor=0.01 corre 2 decimales). factor defaultea a 1 →
       // retrocompatible con configs que solo guardaban offset.
-      return applyLinearTransform(combinado, params);
+      return applyLinearTransform(applySignedParam(combinado, params, 32), params);
     }
 
     case 'nivel_freatico': {
-      const lecturaPozo = applyLinearTransform(rawD1, params);
+      const lecturaPozo = applyLinearTransform(applySignedParam(rawD1, params, 16), params);
       return calcularNivelFreatico({
         lecturaPozo,
         profundidadSensor: numberOrNull(pozoConfig?.profundidad_sensor_m),
@@ -129,7 +162,7 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
     }
 
     case 'caudal_m3h_lps': {
-      const caudalM3h = applyLinearTransform(rawD1, params);
+      const caudalM3h = applyLinearTransform(applySignedParam(rawD1, params, 16), params);
       return m3hALs(caudalM3h);
     }
 
@@ -144,6 +177,7 @@ function applyMappingTransform({ rawData, mapping, pozoConfig }) {
 module.exports = {
   applyMappingTransform,
   applyLinearTransform,
+  applySignedWrap,
   normalizeTransform,
   parseMappingParams,
   readRawValue,

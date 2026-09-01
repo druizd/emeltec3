@@ -35,6 +35,13 @@ interface VariableFormShape {
   offset: string;
   wordSwap: string;
   sandboxRaw: string;
+  escalaPorRango: string;
+  rangoRawMin: string;
+  rangoRawMax: string;
+  rangoIngMin: string;
+  rangoIngMax: string;
+  conSigno: string;
+  signoBits: string;
 }
 
 function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape {
@@ -52,6 +59,13 @@ function baseForm(overrides: Partial<VariableFormShape> = {}): VariableFormShape
     offset: '0',
     wordSwap: 'false',
     sandboxRaw: '',
+    escalaPorRango: 'false',
+    rangoRawMin: '4000',
+    rangoRawMax: '20000',
+    rangoIngMin: '0',
+    rangoIngMax: '',
+    conSigno: 'false',
+    signoBits: '16',
     ...overrides,
   };
 }
@@ -154,6 +168,271 @@ describe('SiteVariableSettingsPanelComponent · lógica de transformación', () 
       );
       component.variableForm.set(baseForm({ transformacion: 'ieee754_32' }));
       expect(component.previewResultText()).toContain('12,25');
+    });
+  });
+
+  describe('escala por rango (4-20 mA)', () => {
+    it('lineal persiste los cuatro extremos y el factor/offset derivado', () => {
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          escalaPorRango: 'true',
+          rangoRawMin: '4000',
+          rangoRawMax: '20000',
+          rangoIngMin: '0',
+          rangoIngMax: '20',
+        }),
+      );
+      const params = buildParams();
+      expect(params['modo_escala']).toBe('rango');
+      expect(params['raw_min']).toBe(4000);
+      expect(params['raw_max']).toBe(20000);
+      expect(params['ing_min']).toBe(0);
+      expect(params['ing_max']).toBe(20);
+      expect(params['factor']).toBeCloseTo(0.00125, 10);
+      expect(params['offset']).toBeCloseTo(-5, 10);
+    });
+
+    it('ieee754_32 con rango conserva word_swap y formato', () => {
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'ieee754_32',
+          wordSwap: 'true',
+          escalaPorRango: 'true',
+          rangoRawMin: '4',
+          rangoRawMax: '20',
+          rangoIngMin: '0',
+          rangoIngMax: '100',
+        }),
+      );
+      const params = buildParams();
+      expect(params['formato']).toBe('float32');
+      expect(params['word_swap']).toBe(true);
+      expect(params['modo_escala']).toBe('rango');
+      expect(params['factor']).toBeCloseTo(6.25, 10);
+      expect(params['offset']).toBeCloseTo(-25, 10);
+    });
+
+    it('rango incompleto cae a factor/offset manual y no persiste modo_escala', () => {
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          escalaPorRango: 'true',
+          rangoIngMax: '',
+          factor: '3',
+          offset: '7',
+        }),
+      );
+      const params = buildParams();
+      expect(params['modo_escala']).toBeUndefined();
+      expect(params['factor']).toBe(3);
+      expect(params['offset']).toBe(7);
+    });
+
+    it('rango bruto degenerado (min = max) no persiste escala por rango', () => {
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          escalaPorRango: 'true',
+          rangoRawMin: '4000',
+          rangoRawMax: '4000',
+          rangoIngMin: '0',
+          rangoIngMax: '20',
+        }),
+      );
+      expect(buildParams()['modo_escala']).toBeUndefined();
+    });
+
+    it('la escala por rango se ignora en transformaciones sin factor/offset', () => {
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'directo',
+          d2: '',
+          escalaPorRango: 'true',
+          rangoIngMax: '20',
+        }),
+      );
+      expect(component.useRangeScale()).toBe(false);
+      expect(buildParams()).toEqual({});
+    });
+
+    it('la vista previa convierte el crudo a unidades de ingenieria', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: 12000 }]));
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          unidad: 'bar',
+          escalaPorRango: 'true',
+          rangoIngMax: '20',
+        }),
+      );
+      expect(component.previewResultText()).toBe('10 bar');
+    });
+
+    it('extrapola sin recortar cuando el crudo sale del rango', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: 3200 }]));
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          unidad: 'bar',
+          escalaPorRango: 'true',
+          rangoIngMax: '20',
+        }),
+      );
+      expect(component.previewResultText()).toBe('-1 bar');
+    });
+
+    it('desactivar el rango deja el factor/offset derivado listo para editar a mano', () => {
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          escalaPorRango: 'true',
+          rangoIngMax: '20',
+        }),
+      );
+      component.toggleRangeScale(false);
+      expect(component.variableForm().factor).toBe('0.00125');
+      expect(component.variableForm().divisor).toBe('1');
+      expect(component.variableForm().offset).toBe('-5');
+    });
+
+    it('prepareVariableMap reconstruye el rango guardado', () => {
+      component.prepareVariableMap({
+        nombre_dato: 'REG_H',
+        valor_dato: 12000,
+        timestamp_completo: '2026-01-01 00:00',
+        mapping: {
+          id: 'M1',
+          alias: 'Presion',
+          d1: 'REG_H',
+          d2: null,
+          tipo_dato: 'FLOAT',
+          unidad: 'bar',
+          rol_dashboard: 'generico',
+          transformacion: 'lineal',
+          parametros: {
+            modo_escala: 'rango',
+            raw_min: 4000,
+            raw_max: 20000,
+            ing_min: 0,
+            ing_max: 20,
+            factor: 0.00125,
+            offset: -5,
+          },
+          sitio_id: 's1',
+        },
+      });
+      const form = component.variableForm();
+      expect(form.escalaPorRango).toBe('true');
+      expect(form.rangoRawMax).toBe('20000');
+      expect(form.rangoIngMax).toBe('20');
+      expect(component.useRangeScale()).toBe(true);
+    });
+  });
+
+  describe('valor con signo (complemento a 2)', () => {
+    it('lineal persiste con_signo y el ancho elegido', () => {
+      component.variableForm.set(baseForm({ transformacion: 'lineal', d2: '', conSigno: 'true' }));
+      const params = buildParams();
+      expect(params['con_signo']).toBe(true);
+      expect(params['signo_bits']).toBe(16);
+    });
+
+    it('uint32_registros fuerza 32 bits, sin importar el selector', () => {
+      component.variableForm.set(
+        baseForm({ transformacion: 'uint32_registros', conSigno: 'true', signoBits: '16' }),
+      );
+      const params = buildParams();
+      expect(params['con_signo']).toBe(true);
+      expect(params['signo_bits']).toBe(32);
+      expect(params['formato']).toBe('uint32');
+    });
+
+    it('ieee754_32 no ofrece la casilla ni persiste con_signo', () => {
+      component.variableForm.set(baseForm({ transformacion: 'ieee754_32', conSigno: 'true' }));
+      expect(component.usesSignedOption()).toBe(false);
+      expect(component.useSigned()).toBe(false);
+      expect(buildParams()['con_signo']).toBeUndefined();
+    });
+
+    it('la casilla apagada no ensucia parametros', () => {
+      component.variableForm.set(baseForm({ transformacion: 'lineal', d2: '' }));
+      expect(buildParams()['con_signo']).toBeUndefined();
+      expect(buildParams()['signo_bits']).toBeUndefined();
+    });
+
+    it('la vista previa lee 65087 como -449', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: 65087 }]));
+      component.variableForm.set(baseForm({ transformacion: 'lineal', d2: '', conSigno: 'true' }));
+      expect(component.previewResultText()).toBe('-449');
+    });
+
+    it('la vista previa avisa cuando el crudo no cabe en el ancho', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: 549087 }]));
+      component.variableForm.set(baseForm({ transformacion: 'lineal', d2: '', conSigno: 'true' }));
+      expect(component.previewResultText()).toContain('no cabe en 16 bits');
+    });
+
+    it('32 bits corre el corte y 549087 queda positivo', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: 549087 }]));
+      component.variableForm.set(
+        baseForm({ transformacion: 'lineal', d2: '', conSigno: 'true', signoBits: '32' }),
+      );
+      expect(component.previewResultText()).toBe('549.087');
+    });
+
+    it('el signo se aplica antes de la escala por rango', () => {
+      component.siteVariables.set(variablesPayload([{ nombre_dato: 'REG_H', valor_dato: 65087 }]));
+      component.variableForm.set(
+        baseForm({
+          transformacion: 'lineal',
+          d2: '',
+          unidad: 'bar',
+          conSigno: 'true',
+          escalaPorRango: 'true',
+          rangoIngMax: '20',
+        }),
+      );
+      // -449 * 0.00125 - 5 = -5,56125
+      expect(component.previewResultText()).toBe('-5,5613 bar');
+      const params = buildParams();
+      expect(params['con_signo']).toBe(true);
+      expect(params['modo_escala']).toBe('rango');
+    });
+
+    it('cambiar a una transformacion sin registro crudo apaga la casilla', () => {
+      component.variableForm.set(baseForm({ transformacion: 'lineal', d2: '', conSigno: 'true' }));
+      component.updateVariableTransform('ieee754_32');
+      expect(component.variableForm().conSigno).toBe('false');
+    });
+
+    it('prepareVariableMap reconstruye el signo guardado', () => {
+      component.prepareVariableMap({
+        nombre_dato: 'REG_H',
+        valor_dato: 65087,
+        timestamp_completo: '2026-01-01 00:00',
+        mapping: {
+          id: 'M2',
+          alias: 'Temperatura',
+          d1: 'REG_H',
+          d2: null,
+          tipo_dato: 'FLOAT',
+          unidad: 'C',
+          rol_dashboard: 'generico',
+          transformacion: 'lineal',
+          parametros: { con_signo: true, signo_bits: 16, factor: 0.1, offset: 0 },
+          sitio_id: 's1',
+        },
+      });
+      expect(component.variableForm().conSigno).toBe('true');
+      expect(component.variableForm().signoBits).toBe('16');
+      expect(component.useSigned()).toBe(true);
     });
   });
 });
