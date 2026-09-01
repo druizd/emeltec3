@@ -31,7 +31,12 @@ import {
   type ReviewSlotRow,
   type UltimoEnvioRow,
 } from './repo';
-import { getMappingsBySiteId, getPozoConfigBySiteId, getSiteById } from '../sites/repo';
+import {
+  getLatestEquipoForSerial,
+  getMappingsBySiteId,
+  getPozoConfigBySiteId,
+  getSiteById,
+} from '../sites/repo';
 import { mapHistoricalDashboardRow } from '../sites/service';
 import { query as dbQuery } from '../../config/dbHelpers';
 import { formatRutForDga } from '../../utils/rut';
@@ -601,21 +606,15 @@ export async function getDgaLivePreview(siteId: string): Promise<DgaLivePreview>
     };
   }
 
-  const [pozoConfig, mappings, latestRes] = await Promise.all([
+  const [pozoConfig, mappings, latest] = await Promise.all([
     getPozoConfigBySiteId(siteId),
     getMappingsBySiteId(siteId),
-    dbQuery<HistoryEquipoRow>(
-      `SELECT time, received_at, id_serial, data
-         FROM equipo
-        WHERE id_serial = $1
-        ORDER BY time DESC
-        LIMIT 1`,
-      [site.id_serial],
-      { name: 'dga__latest_equipo' },
-    ),
+    // El query propio (`ORDER BY time DESC LIMIT 1` sin cota temporal) abria
+    // todos los chunks del hypertable y se comia el statement_timeout: 500 en
+    // cada poll del modal. El helper de sites ya resuelve esto acotado.
+    getLatestEquipoForSerial(site.id_serial),
   ]);
 
-  const latest = latestRes.rows[0];
   if (!latest) {
     return {
       ts: null,
