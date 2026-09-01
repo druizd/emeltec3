@@ -25,6 +25,7 @@ import {
   SiteVariable,
   SiteVariablesPayload,
   VariableMapping,
+  VariableParameters,
 } from '../../../services/administration.service';
 import { getSiteTypeUi } from '../../../shared/site-type-ui';
 import { SkeletonComponent } from '../../../components/ui/skeleton';
@@ -48,6 +49,16 @@ interface VariableForm {
   offset: string;
   wordSwap: string;
   sandboxRaw: string;
+  /** 'true' cuando el técnico configura la escala por rango en vez de factor/offset. */
+  escalaPorRango: string;
+  /** 'true' cuando el registro trae el valor en complemento a 2. */
+  conSigno: string;
+  /** Ancho del registro para el complemento a 2: '16' o '32'. */
+  signoBits: string;
+  rangoRawMin: string;
+  rangoRawMax: string;
+  rangoIngMin: string;
+  rangoIngMax: string;
 }
 
 interface PozoConfigForm {
@@ -69,6 +80,14 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   offset: '0',
   wordSwap: 'false',
   sandboxRaw: '',
+  escalaPorRango: 'false',
+  conSigno: 'false',
+  signoBits: '16',
+  // 4-20 mA llega del PLC como 4000-20000 en la mayoría de los equipos.
+  rangoRawMin: '4000',
+  rangoRawMax: '20000',
+  rangoIngMin: '0',
+  rangoIngMax: '',
 };
 
 const DEFAULT_POZO_CONFIG_FORM: PozoConfigForm = {
@@ -107,6 +126,22 @@ const COMMON_TRANSFORMS: SiteTypeTransformOption[] = [
     requiresD2: true,
   },
 ];
+
+/** Ayuda de las casillas que no son transformaciones, para el popover "?". */
+const EXTRA_OPTION_HELP = [
+  {
+    title: 'Valor con signo (complemento a 2)',
+    description:
+      'Marcala cuando la variable pueda ser negativa (temperatura, presión de vacío, nivel bajo la referencia). Un registro Modbus no lleva signo, así que el PLC manda el negativo sumándole 65536: todo lo que pase de 32767 es en realidad negativo. Elegí 32 bits solo si el equipo entrega el valor de 32 bits en un único dato.',
+    example: '65087 → -449 · 65535 → -1 · 32768 → -32768',
+  },
+  {
+    title: 'Escalar por rango (señal analógica)',
+    description:
+      'Marcala cuando el PLC entrega la señal en unidades brutas en vez de unidades de ingeniería. Un 4-20 mA suele llegar como 4000-20000: escribí ese rango y el rango real del instrumento, y el factor se calcula solo. Fuera del rango se extrapola, así que un lazo cortado se ve como negativo en vez de como un cero legítimo.',
+    example: '4000 → 0 bar · 20000 → 20 bar · 3200 → -1 bar',
+  },
+] as const;
 
 const DEFAULT_SITE_TYPE_CATALOG: SiteTypeCatalogResponse = {
   generico: {
@@ -364,6 +399,23 @@ function emptyVariables(): SiteVariablesPayload {
                             </div>
                           }
                         </dl>
+
+                        <p
+                          class="mb-2 mt-3 border-t border-slate-100 pt-3 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
+                        >
+                          Casillas de ajuste
+                        </p>
+                        <dl class="space-y-2">
+                          @for (extra of extraOptionHelp; track extra.title) {
+                            <div>
+                              <dt class="font-semibold text-slate-700">{{ extra.title }}</dt>
+                              <dd class="text-slate-500">{{ extra.description }}</dd>
+                              <dd class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                                {{ extra.example }}
+                              </dd>
+                            </div>
+                          }
+                        </dl>
                       </div>
                     </details>
                   </div>
@@ -497,7 +549,157 @@ function emptyVariables(): SiteVariablesPayload {
                 </div>
               </div>
 
-              @if (isLinearTransform()) {
+              @if (usesSignedOption()) {
+                <label
+                  class="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-tint-15 bg-primary-tint-08 px-3 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    name="settings-variable-signed-toggle"
+                    [ngModel]="useSigned()"
+                    (ngModelChange)="toggleSigned($event)"
+                    class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+                  />
+                  <span class="min-w-0">
+                    <span class="block text-caption font-bold text-slate-700">
+                      Valor con signo (complemento a 2)
+                    </span>
+                    <span class="block text-caption font-semibold text-slate-500">
+                      Marcala cuando la variable pueda ser negativa. El registro no lleva signo, así
+                      que el PLC manda -449 como 65087 y sin esto lo verías como 65087.
+                    </span>
+                  </span>
+                </label>
+              }
+
+              @if (useSigned()) {
+                <div class="space-y-2 rounded-lg border border-primary-tint-15 bg-white p-3">
+                  @if (isLinearTransform()) {
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Ancho del registro</label
+                      >
+                      <select
+                        name="settings-variable-signed-bits"
+                        [ngModel]="variableForm().signoBits"
+                        (ngModelChange)="updateVariableForm('signoBits', $event)"
+                        class="field-control bg-white"
+                      >
+                        <option value="16">16 bits · un registro (0 a 65535)</option>
+                        <option value="32">32 bits · valor de 32 bits en un solo dato</option>
+                      </select>
+                    </div>
+                  }
+                  <p class="text-caption-xs text-slate-500">{{ signedSummary() }}</p>
+                </div>
+              }
+
+              @if (usesScaleTransform()) {
+                <label
+                  class="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-tint-15 bg-primary-tint-08 px-3 py-2"
+                >
+                  <input
+                    type="checkbox"
+                    name="settings-variable-range-toggle"
+                    [ngModel]="useRangeScale()"
+                    (ngModelChange)="toggleRangeScale($event)"
+                    class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+                  />
+                  <span class="min-w-0">
+                    <span class="block text-caption font-bold text-slate-700">
+                      Escalar por rango (señal analógica)
+                    </span>
+                    <span class="block text-caption font-semibold text-slate-500">
+                      El PLC entrega la señal en unidades brutas: un 4-20 mA suele llegar como
+                      4000-20000. Definí los dos rangos y el factor se calcula solo.
+                    </span>
+                  </span>
+                </label>
+              }
+
+              @if (useRangeScale()) {
+                <div class="space-y-3 rounded-lg border border-primary-tint-15 bg-white p-3">
+                  <div>
+                    <p
+                      class="mb-1 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                    >
+                      Señal bruta del equipo
+                    </p>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Mínimo</label
+                        >
+                        <input
+                          type="number"
+                          step="any"
+                          name="settings-variable-range-raw-min"
+                          [ngModel]="variableForm().rangoRawMin"
+                          (ngModelChange)="updateVariableForm('rangoRawMin', $event)"
+                          class="field-control bg-white"
+                          placeholder="4000"
+                        />
+                      </div>
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Máximo</label
+                        >
+                        <input
+                          type="number"
+                          step="any"
+                          name="settings-variable-range-raw-max"
+                          [ngModel]="variableForm().rangoRawMax"
+                          (ngModelChange)="updateVariableForm('rangoRawMax', $event)"
+                          class="field-control bg-white"
+                          placeholder="20000"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p
+                      class="mb-1 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                    >
+                      Unidades de ingeniería{{ rangeUnitSuffix() }}
+                    </p>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Mínimo</label
+                        >
+                        <input
+                          type="number"
+                          step="any"
+                          name="settings-variable-range-eng-min"
+                          [ngModel]="variableForm().rangoIngMin"
+                          (ngModelChange)="updateVariableForm('rangoIngMin', $event)"
+                          class="field-control bg-white"
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Máximo</label
+                        >
+                        <input
+                          type="number"
+                          step="any"
+                          name="settings-variable-range-eng-max"
+                          [ngModel]="variableForm().rangoIngMax"
+                          (ngModelChange)="updateVariableForm('rangoIngMax', $event)"
+                          class="field-control bg-white"
+                          placeholder="20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <p class="text-caption-xs text-slate-500">{{ rangeScaleSummary() }}</p>
+                </div>
+              }
+
+              @if (isLinearTransform() && !useRangeScale()) {
                 <div class="grid grid-cols-3 gap-3">
                   <div>
                     <label class="mb-1 block text-caption font-bold text-slate-500"
@@ -546,7 +748,7 @@ function emptyVariables(): SiteVariablesPayload {
                 </p>
               }
 
-              @if (isUint32TransformSelected()) {
+              @if (isUint32TransformSelected() && !useRangeScale()) {
                 <div class="grid grid-cols-3 gap-3">
                   <div>
                     <label class="mb-1 block text-caption font-bold text-slate-500"
@@ -597,7 +799,7 @@ function emptyVariables(): SiteVariablesPayload {
                 </p>
               }
 
-              @if (isIeeeTransformSelected()) {
+              @if (isIeeeTransformSelected() && !useRangeScale()) {
                 <div class="grid grid-cols-3 gap-3">
                   <div>
                     <label class="mb-1 block text-caption font-bold text-slate-500"
@@ -948,6 +1150,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   /** Fires when the user clicks the optional DGA reporte header button. */
   @Output() openDgaReporte = new EventEmitter<void>();
 
+  /** Ayuda de las casillas de ajuste, renderizada en el popover "?". */
+  readonly extraOptionHelp = EXTRA_OPTION_HELP;
+
   private api = inject(AdministrationService);
 
   inputSite = signal<SiteRecord | null>(null);
@@ -1071,12 +1276,108 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       factor: this.usesScaleTransformValue(normalized) ? current.factor || '1' : '1',
       divisor: this.usesScaleTransformValue(normalized) ? current.divisor || '1' : '1',
       offset: this.usesScaleTransformValue(normalized) ? current.offset || '0' : '0',
+      escalaPorRango: this.usesScaleTransformValue(normalized) ? current.escalaPorRango : 'false',
+      conSigno: this.usesSignedOptionValue(normalized) ? current.conSigno : 'false',
     }));
+  }
+
+  /**
+   * Transforms sobre un entero crudo, donde el complemento a 2 tiene sentido.
+   * ieee754_32 queda fuera: el float ya trae el signo en su propio formato.
+   */
+  usesSignedOption(): boolean {
+    return this.usesSignedOptionValue(this.variableForm().transformacion);
+  }
+
+  useSigned(): boolean {
+    return this.variableForm().conSigno === 'true' && this.usesSignedOption();
+  }
+
+  toggleSigned(enabled: boolean): void {
+    this.variableForm.update((current) => ({ ...current, conSigno: enabled ? 'true' : 'false' }));
+  }
+
+  /** 32 para el par combinado (el uint32 es de 32 bits por construcción); si no, lo elegido. */
+  signedBits(): number {
+    if (this.variableForm().transformacion === 'uint32_registros') return 32;
+    return this.toNumber(this.variableForm().signoBits) === 32 ? 32 : 16;
+  }
+
+  signedSummary(): string {
+    const bits = this.signedBits();
+    const limite = 2 ** (bits - 1);
+    const corte = `Todo lo que pase de ${this.formatPreviewNumber(limite - 1)} se lee como negativo (se le resta ${this.formatPreviewNumber(2 ** bits)}).`;
+    if (this.variableForm().transformacion === 'uint32_registros') {
+      return `El par de registros combinado son 32 bits. ${corte}`;
+    }
+    const crudo = this.signedSourceValue();
+    if (crudo === null) return corte;
+    const convertido = this.applySignedWrap(crudo, bits);
+    if (convertido === null) {
+      return `El crudo en vivo (${this.formatPreviewNumber(crudo)}) no cabe en ${bits} bits. Revisá el ancho del registro.`;
+    }
+    return `${corte} Ahora mismo: ${this.formatPreviewNumber(crudo)} → ${this.formatPreviewNumber(convertido)}.`;
+  }
+
+  /** Transforms que aplican factor/offset y por lo tanto admiten escala por rango. */
+  usesScaleTransform(): boolean {
+    return this.usesScaleTransformValue(this.variableForm().transformacion);
+  }
+
+  useRangeScale(): boolean {
+    return this.variableForm().escalaPorRango === 'true' && this.usesScaleTransform();
+  }
+
+  toggleRangeScale(enabled: boolean): void {
+    this.variableForm.update((current) => ({
+      ...current,
+      escalaPorRango: enabled ? 'true' : 'false',
+      // Al volver a factor/offset se muestran los derivados del rango, para que
+      // el técnico vea de dónde salieron y pueda ajustarlos a mano.
+      ...(enabled
+        ? {}
+        : (() => {
+            const scale = this.rangeScaleParams();
+            if (!scale) return {};
+            return {
+              factor: this.formatScaleNumber(scale.factor),
+              divisor: '1',
+              offset: this.formatScaleNumber(scale.offset),
+            };
+          })()),
+    }));
+  }
+
+  rangeUnitSuffix(): string {
+    const unidad = this.variableForm().unidad.trim();
+    return unidad ? ` (${unidad})` : '';
+  }
+
+  rangeScaleSummary(): string {
+    const form = this.variableForm();
+    const scale = this.rangeScaleParams();
+    if (!scale) {
+      return this.toNumber(form.rangoRawMin) === this.toNumber(form.rangoRawMax)
+        ? 'El mínimo y el máximo brutos no pueden ser iguales.'
+        : 'Completá los cuatro valores para calcular la escala.';
+    }
+    const unidad = form.unidad.trim() ? ` ${form.unidad.trim()}` : '';
+    return (
+      `${form.rangoRawMin} → ${form.rangoIngMin}${unidad} · ` +
+      `${form.rangoRawMax} → ${form.rangoIngMax}${unidad}. ` +
+      `Equivale a factor ${this.formatScaleNumber(scale.factor)} y offset ` +
+      `${this.formatScaleNumber(scale.offset)}. Los valores fuera del rango se extrapolan.`
+    );
   }
 
   saveVariableMap(event: Event): void {
     event.preventDefault();
     if (!this.siteId) return;
+
+    if (this.useRangeScale() && !this.rangeScaleParams()) {
+      this.setError(this.rangeScaleSummary());
+      return;
+    }
 
     const form = this.variableForm();
     const payload: CreateVariableMapPayload = {
@@ -1130,6 +1431,15 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       wordSwap: String(params?.word_swap ?? params?.wordSwap ?? false),
       // sandboxRaw is no longer an editable input; calculator reads from d1 live value.
       sandboxRaw: '',
+      // El rango es lo que el técnico escribió; factor/offset son su derivada.
+      // Sin estas cuatro llaves solo veríamos un factor 0.00125 sin contexto.
+      escalaPorRango: params?.modo_escala === 'rango' ? 'true' : 'false',
+      rangoRawMin: this.configNumberToString(params?.raw_min) || DEFAULT_VARIABLE_FORM.rangoRawMin,
+      rangoRawMax: this.configNumberToString(params?.raw_max) || DEFAULT_VARIABLE_FORM.rangoRawMax,
+      rangoIngMin: this.configNumberToString(params?.ing_min) || DEFAULT_VARIABLE_FORM.rangoIngMin,
+      rangoIngMax: this.configNumberToString(params?.ing_max),
+      conSigno: params?.con_signo === true ? 'true' : 'false',
+      signoBits: this.toNumber(this.configNumberToString(params?.signo_bits)) === 32 ? '32' : '16',
     });
   }
 
@@ -1248,12 +1558,12 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       return form.d1 ? 'Sin lectura reciente del equipo' : 'Selecciona registro d1';
     }
 
+    const { factor, offset } = this.effectiveScale();
+
     if (this.isLinearTransformValue(form.transformacion)) {
-      const raw = this.toNumber(rawText);
-      const factor = this.toNumber(form.factor) ?? 1;
-      const offset = this.toNumber(form.offset) ?? 0;
-      if (raw === null) return 'Valor crudo no numérico';
-      return `${this.formatPreviewNumber((raw * factor) / this.safeDivisor(form.divisor) + offset)}${unit}`;
+      const raw = this.signedOrRaw(this.toNumber(rawText));
+      if (raw === null) return this.rawPreviewError(this.toNumber(rawText));
+      return `${this.formatPreviewNumber(raw * factor + offset)}${unit}`;
     }
 
     if (form.transformacion === 'ieee754_32') {
@@ -1263,9 +1573,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       if (decoded === null) {
         return form.d2 ? 'Registros no numéricos' : 'Selecciona segundo registro';
       }
-      const factor = this.toNumber(form.factor) ?? 1;
-      const offset = this.toNumber(form.offset) ?? 0;
-      return `${this.formatPreviewNumber((decoded * factor) / this.safeDivisor(form.divisor) + offset)}${unit}`;
+      return `${this.formatPreviewNumber(decoded * factor + offset)}${unit}`;
     }
 
     if (form.transformacion === 'uint32_registros') {
@@ -1276,10 +1584,9 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       }
       const high = form.wordSwap === 'true' ? rawB : rawA;
       const low = form.wordSwap === 'true' ? rawA : rawB;
-      const factor = this.toNumber(form.factor) ?? 1;
-      const offset = this.toNumber(form.offset) ?? 0;
-      const combinado = high * 65536 + low;
-      return `${this.formatPreviewNumber((combinado * factor) / this.safeDivisor(form.divisor) + offset)}${unit}`;
+      const combinado = this.signedOrRaw(high * 65536 + low);
+      if (combinado === null) return this.rawPreviewError(high * 65536 + low);
+      return `${this.formatPreviewNumber(combinado * factor + offset)}${unit}`;
     }
 
     return `${rawText}${unit}`;
@@ -1321,27 +1628,125 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
         // uint32_registros e ieee754_32 aplican factor/offset sobre el valor
         // combinado/decodificado. Mismo split UI factor/divisor que lineal: el
         // backend solo conoce factor, divisor es ayuda de UI para decimales.
+        ...this.signedParameters(),
         ...(this.usesScaleTransformValue(form.transformacion)
-          ? {
+          ? (this.rangeScaleParameters() ?? {
               factor: (this.toNumber(form.factor) ?? 1) / this.safeDivisor(form.divisor),
               offset: this.toNumber(form.offset) ?? 0,
-            }
+            })
           : {}),
       };
     }
 
     if (this.isLinearTransformValue(form.transformacion)) {
+      const signo = this.signedParameters();
+      const rango = this.rangeScaleParameters();
+      if (rango) return { ...signo, ...rango };
       // Persisted factor = factor_ui / divisor_ui. The BD doesn't know about
       // "divisor" — the UI split only makes it easier to type decimals
       // (ex. divisor=100 instead of factor=0.01).
       const factor = this.toNumber(form.factor) ?? 1;
       return {
+        ...signo,
         factor: factor / this.safeDivisor(form.divisor),
         offset: this.toNumber(form.offset) ?? 0,
       };
     }
 
     return {};
+  }
+
+  /**
+   * `parametros` del complemento a 2. Se omite entero cuando la casilla está
+   * apagada para no ensuciar los mappings que ya existen.
+   */
+  private signedParameters(): VariableParameters {
+    if (!this.useSigned()) return {};
+    return { con_signo: true, signo_bits: this.signedBits() };
+  }
+
+  /** El crudo que alimenta el resumen del signo: d1 en vivo. */
+  private signedSourceValue(): number | null {
+    const value = this.valueForVariableKey(this.variableForm().d1);
+    return typeof value === 'number' || typeof value === 'string' ? this.toNumber(value) : null;
+  }
+
+  /**
+   * Espejo de `applySignedWrap` de main-api/src/utils/mappingTransform.js.
+   * Devuelve null si el valor no cabe en el ancho elegido: ahí el ancho está
+   * mal y mostrar un número plausible sería peor que mostrar el error.
+   */
+  private applySignedWrap(value: number, bits: number): number | null {
+    const modulo = 2 ** bits;
+    if (value < 0 || value >= modulo) return null;
+    return value >= modulo / 2 ? value - modulo : value;
+  }
+
+  /** Aplica el complemento a 2 si la casilla está activa; si no, pasa el crudo. */
+  private signedOrRaw(value: number | null): number | null {
+    if (value === null) return null;
+    if (!this.useSigned()) return value;
+    return this.applySignedWrap(value, this.signedBits());
+  }
+
+  private rawPreviewError(raw: number | null): string {
+    if (raw === null) return 'Valor crudo no numérico';
+    return `${this.formatPreviewNumber(raw)} no cabe en ${this.signedBits()} bits`;
+  }
+
+  /**
+   * Convierte el rango bruto → rango de ingeniería en la recta que ya entiende
+   * el backend. Devuelve null si falta algún valor o si el rango bruto es
+   * degenerado (mín = máx), porque ahí la pendiente sería infinita.
+   */
+  private rangeScaleParams(): { factor: number; offset: number } | null {
+    const form = this.variableForm();
+    const rawMin = this.toNumber(form.rangoRawMin);
+    const rawMax = this.toNumber(form.rangoRawMax);
+    const ingMin = this.toNumber(form.rangoIngMin);
+    const ingMax = this.toNumber(form.rangoIngMax);
+    if (rawMin === null || rawMax === null || ingMin === null || ingMax === null) return null;
+    const span = rawMax - rawMin;
+    if (span === 0) return null;
+    const factor = (ingMax - ingMin) / span;
+    return { factor, offset: ingMin - rawMin * factor };
+  }
+
+  /**
+   * `parametros` cuando el rango está activo: guarda los cuatro extremos que
+   * escribió el técnico Y el factor/offset derivado. El backend solo lee
+   * factor/offset (mappingTransform.js), así que el pipeline no cambia.
+   */
+  private rangeScaleParameters(): VariableParameters | null {
+    if (!this.useRangeScale()) return null;
+    const scale = this.rangeScaleParams();
+    if (!scale) return null;
+    const form = this.variableForm();
+    return {
+      modo_escala: 'rango',
+      raw_min: this.toNumber(form.rangoRawMin),
+      raw_max: this.toNumber(form.rangoRawMax),
+      ing_min: this.toNumber(form.rangoIngMin),
+      ing_max: this.toNumber(form.rangoIngMax),
+      factor: scale.factor,
+      offset: scale.offset,
+    };
+  }
+
+  /** Escala que se aplica realmente: la del rango si está activo, si no factor/divisor/offset. */
+  private effectiveScale(): { factor: number; offset: number } {
+    const rango = this.useRangeScale() ? this.rangeScaleParams() : null;
+    if (rango) return rango;
+    const form = this.variableForm();
+    return {
+      factor: (this.toNumber(form.factor) ?? 1) / this.safeDivisor(form.divisor),
+      offset: this.toNumber(form.offset) ?? 0,
+    };
+  }
+
+  /** Como formatPreviewNumber pero sin agrupar y con precisión para factores chicos. */
+  private formatScaleNumber(value: number): string {
+    return String(Number(value.toPrecision(12)));
   }
 
   /** Divisor seguro: ignora 0/negativos/no-numéricos → 1 (no-op). */
@@ -1372,6 +1777,11 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
   private isLinearTransformValue(transformId: string): boolean {
     return transformId === 'lineal' || transformId === 'escala_lineal';
+  }
+
+  /** Transforms sobre un entero crudo, donde el complemento a 2 aplica. */
+  private usesSignedOptionValue(transformId: string): boolean {
+    return this.isLinearTransformValue(transformId) || transformId === 'uint32_registros';
   }
 
   /** Transforms que aceptan factor/divisor/offset: lineal, uint32_registros e ieee754_32. */

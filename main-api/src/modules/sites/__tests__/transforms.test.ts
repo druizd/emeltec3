@@ -64,6 +64,89 @@ describe('applyMappingTransform · ieee754_32 con dos registros', () => {
   });
 });
 
+describe('applyMappingTransform · complemento a 2 (con_signo)', () => {
+  function lineal(parametros: Record<string, unknown>, raw: number) {
+    return applyMappingTransform({
+      rawData: { REG1: raw },
+      mapping: baseMapping({ transformacion: 'lineal', d2: null, parametros }),
+    });
+  }
+
+  it('sin con_signo el crudo pasa tal cual (retrocompatible)', () => {
+    expect(lineal({}, 65087)).toBe(65087);
+  });
+
+  it('con_signo lee 65087 como -449', () => {
+    expect(lineal({ con_signo: true }, 65087)).toBe(-449);
+  });
+
+  it('el ultimo positivo de 16 bits no se toca', () => {
+    expect(lineal({ con_signo: true }, 32767)).toBe(32767);
+  });
+
+  it('el primer negativo de 16 bits es -32768', () => {
+    expect(lineal({ con_signo: true }, 32768)).toBe(-32768);
+  });
+
+  it('el signo se aplica antes del factor y el offset', () => {
+    // 65087 -> -449, luego -449 * 0.1 + 5 = -39.9
+    expect(lineal({ con_signo: true, factor: 0.1, offset: 5 }, 65087)).toBeCloseTo(-39.9, 6);
+  });
+
+  it('falla si el crudo no cabe en el ancho configurado', () => {
+    expect(() => lineal({ con_signo: true }, 549087)).toThrow(/no cabe en un registro sin signo/);
+  });
+
+  it('signo_bits=32 corre el corte a 2.147.483.647', () => {
+    expect(lineal({ con_signo: true, signo_bits: 32 }, 549087)).toBe(549087);
+    expect(lineal({ con_signo: true, signo_bits: 32 }, 4294966747)).toBe(-549);
+  });
+
+  it('un signo_bits invalido cae al ancho por defecto', () => {
+    expect(lineal({ con_signo: true, signo_bits: 17 }, 65087)).toBe(-449);
+  });
+
+  it('uint32_registros usa 32 bits por defecto', () => {
+    const out = applyMappingTransform({
+      rawData: { REG1: 65535, REG2: 65535 },
+      mapping: baseMapping({
+        transformacion: 'uint32_registros',
+        parametros: { con_signo: true },
+      }),
+    });
+    expect(out).toBe(-1);
+  });
+
+  it('uint32_registros sin con_signo mantiene el valor sin signo', () => {
+    const out = applyMappingTransform({
+      rawData: { REG1: 65535, REG2: 65535 },
+      mapping: baseMapping({ transformacion: 'uint32_registros' }),
+    });
+    expect(out).toBe(4294967295);
+  });
+
+  it('la escala por rango opera sobre el valor ya con signo', () => {
+    // factor/offset derivados de 4000-20000 -> 0-20 bar; 65087 -> -449 -> -5.56 bar
+    const out = applyMappingTransform({
+      rawData: { REG1: 65087 },
+      mapping: baseMapping({
+        transformacion: 'lineal',
+        d2: null,
+        parametros: {
+          con_signo: true,
+          modo_escala: 'rango',
+          raw_min: 4000,
+          raw_max: 20000,
+          ing_min: 0,
+          ing_max: 20,
+          factor: 0.00125,
+          offset: -5,
+        },
+      }),
+    });
+    expect(out).toBeCloseTo(-5.56125, 5);
+  });
+});
 describe('applyMappingTransform · ieee754_32 con hex de un registro', () => {
   // 0x41CC0000 = 25.5 en float32 BE
   const rawData = { REG1: '41CC0000' };
