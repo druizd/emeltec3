@@ -12,7 +12,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { forkJoin } from 'rxjs';
+import { catchError, concatMap, forkJoin, from, map, of, toArray } from 'rxjs';
 import {
   AdministrationService,
   CreateVariableMapPayload,
@@ -33,6 +33,26 @@ import { SkeletonComponent } from '../../../components/ui/skeleton';
 interface SettingsStatus {
   type: 'success' | 'error' | '';
   message: string;
+}
+
+/** Una celda del grid de bits: su índice, su estado en vivo y si está elegida. */
+interface BitCell {
+  index: number;
+  estado: '0' | '1' | '–';
+  selected: boolean;
+  title: string;
+}
+
+/**
+ * Una fila del cargador masivo. Solo guarda lo que el técnico escribe: si el
+ * bit ya está mapeado se resuelve en vivo contra `siteVariables()`
+ * (`bitBulkExistente`), para que al recargar tras un guardado parcial las
+ * creadas queden bloqueadas solas y las que fallaron conserven su alias.
+ */
+interface BitBulkRow {
+  bit: number;
+  alias: string;
+  invertido: boolean;
 }
 
 interface VariableForm {
@@ -59,6 +79,14 @@ interface VariableForm {
   rangoRawMax: string;
   rangoIngMin: string;
   rangoIngMax: string;
+  /** Índice del bit a separar (0 = el menos significativo). */
+  bitIndex: string;
+  /** Ancho de la palabra que se separa en bits: '16' o '32'. */
+  palabraBits: string;
+  /** 'true' cuando la señal es activa en 0 (un térmico sano suele leer 1). */
+  bitInvertido: string;
+  etiquetaOn: string;
+  etiquetaOff: string;
 }
 
 interface PozoConfigForm {
@@ -88,6 +116,11 @@ const DEFAULT_VARIABLE_FORM: VariableForm = {
   rangoRawMax: '20000',
   rangoIngMin: '0',
   rangoIngMax: '',
+  bitIndex: '0',
+  palabraBits: '16',
+  bitInvertido: 'false',
+  etiquetaOn: '',
+  etiquetaOff: '',
 };
 
 const DEFAULT_POZO_CONFIG_FORM: PozoConfigForm = {
@@ -107,6 +140,13 @@ const COMMON_TRANSFORMS: SiteTypeTransformOption[] = [
     label: 'Lineal',
     description:
       'Aplica resultado = raw × factor ÷ divisor + offset. Ejemplo: si el equipo envía 1234 y quieres mostrar 12.34, usa divisor = 100.',
+    enabled: true,
+  },
+  {
+    id: 'bit',
+    label: 'Señal digital (un bit de la palabra)',
+    description:
+      'Separa un bit de un registro donde cada bit es una señal 0/1: marcha, falla, límite de carrera. Se crea una variable por bit — todas comparten el mismo dato original y solo cambia el número de bit.',
     enabled: true,
   },
   {
@@ -140,6 +180,39 @@ const EXTRA_OPTION_HELP = [
     description:
       'Marcala cuando el PLC entrega la señal en unidades brutas en vez de unidades de ingeniería. Un 4-20 mA suele llegar como 4000-20000: escribí ese rango y el rango real del instrumento, y el factor se calcula solo. Fuera del rango se extrapola, así que un lazo cortado se ve como negativo en vez de como un cero legítimo.',
     example: '4000 → 0 bar · 20000 → 20 bar · 3200 → -1 bar',
+  },
+] as const;
+
+/**
+ * Ayuda de la transformación por bit, en el popover "?". Va aparte de
+ * EXTRA_OPTION_HELP porque no es una casilla de ajuste sino un modo de trabajo
+ * completo, y porque lo que más confunde en terreno no es la casilla sino cómo
+ * se numeran los bits y en qué formato tiene que llegar la palabra.
+ */
+const BIT_HELP = [
+  {
+    title: '¿Qué es una señal digital?',
+    description:
+      'Hay registros donde el valor no es una medición sino un paquete de contactos: cada bit es una entrada independiente que vale 1 o 0 (bomba andando, térmico disparado, límite de carrera tocado). Se crea una variable por bit, con su propio nombre, y todas comparten el mismo dato original.',
+    example: 'La palabra 0000000000000111 son tres señales activas: los bits 0, 1 y 2.',
+  },
+  {
+    title: 'Cómo se numeran los bits',
+    description:
+      'El bit 0 es el de más a la derecha (el menos significativo) y el 15 el de más a la izquierda. Muchos manuales de PLC numeran las entradas del 1 al 16: en ese caso restale 1. Si tenés dudas, accioná la señal en terreno y mirá qué celda del cuadro cambia de 0 a 1.',
+    example: 'Entrada 1 del manual → bit 0 · Entrada 16 → bit 15',
+  },
+  {
+    title: 'La palabra tiene que llegar en decimal',
+    description:
+      'El equipo debe reportar el número, no la cadena de ceros y unos. Si el valor crudo solo tiene ceros y unos (1000, 10101) el equipo está mandando la palabra en binario y la plataforma la lee como un decimal enorme: eso se corrige en el equipo, no acá.',
+    example: 'Bien: 7 · Mal: 111, que es 0000000000000111 leído como decimal.',
+  },
+  {
+    title: 'Señal activa en 0',
+    description:
+      'Los contactos normalmente cerrados marcan 1 cuando todo está bien y 0 cuando hay falla. Marcá "Señal activa en 0" para darla vuelta y que la variable valga 1 justo cuando querés que se vea la falla.',
+    example: 'Térmico sano = bit en 1 → invertida, la variable vale 0 (sin falla).',
   },
 ] as const;
 
@@ -341,589 +414,876 @@ function emptyVariables(): SiteVariablesPayload {
               </section>
             }
 
-            <form
-              (submit)="saveVariableMap($event)"
-              class="space-y-4 rounded-xl border border-slate-200 bg-white p-4"
-            >
-              <div>
-                <p class="text-body-sm font-semibold text-slate-900">Variables del equipo</p>
-                <p class="mt-1 text-caption font-semibold text-slate-500">
-                  Se guardan directamente en este sitio, sin seleccionar equipo.
-                </p>
-              </div>
-
-              <div class="space-y-3">
-                <div>
-                  <label class="mb-1 block text-caption font-bold text-slate-500"
-                    >Dato original</label
-                  >
-                  <select
-                    required
-                    name="settings-variable-key"
-                    [ngModel]="variableForm().d1"
-                    (ngModelChange)="selectVariableKey($event)"
-                    class="field-control bg-white"
-                  >
-                    <option value="" disabled>Selecciona variable</option>
-                    @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                      <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
-                    }
-                  </select>
-                </div>
-
-                <div>
-                  <div class="mb-1 flex items-center justify-between gap-2">
-                    <label class="block text-caption font-bold text-slate-500"
-                      >Transformación</label
-                    >
-                    <details class="group relative">
-                      <summary
-                        class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-caption-xs font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        aria-label="Ver todas las transformaciones disponibles"
-                      >
-                        ?
-                      </summary>
-                      <div
-                        class="absolute right-0 top-7 z-10 w-80 rounded-xl border border-slate-200 bg-white p-3 text-caption shadow-lg"
-                      >
-                        <p
-                          class="mb-2 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
-                        >
-                          Tipos de transformación
-                        </p>
-                        <dl class="space-y-2">
-                          @for (transform of variableTransformOptions(); track transform.id) {
-                            <div>
-                              <dt class="font-semibold text-slate-700">{{ transform.label }}</dt>
-                              <dd class="text-slate-500">{{ transform.description }}</dd>
-                            </div>
-                          }
-                        </dl>
-
-                        <p
-                          class="mb-2 mt-3 border-t border-slate-100 pt-3 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
-                        >
-                          Casillas de ajuste
-                        </p>
-                        <dl class="space-y-2">
-                          @for (extra of extraOptionHelp; track extra.title) {
-                            <div>
-                              <dt class="font-semibold text-slate-700">{{ extra.title }}</dt>
-                              <dd class="text-slate-500">{{ extra.description }}</dd>
-                              <dd class="mt-0.5 font-mono text-caption-xs text-slate-400">
-                                {{ extra.example }}
-                              </dd>
-                            </div>
-                          }
-                        </dl>
-                      </div>
-                    </details>
-                  </div>
-                  <select
-                    name="settings-variable-transform"
-                    [ngModel]="variableForm().transformacion"
-                    (ngModelChange)="updateVariableTransform($event)"
-                    class="field-control bg-white"
-                  >
-                    @for (transform of variableTransformOptions(); track transform.id) {
-                      <option [value]="transform.id">{{ transform.label }}</option>
-                    }
-                  </select>
-                  @if (selectedVariableTransform()?.description) {
-                    <p class="mt-1 text-caption font-semibold text-slate-500">
-                      {{ selectedVariableTransform()?.description }}
+            @if (bitBulkOpen()) {
+              <section class="space-y-3 rounded-xl border border-primary-tint-25 bg-white p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-body-sm font-semibold text-slate-900">
+                      Señales digitales de {{ bitBulkD1() }}
                     </p>
-                  }
+                    <p class="mt-1 text-caption font-semibold text-slate-500">
+                      Escribí el alias de las entradas que uses. Las que dejes en blanco no se
+                      crean, y las que ya están configuradas aparecen bloqueadas — para cambiarlas,
+                      editalas una por una.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="closeBitBulk()"
+                    class="icon-button shrink-0"
+                    aria-label="Cerrar el cargador"
+                  >
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                      >close</span
+                    >
+                  </button>
                 </div>
 
-                @if (requiresSecondRegister()) {
-                  <div class="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Segundo registro</label
+                <ul class="divide-y divide-slate-100">
+                  @for (row of bitBulkRows(); track row.bit) {
+                    <li class="grid grid-cols-[2rem_1.75rem_minmax(0,1fr)] items-center gap-2 py-1">
+                      <span class="text-caption font-bold tabular-nums text-slate-400">
+                        {{ row.bit }}
+                      </span>
+                      <span [class]="bitBulkEstadoClass(row.bit)">{{
+                        bitBulkEstado(row.bit)
+                      }}</span>
+                      @if (bitBulkExistente(row.bit); as existente) {
+                        <span class="flex min-w-0 items-center gap-1.5">
+                          <span
+                            class="material-symbols-outlined text-[16px] text-slate-400"
+                            aria-hidden="true"
+                            >lock</span
+                          >
+                          <span class="min-w-0 truncate text-caption font-semibold text-slate-500">
+                            {{ existente.alias }}
+                          </span>
+                        </span>
+                      } @else {
+                        <span class="flex min-w-0 items-center gap-2">
+                          <input
+                            [ngModel]="row.alias"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="updateBitBulkAlias(row.bit, $event)"
+                            class="field-control bg-white py-1.5"
+                            [attr.aria-label]="'Alias del bit ' + row.bit"
+                            [placeholder]="'Entrada ' + row.bit"
+                          />
+                          <label
+                            class="flex shrink-0 cursor-pointer items-center gap-1 text-caption-xs font-bold text-slate-500"
+                            [title]="'Invertir el bit ' + row.bit + ' (señal activa en 0)'"
+                          >
+                            <input
+                              type="checkbox"
+                              [ngModel]="row.invertido"
+                              [ngModelOptions]="{ standalone: true }"
+                              (ngModelChange)="toggleBitBulkInvertido(row.bit, $event)"
+                              class="h-3.5 w-3.5 accent-[var(--color-primary)]"
+                            />
+                            INV
+                          </label>
+                        </span>
+                      }
+                    </li>
+                  }
+                </ul>
+
+                <p class="text-caption-xs text-slate-500">{{ bitBulkSummary() }}</p>
+
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <button type="button" (click)="closeBitBulk()" class="secondary-button">
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    (click)="saveBitBulk()"
+                    [disabled]="busy() === 'bits-bulk' || !bitBulkPendientes()"
+                    class="primary-button"
+                  >
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                      >label</span
+                    >
+                    {{ busy() === 'bits-bulk' ? 'Creando' : 'Crear señales' }}
+                  </button>
+                </div>
+              </section>
+            } @else {
+              <form
+                (submit)="saveVariableMap($event)"
+                class="space-y-4 rounded-xl border border-slate-200 bg-white p-4"
+              >
+                <div>
+                  <p class="text-body-sm font-semibold text-slate-900">Variables del equipo</p>
+                  <p class="mt-1 text-caption font-semibold text-slate-500">
+                    Se guardan directamente en este sitio, sin seleccionar equipo.
+                  </p>
+                </div>
+
+                <div class="space-y-3">
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                      >Dato original</label
+                    >
+                    <select
+                      required
+                      name="settings-variable-key"
+                      [ngModel]="variableForm().d1"
+                      (ngModelChange)="selectVariableKey($event)"
+                      class="field-control bg-white"
+                    >
+                      <option value="" disabled>Selecciona variable</option>
+                      @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                        <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div>
+                    <div class="mb-1 flex items-center justify-between gap-2">
+                      <label class="block text-caption font-bold text-slate-500"
+                        >Transformación</label
                       >
-                      <select
-                        name="settings-variable-key-d2"
-                        [ngModel]="variableForm().d2"
-                        (ngModelChange)="updateVariableForm('d2', $event)"
-                        class="field-control bg-white"
-                      >
-                        <option value="">Selecciona variable</option>
-                        @for (variable of siteVariables().variables; track variable.nombre_dato) {
-                          <option [value]="variable.nombre_dato">{{ variable.nombre_dato }}</option>
-                        }
-                      </select>
+                      <details class="group relative">
+                        <summary
+                          class="flex h-5 w-5 cursor-pointer items-center justify-center rounded-full border border-slate-200 text-caption-xs font-bold text-slate-400 hover:border-primary hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                          aria-label="Ver todas las transformaciones disponibles"
+                        >
+                          ?
+                        </summary>
+                        <div
+                          class="absolute right-0 top-7 z-10 max-h-[70vh] w-80 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 text-caption shadow-lg"
+                        >
+                          <p
+                            class="mb-2 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
+                          >
+                            Tipos de transformación
+                          </p>
+                          <dl class="space-y-2">
+                            @for (transform of variableTransformOptions(); track transform.id) {
+                              <div>
+                                <dt class="font-semibold text-slate-700">{{ transform.label }}</dt>
+                                <dd class="text-slate-500">{{ transform.description }}</dd>
+                              </div>
+                            }
+                          </dl>
+
+                          <p
+                            class="mb-2 mt-3 border-t border-slate-100 pt-3 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
+                          >
+                            Senales digitales (bits)
+                          </p>
+                          <dl class="space-y-2">
+                            @for (ayuda of bitHelp; track ayuda.title) {
+                              <div>
+                                <dt class="font-semibold text-slate-700">{{ ayuda.title }}</dt>
+                                <dd class="text-slate-500">{{ ayuda.description }}</dd>
+                                <dd class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                                  {{ ayuda.example }}
+                                </dd>
+                              </div>
+                            }
+                          </dl>
+
+                          <p
+                            class="mb-2 mt-3 border-t border-slate-100 pt-3 text-caption-xs font-bold uppercase tracking-[0.1em] text-slate-400"
+                          >
+                            Casillas de ajuste
+                          </p>
+                          <dl class="space-y-2">
+                            @for (extra of extraOptionHelp; track extra.title) {
+                              <div>
+                                <dt class="font-semibold text-slate-700">{{ extra.title }}</dt>
+                                <dd class="text-slate-500">{{ extra.description }}</dd>
+                                <dd class="mt-0.5 font-mono text-caption-xs text-slate-400">
+                                  {{ extra.example }}
+                                </dd>
+                              </div>
+                            }
+                          </dl>
+                        </div>
+                      </details>
                     </div>
-                    @if (usesRegisterOrder()) {
+                    <select
+                      name="settings-variable-transform"
+                      [ngModel]="variableForm().transformacion"
+                      (ngModelChange)="updateVariableTransform($event)"
+                      class="field-control bg-white"
+                    >
+                      @for (transform of variableTransformOptions(); track transform.id) {
+                        <option [value]="transform.id">{{ transform.label }}</option>
+                      }
+                    </select>
+                    @if (selectedVariableTransform()?.description) {
+                      <p class="mt-1 text-caption font-semibold text-slate-500">
+                        {{ selectedVariableTransform()?.description }}
+                      </p>
+                    }
+                  </div>
+
+                  @if (requiresSecondRegister()) {
+                    <div class="grid gap-3 sm:grid-cols-2">
                       <div>
                         <label class="mb-1 block text-caption font-bold text-slate-500"
-                          >Orden de registros</label
+                          >Segundo registro</label
                         >
                         <select
-                          name="settings-variable-word-swap"
-                          [ngModel]="variableForm().wordSwap"
-                          (ngModelChange)="updateVariableForm('wordSwap', $event)"
+                          name="settings-variable-key-d2"
+                          [ngModel]="variableForm().d2"
+                          (ngModelChange)="updateVariableForm('d2', $event)"
                           class="field-control bg-white"
                         >
-                          @if (isUint32TransformSelected()) {
-                            <option value="true">Invertido CDAB</option>
-                            <option value="false">Normal ABCD</option>
-                          } @else {
-                            <option value="false">Normal ABCD</option>
-                            <option value="true">Invertido CDAB</option>
+                          <option value="">Selecciona variable</option>
+                          @for (variable of siteVariables().variables; track variable.nombre_dato) {
+                            <option [value]="variable.nombre_dato">
+                              {{ variable.nombre_dato }}
+                            </option>
                           }
                         </select>
-                        <p class="mt-1 text-caption font-semibold text-slate-500">
-                          {{ registerOrderHint() }}
+                      </div>
+                      @if (usesRegisterOrder()) {
+                        <div>
+                          <label class="mb-1 block text-caption font-bold text-slate-500"
+                            >Orden de registros</label
+                          >
+                          <select
+                            name="settings-variable-word-swap"
+                            [ngModel]="variableForm().wordSwap"
+                            (ngModelChange)="updateVariableForm('wordSwap', $event)"
+                            class="field-control bg-white"
+                          >
+                            @if (isUint32TransformSelected()) {
+                              <option value="true">Invertido CDAB</option>
+                              <option value="false">Normal ABCD</option>
+                            } @else {
+                              <option value="false">Normal ABCD</option>
+                              <option value="true">Invertido CDAB</option>
+                            }
+                          </select>
+                          <p class="mt-1 text-caption font-semibold text-slate-500">
+                            {{ registerOrderHint() }}
+                          </p>
+                        </div>
+                      } @else {
+                        <div
+                          class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-caption font-semibold text-primary-container"
+                        >
+                          Fórmula: {{ variableForm().d1 || 'primer registro' }} *
+                          {{ variableForm().d2 || 'segundo registro' }}
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <div>
+                  <label class="mb-1 block text-caption font-bold text-slate-500">Alias</label>
+                  <input
+                    required
+                    name="settings-variable-alias"
+                    [ngModel]="variableForm().alias"
+                    (ngModelChange)="updateVariableForm('alias', $event)"
+                    class="field-control bg-white"
+                    placeholder="Nivel, caudal, energía"
+                  />
+                </div>
+
+                @if (isBitTransform()) {
+                  <p class="text-caption font-semibold text-slate-500">
+                    Uso en dashboard: genérico. Los roles (caudal, nivel, totalizador) son
+                    magnitudes analógicas y un 0/1 metido ahí entraría a los contadores y a DGA como
+                    si fuera una medición.
+                  </p>
+                } @else {
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                      >Uso en dashboard</label
+                    >
+                    <select
+                      name="settings-variable-role"
+                      [ngModel]="variableForm().rol_dashboard"
+                      (ngModelChange)="updateVariableRole($event)"
+                      class="field-control bg-white"
+                    >
+                      @for (role of variableRoleOptions(); track role.id) {
+                        <option [value]="role.id">{{ role.label }}</option>
+                      }
+                    </select>
+                    @if (selectedVariableRole()?.description) {
+                      <p class="mt-1 text-caption font-semibold text-slate-500">
+                        {{ selectedVariableRole()?.description }}
+                      </p>
+                    }
+                  </div>
+                }
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Tipo</label>
+                    <select
+                      name="settings-variable-type"
+                      [ngModel]="variableForm().tipo_dato"
+                      (ngModelChange)="updateVariableForm('tipo_dato', $event)"
+                      class="field-control bg-white"
+                    >
+                      <option value="FLOAT">FLOAT</option>
+                      <option value="INTEGER">INTEGER</option>
+                      <option value="BOOLEAN">BOOLEAN</option>
+                      <option value="TEXT">TEXT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500">Unidad</label>
+                    <input
+                      name="settings-variable-unit"
+                      [ngModel]="variableForm().unidad"
+                      (ngModelChange)="updateVariableForm('unidad', $event)"
+                      class="field-control bg-white"
+                      placeholder="kWh, %, V"
+                    />
+                  </div>
+                </div>
+
+                @if (isBitTransform()) {
+                  <div
+                    class="space-y-3 rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3"
+                  >
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="text-caption font-bold text-slate-700">Bit de la palabra</p>
+                        <p class="text-caption font-semibold text-slate-500">
+                          Elegí el bit que corresponde a esta señal. El bit 0 es el menos
+                          significativo (abajo a la derecha); si el manual del PLC los numera desde
+                          1, restale 1.
                         </p>
                       </div>
-                    } @else {
-                      <div
-                        class="rounded-md border border-primary-tint-15 bg-primary-tint-08 px-3 py-2 text-caption font-semibold text-primary-container"
+                      <select
+                        name="settings-variable-word-bits"
+                        [ngModel]="variableForm().palabraBits"
+                        (ngModelChange)="updateWordBits($event)"
+                        class="field-control w-28 shrink-0 bg-white"
+                        aria-label="Ancho de la palabra"
                       >
-                        Fórmula: {{ variableForm().d1 || 'primer registro' }} *
-                        {{ variableForm().d2 || 'segundo registro' }}
+                        <option value="16">16 bits</option>
+                        <option value="32">32 bits</option>
+                      </select>
+                    </div>
+
+                    <!-- 8 columnas = un byte por fila, con el más significativo arriba a la
+                       izquierda: así se lee igual que el binario del manual. -->
+                    <div class="grid grid-cols-8 gap-1">
+                      @for (cell of bitCells(); track cell.index) {
+                        <button
+                          type="button"
+                          (click)="selectBit(cell.index)"
+                          [class]="bitCellClass(cell)"
+                          [attr.aria-pressed]="cell.selected"
+                          [attr.aria-label]="cell.title"
+                          [title]="cell.title"
+                        >
+                          <span class="text-caption-xs font-bold tabular-nums opacity-70">{{
+                            cell.index
+                          }}</span>
+                          <span class="font-mono text-body-sm font-bold leading-none">{{
+                            cell.estado
+                          }}</span>
+                        </button>
+                      }
+                    </div>
+
+                    <label class="flex cursor-pointer items-start gap-2">
+                      <input
+                        type="checkbox"
+                        name="settings-variable-bit-inverted"
+                        [ngModel]="variableForm().bitInvertido === 'true'"
+                        (ngModelChange)="toggleBitInvertido($event)"
+                        class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+                      />
+                      <span class="min-w-0">
+                        <span class="block text-caption font-bold text-slate-700">
+                          Señal activa en 0 (invertir)
+                        </span>
+                        <span class="block text-caption font-semibold text-slate-500">
+                          Para los contactos normalmente cerrados: un térmico sano lee 1 y lo que
+                          querés mostrar como falla es el 0.
+                        </span>
+                      </span>
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Etiqueta en 1</label
+                        >
+                        <input
+                          name="settings-variable-bit-label-on"
+                          [ngModel]="variableForm().etiquetaOn"
+                          (ngModelChange)="updateVariableForm('etiquetaOn', $event)"
+                          class="field-control bg-white"
+                          placeholder="Activo"
+                        />
+                      </div>
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Etiqueta en 0</label
+                        >
+                        <input
+                          name="settings-variable-bit-label-off"
+                          [ngModel]="variableForm().etiquetaOff"
+                          (ngModelChange)="updateVariableForm('etiquetaOff', $event)"
+                          class="field-control bg-white"
+                          placeholder="Inactivo"
+                        />
+                      </div>
+                    </div>
+
+                    <p class="text-caption-xs text-slate-500">{{ bitSummary() }}</p>
+
+                    <button
+                      type="button"
+                      (click)="openBitBulk()"
+                      [disabled]="!variableForm().d1"
+                      class="secondary-button flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                        >list_alt_add</span
+                      >
+                      Cargar las {{ bitWordWidth() }} de una
+                    </button>
+
+                    @if (bitMappingsForCurrentKey().length) {
+                      <div class="rounded-md border border-slate-200 bg-white px-2 py-1.5">
+                        <p
+                          class="mb-1 text-caption-xs font-bold uppercase tracking-[0.12em] text-slate-400"
+                        >
+                          Bits ya configurados en {{ variableForm().d1 }}
+                        </p>
+                        <ul class="divide-y divide-slate-100">
+                          @for (item of bitMappingsForCurrentKey(); track item.mapping.id) {
+                            <li class="flex items-center justify-between gap-2 py-1">
+                              <span
+                                class="min-w-0 truncate text-caption font-semibold text-slate-600"
+                              >
+                                <span class="font-mono font-bold text-slate-400">{{
+                                  item.bit
+                                }}</span>
+                                · {{ item.mapping.alias }}
+                              </span>
+                              <span class="flex shrink-0 items-center gap-1">
+                                <button
+                                  type="button"
+                                  (click)="editBitMapping(item.mapping)"
+                                  class="icon-button h-7 w-7"
+                                  [attr.aria-label]="'Editar ' + item.mapping.alias"
+                                >
+                                  <span
+                                    class="material-symbols-outlined text-[16px]"
+                                    aria-hidden="true"
+                                    >edit</span
+                                  >
+                                </button>
+                                <button
+                                  type="button"
+                                  (click)="deleteVariableMap(item.mapping)"
+                                  class="icon-button h-7 w-7 text-red-500"
+                                  [attr.aria-label]="'Eliminar ' + item.mapping.alias"
+                                >
+                                  <span
+                                    class="material-symbols-outlined text-[16px]"
+                                    aria-hidden="true"
+                                    >delete</span
+                                  >
+                                </button>
+                              </span>
+                            </li>
+                          }
+                        </ul>
                       </div>
                     }
                   </div>
                 }
-              </div>
 
-              <div>
-                <label class="mb-1 block text-caption font-bold text-slate-500">Alias</label>
-                <input
-                  required
-                  name="settings-variable-alias"
-                  [ngModel]="variableForm().alias"
-                  (ngModelChange)="updateVariableForm('alias', $event)"
-                  class="field-control bg-white"
-                  placeholder="Nivel, caudal, energía"
-                />
-              </div>
-
-              <div>
-                <label class="mb-1 block text-caption font-bold text-slate-500"
-                  >Uso en dashboard</label
-                >
-                <select
-                  name="settings-variable-role"
-                  [ngModel]="variableForm().rol_dashboard"
-                  (ngModelChange)="updateVariableRole($event)"
-                  class="field-control bg-white"
-                >
-                  @for (role of variableRoleOptions(); track role.id) {
-                    <option [value]="role.id">{{ role.label }}</option>
-                  }
-                </select>
-                @if (selectedVariableRole()?.description) {
-                  <p class="mt-1 text-caption font-semibold text-slate-500">
-                    {{ selectedVariableRole()?.description }}
-                  </p>
-                }
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="mb-1 block text-caption font-bold text-slate-500">Tipo</label>
-                  <select
-                    name="settings-variable-type"
-                    [ngModel]="variableForm().tipo_dato"
-                    (ngModelChange)="updateVariableForm('tipo_dato', $event)"
-                    class="field-control bg-white"
+                @if (usesSignedOption()) {
+                  <label
+                    class="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-tint-15 bg-primary-tint-08 px-3 py-2"
                   >
-                    <option value="FLOAT">FLOAT</option>
-                    <option value="INTEGER">INTEGER</option>
-                    <option value="BOOLEAN">BOOLEAN</option>
-                    <option value="TEXT">TEXT</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="mb-1 block text-caption font-bold text-slate-500">Unidad</label>
-                  <input
-                    name="settings-variable-unit"
-                    [ngModel]="variableForm().unidad"
-                    (ngModelChange)="updateVariableForm('unidad', $event)"
-                    class="field-control bg-white"
-                    placeholder="kWh, %, V"
-                  />
-                </div>
-              </div>
-
-              @if (usesSignedOption()) {
-                <label
-                  class="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-tint-15 bg-primary-tint-08 px-3 py-2"
-                >
-                  <input
-                    type="checkbox"
-                    name="settings-variable-signed-toggle"
-                    [ngModel]="useSigned()"
-                    (ngModelChange)="toggleSigned($event)"
-                    class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
-                  />
-                  <span class="min-w-0">
-                    <span class="block text-caption font-bold text-slate-700">
-                      Valor con signo (complemento a 2)
+                    <input
+                      type="checkbox"
+                      name="settings-variable-signed-toggle"
+                      [ngModel]="useSigned()"
+                      (ngModelChange)="toggleSigned($event)"
+                      class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+                    />
+                    <span class="min-w-0">
+                      <span class="block text-caption font-bold text-slate-700">
+                        Valor con signo (complemento a 2)
+                      </span>
+                      <span class="block text-caption font-semibold text-slate-500">
+                        Marcala cuando la variable pueda ser negativa. El registro no lleva signo,
+                        así que el PLC manda -449 como 65087 y sin esto lo verías como 65087.
+                      </span>
                     </span>
-                    <span class="block text-caption font-semibold text-slate-500">
-                      Marcala cuando la variable pueda ser negativa. El registro no lleva signo, así
-                      que el PLC manda -449 como 65087 y sin esto lo verías como 65087.
-                    </span>
-                  </span>
-                </label>
-              }
+                  </label>
+                }
 
-              @if (useSigned()) {
-                <div class="space-y-2 rounded-lg border border-primary-tint-15 bg-white p-3">
-                  @if (isLinearTransform()) {
+                @if (useSigned()) {
+                  <div class="space-y-2 rounded-lg border border-primary-tint-15 bg-white p-3">
+                    @if (isLinearTransform()) {
+                      <div>
+                        <label class="mb-1 block text-caption font-bold text-slate-500"
+                          >Ancho del registro</label
+                        >
+                        <select
+                          name="settings-variable-signed-bits"
+                          [ngModel]="variableForm().signoBits"
+                          (ngModelChange)="updateVariableForm('signoBits', $event)"
+                          class="field-control bg-white"
+                        >
+                          <option value="16">16 bits · un registro (0 a 65535)</option>
+                          <option value="32">32 bits · valor de 32 bits en un solo dato</option>
+                        </select>
+                      </div>
+                    }
+                    <p class="text-caption-xs text-slate-500">{{ signedSummary() }}</p>
+                  </div>
+                }
+
+                @if (usesScaleTransform()) {
+                  <label
+                    class="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-tint-15 bg-primary-tint-08 px-3 py-2"
+                  >
+                    <input
+                      type="checkbox"
+                      name="settings-variable-range-toggle"
+                      [ngModel]="useRangeScale()"
+                      (ngModelChange)="toggleRangeScale($event)"
+                      class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
+                    />
+                    <span class="min-w-0">
+                      <span class="block text-caption font-bold text-slate-700">
+                        Escalar por rango (señal analógica)
+                      </span>
+                      <span class="block text-caption font-semibold text-slate-500">
+                        El PLC entrega la señal en unidades brutas: un 4-20 mA suele llegar como
+                        4000-20000. Definí los dos rangos y el factor se calcula solo.
+                      </span>
+                    </span>
+                  </label>
+                }
+
+                @if (useRangeScale()) {
+                  <div class="space-y-3 rounded-lg border border-primary-tint-15 bg-white p-3">
+                    <div>
+                      <p
+                        class="mb-1 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                      >
+                        Señal bruta del equipo
+                      </p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="mb-1 block text-caption font-bold text-slate-500"
+                            >Mínimo</label
+                          >
+                          <input
+                            type="number"
+                            step="any"
+                            name="settings-variable-range-raw-min"
+                            [ngModel]="variableForm().rangoRawMin"
+                            (ngModelChange)="updateVariableForm('rangoRawMin', $event)"
+                            class="field-control bg-white"
+                            placeholder="4000"
+                          />
+                        </div>
+                        <div>
+                          <label class="mb-1 block text-caption font-bold text-slate-500"
+                            >Máximo</label
+                          >
+                          <input
+                            type="number"
+                            step="any"
+                            name="settings-variable-range-raw-max"
+                            [ngModel]="variableForm().rangoRawMax"
+                            (ngModelChange)="updateVariableForm('rangoRawMax', $event)"
+                            class="field-control bg-white"
+                            placeholder="20000"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p
+                        class="mb-1 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                      >
+                        Unidades de ingeniería{{ rangeUnitSuffix() }}
+                      </p>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div>
+                          <label class="mb-1 block text-caption font-bold text-slate-500"
+                            >Mínimo</label
+                          >
+                          <input
+                            type="number"
+                            step="any"
+                            name="settings-variable-range-eng-min"
+                            [ngModel]="variableForm().rangoIngMin"
+                            (ngModelChange)="updateVariableForm('rangoIngMin', $event)"
+                            class="field-control bg-white"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label class="mb-1 block text-caption font-bold text-slate-500"
+                            >Máximo</label
+                          >
+                          <input
+                            type="number"
+                            step="any"
+                            name="settings-variable-range-eng-max"
+                            [ngModel]="variableForm().rangoIngMax"
+                            (ngModelChange)="updateVariableForm('rangoIngMax', $event)"
+                            class="field-control bg-white"
+                            placeholder="20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <p class="text-caption-xs text-slate-500">{{ rangeScaleSummary() }}</p>
+                  </div>
+                }
+
+                @if (isLinearTransform() && !useRangeScale()) {
+                  <div class="grid grid-cols-3 gap-3">
                     <div>
                       <label class="mb-1 block text-caption font-bold text-slate-500"
-                        >Ancho del registro</label
+                        >Factor multiplicador</label
                       >
-                      <select
-                        name="settings-variable-signed-bits"
-                        [ngModel]="variableForm().signoBits"
-                        (ngModelChange)="updateVariableForm('signoBits', $event)"
+                      <input
+                        type="number"
+                        step="any"
+                        name="settings-variable-factor"
+                        [ngModel]="variableForm().factor"
+                        (ngModelChange)="updateVariableForm('factor', $event)"
                         class="field-control bg-white"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Divisor</label
                       >
-                        <option value="16">16 bits · un registro (0 a 65535)</option>
-                        <option value="32">32 bits · valor de 32 bits en un solo dato</option>
-                      </select>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name="settings-variable-divisor"
+                        [ngModel]="variableForm().divisor"
+                        (ngModelChange)="updateVariableForm('divisor', $event)"
+                        class="field-control bg-white"
+                        placeholder="1"
+                      />
                     </div>
-                  }
-                  <p class="text-caption-xs text-slate-500">{{ signedSummary() }}</p>
-                </div>
-              }
-
-              @if (usesScaleTransform()) {
-                <label
-                  class="flex cursor-pointer items-start gap-2 rounded-lg border border-primary-tint-15 bg-primary-tint-08 px-3 py-2"
-                >
-                  <input
-                    type="checkbox"
-                    name="settings-variable-range-toggle"
-                    [ngModel]="useRangeScale()"
-                    (ngModelChange)="toggleRangeScale($event)"
-                    class="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-primary)]"
-                  />
-                  <span class="min-w-0">
-                    <span class="block text-caption font-bold text-slate-700">
-                      Escalar por rango (señal analógica)
-                    </span>
-                    <span class="block text-caption font-semibold text-slate-500">
-                      El PLC entrega la señal en unidades brutas: un 4-20 mA suele llegar como
-                      4000-20000. Definí los dos rangos y el factor se calcula solo.
-                    </span>
-                  </span>
-                </label>
-              }
-
-              @if (useRangeScale()) {
-                <div class="space-y-3 rounded-lg border border-primary-tint-15 bg-white p-3">
-                  <div>
-                    <p
-                      class="mb-1 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                    >
-                      Señal bruta del equipo
-                    </p>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label class="mb-1 block text-caption font-bold text-slate-500"
-                          >Mínimo</label
-                        >
-                        <input
-                          type="number"
-                          step="any"
-                          name="settings-variable-range-raw-min"
-                          [ngModel]="variableForm().rangoRawMin"
-                          (ngModelChange)="updateVariableForm('rangoRawMin', $event)"
-                          class="field-control bg-white"
-                          placeholder="4000"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-caption font-bold text-slate-500"
-                          >Máximo</label
-                        >
-                        <input
-                          type="number"
-                          step="any"
-                          name="settings-variable-range-raw-max"
-                          [ngModel]="variableForm().rangoRawMax"
-                          (ngModelChange)="updateVariableForm('rangoRawMax', $event)"
-                          class="field-control bg-white"
-                          placeholder="20000"
-                        />
-                      </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
+                      <input
+                        type="number"
+                        step="any"
+                        name="settings-variable-offset"
+                        [ngModel]="variableForm().offset"
+                        (ngModelChange)="updateVariableForm('offset', $event)"
+                        class="field-control bg-white"
+                        placeholder="0"
+                      />
                     </div>
                   </div>
-
-                  <div>
-                    <p
-                      class="mb-1 text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                    >
-                      Unidades de ingeniería{{ rangeUnitSuffix() }}
-                    </p>
-                    <div class="grid grid-cols-2 gap-3">
-                      <div>
-                        <label class="mb-1 block text-caption font-bold text-slate-500"
-                          >Mínimo</label
-                        >
-                        <input
-                          type="number"
-                          step="any"
-                          name="settings-variable-range-eng-min"
-                          [ngModel]="variableForm().rangoIngMin"
-                          (ngModelChange)="updateVariableForm('rangoIngMin', $event)"
-                          class="field-control bg-white"
-                          placeholder="0"
-                        />
-                      </div>
-                      <div>
-                        <label class="mb-1 block text-caption font-bold text-slate-500"
-                          >Máximo</label
-                        >
-                        <input
-                          type="number"
-                          step="any"
-                          name="settings-variable-range-eng-max"
-                          [ngModel]="variableForm().rangoIngMax"
-                          (ngModelChange)="updateVariableForm('rangoIngMax', $event)"
-                          class="field-control bg-white"
-                          placeholder="20"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <p class="text-caption-xs text-slate-500">{{ rangeScaleSummary() }}</p>
-                </div>
-              }
-
-              @if (isLinearTransform() && !useRangeScale()) {
-                <div class="grid grid-cols-3 gap-3">
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500"
-                      >Factor multiplicador</label
-                    >
-                    <input
-                      type="number"
-                      step="any"
-                      name="settings-variable-factor"
-                      [ngModel]="variableForm().factor"
-                      (ngModelChange)="updateVariableForm('factor', $event)"
-                      class="field-control bg-white"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500">Divisor</label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      name="settings-variable-divisor"
-                      [ngModel]="variableForm().divisor"
-                      (ngModelChange)="updateVariableForm('divisor', $event)"
-                      class="field-control bg-white"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
-                    <input
-                      type="number"
-                      step="any"
-                      name="settings-variable-offset"
-                      [ngModel]="variableForm().offset"
-                      (ngModelChange)="updateVariableForm('offset', $event)"
-                      class="field-control bg-white"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <p class="text-caption-xs text-slate-500">
-                  Fórmula:
-                  <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usá
-                  divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
-                </p>
-              }
-
-              @if (isUint32TransformSelected() && !useRangeScale()) {
-                <div class="grid grid-cols-3 gap-3">
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500"
-                      >Factor multiplicador</label
-                    >
-                    <input
-                      type="number"
-                      step="any"
-                      name="settings-variable-uint32-factor"
-                      [ngModel]="variableForm().factor"
-                      (ngModelChange)="updateVariableForm('factor', $event)"
-                      class="field-control bg-white"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500">Divisor</label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      name="settings-variable-uint32-divisor"
-                      [ngModel]="variableForm().divisor"
-                      (ngModelChange)="updateVariableForm('divisor', $event)"
-                      class="field-control bg-white"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
-                    <input
-                      type="number"
-                      step="any"
-                      name="settings-variable-uint32-offset"
-                      [ngModel]="variableForm().offset"
-                      (ngModelChange)="updateVariableForm('offset', $event)"
-                      class="field-control bg-white"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <p class="text-caption-xs text-slate-500">
-                  Fórmula:
-                  <span class="font-mono"
-                    >resultado = ((registro alto × 65536) + registro bajo) × factor / divisor +
-                    offset</span
-                  >. Usá divisor=100 para correr 2 decimales.
-                </p>
-              }
-
-              @if (isIeeeTransformSelected() && !useRangeScale()) {
-                <div class="grid grid-cols-3 gap-3">
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500"
-                      >Factor multiplicador</label
-                    >
-                    <input
-                      type="number"
-                      step="any"
-                      name="settings-variable-ieee-factor"
-                      [ngModel]="variableForm().factor"
-                      (ngModelChange)="updateVariableForm('factor', $event)"
-                      class="field-control bg-white"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500">Divisor</label>
-                    <input
-                      type="number"
-                      step="any"
-                      min="0"
-                      name="settings-variable-ieee-divisor"
-                      [ngModel]="variableForm().divisor"
-                      (ngModelChange)="updateVariableForm('divisor', $event)"
-                      class="field-control bg-white"
-                      placeholder="1"
-                    />
-                  </div>
-                  <div>
-                    <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
-                    <input
-                      type="number"
-                      step="any"
-                      name="settings-variable-ieee-offset"
-                      [ngModel]="variableForm().offset"
-                      (ngModelChange)="updateVariableForm('offset', $event)"
-                      class="field-control bg-white"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-                <p class="text-caption-xs text-slate-500">
-                  Fórmula:
-                  <span class="font-mono"
-                    >resultado = decimal IEEE754 × factor / divisor + offset</span
-                  >. Dejá factor=1 y offset=0 para el valor sin ajuste; usá offset para calibrar el
-                  sensor.
-                </p>
-              }
-
-              <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
-                <div class="mb-3 flex items-center gap-2">
-                  <span
-                    class="material-symbols-outlined text-[18px] text-primary-container"
-                    aria-hidden="true"
-                    >calculate</span
-                  >
-                  <h3
-                    class="text-caption font-semibold uppercase tracking-[0.16em] text-primary-container"
-                  >
-                    Calculadora de prueba (vista previa)
-                  </h3>
-                </div>
-
-                <div>
-                  <label class="mb-1 block text-caption font-bold text-slate-500"
-                    >Valor crudo entrante (en vivo desde el equipo)</label
-                  >
-                  <input
-                    name="settings-variable-sandbox-raw"
-                    [value]="liveRawValueForPreview()"
-                    readonly
-                    class="field-control bg-slate-50 cursor-not-allowed font-mono text-slate-700"
-                    placeholder="(se carga al elegir registro d1)"
-                  />
-                </div>
-
-                <div
-                  class="mt-3 rounded-lg border border-primary-tint-15 bg-white px-3 py-2 shadow-sm"
-                >
-                  <p
-                    class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
-                  >
-                    Resultado proyectado en gráfico
+                  <p class="text-caption-xs text-slate-500">
+                    Fórmula:
+                    <span class="font-mono">resultado = raw × factor / divisor + offset</span>. Usá
+                    divisor=100 para correr 2 decimales (ej. raw 1234 → 12.34).
                   </p>
-                  <p class="mt-1 text-h5 font-semibold text-primary-container">
-                    {{ previewResultText() }}
-                  </p>
-                </div>
+                }
 
-                <div class="mt-3 grid gap-2">
-                  @for (transform of variableTransformOptions(); track transform.id) {
-                    <button
-                      type="button"
-                      (click)="updateVariableTransform(transform.id)"
-                      [class]="calculatorButtonClass(transform.id)"
-                    >
-                      <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
-                        >functions</span
+                @if (isUint32TransformSelected() && !useRangeScale()) {
+                  <div class="grid grid-cols-3 gap-3">
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Factor multiplicador</label
                       >
-                      <span>{{ transform.label }}</span>
-                    </button>
-                  }
-                </div>
-              </div>
+                      <input
+                        type="number"
+                        step="any"
+                        name="settings-variable-uint32-factor"
+                        [ngModel]="variableForm().factor"
+                        (ngModelChange)="updateVariableForm('factor', $event)"
+                        class="field-control bg-white"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Divisor</label
+                      >
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name="settings-variable-uint32-divisor"
+                        [ngModel]="variableForm().divisor"
+                        (ngModelChange)="updateVariableForm('divisor', $event)"
+                        class="field-control bg-white"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
+                      <input
+                        type="number"
+                        step="any"
+                        name="settings-variable-uint32-offset"
+                        [ngModel]="variableForm().offset"
+                        (ngModelChange)="updateVariableForm('offset', $event)"
+                        class="field-control bg-white"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <p class="text-caption-xs text-slate-500">
+                    Fórmula:
+                    <span class="font-mono"
+                      >resultado = ((registro alto × 65536) + registro bajo) × factor / divisor +
+                      offset</span
+                    >. Usá divisor=100 para correr 2 decimales.
+                  </p>
+                }
 
-              <div class="grid gap-2 sm:grid-cols-2">
-                <button type="button" (click)="resetVariableForm()" class="secondary-button">
-                  Limpiar
-                </button>
-                <button type="submit" [disabled]="busy() === 'variable'" class="primary-button">
-                  <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
-                    >label</span
+                @if (isIeeeTransformSelected() && !useRangeScale()) {
+                  <div class="grid grid-cols-3 gap-3">
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Factor multiplicador</label
+                      >
+                      <input
+                        type="number"
+                        step="any"
+                        name="settings-variable-ieee-factor"
+                        [ngModel]="variableForm().factor"
+                        (ngModelChange)="updateVariableForm('factor', $event)"
+                        class="field-control bg-white"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500"
+                        >Divisor</label
+                      >
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        name="settings-variable-ieee-divisor"
+                        [ngModel]="variableForm().divisor"
+                        (ngModelChange)="updateVariableForm('divisor', $event)"
+                        class="field-control bg-white"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div>
+                      <label class="mb-1 block text-caption font-bold text-slate-500">Offset</label>
+                      <input
+                        type="number"
+                        step="any"
+                        name="settings-variable-ieee-offset"
+                        [ngModel]="variableForm().offset"
+                        (ngModelChange)="updateVariableForm('offset', $event)"
+                        class="field-control bg-white"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                  <p class="text-caption-xs text-slate-500">
+                    Fórmula:
+                    <span class="font-mono"
+                      >resultado = decimal IEEE754 × factor / divisor + offset</span
+                    >. Dejá factor=1 y offset=0 para el valor sin ajuste; usá offset para calibrar
+                    el sensor.
+                  </p>
+                }
+
+                <div class="rounded-lg border border-primary-tint-15 bg-primary-tint-08 p-3">
+                  <div class="mb-3 flex items-center gap-2">
+                    <span
+                      class="material-symbols-outlined text-[18px] text-primary-container"
+                      aria-hidden="true"
+                      >calculate</span
+                    >
+                    <h3
+                      class="text-caption font-semibold uppercase tracking-[0.16em] text-primary-container"
+                    >
+                      Calculadora de prueba (vista previa)
+                    </h3>
+                  </div>
+
+                  <div>
+                    <label class="mb-1 block text-caption font-bold text-slate-500"
+                      >Valor crudo entrante (en vivo desde el equipo)</label
+                    >
+                    <input
+                      name="settings-variable-sandbox-raw"
+                      [value]="liveRawValueForPreview()"
+                      readonly
+                      class="field-control bg-slate-50 cursor-not-allowed font-mono text-slate-700"
+                      placeholder="(se carga al elegir registro d1)"
+                    />
+                  </div>
+
+                  <div
+                    class="mt-3 rounded-lg border border-primary-tint-15 bg-white px-3 py-2 shadow-sm"
                   >
-                  {{
-                    busy() === 'variable'
-                      ? 'Guardando'
-                      : variableForm().mapId
-                        ? 'Actualizar variable'
-                        : 'Guardar variable'
-                  }}
-                </button>
-              </div>
-            </form>
+                    <p
+                      class="text-caption-xs font-semibold uppercase tracking-[0.14em] text-slate-400"
+                    >
+                      Resultado proyectado en gráfico
+                    </p>
+                    <p class="mt-1 text-h5 font-semibold text-primary-container">
+                      {{ previewResultText() }}
+                    </p>
+                  </div>
+
+                  <div class="mt-3 grid gap-2">
+                    @for (transform of variableTransformOptions(); track transform.id) {
+                      <button
+                        type="button"
+                        (click)="updateVariableTransform(transform.id)"
+                        [class]="calculatorButtonClass(transform.id)"
+                      >
+                        <span class="material-symbols-outlined text-[16px]" aria-hidden="true"
+                          >functions</span
+                        >
+                        <span>{{ transform.label }}</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <div class="grid gap-2 sm:grid-cols-2">
+                  <button type="button" (click)="resetVariableForm()" class="secondary-button">
+                    Limpiar
+                  </button>
+                  <button type="submit" [disabled]="busy() === 'variable'" class="primary-button">
+                    <span class="material-symbols-outlined text-[18px]" aria-hidden="true"
+                      >label</span
+                    >
+                    {{
+                      busy() === 'variable'
+                        ? 'Guardando'
+                        : variableForm().mapId
+                          ? 'Actualizar variable'
+                          : 'Guardar variable'
+                    }}
+                  </button>
+                </div>
+              </form>
+            }
           </div>
 
           <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
@@ -974,8 +1334,13 @@ function emptyVariables(): SiteVariablesPayload {
                               <p class="font-bold text-slate-800">{{ variable.mapping.alias }}</p>
                               <p class="text-caption text-slate-500">
                                 {{ displayRole(variable.mapping.rol_dashboard) }} ·
-                                {{ displayTransform(variable.mapping.transformacion) }}
-                                {{ variable.mapping.unidad || '' }}
+                                @if (bitCountFor(variable.nombre_dato); as bits) {
+                                  {{ bits }}
+                                  {{ bits === 1 ? 'señal digital' : 'señales digitales' }}
+                                } @else {
+                                  {{ displayTransform(variable.mapping.transformacion) }}
+                                  {{ variable.mapping.unidad || '' }}
+                                }
                               </p>
                             </div>
                             <button
@@ -1152,6 +1517,8 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
 
   /** Ayuda de las casillas de ajuste, renderizada en el popover "?". */
   readonly extraOptionHelp = EXTRA_OPTION_HELP;
+  /** Ayuda de la transformación por bit, en el mismo popover. */
+  readonly bitHelp = BIT_HELP;
 
   private api = inject(AdministrationService);
 
@@ -1163,6 +1530,11 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   siteVariables = signal<SiteVariablesPayload>(emptyVariables());
   variableForm = signal<VariableForm>({ ...DEFAULT_VARIABLE_FORM });
   pozoConfigForm = signal<PozoConfigForm>({ ...DEFAULT_POZO_CONFIG_FORM });
+  bitBulkOpen = signal(false);
+  bitBulkRows = signal<BitBulkRow[]>([]);
+  /** Dato original y ancho congelados al abrir: el formulario de al lado puede cambiar. */
+  bitBulkD1 = signal('');
+  bitBulkWidth = signal(16);
 
   displaySite = computed(() => {
     const loaded = this.siteVariables().site;
@@ -1203,11 +1575,16 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
     }
   }
 
-  load(): void {
+  /**
+   * @param keepStatus lo pasan los handlers de guardado/borrado, que ya dejaron
+   * su mensaje puesto. Sin esto la recarga posterior lo borraba en el mismo tick
+   * y el técnico nunca veía la confirmación.
+   */
+  load(keepStatus = false): void {
     if (!this.siteId) return;
 
     this.loading.set(true);
-    this.status.set({ type: '', message: '' });
+    if (!keepStatus) this.status.set({ type: '', message: '' });
 
     forkJoin({
       catalog: this.api.getSiteTypeCatalog(),
@@ -1278,7 +1655,281 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       offset: this.usesScaleTransformValue(normalized) ? current.offset || '0' : '0',
       escalaPorRango: this.usesScaleTransformValue(normalized) ? current.escalaPorRango : 'false',
       conSigno: this.usesSignedOptionValue(normalized) ? current.conSigno : 'false',
+      // Un bit es 1/0 y no tiene unidad de ingeniería. Al salir del modo solo
+      // se revierte el tipo si sigue en BOOLEAN, para no pisar una elección
+      // deliberada del técnico.
+      tipo_dato:
+        normalized === 'bit'
+          ? 'BOOLEAN'
+          : current.tipo_dato === 'BOOLEAN' && current.transformacion === 'bit'
+            ? 'FLOAT'
+            : current.tipo_dato,
+      unidad: normalized === 'bit' ? '' : current.unidad,
+      // El rol se infiere del alias al elegir d1 ("Nivel alto estanque" → nivel).
+      // Para un bit eso metería un 0/1 en el slot de una magnitud analógica.
+      rol_dashboard: normalized === 'bit' ? 'generico' : current.rol_dashboard,
     }));
+  }
+
+  // ─── Señal digital (un bit de la palabra) ─────────────────────────────
+
+  isBitTransform(): boolean {
+    return this.variableForm().transformacion === 'bit';
+  }
+
+  /** Ancho declarado de la palabra: 16 o 32. */
+  bitWordWidth(): number {
+    return this.toNumber(this.variableForm().palabraBits) === 32 ? 32 : 16;
+  }
+
+  selectBit(index: number): void {
+    this.updateVariableForm('bitIndex', String(index));
+  }
+
+  toggleBitInvertido(enabled: boolean): void {
+    this.updateVariableForm('bitInvertido', enabled ? 'true' : 'false');
+  }
+
+  /** Al angostar la palabra, un bit que ya no existe se recorta al último válido. */
+  updateWordBits(value: string): void {
+    const width = this.toNumber(value) === 32 ? 32 : 16;
+    this.variableForm.update((current) => {
+      const bit = this.toNumber(current.bitIndex) ?? 0;
+      return {
+        ...current,
+        palabraBits: String(width),
+        bitIndex: String(Math.min(Math.max(bit, 0), width - 1)),
+      };
+    });
+  }
+
+  /**
+   * Celdas del grid, del bit más significativo al menos significativo, para que
+   * el grid de 8 columnas se lea como el binario del manual (byte alto arriba).
+   */
+  bitCells(): BitCell[] {
+    const width = this.bitWordWidth();
+    const word = this.liveWord();
+    const elegido = this.toNumber(this.variableForm().bitIndex);
+    const cells: BitCell[] = [];
+
+    for (let index = width - 1; index >= 0; index -= 1) {
+      const encendido = word === null ? null : Math.floor(word / 2 ** index) % 2 === 1;
+      cells.push({
+        index,
+        estado: encendido === null ? '–' : encendido ? '1' : '0',
+        selected: index === elegido,
+        title:
+          encendido === null
+            ? `Bit ${index}, sin lectura`
+            : `Bit ${index}, ahora en ${encendido ? '1' : '0'}`,
+      });
+    }
+
+    return cells;
+  }
+
+  bitCellClass(cell: BitCell): string {
+    const base =
+      'flex flex-col items-center gap-0.5 rounded-md border py-1 transition active:scale-95';
+    if (cell.selected) {
+      return `${base} border-primary bg-primary text-white`;
+    }
+    if (cell.estado === '1') {
+      return `${base} border-primary-tint-35 bg-primary-tint-14 text-primary-container hover:border-primary-tint-50`;
+    }
+    return `${base} border-slate-200 bg-white text-slate-500 hover:border-primary-tint-30 hover:bg-primary-tint-06`;
+  }
+
+  bitOnLabel(): string {
+    return this.variableForm().etiquetaOn.trim() || 'Activo';
+  }
+
+  bitOffLabel(): string {
+    return this.variableForm().etiquetaOff.trim() || 'Inactivo';
+  }
+
+  bitSummary(): string {
+    const form = this.variableForm();
+    const width = this.bitWordWidth();
+    const bit = this.toNumber(form.bitIndex);
+
+    if (bit === null || !Number.isInteger(bit) || bit < 0 || bit >= width) {
+      return `Elegí un bit entre 0 y ${width - 1}.`;
+    }
+
+    const invertido =
+      form.bitInvertido === 'true' ? ' Invertida: se muestra activa cuando el bit está en 0.' : '';
+
+    const word = this.liveWord();
+    if (word === null) {
+      const crudo = this.liveRawValueForPreview();
+      if (!crudo) return `Bit ${bit} de ${form.d1 || 'la palabra'}.${invertido}`;
+      return `${crudo} no es una palabra sin signo de ${width} bits. Revisá el ancho.`;
+    }
+
+    return `Ahora mismo ${word} = ${this.formatBinary(word, width)}.${invertido}`;
+  }
+
+  /** Los bits ya mapeados sobre el dato original que está en el formulario. */
+  bitMappingsForCurrentKey(): { mapping: VariableMapping; bit: number }[] {
+    return this.bitMappingsFor(this.variableForm().d1);
+  }
+
+  /** Cuántas señales digitales cuelgan de este dato original (0 si no es palabra de bits). */
+  bitCountFor(d1: string): number {
+    return this.bitMappingsFor(d1).length;
+  }
+
+  /** Carga un bit ya guardado en el formulario para editarlo. */
+  editBitMapping(mapping: VariableMapping): void {
+    this.prepareVariableMap({
+      nombre_dato: mapping.d1,
+      valor_dato: (this.valueForVariableKey(mapping.d1) ?? null) as SiteVariable['valor_dato'],
+      timestamp_completo: '',
+      mapping,
+    });
+  }
+
+  // ─── Cargador masivo (una tarjeta de entradas digitales completa) ──────
+
+  openBitBulk(): void {
+    const d1 = this.variableForm().d1;
+    if (!d1) {
+      this.setError('Elegí primero el dato original.');
+      return;
+    }
+
+    const width = this.bitWordWidth();
+    const existentes = new Map(this.bitMappingsFor(d1).map((item) => [item.bit, item.mapping]));
+
+    this.bitBulkD1.set(d1);
+    this.bitBulkWidth.set(width);
+    this.bitBulkRows.set(
+      Array.from({ length: width }, (_, bit) => ({
+        bit,
+        alias: existentes.get(bit)?.alias ?? '',
+        invertido: existentes.get(bit)?.parametros?.invertido === true,
+      })),
+    );
+    this.status.set({ type: '', message: '' });
+    this.bitBulkOpen.set(true);
+  }
+
+  closeBitBulk(): void {
+    this.bitBulkOpen.set(false);
+    this.bitBulkRows.set([]);
+  }
+
+  /**
+   * El mapeo que ya ocupa este bit, resuelto en vivo contra `siteVariables()`.
+   * Se recalcula solo tras un `load()`, así un guardado parcial deja bloqueadas
+   * las creadas sin perder lo escrito en las que fallaron.
+   */
+  bitBulkExistente(bit: number): VariableMapping | null {
+    return this.bitMappingsFor(this.bitBulkD1()).find((item) => item.bit === bit)?.mapping ?? null;
+  }
+
+  bitBulkEstado(bit: number): '0' | '1' | '–' {
+    const word = this.wordFor(this.bitBulkD1(), this.bitBulkWidth());
+    if (word === null) return '–';
+    return Math.floor(word / 2 ** bit) % 2 === 1 ? '1' : '0';
+  }
+
+  bitBulkEstadoClass(bit: number): string {
+    const base = 'text-center font-mono text-caption font-bold';
+    return this.bitBulkEstado(bit) === '1'
+      ? `${base} text-primary-container`
+      : `${base} text-slate-300`;
+  }
+
+  updateBitBulkAlias(bit: number, alias: string): void {
+    this.bitBulkRows.update((rows) =>
+      rows.map((row) => (row.bit === bit ? { ...row, alias } : row)),
+    );
+  }
+
+  toggleBitBulkInvertido(bit: number, invertido: boolean): void {
+    this.bitBulkRows.update((rows) =>
+      rows.map((row) => (row.bit === bit ? { ...row, invertido } : row)),
+    );
+  }
+
+  /** Las filas que se van a crear: con alias y sin mapeo previo. */
+  bitBulkPendientes(): number {
+    return this.bitBulkNuevas().length;
+  }
+
+  bitBulkSummary(): string {
+    const nuevas = this.bitBulkPendientes();
+    const ocupados = this.bitBulkRows().filter((row) => this.bitBulkExistente(row.bit)).length;
+    const yaEstan = ocupados ? ` ${ocupados} ya estaban configuradas.` : '';
+    if (!nuevas) return `No hay señales nuevas para crear.${yaEstan}`;
+    return `Se van a crear ${nuevas} ${nuevas === 1 ? 'señal' : 'señales'} sobre ${this.bitBulkD1()}.${yaEstan}`;
+  }
+
+  saveBitBulk(): void {
+    if (!this.siteId) return;
+
+    const nuevas = this.bitBulkNuevas();
+    if (!nuevas.length) {
+      this.setError('Escribí el alias de al menos una entrada.');
+      return;
+    }
+
+    const d1 = this.bitBulkD1();
+    const width = this.bitBulkWidth();
+
+    // Secuencial y no en paralelo: 16 POST simultáneos compiten por el mismo
+    // candado de d1 en el backend, y así cada fallo se puede atribuir a su bit.
+    this.busy.set('bits-bulk');
+    from(nuevas)
+      .pipe(
+        concatMap((row) =>
+          this.api
+            .createSiteVariableMap(this.siteId, {
+              alias: row.alias.trim(),
+              d1,
+              d2: null,
+              tipo_dato: 'BOOLEAN',
+              unidad: null,
+              rol_dashboard: 'generico',
+              transformacion: 'bit',
+              parametros: {
+                bit: row.bit,
+                palabra_bits: width,
+                ...(row.invertido ? { invertido: true } : {}),
+              },
+            })
+            .pipe(
+              map(() => ({ bit: row.bit, error: '' })),
+              catchError((err: unknown) =>
+                of({ bit: row.bit, error: this.errorMessage(err, 'no se pudo crear') }),
+              ),
+            ),
+        ),
+        toArray(),
+      )
+      .subscribe((resultados) => {
+        this.busy.set('');
+        const fallidas = resultados.filter((resultado) => resultado.error);
+        const creadas = resultados.length - fallidas.length;
+
+        if (fallidas.length) {
+          // El cargador queda abierto: tras el load() las creadas se bloquean
+          // solas y las que fallaron conservan el alias para corregirlo.
+          this.setError(
+            `${creadas} de ${resultados.length} señales creadas. Falló el bit ` +
+              `${fallidas.map((resultado) => resultado.bit).join(', ')}: ${fallidas[0]?.error}`,
+          );
+        } else {
+          this.setSuccess(`${creadas} ${creadas === 1 ? 'señal creada' : 'señales creadas'}.`);
+          this.closeBitBulk();
+        }
+
+        this.load(true);
+        this.variableMapChanged.emit();
+      });
   }
 
   /**
@@ -1379,6 +2030,11 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       return;
     }
 
+    if (this.isBitTransform() && this.selectedBitIndex() === null) {
+      this.setError(`Elegí un bit entre 0 y ${this.bitWordWidth() - 1}.`);
+      return;
+    }
+
     const form = this.variableForm();
     const payload: CreateVariableMapPayload = {
       alias: form.alias.trim(),
@@ -1386,7 +2042,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       d2: form.d2 || null,
       tipo_dato: form.tipo_dato,
       unidad: form.unidad || null,
-      rol_dashboard: this.normalizeRole(form.rol_dashboard),
+      rol_dashboard: this.isBitTransform() ? 'generico' : this.normalizeRole(form.rol_dashboard),
       transformacion: this.normalizeTransform(form.transformacion),
       parametros: this.buildVariableParameters(),
     };
@@ -1401,7 +2057,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
         this.busy.set('');
         this.setSuccess(res.message || 'Variable guardada.');
         this.resetVariableForm();
-        this.load();
+        this.load(true);
         this.variableMapChanged.emit();
       },
       error: (err: unknown) => {
@@ -1440,6 +2096,12 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       rangoIngMax: this.configNumberToString(params?.ing_max),
       conSigno: params?.con_signo === true ? 'true' : 'false',
       signoBits: this.toNumber(this.configNumberToString(params?.signo_bits)) === 32 ? '32' : '16',
+      bitIndex: this.configNumberToString(params?.bit) || '0',
+      palabraBits:
+        this.toNumber(this.configNumberToString(params?.palabra_bits)) === 32 ? '32' : '16',
+      bitInvertido: params?.invertido === true ? 'true' : 'false',
+      etiquetaOn: params?.etiqueta_on || '',
+      etiquetaOff: params?.etiqueta_off || '',
     });
   }
 
@@ -1451,7 +2113,7 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       next: (res) => {
         this.busy.set('');
         this.setSuccess(res.message || 'Variable eliminada.');
-        this.load();
+        this.load(true);
         this.variableMapChanged.emit();
       },
       error: (err: unknown) => {
@@ -1558,6 +2220,14 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
       return form.d1 ? 'Sin lectura reciente del equipo' : 'Selecciona registro d1';
     }
 
+    if (form.transformacion === 'bit') {
+      const estado = this.bitStateNow();
+      // Sin estado el resumen ya explica por qué (bit fuera de rango, palabra
+      // que no cabe en el ancho, o sin lectura todavía).
+      if (estado === null) return this.bitSummary();
+      return `${estado ? this.bitOnLabel() : this.bitOffLabel()} · ${estado ? 1 : 0}`;
+    }
+
     const { factor, offset } = this.effectiveScale();
 
     if (this.isLinearTransformValue(form.transformacion)) {
@@ -1621,6 +2291,19 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   private buildVariableParameters(): NonNullable<CreateVariableMapPayload['parametros']> {
     const form = this.variableForm();
 
+    if (form.transformacion === 'bit') {
+      // Las etiquetas son opcionales: si no se escriben, el valor sigue siendo
+      // 1/0 y quien lo muestre elige cómo nombrarlo.
+      const params: VariableParameters = {
+        bit: this.selectedBitIndex() ?? 0,
+        palabra_bits: this.bitWordWidth(),
+      };
+      if (form.bitInvertido === 'true') params.invertido = true;
+      if (form.etiquetaOn.trim()) params.etiqueta_on = form.etiquetaOn.trim();
+      if (form.etiquetaOff.trim()) params.etiqueta_off = form.etiquetaOff.trim();
+      return params;
+    }
+
     if (this.transformRequiresD2(form.transformacion)) {
       return {
         word_swap: form.wordSwap === 'true',
@@ -1663,6 +2346,72 @@ export class SiteVariableSettingsPanelComponent implements OnChanges {
   private signedParameters(): VariableParameters {
     if (!this.useSigned()) return {};
     return { con_signo: true, signo_bits: this.signedBits() };
+  }
+
+  /** El bit elegido, o null si no es un índice válido para el ancho actual. */
+  private selectedBitIndex(): number | null {
+    const bit = this.toNumber(this.variableForm().bitIndex);
+    if (bit === null || !Number.isInteger(bit) || bit < 0 || bit >= this.bitWordWidth()) {
+      return null;
+    }
+    return bit;
+  }
+
+  /**
+   * La palabra cruda en vivo de un dato original. Devuelve null cuando no hay
+   * lectura o cuando el crudo no es una palabra sin signo del ancho declarado —
+   * mismo criterio que `applyBitExtraction` en
+   * main-api/src/utils/mappingTransform.js, que ahí lanza en vez de entregar
+   * bits inventados.
+   */
+  private wordFor(d1: string, width: number): number | null {
+    const value = this.valueForVariableKey(d1);
+    const raw =
+      typeof value === 'number' || typeof value === 'string' ? this.toNumber(value) : null;
+    if (raw === null || !Number.isInteger(raw) || raw < 0 || raw >= 2 ** width) return null;
+    return raw;
+  }
+
+  private liveWord(): number | null {
+    return this.wordFor(this.variableForm().d1, this.bitWordWidth());
+  }
+
+  /** Filas con alias escrito y sin mapeo previo: las únicas que se crean. */
+  private bitBulkNuevas(): BitBulkRow[] {
+    return this.bitBulkRows().filter(
+      (row) => !this.bitBulkExistente(row.bit) && row.alias.trim().length > 0,
+    );
+  }
+
+  /** Estado del bit elegido, ya invertido si corresponde. */
+  private bitStateNow(): boolean | null {
+    const word = this.liveWord();
+    const bit = this.selectedBitIndex();
+    if (word === null || bit === null) return null;
+    const encendido = Math.floor(word / 2 ** bit) % 2 === 1;
+    return this.variableForm().bitInvertido === 'true' ? !encendido : encendido;
+  }
+
+  /** La palabra en binario, agrupada de a cuatro: 0001 0000 1010 1011. */
+  private formatBinary(word: number, width: number): string {
+    return (
+      word
+        .toString(2)
+        .padStart(width, '0')
+        .match(/.{1,4}/g)
+        ?.join(' ') ?? ''
+    );
+  }
+
+  private bitMappingsFor(d1: string): { mapping: VariableMapping; bit: number }[] {
+    if (!d1) return [];
+    return this.siteVariables()
+      .mappings.filter((mapping) => mapping.d1 === d1 && mapping.transformacion === 'bit')
+      .map((mapping) => ({
+        mapping,
+        bit: this.toNumber(this.configNumberToString(mapping.parametros?.bit)) ?? -1,
+      }))
+      .sort((a, b) => a.bit - b.bit);
   }
 
   /** El crudo que alimenta el resumen del signo: d1 en vivo. */

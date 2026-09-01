@@ -147,6 +147,108 @@ describe('applyMappingTransform · complemento a 2 (con_signo)', () => {
     expect(out).toBeCloseTo(-5.56125, 5);
   });
 });
+describe('applyMappingTransform · bit (senal digital)', () => {
+  function bit(parametros: Record<string, unknown>, raw: number | string) {
+    return applyMappingTransform({
+      rawData: { REG1: raw },
+      mapping: baseMapping({ transformacion: 'bit', d2: null, parametros }),
+    });
+  }
+
+  // 0b0000_0000_1010_1011 = 171: bits 0,1,3,5,7 en 1.
+  it('devuelve 1 cuando el bit esta encendido', () => {
+    expect(bit({ bit: 0 }, 171)).toBe(1);
+    expect(bit({ bit: 1 }, 171)).toBe(1);
+    expect(bit({ bit: 3 }, 171)).toBe(1);
+    expect(bit({ bit: 5 }, 171)).toBe(1);
+    expect(bit({ bit: 7 }, 171)).toBe(1);
+  });
+
+  it('devuelve 0 cuando el bit esta apagado', () => {
+    expect(bit({ bit: 2 }, 171)).toBe(0);
+    expect(bit({ bit: 4 }, 171)).toBe(0);
+    expect(bit({ bit: 15 }, 171)).toBe(0);
+  });
+
+  it('devuelve numeros y no booleans (contadores y alertas hacen Number)', () => {
+    expect(typeof bit({ bit: 0 }, 1)).toBe('number');
+    expect(typeof bit({ bit: 1 }, 1)).toBe('number');
+  });
+
+  it('lee el bit mas significativo de una palabra de 16', () => {
+    expect(bit({ bit: 15 }, 32768)).toBe(1);
+    expect(bit({ bit: 15 }, 32767)).toBe(0);
+  });
+
+  it('invertido da vuelta la senal (contacto normalmente cerrado)', () => {
+    expect(bit({ bit: 0, invertido: true }, 171)).toBe(0);
+    expect(bit({ bit: 2, invertido: true }, 171)).toBe(1);
+  });
+
+  it('una palabra en cero deja todos los bits en 0', () => {
+    for (let i = 0; i < 16; i += 1) expect(bit({ bit: i }, 0)).toBe(0);
+  });
+
+  it('una palabra en 65535 deja todos los bits en 1', () => {
+    for (let i = 0; i < 16; i += 1) expect(bit({ bit: i }, 65535)).toBe(1);
+  });
+
+  it('el crudo puede venir como string numerico', () => {
+    expect(bit({ bit: 1 }, '171')).toBe(1);
+    expect(bit({ bit: 2 }, '171')).toBe(0);
+  });
+
+  it('falla si el bit no esta configurado', () => {
+    expect(() => bit({}, 171)).toThrow(/fuera de rango/);
+  });
+
+  it('falla si el bit no cabe en el ancho declarado', () => {
+    expect(() => bit({ bit: 16 }, 171)).toThrow(/fuera de rango para una palabra de 16 bits/);
+    expect(() => bit({ bit: -1 }, 171)).toThrow(/fuera de rango/);
+    expect(() => bit({ bit: 1.5 }, 171)).toThrow(/fuera de rango/);
+  });
+
+  it('falla si la palabra no cabe en el ancho declarado', () => {
+    // 70000 no es una palabra de 16 bits: los bits bajos seguirian dando 0/1
+    // plausibles y el historico quedaria inventado.
+    expect(() => bit({ bit: 0 }, 70000)).toThrow(/no es una palabra sin signo de 16 bits/);
+    expect(() => bit({ bit: 0 }, -1)).toThrow(/no es una palabra sin signo/);
+    expect(() => bit({ bit: 0 }, 12.5)).toThrow(/no es una palabra sin signo/);
+  });
+
+  it('falla si el crudo no es numerico', () => {
+    expect(() => bit({ bit: 0 }, 'AB')).toThrow(/debe ser numerico/);
+  });
+
+  it('palabra_bits=32 amplia el ancho y los bits validos', () => {
+    expect(bit({ bit: 16, palabra_bits: 32 }, 70000)).toBe(1); // 70000 = 0x11170
+    expect(bit({ bit: 31, palabra_bits: 32 }, 2 ** 31)).toBe(1);
+    expect(() => bit({ bit: 32, palabra_bits: 32 }, 1)).toThrow(/fuera de rango/);
+  });
+
+  it('un palabra_bits invalido cae al ancho por defecto de 16', () => {
+    expect(bit({ bit: 0, palabra_bits: 17 }, 1)).toBe(1);
+    expect(() => bit({ bit: 0, palabra_bits: 17 }, 70000)).toThrow(/de 16 bits/);
+  });
+
+  it('factor y offset no aplican: el valor es 1 o 0', () => {
+    expect(bit({ bit: 0, factor: 100, offset: 5 }, 171)).toBe(1);
+  });
+
+  it('dos mapeos sobre la misma palabra leen bits distintos', () => {
+    const rawData = { REG1: 171 };
+    const marcha = applyMappingTransform({
+      rawData,
+      mapping: baseMapping({ transformacion: 'bit', d2: null, parametros: { bit: 0 } }),
+    });
+    const falla = applyMappingTransform({
+      rawData,
+      mapping: baseMapping({ id: 'm2', transformacion: 'bit', d2: null, parametros: { bit: 2 } }),
+    });
+    expect([marcha, falla]).toEqual([1, 0]);
+  });
+});
+
 describe('applyMappingTransform · ieee754_32 con hex de un registro', () => {
   // 0x41CC0000 = 25.5 en float32 BE
   const rawData = { REG1: '41CC0000' };
