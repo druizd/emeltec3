@@ -40,6 +40,10 @@ const transformMod = require('../../utils/mappingTransform.js') as {
 };
 const { applyMappingTransform, normalizeTransform } = transformMod;
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const heartbeatMod = require('../../services/heartbeat.js') as { beat: (name: string) => void };
+const { beat } = heartbeatMod;
+
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
 
 /** Default espejo del de appConfig, para tests que mockean `config` sin `alertas`. */
@@ -891,9 +895,14 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   }
 
   if (alerta.condicion === 'sin_datos') {
+    // Se filtra por `time` (la dimensión del hypertable) y no por
+    // `received_at`: con received_at Timescale no puede excluir chunks y
+    // descomprime los ~900 de la tabla buscando el serial, lo que en frío
+    // supera el statement timeout. `time` usa idx_equipo_serial_time y cae en
+    // un solo chunk. Equipo y servidor difieren en segundos, no en minutos.
     const r = await client.query(
-      `SELECT received_at FROM equipo
-       WHERE id_serial = $1 AND received_at > NOW() - ($2 || ' minutes')::INTERVAL
+      `SELECT time FROM equipo
+       WHERE id_serial = $1 AND time > NOW() - ($2 || ' minutes')::INTERVAL
        LIMIT 1`,
       [alerta.id_serial, alerta.cooldown_minutos],
     );
@@ -963,6 +972,8 @@ async function insertarEvento(
 }
 
 async function runCycle(): Promise<void> {
+  // Latido para el monitor interno (health digest), igual que hacía el legado.
+  beat('alertas');
   let client: Awaited<ReturnType<typeof getClient>> | null = null;
   try {
     client = await getClient();
