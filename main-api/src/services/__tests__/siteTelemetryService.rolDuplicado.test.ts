@@ -10,15 +10,15 @@
 import { describe, it, expect } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { buildSiteDashboardData, mapHistoricalDashboardRow } =
-  require('../siteTelemetryService') as {
-    buildSiteDashboardData: (input: unknown) => {
-      resumen: Record<string, { ok: boolean; valor: unknown; alias: string | null }>;
-    };
-    mapHistoricalDashboardRow: (input: unknown) => {
-      caudal: { ok: boolean; valor: unknown; alias: string | null };
-    };
+const servicio = require('../siteTelemetryService') as {
+  buildSiteDashboardData: (input: unknown) => {
+    resumen: Record<string, { ok: boolean; valor: unknown; alias: string | null }>;
   };
+  mapHistoricalDashboardRow: (input: unknown) => {
+    caudal: { ok: boolean; valor: unknown; alias: string | null };
+  };
+};
+const { buildSiteDashboardData, mapHistoricalDashboardRow } = servicio;
 
 const site = { id: 'S127', descripcion: 'Pozo 2', id_serial: '151.21.36.25', tipo_sitio: 'pozo' };
 
