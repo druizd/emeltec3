@@ -1322,6 +1322,16 @@ exports.createSite = async (req, res, next) => {
 
     await client.query('COMMIT');
 
+    // Reglas de alerta estándar del sitio nuevo. Fuera de la transacción y sin
+    // await: un fallo acá no puede deshacer ni demorar la creación del sitio.
+    const { crearAlertasPorDefecto } = require('../services/alertasPorDefecto');
+    crearAlertasPorDefecto(db, { sitioId: id, userId: req.user?.id ?? null }).catch((err) =>
+      console.error('[sitios] no se pudieron crear las alertas por defecto', {
+        sitio: id,
+        err: err?.message,
+      }),
+    );
+
     res.status(201).json({
       ok: true,
       message: 'Sitio creado correctamente.',
