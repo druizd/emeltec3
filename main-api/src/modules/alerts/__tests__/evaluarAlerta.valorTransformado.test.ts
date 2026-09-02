@@ -21,9 +21,13 @@ vi.mock('../../../config/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-const queryMock = vi.fn(async () => ({ rows: [] }));
+// Tipado explícito: sin él, `mock.calls` queda como tupla vacía y no se puede
+// inspeccionar con qué parámetros se buscó a los destinatarios.
+const queryMock = vi.fn<(...args: unknown[]) => Promise<{ rows: unknown[] }>>(async () => ({
+  rows: [],
+}));
 vi.mock('../../../config/dbHelpers', () => ({
-  query: (...args: unknown[]) => queryMock(...(args as [])),
+  query: (...args: unknown[]) => queryMock(...args),
   getClient: vi.fn(),
 }));
 
