@@ -27,6 +27,7 @@ import {
   UpdateAlertaPayload,
 } from '../../../../services/alerta.service';
 import { AdministrationService } from '../../../../services/administration.service';
+import { DgaService, type PozoDgaConfig } from '../../../../services/dga.service';
 import {
   CompanyService,
   CONTADOR_ROLES,
@@ -90,7 +91,24 @@ const CONDICIONES_DISPONIBLES: AlertaCondicion[] = [
   'consumo_diario',
   'sin_datos',
   'dga_atrasado',
+  'sobre_derecho_dga',
 ];
+
+/**
+ * Condiciones que no eligen variable ni umbral: ambos salen de la config DGA
+ * del sitio (`dga_atrasado` mira los comprobantes SNIA, `sobre_derecho_dga`
+ * el derecho de aprovechamiento y el mapeo con rol caudal).
+ */
+const CONDICIONES_SIN_VARIABLE: AlertaCondicion[] = ['dga_atrasado', 'sobre_derecho_dga'];
+
+function esSinVariable(c: AlertaCondicion): boolean {
+  return CONDICIONES_SIN_VARIABLE.includes(c);
+}
+
+/** `variable_key` que se guarda para las condiciones sin variable (el backend la exige). */
+function variableKeyImplicita(c: AlertaCondicion): string {
+  return c === 'sobre_derecho_dga' ? 'caudal' : 'dga';
+}
 
 /**
  * Condiciones cuyo umbral se compara contra un valor YA transformado por el
@@ -309,7 +327,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
 
                     <!-- Variable (alias del reg_map) + condición -->
                     <div class="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-                      @if (regla.condicion !== 'dga_atrasado') {
+                      @if (!esSinVariable(regla.condicion)) {
                         <span
                           class="text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
                           [title]="regla.variable_key"
@@ -374,7 +392,7 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                     >
                     cooldown {{ regla.cooldown_minutos }} min
                   </span>
-                  @if (regla.variable_key && regla.condicion !== 'dga_atrasado') {
+                  @if (regla.variable_key && !esSinVariable(regla.condicion)) {
                     <!-- La clave cruda sigue visible: es la que compara el worker.
                          Si no está en el reg_map del sitio, se avisa. -->
                     @if (isVariableRegistrada(regla.variable_key)) {
@@ -538,8 +556,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             </select>
           </div>
 
-          <!-- Variable (ocultar para dga_atrasado) -->
-          @if (draft.condicion !== 'dga_atrasado') {
+          <!-- Variable (oculta para las condiciones que la sacan de la config DGA) -->
+          @if (!esSinVariable(draft.condicion)) {
             <div>
               <label
                 class="mb-1.5 block text-caption-xs font-semibold uppercase tracking-widest text-slate-400"
@@ -676,10 +694,43 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
             >
               <p class="mb-1 font-bold">Escalación automática</p>
               <p>
-                El sistema notifica al cruzar 24h, 48h y 72h sin reporte DGA (severidades media →
-                alta → crítica). No requiere umbral ni variable. Aplica al informante DGA del sitio.
+                Mide el tiempo desde el último slot con <strong>comprobante SNIA</strong>, no desde
+                el último cálculo interno. Notifica al cruzar 24h, 48h y 72h sin comprobante
+                (severidades media → alta → crítica) y avisa cuando SNIA vuelve a responder. No
+                requiere umbral ni variable.
               </p>
             </div>
+          }
+
+          <!-- Nota especial sobre_derecho_dga -->
+          @if (draft.condicion === 'sobre_derecho_dga') {
+            @if (limiteDerecho(); as lim) {
+              <div
+                class="rounded-xl border border-primary-tint-25 bg-primary-tint-08/40 px-4 py-3 text-caption text-slate-700"
+              >
+                <p class="mb-1 font-bold">Límite tomado de la configuración DGA del pozo</p>
+                <p>
+                  Derecho <span class="font-mono font-bold">{{ lim.derecho }} L/s</span> con
+                  tolerancia <span class="font-mono">{{ lim.toleranciaPct }}%</span> → dispara
+                  cuando el caudal instantáneo supera
+                  <span class="font-mono font-bold">{{ lim.limite }} L/s</span>. El caudal sale de
+                  la variable con rol caudal del sitio, ya convertida.
+                </p>
+              </div>
+            } @else {
+              <div
+                class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-caption text-amber-800"
+              >
+                <p class="mb-1 font-bold">
+                  Este pozo no tiene cargado el derecho de aprovechamiento
+                </p>
+                <p>
+                  La regla se puede guardar, pero no va a evaluar hasta que se ingrese el caudal
+                  máximo del derecho (L/s) en la configuración DGA del sitio, pestaña DGA →
+                  Configurar.
+                </p>
+              </div>
+            }
           }
 
           <!-- Severidad (solo si no es dga_atrasado — DGA computa por tier) -->
@@ -992,6 +1043,7 @@ export class AlertasConfiguracionComponent {
   private readonly alertaService = inject(AlertaService);
   private readonly adminService = inject(AdministrationService);
   private readonly companyService = inject(CompanyService);
+  private readonly dgaService = inject(DgaService);
   private readonly auth = inject(AuthService);
 
   // Solo Admin/Gerente (+ SuperAdmin) crean/editan/borran alarmas.
@@ -1030,6 +1082,9 @@ export class AlertasConfiguracionComponent {
   readonly destinatarios = signal<DestinatarioPosible[]>([]);
   readonly destinatariosError = signal('');
 
+  /** Config DGA del pozo: de ahí sale el límite de `sobre_derecho_dga`. null si no hay. */
+  readonly pozoDga = signal<PozoDgaConfig | null>(null);
+
   /** Serial del equipo del sitio. Lo necesita el rule-tester para pedir la
    * telemetría cruda; llega en la misma respuesta de `getSiteVariables`. */
   readonly idSerial = signal('');
@@ -1043,6 +1098,7 @@ export class AlertasConfiguracionComponent {
         this.recargar();
         this.cargarVariables();
         this.cargarDestinatarios();
+        this.cargarPozoDga();
       }
     });
   }
@@ -1079,6 +1135,38 @@ export class AlertasConfiguracionComponent {
         );
       },
     });
+  }
+
+  private cargarPozoDga(): void {
+    const sid = this.sitioId();
+    if (!sid) return;
+    this.dgaService.getPozoDgaConfig(sid).subscribe({
+      next: (cfg) => this.pozoDga.set(cfg),
+      // Sin config (sitio no-pozo o sin permiso) la nota del formulario avisa
+      // que falta el derecho; no es un error de la pantalla.
+      error: () => this.pozoDga.set(null),
+    });
+  }
+
+  esSinVariable(c: AlertaCondicion): boolean {
+    return esSinVariable(c);
+  }
+
+  /**
+   * Límite de `sobre_derecho_dga` tal como lo calcula el worker: derecho ×
+   * (1 + tolerancia%). null si el pozo no tiene derecho cargado.
+   */
+  limiteDerecho(): { derecho: number; toleranciaPct: number; limite: number } | null {
+    const cfg = this.pozoDga();
+    const derecho = Number(cfg?.dga_caudal_max_lps);
+    if (!cfg || !Number.isFinite(derecho) || derecho <= 0) return null;
+    const tol = Number(cfg.dga_caudal_tolerance_pct);
+    const toleranciaPct = Number.isFinite(tol) ? tol : 0;
+    return {
+      derecho,
+      toleranciaPct,
+      limite: Math.round(derecho * (1 + toleranciaPct / 100) * 100) / 100,
+    };
   }
 
   // ─── Destinatarios ──────────────────────────────────────────────────
@@ -1224,13 +1312,13 @@ export class AlertasConfiguracionComponent {
   unidadVariable(key: string, condicion: AlertaCondicion): string {
     // Sin umbral no hay unidad que mostrar. Para el resto, el umbral va en la
     // unidad del reg_map: el worker compara contra el valor transformado.
-    if (condicion === 'sin_datos' || condicion === 'dga_atrasado') return '';
+    if (condicion === 'sin_datos' || esSinVariable(condicion)) return '';
     return this.mappingDe(key)?.unidad?.trim() || '';
   }
 
   puedeGuardar(d: DraftAlerta): boolean {
     if (!d.nombre.trim()) return false;
-    if (d.condicion !== 'dga_atrasado' && !d.variable_key.trim()) return false;
+    if (!esSinVariable(d.condicion) && !d.variable_key.trim()) return false;
     if (
       d.condicion === 'mayor_que' ||
       d.condicion === 'menor_que' ||
@@ -1276,7 +1364,9 @@ export class AlertasConfiguracionComponent {
     const payload: UpdateAlertaPayload = {
       nombre: draft.nombre,
       descripcion: draft.descripcion || null,
-      variable_key: draft.condicion === 'dga_atrasado' ? 'dga' : draft.variable_key,
+      variable_key: esSinVariable(draft.condicion)
+        ? variableKeyImplicita(draft.condicion)
+        : draft.variable_key,
       condicion: draft.condicion,
       umbral_bajo: this.numOrNull(draft.umbral_bajo, draft.condicion),
       umbral_alto:
@@ -1327,7 +1417,9 @@ export class AlertasConfiguracionComponent {
       descripcion: d.descripcion.trim() || null,
       sitio_id,
       empresa_id,
-      variable_key: d.condicion === 'dga_atrasado' ? 'dga' : d.variable_key.trim(),
+      variable_key: esSinVariable(d.condicion)
+        ? variableKeyImplicita(d.condicion)
+        : d.variable_key.trim(),
       condicion: d.condicion,
       umbral_bajo: this.numOrNull(d.umbral_bajo, d.condicion),
       umbral_alto:
@@ -1342,7 +1434,7 @@ export class AlertasConfiguracionComponent {
   }
 
   private numOrNull(val: UmbralValue, condicion: AlertaCondicion): number | null {
-    if (condicion === 'sin_datos' || condicion === 'dga_atrasado') return null;
+    if (condicion === 'sin_datos' || esSinVariable(condicion)) return null;
     if (umbralVacio(val)) return null;
     const n = Number(val);
     return Number.isFinite(n) ? n : null;
@@ -1416,7 +1508,11 @@ export class AlertasConfiguracionComponent {
       case 'sin_datos':
         return `Sin datos > ${r.cooldown_minutos} min`;
       case 'dga_atrasado':
-        return 'DGA atrasado (24/48/72h)';
+        return 'Sin comprobante SNIA (24/48/72h)';
+      case 'sobre_derecho_dga': {
+        const lim = this.limiteDerecho();
+        return lim ? `caudal > ${lim.limite} L/s (derecho + tolerancia)` : 'caudal > derecho DGA';
+      }
       default:
         return r.condicion;
     }
@@ -1443,7 +1539,7 @@ export class AlertasConfiguracionComponent {
    * SNIA, no de valores de variable. UI oculta el botón para esa condición.
    */
   esCondicionSimulable(condicion: AlertaCondicion): boolean {
-    return condicion !== 'dga_atrasado';
+    return !esSinVariable(condicion);
   }
 
   /**

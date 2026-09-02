@@ -136,7 +136,9 @@ function formatCondicion(alerta: Alerta): string {
     case 'sin_datos':
       return `sin datos durante ${alerta.cooldown_minutos} minutos`;
     case 'dga_atrasado':
-      return 'reporte DGA atrasado más de 24h (escala a 48h y 72h)';
+      return 'sin comprobante SNIA hace más de 24h (escala a 48h y 72h)';
+    case 'sobre_derecho_dga':
+      return `el caudal supera el derecho DGA (límite ${alerta.umbral_bajo} L/s con tolerancia)`;
     case 'dga_slots_fallidos':
       return 'tiene slots DGA en estado fallido';
     case 'review_queue_acumulacion':
@@ -193,6 +195,9 @@ function buildMensaje(alerta: Alerta, valor: number | null): string {
   if (alerta.condicion === 'review_queue_acumulacion') {
     return `[${severidad}] ${sitio}. Cola de revisión DGA: ${valor ?? 0} slots requires_review (umbral ${alerta.umbral_bajo}).`;
   }
+  if (alerta.condicion === 'sobre_derecho_dga') {
+    return `[${severidad}] ${sitio}. Caudal ${formatValor(valor)} L/s sobre el derecho DGA: límite ${alerta.umbral_bajo} L/s (derecho más tolerancia).`;
+  }
   return `[${severidad}] ${sitio}. Variable ${alerta.variable_key}: valor detectado ${formatValor(valor)}. Regla: ${formatCondicion(alerta)}.`;
 }
 
@@ -239,10 +244,16 @@ async function notificarUsuarios(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Promise<void> {
-  // Lookup config DGA del sitio desde pozo_config (dga_user fue eliminado en 2026-05-17).
+  // La referencia es el ÚLTIMO SLOT CON COMPROBANTE SNIA (dato_dga.comprobante),
+  // no `dga_last_run_at`: ese campo lo marca el fill cada vez que CALCULA un
+  // slot, aunque el envío a SNIA lleve días fallando. Con la base anterior un
+  // pozo con 3 días de envíos rechazados o en timeout figuraba "al día".
+  // Config DGA del sitio desde pozo_config (dga_user fue eliminado en 2026-05-17).
   const u = await client.query(
     `SELECT pc.dga_periodicidad                       AS periodicidad,
-            pc.dga_last_run_at                        AS last_run_at,
+            (SELECT MAX(d.ts) FROM dato_dga d
+              WHERE d.site_id = pc.sitio_id
+                AND d.comprobante IS NOT NULL)        AS ultimo_comprobante_ts,
             to_char(pc.dga_fecha_inicio, 'YYYY-MM-DD') AS fecha_inicio,
             to_char(pc.dga_hora_inicio,  'HH24:MI:SS') AS hora_inicio
        FROM pozo_config pc
@@ -253,7 +264,7 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   const dgaUser = u.rows[0] as
     | {
         periodicidad: string;
-        last_run_at: string | null;
+        ultimo_comprobante_ts: string | Date | null;
         fecha_inicio: string;
         hora_inicio: string;
       }
@@ -261,8 +272,10 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
   if (!dgaUser) return; // sitio sin DGA configurado
 
   const stepMs = periodMsForDga(dgaUser.periodicidad);
-  const baseMs = dgaUser.last_run_at
-    ? new Date(dgaUser.last_run_at).getTime()
+  // Sin ningún comprobante todavía, la referencia es el inicio configurado del
+  // reporte: un pozo que nunca logró enviar también tiene que alertar.
+  const baseMs = dgaUser.ultimo_comprobante_ts
+    ? new Date(dgaUser.ultimo_comprobante_ts).getTime()
     : new Date(
         `${dgaUser.fecha_inicio}T${dgaUser.hora_inicio.length === 5 ? `${dgaUser.hora_inicio}:00` : dgaUser.hora_inicio}-04:00`,
       ).getTime();
@@ -295,7 +308,7 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
           alerta.sub_empresa_id ?? null,
           alerta.sitio_id,
           alerta.variable_key,
-          `Reporte DGA al día en ${alerta.sitio_desc ?? alerta.sitio_id}.`,
+          `Reporte DGA al día en ${alerta.sitio_desc ?? alerta.sitio_id}: SNIA volvió a entregar comprobante.`,
         ],
       );
     }
@@ -307,12 +320,15 @@ export async function evaluarAlertaDgaAtrasado(client: any, alerta: Alerta): Pro
 
   const sitio = alerta.sitio_desc ?? alerta.sitio_id;
   const lagTexto = formatLagHorasMinutos(lagMs);
-  const mensaje = `[${tierSev.toUpperCase()}] Reporte DGA atrasado en ${sitio}. Sin reportar hace ${lagTexto}.`;
+  const ultimo = dgaUser.ultimo_comprobante_ts
+    ? `Último comprobante SNIA: slot ${new Date(dgaUser.ultimo_comprobante_ts).toISOString().replace('T', ' ').slice(0, 16)} UTC.`
+    : 'Nunca se ha recibido un comprobante SNIA para este pozo.';
+  const mensaje = `[${tierSev.toUpperCase()}] Reporte DGA sin comprobante en ${sitio} hace ${lagTexto}. ${ultimo}`;
   const ctx = {
     ...alerta,
     severidad: tierSev,
     valor_detectado: lagTexto,
-    condicion_texto: `reporte DGA atrasado más de ${DGA_TIER_H[tierSev]}h`,
+    condicion_texto: `sin comprobante SNIA hace más de ${DGA_TIER_H[tierSev]}h`,
   };
   const ins = (await client.query(
     `INSERT INTO alertas_eventos
@@ -756,6 +772,83 @@ async function valorEvaluable(
   return { valorNum, valorTexto: String(valor) };
 }
 
+/**
+ * Condición `sobre_derecho_dga`: el caudal instantáneo del pozo supera el
+ * derecho de aprovechamiento cargado en `pozo_config` (`dga_caudal_max_lps`)
+ * más la tolerancia configurada. No lleva umbral ni variable: el límite sale
+ * del derecho y el caudal, del mapeo con rol `caudal` del reg_map, con la misma
+ * transformación que el dashboard. Es la versión "en vivo" de la regla
+ * `flow_exceeds_water_right` que la validación DGA aplica a cada slot.
+ *
+ * Sin derecho cargado no hay contra qué comparar: la regla no evalúa (y el
+ * formulario lo avisa). Cargar el derecho es un prerrequisito, no un default.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function evaluarAlertaSobreDerecho(client: any, alerta: Alerta): Promise<void> {
+  const cfg = (await client.query(
+    `SELECT dga_caudal_max_lps, dga_caudal_tolerance_pct
+       FROM pozo_config
+      WHERE sitio_id = $1
+      LIMIT 1`,
+    [alerta.sitio_id],
+  )) as { rows: Array<{ dga_caudal_max_lps: unknown; dga_caudal_tolerance_pct: unknown }> };
+  const derecho = Number(cfg.rows[0]?.dga_caudal_max_lps);
+  if (!Number.isFinite(derecho) || derecho <= 0) {
+    logger.debug(
+      { alertaId: alerta.id, sitio_id: alerta.sitio_id },
+      'alerts: sobre_derecho_dga sin dga_caudal_max_lps cargado, no evaluable',
+    );
+    return;
+  }
+  const toleranciaPct = Number(cfg.rows[0]?.dga_caudal_tolerance_pct);
+  const limite = derecho * (1 + (Number.isFinite(toleranciaPct) ? toleranciaPct : 0) / 100);
+
+  const mapRes = (await client.query(
+    `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+            transformacion, parametros
+       FROM reg_map
+      WHERE sitio_id = $1 AND rol_dashboard = 'caudal'
+      ORDER BY alias`,
+    [alerta.sitio_id],
+  )) as { rows: RegMap[] };
+  if (mapRes.rows.length === 0) return;
+
+  const latest = (await client.query(
+    `SELECT data FROM equipo WHERE id_serial = $1 ORDER BY time DESC LIMIT 1`,
+    [alerta.id_serial],
+  )) as { rows: Array<{ data: Record<string, unknown> }> };
+  const data = latest.rows[0]?.data;
+  if (!data) return;
+
+  // Si hay más de un mapeo con rol caudal (resto de un recambio de equipo), se
+  // usa el primero que calcula: mismo criterio que el dashboard.
+  let caudal: number | null = null;
+  for (const mapping of mapRes.rows) {
+    try {
+      const v = Number(applyMappingTransform({ rawData: data, mapping, pozoConfig: null }));
+      if (Number.isFinite(v)) {
+        caudal = v;
+        break;
+      }
+    } catch {
+      // registro que no llegó o transformación mal configurada: probar el siguiente
+    }
+  }
+  if (caudal === null) return;
+
+  const limiteRedondeado = Math.round(limite * 100) / 100;
+  const dispara = caudal > limite;
+  if (await debeNotificar(client, alerta, () => dispara)) {
+    // El límite viaja como umbral_bajo para que el mensaje y el correo lo muestren.
+    await insertarEvento(
+      client,
+      { ...alerta, umbral_bajo: limiteRedondeado },
+      Math.round(caudal * 100) / 100,
+      `${caudal} L/s`,
+    );
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
@@ -777,6 +870,11 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
 
   if (alerta.condicion === 'consumo_diario') {
     await evaluarAlertaConsumoDiario(client, alerta);
+    return;
+  }
+
+  if (alerta.condicion === 'sobre_derecho_dga') {
+    await evaluarAlertaSobreDerecho(client, alerta);
     return;
   }
 
