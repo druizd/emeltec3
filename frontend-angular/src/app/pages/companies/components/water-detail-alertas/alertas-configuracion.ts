@@ -35,6 +35,7 @@ import {
 import type { VariableMapping } from '@emeltec/shared';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
 import { TableSkeletonComponent } from '../../../../components/ui/table-skeleton';
+import { diaSemanaDeFecha, diaSemanaDeInstante, esDiaActivo } from './alerta-dias';
 
 interface SimulationResultRow {
   timestamp: string;
@@ -44,10 +45,13 @@ interface SimulationResultRow {
 }
 
 interface SimulationSummary {
+  /** Lecturas (o días) evaluadas: solo las que caen en un día activo de la regla. */
   total: number;
   matched: number;
   rows: SimulationResultRow[];
   withValueCount: number;
+  /** Lecturas (o días) descartadas por caer fuera de `dias_activos`. */
+  fueraDeDias: number;
 }
 
 /**
@@ -811,7 +815,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               } @else {
                 Evalúa la condición contra las últimas 500 lecturas crudas del equipo (24 h).
               }
-              Read-only — no guarda nada ni dispara notificaciones.
+              Solo cuenta los días activos de la regla. Read-only — no guarda nada ni dispara
+              notificaciones.
             </p>
             @if (simulationError()) {
               <app-inline-error [message]="simulationError()" />
@@ -844,6 +849,23 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                 } @else if (draft.condicion !== 'sin_datos') {
                   <span class="text-on-surface-variant">
                     {{ sim.withValueCount }} con valor numérico
+                  </span>
+                }
+                @if (sim.fueraDeDias > 0) {
+                  <span
+                    class="inline-flex items-center gap-1 text-on-surface-variant"
+                    title="La regla no se evalúa esos días, así que sus lecturas no pueden disparar"
+                  >
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >event_busy</span
+                    >
+                    @if (draft.condicion === 'consumo_diario') {
+                      {{ sim.fueraDeDias }} {{ sim.fueraDeDias === 1 ? 'día' : 'días' }} fuera de
+                      los días activos
+                    } @else {
+                      {{ sim.fueraDeDias }}
+                      {{ sim.fueraDeDias === 1 ? 'lectura' : 'lecturas' }} fuera de los días activos
+                    }
                   </span>
                 }
               </div>
@@ -1474,8 +1496,15 @@ export class AlertasConfiguracionComponent {
     puntos: ContadorDiarioPoint[],
   ): SimulationSummary {
     const umbral = umbralVacio(draft.umbral_bajo) ? null : Number(draft.umbral_bajo);
+    // El worker no evalúa la regla los días que no están activos, así que
+    // un domingo con consumo alto no es un match si la regla es de lunes a
+    // viernes. `dia` ya viene en día Chile.
+    const enDiasActivos = puntos.filter((p) =>
+      esDiaActivo(diaSemanaDeFecha(p.dia), draft.dias_activos),
+    );
+    const fueraDeDias = puntos.length - enDiasActivos.length;
     // Más reciente primero, igual que el backtest de lecturas crudas.
-    const ordenados = [...puntos].sort((a, b) => b.dia.localeCompare(a.dia));
+    const ordenados = enDiasActivos.sort((a, b) => b.dia.localeCompare(a.dia));
 
     const rows: SimulationResultRow[] = [];
     let matched = 0;
@@ -1499,7 +1528,7 @@ export class AlertasConfiguracionComponent {
         });
       }
     }
-    return { total: ordenados.length, matched, rows, withValueCount };
+    return { total: ordenados.length, matched, rows, withValueCount, fueraDeDias };
   }
 
   /**
@@ -1561,22 +1590,33 @@ export class AlertasConfiguracionComponent {
 
   private buildSimulation(draft: DraftAlerta, rawRows: TelemetryHistoryRow[]): SimulationSummary {
     // Mostrar más recientes primero para que el admin vea los hits relevantes.
-    const entries = rawRows.map((row) => ({
-      timestamp: this.rowTimestamp(row),
-      raw: this.rowValue(row, draft.variable_key),
-    }));
+    // Cada lectura lleva si cae en un día activo de la regla (en hora de
+    // Chile, como decide el worker): las que no, no pueden ser match.
+    const entries = rawRows.map((row) => {
+      const timestamp = this.rowTimestamp(row);
+      return {
+        timestamp,
+        raw: this.rowValue(row, draft.variable_key),
+        activa: esDiaActivo(diaSemanaDeInstante(timestamp), draft.dias_activos),
+      };
+    });
     const sorted = entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    const fueraDeDias = sorted.filter((e) => !e.activa).length;
+    const total = sorted.length - fueraDeDias;
 
     if (draft.condicion === 'sin_datos') {
       // Gap detection: marcar como match cada gap > cooldown_minutos entre
       // entries consecutivas (de más reciente a más antigua), o lecturas con
-      // valor null/undefined para el variable_key.
+      // valor null/undefined para el variable_key. Los gaps se miden sobre
+      // TODAS las lecturas (un hueco es un hueco aunque cruce un día
+      // inactivo), pero solo cuentan si la lectura cae en un día activo.
       const gapMs = draft.cooldown_minutos * 60_000;
       const rows: SimulationResultRow[] = [];
       let matchedCount = 0;
       let withValueCount = 0;
       for (let i = 0; i < sorted.length; i++) {
         const entry = sorted[i];
+        if (!entry.activa) continue;
         const raw = entry.raw;
         const isNull = raw === null || raw === undefined || raw === '';
         let isGap = false;
@@ -1592,13 +1632,14 @@ export class AlertasConfiguracionComponent {
           rows.push({ timestamp: entry.timestamp, value: this.toNum(raw), raw, matched: true });
         }
       }
-      return { total: sorted.length, matched: matchedCount, rows, withValueCount };
+      return { total, matched: matchedCount, rows, withValueCount, fueraDeDias };
     }
 
     const rows: SimulationResultRow[] = [];
     let matchedCount = 0;
     let withValueCount = 0;
     for (const entry of sorted) {
+      if (!entry.activa) continue;
       const raw = entry.raw;
       const value = this.toNum(raw);
       const hasValue = value !== null;
@@ -1609,7 +1650,7 @@ export class AlertasConfiguracionComponent {
         rows.push({ timestamp: entry.timestamp, value, raw, matched: true });
       }
     }
-    return { total: sorted.length, matched: matchedCount, rows, withValueCount };
+    return { total, matched: matchedCount, rows, withValueCount, fueraDeDias };
   }
 
   private toNum(raw: unknown): number | null {
