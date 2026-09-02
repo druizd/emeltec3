@@ -255,6 +255,9 @@ function buildResumen(variables) {
   for (const variable of variables) {
     const role = dashboardRoleForVariable(variable);
     if (role === 'generico') continue;
+    // Mismo criterio que findHistoricalVariable: un mapeo roto no pisa al que
+    // ya calculó para ese rol. Sin esto el resumen dependía del ORDER BY alias.
+    if (resumen[role]?.ok && variable.ok === false) continue;
 
     resumen[role] = {
       ok: variable.ok,
@@ -354,7 +357,10 @@ function findHistoricalVariable(variables, role) {
       }
     }
 
-    if (score > bestScore) {
+    // A igual puntaje gana la variable que sí calculó. Dos mapeos con el mismo
+    // rol (tipico resto de un recambio de equipo: el registro viejo ya no llega)
+    // no pueden dejar el rol en null solo porque el roto se ordena antes.
+    if (score > bestScore || (score === bestScore && best && best.ok === false && variable.ok)) {
       best = variable;
       bestScore = score;
     }
