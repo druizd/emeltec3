@@ -27,6 +27,19 @@ const emailMod = require('../../services/emailService.js') as {
 };
 const { sendAlertEmail } = emailMod;
 
+// Misma matemática que el dashboard (fuente única, CommonJS). El umbral de una
+// regla se compara contra el valor transformado, no contra el crudo.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const transformMod = require('../../utils/mappingTransform.js') as {
+  applyMappingTransform: (input: {
+    rawData: Record<string, unknown>;
+    mapping: RegMap;
+    pozoConfig: unknown;
+  }) => unknown;
+  normalizeTransform: (value: unknown) => string;
+};
+const { applyMappingTransform, normalizeTransform } = transformMod;
+
 const POLL_INTERVAL_MS = Number(process.env.ALERT_POLL_MS ?? 60_000);
 const DIAS_VALIDOS = [
   'domingo',
@@ -64,6 +77,10 @@ interface Alerta {
   severidad: string;
   cooldown_minutos: number;
   dias_activos: string[] | null;
+  /** Usuarios que reciben el correo. Vacío = comportamiento histórico (el creador). */
+  notificar_user_ids?: string[] | null;
+  /** Además avisa a todos los SuperAdmin (equipo Emeltec). Default histórico: sí. */
+  notificar_superadmins?: boolean | null;
   id_serial: string;
   sitio_desc: string;
 }
@@ -184,6 +201,13 @@ async function notificarUsuarios(
   eventoId: string,
   mensaje: string,
 ): Promise<void> {
+  // Destinatarios: los elegidos en la regla, más el equipo Emeltec si la regla
+  // lo pide. Con la lista vacía se conserva el comportamiento histórico (avisar
+  // al creador), así que una regla anterior a esta opción sigue igual.
+  const elegidos = Array.isArray(alerta.notificar_user_ids)
+    ? alerta.notificar_user_ids.filter((id) => typeof id === 'string' && id.length > 0)
+    : [];
+  const avisarSuperadmins = alerta.notificar_superadmins !== false;
   const usuarios = await query<{
     id: string;
     email: string;
@@ -191,8 +215,13 @@ async function notificarUsuarios(
     apellido: string | null;
   }>(
     `SELECT DISTINCT id, email, nombre, apellido FROM usuario
-     WHERE tipo = 'SuperAdmin' OR id = $1`,
-    [alerta.creado_por],
+     WHERE COALESCE(activo, TRUE)
+       AND (
+         ($2::boolean AND tipo = 'SuperAdmin')
+         OR id = ANY($3::text[])
+         OR (cardinality($3::text[]) = 0 AND id = $1)
+       )`,
+    [alerta.creado_por, avisarSuperadmins, elegidos],
     { name: 'alerts__notify_users' },
   );
   for (const u of usuarios.rows) {
@@ -671,6 +700,62 @@ async function debeNotificar(
   return evaluar();
 }
 
+/**
+ * Valor contra el que se compara el umbral: el MISMO que muestra el dashboard.
+ *
+ * Si la variable está en el reg_map del sitio, el crudo pasa por su
+ * transformación (factor/offset, IEEE754 de dos registros, uint32, nivel
+ * freático…) y el umbral se escribe en la unidad del reg_map. Antes se
+ * comparaba `equipo.data[variable_key]` sin transformar: con un factor 0,1 el
+ * umbral iba multiplicado por 10, y con un float de dos registros no podía
+ * calzar nunca (la palabra alta de un IEEE754 no significa nada sola).
+ *
+ * Sin mapeo se compara el crudo, como siempre. Si la transformación falla
+ * (registro que no llegó, ancho de signo mal configurado) no se evalúa: es
+ * exactamente lo que el dashboard marca como `ok: false`.
+ */
+async function valorEvaluable(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  alerta: Alerta,
+  data: Record<string, unknown>,
+): Promise<{ valorNum: number; valorTexto: string } | null> {
+  const mapRes = (await client.query(
+    `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+            transformacion, parametros
+       FROM reg_map
+      WHERE sitio_id = $1 AND d1 = $2
+      ORDER BY alias
+      LIMIT 1`,
+    [alerta.sitio_id, alerta.variable_key],
+  )) as { rows: RegMap[] };
+  const mapping = mapRes.rows[0];
+
+  let valor: unknown = data[alerta.variable_key];
+  if (mapping) {
+    let pozoConfig: unknown = null;
+    if (normalizeTransform(mapping.transformacion) === 'nivel_freatico') {
+      const pc = (await client.query(`SELECT * FROM pozo_config WHERE sitio_id = $1 LIMIT 1`, [
+        alerta.sitio_id,
+      ])) as { rows: unknown[] };
+      pozoConfig = pc.rows[0] ?? null;
+    }
+    try {
+      valor = applyMappingTransform({ rawData: data, mapping, pozoConfig });
+    } catch (err) {
+      logger.debug(
+        { alertaId: alerta.id, variable_key: alerta.variable_key, err: (err as Error).message },
+        'alerts: la transformacion del reg_map fallo, lectura no evaluable',
+      );
+      return null;
+    }
+  }
+
+  const valorNum = typeof valor === 'number' ? valor : parseFloat(String(valor));
+  if (!Number.isFinite(valorNum)) return null;
+  return { valorNum, valorTexto: String(valor) };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> {
   if (!estaActivoHoy(alerta)) return;
@@ -716,9 +801,9 @@ export async function evaluarAlerta(client: any, alerta: Alerta): Promise<void> 
   if (latest.rows.length === 0) return;
   const rawVal = latest.rows[0]!.data[alerta.variable_key];
   if (rawVal === undefined) return;
-  const valorNum = parseFloat(String(rawVal));
-  const valorTexto = String(rawVal);
-  if (Number.isNaN(valorNum)) return;
+  const evaluable = await valorEvaluable(client, alerta, latest.rows[0]!.data);
+  if (evaluable === null) return;
+  const { valorNum, valorTexto } = evaluable;
 
   const dispara = evalCondicion(
     alerta.condicion,
@@ -775,6 +860,7 @@ async function runCycle(): Promise<void> {
       `SELECT a.id, a.nombre, a.empresa_id, a.sub_empresa_id, a.sitio_id, a.creado_por,
               a.variable_key, a.condicion, a.umbral_bajo, a.umbral_alto,
               a.severidad, a.cooldown_minutos, a.dias_activos,
+              a.notificar_user_ids, a.notificar_superadmins,
               s.id_serial, s.descripcion AS sitio_desc
        FROM alertas a
        JOIN sitio s ON s.id = a.sitio_id
