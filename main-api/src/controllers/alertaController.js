@@ -4,8 +4,62 @@ const {
   buildUserSiteScope,
   userCanAccessSiteId,
 } = require('../services/dataAccess');
+// Misma matemática que el dashboard y que el worker de alertas: el tester
+// muestra el valor transformado por el reg_map, que es contra el que se
+// compara el umbral.
+const { applyMappingTransform, normalizeTransform } = require('../utils/mappingTransform.js');
 
 const DIAS_VALIDOS = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado', 'domingo'];
+
+/**
+ * Normaliza y valida los destinatarios de una regla.
+ *
+ * `notificar_user_ids` tiene que apuntar a usuarios existentes, activos y de la
+ * MISMA empresa que la alerta: es la única barrera contra mandar el correo de
+ * un pozo de una empresa a alguien de otra. Los SuperAdmin no van en la lista,
+ * los cubre `notificar_superadmins`.
+ *
+ * Devuelve `{ ids, superadmins }` con `undefined` en lo que el body no trae
+ * (para que el PATCH no pise lo que no se mandó), o `{ error }`.
+ */
+async function normalizarDestinatarios(body, empresaId) {
+  let ids;
+  if (body.notificar_user_ids !== undefined) {
+    if (!Array.isArray(body.notificar_user_ids)) {
+      return { error: 'notificar_user_ids debe ser una lista de ids de usuario.' };
+    }
+    ids = [
+      ...new Set(
+        body.notificar_user_ids.filter(
+          (s) => typeof s === 'string' && s.length > 0 && s.length <= 10,
+        ),
+      ),
+    ];
+    if (ids.length) {
+      const { rows } = await pool.query(
+        `SELECT id FROM usuario
+          WHERE id = ANY($1::text[])
+            AND COALESCE(activo, TRUE)
+            AND empresa_id = $2
+            AND tipo <> 'SuperAdmin'`,
+        [ids, empresaId],
+      );
+      if (rows.length !== ids.length) {
+        return {
+          error:
+            'Hay destinatarios que no existen, están inactivos o no pertenecen a la empresa de la alerta.',
+        };
+      }
+    }
+  }
+
+  let superadmins;
+  if (body.notificar_superadmins !== undefined) {
+    superadmins = body.notificar_superadmins === true || body.notificar_superadmins === 'true';
+  }
+
+  return { ids, superadmins };
+}
 
 function normalizarDiasActivos(dias) {
   if (!Array.isArray(dias) || dias.length === 0) return DIAS_VALIDOS;
@@ -139,12 +193,17 @@ exports.crearAlerta = async (req, res) => {
     ? viewer_user_ids.filter((s) => typeof s === 'string' && s.length > 0)
     : [];
 
+  const destinatarios = await normalizarDestinatarios(req.body, empresa_id);
+  if (destinatarios.error) {
+    return res.status(400).json({ ok: false, error: destinatarios.error });
+  }
+
   const { rows } = await pool.query(
     `INSERT INTO alertas
        (nombre, descripcion, sitio_id, empresa_id, sub_empresa_id, variable_key,
         condicion, umbral_bajo, umbral_alto, severidad, cooldown_minutos, dias_activos, creado_por,
-        visible_to_all, viewer_user_ids)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+        visible_to_all, viewer_user_ids, notificar_user_ids, notificar_superadmins)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
      RETURNING *`,
     [
       nombre,
@@ -162,6 +221,8 @@ exports.crearAlerta = async (req, res) => {
       req.user.id,
       visibleToAll,
       visibleToAll ? [] : viewerIds,
+      destinatarios.ids ?? [],
+      destinatarios.superadmins ?? true,
     ],
   );
 
@@ -258,15 +319,27 @@ exports.actualizarAlerta = async (req, res) => {
     'activa',
     'visible_to_all',
     'viewer_user_ids',
+    'notificar_user_ids',
+    'notificar_superadmins',
   ];
   const updates = [];
   const params = [];
 
+  // Los destinatarios se validan contra la empresa de la alerta guardada, no
+  // contra la del body: el PATCH no puede mover una regla de empresa.
+  const destinatarios = await normalizarDestinatarios(req.body, alerta.empresa_id);
+  if (destinatarios.error) {
+    return res.status(400).json({ ok: false, error: destinatarios.error });
+  }
+  const normalizados = {
+    dias_activos: (v) => normalizarDiasActivos(v),
+    notificar_user_ids: () => destinatarios.ids,
+    notificar_superadmins: () => destinatarios.superadmins,
+  };
+
   for (const campo of campos) {
     if (req.body[campo] !== undefined) {
-      params.push(
-        campo === 'dias_activos' ? normalizarDiasActivos(req.body[campo]) : req.body[campo],
-      );
+      params.push(normalizados[campo] ? normalizados[campo](req.body[campo]) : req.body[campo]);
       updates.push(`${campo} = $${params.length}`);
     }
   }
@@ -631,4 +704,144 @@ exports.resumen = async (req, res) => {
       recientes,
     },
   });
+};
+
+/**
+ * GET /api/alertas/destinatarios?empresa_id=
+ *
+ * Usuarios que pueden elegirse como destinatarios de una regla: los de la
+ * empresa, activos, sin los SuperAdmin (a ellos los cubre la casilla
+ * "avisar al equipo Emeltec"). Un Admin/Gerente solo ve su propia empresa; si
+ * tiene sub-empresa, solo la suya. Endpoint propio en vez de GET /api/users
+ * porque ese listado no está permitido para Gerente, que sí edita alarmas.
+ */
+exports.destinatariosPosibles = async (req, res, next) => {
+  try {
+    const esSuper = req.user.tipo === 'SuperAdmin';
+    const pedida = typeof req.query.empresa_id === 'string' ? req.query.empresa_id : '';
+    if (!esSuper && pedida && pedida !== req.user.empresa_id) {
+      return res.status(403).json({ ok: false, error: 'Sin acceso a esa empresa' });
+    }
+    const empresaId = esSuper ? pedida || req.user.empresa_id : req.user.empresa_id;
+    if (!empresaId) {
+      return res.status(400).json({ ok: false, error: 'Falta empresa_id' });
+    }
+
+    const params = [empresaId];
+    let filtroSub = '';
+    if (!esSuper && req.user.sub_empresa_id) {
+      params.push(req.user.sub_empresa_id);
+      filtroSub = `AND sub_empresa_id = $${params.length}`;
+    }
+
+    const { rows } = await pool.query(
+      `SELECT id, nombre, apellido, email, tipo, sub_empresa_id
+         FROM usuario
+        WHERE empresa_id = $1
+          AND COALESCE(activo, TRUE)
+          AND tipo <> 'SuperAdmin'
+          ${filtroSub}
+        ORDER BY nombre, apellido`,
+      params,
+    );
+    res.json({ ok: true, data: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * GET /api/alertas/simulacion?sitio_id=&variable_key=&limit=
+ *
+ * Lecturas para "Probar regla": las últimas 24 h de datos del equipo (contadas
+ * desde su última lectura, no desde ahora, para que un equipo caído igual tenga
+ * contra qué probar), con la variable ya TRANSFORMADA por el reg_map del sitio.
+ * Es el mismo valor que ve el dashboard y el mismo que compara el worker
+ * (`valorEvaluable`), así que el umbral se escribe en la unidad del reg_map.
+ * Sin mapeo se devuelve el crudo. Solo lectura.
+ */
+exports.simulacionValores = async (req, res, next) => {
+  try {
+    const sitioId = typeof req.query.sitio_id === 'string' ? req.query.sitio_id : '';
+    const variableKey = typeof req.query.variable_key === 'string' ? req.query.variable_key : '';
+    const limitPedido = parseInt(req.query.limit, 10);
+    const limit = Math.min(Math.max(Number.isFinite(limitPedido) ? limitPedido : 500, 1), 2000);
+    if (!sitioId || !variableKey) {
+      return res.status(400).json({ ok: false, error: 'Faltan sitio_id y variable_key' });
+    }
+    if (!(await userCanAccessSiteId(pool, req.user, sitioId))) {
+      return res.status(403).json({ ok: false, error: 'Sin permisos sobre este sitio' });
+    }
+
+    const { rows: sitios } = await pool.query(
+      'SELECT id, id_serial, tipo_sitio FROM sitio WHERE id = $1',
+      [sitioId],
+    );
+    const sitio = sitios[0];
+    if (!sitio) return res.status(404).json({ ok: false, error: 'Sitio no encontrado' });
+    if (!sitio.id_serial) {
+      return res.json({ ok: true, data: [], mapping: null, message: 'El sitio no tiene equipo.' });
+    }
+
+    const { rows: mapeos } = await pool.query(
+      `SELECT id, sitio_id, alias, d1, d2, tipo_dato, unidad, rol_dashboard,
+              transformacion, parametros
+         FROM reg_map
+        WHERE sitio_id = $1 AND d1 = $2
+        ORDER BY alias
+        LIMIT 1`,
+      [sitioId, variableKey],
+    );
+    const mapping = mapeos[0] ?? null;
+
+    let pozoConfig = null;
+    if (mapping && normalizeTransform(mapping.transformacion) === 'nivel_freatico') {
+      const { rows: pc } = await pool.query(
+        'SELECT * FROM pozo_config WHERE sitio_id = $1 LIMIT 1',
+        [sitioId],
+      );
+      pozoConfig = pc[0] ?? null;
+    }
+
+    const { rows: lecturas } = await pool.query(
+      `SELECT time, data
+         FROM equipo
+        WHERE id_serial = $1
+          AND time > (SELECT MAX(time) FROM equipo WHERE id_serial = $1) - INTERVAL '24 hours'
+        ORDER BY time DESC
+        LIMIT $2`,
+      [sitio.id_serial, limit],
+    );
+
+    const data = lecturas.map((row) => {
+      const crudo = row.data && typeof row.data === 'object' ? row.data[variableKey] : undefined;
+      const out = {
+        timestamp: row.time instanceof Date ? row.time.toISOString() : String(row.time),
+        crudo: crudo === undefined ? null : crudo,
+        valor: crudo === undefined ? null : crudo,
+        ok: true,
+        error: null,
+      };
+      if (mapping && crudo !== undefined && crudo !== null) {
+        try {
+          out.valor = applyMappingTransform({ rawData: row.data, mapping, pozoConfig });
+        } catch (err) {
+          out.ok = false;
+          out.valor = null;
+          out.error = err.message;
+        }
+      }
+      return out;
+    });
+
+    res.json({
+      ok: true,
+      data,
+      mapping: mapping
+        ? { alias: mapping.alias, unidad: mapping.unidad, transformacion: mapping.transformacion }
+        : null,
+    });
+  } catch (err) {
+    next(err);
+  }
 };

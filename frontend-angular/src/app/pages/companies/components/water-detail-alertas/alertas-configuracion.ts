@@ -21,7 +21,9 @@ import {
   CreateAlertaPayload,
   DIAS_ORDEN,
   DIAS_SHORT,
+  type DestinatarioPosible,
   SEVERIDAD_LABELS,
+  type SimulacionLectura,
   UpdateAlertaPayload,
 } from '../../../../services/alerta.service';
 import { AdministrationService } from '../../../../services/administration.service';
@@ -30,7 +32,6 @@ import {
   CONTADOR_ROLES,
   type ContadorDiarioPoint,
   type ContadorRol,
-  type TelemetryHistoryRow,
 } from '../../../../services/company.service';
 import type { VariableMapping } from '@emeltec/shared';
 import { InlineErrorComponent } from '../../../../components/ui/inline-error';
@@ -77,6 +78,8 @@ interface DraftAlerta {
   cooldown_minutos: number;
   dias_activos: AlertaDia[];
   visible_to_all: boolean;
+  notificar_user_ids: string[];
+  notificar_superadmins: boolean;
 }
 
 const CONDICIONES_DISPONIBLES: AlertaCondicion[] = [
@@ -93,8 +96,6 @@ const CONDICIONES_DISPONIBLES: AlertaCondicion[] = [
  * Condiciones cuyo umbral se compara contra un valor YA transformado por el
  * reg_map (unidades de ingeniería), en vez del valor crudo del payload.
  */
-const CONDICIONES_EN_UNIDAD_REAL: AlertaCondicion[] = ['consumo_diario'];
-
 const SEVERIDADES_DISPONIBLES: AlertaSeveridad[] = ['baja', 'media', 'alta', 'critica'];
 
 function emptyDraft(): DraftAlerta {
@@ -109,6 +110,8 @@ function emptyDraft(): DraftAlerta {
     cooldown_minutos: 5,
     dias_activos: [...DIAS_ORDEN],
     visible_to_all: true,
+    notificar_user_ids: [],
+    notificar_superadmins: true,
   };
 }
 
@@ -124,6 +127,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
     cooldown_minutos: r.cooldown_minutos,
     dias_activos: [...r.dias_activos],
     visible_to_all: r.visible_to_all !== false,
+    notificar_user_ids: [...(r.notificar_user_ids ?? [])],
+    notificar_superadmins: r.notificar_superadmins !== false,
   };
 }
 
@@ -317,18 +322,6 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                       >
                         {{ condicionResumen(regla) }}
                       </span>
-                      <!-- Con el reg_map visible abajo ("… · m3"), un umbral
-                           sin unidad se lee como si fuera esa unidad. Cuando
-                           la variable tiene transformación, el worker compara
-                           el valor crudo: hay que decirlo. -->
-                      @if (requiereValorCrudo(regla.variable_key, regla.condicion)) {
-                        <span
-                          class="rounded-md bg-amber-50 px-1.5 py-0.5 text-caption-xs font-semibold text-amber-700"
-                          title="El umbral se compara contra el valor crudo del payload, no contra la unidad del reg_map"
-                        >
-                          valor crudo
-                        </span>
-                      }
                     </div>
 
                     @if (regla.descripcion) {
@@ -412,6 +405,15 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                       </span>
                     }
                   }
+                  <span
+                    class="flex items-center gap-1 text-caption-xs text-slate-500"
+                    [title]="destinatariosDetalle(regla)"
+                  >
+                    <span class="material-symbols-outlined text-[14px]" aria-hidden="true"
+                      >mail</span
+                    >
+                    {{ destinatariosResumen(regla) }}
+                  </span>
                   @if (!regla.visible_to_all) {
                     <span
                       class="flex items-center gap-1 text-caption-xs text-slate-500"
@@ -567,22 +569,6 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
                       >warning</span
                     >
                     "{{ draft.variable_key }}" no está en las variables registradas del sitio.
-                  </p>
-                }
-                @if (requiereValorCrudo(draft.variable_key, draft.condicion)) {
-                  <p
-                    class="mt-1.5 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-caption-xs text-amber-800"
-                  >
-                    <span class="material-symbols-outlined mt-px text-[14px]" aria-hidden="true"
-                      >info</span
-                    >
-                    <span>
-                      Esta variable tiene transformación
-                      <span class="font-mono">{{ transformacionVariable(draft.variable_key) }}</span
-                      >. La alerta compara el <strong>valor crudo del payload</strong>, no el valor
-                      convertido que muestra el dashboard. Usa "Probar regla" para ver el rango real
-                      antes de fijar el umbral.
-                    </span>
                   </p>
                 }
               } @else if (draft.condicion === 'consumo_diario') {
@@ -776,6 +762,60 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               }
             </div>
           </div>
+
+          <!-- Destinatarios del correo -->
+          <div>
+            <p class="mb-2 text-caption-xs font-semibold uppercase tracking-widest text-slate-400">
+              Destinatarios
+            </p>
+            <label class="flex items-center gap-2 text-caption text-slate-700">
+              <input
+                type="checkbox"
+                [(ngModel)]="draft.notificar_superadmins"
+                class="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary-tint-55"
+              />
+              Avisar al equipo Emeltec
+            </label>
+            @if (destinatariosError()) {
+              <p class="mt-2 text-caption-xs text-amber-700">{{ destinatariosError() }}</p>
+            } @else if (destinatarios().length === 0) {
+              <p class="mt-2 text-caption-xs text-slate-500">
+                La empresa no tiene otros usuarios activos. Sin destinatarios, el correo le llega a
+                quien creó la regla.
+              </p>
+            } @else {
+              <div class="mt-2 grid gap-1.5 sm:grid-cols-2">
+                @for (u of destinatarios(); track u.id) {
+                  <label
+                    class="flex items-start gap-2 rounded-lg border px-2.5 py-1.5 text-caption transition-colors"
+                    [class]="
+                      draft.notificar_user_ids.includes(u.id)
+                        ? 'border-primary-tint-55 bg-primary-tint-08'
+                        : 'border-slate-200 bg-white hover:bg-slate-50'
+                    "
+                  >
+                    <input
+                      type="checkbox"
+                      [checked]="draft.notificar_user_ids.includes(u.id)"
+                      (change)="toggleDestinatario(draft, u.id)"
+                      class="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary-tint-55"
+                    />
+                    <span class="min-w-0">
+                      <span class="block truncate font-semibold text-slate-700">{{
+                        nombreDestinatario(u)
+                      }}</span>
+                      <span class="block truncate text-caption-xs text-slate-500"
+                        >{{ u.email }} · {{ u.tipo }}</span
+                      >
+                    </span>
+                  </label>
+                }
+              </div>
+              <p class="mt-2 text-caption-xs text-slate-500">
+                Sin nadie marcado, el correo le llega a quien creó la regla.
+              </p>
+            }
+          </div>
         </section>
 
         <!-- Vista previa con datos reales (rule-tester) -->
@@ -813,7 +853,8 @@ function rowToDraft(r: AlertaRow): DraftAlerta {
               @if (draft.condicion === 'consumo_diario') {
                 Evalúa el umbral contra el consumo real de cada uno de los últimos 30 días.
               } @else {
-                Evalúa la condición contra las últimas 500 lecturas crudas del equipo (24 h).
+                Evalúa la condición contra las últimas 500 lecturas del equipo (24 h de datos), con
+                el valor ya convertido, igual que en el dashboard.
               }
               Solo cuenta los días activos de la regla. Read-only — no guarda nada ni dispara
               notificaciones.
@@ -980,9 +1021,14 @@ export class AlertasConfiguracionComponent {
   readonly mostrandoNuevo = signal(false);
   readonly drafts = signal<Record<number, DraftAlerta>>({});
 
-  // Variables registradas del sitio (reg_map). El worker compara
-  // data[variable_key] del payload crudo, asi que el value usado es `d1`.
+  // Variables registradas del sitio (reg_map). La regla guarda la clave cruda
+  // del payload (`d1`); el worker la busca en el reg_map y compara el umbral
+  // contra el valor transformado, el mismo que muestra el dashboard.
   readonly variables = signal<VariableMapping[]>([]);
+
+  /** Usuarios de la empresa elegibles como destinatarios del correo. */
+  readonly destinatarios = signal<DestinatarioPosible[]>([]);
+  readonly destinatariosError = signal('');
 
   /** Serial del equipo del sitio. Lo necesita el rule-tester para pedir la
    * telemetría cruda; llega en la misma respuesta de `getSiteVariables`. */
@@ -996,6 +1042,7 @@ export class AlertasConfiguracionComponent {
       if (sid) {
         this.recargar();
         this.cargarVariables();
+        this.cargarDestinatarios();
       }
     });
   }
@@ -1016,6 +1063,51 @@ export class AlertasConfiguracionComponent {
         this.idSerial.set('');
       },
     });
+  }
+
+  private cargarDestinatarios(): void {
+    if (!this.canEdit()) return;
+    this.alertaService.destinatariosPosibles(this.empresaId()).subscribe({
+      next: (rows) => {
+        this.destinatarios.set(rows);
+        this.destinatariosError.set('');
+      },
+      error: () => {
+        this.destinatarios.set([]);
+        this.destinatariosError.set(
+          'No se pudo cargar la lista de usuarios; se puede guardar igual y elegirlos después.',
+        );
+      },
+    });
+  }
+
+  // ─── Destinatarios ──────────────────────────────────────────────────
+
+  toggleDestinatario(draft: DraftAlerta, id: string): void {
+    const idx = draft.notificar_user_ids.indexOf(id);
+    if (idx >= 0) draft.notificar_user_ids.splice(idx, 1);
+    else draft.notificar_user_ids.push(id);
+  }
+
+  nombreDestinatario(u: DestinatarioPosible): string {
+    return `${u.nombre} ${u.apellido ?? ''}`.trim() || u.email;
+  }
+
+  /** Texto corto para la fila de la regla: a quién le llega el correo. */
+  destinatariosResumen(r: AlertaRow): string {
+    const n = r.notificar_user_ids?.length ?? 0;
+    const emeltec = r.notificar_superadmins !== false;
+    if (n === 0) return emeltec ? 'Creador y equipo Emeltec' : 'Solo el creador';
+    const personas = `${n} ${n === 1 ? 'destinatario' : 'destinatarios'}`;
+    return emeltec ? `${personas} y equipo Emeltec` : personas;
+  }
+
+  /** Tooltip con los nombres, cuando la lista de usuarios ya cargó. */
+  destinatariosDetalle(r: AlertaRow): string {
+    const ids = r.notificar_user_ids ?? [];
+    if (!ids.length) return 'Recibe el correo quien creó la regla.';
+    const porId = new Map(this.destinatarios().map((u) => [u.id, this.nombreDestinatario(u)]));
+    return ids.map((id) => porId.get(id) ?? id).join(', ');
   }
 
   private recargar(): void {
@@ -1096,21 +1188,6 @@ export class AlertasConfiguracionComponent {
   }
 
   /**
-   * `true` cuando el reg_map define una transformación para la variable. En
-   * ese caso el valor del payload NO está en la unidad declarada: el worker
-   * compara `equipo.data[d1]` CRUDO, sin transformar. Ej. AI23 llega como 264
-   * y el dashboard lo muestra como 26,4 m — un umbral "4" se compara contra
-   * 264, no contra 26,4.
-   */
-  requiereValorCrudo(key: string, condicion: AlertaCondicion): boolean {
-    // `consumo_diario` compara contra el delta ya transformado, así que su
-    // umbral SÍ va en la unidad del reg_map.
-    if (CONDICIONES_EN_UNIDAD_REAL.includes(condicion)) return false;
-    const t = (this.mappingDe(key)?.transformacion ?? 'directo').trim().toLowerCase();
-    return t !== '' && t !== 'directo';
-  }
-
-  /**
    * `consumo_diario` solo tiene sentido sobre variables que el módulo de
    * contadores sabe acumular (rol_dashboard ∈ totalizador/energia/volumen).
    * El delta de un nivel o un caudal no representa un consumo.
@@ -1145,7 +1222,9 @@ export class AlertasConfiguracionComponent {
 
   /** Unidad del reg_map, SOLO si el umbral se expresa en esa unidad. */
   unidadVariable(key: string, condicion: AlertaCondicion): string {
-    if (this.requiereValorCrudo(key, condicion)) return '';
+    // Sin umbral no hay unidad que mostrar. Para el resto, el umbral va en la
+    // unidad del reg_map: el worker compara contra el valor transformado.
+    if (condicion === 'sin_datos' || condicion === 'dga_atrasado') return '';
     return this.mappingDe(key)?.unidad?.trim() || '';
   }
 
@@ -1208,6 +1287,8 @@ export class AlertasConfiguracionComponent {
       cooldown_minutos: Number(draft.cooldown_minutos),
       dias_activos: draft.dias_activos,
       visible_to_all: draft.visible_to_all,
+      notificar_user_ids: draft.notificar_user_ids,
+      notificar_superadmins: draft.notificar_superadmins,
     };
     this.saving.set(true);
     this.errorMsg.set(null);
@@ -1255,6 +1336,8 @@ export class AlertasConfiguracionComponent {
       cooldown_minutos: Number(d.cooldown_minutos) || 5,
       dias_activos: d.dias_activos,
       visible_to_all: d.visible_to_all,
+      notificar_user_ids: d.notificar_user_ids,
+      notificar_superadmins: d.notificar_superadmins,
     };
   }
 
@@ -1369,7 +1452,7 @@ export class AlertasConfiguracionComponent {
    */
   puedeSimular(draft: DraftAlerta): boolean {
     if (!this.esCondicionSimulable(draft.condicion)) return false;
-    if (!this.idSerial()) return false;
+    if (!this.sitioId()) return false;
     if (draft.condicion === 'sin_datos') {
       return draft.cooldown_minutos > 0;
     }
@@ -1384,19 +1467,17 @@ export class AlertasConfiguracionComponent {
   }
 
   /**
-   * Ejecuta la regla contra las últimas 500 lecturas CRUDAS del equipo y
-   * reporta cuántas habrían disparado. NO escribe — solo lectura.
+   * Ejecuta la regla contra las últimas 500 lecturas del equipo (24 h de datos)
+   * y reporta cuántas habrían disparado. NO escribe — solo lectura.
    *
-   * Fuente = `/api/data/preset` (tabla `equipo`, payload sin transformar),
-   * porque es exactamente lo que evalúa el worker: `equipo.data[variable_key]`.
-   * NO sirve `dashboard-history`: ese endpoint devuelve filas mapeadas por rol
-   * (`caudal`/`nivel`/`totalizador`/`nivel_freatico`), no un diccionario
-   * indexado por la clave cruda de la regla.
+   * Fuente = `/api/alertas/simulacion`: la variable llega ya TRANSFORMADA por
+   * el reg_map del sitio, que es exactamente lo que compara el worker y lo que
+   * muestra el dashboard. Así el umbral se escribe en la unidad del reg_map.
    */
   simularRegla(draft: DraftAlerta): void {
-    const serial = this.idSerial();
-    if (!serial) {
-      this.simulationError.set('No se pudo resolver el equipo del sitio.');
+    const sitioId = this.sitioId();
+    if (!sitioId) {
+      this.simulationError.set('No se pudo resolver el sitio.');
       return;
     }
     if (!this.puedeSimular(draft)) {
@@ -1413,38 +1494,27 @@ export class AlertasConfiguracionComponent {
       return;
     }
 
-    this.companyService
-      .getTelemetryPreset(serial, {
-        preset: '24h',
-        keys: draft.variable_key ? [draft.variable_key] : undefined,
-        limit: 500,
-      })
-      .subscribe({
-        next: (res) => {
-          this.simulating.set(false);
-          if (!res.ok) {
-            this.simulationError.set('No se pudo cargar el histórico para la simulación.');
-            return;
-          }
-          const rows = Array.isArray(res.data) ? res.data : [];
-          if (rows.length === 0) {
-            this.simulationError.set(
-              'El equipo no tiene lecturas en las últimas 24 horas; no hay contra qué probar.',
-            );
-            return;
-          }
-          this.simulationSummary.set(this.buildSimulation(draft, rows));
-        },
-        error: (err: unknown) => {
-          this.simulating.set(false);
-          const e = err as { error?: { error?: { message?: string }; message?: string } };
+    this.alertaService.simulacionValores(sitioId, draft.variable_key, 500).subscribe({
+      next: (res) => {
+        this.simulating.set(false);
+        if (res.data.length === 0) {
           this.simulationError.set(
-            e?.error?.error?.message ??
-              e?.error?.message ??
-              'No se pudo cargar el histórico para la simulación.',
+            res.message ?? 'El equipo no tiene lecturas; no hay contra qué probar.',
           );
-        },
-      });
+          return;
+        }
+        this.simulationSummary.set(this.buildSimulation(draft, res.data));
+      },
+      error: (err: unknown) => {
+        this.simulating.set(false);
+        const e = err as { error?: { error?: { message?: string }; message?: string } };
+        this.simulationError.set(
+          e?.error?.error?.message ??
+            e?.error?.message ??
+            'No se pudo cargar el histórico para la simulación.',
+        );
+      },
+    });
   }
 
   /**
@@ -1577,29 +1647,17 @@ export class AlertasConfiguracionComponent {
     }
   }
 
-  /** Timestamp UTC de una fila cruda de `/api/data/*`. */
-  private rowTimestamp(row: TelemetryHistoryRow): string {
-    return row.timestamp_completo ?? `${row.fecha ?? ''}T${row.hora ?? '00:00:00'}`;
-  }
-
-  /** Valor crudo de la variable — mismo acceso que hace el worker de alertas. */
-  private rowValue(row: TelemetryHistoryRow, key: string): unknown {
-    if (!key) return null;
-    return (row.data ?? {})[key];
-  }
-
-  private buildSimulation(draft: DraftAlerta, rawRows: TelemetryHistoryRow[]): SimulationSummary {
+  private buildSimulation(draft: DraftAlerta, lecturas: SimulacionLectura[]): SimulationSummary {
     // Mostrar más recientes primero para que el admin vea los hits relevantes.
     // Cada lectura lleva si cae en un día activo de la regla (en hora de
     // Chile, como decide el worker): las que no, no pueden ser match.
-    const entries = rawRows.map((row) => {
-      const timestamp = this.rowTimestamp(row);
-      return {
-        timestamp,
-        raw: this.rowValue(row, draft.variable_key),
-        activa: esDiaActivo(diaSemanaDeInstante(timestamp), draft.dias_activos),
-      };
-    });
+    // `valor` ya viene transformado por el reg_map; una lectura que el backend
+    // no pudo transformar (ok=false) se trata como sin dato, igual que el worker.
+    const entries = lecturas.map((row) => ({
+      timestamp: row.timestamp,
+      raw: row.ok ? row.valor : null,
+      activa: esDiaActivo(diaSemanaDeInstante(row.timestamp), draft.dias_activos),
+    }));
     const sorted = entries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     const fueraDeDias = sorted.filter((e) => !e.activa).length;
     const total = sorted.length - fueraDeDias;

@@ -45,6 +45,10 @@ export interface AlertaRow {
   dias_activos: AlertaDia[];
   visible_to_all: boolean;
   viewer_user_ids: string[];
+  /** Usuarios que reciben el correo. Vacío = solo el creador (comportamiento histórico). */
+  notificar_user_ids: string[];
+  /** Además avisa al equipo Emeltec (SuperAdmin). */
+  notificar_superadmins: boolean;
   creado_por: string | null;
   created_at: string;
   updated_at: string;
@@ -67,6 +71,33 @@ export interface CreateAlertaPayload {
   dias_activos?: AlertaDia[];
   visible_to_all?: boolean;
   viewer_user_ids?: string[];
+  notificar_user_ids?: string[];
+  notificar_superadmins?: boolean;
+}
+
+/** Usuario elegible como destinatario de una regla (GET /api/alertas/destinatarios). */
+export interface DestinatarioPosible {
+  id: string;
+  nombre: string;
+  apellido: string | null;
+  email: string;
+  tipo: string;
+  sub_empresa_id: string | null;
+}
+
+/** Una lectura para "Probar regla", ya transformada por el reg_map del sitio. */
+export interface SimulacionLectura {
+  timestamp: string;
+  crudo: unknown;
+  valor: unknown;
+  ok: boolean;
+  error: string | null;
+}
+
+export interface SimulacionValores {
+  data: SimulacionLectura[];
+  mapping: { alias: string; unidad: string | null; transformacion: string | null } | null;
+  message?: string;
 }
 
 export type UpdateAlertaPayload = Partial<
@@ -84,6 +115,8 @@ export type UpdateAlertaPayload = Partial<
     | 'activa'
     | 'visible_to_all'
     | 'viewer_user_ids'
+    | 'notificar_user_ids'
+    | 'notificar_superadmins'
   >
 >;
 
@@ -203,6 +236,44 @@ export class AlertaService {
     if (filters.activa !== undefined) qs.set('activa', String(filters.activa));
     const url = `/api/alertas${qs.toString() ? `?${qs}` : ''}`;
     return this.http.get<ApiEnvelope<AlertaRow[]>>(url).pipe(map((r) => (r.ok ? r.data : [])));
+  }
+
+  /** Usuarios de la empresa elegibles como destinatarios (sin SuperAdmin). */
+  destinatariosPosibles(empresaId: string): Observable<DestinatarioPosible[]> {
+    const qs = empresaId ? `?empresa_id=${encodeURIComponent(empresaId)}` : '';
+    return this.http
+      .get<ApiEnvelope<DestinatarioPosible[]>>(`/api/alertas/destinatarios${qs}`)
+      .pipe(map((r) => (r.ok ? r.data : [])));
+  }
+
+  /**
+   * Lecturas de las últimas 24 h de datos del equipo con la variable ya
+   * transformada por el reg_map — el mismo valor que compara el worker.
+   */
+  simulacionValores(
+    sitioId: string,
+    variableKey: string,
+    limit = 500,
+  ): Observable<SimulacionValores> {
+    const qs = new URLSearchParams({
+      sitio_id: sitioId,
+      variable_key: variableKey,
+      limit: String(limit),
+    });
+    return this.http
+      .get<
+        ApiEnvelope<SimulacionLectura[]> & {
+          mapping?: SimulacionValores['mapping'];
+          message?: string;
+        }
+      >(`/api/alertas/simulacion?${qs}`)
+      .pipe(
+        map((r) => ({
+          data: r.ok ? r.data : [],
+          mapping: r.ok ? (r.mapping ?? null) : null,
+          message: r.ok ? r.message : undefined,
+        })),
+      );
   }
 
   crear(payload: CreateAlertaPayload): Observable<AlertaRow> {
